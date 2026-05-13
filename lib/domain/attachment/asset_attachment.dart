@@ -24,4 +24,30 @@ class AssetAttachment {
   final int byteSize;
   final DateTime createdAt;
   final String sha256;
+
+  AssetAttachment copyWith({
+    AssetId? id,
+    EntryId? entryId,
+    String? mimeType,
+    String? originalFilename,
+    String? safeFilename,
+    int? width,
+    int? height,
+    int? byteSize,
+    DateTime? createdAt,
+    String? sha256,
+  }) {
+    return AssetAttachment(
+      id: id ?? this.id,
+      entryId: entryId ?? this.entryId,
+      mimeType: mimeType ?? this.mimeType,
+      originalFilename: originalFilename ?? this.originalFilename,
+      safeFilename: safeFilename ?? this.safeFilename,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      byteSize: byteSize ?? this.byteSize,
+      createdAt: createdAt ?? this.createdAt,
+      sha256: sha256 ?? this.sha256,
+    );
+  }
 }

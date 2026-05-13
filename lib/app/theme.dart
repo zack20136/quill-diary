@@ -1,24 +1,63 @@
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-ThemeData buildAppTheme() {
-  final ColorScheme colorScheme = ColorScheme.fromSeed(
-    seedColor: Colors.teal,
-    brightness: Brightness.light,
-  );
+ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Brightness.light}) {
+  GoogleFonts.config.allowRuntimeFetching = false;
+  final ColorScheme scheme = dynamicScheme ??
+      ColorScheme.fromSeed(
+        seedColor: const Color(0xFF4C7A67),
+        brightness: brightness,
+      );
 
-  return ThemeData(
-    colorScheme: colorScheme,
+  return FlexThemeData.light(
+    colorScheme: scheme,
     useMaterial3: true,
-    scaffoldBackgroundColor: colorScheme.surface,
+    appBarElevation: 0,
+    subThemesData: const FlexSubThemesData(
+      interactionEffects: true,
+      defaultRadius: 18,
+      blendOnLevel: 12,
+      blendOnColors: false,
+      cardRadius: 20,
+      inputDecoratorRadius: 16,
+      elevatedButtonRadius: 16,
+      filledButtonRadius: 16,
+      outlinedButtonRadius: 16,
+    ),
+    textTheme: ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+    ).textTheme,
+    fontFamily: null,
+  ).copyWith(
+    scaffoldBackgroundColor: scheme.surface,
     appBarTheme: AppBarTheme(
-      backgroundColor: colorScheme.surface,
-      foregroundColor: colorScheme.onSurface,
+      backgroundColor: scheme.surface,
+      foregroundColor: scheme.onSurface,
       centerTitle: false,
     ),
     cardTheme: CardThemeData(
-      color: colorScheme.surfaceContainerLowest,
+      color: scheme.surfaceContainerLowest,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: scheme.surfaceContainerLowest,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.outlineVariant),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      ),
     ),
   );
 }

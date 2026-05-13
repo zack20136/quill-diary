@@ -1,7 +1,13 @@
-class CreateBackupSnapshotUseCase {
-  const CreateBackupSnapshotUseCase();
+import 'dart:io';
 
-  Future<void> call() async {
-    // TODO(zack): create a locked snapshot and package it as .jbackup.
+import '../../infrastructure/storage/vault_repository.dart';
+
+class CreateBackupSnapshotUseCase {
+  const CreateBackupSnapshotUseCase(this._repository);
+
+  final VaultRepository _repository;
+
+  Future<File> call() {
+    return _repository.createBackupSnapshot();
   }
 }

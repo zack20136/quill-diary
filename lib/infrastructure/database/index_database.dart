@@ -1,11 +1,567 @@
-class IndexDatabase {
-  const IndexDatabase();
+import 'package:drift/drift.dart';
+import 'package:drift_flutter/drift_flutter.dart';
+
+import '../../domain/attachment/asset_attachment.dart';
+import '../../domain/diary/diary_entry.dart';
+import '../../domain/shared/value_objects.dart';
+import '../storage/vault_path_strategy.dart';
+
+class EntryIndexRecord {
+  const EntryIndexRecord({
+    required this.id,
+    required this.vaultId,
+    required this.filePath,
+    required this.title,
+    required this.previewText,
+    required this.date,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.tags,
+    required this.mood,
+    required this.attachmentCount,
+    required this.isDeleted,
+  });
+
+  final EntryId id;
+  final VaultId vaultId;
+  final String filePath;
+  final String? title;
+  final String previewText;
+  final DateOnly date;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<String> tags;
+  final String? mood;
+  final int attachmentCount;
+  final bool isDeleted;
+
+  factory EntryIndexRecord.fromRow(QueryRow row) {
+    return EntryIndexRecord(
+      id: row.read<String>('id'),
+      vaultId: row.read<String>('vault_id'),
+      filePath: row.read<String>('file_path'),
+      title: row.readNullable<String>('title'),
+      previewText: row.readNullable<String>('preview_text') ?? '',
+      date: DateOnly.parse(row.read<String>('date')),
+      createdAt: DateTime.parse(row.read<String>('created_at')),
+      updatedAt: DateTime.parse(row.read<String>('updated_at')),
+      tags: _parseTags(row.readNullable<String>('tags_joined')),
+      mood: row.readNullable<String>('mood'),
+      attachmentCount: row.read<int>('attachment_count'),
+      isDeleted: row.read<int>('is_deleted') == 1,
+    );
+  }
+
+  static List<String> _parseTags(String? joined) {
+    if (joined == null || joined.isEmpty) {
+      return const <String>[];
+    }
+    return joined.split('\n').where((String tag) => tag.isNotEmpty).toList();
+  }
+}
+
+class BackupHistoryRecord {
+  const BackupHistoryRecord({
+    required this.backupId,
+    required this.provider,
+    required this.createdAt,
+    required this.status,
+    required this.entryCount,
+    required this.assetCount,
+    this.remoteFileId,
+    this.byteSize,
+    this.errorCode,
+  });
+
+  final BackupId backupId;
+  final String provider;
+  final String? remoteFileId;
+  final DateTime createdAt;
+  final String status;
+  final int entryCount;
+  final int assetCount;
+  final int? byteSize;
+  final String? errorCode;
+}
+
+class IndexDatabase extends GeneratedDatabase {
+  IndexDatabase(VaultPathStrategy pathStrategy)
+      : super(
+          driftDatabase(
+            name: 'journal_index',
+            native: DriftNativeOptions(
+              databasePath: pathStrategy.indexDatabasePath,
+            ),
+          ),
+        );
+
+  @override
+  int get schemaVersion => 1;
+
+  @override
+  List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
+
+  @override
+  List<DatabaseSchemaEntity> get allSchemaEntities => const <DatabaseSchemaEntity>[];
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async => initialize(),
+        onUpgrade: (Migrator m, int from, int to) async => initialize(),
+        beforeOpen: (OpeningDetails details) async {
+          await customStatement('PRAGMA foreign_keys = ON;');
+        },
+      );
 
   Future<void> initialize() async {
-    // TODO(zack): create schema, migrations, and rebuild fallback hooks.
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS entries_index (
+        id TEXT PRIMARY KEY,
+        vault_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        title TEXT,
+        title_normalized TEXT,
+        preview_text TEXT,
+        date TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        mood TEXT,
+        word_count INTEGER NOT NULL DEFAULT 0,
+        char_count INTEGER NOT NULL DEFAULT 0,
+        attachment_count INTEGER NOT NULL DEFAULT 0,
+        has_attachments INTEGER NOT NULL DEFAULT 0,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        schema_version INTEGER NOT NULL DEFAULT 1,
+        encrypted_file_size INTEGER,
+        encrypted_file_mtime TEXT,
+        content_hash TEXT
+      );
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS entry_tags (
+        entry_id TEXT NOT NULL,
+        tag TEXT NOT NULL,
+        tag_normalized TEXT NOT NULL,
+        PRIMARY KEY (entry_id, tag_normalized)
+      );
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS entry_attachments (
+        id TEXT PRIMARY KEY,
+        entry_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        safe_filename TEXT NOT NULL,
+        width INTEGER,
+        height INTEGER,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        is_deleted INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+    await customStatement('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+        entry_id,
+        title,
+        body,
+        tags,
+        preview_text
+      );
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS app_kv (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS backup_history (
+        backup_id TEXT PRIMARY KEY,
+        provider TEXT NOT NULL,
+        remote_file_id TEXT,
+        created_at TEXT NOT NULL,
+        status TEXT NOT NULL,
+        entry_count INTEGER NOT NULL,
+        asset_count INTEGER NOT NULL,
+        byte_size INTEGER,
+        error_code TEXT
+      );
+    ''');
+  }
+
+  Future<void> upsertEntry({
+    required DiaryEntry entry,
+    required String filePath,
+    required String previewText,
+    required String contentHash,
+    required int encryptedFileSize,
+    required DateTime encryptedModifiedAt,
+  }) async {
+    await customStatement(
+      '''
+        INSERT INTO entries_index (
+          id, vault_id, file_path, title, title_normalized, preview_text, date,
+          created_at, updated_at, mood, word_count, char_count, attachment_count,
+          has_attachments, is_deleted, schema_version, encrypted_file_size,
+          encrypted_file_mtime, content_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          vault_id = excluded.vault_id,
+          file_path = excluded.file_path,
+          title = excluded.title,
+          title_normalized = excluded.title_normalized,
+          preview_text = excluded.preview_text,
+          date = excluded.date,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          mood = excluded.mood,
+          word_count = excluded.word_count,
+          char_count = excluded.char_count,
+          attachment_count = excluded.attachment_count,
+          has_attachments = excluded.has_attachments,
+          is_deleted = excluded.is_deleted,
+          schema_version = excluded.schema_version,
+          encrypted_file_size = excluded.encrypted_file_size,
+          encrypted_file_mtime = excluded.encrypted_file_mtime,
+          content_hash = excluded.content_hash;
+      ''',
+      <Object?>[
+        entry.id,
+        entry.vaultId,
+        filePath,
+        entry.normalizedTitle,
+        entry.normalizedTitle == null ? null : normalizeText(entry.normalizedTitle!),
+        previewText,
+        entry.date.value,
+        entry.createdAt.toIso8601String(),
+        entry.updatedAt.toIso8601String(),
+        entry.mood,
+        _wordCount(entry.markdownBody),
+        entry.markdownBody.runes.length,
+        entry.attachmentIds.length,
+        entry.attachmentIds.isEmpty ? 0 : 1,
+        entry.isDeleted ? 1 : 0,
+        1,
+        encryptedFileSize,
+        encryptedModifiedAt.toIso8601String(),
+        contentHash,
+      ],
+    );
+    await replaceTags(entry.id, entry.tags);
+  }
+
+  Future<void> replaceTags(EntryId entryId, List<String> tags) async {
+    await customStatement('DELETE FROM entry_tags WHERE entry_id = ?;', <Object?>[entryId]);
+    for (final String tag in tags) {
+      await customStatement(
+        'INSERT INTO entry_tags (entry_id, tag, tag_normalized) VALUES (?, ?, ?);',
+        <Object?>[entryId, tag, normalizeText(tag)],
+      );
+    }
+  }
+
+  Future<void> replaceAttachments(
+    EntryId entryId,
+    List<AssetAttachment> attachments,
+    Map<AssetId, String> filePaths,
+  ) async {
+    await customStatement(
+      'DELETE FROM entry_attachments WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
+    for (final AssetAttachment attachment in attachments) {
+      await customStatement(
+        '''
+          INSERT OR REPLACE INTO entry_attachments (
+            id, entry_id, file_path, mime_type, safe_filename, width, height,
+            byte_size, sha256, created_at, is_deleted
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+        ''',
+        <Object?>[
+          attachment.id,
+          entryId,
+          filePaths[attachment.id] ?? '',
+          attachment.mimeType,
+          attachment.safeFilename,
+          attachment.width,
+          attachment.height,
+          attachment.byteSize,
+          attachment.sha256,
+          attachment.createdAt.toIso8601String(),
+        ],
+      );
+    }
+  }
+
+  Future<void> upsertSearchDocument({
+    required DiaryEntry entry,
+    required String previewText,
+  }) async {
+    await customStatement(
+      'DELETE FROM entries_fts WHERE entry_id = ?;',
+      <Object?>[entry.id],
+    );
+    await customStatement(
+      '''
+        INSERT INTO entries_fts (entry_id, title, body, tags, preview_text)
+        VALUES (?, ?, ?, ?, ?);
+      ''',
+      <Object?>[
+        entry.id,
+        entry.normalizedTitle ?? '',
+        entry.markdownBody,
+        entry.tags.join(' '),
+        previewText,
+      ],
+    );
+  }
+
+  Future<List<EntryIndexRecord>> listEntries({
+    String? searchQuery,
+    DateOnly? date,
+    bool includeDeleted = false,
+  }) async {
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      return searchEntries(searchQuery, includeDeleted: includeDeleted);
+    }
+
+    final List<Object?> variables = <Object?>[];
+    final List<String> where = <String>[
+      if (!includeDeleted) 'e.is_deleted = 0',
+      if (date != null) 'e.date = ?',
+    ];
+    if (date != null) {
+      variables.add(date.value);
+    }
+
+    final String sql = '''
+      SELECT
+        e.*,
+        GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+      FROM entries_index e
+      LEFT JOIN entry_tags t ON t.entry_id = e.id
+      ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
+      GROUP BY e.id
+      ORDER BY e.date DESC, e.updated_at DESC;
+    ''';
+    final List<QueryRow> rows = await customSelect(
+      sql,
+      variables: <Variable<Object>>[
+        for (final Object? value in variables) Variable.withString(value as String),
+      ],
+    ).get();
+    return rows.map(EntryIndexRecord.fromRow).toList();
+  }
+
+  Future<List<EntryIndexRecord>> searchEntries(
+    String query, {
+    bool includeDeleted = false,
+  }) async {
+    final String sanitized = query
+        .trim()
+        .replaceAll(RegExp(r'[^\w\u4e00-\u9fff\s-]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    if (sanitized.isEmpty) {
+      return listEntries(includeDeleted: includeDeleted);
+    }
+
+    try {
+      final List<QueryRow> rows = await customSelect(
+        '''
+          SELECT
+            e.*,
+            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+          FROM entries_fts f
+          JOIN entries_index e ON e.id = f.entry_id
+          LEFT JOIN entry_tags t ON t.entry_id = e.id
+          WHERE f.entries_fts MATCH ? ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
+          GROUP BY e.id
+          ORDER BY e.updated_at DESC;
+        ''',
+        variables: <Variable<Object>>[Variable.withString('$sanitized*')],
+      ).get();
+      return rows.map(EntryIndexRecord.fromRow).toList();
+    } catch (_) {
+      final String likeQuery = '%${normalizeText(query)}%';
+      final List<QueryRow> rows = await customSelect(
+        '''
+          SELECT
+            e.*,
+            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+          FROM entries_index e
+          LEFT JOIN entry_tags t ON t.entry_id = e.id
+          WHERE (
+            COALESCE(e.title_normalized, '') LIKE ? OR
+            COALESCE(e.preview_text, '') LIKE ?
+          ) ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
+          GROUP BY e.id
+          ORDER BY e.updated_at DESC;
+        ''',
+        variables: <Variable<Object>>[
+          Variable.withString(likeQuery),
+          Variable.withString(likeQuery),
+        ],
+      ).get();
+      return rows.map(EntryIndexRecord.fromRow).toList();
+    }
+  }
+
+  Future<EntryIndexRecord?> getEntryById(EntryId entryId) async {
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+        FROM entries_index e
+        LEFT JOIN entry_tags t ON t.entry_id = e.id
+        WHERE e.id = ?
+        GROUP BY e.id
+        LIMIT 1;
+      ''',
+      variables: <Variable<Object>>[Variable.withString(entryId)],
+    ).get();
+    if (rows.isEmpty) {
+      return null;
+    }
+    return EntryIndexRecord.fromRow(rows.first);
+  }
+
+  Future<List<DateOnly>> monthEntryDates(DateTime month) async {
+    final String prefix = '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT DISTINCT date
+        FROM entries_index
+        WHERE date LIKE ? AND is_deleted = 0
+        ORDER BY date ASC;
+      ''',
+      variables: <Variable<Object>>[Variable.withString('$prefix%')],
+    ).get();
+    return rows.map((QueryRow row) => DateOnly.parse(row.read<String>('date'))).toList();
+  }
+
+  Future<List<AssetAttachment>> attachmentsForEntry(EntryId entryId) async {
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT *
+        FROM entry_attachments
+        WHERE entry_id = ? AND is_deleted = 0
+        ORDER BY created_at ASC;
+      ''',
+      variables: <Variable<Object>>[Variable.withString(entryId)],
+    ).get();
+    return rows
+        .map(
+          (QueryRow row) => AssetAttachment(
+            id: row.read<String>('id'),
+            entryId: row.read<String>('entry_id'),
+            mimeType: row.read<String>('mime_type'),
+            safeFilename: row.read<String>('safe_filename'),
+            byteSize: row.read<int>('byte_size'),
+            createdAt: DateTime.parse(row.read<String>('created_at')),
+            sha256: row.read<String>('sha256'),
+            width: row.readNullable<int>('width'),
+            height: row.readNullable<int>('height'),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> markEntryDeleted(EntryId entryId) async {
+    await customStatement(
+      'UPDATE entries_index SET is_deleted = 1 WHERE id = ?;',
+      <Object?>[entryId],
+    );
+  }
+
+  Future<void> clearForRebuild() async {
+    await customStatement('DELETE FROM entries_index;');
+    await customStatement('DELETE FROM entry_tags;');
+    await customStatement('DELETE FROM entry_attachments;');
+    await customStatement('DELETE FROM entries_fts;');
   }
 
   Future<void> rebuild() async {
-    // TODO(zack): scan encrypted entries and regenerate query tables.
+    await clearForRebuild();
+    await setAppValue('last_rebuild_at', DateTime.now().toIso8601String());
+  }
+
+  Future<void> setAppValue(String key, String value) async {
+    await customStatement(
+      '''
+        INSERT INTO app_kv (key, value, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(key) DO UPDATE SET
+          value = excluded.value,
+          updated_at = excluded.updated_at;
+      ''',
+      <Object?>[key, value, DateTime.now().toIso8601String()],
+    );
+  }
+
+  Future<String?> getAppValue(String key) async {
+    final List<QueryRow> rows = await customSelect(
+      'SELECT value FROM app_kv WHERE key = ? LIMIT 1;',
+      variables: <Variable<Object>>[Variable.withString(key)],
+    ).get();
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first.read<String>('value');
+  }
+
+  Future<void> recordBackupHistory(BackupHistoryRecord record) async {
+    await customStatement(
+      '''
+        INSERT OR REPLACE INTO backup_history (
+          backup_id, provider, remote_file_id, created_at, status, entry_count,
+          asset_count, byte_size, error_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ''',
+      <Object?>[
+        record.backupId,
+        record.provider,
+        record.remoteFileId,
+        record.createdAt.toIso8601String(),
+        record.status,
+        record.entryCount,
+        record.assetCount,
+        record.byteSize,
+        record.errorCode,
+      ],
+    );
+  }
+
+  Future<List<BackupHistoryRecord>> listBackups() async {
+    final List<QueryRow> rows = await customSelect(
+      'SELECT * FROM backup_history ORDER BY created_at DESC;',
+    ).get();
+    return rows
+        .map(
+          (QueryRow row) => BackupHistoryRecord(
+            backupId: row.read<String>('backup_id'),
+            provider: row.read<String>('provider'),
+            remoteFileId: row.readNullable<String>('remote_file_id'),
+            createdAt: DateTime.parse(row.read<String>('created_at')),
+            status: row.read<String>('status'),
+            entryCount: row.read<int>('entry_count'),
+            assetCount: row.read<int>('asset_count'),
+            byteSize: row.readNullable<int>('byte_size'),
+            errorCode: row.readNullable<String>('error_code'),
+          ),
+        )
+        .toList();
+  }
+
+  int _wordCount(String markdown) {
+    final List<String> words = markdown
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .split(' ')
+        .where((String token) => token.isNotEmpty)
+        .toList();
+    return words.isEmpty ? 0 : words.length;
   }
 }

@@ -1,10 +1,18 @@
 import '../../domain/diary/diary_entry.dart';
+import '../../infrastructure/storage/vault_repository.dart';
 
 class CreateEntryUseCase {
-  const CreateEntryUseCase();
+  const CreateEntryUseCase(this._repository);
 
-  Future<DiaryEntry> call(DiaryEntry draft) async {
-    // TODO(zack): wire this to markdown serialization, encryption, and storage.
-    return draft;
+  final VaultRepository _repository;
+
+  Future<DiaryEntry> call(
+    DiaryEntry draft, {
+    List<PendingAttachment> pendingAttachments = const <PendingAttachment>[],
+  }) {
+    return _repository.saveEntry(
+      draft,
+      pendingAttachments: pendingAttachments,
+    );
   }
 }

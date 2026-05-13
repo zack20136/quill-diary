@@ -1,8 +1,11 @@
-class SearchEntriesUseCase {
-  const SearchEntriesUseCase();
+import '../../infrastructure/database/index_database.dart';
 
-  Future<List<String>> call(String query) async {
-    // TODO(zack): replace placeholder results with SQLite FTS-backed search.
-    return query.isEmpty ? const <String>[] : <String>['search:$query'];
+class SearchEntriesUseCase {
+  const SearchEntriesUseCase(this._indexDatabase);
+
+  final IndexDatabase _indexDatabase;
+
+  Future<List<EntryIndexRecord>> call(String query) {
+    return _indexDatabase.searchEntries(query);
   }
 }

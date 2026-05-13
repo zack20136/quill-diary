@@ -1,8 +1,11 @@
-class SetupRecoveryKeyUseCase {
-  const SetupRecoveryKeyUseCase();
+import '../../infrastructure/storage/vault_repository.dart';
 
-  Future<String> call() async {
-    // TODO(zack): generate, confirm, and persist recovery metadata safely.
-    return 'RECOVERY-KEY-PLACEHOLDER';
+class SetupRecoveryKeyUseCase {
+  const SetupRecoveryKeyUseCase(this._repository);
+
+  final VaultRepository _repository;
+
+  Future<String> call() {
+    return _repository.setupRecoveryKey();
   }
 }

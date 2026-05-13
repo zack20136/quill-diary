@@ -21,10 +21,11 @@ class AppSessionState {
   AppSessionState copyWith({
     AppLockStatus? status,
     String? message,
+    bool clearMessage = false,
   }) {
     return AppSessionState(
       status: status ?? this.status,
-      message: message ?? this.message,
+      message: clearMessage ? null : (message ?? this.message),
     );
   }
 }

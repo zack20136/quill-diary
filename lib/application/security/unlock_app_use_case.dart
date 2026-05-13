@@ -1,8 +1,11 @@
-class UnlockAppUseCase {
-  const UnlockAppUseCase();
+import '../../infrastructure/security/app_lock_service.dart';
 
-  Future<bool> call() async {
-    // TODO(zack): validate PIN or biometrics and open a secure session.
-    return true;
+class UnlockAppUseCase {
+  const UnlockAppUseCase(this._appLockService);
+
+  final AppLockService _appLockService;
+
+  Future<bool> call() {
+    return _appLockService.unlock();
   }
 }
