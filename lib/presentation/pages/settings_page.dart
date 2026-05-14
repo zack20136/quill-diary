@@ -10,6 +10,7 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/database/index_database.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/storage/vault_repository.dart';
+import '../page_style.dart';
 import '../state/app_session_state.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -364,11 +365,12 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -527,7 +529,7 @@ class _BackupHistorySection extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -595,7 +597,7 @@ class _SettingsToggleTile extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
       child: SwitchListTile.adaptive(
         value: value,
@@ -636,7 +638,7 @@ class _SettingsInfoBanner extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),

@@ -127,7 +127,7 @@ class IndexDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
@@ -208,6 +208,13 @@ class IndexDatabase extends GeneratedDatabase {
       );
     ''');
     await customStatement('''
+      CREATE TABLE IF NOT EXISTS tag_styles (
+        tag_normalized TEXT PRIMARY KEY,
+        accent_argb INTEGER NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    await customStatement('''
       CREATE TABLE IF NOT EXISTS backup_history (
         backup_id TEXT PRIMARY KEY,
         provider TEXT NOT NULL,
@@ -281,6 +288,42 @@ class IndexDatabase extends GeneratedDatabase {
       ],
     );
     await replaceTags(entry.id, entry.tags);
+  }
+
+  /// `normalizeText(tag)` → 儲存的 ARGB（與 Flutter `Color` 對應）。
+  Future<Map<String, int>> fetchTagAccentArgbMap() async {
+    final List<QueryRow> rows = await customSelect('SELECT tag_normalized, accent_argb FROM tag_styles;').get();
+    return <String, int>{
+      for (final QueryRow row in rows) row.read<String>('tag_normalized'): row.read<int>('accent_argb'),
+    };
+  }
+
+  Future<void> upsertTagAccentArgb(String tag, int accentArgb) async {
+    final String nk = normalizeText(tag);
+    if (nk.isEmpty) {
+      throw ArgumentError.value(tag, 'tag', '標籤名稱不可為空白');
+    }
+    await customStatement(
+      '''
+        INSERT INTO tag_styles (tag_normalized, accent_argb, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(tag_normalized) DO UPDATE SET
+          accent_argb = excluded.accent_argb,
+          updated_at = excluded.updated_at;
+      ''',
+      <Object?>[nk, accentArgb, DateTime.now().toIso8601String()],
+    );
+  }
+
+  Future<void> deleteTagAccentArgb(String tag) async {
+    final String nk = normalizeText(tag);
+    if (nk.isEmpty) {
+      return;
+    }
+    await customStatement(
+      'DELETE FROM tag_styles WHERE tag_normalized = ?;',
+      <Object?>[nk],
+    );
   }
 
   Future<void> replaceTags(EntryId entryId, List<String> tags) async {
@@ -411,7 +454,7 @@ class IndexDatabase extends GeneratedDatabase {
           LEFT JOIN entry_tags t ON t.entry_id = e.id
           WHERE f.entries_fts MATCH ? ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
           GROUP BY e.id
-          ORDER BY e.updated_at DESC;
+          ORDER BY e.date DESC, e.updated_at DESC;
         ''',
         variables: <Variable<Object>>[Variable.withString('$sanitized*')],
       ).get();
@@ -431,7 +474,7 @@ class IndexDatabase extends GeneratedDatabase {
             COALESCE(e.preview_text, '') LIKE ?
           ) ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
           GROUP BY e.id
-          ORDER BY e.updated_at DESC;
+          ORDER BY e.date DESC, e.updated_at DESC;
         ''',
         variables: <Variable<Object>>[
           Variable.withString(likeQuery),

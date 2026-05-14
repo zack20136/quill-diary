@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/backup/create_backup_snapshot_use_case.dart';
 import '../application/diary/create_entry_use_case.dart';
+import '../application/diary/diary_presence_tag_counts.dart';
 import '../application/recovery/setup_recovery_key_use_case.dart';
 import '../application/recovery/unlock_with_recovery_key_use_case.dart';
 import '../application/search/search_entries_use_case.dart';
@@ -31,9 +32,9 @@ const String kRecoveryUnlockSuccessMessage = '已使用 Recovery Key 完成解�
 const String kRecoverySetupSuccessMessage = 'Recovery Key 已建立，裝置已完成註冊。';
 const String kAppLockedMessage = 'App 已鎖定。';
 
-enum HomeTab { home, calendar, overview, memories }
+enum HomeTab { home, calendar, overview, tags }
 
-enum MemoryScope { month, year }
+enum MemoryScope { all, month, year }
 
 class OverviewTagStat {
   const OverviewTagStat({
@@ -62,9 +63,12 @@ class OverviewSummary {
     required this.totalCharacters,
     required this.totalAttachments,
     required this.activeDays,
+    required this.entriesWithTags,
+    required this.entriesWithAttachments,
+    required this.entriesWithMoodSet,
+    required this.avgWordsPerEntryRounded,
     required this.topTags,
     required this.moods,
-    required this.recentEntries,
   });
 
   final int totalEntries;
@@ -72,27 +76,117 @@ class OverviewSummary {
   final int totalCharacters;
   final int totalAttachments;
   final int activeDays;
+  /// Entries with ≥1 tag.
+  final int entriesWithTags;
+  /// Entries with ≥1 attachment.
+  final int entriesWithAttachments;
+  /// Entries with non-empty mood.
+  final int entriesWithMoodSet;
+  final int avgWordsPerEntryRounded;
   final List<OverviewTagStat> topTags;
   final List<OverviewMoodStat> moods;
-  final List<EntryIndexRecord> recentEntries;
 }
 
-class MemorySummary {
-  const MemorySummary({
-    required this.title,
+/// 依「總覽 · 範圍」（全部／年／月篩選後的日記列表）統計資料概覽方塊。
+class OverviewScopeMetrics {
+  const OverviewScopeMetrics({
     required this.totalEntries,
     required this.totalWords,
+    required this.totalCharacters,
     required this.totalAttachments,
-    required this.topTags,
-    required this.highlightDates,
+    required this.activeDays,
+    required this.entriesWithTags,
+    required this.entriesWithAttachments,
+    required this.entriesWithMoodSet,
+    required this.avgWordsPerEntryRounded,
   });
 
-  final String title;
   final int totalEntries;
   final int totalWords;
+  final int totalCharacters;
   final int totalAttachments;
-  final List<OverviewTagStat> topTags;
-  final List<DateOnly> highlightDates;
+  final int activeDays;
+  final int entriesWithTags;
+  final int entriesWithAttachments;
+  final int entriesWithMoodSet;
+  final int avgWordsPerEntryRounded;
+
+  factory OverviewScopeMetrics.empty() => const OverviewScopeMetrics(
+        totalEntries: 0,
+        totalWords: 0,
+        totalCharacters: 0,
+        totalAttachments: 0,
+        activeDays: 0,
+        entriesWithTags: 0,
+        entriesWithAttachments: 0,
+        entriesWithMoodSet: 0,
+        avgWordsPerEntryRounded: 0,
+      );
+
+  factory OverviewScopeMetrics.fromEntries(List<EntryIndexRecord> entries) {
+    if (entries.isEmpty) {
+      return OverviewScopeMetrics.empty();
+    }
+    int totalWords = 0;
+    int totalCharacters = 0;
+    int totalAttachments = 0;
+    int tagged = 0;
+    int withAttachments = 0;
+    int withMood = 0;
+
+    for (final EntryIndexRecord entry in entries) {
+      totalWords += entry.wordCount;
+      totalCharacters += entry.charCount;
+      totalAttachments += entry.attachmentCount;
+      if (entry.tags.isNotEmpty) {
+        tagged++;
+      }
+      if (entry.attachmentCount > 0) {
+        withAttachments++;
+      }
+      final String? mood = entry.mood?.trim();
+      if (mood != null && mood.isNotEmpty) {
+        withMood++;
+      }
+    }
+
+    final int activeDays =
+        entries.map((EntryIndexRecord item) => item.date.value).toSet().length;
+    final int avgWordsRounded = (totalWords / entries.length).round();
+
+    return OverviewScopeMetrics(
+      totalEntries: entries.length,
+      totalWords: totalWords,
+      totalCharacters: totalCharacters,
+      totalAttachments: totalAttachments,
+      activeDays: activeDays,
+      entriesWithTags: tagged,
+      entriesWithAttachments: withAttachments,
+      entriesWithMoodSet: withMood,
+      avgWordsPerEntryRounded: avgWordsRounded,
+    );
+  }
+
+  String? writingDensitySubtitle() {
+    if (totalEntries <= 0 || activeDays <= 0) {
+      return null;
+    }
+    final int numerator = totalEntries * 10 ~/ activeDays;
+    final int hi = numerator ~/ 10;
+    final int lo = numerator % 10;
+    final String pace = lo == 0 ? '$hi' : '$hi.$lo';
+    return '有紀錄日約 $pace 篇';
+  }
+
+  String annotationMixedDetail() =>
+      '$entriesWithTags 篇標籤 · $entriesWithAttachments 篇附件 · $entriesWithMoodSet 篇心情';
+}
+int _compareEntriesNewestFirst(EntryIndexRecord a, EntryIndexRecord b) {
+  final int byDate = b.date.value.compareTo(a.date.value);
+  if (byDate != 0) {
+    return byDate;
+  }
+  return b.updatedAt.compareTo(a.updatedAt);
 }
 
 final supportedPlatformProvider = Provider<bool>((Ref ref) {
@@ -133,6 +227,11 @@ final driveBackupServiceProvider = Provider<DriveBackupService>((Ref ref) {
 
 final indexDatabaseProvider = Provider<IndexDatabase>((Ref ref) {
   return IndexDatabase(ref.watch(vaultPathStrategyProvider));
+});
+
+/// 依 `normalizeText(標籤)` 對應自訂主色 ARGB（本機索引庫）。
+final tagAccentArgbMapProvider = FutureProvider<Map<String, int>>((Ref ref) async {
+  return ref.watch(indexDatabaseProvider).fetchTagAccentArgbMap();
 });
 
 final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
@@ -372,7 +471,7 @@ class OverviewTagFilterController extends Notifier<String?> {
 
 class MemoryScopeController extends Notifier<MemoryScope> {
   @override
-  MemoryScope build() => MemoryScope.month;
+  MemoryScope build() => MemoryScope.all;
 
   void set(MemoryScope value) => state = value;
 }
@@ -445,9 +544,11 @@ final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) asy
   }
 
   final String query = ref.watch(homeSearchQueryProvider);
-  return ref.read(vaultRepositoryProvider).listEntries(
+  final List<EntryIndexRecord> list = await ref.read(vaultRepositoryProvider).listEntries(
         searchQuery: query.isEmpty ? null : query,
       );
+  list.sort(_compareEntriesNewestFirst);
+  return list;
 });
 
 final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
@@ -477,24 +578,32 @@ final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref)
 
 final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  final Map<String, int> tagCounts = <String, int>{};
   final Map<String, int> moodCounts = <String, int>{};
   int totalWords = 0;
   int totalCharacters = 0;
   int totalAttachments = 0;
+  int entriesWithTags = 0;
+  int entriesWithAttachments = 0;
+  int entriesWithMoodSet = 0;
 
   for (final EntryIndexRecord entry in entries) {
     totalWords += entry.wordCount;
     totalCharacters += entry.charCount;
     totalAttachments += entry.attachmentCount;
-    for (final String tag in entry.tags) {
-      tagCounts.update(tag, (int count) => count + 1, ifAbsent: () => 1);
+    if (entry.tags.isNotEmpty) {
+      entriesWithTags++;
+    }
+    if (entry.attachmentCount > 0) {
+      entriesWithAttachments++;
     }
     final String? mood = entry.mood?.trim();
     if (mood != null && mood.isNotEmpty) {
+      entriesWithMoodSet++;
       moodCounts.update(mood, (int count) => count + 1, ifAbsent: () => 1);
     }
   }
+
+  final Map<String, int> tagCounts = diaryPresenceTagCounts(entries);
 
   final List<OverviewTagStat> topTags = tagCounts.entries
       .map((MapEntry<String, int> item) => OverviewTagStat(label: item.key, count: item.value))
@@ -506,8 +615,8 @@ final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async 
       .toList()
     ..sort((OverviewMoodStat a, OverviewMoodStat b) => b.count.compareTo(a.count));
 
-  final List<EntryIndexRecord> recentEntries = List<EntryIndexRecord>.from(entries)
-    ..sort((EntryIndexRecord a, EntryIndexRecord b) => b.updatedAt.compareTo(a.updatedAt));
+  final int avgWordsPerEntryRounded =
+      entries.isEmpty ? 0 : (totalWords / entries.length).round();
 
   return OverviewSummary(
     totalEntries: entries.length,
@@ -515,22 +624,15 @@ final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async 
     totalCharacters: totalCharacters,
     totalAttachments: totalAttachments,
     activeDays: entries.map((EntryIndexRecord item) => item.date.value).toSet().length,
+    entriesWithTags: entriesWithTags,
+    entriesWithAttachments: entriesWithAttachments,
+    entriesWithMoodSet: entriesWithMoodSet,
+    avgWordsPerEntryRounded: avgWordsPerEntryRounded,
     topTags: topTags.take(8).toList(),
     moods: moods.take(6).toList(),
-    recentEntries: recentEntries.take(6).toList(),
   );
 });
 
-final overviewTaggedEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
-  final String? tag = ref.watch(overviewTagFilterProvider);
-  if (tag == null || tag.isEmpty) {
-    return const <EntryIndexRecord>[];
-  }
-
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  return entries.where((EntryIndexRecord item) => item.tags.contains(tag)).toList()
-    ..sort((EntryIndexRecord a, EntryIndexRecord b) => b.updatedAt.compareTo(a.updatedAt));
-});
 
 final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
@@ -542,59 +644,22 @@ final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
 final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
   final MemoryScope scope = ref.watch(memoryScopeProvider);
-  if (scope == MemoryScope.month) {
-    final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
-    return entries.where((EntryIndexRecord item) {
-      final DateTime date = item.date.toDateTime();
-      return date.year == focusedMonth.year && date.month == focusedMonth.month;
-    }).toList()
-      ..sort((EntryIndexRecord a, EntryIndexRecord b) => b.updatedAt.compareTo(a.updatedAt));
+  if (scope == MemoryScope.all) {
+    return List<EntryIndexRecord>.from(entries)..sort(_compareEntriesNewestFirst);
+  }
+  if (scope == MemoryScope.year) {
+    final int focusedYear = ref.watch(memoryFocusedYearProvider);
+    return entries.where((EntryIndexRecord item) => item.date.year == focusedYear).toList()
+      ..sort(_compareEntriesNewestFirst);
   }
 
-  final int focusedYear = ref.watch(memoryFocusedYearProvider);
-  return entries.where((EntryIndexRecord item) => item.date.year == focusedYear).toList()
-    ..sort((EntryIndexRecord a, EntryIndexRecord b) => b.updatedAt.compareTo(a.updatedAt));
+  final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
+  return entries.where((EntryIndexRecord item) {
+    final DateTime date = item.date.toDateTime();
+    return date.year == focusedMonth.year && date.month == focusedMonth.month;
+  }).toList()
+    ..sort(_compareEntriesNewestFirst);
 });
-
-final memorySummaryProvider = FutureProvider<MemorySummary>((Ref ref) async {
-  final MemoryScope scope = ref.watch(memoryScopeProvider);
-  final List<EntryIndexRecord> entries = await ref.watch(memoryEntriesProvider.future);
-  final Map<String, int> tagCounts = <String, int>{};
-  int totalWords = 0;
-  int totalAttachments = 0;
-
-  for (final EntryIndexRecord entry in entries) {
-    totalWords += entry.wordCount;
-    totalAttachments += entry.attachmentCount;
-    for (final String tag in entry.tags) {
-      tagCounts.update(tag, (int count) => count + 1, ifAbsent: () => 1);
-    }
-  }
-
-  final List<OverviewTagStat> topTags = tagCounts.entries
-      .map((MapEntry<String, int> item) => OverviewTagStat(label: item.key, count: item.value))
-      .toList()
-    ..sort((OverviewTagStat a, OverviewTagStat b) => b.count.compareTo(a.count));
-
-  final String title = scope == MemoryScope.month
-      ? _formatMemoryMonth(ref.watch(memoryFocusedMonthProvider))
-      : '${ref.watch(memoryFocusedYearProvider)} 年回顧';
-
-  return MemorySummary(
-    title: title,
-    totalEntries: entries.length,
-    totalWords: totalWords,
-    totalAttachments: totalAttachments,
-    topTags: topTags.take(6).toList(),
-    highlightDates: entries.map((EntryIndexRecord item) => item.date).take(6).toList(),
-  );
-});
-
-String _formatMemoryMonth(DateTime value) {
-  final String year = value.year.toString().padLeft(4, '0');
-  final String month = value.month.toString().padLeft(2, '0');
-  return '$year 年 $month 月回顧';
-}
 
 /// Reload index-backed lists and drop stale cover/image caches after save, delete, restore, etc.
 Future<void> refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) async {
@@ -651,5 +716,6 @@ final entryProvider = FutureProvider.family<DiaryEntry?, EntryId>((Ref ref, Entr
 final entryAttachmentsProvider =
     FutureProvider.family<List<AssetAttachment>, EntryId>((Ref ref, EntryId entryId) async {
   await ref.watch(activeVaultSessionProvider.future);
+  ref.watch(entryIndexRevisionProvider);
   return ref.read(vaultRepositoryProvider).loadAttachments(entryId);
 });
