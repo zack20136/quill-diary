@@ -1,10 +1,26 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
 import '../storage/vault_path_strategy.dart';
+import 'index_database_connection_io.dart';
+
+/// Up to 5 image attachment paths for list preview strip (GROUP_CONCAT in SELECT).
+const String _kPreviewImagePathsSelect = '''
+  (
+    SELECT GROUP_CONCAT(sfp.path, '<|>')
+    FROM (
+      SELECT a.file_path AS path
+      FROM entry_attachments a
+      WHERE a.entry_id = e.id AND a.is_deleted = 0
+        AND a.mime_type LIKE 'image/%'
+      ORDER BY a.created_at ASC
+      LIMIT 5
+    ) AS sfp
+  ) AS preview_image_paths_joined''';
 
 class EntryIndexRecord {
   const EntryIndexRecord({
@@ -18,8 +34,11 @@ class EntryIndexRecord {
     required this.updatedAt,
     required this.tags,
     required this.mood,
+    required this.wordCount,
+    required this.charCount,
     required this.attachmentCount,
     required this.isDeleted,
+    this.previewImagePaths = const <String>[],
   });
 
   final EntryId id;
@@ -32,8 +51,11 @@ class EntryIndexRecord {
   final DateTime updatedAt;
   final List<String> tags;
   final String? mood;
+  final int wordCount;
+  final int charCount;
   final int attachmentCount;
   final bool isDeleted;
+  final List<String> previewImagePaths;
 
   factory EntryIndexRecord.fromRow(QueryRow row) {
     return EntryIndexRecord(
@@ -47,9 +69,19 @@ class EntryIndexRecord {
       updatedAt: DateTime.parse(row.read<String>('updated_at')),
       tags: _parseTags(row.readNullable<String>('tags_joined')),
       mood: row.readNullable<String>('mood'),
+      wordCount: row.read<int>('word_count'),
+      charCount: row.read<int>('char_count'),
       attachmentCount: row.read<int>('attachment_count'),
       isDeleted: row.read<int>('is_deleted') == 1,
+      previewImagePaths: _parsePreviewPaths(row.readNullable<String>('preview_image_paths_joined')),
     );
+  }
+
+  static List<String> _parsePreviewPaths(String? joined) {
+    if (joined == null || joined.isEmpty) {
+      return const <String>[];
+    }
+    return joined.split('<|>').where((String s) => s.isNotEmpty).toList();
   }
 
   static List<String> _parseTags(String? joined) {
@@ -87,13 +119,12 @@ class BackupHistoryRecord {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(VaultPathStrategy pathStrategy)
       : super(
-          driftDatabase(
-            name: 'journal_index',
-            native: DriftNativeOptions(
-              databasePath: pathStrategy.indexDatabasePath,
-            ),
-          ),
+          LazyDatabase(() => _openConnection(pathStrategy)),
         );
+
+  static Future<QueryExecutor> _openConnection(VaultPathStrategy pathStrategy) {
+    return openIndexConnection(pathStrategy);
+  }
 
   @override
   int get schemaVersion => 1;
@@ -339,7 +370,8 @@ class IndexDatabase extends GeneratedDatabase {
     final String sql = '''
       SELECT
         e.*,
-        GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+        GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+        $_kPreviewImagePathsSelect
       FROM entries_index e
       LEFT JOIN entry_tags t ON t.entry_id = e.id
       ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
@@ -372,7 +404,8 @@ class IndexDatabase extends GeneratedDatabase {
         '''
           SELECT
             e.*,
-            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+            $_kPreviewImagePathsSelect
           FROM entries_fts f
           JOIN entries_index e ON e.id = f.entry_id
           LEFT JOIN entry_tags t ON t.entry_id = e.id
@@ -389,7 +422,8 @@ class IndexDatabase extends GeneratedDatabase {
         '''
           SELECT
             e.*,
-            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+            $_kPreviewImagePathsSelect
           FROM entries_index e
           LEFT JOIN entry_tags t ON t.entry_id = e.id
           WHERE (
@@ -413,7 +447,8 @@ class IndexDatabase extends GeneratedDatabase {
       '''
         SELECT
           e.*,
-          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kPreviewImagePathsSelect
         FROM entries_index e
         LEFT JOIN entry_tags t ON t.entry_id = e.id
         WHERE e.id = ?
@@ -485,7 +520,6 @@ class IndexDatabase extends GeneratedDatabase {
 
   Future<void> rebuild() async {
     await clearForRebuild();
-    await setAppValue('last_rebuild_at', DateTime.now().toIso8601String());
   }
 
   Future<void> setAppValue(String key, String value) async {
@@ -510,6 +544,13 @@ class IndexDatabase extends GeneratedDatabase {
       return null;
     }
     return rows.first.read<String>('value');
+  }
+
+  Future<void> deleteAppValue(String key) async {
+    await customStatement(
+      'DELETE FROM app_kv WHERE key = ?;',
+      <Object?>[key],
+    );
   }
 
   Future<void> recordBackupHistory(BackupHistoryRecord record) async {

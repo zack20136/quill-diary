@@ -2,13 +2,13 @@ import 'package:go_router/go_router.dart';
 
 import '../presentation/pages/editor_page.dart';
 import '../presentation/pages/home_page.dart';
-import '../presentation/pages/recovery_page.dart';
+import '../presentation/pages/settings_page.dart';
 
 class AppRouter {
   static const String homeRoute = '/';
   static const String editorRoute = '/editor';
-  static const String recoveryRoute = '/recovery';
   static const String editorDetailRoute = '/editor/:entryId';
+  static const String settingsRoute = '/settings';
 
   static GoRouter createRouter() {
     return GoRouter(
@@ -16,11 +16,11 @@ class AppRouter {
       routes: <RouteBase>[
         GoRoute(
           path: homeRoute,
-          builder: (_, __) => const HomePage(),
+          builder: (_, _) => const HomePage(),
         ),
         GoRoute(
           path: editorRoute,
-          builder: (_, __) => const EditorPage(),
+          builder: (_, _) => const EditorPage(),
         ),
         GoRoute(
           path: editorDetailRoute,
@@ -28,8 +28,8 @@ class AppRouter {
               EditorPage(entryId: state.pathParameters['entryId']),
         ),
         GoRoute(
-          path: recoveryRoute,
-          builder: (_, __) => const RecoveryPage(),
+          path: settingsRoute,
+          builder: (_, _) => const SettingsPage(),
         ),
       ],
     );

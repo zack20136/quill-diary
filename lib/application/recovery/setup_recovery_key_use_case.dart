@@ -5,7 +5,7 @@ class SetupRecoveryKeyUseCase {
 
   final VaultRepository _repository;
 
-  Future<String> call() {
+  Future<RecoverySetupResult> call() {
     return _repository.setupRecoveryKey();
   }
 }

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:cryptography/cryptography.dart';
@@ -9,13 +9,15 @@ import 'package:path/path.dart' as p;
 
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
+import '../../domain/recovery/kdf_descriptor.dart';
 import '../../domain/recovery/recovery_metadata.dart';
+import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../crypto/crypto_service.dart';
 import '../database/index_database.dart';
 import '../drive/drive_backup_service.dart';
 import '../markdown/front_matter_codec.dart';
-import '../security/app_lock_service.dart';
+import '../security/device_key_manager.dart';
 import 'vault_path_strategy.dart';
 
 class PendingAttachment {
@@ -28,8 +30,16 @@ class PendingAttachment {
   final String sourcePath;
   final String mimeType;
   final String originalFilename;
+}
 
-  bool get isImage => mimeType.startsWith('image/');
+class RecoverySetupResult {
+  const RecoverySetupResult({
+    required this.recoveryKey,
+    required this.session,
+  });
+
+  final String recoveryKey;
+  final UnlockedVaultSession session;
 }
 
 class VaultRepository {
@@ -38,20 +48,24 @@ class VaultRepository {
     required FrontMatterCodec frontMatterCodec,
     required CryptoService cryptoService,
     required IndexDatabase indexDatabase,
-    required AppLockService appLockService,
+    required DeviceKeyManager deviceKeyManager,
     required DriveBackupService driveBackupService,
   })  : _pathStrategy = pathStrategy,
         _frontMatterCodec = frontMatterCodec,
         _cryptoService = cryptoService,
         _indexDatabase = indexDatabase,
-        _appLockService = appLockService,
+        _deviceKeyManager = deviceKeyManager,
         _driveBackupService = driveBackupService;
+
+  static const String _lastRebuildAtKey = 'last_rebuild_at';
+  static const String _rewrapInProgressKey = 'rewrap_in_progress';
+  static const String _rewrapStartedAtKey = 'rewrap_started_at';
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
   final CryptoService _cryptoService;
   final IndexDatabase _indexDatabase;
-  final AppLockService _appLockService;
+  final DeviceKeyManager _deviceKeyManager;
   final DriveBackupService _driveBackupService;
 
   RecoveryMetadata? _cachedRecoveryMetadata;
@@ -60,11 +74,54 @@ class VaultRepository {
     await _pathStrategy.ensureBaseDirectories();
     await _indexDatabase.initialize();
     _cachedRecoveryMetadata = await readRecoveryMetadata();
-    if (_cachedRecoveryMetadata != null) {
-      await _appLockService.ensureDeviceSecret();
+  }
+
+  Future<bool> hasTrustedDeviceAccess() async {
+    final RecoveryMetadata? metadata = await readRecoveryMetadata();
+    if (metadata == null) {
+      return false;
     }
-    if ((await _indexDatabase.getAppValue('last_rebuild_at')) == null) {
-      await rebuildIndex();
+    return _deviceKeyManager.hasTrustedKey(metadata.vaultId);
+  }
+
+  Future<bool> hasVault() async {
+    return await readRecoveryMetadata() != null;
+  }
+
+  Future<UnlockedVaultSession> openTrustedSession() async {
+    final RecoveryMetadata metadata =
+        await readRecoveryMetadata() ?? (throw StateError('尚未建立 Recovery Key。'));
+    if (!await _deviceKeyManager.hasTrustedKey(metadata.vaultId)) {
+      throw StateError('這台裝置尚未註冊，請使用 Recovery Key 解鎖。');
+    }
+
+    final WrappedRecoveryKeyRecord record =
+        await _deviceKeyManager.readWrappedRecoveryKey(metadata.vaultId) ??
+            (throw StateError('找不到受信任裝置的 Recovery 金鑰資料。'));
+    final TrustedDeviceInfo deviceInfo =
+        await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
+            (throw StateError('找不到受信任裝置資訊。'));
+
+    try {
+      final List<int> recoveryWrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
+        vaultId: metadata.vaultId,
+        slotId: record.slotId,
+        nonceBase64: record.nonceBase64,
+        ciphertextBase64: record.ciphertextBase64,
+      );
+      await _verifyRecoveryKey(metadata, recoveryWrapKey);
+
+      final UnlockedVaultSession session = UnlockedVaultSession(
+        vaultId: metadata.vaultId,
+        trustedDevice: true,
+        recoveryWrapKey: recoveryWrapKey,
+        deviceSlotId: deviceInfo.slotId,
+      );
+      await _resumeRewrapIfNeeded(session, metadata);
+      return session;
+    } catch (_) {
+      await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
+      throw StateError('受信任裝置資料已失效，請重新使用 Recovery Key 解鎖。');
     }
   }
 
@@ -72,6 +129,7 @@ class VaultRepository {
     if (_cachedRecoveryMetadata != null) {
       return _cachedRecoveryMetadata;
     }
+
     final File file = File(await _pathStrategy.recoveryMetadataPath());
     if (!file.existsSync()) {
       return null;
@@ -79,48 +137,91 @@ class VaultRepository {
 
     final Object? decoded = jsonDecode(await file.readAsString());
     if (decoded is! Map<String, Object?>) {
-      return null;
+      throw const FormatException('Recovery metadata 格式不正確。');
     }
+
     _cachedRecoveryMetadata = RecoveryMetadata.fromJson(decoded);
     return _cachedRecoveryMetadata;
   }
 
-  Future<String> setupRecoveryKey() async {
-    final RecoveryMetadata? existing = await readRecoveryMetadata();
-    if (existing != null) {
-      return '已建立 Recovery Key（提示：${existing.recoveryKeyHint}）';
+  Future<RecoverySetupResult> setupRecoveryKey() async {
+    if (await readRecoveryMetadata() != null) {
+      throw StateError('Recovery Key 已存在。');
     }
 
     final String recoveryKey = _generateRecoveryKey();
-    final Random random = Random.secure();
-    final List<int> saltBytes = List<int>.generate(16, (_) => random.nextInt(256));
-    final List<int> wrapKey = await _cryptoService.deriveRecoveryWrapKey(
-      recoveryKey: recoveryKey,
-      saltBytes: saltBytes,
+    final KdfDescriptor recoveryKdf = KdfDescriptor.argon2idRecovery(
+      saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
     );
+    final List<int> recoveryWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+      recoveryKey: recoveryKey,
+      kdf: recoveryKdf,
+    );
+
     final RecoveryMetadata metadata = RecoveryMetadata(
       vaultId: generateVaultId(),
       recoveryEnabled: true,
-      recoveryKeyVersion: 1,
+      recoveryKeyVersion: 2,
       recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
       createdAt: DateTime.now(),
-      kdfAlgorithm: 'pbkdf2-sha256',
-      kdfSaltBase64: base64Encode(saltBytes),
+      kdf: recoveryKdf,
     );
+
     final File file = File(await _pathStrategy.recoveryMetadataPath());
     await file.parent.create(recursive: true);
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(metadata.toJson()),
       flush: true,
     );
-    await _appLockService.ensureDeviceSecret();
-    await _appLockService.saveRecoveryWrapKey(
-      vaultId: metadata.vaultId,
-      keyBytes: wrapKey,
-    );
     _cachedRecoveryMetadata = metadata;
-    await _writeEncryptedManifest();
-    return recoveryKey;
+
+    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(metadata.vaultId);
+    await _storeWrappedRecoveryKey(
+      vaultId: metadata.vaultId,
+      recoveryWrapKey: recoveryWrapKey,
+    );
+
+    final UnlockedVaultSession session = UnlockedVaultSession(
+      vaultId: metadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: recoveryWrapKey,
+      deviceSlotId: deviceInfo.slotId,
+    );
+    await _writeEncryptedManifest(session, metadata);
+
+    return RecoverySetupResult(
+      recoveryKey: recoveryKey,
+      session: session,
+    );
+  }
+
+  Future<UnlockedVaultSession> unlockWithRecoveryKey(String recoveryKey) async {
+    final RecoveryMetadata metadata =
+        await readRecoveryMetadata() ?? (throw StateError('找不到 Recovery metadata。'));
+    final List<int> recoveryWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+      recoveryKey: recoveryKey,
+      kdf: metadata.kdf,
+    );
+    await _verifyRecoveryKey(metadata, recoveryWrapKey);
+
+    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(metadata.vaultId);
+    await _storeWrappedRecoveryKey(
+      vaultId: metadata.vaultId,
+      recoveryWrapKey: recoveryWrapKey,
+    );
+
+    final UnlockedVaultSession session = UnlockedVaultSession(
+      vaultId: metadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: recoveryWrapKey,
+      deviceSlotId: deviceInfo.slotId,
+    );
+
+    await _setRewrapState(inProgress: true);
+    await _rewrapVaultForTrustedDevice(session, metadata);
+    await _setRewrapState(inProgress: false);
+    await rebuildIndex(session);
+    return session;
   }
 
   Future<List<EntryIndexRecord>> listEntries({
@@ -134,32 +235,27 @@ class VaultRepository {
     return _indexDatabase.monthEntryDates(month);
   }
 
-  Future<DiaryEntry?> loadEntry(EntryId entryId) async {
+  Future<DiaryEntry?> loadEntry(
+    UnlockedVaultSession session,
+    EntryId entryId,
+  ) async {
     final EntryIndexRecord? indexRecord = await _indexDatabase.getEntryById(entryId);
     if (indexRecord == null) {
       return null;
     }
+
     final File file = File(indexRecord.filePath);
     if (!file.existsSync()) {
       return null;
     }
 
-    final ParsedEncryptedDocument parsed =
-        _cryptoService.parseFileBytes(await file.readAsBytes());
-    final RecoveryMetadata? metadata = await readRecoveryMetadata();
-    final String deviceSecret = await _appLockService.ensureDeviceSecret();
-    final List<int>? recoveryWrapKey = metadata == null
-        ? null
-        : await _appLockService.readRecoveryWrapKey(metadata.vaultId);
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
     final String markdown = await _cryptoService.decryptMarkdown(
       headerBytes: parsed.headerBytes,
       ciphertextBytes: parsed.ciphertextBytes,
-      deviceSecret: deviceSecret,
-      recoveryWrapKey: recoveryWrapKey,
+      context: _decryptionContext(session),
     );
-    return _frontMatterCodec.decode(markdown).copyWith(
-          vaultId: indexRecord.vaultId,
-        );
+    return _frontMatterCodec.decode(markdown).copyWith(vaultId: indexRecord.vaultId);
   }
 
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
@@ -167,29 +263,28 @@ class VaultRepository {
   }
 
   Future<DiaryEntry> saveEntry(
+    UnlockedVaultSession session,
     DiaryEntry draft, {
     List<PendingAttachment> pendingAttachments = const <PendingAttachment>[],
   }) async {
-    final RecoveryMetadata metadata =
-        await readRecoveryMetadata() ??
-            (throw StateError('請先完成 Recovery Key 設定。'));
-    final String deviceSecret = await _appLockService.ensureDeviceSecret();
-    final List<int> recoveryWrapKey = await _appLockService.readRecoveryWrapKey(
-          metadata.vaultId,
-        ) ??
-        (throw StateError('找不到 Recovery wrapping key。'));
-
-    final List<AssetAttachment> existingAttachments =
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
+    final List<AssetAttachment> existingFromDb =
         await _indexDatabase.attachmentsForEntry(draft.id);
+    final Set<AssetId> keepExistingIds = draft.attachmentIds.toSet();
+    final List<AssetAttachment> existingKept = existingFromDb
+        .where((AssetAttachment a) => keepExistingIds.contains(a.id))
+        .toList();
     final List<AssetAttachment> newAttachments = await _storePendingAttachments(
       entry: draft,
       pendingAttachments: pendingAttachments,
       recoveryWrapKey: recoveryWrapKey,
-      deviceSecret: deviceSecret,
+      recoverySlotKdf: metadata.kdf,
       vaultId: metadata.vaultId,
     );
+
     final List<AssetAttachment> allAttachments = <AssetAttachment>[
-      ...existingAttachments,
+      ...existingKept,
       ...newAttachments,
     ];
     final DiaryEntry normalized = draft.copyWith(
@@ -197,6 +292,7 @@ class VaultRepository {
       attachmentIds: allAttachments.map((AssetAttachment asset) => asset.id).toList(),
       updatedAt: DateTime.now(),
     );
+
     final String markdown = _frontMatterCodec.encode(
       normalized,
       attachments: allAttachments,
@@ -206,22 +302,24 @@ class VaultRepository {
       vaultId: metadata.vaultId,
       markdown: markdown,
       recoveryWrapKey: recoveryWrapKey,
-      deviceSecret: deviceSecret,
+      recoverySlotKdf: metadata.kdf,
       createdAt: normalized.createdAt,
       updatedAt: normalized.updatedAt,
     );
+
     final String filePath = await _pathStrategy.entryAbsolutePath(
       date: normalized.date,
       entryId: normalized.id,
     );
-    await _atomicWriteBytes(File(filePath), encryption.toFileBytes());
-    final String contentHash = await _hashString(markdown);
+    final Uint8List fileBytes = encryption.toFileBytes();
+    await _atomicWriteBytes(File(filePath), fileBytes);
+
     await _indexDatabase.upsertEntry(
       entry: normalized,
       filePath: filePath,
       previewText: previewTextFromMarkdown(normalized.markdownBody),
-      contentHash: contentHash,
-      encryptedFileSize: encryption.toFileBytes().lengthInBytes,
+      contentHash: await _hashString(markdown),
+      encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
     );
     await _indexDatabase.replaceAttachments(
@@ -240,37 +338,34 @@ class VaultRepository {
       entry: normalized,
       previewText: previewTextFromMarkdown(normalized.markdownBody),
     );
-    await _writeEncryptedManifest();
+    await _writeEncryptedManifest(session, metadata);
     return normalized;
   }
 
-  Future<void> deleteEntry(EntryId entryId) async {
-    final DiaryEntry? entry = await loadEntry(entryId);
+  Future<void> deleteEntry(
+    UnlockedVaultSession session,
+    EntryId entryId,
+  ) async {
+    final DiaryEntry? entry = await loadEntry(session, entryId);
     if (entry == null) {
       return;
     }
-    await saveEntry(entry.copyWith(isDeleted: true));
+    await saveEntry(session, entry.copyWith(isDeleted: true));
     await _indexDatabase.markEntryDeleted(entryId);
-    await _writeEncryptedManifest();
   }
 
   Future<List<EntryIndexRecord>> searchEntries(String query) {
     return _indexDatabase.searchEntries(query);
   }
 
-  Future<void> rebuildIndex() async {
+  Future<void> rebuildIndex(UnlockedVaultSession session) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     await _indexDatabase.rebuild();
-    final RecoveryMetadata? metadata = await readRecoveryMetadata();
-    if (metadata == null) {
-      return;
-    }
-    final String deviceSecret = await _appLockService.ensureDeviceSecret();
-    final List<int>? recoveryWrapKey = await _appLockService.readRecoveryWrapKey(
-      metadata.vaultId,
-    );
+
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory entriesDirectory = Directory(p.join(vaultRoot.path, 'entries'));
     if (!entriesDirectory.existsSync()) {
+      await _indexDatabase.setAppValue(_lastRebuildAtKey, DateTime.now().toIso8601String());
       return;
     }
 
@@ -279,17 +374,18 @@ class VaultRepository {
       if (entity is! File || !entity.path.endsWith('.md.enc')) {
         continue;
       }
-      final ParsedEncryptedDocument parsed =
-          _cryptoService.parseFileBytes(await entity.readAsBytes());
+
+      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await entity.readAsBytes());
       final String markdown = await _cryptoService.decryptMarkdown(
         headerBytes: parsed.headerBytes,
         ciphertextBytes: parsed.ciphertextBytes,
-        deviceSecret: deviceSecret,
-        recoveryWrapKey: recoveryWrapKey,
+        context: _decryptionContext(session),
       );
       final DiaryEntry entry = _frontMatterCodec.decode(markdown).copyWith(
             vaultId: metadata.vaultId,
           );
+      final List<AssetAttachment> attachments = await _findAttachmentsForEntry(entry);
+
       await _indexDatabase.upsertEntry(
         entry: entry,
         filePath: entity.path,
@@ -302,26 +398,24 @@ class VaultRepository {
         entry: entry,
         previewText: previewTextFromMarkdown(entry.markdownBody),
       );
-      final List<AssetAttachment> attachments = await _findAttachmentsForEntry(entry);
       await _indexDatabase.replaceAttachments(
         entry.id,
         attachments,
         <AssetId, String>{
-          for (final AssetAttachment asset in attachments)
-            asset.id: await _pathStrategy.assetAbsolutePath(
+          for (final AssetAttachment attachment in attachments)
+            attachment.id: await _pathStrategy.assetAbsolutePath(
               date: entry.date,
-              assetId: asset.id,
-              extension: p.extension(asset.safeFilename).replaceFirst('.', ''),
+              assetId: attachment.id,
+              extension: p.extension(attachment.safeFilename).replaceFirst('.', ''),
             ),
         },
       );
     }
+
+    await _indexDatabase.setAppValue(_lastRebuildAtKey, DateTime.now().toIso8601String());
   }
 
-  Future<File> exportMarkdownVault() async {
-    final RecoveryMetadata metadata =
-        await readRecoveryMetadata() ??
-            (throw StateError('尚未建立 Recovery Key，無法匯出。'));
+  Future<File> exportMarkdownVault(UnlockedVaultSession session) async {
     final List<EntryIndexRecord> entries = await listEntries();
     final Directory exportRoot = Directory(
       p.join(
@@ -334,28 +428,24 @@ class VaultRepository {
     await entryRoot.create(recursive: true);
     await assetRoot.create(recursive: true);
 
-    final String deviceSecret = await _appLockService.ensureDeviceSecret();
-    final List<int>? recoveryWrapKey = await _appLockService.readRecoveryWrapKey(
-      metadata.vaultId,
-    );
-
-    for (final EntryIndexRecord record in entries.where((EntryIndexRecord item) => !item.isDeleted)) {
-      final DiaryEntry? entry = await loadEntry(record.id);
+    for (final EntryIndexRecord record
+        in entries.where((EntryIndexRecord item) => !item.isDeleted)) {
+      final DiaryEntry? entry = await loadEntry(session, record.id);
       if (entry == null) {
         continue;
       }
+
       final List<AssetAttachment> attachments = await loadAttachments(entry.id);
       final String exportMarkdown = _frontMatterCodec.encode(
         entry,
         attachments: attachments,
       );
-      final String markdownName =
-          '${entry.date.value}-${_exportNameSuffix(entry)}.md';
       final Directory yearMonthDirectory = Directory(
         p.join(entryRoot.path, entry.date.yearString, entry.date.monthPadded),
       );
       await yearMonthDirectory.create(recursive: true);
-      await File(p.join(yearMonthDirectory.path, markdownName)).writeAsString(
+      await File(p.join(yearMonthDirectory.path, '${entry.date.value}-${_exportNameSuffix(entry)}.md'))
+          .writeAsString(
         exportMarkdown,
         flush: true,
       );
@@ -371,20 +461,22 @@ class VaultRepository {
         if (!encryptedFile.existsSync()) {
           continue;
         }
+
         final ParsedEncryptedDocument parsed =
             _cryptoService.parseFileBytes(await encryptedFile.readAsBytes());
         final List<int> bytes = await _cryptoService.decryptBytes(
           headerBytes: parsed.headerBytes,
           ciphertextBytes: parsed.ciphertextBytes,
-          deviceSecret: deviceSecret,
-          recoveryWrapKey: recoveryWrapKey,
+          context: _decryptionContext(session),
         );
         final Directory assetDirectory = Directory(
           p.join(assetRoot.path, entry.date.yearString, entry.date.monthPadded),
         );
         await assetDirectory.create(recursive: true);
-        await File(p.join(assetDirectory.path, attachment.safeFilename))
-            .writeAsBytes(bytes, flush: true);
+        await File(p.join(assetDirectory.path, attachment.safeFilename)).writeAsBytes(
+          bytes,
+          flush: true,
+        );
       }
     }
 
@@ -395,24 +487,23 @@ class VaultRepository {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory backupsDirectory = await _pathStrategy.backupsDirectory();
     await backupsDirectory.create(recursive: true);
+
     final String backupId = generateBackupId();
     final File target = File(p.join(backupsDirectory.path, '$backupId.jbackup'));
-
     final ZipFileEncoder encoder = ZipFileEncoder();
     encoder.create(target.path);
     await encoder.addDirectory(vaultRoot, includeDirName: false);
     await encoder.close();
 
-    final int entryCount = (await listEntries()).where((EntryIndexRecord record) => !record.isDeleted).length;
-    final int assetCount = 0;
+    final List<EntryIndexRecord> entries = await listEntries();
     await _indexDatabase.recordBackupHistory(
       BackupHistoryRecord(
         backupId: backupId,
         provider: 'local',
         createdAt: DateTime.now(),
         status: 'created',
-        entryCount: entryCount,
-        assetCount: assetCount,
+        entryCount: entries.where((EntryIndexRecord record) => !record.isDeleted).length,
+        assetCount: 0,
         byteSize: await target.length(),
       ),
     );
@@ -427,8 +518,10 @@ class VaultRepository {
     }
     await tempRoot.create(recursive: true);
 
-    final Archive archive =
-        ZipDecoder().decodeBytes(await backupFile.readAsBytes(), verify: true);
+    final Archive archive = ZipDecoder().decodeBytes(
+      await backupFile.readAsBytes(),
+      verify: true,
+    );
     for (final ArchiveFile archiveFile in archive.files) {
       _ensureSafeArchivePath(archiveFile.name);
       final String outputPath = p.join(tempRoot.path, archiveFile.name);
@@ -456,9 +549,10 @@ class VaultRepository {
         await entity.copy(destination);
       }
     }
+
     await tempRoot.delete(recursive: true);
     _cachedRecoveryMetadata = null;
-    await rebuildIndex();
+    await _resetLocalIndexState();
   }
 
   Future<String?> uploadLatestBackupToDrive() async {
@@ -485,22 +579,92 @@ class VaultRepository {
       destinationDirectory: await _pathStrategy.backupsDirectory(),
     );
     if (backupFile == null) {
-      throw StateError('Google Drive 上沒有可還原的備份。');
+      throw StateError('Google Drive 沒有可還原的備份。');
     }
     await restoreBackup(backupFile);
   }
 
-  Future<void> _writeEncryptedManifest() async {
-    final RecoveryMetadata? metadata = await readRecoveryMetadata();
-    if (metadata == null) {
-      return;
-    }
-    final List<int>? recoveryWrapKey = await _appLockService.readRecoveryWrapKey(
-      metadata.vaultId,
+  DecryptionContext _decryptionContext(UnlockedVaultSession session) {
+    return DecryptionContext(
+      vaultId: session.vaultId,
+      trustedDevice: session.trustedDevice,
+      recoveryWrapKey: session.recoveryWrapKey,
+      deviceSlotId: session.deviceSlotId,
     );
+  }
+
+  /// Reads and decrypts a vault asset (`.enc` on disk) for in-memory preview — e.g. list thumbnails.
+  Future<Uint8List?> readDecryptedAssetBytes(
+    UnlockedVaultSession session,
+    String encryptedAbsolutePath, {
+    int maxEncryptedFileBytes = 32 << 20,
+  }) async {
+    final String trimmed = encryptedAbsolutePath.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final File file = File(trimmed);
+    if (!file.existsSync()) {
+      return null;
+    }
+    final int encLength = await file.length();
+    if (encLength > maxEncryptedFileBytes) {
+      return null;
+    }
+    try {
+      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
+      final List<int> plain = await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: _decryptionContext(session),
+      );
+      return Uint8List.fromList(plain);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<RecoveryMetadata> _requireMetadataForSession(UnlockedVaultSession session) async {
+    final RecoveryMetadata metadata =
+        await readRecoveryMetadata() ?? (throw StateError('找不到 Recovery metadata。'));
+    if (metadata.vaultId != session.vaultId) {
+      throw StateError('目前 session 與 vault 資料不一致。');
+    }
+    return metadata;
+  }
+
+  List<int> _requireRecoveryWrapKey(UnlockedVaultSession session) {
+    final List<int>? recoveryWrapKey = session.recoveryWrapKey;
     if (recoveryWrapKey == null) {
+      throw StateError('目前 session 沒有可用的 Recovery wrapping key。');
+    }
+    return recoveryWrapKey;
+  }
+
+  Future<void> _verifyRecoveryKey(
+    RecoveryMetadata metadata,
+    List<int> recoveryWrapKey,
+  ) async {
+    final File manifest = File(await _pathStrategy.manifestPath());
+    if (!manifest.existsSync()) {
       return;
     }
+
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await manifest.readAsBytes());
+    await _cryptoService.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: DecryptionContext.recovery(
+        recoveryWrapKey: recoveryWrapKey,
+        vaultId: metadata.vaultId,
+      ),
+    );
+  }
+
+  Future<void> _writeEncryptedManifest(
+    UnlockedVaultSession session,
+    RecoveryMetadata metadata,
+  ) async {
     final List<EntryIndexRecord> entries = await listEntries();
     final Map<String, Object?> manifest = <String, Object?>{
       'schema_version': 1,
@@ -511,14 +675,14 @@ class VaultRepository {
       'newest_entry_date': entries.isEmpty ? null : entries.first.date.value,
       'app_version': '1.0.0',
     };
-    final String deviceSecret = await _appLockService.ensureDeviceSecret();
+
     final EncryptionResult encryption = await _cryptoService.encryptBytes(
       documentId: 'manifest',
       vaultId: metadata.vaultId,
       plaintextBytes: utf8.encode(jsonEncode(manifest)),
       contentType: 'application/json',
-      recoveryWrapKey: recoveryWrapKey,
-      deviceSecret: deviceSecret,
+      recoveryWrapKey: _requireRecoveryWrapKey(session),
+      recoverySlotKdf: metadata.kdf,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -532,7 +696,7 @@ class VaultRepository {
     required DiaryEntry entry,
     required List<PendingAttachment> pendingAttachments,
     required List<int> recoveryWrapKey,
-    required String deviceSecret,
+    required KdfDescriptor recoverySlotKdf,
     required String vaultId,
   }) async {
     final List<AssetAttachment> results = <AssetAttachment>[];
@@ -540,15 +704,14 @@ class VaultRepository {
       final AssetId assetId = generateAssetId();
       final String extension = p.extension(pending.originalFilename).replaceFirst('.', '');
       final String safeFilename = extension.isEmpty ? assetId : '$assetId.$extension';
-      final File source = File(pending.sourcePath);
-      final List<int> sourceBytes = await source.readAsBytes();
+      final List<int> sourceBytes = await File(pending.sourcePath).readAsBytes();
       final EncryptionResult encrypted = await _cryptoService.encryptBytes(
         documentId: assetId,
         vaultId: vaultId,
         plaintextBytes: sourceBytes,
         contentType: pending.mimeType,
         recoveryWrapKey: recoveryWrapKey,
-        deviceSecret: deviceSecret,
+        recoverySlotKdf: recoverySlotKdf,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -580,12 +743,14 @@ class VaultRepository {
     if (!assetsDirectory.existsSync()) {
       return const <AssetAttachment>[];
     }
+
     final List<AssetAttachment> matches = <AssetAttachment>[];
     await for (final FileSystemEntity entity
         in assetsDirectory.list(recursive: true, followLinks: false)) {
       if (entity is! File || !entity.path.endsWith('.enc')) {
         continue;
       }
+
       final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
       final String assetId = p.basenameWithoutExtension(fileName);
       if (!entry.attachmentIds.contains(assetId)) {
@@ -604,6 +769,107 @@ class VaultRepository {
       );
     }
     return matches;
+  }
+
+  Future<void> _rewrapVaultForTrustedDevice(
+    UnlockedVaultSession session,
+    RecoveryMetadata metadata,
+  ) async {
+    final List<File> files = await _allEncryptedFiles();
+    final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
+    for (final File file in files) {
+      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
+      final List<int> plaintextBytes = await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: DecryptionContext.recovery(
+          recoveryWrapKey: recoveryWrapKey,
+          vaultId: session.vaultId,
+        ),
+      );
+      final EncryptionResult encryption = await _cryptoService.encryptBytes(
+        documentId: parsed.header.fileId,
+        vaultId: parsed.header.vaultId,
+        plaintextBytes: plaintextBytes,
+        contentType: parsed.header.contentType,
+        recoveryWrapKey: recoveryWrapKey,
+        recoverySlotKdf: metadata.kdf,
+        createdAt: parsed.header.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      await _atomicWriteBytes(file, encryption.toFileBytes());
+    }
+  }
+
+  Future<List<File>> _allEncryptedFiles() async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final File manifest = File(await _pathStrategy.manifestPath());
+    final List<File> files = <File>[
+      if (manifest.existsSync()) manifest,
+    ];
+
+    await for (final FileSystemEntity entity
+        in vaultRoot.list(recursive: true, followLinks: false)) {
+      if (entity is! File || entity.path == manifest.path) {
+        continue;
+      }
+      if (entity.path.endsWith('.enc')) {
+        files.add(entity);
+      }
+    }
+    return files;
+  }
+
+  Future<void> _storeWrappedRecoveryKey({
+    required VaultId vaultId,
+    required List<int> recoveryWrapKey,
+  }) async {
+    final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
+      vaultId: vaultId,
+      plaintextBytes: recoveryWrapKey,
+    );
+    await _deviceKeyManager.storeWrappedRecoveryKey(
+      vaultId: vaultId,
+      record: WrappedRecoveryKeyRecord(
+        slotId: payload.slotId,
+        nonceBase64: payload.nonceBase64,
+        ciphertextBase64: payload.ciphertextBase64,
+        wrappedAt: DateTime.now(),
+        formatVersion: 1,
+        platform: payload.platform,
+      ),
+    );
+  }
+
+  Future<void> _resumeRewrapIfNeeded(
+    UnlockedVaultSession session,
+    RecoveryMetadata metadata,
+  ) async {
+    if (await _indexDatabase.getAppValue(_rewrapInProgressKey) != 'true') {
+      return;
+    }
+    await _rewrapVaultForTrustedDevice(session, metadata);
+    await _setRewrapState(inProgress: false);
+    await rebuildIndex(session);
+  }
+
+  Future<void> _setRewrapState({required bool inProgress}) async {
+    await _indexDatabase.setAppValue(_rewrapInProgressKey, inProgress ? 'true' : 'false');
+    if (inProgress) {
+      await _indexDatabase.setAppValue(
+        _rewrapStartedAtKey,
+        DateTime.now().toIso8601String(),
+      );
+      return;
+    }
+    await _indexDatabase.deleteAppValue(_rewrapStartedAtKey);
+  }
+
+  Future<void> _resetLocalIndexState() async {
+    await _indexDatabase.clearForRebuild();
+    await _indexDatabase.deleteAppValue(_lastRebuildAtKey);
+    await _indexDatabase.deleteAppValue(_rewrapInProgressKey);
+    await _indexDatabase.deleteAppValue(_rewrapStartedAtKey);
   }
 
   Future<void> _atomicWriteBytes(File file, Uint8List bytes) async {
@@ -627,7 +893,7 @@ class VaultRepository {
 
   void _ensureSafeArchivePath(String relativePath) {
     if (relativePath.contains('..') || p.isAbsolute(relativePath)) {
-      throw const FormatException('Unsafe archive path detected.');
+      throw const FormatException('備份檔包含不安全的路徑。');
     }
   }
 
