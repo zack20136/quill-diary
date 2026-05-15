@@ -102,27 +102,43 @@ class VaultRepository {
         await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
             (throw StateError('找不到受信任裝置資訊。'));
 
+    final List<int> recoveryWrapKey;
     try {
-      final List<int> recoveryWrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
+      recoveryWrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
         vaultId: metadata.vaultId,
         slotId: record.slotId,
         nonceBase64: record.nonceBase64,
         ciphertextBase64: record.ciphertextBase64,
       );
-      await _verifyRecoveryKey(metadata, recoveryWrapKey);
-
-      final UnlockedVaultSession session = UnlockedVaultSession(
-        vaultId: metadata.vaultId,
-        trustedDevice: true,
-        recoveryWrapKey: recoveryWrapKey,
-        deviceSlotId: deviceInfo.slotId,
-      );
-      await _resumeRewrapIfNeeded(session, metadata);
-      return session;
-    } catch (_) {
+    } on Object catch (error, stackTrace) {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
-      throw StateError('受信任裝置資料已失效，請重新使用 Recovery Key 解鎖。');
+      Error.throwWithStackTrace(
+        StateError(
+          '受信任裝置資料已失效，請重新使用 Recovery Key 解鎖。（unwrapWithDeviceKey：$error）',
+        ),
+        stackTrace,
+      );
     }
+
+    await _verifyRecoveryKey(metadata, recoveryWrapKey);
+
+    final UnlockedVaultSession session = UnlockedVaultSession(
+      vaultId: metadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: recoveryWrapKey,
+      deviceSlotId: deviceInfo.slotId,
+    );
+    try {
+      await _resumeRewrapIfNeeded(session, metadata);
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError(
+          '日記庫重新包裝未完成（下次啟動會自動繼續，或請檢查加密檔是否毀損）。原因：$error',
+        ),
+        stackTrace,
+      );
+    }
+    return session;
   }
 
   Future<RecoveryMetadata?> readRecoveryMetadata() async {
@@ -205,10 +221,6 @@ class VaultRepository {
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
 
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(metadata.vaultId);
-    await _storeWrappedRecoveryKey(
-      vaultId: metadata.vaultId,
-      recoveryWrapKey: recoveryWrapKey,
-    );
 
     final UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
@@ -218,9 +230,23 @@ class VaultRepository {
     );
 
     await _setRewrapState(inProgress: true);
-    await _rewrapVaultForTrustedDevice(session, metadata);
-    await _setRewrapState(inProgress: false);
+    try {
+      await _rewrapVaultForTrustedDevice(session, metadata);
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError(
+          '日記庫重新包裝失敗（已保留進行中旗標以便下次自動續跑）：$error',
+        ),
+        stackTrace,
+      );
+    }
+
+    await _storeWrappedRecoveryKey(
+      vaultId: metadata.vaultId,
+      recoveryWrapKey: recoveryWrapKey,
+    );
     await rebuildIndex(session);
+    await _setRewrapState(inProgress: false);
     return session;
   }
 
@@ -641,23 +667,128 @@ class VaultRepository {
     return recoveryWrapKey;
   }
 
+  Future<void> _verifyRecoveryDecryptFile(
+    File file,
+    DecryptionContext recoveryContext,
+  ) async {
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
+    await _cryptoService.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: recoveryContext,
+    );
+  }
+
+  /// 優先試 `entries/**/*.md.enc`，其餘 `entries|assets/**/*.enc`，不含 manifest。
+  Future<List<File>> _encryptedFilesForRecoveryVerification() async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final String manifestPath = await _pathStrategy.manifestPath();
+    final List<File> entryEncrypted = <File>[];
+    final List<File> otherEncrypted = <File>[];
+
+    if (!vaultRoot.existsSync()) {
+      return const <File>[];
+    }
+
+    await for (final FileSystemEntity entity
+        in vaultRoot.list(recursive: true, followLinks: false)) {
+      if (entity is! File) {
+        continue;
+      }
+      if (!_isUnderVaultContentSubdir(entity.path, vaultRoot.path)) {
+        continue;
+      }
+      if (entity.path == manifestPath || !entity.path.toLowerCase().endsWith('.enc')) {
+        continue;
+      }
+      final String lowered = entity.path.toLowerCase();
+      if (lowered.endsWith('.md.enc')) {
+        entryEncrypted.add(entity);
+      } else {
+        otherEncrypted.add(entity);
+      }
+    }
+
+    int pathSort(File a, File b) => a.path.compareTo(b.path);
+    entryEncrypted.sort(pathSort);
+    otherEncrypted.sort(pathSort);
+
+    return <File>[...entryEncrypted, ...otherEncrypted];
+  }
+
+  bool _isUnderVaultContentSubdir(String absolutePath, String vaultRootPath) {
+    final String relative = p.relative(absolutePath, from: vaultRootPath);
+    if (relative.startsWith('..')) {
+      return false;
+    }
+    return relative.startsWith('entries${p.separator}') ||
+        relative.startsWith('assets${p.separator}');
+  }
+
   Future<void> _verifyRecoveryKey(
     RecoveryMetadata metadata,
     List<int> recoveryWrapKey,
   ) async {
     final File manifest = File(await _pathStrategy.manifestPath());
-    if (!manifest.existsSync()) {
+    final DecryptionContext recoveryContext = DecryptionContext.recovery(
+      recoveryWrapKey: recoveryWrapKey,
+      vaultId: metadata.vaultId,
+    );
+
+    if (manifest.existsSync()) {
+      await _verifyRecoveryDecryptFile(manifest, recoveryContext);
       return;
     }
 
-    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await manifest.readAsBytes());
-    await _cryptoService.decryptBytes(
-      headerBytes: parsed.headerBytes,
-      ciphertextBytes: parsed.ciphertextBytes,
-      context: DecryptionContext.recovery(
-        recoveryWrapKey: recoveryWrapKey,
-        vaultId: metadata.vaultId,
-      ),
+    final List<File> fallbackTargets = await _encryptedFilesForRecoveryVerification();
+    if (fallbackTargets.isEmpty) {
+      return;
+    }
+
+    Object? parseProblem;
+    Object? verificationProblem;
+    String? authFailurePath;
+    bool sawParsableEncryptedFile = false;
+    for (final File file in fallbackTargets) {
+      late final ParsedEncryptedDocument parsed;
+      try {
+        parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
+      } on Object catch (parseErr, _) {
+        parseProblem ??= parseErr;
+        continue;
+      }
+
+      sawParsableEncryptedFile = true;
+      try {
+        await _cryptoService.decryptBytes(
+          headerBytes: parsed.headerBytes,
+          ciphertextBytes: parsed.ciphertextBytes,
+          context: recoveryContext,
+        );
+        return;
+      } on SecretBoxAuthenticationError {
+        authFailurePath ??= file.path;
+      } on Object catch (decryptErr, _) {
+        verificationProblem ??= decryptErr;
+      }
+    }
+
+    if (verificationProblem != null) {
+      throw StateError(
+        '無法用現有加密檔驗證 Recovery Key（至少一個檔案疑似毀損或格式異常）。'
+        ' 最近一次驗證問題：$verificationProblem',
+      );
+    }
+
+    if (sawParsableEncryptedFile && authFailurePath != null) {
+      throw StateError(
+        'Recovery Key 與現有 vault 資料不相符。（路徑：$authFailurePath）',
+      );
+    }
+
+    throw StateError(
+      '無法解析或驗證任何加密檔'
+      '${parseProblem == null ? '' : '（最近一次格式錯誤：$parseProblem）'}',
     );
   }
 
