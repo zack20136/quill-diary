@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers.dart';
+import '../../features/editor/providers/editor_providers.dart';
+import '../../shared/providers/core_providers.dart';
 import '../tag_visual.dart';
 
-/// 建立新標籤並選色；或為既有標籤僅調整顏色（標籤名稱鎖定）。
-///
-/// `Navigator.pop` 回傳儲存的標籤顯示名稱；取消為 `pop()`／`pop(null)`。
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
   const TagAccentComposerDialog({
     super.key,
     this.initialDisplayLabel,
     this.initialAccentArgb,
     this.lockLabel = false,
-    this.titleText = '新增標籤',
+    this.titleText = 'Create tag',
     this.descriptionText,
-    this.primaryButtonLabel = '儲存並加入',
+    this.primaryButtonLabel = 'Save tag',
   });
 
-  /// 為既有標籤改色時帶入顯示字串並通常搭配 [lockLabel]。
   final String? initialDisplayLabel;
   final int? initialAccentArgb;
   final bool lockLabel;
   final String titleText;
-  /// 非 null 且不為空白時才顯示於標題下方（預設不顯示，版面較舒展）。
   final String? descriptionText;
   final String primaryButtonLabel;
 
@@ -45,11 +41,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
       final Color parsed = Color(widget.initialAccentArgb!);
       _accent = parsed;
       _hueDeg = HSVColor.fromColor(parsed).hue;
-      _fromHueSlider = false;
     } else {
       _accent = kEditorTagAccentPresets.first;
       _hueDeg = HSVColor.fromColor(_accent).hue;
-      _fromHueSlider = false;
     }
     _nameCtrl.addListener(_onNameChanged);
   }
@@ -69,16 +63,16 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請輸入標籤名稱')),
+        const SnackBar(content: Text('Please enter a tag name.')),
       );
       return;
     }
     try {
       await ref.read(indexDatabaseProvider).upsertTagAccentArgb(name, colorArgb32(_accent));
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('儲存失敗：$e')),
+          SnackBar(content: Text('Failed to save tag: $error')),
         );
       }
       return;
@@ -110,9 +104,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 cs.surface,
               ],
             ),
-            border: Border.all(
-              color: cs.primary.withValues(alpha: 0.14),
-            ),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: theme.shadowColor.withValues(alpha: 0.12),
@@ -141,7 +133,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                       ),
                     ),
                     IconButton(
-                      tooltip: '關閉',
+                      tooltip: 'Close',
                       visualDensity: VisualDensity.compact,
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
@@ -176,11 +168,15 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         child: Row(
                           children: <Widget>[
-                            Icon(Icons.sell_rounded, color: cs.primary.withValues(alpha: 0.9), size: 22),
+                            Icon(
+                              Icons.sell_rounded,
+                              color: cs.primary.withValues(alpha: 0.9),
+                              size: 22,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _nameCtrl.text.trim().isEmpty ? '—' : _nameCtrl.text.trim(),
+                                _nameCtrl.text.trim().isEmpty ? 'Untitled tag' : _nameCtrl.text.trim(),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.2,
@@ -199,7 +195,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     textInputAction: TextInputAction.done,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: '標籤名稱',
+                      hintText: 'Tag name',
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       filled: true,
@@ -213,7 +209,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                   const SizedBox(height: 26),
                 ],
                 Text(
-                  '精選色',
+                  'Preset colors',
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -267,7 +263,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  '色相',
+                  'Hue',
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -307,7 +303,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     child: Row(
                       children: <Widget>[
                         Text(
-                          '預覽',
+                          'Preview',
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: cs.outline,
@@ -331,7 +327,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                                 ),
                               ),
                               child: Text(
-                                text.isEmpty ? '名稱' : text,
+                                text.isEmpty ? 'Tag name' : text,
                                 style: theme.textTheme.labelLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: fgNow,
@@ -349,7 +345,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                   children: <Widget>[
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text('取消', style: TextStyle(color: cs.onSurfaceVariant)),
+                      child: Text('Cancel', style: TextStyle(color: cs.onSurfaceVariant)),
                     ),
                     const Spacer(),
                     FilledButton.icon(

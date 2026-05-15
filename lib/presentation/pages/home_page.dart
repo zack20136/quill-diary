@@ -6,10 +6,16 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../app/providers.dart';
 import '../../application/diary/diary_presence_tag_counts.dart';
 import '../../app/router.dart';
 import '../../domain/shared/value_objects.dart';
+import '../../features/editor/providers/editor_providers.dart';
+import '../../features/home/models/overview_models.dart';
+import '../../features/home/providers/home_providers.dart';
+import '../../features/home/state/home_state.dart';
+import '../../features/session/providers/session_providers.dart';
+import '../../features/session/session_messages.dart';
+import '../../shared/providers/core_providers.dart';
 import '../../infrastructure/database/index_database.dart';
 import '../page_style.dart';
 import '../tag_visual.dart';
@@ -202,8 +208,7 @@ class _HomeTimelinePane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(homeEntriesProvider);
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
+    final ColorScheme cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,7 +274,10 @@ class _CalendarPane extends ConsumerWidget {
     final AsyncValue<List<DateOnly>> datesAsync = ref.watch(calendarMonthEntryDatesProvider);
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(calendarEntriesProvider);
     final DateTime visibleMonth = ref.watch(calendarVisibleMonthProvider);
-    final DateOnly? selectedDate = ref.watch(calendarSelectedDateProvider);
+    final DateOnly? selectedDateRaw = ref.watch(calendarSelectedDateProvider);
+    final DateOnly selectedDate =
+        selectedDateRaw ?? DateOnly.fromDateTime(DateTime.now());
+    final ColorScheme cs = Theme.of(context).colorScheme;
 
     if (!canReadEntries) {
       return _blockedEntriesPane(sessionState);
@@ -287,7 +295,7 @@ class _CalendarPane extends ConsumerWidget {
                 lastDay: DateTime(2100),
                 focusedDay: visibleMonth,
                 selectedDayPredicate: (DateTime day) =>
-                    selectedDate?.value == DateOnly.fromDateTime(day).value,
+                    selectedDate.value == DateOnly.fromDateTime(day).value,
                 onPageChanged: (DateTime focusedDay) {
                   ref.read(calendarVisibleMonthProvider.notifier).set(
                         DateTime(focusedDay.year, focusedDay.month),
@@ -310,52 +318,35 @@ class _CalendarPane extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: selectedDate == null
-                  ? const _StateCard(
-                      icon: Icons.calendar_month_outlined,
-                      title: '選擇日期',
-                      message: '點一下日曆上的日期，就能查看當天的日記。',
-                    )
-                  : _SectionShell(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              _FilterChip(label: selectedDate.value),
-                              const SizedBox(width: 8),
-                              TextButton(
-                                onPressed: () => ref
-                                    .read(calendarSelectedDateProvider.notifier)
-                                    .set(null),
-                                child: const Text('清除日期'),
-                              ),
-                            ],
+              child: entriesAsync.when(
+                data: (List<EntryIndexRecord> entries) {
+                  return _DiaryListSectionCard(
+                    title: '日記 · ${selectedDate.value}',
+                    stripeColor: cs.primary,
+                    expandBody: true,
+                    child: entries.isEmpty
+                        ? _PaneEmptyHint(
+                            text: '「${selectedDate.value}」這一天目前沒有日記。',
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _CompactEntryList(entries: entries),
                           ),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: entriesAsync.when(
-                              data: (List<EntryIndexRecord> entries) {
-                                if (entries.isEmpty) {
-                                  return _StateCard(
-                                    icon: Icons.event_note_outlined,
-                                    title: selectedDate.value,
-                                    message: '這一天目前沒有日記。',
-                                  );
-                                }
-                                return _EntryList(entries: entries);
-                              },
-                              loading: () => const Center(child: CircularProgressIndicator()),
-                              error: (Object error, StackTrace _) => _StateCard(
-                                icon: Icons.error_outline,
-                                title: '讀取失敗',
-                                message: '$error',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  );
+                },
+                loading: () => _DiaryListSectionCard(
+                  title: '日記 · ${selectedDate.value}',
+                  stripeColor: cs.primary,
+                  expandBody: true,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                error: (Object error, StackTrace _) => _DiaryListSectionCard(
+                  title: '日記 · ${selectedDate.value}',
+                  stripeColor: cs.primary,
+                  expandBody: true,
+                  child: Text('$error'),
+                ),
+              ),
             ),
           ],
         );
@@ -502,63 +493,23 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
 
     final List<EntryIndexRecord> matched = _entriesMatchingTag(records, _selectedTagLabel!);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-          child: Row(
-            children: <Widget>[
-              Icon(Icons.article_outlined, color: cs.primary, size: 24),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      '「$_selectedTagLabel」',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    Text(
-                      '${matched.length} 篇日記 · 已由索引對應',
-                      style:
-                          theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: '取消選取',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() => _selectedTagLabel = null),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
-          ),
-        ),
-        Divider(height: 1, thickness: 1, color: cs.outlineVariant.withValues(alpha: 0.35)),
-        Expanded(
-          child: matched.isEmpty
-              ? Center(
-                  child: Text(
-                    '目前索引中找不到套用此標籤的項目',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.outline,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                )
-              : Scrollbar(
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-                    child: _CompactEntryList(entries: matched.take(40).toList()),
-                  ),
-                ),
-        ),
-      ],
+    return _DiaryListSectionCard(
+      title: '日記 · 「$_selectedTagLabel」 · ${matched.length} 篇',
+      stripeColor: cs.primary,
+      expandBody: true,
+      titleTrail: IconButton(
+        tooltip: '取消選取',
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        onPressed: () => setState(() => _selectedTagLabel = null),
+        icon: const Icon(Icons.close_rounded),
+      ),
+      child: matched.isEmpty
+          ? _PaneEmptyHint(
+              text: '目前索引中找不到套用「$_selectedTagLabel」的項目。',
+            )
+          : _ScrollableCompactEntryList(entries: matched.take(40).toList()),
     );
   }
 
@@ -955,8 +906,7 @@ class _OverviewPane extends ConsumerWidget {
                         ),
                       )
                       .toList();
-              return _SectionCard(
-                listSection: true,
+              return _DiaryListSectionCard(
                 title: _overviewScopedDiarySectionTitle(scope, selectedTag),
                 stripeColor: cs.primary,
                 child: list.isEmpty
@@ -967,14 +917,12 @@ class _OverviewPane extends ConsumerWidget {
                     : _CompactEntryList(entries: list.take(16).toList()),
               );
             },
-            loading: () => _SectionCard(
-              listSection: true,
+            loading: () => _DiaryListSectionCard(
               title: '日記列表',
               stripeColor: cs.primary,
               child: const Center(child: CircularProgressIndicator()),
             ),
-            error: (Object error, StackTrace _) => _SectionCard(
-              listSection: true,
+            error: (Object error, StackTrace _) => _DiaryListSectionCard(
               title: '日記列表',
               stripeColor: cs.primary,
               child: Text('$error'),
@@ -1236,22 +1184,48 @@ class _OverviewScopePicker extends ConsumerWidget {
   }
 }
 
-class _EntryList extends StatelessWidget {
-  const _EntryList({required this.entries});
+/// 總覽式日記列表區塊：`listSection` 外層卡片 + 標題列（可選標題尾端元件）+ 內文。
+class _DiaryListSectionCard extends StatelessWidget {
+  const _DiaryListSectionCard({
+    required this.title,
+    required this.child,
+    this.stripeColor,
+    this.titleTrail,
+    this.expandBody = false,
+  });
+
+  final String title;
+  final Widget child;
+  final Color? stripeColor;
+  final Widget? titleTrail;
+  final bool expandBody;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      listSection: true,
+      title: title,
+      stripeColor: stripeColor,
+      titleTrail: titleTrail,
+      expandChild: expandBody,
+      child: child,
+    );
+  }
+}
+
+class _ScrollableCompactEntryList extends StatelessWidget {
+  const _ScrollableCompactEntryList({required this.entries});
 
   final List<EntryIndexRecord> entries;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(0, 6, 0, 20),
-      itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (BuildContext context, int index) {
-        return _TimelineEntryShell(
-          child: _EntryCard(entry: entries[index]),
-        );
-      },
+    return Scrollbar(
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: _CompactEntryList(entries: entries),
+      ),
     );
   }
 }
@@ -1288,6 +1262,109 @@ class _TimelineEntryShell extends StatelessWidget {
   }
 }
 
+class _EntryList extends StatelessWidget {
+  const _EntryList({required this.entries});
+
+  final List<EntryIndexRecord> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(0, 6, 0, 20),
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (BuildContext context, int index) {
+        return _TimelineEntryShell(
+          child: _EntryCard(entry: entries[index]),
+        );
+      },
+    );
+  }
+}
+
+class _EntryCard extends StatelessWidget {
+  const _EntryCard({required this.entry});
+
+  final EntryIndexRecord entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String? trimmedTitle = entry.title?.trim();
+    final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
+
+    return InkWell(
+      onTap: () => context.push('/editor/${entry.id}'),
+      borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      _EntryTitleAndTagsRow(
+                        titleText: _entryListHeadline(entry),
+                        tags: entry.tags,
+                        titleStyle: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (hasTitle && entry.previewText.trim().isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(
+                          entry.previewText,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.start,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (entry.isDeleted) ...<Widget>[
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 2),
+                    child: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
+                  ),
+                ],
+                const SizedBox(width: 10),
+                _EntryCardRightDateTime(entry: entry),
+              ],
+            ),
+            if (entry.mood != null && entry.mood!.trim().isNotEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: <Widget>[
+                  _MetaChip(label: entry.mood!),
+                ],
+              ),
+            ],
+            if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              _EntryPreviewImageStrip(
+                paths: entry.previewImagePaths,
+                thumbSize: 76,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CompactEntryList extends StatelessWidget {
   const _CompactEntryList({required this.entries});
 
@@ -1306,6 +1383,7 @@ class _CompactEntryList extends StatelessWidget {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
+                    onTap: () => context.push('/editor/${entry.id}'),
                     borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -1343,6 +1421,16 @@ class _CompactEntryList extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              if (entry.isDeleted) ...<Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4, top: 2),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: theme.colorScheme.error,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(width: 10),
                               _EntryCardRightDateTime(entry: entry, compact: true),
                             ],
@@ -1465,7 +1553,7 @@ class _EntryCardRightDateTime extends StatelessWidget {
           textAlign: TextAlign.right,
         ),
         Text(
-          _entryListTimeLabel(entry.updatedAt),
+          _entryListTimeLabel(entry.createdAt),
           style: muted,
           textAlign: TextAlign.right,
         ),
@@ -1504,89 +1592,6 @@ class _EntryPreviewImageStrip extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _EntryCard extends StatelessWidget {
-  const _EntryCard({required this.entry});
-
-  final EntryIndexRecord entry;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final String? trimmedTitle = entry.title?.trim();
-    final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-
-    return InkWell(
-      onTap: () => context.push('/editor/${entry.id}'),
-      borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        _EntryTitleAndTagsRow(
-                          titleText: _entryListHeadline(entry),
-                          tags: entry.tags,
-                          titleStyle: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (hasTitle && entry.previewText.trim().isNotEmpty) ...<Widget>[
-                          const SizedBox(height: 8),
-                          Text(
-                            entry.previewText,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              height: 1.35,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.start,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (entry.isDeleted) ...<Widget>[
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, top: 2),
-                      child: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
-                    ),
-                  ],
-                  const SizedBox(width: 10),
-                  _EntryCardRightDateTime(entry: entry),
-                ],
-              ),
-              if (entry.mood != null && entry.mood!.trim().isNotEmpty) ...<Widget>[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: <Widget>[
-                    _MetaChip(label: entry.mood!),
-                  ],
-                ),
-              ],
-              if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 10),
-                _EntryPreviewImageStrip(
-                  paths: entry.previewImagePaths,
-                  thumbSize: 76,
-                ),
-              ],
-            ],
-          ),
-        ),
     );
   }
 }
@@ -1872,12 +1877,16 @@ class _SectionCard extends StatelessWidget {
     required this.child,
     this.listSection = false,
     this.stripeColor,
+    this.titleTrail,
+    this.expandChild = false,
   });
 
   final String title;
   final Widget child;
   final bool listSection;
   final Color? stripeColor;
+  final Widget? titleTrail;
+  final bool expandChild;
 
   @override
   Widget build(BuildContext context) {
@@ -1900,7 +1909,8 @@ class _SectionCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,
           children: <Widget>[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1918,15 +1928,18 @@ class _SectionCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                ?titleTrail,
               ],
             ),
             const SizedBox(height: 14),
-            child,
+            if (expandChild) Expanded(child: child) else child,
           ],
         ),
       ),
@@ -2003,33 +2016,6 @@ class _MetaChip extends StatelessWidget {
                 color: cs.onTertiaryContainer,
                 fontWeight: FontWeight.w600,
               ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSecondaryContainer,
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ),
     );

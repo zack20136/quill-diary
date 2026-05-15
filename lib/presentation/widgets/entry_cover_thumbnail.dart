@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers.dart';
+import '../../features/editor/providers/editor_providers.dart';
 
 /// Decrypted preview for a vault asset path ([filename].[enc] on disk).
 class EntryCoverThumbnail extends ConsumerWidget {

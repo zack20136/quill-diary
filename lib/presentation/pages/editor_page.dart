@@ -13,12 +13,17 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
 import '../../application/diary/diary_presence_tag_counts.dart';
-import '../../app/providers.dart';
 import '../../infrastructure/database/index_database.dart';
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
+import '../../features/editor/providers/editor_providers.dart';
+import '../../features/home/providers/home_providers.dart';
+import '../../features/session/providers/session_providers.dart';
+import '../../features/session/session_messages.dart';
+import '../../features/settings/providers/settings_providers.dart';
+import '../../shared/providers/core_providers.dart';
 import '../../infrastructure/storage/vault_repository.dart';
 import '../page_style.dart';
 import '../tag_visual.dart';

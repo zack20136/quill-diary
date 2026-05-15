@@ -4,9 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers.dart';
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
+import '../../features/editor/providers/editor_providers.dart';
+import '../../features/home/providers/home_providers.dart';
+import '../../features/session/providers/session_providers.dart';
+import '../../features/session/session_messages.dart';
+import '../../features/settings/providers/settings_providers.dart';
+import '../../shared/providers/core_providers.dart';
 import '../../infrastructure/database/index_database.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/storage/vault_repository.dart';
@@ -69,7 +74,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ? () => _runAction(() async {
                                 await ref.read(appSessionProvider.notifier).unlockWithRecovery(
                                       _recoveryKeyInputController.text.trim(),
-                                      ref.read(unlockWithRecoveryKeyUseCaseProvider),
                                     );
                                 await refreshEntryIndexCaches(ref);
                                 ref.invalidate(backupHistoryProvider);
