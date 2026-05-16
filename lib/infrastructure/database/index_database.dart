@@ -92,30 +92,6 @@ class EntryIndexRecord {
   }
 }
 
-class BackupHistoryRecord {
-  const BackupHistoryRecord({
-    required this.backupId,
-    required this.provider,
-    required this.createdAt,
-    required this.status,
-    required this.entryCount,
-    required this.assetCount,
-    this.remoteFileId,
-    this.byteSize,
-    this.errorCode,
-  });
-
-  final BackupId backupId;
-  final String provider;
-  final String? remoteFileId;
-  final DateTime createdAt;
-  final String status;
-  final int entryCount;
-  final int assetCount;
-  final int? byteSize;
-  final String? errorCode;
-}
-
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(VaultPathStrategy pathStrategy)
       : super(
@@ -212,19 +188,6 @@ class IndexDatabase extends GeneratedDatabase {
         tag_normalized TEXT PRIMARY KEY,
         accent_argb INTEGER NOT NULL,
         updated_at TEXT NOT NULL
-      );
-    ''');
-    await customStatement('''
-      CREATE TABLE IF NOT EXISTS backup_history (
-        backup_id TEXT PRIMARY KEY,
-        provider TEXT NOT NULL,
-        remote_file_id TEXT,
-        created_at TEXT NOT NULL,
-        status TEXT NOT NULL,
-        entry_count INTEGER NOT NULL,
-        asset_count INTEGER NOT NULL,
-        byte_size INTEGER,
-        error_code TEXT
       );
     ''');
   }
@@ -594,49 +557,6 @@ class IndexDatabase extends GeneratedDatabase {
       'DELETE FROM app_kv WHERE key = ?;',
       <Object?>[key],
     );
-  }
-
-  Future<void> recordBackupHistory(BackupHistoryRecord record) async {
-    await customStatement(
-      '''
-        INSERT OR REPLACE INTO backup_history (
-          backup_id, provider, remote_file_id, created_at, status, entry_count,
-          asset_count, byte_size, error_code
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-      ''',
-      <Object?>[
-        record.backupId,
-        record.provider,
-        record.remoteFileId,
-        record.createdAt.toIso8601String(),
-        record.status,
-        record.entryCount,
-        record.assetCount,
-        record.byteSize,
-        record.errorCode,
-      ],
-    );
-  }
-
-  Future<List<BackupHistoryRecord>> listBackups() async {
-    final List<QueryRow> rows = await customSelect(
-      'SELECT * FROM backup_history ORDER BY created_at DESC;',
-    ).get();
-    return rows
-        .map(
-          (QueryRow row) => BackupHistoryRecord(
-            backupId: row.read<String>('backup_id'),
-            provider: row.read<String>('provider'),
-            remoteFileId: row.readNullable<String>('remote_file_id'),
-            createdAt: DateTime.parse(row.read<String>('created_at')),
-            status: row.read<String>('status'),
-            entryCount: row.read<int>('entry_count'),
-            assetCount: row.read<int>('asset_count'),
-            byteSize: row.readNullable<int>('byte_size'),
-            errorCode: row.readNullable<String>('error_code'),
-          ),
-        )
-        .toList();
   }
 
   int _wordCount(String markdown) {

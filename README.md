@@ -34,13 +34,16 @@ flutter run   # 目標請選 Android 裝置或模擬器
 
 ## Vault 在本機的路徑（摘要）
 
-Application support 底下的 `quill_lock_diary/vault/`：
+Application support 底下會有 `quill_lock_diary/`，其中 `vault/` 保存加密內容：
 
 - `recovery.json` — vault 識別、Argon2id 參數與 hint（不含 Recovery Key 本體）
 - `manifest.json.enc` — 摘要資訊的加密 Manifest，並用來**驗證**使用者輸入的 Recovery Key
 - `entries/**.md.enc` — 加密日記正文（內為 YAML front matter + Markdown）
 - `assets/**/*.enc` — 加密附件
-- `index/journal_index.sqlite` — Drift/SQLite 索引
+
+同層另有：
+
+- `index/journal_index.sqlite` — Drift/SQLite 索引（位於 vault 外）
 
 ## 安全與邊界（請一讀）
 
@@ -54,6 +57,7 @@ Application support 底下的 `quill_lock_diary/vault/`：
 | 文件 | 用途 |
 |------|------|
 | [`docs/文件索引.md`](docs/文件索引.md) | `docs/` 目錄的文件導覽 |
+| [`docs/google_drive_oauth_setup.md`](docs/google_drive_oauth_setup.md) | Google Drive 備份需要的 Android / iOS OAuth 設定 |
 | [`docs/加密流程.md`](docs/加密流程.md) | LDJ2、`fileKey`、裝置槽與 Recovery 槽如何產出 |
 | [`docs/解密流程.md`](docs/解密流程.md) | 信任裝置路徑與 Recovery Key 路徑如何取得 `fileKey` 並解密 |
 | [`docs/其他主要流程.md`](docs/其他主要流程.md) | Session、驗證、rewrap、索引、備份／還原、匯出 |

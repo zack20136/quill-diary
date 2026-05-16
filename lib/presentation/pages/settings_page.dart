@@ -1,6 +1,5 @@
-import 'dart:io';
+import 'dart:async' show unawaited;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,10 +10,9 @@ import '../../features/home/providers/home_providers.dart';
 import '../../features/session/providers/session_providers.dart';
 import '../../features/session/session_messages.dart';
 import '../../features/settings/providers/settings_providers.dart';
-import '../../shared/providers/core_providers.dart';
-import '../../infrastructure/database/index_database.dart';
+import '../../infrastructure/drive/drive_backup_service.dart';
 import '../../infrastructure/security/app_lock_service.dart';
-import '../../infrastructure/storage/vault_repository.dart';
+import '../../shared/providers/core_providers.dart';
 import '../page_style.dart';
 import '../state/app_session_state.dart';
 
@@ -40,8 +38,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
-    final AsyncValue<List<BackupHistoryRecord>> backupHistoryAsync =
-        ref.watch(backupHistoryProvider);
     final AppLockService appLockService = ref.watch(appLockServiceProvider);
     final ThemeData theme = Theme.of(context);
 
@@ -76,7 +72,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       _recoveryKeyInputController.text.trim(),
                                     );
                                 await refreshEntryIndexCaches(ref);
-                                ref.invalidate(backupHistoryProvider);
                               })
                           : null,
                     ),
@@ -105,8 +100,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onCreateRecoveryKey: metadata != null
                           ? null
                           : () => _runAction(() async {
-                                final RecoverySetupResult result =
-                                    await ref.read(setupRecoveryKeyUseCaseProvider).call();
+                                final result = await ref
+                                    .read(setupRecoveryKeyUseCaseProvider)
+                                    .call();
                                 ref.read(appSessionProvider.notifier).activateSession(
                                       result.session,
                                       message: kRecoverySetupSuccessMessage,
@@ -193,10 +189,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
-                                    final File file =
-                                        await ref.read(createBackupSnapshotUseCaseProvider).call();
-                                    ref.invalidate(backupHistoryProvider);
-                                    _showMessage('已建立本機備份：${file.path}');
+                                    final String? savedPath = await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .createBackupWithPicker();
+                                    if (savedPath == null) {
+                                      return;
+                                    }
+                                    _showMessage('已儲存本機備份：$savedPath');
                                   }),
                         ),
                         _SettingsActionButton(
@@ -210,10 +209,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     if (session == null) {
                                       throw StateError('請先完成解鎖，才能匯出 Markdown。');
                                     }
-                                    final File exportDir = await ref
-                                        .read(vaultRepositoryProvider)
-                                        .exportMarkdownVault(session);
-                                    _showMessage('已匯出 Markdown：${exportDir.path}');
+                                    final String? exportPath = await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .exportMarkdownWithPicker(session);
+                                    if (exportPath == null) {
+                                      return;
+                                    }
+                                    _showMessage('已匯出 Markdown：$exportPath');
                                   }),
                         ),
                       ],
@@ -237,15 +239,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
-                                    final String? remoteId = await ref
-                                        .read(vaultRepositoryProvider)
-                                        .uploadLatestBackupToDrive();
-                                    ref.invalidate(backupHistoryProvider);
-                                    _showMessage(
-                                      remoteId == null
-                                          ? '目前沒有可上傳的本機備份。'
-                                          : '已上傳至 Google Drive：$remoteId',
-                                    );
+                                    await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .uploadBackupToDrive();
+                                    _showMessage('已上傳新的備份至 Google Drive。');
                                   }),
                         ),
                         _SettingsActionButton(
@@ -254,9 +251,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
-                                    await ref.read(vaultRepositoryProvider).restoreLatestDriveBackup();
+                                    final List<DriveBackupFile> backups = await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .listDriveBackups();
+                                    final DriveBackupFile? backup =
+                                        await _pickDriveBackup(backups);
+                                    if (backup == null) {
+                                      return;
+                                    }
+                                    await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .restoreDriveBackup(backup);
                                     await _resetAppState();
-                                    _showMessage('已從 Google Drive 還原最新備份。');
+                                    _showMessage('已從 Google Drive 還原：${backup.name}');
                                   }),
                         ),
                       ],
@@ -280,15 +287,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
-                                    final FilePickerResult? picked = await FilePicker.pickFiles(
-                                      type: FileType.custom,
-                                      allowedExtensions: const <String>['jbackup'],
-                                    );
-                                    final String? path = picked?.files.single.path;
-                                    if (path == null) {
+                                    final bool restored = await ref
+                                        .read(vaultTransferServiceProvider)
+                                        .restoreBackupFromPicker();
+                                    if (!restored) {
                                       return;
                                     }
-                                    await ref.read(vaultRepositoryProvider).restoreBackup(File(path));
                                     await _resetAppState();
                                     _showMessage('已從本機備份完成還原。');
                                   }),
@@ -298,26 +302,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              backupHistoryAsync.when(
-                data: (List<BackupHistoryRecord> backups) {
-                  return _SettingsSection(
-                    title: '備份紀錄',
-                    description: '查看最近建立的備份與同步結果。',
-                    child: _BackupHistorySection(backups: backups),
-                  );
-                },
-                loading: () => const _SectionLoading(),
-                error: (Object error, StackTrace _) => _SettingsSection(
-                  title: '備份紀錄',
-                  description: '查看最近建立的備份與同步結果。',
-                  child: _SettingsInfoBanner(
-                    icon: Icons.error_outline_rounded,
-                    message: '$error',
-                    tone: _BannerTone.error,
-                  ),
-                ),
-              ),
             ],
           ],
         ),
@@ -325,12 +309,64 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<DriveBackupFile?> _pickDriveBackup(List<DriveBackupFile> backups) async {
+    if (backups.isEmpty) {
+      _showMessage('Google Drive 沒有可還原的備份。');
+      return null;
+    }
+    if (!mounted) {
+      return null;
+    }
+    return showDialog<DriveBackupFile>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('選擇 Google Drive 備份'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: backups.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (BuildContext context, int index) {
+                final DriveBackupFile backup = backups[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.cloud_done_outlined),
+                  title: Text(backup.name),
+                  subtitle: Text(_formatDriveBackupTime(backup.createdAt)),
+                  onTap: () => Navigator.of(dialogContext).pop(backup),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('取消'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatDriveBackupTime(DateTime? value) {
+    if (value == null) {
+      return '建立時間未知';
+    }
+    return value.toLocal().toString().replaceFirst('.000', '');
+  }
+
   Future<void> _resetAppState() async {
     ref.read(appSessionProvider.notifier).reset();
+    ref.invalidate(vaultTransferServiceProvider);
+    ref.invalidate(vaultArchiveIoProvider);
+    ref.invalidate(vaultRepositoryProvider);
+    ref.invalidate(indexDatabaseProvider);
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
     ref.invalidate(recoveryMetadataProvider);
-    ref.invalidate(backupHistoryProvider);
     ref.read(entryIndexRevisionProvider.notifier).bump();
   }
 
@@ -339,7 +375,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await action();
     } catch (error) {
-      _showMessage('$error');
+      final String text = error is StateError ? error.message : '$error';
+      if (_shouldOfferGooglePermissionsHelp(text)) {
+        _showGoogleDriveHelpSnackBar(text, action);
+      } else {
+        _showMessage(text);
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -351,7 +392,61 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _retryGoogleDriveAfterSignOut(Future<void> Function() action) async {
+    await ref.read(vaultTransferServiceProvider).resetGoogleDriveSignInForConsentRetry();
+    await _runAction(action);
+  }
+
+  void _showGoogleDriveHelpSnackBar(String message, Future<void> Function() action) {
+    if (!mounted) {
+      return;
+    }
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(message),
+            const SizedBox(height: 10),
+            const Text(
+              '若剛才拒絕或關閉過同意畫面，請先重置這次 Google 連線，再重新開啟登入與 Drive 授權。',
+              style: TextStyle(fontSize: 13, height: 1.35),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.tonal(
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  unawaited(_retryGoogleDriveAfterSignOut(action));
+                },
+                child: const Text('前往同意權限'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _shouldOfferGooglePermissionsHelp(String message) {
+    return message.contains('Google 登入') ||
+        message.contains('Google 雲端備份') ||
+        message.contains('oauth_config.xml') ||
+        message.contains('Cloud Console') ||
+        message.contains('No credential available') ||
+        message.contains('GIDClientID') ||
+        message.contains('GIDServerClientID');
   }
 }
 
@@ -507,47 +602,6 @@ class _RecoveryKeySectionBody extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _BackupHistorySection extends StatelessWidget {
-  const _BackupHistorySection({required this.backups});
-
-  final List<BackupHistoryRecord> backups;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    if (backups.isEmpty) {
-      return const _SettingsInfoBanner(
-        icon: Icons.history_toggle_off_rounded,
-        message: '目前沒有備份紀錄。',
-      );
-    }
-
-    return Column(
-      children: backups
-          .map(
-            (BackupHistoryRecord backup) => Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                title: Text('${backup.provider} / ${backup.status}'),
-                subtitle: Text(
-                  '${backup.createdAt.toLocal()} / ${backup.byteSize ?? 0} bytes',
-                ),
-                trailing: backup.remoteFileId == null
-                    ? const Icon(Icons.chevron_right_rounded)
-                    : const Icon(Icons.cloud_done_outlined),
-              ),
-            ),
-          )
-          .toList(),
     );
   }
 }

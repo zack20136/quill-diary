@@ -66,5 +66,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>GIDServerClientID</key>
+	<string>586472823841-19q854obig1onvbf6gl49aloqdqs6j76.apps.googleusercontent.com</string>
+	<key>GIDClientID</key>
+	<string>PASTE_IOS_OAUTH_CLIENT_ID.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.PASTE_IOS_ID_PREFIX_BEFORE_DOT_APPS</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -18,19 +18,15 @@ class VaultPathStrategy {
     return Directory(p.join(root.path, 'vault'));
   }
 
-  Future<Directory> exportsDirectory() async {
+  /// 與日記內容目錄分開，否則還原備份刪除整個 vault 時會讓仍開啟的索引庫變成唯讀。
+  Future<Directory> indexRootDirectory() async {
     final Directory root = await appRootDirectory();
-    return Directory(p.join(root.path, 'exports'));
-  }
-
-  Future<Directory> backupsDirectory() async {
-    final Directory root = await appRootDirectory();
-    return Directory(p.join(root.path, 'backups'));
+    return Directory(p.join(root.path, 'index'));
   }
 
   Future<String> indexDatabasePath() async {
-    final Directory vaultRoot = await vaultRootDirectory();
-    return p.join(vaultRoot.path, 'index', 'journal_index.sqlite');
+    final Directory indexRoot = await indexRootDirectory();
+    return p.join(indexRoot.path, 'journal_index.sqlite');
   }
 
   Future<String> recoveryMetadataPath() async {
@@ -87,8 +83,34 @@ class VaultPathStrategy {
     final Directory vaultRoot = await vaultRootDirectory();
     await Directory(p.join(vaultRoot.path, 'entries')).create(recursive: true);
     await Directory(p.join(vaultRoot.path, 'assets')).create(recursive: true);
-    await Directory(p.join(vaultRoot.path, 'index')).create(recursive: true);
-    await exportsDirectory().then((Directory dir) => dir.create(recursive: true));
-    await backupsDirectory().then((Directory dir) => dir.create(recursive: true));
+    final Directory indexRoot = await indexRootDirectory();
+    await indexRoot.create(recursive: true);
+  }
+
+  /// 舊版將索引放在 `vault/index/`；啟動時搬至 [indexRootDirectory]（須在首次開啟 IndexDatabase 之前呼叫）。
+  Future<void> migrateLegacyVaultIndexIfNeeded() async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    final Directory legacyDir = Directory(p.join(vaultRoot.path, 'index'));
+    final Directory destDir = await indexRootDirectory();
+    final File destDb = File(p.join(destDir.path, 'journal_index.sqlite'));
+    if (destDb.existsSync()) {
+      return;
+    }
+    final File legacyDb = File(p.join(legacyDir.path, 'journal_index.sqlite'));
+    if (!legacyDb.existsSync()) {
+      return;
+    }
+    await destDir.create(recursive: true);
+    for (final FileSystemEntity entity in legacyDir.listSync()) {
+      if (entity is! File) {
+        continue;
+      }
+      final String name = p.basename(entity.path);
+      if (!name.startsWith('journal_index.sqlite')) {
+        continue;
+      }
+      await entity.copy(p.join(destDir.path, name));
+    }
+    await legacyDir.delete(recursive: true);
   }
 }

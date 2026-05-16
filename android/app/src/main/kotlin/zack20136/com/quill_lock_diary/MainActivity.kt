@@ -1,4 +1,4 @@
-package com.example.quill_lock_diary
+package zack20136.com.quill_lock_diary
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -17,6 +17,19 @@ import javax.crypto.spec.GCMParameterSpec
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            OAUTH_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getServerClientId" -> {
+                    val id = getString(R.string.oauth_request_id_token).trim()
+                    result.success(if (id.isEmpty()) null else id)
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -184,6 +197,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     companion object {
+        private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
         private const val CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"

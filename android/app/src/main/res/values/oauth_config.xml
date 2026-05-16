@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 網頁應用程式 OAuth 2.0 Client ID（serverClientId）；套件名稱須與 build.gradle applicationId 一致並於 GCP 建立 Android 用戶端。 -->
+    <string name="oauth_request_id_token" translatable="false">586472823841-19q854obig1onvbf6gl49aloqdqs6j76.apps.googleusercontent.com</string>
+</resources>

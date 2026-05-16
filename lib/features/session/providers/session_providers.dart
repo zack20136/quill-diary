@@ -4,6 +4,7 @@ import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/security/app_lock_service.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
+import '../../../infrastructure/storage/vault_state_keys.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../session_messages.dart';
 import '../state/app_session_state.dart';
@@ -104,7 +105,7 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
     }
 
     final UnlockedVaultSession session = await repository.openTrustedSession();
-    if ((await ref.read(indexDatabaseProvider).getAppValue('last_rebuild_at')) == null) {
+    if ((await ref.read(indexDatabaseProvider).getAppValue(kLastRebuildAtKey)) == null) {
       await repository.rebuildIndex(session);
     }
 

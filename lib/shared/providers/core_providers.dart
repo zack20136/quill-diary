@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/backup/create_backup_snapshot_use_case.dart';
 import '../../application/diary/create_entry_use_case.dart';
 import '../../application/recovery/setup_recovery_key_use_case.dart';
 import '../../application/recovery/unlock_with_recovery_key_use_case.dart';
@@ -13,8 +12,10 @@ import '../../infrastructure/drive/drive_backup_service.dart';
 import '../../infrastructure/markdown/front_matter_codec.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/security/device_key_manager.dart';
+import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
+import '../../infrastructure/storage/vault_transfer_service.dart';
 
 final supportedPlatformProvider = Provider<bool>((Ref ref) {
   return !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -63,6 +64,21 @@ final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
     cryptoService: ref.watch(cryptoServiceProvider),
     indexDatabase: ref.watch(indexDatabaseProvider),
     deviceKeyManager: ref.watch(deviceKeyManagerProvider),
+  );
+});
+
+final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
+  return VaultArchiveIo(
+    pathStrategy: ref.watch(vaultPathStrategyProvider),
+    repository: ref.watch(vaultRepositoryProvider),
+    frontMatterCodec: ref.watch(frontMatterCodecProvider),
+    indexDatabase: ref.watch(indexDatabaseProvider),
+  );
+});
+
+final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
+  return VaultTransferService(
+    archiveIo: ref.watch(vaultArchiveIoProvider),
     driveBackupService: ref.watch(driveBackupServiceProvider),
   );
 });
@@ -82,11 +98,6 @@ final setupRecoveryKeyUseCaseProvider = Provider<SetupRecoveryKeyUseCase>((Ref r
 final unlockWithRecoveryKeyUseCaseProvider =
     Provider<UnlockWithRecoveryKeyUseCase>((Ref ref) {
   return UnlockWithRecoveryKeyUseCase(ref.watch(vaultRepositoryProvider));
-});
-
-final createBackupSnapshotUseCaseProvider =
-    Provider<CreateBackupSnapshotUseCase>((Ref ref) {
-  return CreateBackupSnapshotUseCase(ref.watch(vaultRepositoryProvider));
 });
 
 final unlockAppUseCaseProvider = Provider<UnlockAppUseCase>((Ref ref) {
