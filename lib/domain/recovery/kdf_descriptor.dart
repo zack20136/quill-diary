@@ -16,8 +16,9 @@ class KdfDescriptor {
   /// Memory cost: number of 1 KiB blocks ([Argon2id.memory]).
   static const int kRecoveryMemoryKiB = 19456;
 
-  /// Time cost ([Argon2id.iterations]).
-  static const int kRecoveryIterations = 2;
+  /// Time cost ([Argon2id.iterations]); 較 OWASP Argon2 下限略高以降低離線 brute-force 成本，
+  /// 仍維持 ~19 MiB 記憶體與 parallelism=1 以適合中階 Android。
+  static const int kRecoveryIterations = 3;
   static const int kRecoveryParallelism = 1;
   static const int kRecoveryHashLength = 32;
 

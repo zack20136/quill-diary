@@ -14,7 +14,9 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../crypto/crypto_service.dart';
 import '../database/index_database.dart';
+import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
+import '../security/app_lock_service.dart';
 import '../security/device_key_manager.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
@@ -46,26 +48,27 @@ class VaultRepository {
     required VaultPathStrategy pathStrategy,
     required FrontMatterCodec frontMatterCodec,
     required CryptoService cryptoService,
-    required IndexDatabase indexDatabase,
+    required IndexDatabaseManager indexDatabaseManager,
     required DeviceKeyManager deviceKeyManager,
+    required AppLockService appLockService,
   })  : _pathStrategy = pathStrategy,
         _frontMatterCodec = frontMatterCodec,
         _cryptoService = cryptoService,
-        _indexDatabase = indexDatabase,
-        _deviceKeyManager = deviceKeyManager;
+        _indexDatabaseManager = indexDatabaseManager,
+        _deviceKeyManager = deviceKeyManager,
+        _appLockService = appLockService;
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
   final CryptoService _cryptoService;
-  final IndexDatabase _indexDatabase;
+  final IndexDatabaseManager _indexDatabaseManager;
   final DeviceKeyManager _deviceKeyManager;
+  final AppLockService _appLockService;
 
   RecoveryMetadata? _cachedRecoveryMetadata;
 
   Future<void> initialize() async {
     await _pathStrategy.ensureBaseDirectories();
-    await _pathStrategy.migrateLegacyVaultIndexIfNeeded();
-    await _indexDatabase.initialize();
     _cachedRecoveryMetadata = await readRecoveryMetadata();
   }
 
@@ -103,6 +106,8 @@ class VaultRepository {
         nonceBase64: record.nonceBase64,
         ciphertextBase64: record.ciphertextBase64,
       );
+    } on DeviceKeyException {
+      rethrow;
     } on Object catch (error, stackTrace) {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
       Error.throwWithStackTrace(
@@ -121,6 +126,7 @@ class VaultRepository {
       recoveryWrapKey: recoveryWrapKey,
       deviceSlotId: deviceInfo.slotId,
     );
+    await _openIndexForSession(session);
     try {
       await _resumeRewrapIfNeeded(session, metadata);
     } on Object catch (error, stackTrace) {
@@ -189,7 +195,11 @@ class VaultRepository {
     );
     _cachedRecoveryMetadata = metadata;
 
-    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(metadata.vaultId);
+    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
+    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
+      metadata.vaultId,
+      userAuthenticationRequired: biometricEnabled,
+    );
     await _storeWrappedRecoveryKey(
       vaultId: metadata.vaultId,
       recoveryWrapKey: recoveryWrapKey,
@@ -201,6 +211,7 @@ class VaultRepository {
       recoveryWrapKey: recoveryWrapKey,
       deviceSlotId: deviceInfo.slotId,
     );
+    await _openIndexForSession(session);
     await _writeEncryptedManifest(session, metadata);
 
     return RecoverySetupResult(
@@ -218,7 +229,11 @@ class VaultRepository {
     );
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
 
-    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(metadata.vaultId);
+    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
+    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
+      metadata.vaultId,
+      userAuthenticationRequired: biometricEnabled,
+    );
 
     final UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
@@ -227,6 +242,7 @@ class VaultRepository {
       deviceSlotId: deviceInfo.slotId,
     );
 
+    await _openIndexForSession(session);
     await _setRewrapState(inProgress: true);
     try {
       await _rewrapVaultForTrustedDevice(session, metadata);
@@ -252,18 +268,18 @@ class VaultRepository {
     String? searchQuery,
     DateOnly? date,
   }) {
-    return _indexDatabase.listEntries(searchQuery: searchQuery, date: date);
+    return _requireOpenIndex().listEntries(searchQuery: searchQuery, date: date);
   }
 
   Future<List<DateOnly>> monthEntryDates(DateTime month) {
-    return _indexDatabase.monthEntryDates(month);
+    return _requireOpenIndex().monthEntryDates(month);
   }
 
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,
     EntryId entryId,
   ) async {
-    final EntryIndexRecord? indexRecord = await _indexDatabase.getEntryById(entryId);
+    final EntryIndexRecord? indexRecord = await _requireOpenIndex().getEntryById(entryId);
     if (indexRecord == null) {
       return null;
     }
@@ -283,7 +299,19 @@ class VaultRepository {
   }
 
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
-    return _indexDatabase.attachmentsForEntry(entryId);
+    return _requireOpenIndex().attachmentsForEntry(entryId);
+  }
+
+  Future<Map<String, int>> fetchTagAccentArgbMap() {
+    return _requireOpenIndex().fetchTagAccentArgbMap();
+  }
+
+  Future<void> upsertTagAccentArgb(String tag, int accentArgb) {
+    return _requireOpenIndex().upsertTagAccentArgb(tag, accentArgb);
+  }
+
+  Future<void> deleteTagAccentArgb(String tag) {
+    return _requireOpenIndex().deleteTagAccentArgb(tag);
   }
 
   Future<DiaryEntry> saveEntry(
@@ -294,7 +322,7 @@ class VaultRepository {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
     final List<AssetAttachment> existingFromDb =
-        await _indexDatabase.attachmentsForEntry(draft.id);
+        await _requireOpenIndex().attachmentsForEntry(draft.id);
     final Set<AssetId> keepExistingIds = draft.attachmentIds.toSet();
     final List<AssetAttachment> existingKept = existingFromDb
         .where((AssetAttachment a) => keepExistingIds.contains(a.id))
@@ -338,7 +366,7 @@ class VaultRepository {
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
 
-    await _indexDatabase.upsertEntry(
+    await _requireOpenIndex().upsertEntry(
       entry: normalized,
       filePath: filePath,
       previewText: previewTextFromMarkdown(normalized.markdownBody),
@@ -346,7 +374,7 @@ class VaultRepository {
       encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
     );
-    await _indexDatabase.replaceAttachments(
+    await _requireOpenIndex().replaceAttachments(
       normalized.id,
       allAttachments,
       <AssetId, String>{
@@ -358,7 +386,7 @@ class VaultRepository {
           ),
       },
     );
-    await _indexDatabase.upsertSearchDocument(
+    await _requireOpenIndex().upsertSearchDocument(
       entry: normalized,
       previewText: previewTextFromMarkdown(normalized.markdownBody),
     );
@@ -375,21 +403,23 @@ class VaultRepository {
       return;
     }
     await saveEntry(session, entry.copyWith(isDeleted: true));
-    await _indexDatabase.markEntryDeleted(entryId);
+    await _requireOpenIndex().markEntryDeleted(entryId);
   }
 
   Future<List<EntryIndexRecord>> searchEntries(String query) {
-    return _indexDatabase.searchEntries(query);
+    return _requireOpenIndex().searchEntries(query);
   }
 
   Future<void> rebuildIndex(UnlockedVaultSession session) async {
+    await _openIndexForSession(session);
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    await _indexDatabase.rebuild();
+    final IndexDatabase indexDb = _requireOpenIndex();
+    await indexDb.rebuild();
 
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory entriesDirectory = Directory(p.join(vaultRoot.path, 'entries'));
     if (!entriesDirectory.existsSync()) {
-      await _indexDatabase.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
+      await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
       return;
     }
 
@@ -410,7 +440,7 @@ class VaultRepository {
           );
       final List<AssetAttachment> attachments = await _findAttachmentsForEntry(entry);
 
-      await _indexDatabase.upsertEntry(
+      await indexDb.upsertEntry(
         entry: entry,
         filePath: entity.path,
         previewText: previewTextFromMarkdown(entry.markdownBody),
@@ -418,11 +448,11 @@ class VaultRepository {
         encryptedFileSize: await entity.length(),
         encryptedModifiedAt: await entity.lastModified(),
       );
-      await _indexDatabase.upsertSearchDocument(
+      await indexDb.upsertSearchDocument(
         entry: entry,
         previewText: previewTextFromMarkdown(entry.markdownBody),
       );
-      await _indexDatabase.replaceAttachments(
+      await indexDb.replaceAttachments(
         entry.id,
         attachments,
         <AssetId, String>{
@@ -436,7 +466,7 @@ class VaultRepository {
       );
     }
 
-    await _indexDatabase.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
+    await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
   }
 
   DecryptionContext _decryptionContext(UnlockedVaultSession session) {
@@ -784,9 +814,11 @@ class VaultRepository {
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
   }) async {
+    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
     final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
       vaultId: vaultId,
       plaintextBytes: recoveryWrapKey,
+      userAuthenticationRequired: biometricEnabled,
     );
     await _deviceKeyManager.storeWrappedRecoveryKey(
       vaultId: vaultId,
@@ -805,7 +837,7 @@ class VaultRepository {
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
   ) async {
-    if (await _indexDatabase.getAppValue(kRewrapInProgressKey) != 'true') {
+    if (await _requireOpenIndex().getAppValue(kRewrapInProgressKey) != 'true') {
       return;
     }
     await _rewrapVaultForTrustedDevice(session, metadata);
@@ -814,15 +846,16 @@ class VaultRepository {
   }
 
   Future<void> _setRewrapState({required bool inProgress}) async {
-    await _indexDatabase.setAppValue(kRewrapInProgressKey, inProgress ? 'true' : 'false');
+    final IndexDatabase indexDb = _requireOpenIndex();
+    await indexDb.setAppValue(kRewrapInProgressKey, inProgress ? 'true' : 'false');
     if (inProgress) {
-      await _indexDatabase.setAppValue(
+      await indexDb.setAppValue(
         kRewrapStartedAtKey,
         DateTime.now().toIso8601String(),
       );
       return;
     }
-    await _indexDatabase.deleteAppValue(kRewrapStartedAtKey);
+    await indexDb.deleteAppValue(kRewrapStartedAtKey);
   }
 
   Future<void> _atomicWriteBytes(File file, Uint8List bytes) async {
@@ -870,5 +903,54 @@ class VaultRepository {
         .replaceAllMapped(RegExp(r'.{4}'), (Match match) => '${match.group(0)}-')
         .replaceAll(RegExp(r'-$'), '');
   }
+
+  Future<void> closeUnlockedResources() {
+    return _indexDatabaseManager.close();
+  }
+
+  Future<void> deleteDerivedLocalState() {
+    return _indexDatabaseManager.deleteDatabaseFiles();
+  }
+
+  Future<UnlockedVaultSession> refreshTrustedSessionProtection(
+    UnlockedVaultSession session, {
+    required bool biometricRequired,
+  }) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
+      metadata.vaultId,
+      userAuthenticationRequired: biometricRequired,
+    );
+    final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
+      vaultId: metadata.vaultId,
+      plaintextBytes: _requireRecoveryWrapKey(session),
+      userAuthenticationRequired: biometricRequired,
+    );
+    await _deviceKeyManager.storeWrappedRecoveryKey(
+      vaultId: metadata.vaultId,
+      record: WrappedRecoveryKeyRecord(
+        slotId: payload.slotId,
+        nonceBase64: payload.nonceBase64,
+        ciphertextBase64: payload.ciphertextBase64,
+        wrappedAt: DateTime.now(),
+        formatVersion: 2,
+        platform: deviceInfo.platform,
+      ),
+    );
+    return session.copyWith(deviceSlotId: deviceInfo.slotId);
+  }
+
+  Future<void> ensureIndexReady(UnlockedVaultSession session) async {
+    await _openIndexForSession(session);
+    if (await _requireOpenIndex().getAppValue(kLastRebuildAtKey) == null) {
+      await rebuildIndex(session);
+    }
+  }
+
+  Future<void> _openIndexForSession(UnlockedVaultSession session) {
+    return _indexDatabaseManager.openForSession(session);
+  }
+
+  IndexDatabase _requireOpenIndex() => _indexDatabaseManager.requireOpen();
 
 }

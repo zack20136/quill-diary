@@ -334,6 +334,7 @@ class LocalCryptoService implements CryptoService {
     final DeviceWrappedPayload devicePayload = await _deviceKeyManager.wrapWithDeviceKey(
       vaultId: vaultId,
       plaintextBytes: fileKeyBytes,
+      userAuthenticationRequired: false,
     );
     final EncryptionKeySlot deviceSlot = EncryptionKeySlot(
       slotId: devicePayload.slotId,

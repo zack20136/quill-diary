@@ -10,7 +10,11 @@ import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';
 
 final tagAccentArgbMapProvider = FutureProvider<Map<String, int>>((Ref ref) async {
-  return ref.watch(indexDatabaseProvider).fetchTagAccentArgbMap();
+  final AppSessionState state = await ref.watch(effectiveAppSessionProvider.future);
+  if (!state.isUnlocked || state.session == null) {
+    return const <String, int>{};
+  }
+  return ref.watch(vaultRepositoryProvider).fetchTagAccentArgbMap();
 });
 
 class EntryIndexRevision extends Notifier<int> {

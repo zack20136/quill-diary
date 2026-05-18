@@ -68,7 +68,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
       return;
     }
     try {
-      await ref.read(indexDatabaseProvider).upsertTagAccentArgb(name, colorArgb32(_accent));
+      await ref.read(vaultRepositoryProvider).upsertTagAccentArgb(name, colorArgb32(_accent));
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

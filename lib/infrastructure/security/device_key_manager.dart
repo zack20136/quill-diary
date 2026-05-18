@@ -70,16 +70,41 @@ class WrappedRecoveryKeyRecord {
   }
 }
 
+sealed class DeviceKeyException implements Exception {
+  const DeviceKeyException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+final class DeviceKeyUserCancelledException extends DeviceKeyException {
+  const DeviceKeyUserCancelledException() : super('使用者已取消裝置驗證。');
+}
+
+final class DeviceKeyAuthFailedException extends DeviceKeyException {
+  const DeviceKeyAuthFailedException([super.message = '裝置驗證失敗。']);
+}
+
+final class DeviceKeyInvalidatedException extends DeviceKeyException {
+  const DeviceKeyInvalidatedException([super.message = '裝置金鑰已失效。']);
+}
+
 abstract class DeviceKeyManager {
   Future<bool> hasTrustedKey(VaultId vaultId);
 
-  Future<TrustedDeviceInfo> ensureDeviceKey(VaultId vaultId);
+  Future<TrustedDeviceInfo> ensureDeviceKey(
+    VaultId vaultId, {
+    required bool userAuthenticationRequired,
+  });
 
   Future<TrustedDeviceInfo?> readDeviceInfo(VaultId vaultId);
 
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required VaultId vaultId,
     required List<int> plaintextBytes,
+    required bool userAuthenticationRequired,
   });
 
   Future<List<int>> unwrapWithDeviceKey({
@@ -126,10 +151,16 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
-  Future<TrustedDeviceInfo> ensureDeviceKey(VaultId vaultId) async {
+  Future<TrustedDeviceInfo> ensureDeviceKey(
+    VaultId vaultId, {
+    required bool userAuthenticationRequired,
+  }) async {
     final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
           'ensureKey',
-          <String, Object?>{'vaultId': vaultId},
+          <String, Object?>{
+            'vaultId': vaultId,
+            'userAuthenticationRequired': userAuthenticationRequired,
+          },
         ) ??
         <Object?, Object?>{};
 
@@ -208,47 +239,70 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required String nonceBase64,
     required String ciphertextBase64,
   }) async {
-    final List<Object?>? result = await _channel.invokeListMethod<Object?>(
-      'unwrapWithDeviceKey',
-      <String, Object?>{
-        'vaultId': vaultId,
-        'slotId': slotId,
-        'nonce': nonceBase64,
-        'ciphertext': ciphertextBase64,
-      },
-    );
-    if (result == null) {
-      throw StateError('無法使用裝置金鑰解開資料。');
+    try {
+      final List<Object?>? result = await _channel.invokeListMethod<Object?>(
+        'unwrapWithDeviceKey',
+        <String, Object?>{
+          'vaultId': vaultId,
+          'slotId': slotId,
+          'nonce': nonceBase64,
+          'ciphertext': ciphertextBase64,
+        },
+      );
+      if (result == null) {
+        throw const DeviceKeyInvalidatedException('無法使用裝置金鑰解開資料。');
+      }
+      return result.map((Object? item) => item as int).toList(growable: false);
+    } on PlatformException catch (error) {
+      throw _mapPlatformException(error);
     }
-    return result.map((Object? item) => item as int).toList(growable: false);
   }
 
   @override
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required VaultId vaultId,
     required List<int> plaintextBytes,
+    required bool userAuthenticationRequired,
   }) async {
-    final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
-          'wrapWithDeviceKey',
-          <String, Object?>{
-            'vaultId': vaultId,
-            'plaintext': plaintextBytes,
-          },
-        ) ??
-        <Object?, Object?>{};
+    try {
+      final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
+            'wrapWithDeviceKey',
+            <String, Object?>{
+              'vaultId': vaultId,
+              'plaintext': plaintextBytes,
+              'userAuthenticationRequired': userAuthenticationRequired,
+            },
+          ) ??
+          <Object?, Object?>{};
 
-    return DeviceWrappedPayload(
-      slotId: '${result['slotId'] ?? ''}',
-      nonceBase64: '${result['nonce'] ?? ''}',
-      ciphertextBase64: '${result['ciphertext'] ?? ''}',
-      platform: '${result['platform'] ?? ''}',
-    );
+      return DeviceWrappedPayload(
+        slotId: '${result['slotId'] ?? ''}',
+        nonceBase64: '${result['nonce'] ?? ''}',
+        ciphertextBase64: '${result['ciphertext'] ?? ''}',
+        platform: '${result['platform'] ?? ''}',
+      );
+    } on PlatformException catch (error) {
+      throw _mapPlatformException(error);
+    }
   }
 
   String _deviceInfoStorageKey(VaultId vaultId) => 'vault.$vaultId.device_info';
 
   String _wrappedRecoveryKeyStorageKey(VaultId vaultId) =>
       'vault.$vaultId.wrapped_recovery_key';
+
+  DeviceKeyException _mapPlatformException(PlatformException error) {
+    switch (error.code) {
+      case 'device_key_auth_cancelled':
+        return const DeviceKeyUserCancelledException();
+      case 'device_key_auth_failed':
+        return DeviceKeyAuthFailedException(error.message ?? '裝置驗證失敗。');
+      case 'device_key_invalidated':
+        return DeviceKeyInvalidatedException(error.message ?? '裝置金鑰已失效。');
+      default:
+        return DeviceKeyInvalidatedException(error.message ?? '未知的裝置金鑰錯誤。');
+    }
+  }
 }
 
 class UnsupportedDeviceKeyManager implements DeviceKeyManager {
@@ -260,7 +314,10 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
   Future<void> clearTrustedKey(VaultId vaultId) async {}
 
   @override
-  Future<TrustedDeviceInfo> ensureDeviceKey(VaultId vaultId) async => throw _error;
+  Future<TrustedDeviceInfo> ensureDeviceKey(
+    VaultId vaultId, {
+    required bool userAuthenticationRequired,
+  }) async => throw _error;
 
   @override
   Future<bool> hasTrustedKey(VaultId vaultId) async => false;
@@ -289,5 +346,6 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required VaultId vaultId,
     required List<int> plaintextBytes,
+    required bool userAuthenticationRequired,
   }) async => throw _error;
 }

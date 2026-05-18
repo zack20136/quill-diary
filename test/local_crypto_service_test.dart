@@ -22,9 +22,12 @@ class _FakeDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
-  Future<TrustedDeviceInfo> ensureDeviceKey(String vaultId) async {
+  Future<TrustedDeviceInfo> ensureDeviceKey(
+    String vaultId, {
+    required bool userAuthenticationRequired,
+  }) async {
     return TrustedDeviceInfo(
-      slotId: 'dev_android_keystore_$vaultId',
+      slotId: 'dev_android_keystore_plain_$vaultId',
       platform: 'android_keystore_test',
     );
   }
@@ -36,7 +39,7 @@ class _FakeDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
-    return ensureDeviceKey(vaultId);
+    return ensureDeviceKey(vaultId, userAuthenticationRequired: false);
   }
 
   @override
@@ -59,7 +62,7 @@ class _FakeDeviceKeyManager implements DeviceKeyManager {
     required String nonceBase64,
     required String ciphertextBase64,
   }) async {
-    if (slotId != 'dev_android_keystore_$vaultId') {
+    if (slotId != 'dev_android_keystore_plain_$vaultId') {
       throw StateError('slot mismatch');
     }
     final List<int> encryptedBytes = base64Decode(ciphertextBase64);
@@ -78,13 +81,14 @@ class _FakeDeviceKeyManager implements DeviceKeyManager {
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required String vaultId,
     required List<int> plaintextBytes,
+    required bool userAuthenticationRequired,
   }) async {
     final SecretBox box = await _cipher.encrypt(
       plaintextBytes,
       secretKey: SecretKey(_keyBytes),
     );
     return DeviceWrappedPayload(
-      slotId: 'dev_android_keystore_$vaultId',
+      slotId: 'dev_android_keystore_plain_$vaultId',
       nonceBase64: base64Encode(box.nonce),
       ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
       platform: 'android_keystore_test',
@@ -209,7 +213,7 @@ void main() {
       context: DecryptionContext(
         vaultId: vaultId,
         trustedDevice: true,
-        deviceSlotId: 'dev_android_keystore_$vaultId',
+        deviceSlotId: 'dev_android_keystore_plain_$vaultId',
       ),
     );
     expect(markdown, 'device slot test');

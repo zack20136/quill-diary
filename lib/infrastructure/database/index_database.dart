@@ -5,9 +5,6 @@ import 'package:drift/drift.dart';
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
-import '../storage/vault_path_strategy.dart';
-import 'index_database_connection_io.dart';
-
 /// Up to 5 image attachment paths for list preview strip (GROUP_CONCAT in SELECT).
 const String _kPreviewImagePathsSelect = '''
   (
@@ -93,17 +90,10 @@ class EntryIndexRecord {
 }
 
 class IndexDatabase extends GeneratedDatabase {
-  IndexDatabase(VaultPathStrategy pathStrategy)
-      : super(
-          LazyDatabase(() => _openConnection(pathStrategy)),
-        );
-
-  static Future<QueryExecutor> _openConnection(VaultPathStrategy pathStrategy) {
-    return openIndexConnection(pathStrategy);
-  }
+  IndexDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
@@ -171,7 +161,6 @@ class IndexDatabase extends GeneratedDatabase {
       CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
         entry_id,
         title,
-        body,
         tags,
         preview_text
       );
@@ -342,13 +331,12 @@ class IndexDatabase extends GeneratedDatabase {
     );
     await customStatement(
       '''
-        INSERT INTO entries_fts (entry_id, title, body, tags, preview_text)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO entries_fts (entry_id, title, tags, preview_text)
+        VALUES (?, ?, ?, ?);
       ''',
       <Object?>[
         entry.id,
         entry.normalizedTitle ?? '',
-        entry.markdownBody,
         entry.tags.join(' '),
         previewText,
       ],

@@ -7,26 +7,26 @@ import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../database/index_database.dart';
+import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
-import 'vault_state_keys.dart';
 
 class VaultArchiveIo {
   VaultArchiveIo({
     required VaultPathStrategy pathStrategy,
     required VaultRepository repository,
     required FrontMatterCodec frontMatterCodec,
-    required IndexDatabase indexDatabase,
+    required IndexDatabaseManager indexDatabaseManager,
   })  : _pathStrategy = pathStrategy,
         _repository = repository,
         _frontMatterCodec = frontMatterCodec,
-        _indexDatabase = indexDatabase;
+        _indexDatabaseManager = indexDatabaseManager;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
   final FrontMatterCodec _frontMatterCodec;
-  final IndexDatabase _indexDatabase;
+  final IndexDatabaseManager _indexDatabaseManager;
 
   Future<File> writeBackupZip(File target) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
@@ -176,10 +176,7 @@ class VaultArchiveIo {
     }
 
     await tempRoot.delete(recursive: true);
-    await _indexDatabase.clearForRebuild();
-    await _indexDatabase.deleteAppValue(kLastRebuildAtKey);
-    await _indexDatabase.deleteAppValue(kRewrapInProgressKey);
-    await _indexDatabase.deleteAppValue(kRewrapStartedAtKey);
+    await _indexDatabaseManager.deleteDatabaseFiles();
     _repository.clearRecoveryMetadataCache();
   }
 

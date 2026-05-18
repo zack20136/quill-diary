@@ -35,8 +35,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   drift: ^2.33.0
-  drift_flutter: ^0.3.0
   sqlite3: ^3.3.1
+  sqlite3_flutter_libs: ^0.5.39
   path_provider: ^2.1.5
   path: ^1.9.1
   cryptography: ^2.9.0
@@ -91,6 +91,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
 
   # To add assets to your application, add an assets section, like this:
   # assets:

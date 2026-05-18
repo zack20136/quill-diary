@@ -58,6 +58,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   bool _didLoadExisting = false;
   bool _saving = false;
   bool _suppressTagDraftListener = false;
+  late final ProviderSubscription<AsyncValue<AppSessionState>> _sessionSubscription;
   bool get _isEditing => !_previewMode;
 
   Map<String, int> _watchedTagAccentArgbMap() {
@@ -79,6 +80,16 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _previewMode = widget.entryId != null;
     _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.addListener(_onTagsDraftChanged);
+    _sessionSubscription = ref.listenManual<AsyncValue<AppSessionState>>(
+      effectiveAppSessionProvider,
+      (_, AsyncValue<AppSessionState> next) {
+        next.whenData((AppSessionState sessionState) {
+          if (!sessionState.isUnlocked || sessionState.session == null) {
+            _clearSensitiveLocalState();
+          }
+        });
+      },
+    );
   }
 
   void _onTagsDraftChanged() {
@@ -97,6 +108,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   @override
   void dispose() {
+    _sessionSubscription.close();
     _dateController.removeListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.removeListener(_onTagsDraftChanged);
     _titleController.dispose();
@@ -106,6 +118,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _bodyController.dispose();
     _savedAssetPathFutures.clear();
     super.dispose();
+  }
+
+  void _clearSensitiveLocalState() {
+    _titleController.clear();
+    _dateController.text = DateOnly.fromDateTime(DateTime.now()).value;
+    _tagsController.clear();
+    _moodController.clear();
+    _bodyController.clear();
+    _pendingAttachments.clear();
+    _keptExistingAttachmentIds = <AssetId>[];
+    _savedAssetPathFutures.clear();
+    _didLoadExisting = false;
+    _previewMode = widget.entryId != null;
+    _entryTime = TimeOfDay.now();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -136,7 +165,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 child: Text(
                   sessionState.status == AppLockStatus.recoveryRequired
                       ? '請先使用 Recovery Key 解鎖，再繼續編輯日記。'
-                      : sessionState.message ?? '請先完成裝置驗證後再繼續。',
+                      : sessionState.message ?? '請先重新解鎖日記庫後再繼續。',
                 ),
               ),
             ),

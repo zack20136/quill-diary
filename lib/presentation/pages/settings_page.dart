@@ -143,17 +143,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const SizedBox(height: 16),
               _SettingsSection(
                 title: '裝置驗證',
-                description: '控制是否在回到 app 時要求裝置驗證，保護目前的解鎖 session。',
+                description: '控制是否在進入或重新建立解鎖 session 時要求生物驗證。',
                 child: FutureBuilder<bool>(
                   future: appLockService.isBiometricLockEnabled(),
                   builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
                     return _SettingsToggleTile(
                       title: '啟用裝置驗證',
-                      description: '開啟後，返回 app 時會要求裝置驗證後才能繼續使用。',
+                      description: '開啟後，建立或恢復解鎖 session 時會要求生物驗證。',
                       value: snapshot.data ?? false,
                       onChanged: _busy
                           ? null
                           : (bool value) => _runAction(() async {
+                                final UnlockedVaultSession? session =
+                                    await ref.read(activeVaultSessionProvider.future);
+                                if (session != null) {
+                                  final UnlockedVaultSession refreshed = await ref
+                                      .read(vaultRepositoryProvider)
+                                      .refreshTrustedSessionProtection(
+                                        session,
+                                        biometricRequired: value,
+                                      );
+                                  ref.read(appSessionProvider.notifier).activateSession(refreshed);
+                                }
                                 await appLockService.setBiometricLockEnabled(value);
                                 if (mounted) {
                                   setState(() {});
@@ -190,8 +201,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ? null
                               : () => _runAction(() async {
                                     final String? savedPath = await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .createBackupWithPicker();
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((_) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .createBackupWithPicker();
+                                    });
                                     if (savedPath == null) {
                                       return;
                                     }
@@ -204,14 +219,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
-                                    final UnlockedVaultSession? session =
-                                        await ref.read(activeVaultSessionProvider.future);
-                                    if (session == null) {
-                                      throw StateError('請先完成解鎖，才能匯出 Markdown。');
-                                    }
                                     final String? exportPath = await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .exportMarkdownWithPicker(session);
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((UnlockedVaultSession session) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .exportMarkdownWithPicker(session);
+                                    });
                                     if (exportPath == null) {
                                       return;
                                     }
@@ -240,8 +254,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ? null
                               : () => _runAction(() async {
                                     await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .uploadBackupToDrive();
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((_) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .uploadBackupToDrive();
+                                    });
                                     _showMessage('已上傳新的備份至 Google Drive。');
                                   }),
                         ),
@@ -252,16 +270,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ? null
                               : () => _runAction(() async {
                                     final List<DriveBackupFile> backups = await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .listDriveBackups();
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((_) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .listDriveBackups();
+                                    });
                                     final DriveBackupFile? backup =
                                         await _pickDriveBackup(backups);
                                     if (backup == null) {
                                       return;
                                     }
                                     await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .restoreDriveBackup(backup);
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((_) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .restoreDriveBackup(backup);
+                                    });
                                     await _resetAppState();
                                     _showMessage('已從 Google Drive 還原：${backup.name}');
                                   }),
@@ -288,8 +314,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ? null
                               : () => _runAction(() async {
                                     final bool restored = await ref
-                                        .read(vaultTransferServiceProvider)
-                                        .restoreBackupFromPicker();
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((_) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .restoreBackupFromPicker();
+                                    });
                                     if (!restored) {
                                       return;
                                     }
@@ -359,11 +389,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _resetAppState() async {
-    ref.read(appSessionProvider.notifier).reset();
+    await ref.read(appSessionProvider.notifier).reset();
     ref.invalidate(vaultTransferServiceProvider);
     ref.invalidate(vaultArchiveIoProvider);
     ref.invalidate(vaultRepositoryProvider);
-    ref.invalidate(indexDatabaseProvider);
+    ref.invalidate(indexDatabaseManagerProvider);
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
     ref.invalidate(recoveryMetadataProvider);
@@ -772,7 +802,7 @@ String _sessionSummary(AppSessionState sessionState) {
     AppLockStatus.uninitialized => message ?? '正在準備日記庫狀態。',
     AppLockStatus.unlocking => message ?? '正在解鎖日記庫，請稍候。',
     AppLockStatus.unlocked => message ?? '日記庫已解鎖，可以讀取與編輯內容。',
-    AppLockStatus.locked => message ?? '目前已鎖定，返回首頁後需要先完成裝置驗證。',
+    AppLockStatus.locked => message ?? '目前已鎖定，請先重新解鎖日記庫。',
     AppLockStatus.recoveryRequired => message ?? '目前需要 Recovery Key 才能重新解鎖日記庫。',
     AppLockStatus.fatalError => message ?? '發生錯誤，暫時無法讀取日記庫。',
   };

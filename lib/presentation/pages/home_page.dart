@@ -425,7 +425,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
   }
 
   Future<void> _clearAccent(String label) async {
-    await ref.read(indexDatabaseProvider).deleteTagAccentArgb(label);
+    await ref.read(vaultRepositoryProvider).deleteTagAccentArgb(label);
     ref.invalidate(tagAccentArgbMapProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

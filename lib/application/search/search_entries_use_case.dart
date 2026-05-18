@@ -1,11 +1,12 @@
 import '../../infrastructure/database/index_database.dart';
+import '../../infrastructure/storage/vault_repository.dart';
 
 class SearchEntriesUseCase {
-  const SearchEntriesUseCase(this._indexDatabase);
+  const SearchEntriesUseCase(this._repository);
 
-  final IndexDatabase _indexDatabase;
+  final VaultRepository _repository;
 
   Future<List<EntryIndexRecord>> call(String query) {
-    return _indexDatabase.searchEntries(query);
+    return _repository.searchEntries(query);
   }
 }
