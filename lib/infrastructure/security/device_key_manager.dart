@@ -87,6 +87,11 @@ final class DeviceKeyAuthFailedException extends DeviceKeyException {
   const DeviceKeyAuthFailedException([super.message = '裝置驗證失敗。']);
 }
 
+final class DeviceKeyBiometricNotEnrolledException extends DeviceKeyException {
+  const DeviceKeyBiometricNotEnrolledException()
+      : super('啟用生物驗證前，請先到裝置設定新增至少一種生物辨識。');
+}
+
 final class DeviceKeyInvalidatedException extends DeviceKeyException {
   const DeviceKeyInvalidatedException([super.message = '裝置金鑰已失效。']);
 }
@@ -161,28 +166,32 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     VaultId vaultId, {
     required bool userAuthenticationRequired,
   }) async {
-    final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
-          'ensureKey',
-          <String, Object?>{
-            'vaultId': vaultId,
-            'userAuthenticationRequired': userAuthenticationRequired,
-          },
-        ) ??
-        <Object?, Object?>{};
+    try {
+      final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
+            'ensureKey',
+            <String, Object?>{
+              'vaultId': vaultId,
+              'userAuthenticationRequired': userAuthenticationRequired,
+            },
+          ) ??
+          <Object?, Object?>{};
 
-    final TrustedDeviceInfo info = TrustedDeviceInfo(
-      slotId: '${result['slotId'] ?? ''}',
-      platform: '${result['platform'] ?? ''}',
-    );
+      final TrustedDeviceInfo info = TrustedDeviceInfo(
+        slotId: '${result['slotId'] ?? ''}',
+        platform: '${result['platform'] ?? ''}',
+      );
 
-    await _storage.write(
-      key: _deviceInfoStorageKey(vaultId),
-      value: jsonEncode(<String, Object?>{
-        'slot_id': info.slotId,
-        'platform': info.platform,
-      }),
-    );
-    return info;
+      await _storage.write(
+        key: _deviceInfoStorageKey(vaultId),
+        value: jsonEncode(<String, Object?>{
+          'slot_id': info.slotId,
+          'platform': info.platform,
+        }),
+      );
+      return info;
+    } on PlatformException catch (error) {
+      throw _mapPlatformException(error);
+    }
   }
 
   @override
@@ -298,6 +307,10 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
       'vault.$vaultId.wrapped_recovery_key';
 
   DeviceKeyException _mapPlatformException(PlatformException error) {
+    if (_isBiometricEnrollmentMissing(error)) {
+      return const DeviceKeyBiometricNotEnrolledException();
+    }
+
     switch (error.code) {
       case 'device_key_auth_cancelled':
         return const DeviceKeyUserCancelledException();
@@ -312,6 +325,15 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
       default:
         return DeviceKeyInvalidatedException(error.message ?? '未知的裝置金鑰錯誤。');
     }
+  }
+
+  bool _isBiometricEnrollmentMissing(PlatformException error) {
+    if (error.code == 'device_key_biometric_not_enrolled') {
+      return true;
+    }
+
+    final String message = error.message?.toLowerCase() ?? '';
+    return message.contains('at least one biometric must be enrolled');
   }
 }
 
