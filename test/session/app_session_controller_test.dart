@@ -8,6 +8,7 @@ import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
+import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/features/session/session_messages.dart';
 import 'package:quill_lock_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
@@ -45,6 +46,49 @@ void main() {
     addTearDown(container.dispose);
     return container;
   }
+
+  test('unlock 成功時還原 trusted session', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    final bool success = await controller.unlock();
+
+    expect(success, isTrue);
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
+    expect(container.read(appSessionProvider).session, sampleSession);
+    expect(repository.ensureIndexReadyCalls, 1);
+  });
+
+  test('unlock 失敗時維持 locked', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: const DeviceKeyUserCancelledException(),
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    final bool success = await controller.unlock();
+
+    expect(success, isFalse);
+    expect(container.read(appSessionProvider).status, AppLockStatus.locked);
+    expect(repository.clearTrustedDeviceAccessCalls, 0);
+  });
+
+  test('lock 會清除 session 並標記為 locked', () async {
+    final FakeVaultRepository repository = FakeVaultRepository();
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    await controller.lock();
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.session, isNull);
+    expect(state.message, kAppLockedMessage);
+  });
 
   test('unlockWithRecovery 成功時進入 unlocked', () async {
     final FakeVaultRepository repository = FakeVaultRepository(

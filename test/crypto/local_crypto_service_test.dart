@@ -58,6 +58,51 @@ void main() {
     );
   });
 
+  test('encryptBytes recovery slot 可 round-trip', () async {
+    const String vaultId = 'vlt_TEST01';
+    final KdfDescriptor kdf = KdfDescriptor.argon2idRecovery(
+      saltBytes: List<int>.filled(16, 8),
+    );
+    final List<int> wrapKey = await crypto.deriveRecoveryWrapKey(
+      recoveryKey: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+      kdf: kdf,
+    );
+    final List<int> plaintext = utf8.encode('{"schema":1}');
+
+    final EncryptionResult result = await crypto.encryptBytes(
+      documentId: 'manifest',
+      vaultId: vaultId,
+      plaintextBytes: plaintext,
+      contentType: 'application/json',
+      recoveryWrapKey: wrapKey,
+      recoverySlotKdf: kdf,
+      createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
+      updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
+    );
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final List<int> decrypted = await crypto.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: DecryptionContext.recovery(
+        recoveryWrapKey: wrapKey,
+        vaultId: vaultId,
+      ),
+    );
+
+    expect(decrypted, plaintext);
+  });
+
+  test('parseFileBytes 拒絕過短或錯誤 magic 的檔案', () {
+    expect(
+      () => crypto.parseFileBytes(<int>[1, 2, 3]),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => crypto.parseFileBytes(utf8.encode('NOTLDJ2FORMATXXXX')),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('錯誤的 Recovery Key 無法解開 manifest', () async {
     const String vaultId = 'vlt_TEST01';
     final KdfDescriptor kdf = KdfDescriptor.argon2idRecovery(
