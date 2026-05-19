@@ -40,6 +40,33 @@ void main() {
     expect(decoded.mood, entry.mood);
     expect(decoded.markdownBody, entry.markdownBody);
     expect(decoded.attachmentIds, const <String>['att_TEST0001']);
+    expect(document, contains('attachment_ids:'));
+  });
+
+  test('attachment_ids 優先於 attachments 路徑檔名', () {
+    final DiaryEntry entry = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: generateVaultId(),
+      date: const DateOnly('2026-05-13'),
+      createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
+      updatedAt: DateTime.parse('2026-05-13T21:02:44Z'),
+      markdownBody: '匯入內容',
+      attachmentIds: const <String>['ast_REAL0001'],
+    );
+    final AssetAttachment attachment = AssetAttachment(
+      id: 'ast_REAL0001',
+      entryId: entry.id,
+      mimeType: 'image/jpeg',
+      safeFilename: 'embedded_1.jpg',
+      byteSize: 2048,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+      sha256: 'abc',
+    );
+
+    final String document = codec.encode(entry, attachments: <AssetAttachment>[attachment]);
+    final DiaryEntry decoded = codec.decode(document);
+
+    expect(decoded.attachmentIds, const <String>['ast_REAL0001']);
   });
 
   test('無 front matter 時 body 原樣保留', () {

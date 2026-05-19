@@ -35,7 +35,7 @@ class MainActivity : FlutterFragmentActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            CHANNEL_NAME,
+            DEVICE_KEY_CHANNEL_NAME,
         ).setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
@@ -150,16 +150,19 @@ class MainActivity : FlutterFragmentActivity() {
             }
         } catch (error: Throwable) {
             when (error) {
-                is LegacySlotIdException -> result.error(
-                    "device_key_legacy_slot",
-                    error.message ?: "Legacy device slot is no longer supported.",
-                    null,
-                )
-                else -> result.error(
-                    "device_key_invalidated",
-                    error.message ?: "Unable to unwrap data with device key.",
-                    null,
-                )
+                is LegacySlotIdException ->
+                    result.error(
+                        "device_key_legacy_slot",
+                        error.message ?: "Legacy device slot is no longer supported.",
+                        null,
+                    )
+
+                else ->
+                    result.error(
+                        "device_key_invalidated",
+                        error.message ?: "Unable to unwrap data with device key.",
+                        null,
+                    )
             }
         }
     }
@@ -185,14 +188,15 @@ class MainActivity : FlutterFragmentActivity() {
             KeyProperties.KEY_ALGORITHM_AES,
             ANDROID_KEYSTORE,
         )
-        val builder = KeyGenParameterSpec.Builder(
-            alias,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-        )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .setRandomizedEncryptionRequired(true)
+        val builder =
+            KeyGenParameterSpec.Builder(
+                alias,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+            )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .setRandomizedEncryptionRequired(true)
         if (requiresAuth) {
             builder
                 .setUserAuthenticationRequired(true)
@@ -208,8 +212,9 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun requireSecretKey(vaultId: String, requiresAuth: Boolean): SecretKey {
-        val entry = loadKeyStore().getEntry(aliasFor(vaultId, requiresAuth), null)
-            ?: throw IllegalStateException("Keystore alias is missing.")
+        val entry =
+            loadKeyStore().getEntry(aliasFor(vaultId, requiresAuth), null)
+                ?: throw IllegalStateException("Keystore alias is missing.")
         if (entry !is KeyStore.SecretKeyEntry) {
             throw IllegalStateException("Keystore entry is not a secret key.")
         }
@@ -280,49 +285,54 @@ class MainActivity : FlutterFragmentActivity() {
         result: MethodChannel.Result,
         onSuccess: (Cipher) -> Unit,
     ) {
-        val prompt = BiometricPrompt(
-            this,
-            ContextCompat.getMainExecutor(this),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(authResult: BiometricPrompt.AuthenticationResult) {
-                    val authedCipher = authResult.cryptoObject?.cipher
-                    if (authedCipher == null) {
-                        result.error(
-                            "device_key_auth_failed",
-                            "Authentication succeeded but cipher is unavailable.",
-                            null,
-                        )
-                        return
+        val prompt =
+            BiometricPrompt(
+                this,
+                ContextCompat.getMainExecutor(this),
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(
+                        authResult: BiometricPrompt.AuthenticationResult,
+                    ) {
+                        val authedCipher = authResult.cryptoObject?.cipher
+                        if (authedCipher == null) {
+                            result.error(
+                                "device_key_auth_failed",
+                                "Authentication succeeded but cipher is unavailable.",
+                                null,
+                            )
+                            return
+                        }
+                        try {
+                            onSuccess(authedCipher)
+                        } catch (error: Throwable) {
+                            result.error(
+                                "device_key_invalidated",
+                                error.message ?: "Device key operation failed after authentication.",
+                                null,
+                            )
+                        }
                     }
-                    try {
-                        onSuccess(authedCipher)
-                    } catch (error: Throwable) {
-                        result.error(
-                            "device_key_invalidated",
-                            error.message ?: "Device key operation failed after authentication.",
-                            null,
-                        )
-                    }
-                }
 
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    val code = when (errorCode) {
-                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
-                        BiometricPrompt.ERROR_USER_CANCELED,
-                        BiometricPrompt.ERROR_CANCELED,
-                        BiometricPrompt.ERROR_TIMEOUT,
-                        BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL -> "device_key_auth_cancelled"
-                        else -> "device_key_auth_failed"
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        val code =
+                            when (errorCode) {
+                                BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                                BiometricPrompt.ERROR_USER_CANCELED,
+                                BiometricPrompt.ERROR_CANCELED,
+                                BiometricPrompt.ERROR_TIMEOUT,
+                                BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL -> "device_key_auth_cancelled"
+                                else -> "device_key_auth_failed"
+                            }
+                        result.error(code, errString.toString(), null)
                     }
-                    result.error(code, errString.toString(), null)
-                }
-            },
-        )
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("QuillLockDiary")
-            .setSubtitle(reason)
-            .setNegativeButtonText("取消")
-            .build()
+                },
+            )
+        val promptInfo =
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("QuillLockDiary")
+                .setSubtitle(reason)
+                .setNegativeButtonText("取消")
+                .build()
         prompt.authenticate(
             promptInfo,
             BiometricPrompt.CryptoObject(cipher),
@@ -331,7 +341,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
-        private const val CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
+        private const val DEVICE_KEY_CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val GCM_TAG_BITS = 128

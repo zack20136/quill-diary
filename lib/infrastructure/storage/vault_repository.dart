@@ -307,7 +307,26 @@ class VaultRepository {
       ciphertextBytes: parsed.ciphertextBytes,
       context: _decryptionContext(session),
     );
-    return _frontMatterCodec.decode(markdown).copyWith(vaultId: indexRecord.vaultId);
+    final DiaryEntry entry = _frontMatterCodec
+        .decode(markdown)
+        .copyWith(vaultId: indexRecord.vaultId);
+    return _entryWithIndexedAttachmentIds(entry);
+  }
+
+  Future<DiaryEntry> _entryWithIndexedAttachmentIds(DiaryEntry entry) async {
+    final List<AssetAttachment> attachments =
+        await _requireOpenIndex().attachmentsForEntry(entry.id);
+    if (attachments.isEmpty) {
+      return entry;
+    }
+
+    final List<AssetId> indexedIds =
+        attachments.map((AssetAttachment attachment) => attachment.id).toList(growable: false);
+    if (_sameStringLists(entry.attachmentIds, indexedIds)) {
+      return entry;
+    }
+
+    return entry.copyWith(attachmentIds: indexedIds);
   }
 
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
@@ -704,8 +723,11 @@ class VaultRepository {
     final List<AssetAttachment> results = <AssetAttachment>[];
     for (final PendingAttachment pending in pendingAttachments) {
       final AssetId assetId = generateAssetId();
-      final String extension = p.extension(pending.originalFilename).replaceFirst('.', '');
-      final String safeFilename = extension.isEmpty ? assetId : '$assetId.$extension';
+      final String originalFilename = p.basename(pending.originalFilename.trim());
+      final String extension = p.extension(originalFilename).replaceFirst('.', '');
+      final String safeFilename = originalFilename.isEmpty
+          ? (extension.isEmpty ? assetId : '$assetId.$extension')
+          : originalFilename;
       final List<int> sourceBytes = await File(pending.sourcePath).readAsBytes();
       final EncryptionResult encrypted = await _cryptoService.encryptBytes(
         documentId: assetId,
@@ -728,7 +750,7 @@ class VaultRepository {
           id: assetId,
           entryId: entry.id,
           mimeType: pending.mimeType,
-          originalFilename: pending.originalFilename,
+          originalFilename: originalFilename.isEmpty ? null : originalFilename,
           safeFilename: safeFilename,
           byteSize: sourceBytes.length,
           createdAt: DateTime.now(),
@@ -972,5 +994,17 @@ class VaultRepository {
   }
 
   IndexDatabase _requireOpenIndex() => _indexDatabaseManager.requireOpen();
+
+  bool _sameStringLists(List<String> left, List<String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
 }

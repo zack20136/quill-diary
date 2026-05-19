@@ -5,12 +5,27 @@ import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
 
+class DecodedFrontMatterDocument {
+  const DecodedFrontMatterDocument({
+    required this.entry,
+    required this.frontMatter,
+    required this.body,
+    required this.attachmentPaths,
+  });
+
+  final DiaryEntry entry;
+  final Map<String, Object?> frontMatter;
+  final String body;
+  final List<String> attachmentPaths;
+}
+
 class FrontMatterCodec {
   const FrontMatterCodec();
 
   String encode(
     DiaryEntry entry, {
     List<AssetAttachment> attachments = const <AssetAttachment>[],
+    String Function(AssetAttachment attachment)? attachmentPathBuilder,
   }) {
     final List<String> lines = <String>[
       '---',
@@ -22,9 +37,14 @@ class FrontMatterCodec {
       if (entry.tags.isEmpty) 'tags: []' else 'tags:',
       ...entry.tags.map((String tag) => '  - "${_escape(tag)}"'),
       'mood: ${_encodeScalar(entry.mood)}',
+      if (entry.attachmentIds.isEmpty) 'attachment_ids: []' else 'attachment_ids:',
+      ...entry.attachmentIds.map((String assetId) => '  - "${_escape(assetId)}"'),
       if (attachments.isEmpty) 'attachments: []' else 'attachments:',
-      ...attachments.map((AssetAttachment asset) => '  - "../assets/'
-          '${entry.date.yearString}/${entry.date.monthPadded}/${asset.safeFilename}"'),
+      ...attachments.map((AssetAttachment asset) {
+        final String path = attachmentPathBuilder?.call(asset) ??
+            '../assets/${entry.date.yearString}/${entry.date.monthPadded}/${asset.safeFilename}';
+        return '  - "${_escape(path)}"';
+      }),
       'schema_version: 1',
       '---',
       '',
@@ -34,33 +54,39 @@ class FrontMatterCodec {
     return lines.join('\n');
   }
 
-  DiaryEntry decode(String document) {
+  DecodedFrontMatterDocument decodeDocument(String document) {
     final ({Map<String, Object?> frontMatter, String body}) parsed =
         _splitDocument(document);
     final Map<String, Object?> frontMatter = parsed.frontMatter;
     final List<String> attachmentPaths = _stringList(frontMatter['attachments']);
+    final List<String> attachmentIds = _resolveAttachmentIds(
+      frontMatter: frontMatter,
+      attachmentPaths: attachmentPaths,
+    );
 
-    return DiaryEntry(
-      id: (frontMatter['id'] ?? generateEntryId()).toString(),
-      vaultId: (frontMatter['vault_id'] ?? 'vlt_LOCAL').toString(),
-      title: _nullableString(frontMatter['title']),
-      date: DateOnly.parse((frontMatter['date'] ?? '1970-01-01').toString()),
-      createdAt: DateTime.tryParse('${frontMatter['created_at'] ?? ''}') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: DateTime.tryParse('${frontMatter['updated_at'] ?? ''}') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      tags: _stringList(frontMatter['tags']),
-      mood: _nullableString(frontMatter['mood']),
-      markdownBody: parsed.body,
-      attachmentIds: attachmentPaths
-          .map(
-            (String pathValue) => p.basenameWithoutExtension(pathValue),
-          )
-          .where((String value) => value.isNotEmpty)
-          .toList(),
-      isDeleted: frontMatter['is_deleted'] == true,
+    return DecodedFrontMatterDocument(
+      entry: DiaryEntry(
+        id: (frontMatter['id'] ?? generateEntryId()).toString(),
+        vaultId: (frontMatter['vault_id'] ?? 'vlt_LOCAL').toString(),
+        title: _nullableString(frontMatter['title']),
+        date: DateOnly.parse((frontMatter['date'] ?? '1970-01-01').toString()),
+        createdAt: DateTime.tryParse('${frontMatter['created_at'] ?? ''}') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        updatedAt: DateTime.tryParse('${frontMatter['updated_at'] ?? ''}') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        tags: _stringList(frontMatter['tags']),
+        mood: _nullableString(frontMatter['mood']),
+        markdownBody: parsed.body,
+        attachmentIds: attachmentIds,
+        isDeleted: frontMatter['is_deleted'] == true,
+      ),
+      frontMatter: frontMatter,
+      body: parsed.body,
+      attachmentPaths: attachmentPaths,
     );
   }
+
+  DiaryEntry decode(String document) => decodeDocument(document).entry;
 
   ({Map<String, Object?> frontMatter, String body}) _splitDocument(
     String document,
@@ -99,6 +125,21 @@ class FrontMatterCodec {
       return value.map(_convertYaml).toList();
     }
     return value;
+  }
+
+  List<String> _resolveAttachmentIds({
+    required Map<String, Object?> frontMatter,
+    required List<String> attachmentPaths,
+  }) {
+    final List<String> explicitIds = _stringList(frontMatter['attachment_ids']);
+    if (explicitIds.isNotEmpty) {
+      return explicitIds;
+    }
+
+    return attachmentPaths
+        .map((String pathValue) => p.basenameWithoutExtension(pathValue))
+        .where((String value) => value.isNotEmpty)
+        .toList(growable: false);
   }
 
   List<String> _stringList(Object? value) {
