@@ -142,7 +142,22 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: biometricEnabled ? error.message : kUnlockFailedMessage,
       );
       return false;
+    } on DeviceKeyLegacyStateException catch (error) {
+      await repository.clearTrustedDeviceAccess();
+      state = AppSessionState(
+        status: AppLockStatus.recoveryRequired,
+        message: error.message,
+      );
+      return false;
+    } on DeviceKeyInvalidatedException catch (error) {
+      await repository.clearTrustedDeviceAccess();
+      state = AppSessionState(
+        status: AppLockStatus.recoveryRequired,
+        message: error.message,
+      );
+      return false;
     } on StateError catch (error) {
+      await repository.clearTrustedDeviceAccess();
       state = AppSessionState(
         status: AppLockStatus.recoveryRequired,
         message: '$error',
@@ -195,7 +210,6 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
 
   final VaultRepository repository = ref.read(vaultRepositoryProvider);
   final AppSessionController controller = ref.read(appSessionProvider.notifier);
-  final bool biometricEnabled = await ref.read(appLockServiceProvider).isBiometricLockEnabled();
 
   try {
     await repository.initialize();
@@ -218,10 +232,7 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
 
     final bool success = await controller.unlock();
     if (!success) {
-      return AppSessionState(
-        status: AppLockStatus.locked,
-        message: biometricEnabled ? kStartupNeedsBiometricMessage : kAppLockedMessage,
-      );
+      return controller.currentState;
     }
     return controller.currentState;
   } catch (error) {

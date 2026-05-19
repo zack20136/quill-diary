@@ -91,6 +91,12 @@ final class DeviceKeyInvalidatedException extends DeviceKeyException {
   const DeviceKeyInvalidatedException([super.message = '裝置金鑰已失效。']);
 }
 
+final class DeviceKeyLegacyStateException extends DeviceKeyException {
+  const DeviceKeyLegacyStateException([
+    super.message = '受信任裝置資料屬於舊版格式，請使用 Recovery Key 重新建立。',
+  ]);
+}
+
 abstract class DeviceKeyManager {
   Future<bool> hasTrustedKey(VaultId vaultId);
 
@@ -297,6 +303,10 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
         return const DeviceKeyUserCancelledException();
       case 'device_key_auth_failed':
         return DeviceKeyAuthFailedException(error.message ?? '裝置驗證失敗。');
+      case 'device_key_legacy_slot':
+        return DeviceKeyLegacyStateException(
+          error.message ?? '受信任裝置資料屬於舊版格式，請使用 Recovery Key 重新建立。',
+        );
       case 'device_key_invalidated':
         return DeviceKeyInvalidatedException(error.message ?? '裝置金鑰已失效。');
       default:

@@ -149,11 +149,18 @@ class MainActivity : FlutterFragmentActivity() {
                 onSuccess(cipher)
             }
         } catch (error: Throwable) {
-            result.error(
-                "device_key_invalidated",
-                error.message ?: "Unable to unwrap data with device key.",
-                null,
-            )
+            when (error) {
+                is LegacySlotIdException -> result.error(
+                    "device_key_legacy_slot",
+                    error.message ?: "Legacy device slot is no longer supported.",
+                    null,
+                )
+                else -> result.error(
+                    "device_key_invalidated",
+                    error.message ?: "Unable to unwrap data with device key.",
+                    null,
+                )
+            }
         }
     }
 
@@ -223,6 +230,10 @@ class MainActivity : FlutterFragmentActivity() {
         return "dev_android_keystore_${mode}_$vaultId"
     }
 
+    private fun legacySlotIdFor(vaultId: String): String {
+        return "dev_android_keystore_$vaultId"
+    }
+
     private fun platformLabel(): String {
         return "android_keystore_api_${Build.VERSION.SDK_INT}"
     }
@@ -258,6 +269,7 @@ class MainActivity : FlutterFragmentActivity() {
         return when (slotId) {
             slotIdFor(vaultId, true) -> true
             slotIdFor(vaultId, false) -> false
+            legacySlotIdFor(vaultId) -> throw LegacySlotIdException()
             else -> throw IllegalArgumentException("Device slot id mismatch.")
         }
     }
@@ -325,3 +337,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val GCM_TAG_BITS = 128
     }
 }
+
+private class LegacySlotIdException : IllegalStateException(
+    "Legacy trusted device data is no longer supported.",
+)

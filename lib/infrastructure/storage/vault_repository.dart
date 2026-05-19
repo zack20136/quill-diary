@@ -98,6 +98,11 @@ class VaultRepository {
         await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
             (throw StateError('找不到受信任裝置資訊。'));
 
+    if (record.slotId != deviceInfo.slotId) {
+      await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
+      throw StateError('受信任裝置資料不一致，請使用 Recovery Key 重新建立。');
+    }
+
     final List<int> recoveryWrapKey;
     try {
       recoveryWrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
@@ -827,7 +832,7 @@ class VaultRepository {
         nonceBase64: payload.nonceBase64,
         ciphertextBase64: payload.ciphertextBase64,
         wrappedAt: DateTime.now(),
-        formatVersion: 1,
+        formatVersion: 2,
         platform: payload.platform,
       ),
     );
@@ -906,6 +911,14 @@ class VaultRepository {
 
   Future<void> closeUnlockedResources() {
     return _indexDatabaseManager.close();
+  }
+
+  Future<void> clearTrustedDeviceAccess() async {
+    final RecoveryMetadata? metadata = await readRecoveryMetadata();
+    if (metadata == null) {
+      return;
+    }
+    await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
   }
 
   Future<void> deleteDerivedLocalState() {
