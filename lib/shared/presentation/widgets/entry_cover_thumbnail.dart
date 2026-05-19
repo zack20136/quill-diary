@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/editor/providers/editor_providers.dart';
+import '../../../features/editor/providers/editor_providers.dart';
 
-/// Decrypted preview for a vault asset path ([filename].[enc] on disk).
+/// Decrypts and renders an image preview for an encrypted vault asset path.
 class EntryCoverThumbnail extends ConsumerWidget {
   const EntryCoverThumbnail({
     super.key,

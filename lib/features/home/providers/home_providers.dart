@@ -1,15 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../application/diary/diary_presence_tag_counts.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/diary_presence_tag_counts.dart';
 import '../../../shared/utils/entry_sorting.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../models/overview_models.dart';
 import '../state/home_state.dart';
 
+/// 載入目前保險庫的全部索引紀錄，作為首頁各子視圖的基底資料源。
 final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final sessionState = await ref.watch(effectiveAppSessionProvider.future);
   if (!sessionState.isUnlocked || sessionState.session == null) {
@@ -19,6 +20,7 @@ final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((Ref
   return ref.read(vaultRepositoryProvider).listEntries();
 });
 
+/// 依首頁搜尋字串取得排序後的日記列表。
 final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final sessionState = await ref.watch(effectiveAppSessionProvider.future);
   if (!sessionState.isUnlocked || sessionState.session == null) {
@@ -33,6 +35,7 @@ final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) asy
   return list;
 });
 
+/// 取得目前日曆選取日期對應的日記項目。
 final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final sessionState = await ref.watch(effectiveAppSessionProvider.future);
   if (!sessionState.isUnlocked || sessionState.session == null) {
@@ -47,6 +50,7 @@ final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref)
   return ref.read(vaultRepositoryProvider).listEntries(date: date);
 });
 
+/// 取得日曆目前月份中有日記的日期，用於月曆標記。
 final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref) async {
   final sessionState = await ref.watch(effectiveAppSessionProvider.future);
   if (!sessionState.isUnlocked || sessionState.session == null) {
@@ -58,6 +62,7 @@ final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref)
       );
 });
 
+/// 將索引紀錄聚合成首頁總覽頁需要的統計資訊。
 final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
   final Map<String, int> moodCounts = <String, int>{};
@@ -115,6 +120,7 @@ final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async 
   );
 });
 
+/// 提供「回顧」模式可選的年份清單。
 final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
   final List<int> years = entries.map((EntryIndexRecord item) => item.date.year).toSet().toList()
@@ -122,6 +128,7 @@ final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
   return years;
 });
 
+/// 根據回顧模式的範圍設定，回傳對應的日記集合。
 final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
   final MemoryScope scope = ref.watch(memoryScopeProvider);
@@ -142,6 +149,7 @@ final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) a
     ..sort(compareEntriesNewestFirst);
 });
 
+/// 統一刷新首頁依賴的索引快取，避免編輯後各區塊資料不同步。
 Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) async {
   ref
     ..invalidate(homeEntriesProvider)
@@ -164,6 +172,7 @@ Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) asy
   }
 }
 
+/// editor / settings 等其他 feature 共用的索引刷新入口。
 Future<void> refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
   return refreshHomeIndexCaches(ref, editedEntryId: editedEntryId);
 }

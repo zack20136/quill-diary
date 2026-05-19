@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/editor/providers/editor_providers.dart';
-import '../../shared/providers/core_providers.dart';
+import '../../../features/editor/providers/editor_providers.dart';
+import '../../providers/core_providers.dart';
 import '../tag_visual.dart';
 
+/// Dialog for creating or updating the accent color used by a tag.
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
   const TagAccentComposerDialog({
     super.key,

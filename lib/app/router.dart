@@ -4,6 +4,10 @@ import '../features/editor/pages/editor_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/settings/pages/settings_page.dart';
 
+/// Central application routes.
+///
+/// The app keeps routing concerns in one place while feature pages live inside
+/// their own modules.
 class AppRouter {
   static const String homeRoute = '/';
   static const String editorRoute = '/editor';

@@ -21,6 +21,7 @@ import '../security/device_key_manager.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
 
+/// Attachment selected in the UI but not yet persisted into the encrypted vault.
 class PendingAttachment {
   const PendingAttachment({
     required this.sourcePath,
@@ -33,6 +34,8 @@ class PendingAttachment {
   final String originalFilename;
 }
 
+/// Result returned when a new Recovery Key is created and trusted-device access
+/// is established in the same flow.
 class RecoverySetupResult {
   const RecoverySetupResult({
     required this.recoveryKey,
@@ -43,6 +46,10 @@ class RecoverySetupResult {
   final UnlockedVaultSession session;
 }
 
+/// Main coordination layer for encrypted vault storage.
+///
+/// This repository owns Recovery Key setup/unlock, trusted-device session
+/// restoration, encrypted entry/asset I/O, and index synchronization.
 class VaultRepository {
   VaultRepository({
     required VaultPathStrategy pathStrategy,
