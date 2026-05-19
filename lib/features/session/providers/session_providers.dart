@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +22,9 @@ class AppSessionController extends Notifier<AppSessionState> {
   DateTime? _lastForegroundExitAt;
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
+
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
 
   @override
   AppSessionState build() {
@@ -89,7 +93,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       case AppLifecycleState.hidden:
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
-        _lastForegroundExitAt ??= DateTime.now();
+        _lastForegroundExitAt ??= clock();
         break;
       case AppLifecycleState.resumed:
         final DateTime? exitAt = _lastForegroundExitAt;
@@ -99,7 +103,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         }
         if (!hasSessionTimedOut(
           lastForegroundExitAt: exitAt,
-          now: DateTime.now(),
+          now: clock(),
           timeout: defaultSessionTimeout,
         )) {
           return;

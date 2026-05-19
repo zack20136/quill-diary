@@ -1,107 +1,17 @@
 import 'dart:convert';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_lock_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 
-class _FakeDeviceKeyManager implements DeviceKeyManager {
-  _FakeDeviceKeyManager()
-      : _cipher = AesGcm.with256bits(),
-        _keyBytes = List<int>.generate(32, (int index) => index + 1);
-
-  final Cipher _cipher;
-  final List<int> _keyBytes;
-  final Map<String, WrappedRecoveryKeyRecord> _wrappedRecoveryRecords =
-      <String, WrappedRecoveryKeyRecord>{};
-
-  @override
-  Future<void> clearTrustedKey(String vaultId) async {
-    _wrappedRecoveryRecords.remove(vaultId);
-  }
-
-  @override
-  Future<TrustedDeviceInfo> ensureDeviceKey(
-    String vaultId, {
-    required bool userAuthenticationRequired,
-  }) async {
-    return TrustedDeviceInfo(
-      slotId: 'dev_android_keystore_plain_$vaultId',
-      platform: 'android_keystore_test',
-    );
-  }
-
-  @override
-  Future<bool> hasTrustedKey(String vaultId) async {
-    return _wrappedRecoveryRecords.containsKey(vaultId);
-  }
-
-  @override
-  Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
-    return ensureDeviceKey(vaultId, userAuthenticationRequired: false);
-  }
-
-  @override
-  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
-    return _wrappedRecoveryRecords[vaultId];
-  }
-
-  @override
-  Future<void> storeWrappedRecoveryKey({
-    required String vaultId,
-    required WrappedRecoveryKeyRecord record,
-  }) async {
-    _wrappedRecoveryRecords[vaultId] = record;
-  }
-
-  @override
-  Future<List<int>> unwrapWithDeviceKey({
-    required String vaultId,
-    required String slotId,
-    required String nonceBase64,
-    required String ciphertextBase64,
-  }) async {
-    if (slotId != 'dev_android_keystore_plain_$vaultId') {
-      throw StateError('slot mismatch');
-    }
-    final List<int> encryptedBytes = base64Decode(ciphertextBase64);
-    final SecretBox box = SecretBox(
-      encryptedBytes.sublist(0, encryptedBytes.length - 16),
-      nonce: base64Decode(nonceBase64),
-      mac: Mac(encryptedBytes.sublist(encryptedBytes.length - 16)),
-    );
-    return _cipher.decrypt(
-      box,
-      secretKey: SecretKey(_keyBytes),
-    );
-  }
-
-  @override
-  Future<DeviceWrappedPayload> wrapWithDeviceKey({
-    required String vaultId,
-    required List<int> plaintextBytes,
-    required bool userAuthenticationRequired,
-  }) async {
-    final SecretBox box = await _cipher.encrypt(
-      plaintextBytes,
-      secretKey: SecretKey(_keyBytes),
-    );
-    return DeviceWrappedPayload(
-      slotId: 'dev_android_keystore_plain_$vaultId',
-      nonceBase64: base64Encode(box.nonce),
-      ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
-      platform: 'android_keystore_test',
-    );
-  }
-}
+import '../helpers/fake_device_key_manager.dart';
 
 void main() {
-  late _FakeDeviceKeyManager deviceKeyManager;
+  late PlainFakeDeviceKeyManager deviceKeyManager;
   late LocalCryptoService crypto;
 
   setUp(() {
-    deviceKeyManager = _FakeDeviceKeyManager();
+    deviceKeyManager = PlainFakeDeviceKeyManager();
     crypto = LocalCryptoService(deviceKeyManager: deviceKeyManager);
   });
 

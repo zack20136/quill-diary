@@ -27,5 +27,26 @@ void main() {
       isTrue,
     );
   });
-}
 
+  test('自訂 timeout 門檻', () {
+    final DateTime exitAt = DateTime.utc(2026, 5, 18, 1, 0, 0);
+    final DateTime now = exitAt.add(const Duration(minutes: 2));
+
+    expect(
+      hasSessionTimedOut(
+        lastForegroundExitAt: exitAt,
+        now: now,
+        timeout: const Duration(minutes: 2),
+      ),
+      isTrue,
+    );
+    expect(
+      hasSessionTimedOut(
+        lastForegroundExitAt: exitAt,
+        now: exitAt.add(const Duration(minutes: 1, seconds: 59)),
+        timeout: const Duration(minutes: 2),
+      ),
+      isFalse,
+    );
+  });
+}

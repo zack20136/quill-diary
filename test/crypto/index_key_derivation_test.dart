@@ -4,7 +4,8 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_key_derivation.dart';
 
-void main() {  test('deriveIndexDatabaseKey 對相同輸入穩定', () async {
+void main() {
+  test('deriveIndexDatabaseKey 對相同輸入穩定', () async {
     final List<int> recoveryWrapKey = List<int>.generate(32, (int index) => index + 11);
 
     final List<int> first = await deriveIndexDatabaseKey(
@@ -52,4 +53,3 @@ void main() {  test('deriveIndexDatabaseKey 對相同輸入穩定', () async {
     expect(second, isNot(first));
   });
 }
-

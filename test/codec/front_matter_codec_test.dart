@@ -5,8 +5,9 @@ import 'package:quill_lock_diary/domain/shared/value_objects.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
 
 void main() {
+  const FrontMatterCodec codec = FrontMatterCodec();
+
   test('front matter codec round-trips diary documents', () {
-    const FrontMatterCodec codec = FrontMatterCodec();
     final DiaryEntry entry = DiaryEntry(
       id: generateEntryId(),
       vaultId: generateVaultId(),
@@ -39,5 +40,49 @@ void main() {
     expect(decoded.mood, entry.mood);
     expect(decoded.markdownBody, entry.markdownBody);
     expect(decoded.attachmentIds, const <String>['att_TEST0001']);
+  });
+
+  test('無 front matter 時 body 原樣保留', () {
+    const String raw = '純文字日記內容';
+    final DiaryEntry decoded = codec.decode(raw);
+    expect(decoded.markdownBody, raw);
+    expect(decoded.tags, isEmpty);
+  });
+
+  test('encode 空 tags 列表', () {
+    final DiaryEntry entry = DiaryEntry(
+      id: 'jrn_EMPTY_TAGS',
+      vaultId: 'vlt_LOCAL',
+      date: const DateOnly('2026-01-01'),
+      createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+      updatedAt: DateTime.parse('2026-01-02T00:00:00Z'),
+      markdownBody: 'body',
+      tags: const <String>[],
+    );
+
+    final String document = codec.encode(entry);
+    expect(document, contains('tags: []'));
+    expect(codec.decode(document).tags, isEmpty);
+  });
+
+  test('is_deleted 可從 front matter 解析', () {
+    const String document = '''---
+id: "jrn_DEL0001"
+title: null
+date: "2026-01-01"
+created_at: "2026-01-01T00:00:00.000Z"
+updated_at: "2026-01-02T00:00:00.000Z"
+tags: []
+mood: null
+attachments: []
+schema_version: 1
+is_deleted: true
+---
+
+deleted body
+''';
+    final DiaryEntry decoded = codec.decode(document);
+    expect(decoded.isDeleted, isTrue);
+    expect(decoded.markdownBody, 'deleted body');
   });
 }
