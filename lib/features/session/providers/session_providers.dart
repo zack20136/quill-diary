@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,9 +30,17 @@ class AppSessionController extends Notifier<AppSessionState> {
     return const AppSessionState(status: AppLockStatus.uninitialized);
   }
 
+  /// 顯示 trusted device 解鎖進行中（啟動流程在呼叫 [unlock] 前使用）。
+  void beginTrustedUnlock() {
+    state = const AppSessionState(
+      status: AppLockStatus.unlocking,
+      message: kTrustedUnlockInProgressMessage,
+    );
+  }
+
   /// 嘗試從 trusted device 狀態還原目前 session。
   Future<bool> unlock() async {
-    state = state.copyWith(status: AppLockStatus.unlocking, clearMessage: true);
+    beginTrustedUnlock();
     return _restoreTrustedSession();
   }
 
@@ -152,13 +159,13 @@ class AppSessionController extends Notifier<AppSessionState> {
     } on DeviceKeyUserCancelledException {
       state = AppSessionState(
         status: AppLockStatus.locked,
-        message: biometricEnabled ? kStartupNeedsBiometricMessage : kAppLockedMessage,
+        message: biometricEnabled ? kStartupNeedsBiometricMessage : kLockedRetryVerificationMessage,
       );
       return false;
     } on DeviceKeyAuthFailedException catch (error) {
       state = AppSessionState(
         status: AppLockStatus.locked,
-        message: biometricEnabled ? error.message : kUnlockFailedMessage,
+        message: biometricEnabled ? error.message : kLockedRetryVerificationMessage,
       );
       return false;
     } on DeviceKeyLegacyStateException catch (error) {
@@ -255,6 +262,7 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
       );
     }
 
+    controller.beginTrustedUnlock();
     final bool success = await controller.unlock();
     if (!success) {
       return controller.currentState;

@@ -7,11 +7,13 @@ import 'package:path/path.dart' as p;
 
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
+import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../database/index_database.dart';
 import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
+import 'restore_precheck.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
@@ -233,6 +235,32 @@ class VaultArchiveIo {
     }
   }
 
+  /// Reads [recovery.json] from a `.jbackup` without writing to disk.
+  Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) async {
+    try {
+      final Archive archive = ZipDecoder().decodeBytes(
+        await backupFile.readAsBytes(),
+        verify: true,
+      );
+      final ArchiveFile? recoveryEntry = _findRecoveryJsonEntry(archive);
+      if (recoveryEntry == null || !recoveryEntry.isFile) {
+        return const BackupRecoveryPreview(hasRecovery: false);
+      }
+      final Object? decoded = jsonDecode(
+        utf8.decode(recoveryEntry.content as List<int>),
+      );
+      if (decoded is! Map<String, Object?>) {
+        return const BackupRecoveryPreview(hasRecovery: false);
+      }
+      return BackupRecoveryPreview(
+        hasRecovery: true,
+        metadata: RecoveryMetadata.fromJson(decoded),
+      );
+    } on Object {
+      throw StateError(kInvalidBackupArchiveMessage);
+    }
+  }
+
   Future<void> restoreBackupZip(File backupFile) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory tempRoot = Directory('${vaultRoot.path}_restore_tmp');
@@ -241,39 +269,63 @@ class VaultArchiveIo {
     }
     await tempRoot.create(recursive: true);
 
-    final Archive archive = ZipDecoder().decodeBytes(
-      await backupFile.readAsBytes(),
-      verify: true,
-    );
-    for (final ArchiveFile archiveFile in archive.files) {
-      _ensureSafeArchivePath(archiveFile.name);
-      final String outputPath = p.join(tempRoot.path, archiveFile.name);
-      if (archiveFile.isFile) {
-        final File file = File(outputPath);
-        await file.parent.create(recursive: true);
-        await file.writeAsBytes(
-          archiveFile.content as List<int>,
-          flush: true,
-        );
-      } else {
-        await Directory(outputPath).create(recursive: true);
+    try {
+      final Archive archive = ZipDecoder().decodeBytes(
+        await backupFile.readAsBytes(),
+        verify: true,
+      );
+      for (final ArchiveFile archiveFile in archive.files) {
+        _ensureSafeArchivePath(archiveFile.name);
+        final String outputPath = p.join(tempRoot.path, archiveFile.name);
+        if (archiveFile.isFile) {
+          final File file = File(outputPath);
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(
+            archiveFile.content as List<int>,
+            flush: true,
+          );
+        } else {
+          await Directory(outputPath).create(recursive: true);
+        }
       }
+    } on Object {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+      throw StateError(kInvalidBackupArchiveMessage);
     }
 
-    if (vaultRoot.existsSync()) {
-      await vaultRoot.delete(recursive: true);
+    _validateRestoredVaultPayload(tempRoot);
+
+    final Directory incomingVault = Directory('${vaultRoot.path}.incoming');
+    if (incomingVault.existsSync()) {
+      await incomingVault.delete(recursive: true);
     }
-    await vaultRoot.create(recursive: true);
-    await for (final FileSystemEntity entity
-        in tempRoot.list(recursive: true, followLinks: false)) {
-      final String relative = p.relative(entity.path, from: tempRoot.path);
-      final String destination = p.join(vaultRoot.path, relative);
-      if (entity is Directory) {
-        await Directory(destination).create(recursive: true);
-      } else if (entity is File) {
-        await File(destination).parent.create(recursive: true);
-        await entity.copy(destination);
+    await _copyDirectoryTree(tempRoot, incomingVault);
+    await tempRoot.delete(recursive: true);
+
+    Directory? previousBackup;
+    if (vaultRoot.existsSync()) {
+      previousBackup = Directory(
+        '${vaultRoot.path}.bak_${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await vaultRoot.rename(previousBackup.path);
+    }
+    try {
+      await incomingVault.rename(vaultRoot.path);
+      if (previousBackup != null && previousBackup.existsSync()) {
+        await previousBackup.delete(recursive: true);
       }
+    } on Object catch (error, stackTrace) {
+      if (!vaultRoot.existsSync() &&
+          previousBackup != null &&
+          previousBackup.existsSync()) {
+        await previousBackup.rename(vaultRoot.path);
+      }
+      if (incomingVault.existsSync()) {
+        await incomingVault.delete(recursive: true);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
 
     final Directory strayVaultIndex = Directory(p.join(vaultRoot.path, 'index'));
@@ -281,9 +333,45 @@ class VaultArchiveIo {
       await strayVaultIndex.delete(recursive: true);
     }
 
-    await tempRoot.delete(recursive: true);
+    await _repository.closeUnlockedResources();
     await _indexDatabaseManager.deleteDatabaseFiles();
     _repository.clearRecoveryMetadataCache();
+  }
+
+  ArchiveFile? _findRecoveryJsonEntry(Archive archive) {
+    for (final ArchiveFile file in archive.files) {
+      if (!file.isFile) {
+        continue;
+      }
+      final String normalized = p.posix.normalize(file.name);
+      if (normalized == 'recovery.json' || normalized.endsWith('/recovery.json')) {
+        return file;
+      }
+    }
+    return null;
+  }
+
+  void _validateRestoredVaultPayload(Directory root) {
+    final bool hasRecovery = File(p.join(root.path, 'recovery.json')).existsSync();
+    final bool hasEntries = Directory(p.join(root.path, 'entries')).existsSync();
+    if (!hasRecovery && !hasEntries) {
+      throw StateError('備份檔內容不完整，找不到日記庫資料。');
+    }
+  }
+
+  Future<void> _copyDirectoryTree(Directory source, Directory destination) async {
+    await destination.create(recursive: true);
+    await for (final FileSystemEntity entity
+        in source.list(recursive: true, followLinks: false)) {
+      final String relative = p.relative(entity.path, from: source.path);
+      final String targetPath = p.join(destination.path, relative);
+      if (entity is Directory) {
+        await Directory(targetPath).create(recursive: true);
+      } else if (entity is File) {
+        await File(targetPath).parent.create(recursive: true);
+        await entity.copy(targetPath);
+      }
+    }
   }
 
   Future<Directory> _createExportEntryDirectory({

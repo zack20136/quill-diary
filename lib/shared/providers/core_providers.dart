@@ -87,6 +87,7 @@ final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
   return VaultTransferService(
     archiveIo: ref.watch(vaultArchiveIoProvider),
     driveBackupService: ref.watch(driveBackupServiceProvider),
+    vaultRepository: ref.watch(vaultRepositoryProvider),
   );
 });
 

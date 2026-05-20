@@ -8,6 +8,8 @@ import 'package:quill_lock_diary/domain/shared/value_objects.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_lock_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
 
@@ -371,5 +373,108 @@ Imported from zip.
     expect(imported?.markdownBody, contains('Imported from zip.'));
     expect(attachments, hasLength(1));
     expect(attachments.single.safeFilename, 'photo.png');
+  });
+
+  test('peekBackupRecovery 可讀取備份內 recovery.json', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Backup Entry',
+        date: const DateOnly('2026-05-24'),
+        createdAt: DateTime.parse('2026-05-24T10:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-24T10:00:00Z'),
+        markdownBody: 'backup body',
+      ),
+    );
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'test.jbackup'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(backupFile);
+    expect(preview.hasRecovery, isTrue);
+    expect(preview.metadata?.vaultId, setup.session.vaultId);
+    expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
+  });
+
+  test('restoreBackupZip 可還原日記並保留 recovery metadata', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final String entryId = generateEntryId();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: entryId,
+        vaultId: setup.session.vaultId,
+        title: 'Restore Me',
+        date: const DateOnly('2026-05-25'),
+        createdAt: DateTime.parse('2026-05-25T11:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-25T11:00:00Z'),
+        markdownBody: 'restore body',
+      ),
+    );
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'restore.jbackup'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'After Backup Noise',
+        date: const DateOnly('2026-05-26'),
+        createdAt: DateTime.parse('2026-05-26T12:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-26T12:00:00Z'),
+        markdownBody: 'noise',
+      ),
+    );
+
+    await harness.repository.closeUnlockedResources();
+    await archiveIo.restoreBackupZip(backupFile);
+
+    final RecoveryMetadata? metadata = await harness.repository.readRecoveryMetadata();
+    expect(metadata?.vaultId, setup.session.vaultId);
+
+    final UnlockedVaultSession session = await harness.repository.openTrustedSession();
+    await harness.repository.rebuildIndex(session);
+    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
+    final DiaryEntry? restored = await harness.repository.loadEntry(session, entryId);
+    expect(restored?.title, 'Restore Me');
+  });
+
+  test('損壞的備份 zip 不應清空現有 vault', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Keep Me',
+        date: const DateOnly('2026-05-27'),
+        createdAt: DateTime.parse('2026-05-27T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-27T08:00:00Z'),
+        markdownBody: 'keep',
+      ),
+    );
+
+    final File badBackup = File(p.join(harness.tempDir.path, 'bad.jbackup'))
+      ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
+
+    expect(
+      () => archiveIo.restoreBackupZip(badBackup),
+      throwsA(
+        isA<StateError>().having(
+          (StateError error) => error.message ?? '',
+          'message',
+          anyOf(contains('無法讀取備份檔'), contains('備份檔內容不完整')),
+        ),
+      ),
+    );
+
+    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
   });
 }

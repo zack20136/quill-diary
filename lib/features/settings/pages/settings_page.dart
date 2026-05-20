@@ -1,12 +1,16 @@
 import 'dart:async' show unawaited;
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../infrastructure/security/app_lock_service.dart';
+import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../editor/providers/editor_providers.dart';
@@ -41,6 +45,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
     final AppLockService appLockService = ref.watch(appLockServiceProvider);
+    final AppSessionState? sessionState = sessionAsync.asData?.value;
+    final bool canBackupRestore =
+        sessionState?.isUnlocked == true && sessionState?.session != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
@@ -80,6 +87,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     await refreshEntryIndexCaches(ref);
                                   })
                               : null,
+                          onRetryTrustedUnlock:
+                              sessionState.status == AppLockStatus.locked
+                                  ? () => _runAction(() async {
+                                        final bool ok =
+                                            await ref.read(appSessionProvider.notifier).unlock();
+                                        if (ok) {
+                                          await refreshEntryIndexCaches(ref);
+                                        }
+                                      })
+                                  : null,
                         ),
                       );
                     },
@@ -240,7 +257,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.storage_rounded,
                     title: '本機備份與還原',
-                    description: '備份全部日記到本機，之後可完整還原。',
+                    description: canBackupRestore
+                        ? '備份全部日記到本機；還原會覆寫本機資料，必要時需輸入建立備份時保存的復原金鑰。'
+                        : kRestoreNeedsUnlockMessage,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
@@ -248,7 +267,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.archive_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canBackupRestore
                               ? null
                               : () => _runAction(() async {
                                     final String? savedPath = await ref
@@ -268,22 +287,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           label: '還原本機備份',
                           icon: Icons.restore_rounded,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canBackupRestore
                               ? null
-                              : () => _runAction(() async {
-                                    final bool restored = await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((_) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .restoreBackupFromPicker();
-                                    });
-                                    if (!restored) {
-                                      return;
-                                    }
-                                    await _resetAppState();
-                                    _showMessage('已從本機備份還原。');
-                                  }),
+                              : () => _runRestoreFromLocalBackup(),
                         ),
                       ],
                     ),
@@ -292,7 +298,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.cloud_outlined,
                     title: 'Google Drive 備份與還原',
-                    description: '上傳備份到 Google Drive，或從雲端還原。',
+                    description: canBackupRestore
+                        ? '上傳備份到 Google Drive，或從雲端還原（還原後可能需復原金鑰）。'
+                        : kRestoreNeedsUnlockMessage,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
@@ -300,7 +308,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.cloud_upload_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canBackupRestore
                               ? null
                               : () => _runAction(() async {
                                     await ref
@@ -317,30 +325,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           label: '從 Google Drive 還原',
                           icon: Icons.cloud_download_outlined,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canBackupRestore
                               ? null
-                              : () => _runAction(() async {
-                                    final List<DriveBackupFile> backups = await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((_) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .listDriveBackups();
-                                    });
-                                    final DriveBackupFile? backup = await _pickDriveBackup(backups);
-                                    if (backup == null) {
-                                      return;
-                                    }
-                                    await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((_) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .restoreDriveBackup(backup);
-                                    });
-                                    await _resetAppState();
-                                    _showMessage('已從 Google Drive 還原：${backup.name}');
-                                  }),
+                              : () => _runRestoreFromGoogleDrive(),
                         ),
                       ],
                     ),
@@ -405,6 +392,135 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return '建立時間未知';
     }
     return value.toLocal().toString().replaceFirst('.000', '');
+  }
+
+  Future<void> _runRestoreFromLocalBackup() async {
+    final File? backupFile =
+        await ref.read(vaultTransferServiceProvider).pickLocalBackupFile();
+    if (backupFile == null) {
+      return;
+    }
+    await _restoreBackupFileWithFlow(backupFile);
+  }
+
+  Future<void> _runRestoreFromGoogleDrive() async {
+    await _runAction(() async {
+      final List<DriveBackupFile> backups = await ref
+          .read(appSessionProvider.notifier)
+          .runSensitiveTask((_) {
+        return ref.read(vaultTransferServiceProvider).listDriveBackups();
+      });
+      final DriveBackupFile? backup = await _pickDriveBackup(backups);
+      if (backup == null) {
+        return;
+      }
+      final File tempBackup = await ref
+          .read(appSessionProvider.notifier)
+          .runSensitiveTask((_) {
+        return ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(backup);
+      });
+      try {
+        await _restoreBackupFileWithFlow(tempBackup, driveBackupName: backup.name);
+      } finally {
+        if (tempBackup.existsSync()) {
+          await tempBackup.delete();
+        }
+      }
+    });
+  }
+
+  Future<void> _restoreBackupFileWithFlow(
+    File backupFile, {
+    String? driveBackupName,
+  }) async {
+    try {
+      final RestorePrecheck precheck =
+          await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
+      if (!mounted) {
+        return;
+      }
+      final bool confirmed = await _confirmRestore(precheck, driveBackupName: driveBackupName);
+      if (!confirmed) {
+        return;
+      }
+      await _runAction(
+        () async {
+          await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
+            await ref.read(vaultTransferServiceProvider).restoreFromBackupFile(backupFile);
+          });
+          await _finishRestoreAfterSuccess();
+        },
+        progressMessage: kRestoreInProgressMessage,
+      );
+    } on StateError catch (error) {
+      _showMessage(error.message);
+    }
+  }
+
+  Future<bool> _confirmRestore(
+    RestorePrecheck precheck, {
+    String? driveBackupName,
+  }) async {
+    final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: Text(driveBackupName == null ? '還原本機備份？' : '還原 Google Drive 備份？'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (driveBackupName != null) ...<Widget>[
+                      Text('檔案：$driveBackupName'),
+                      const SizedBox(height: 12),
+                    ],
+                    for (final String bullet in bullets)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Text('• '),
+                            Expanded(child: Text(bullet)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('還原'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _finishRestoreAfterSuccess() async {
+    await _resetAppState();
+    final AppSessionState startupState = await ref.read(appStartupProvider.future);
+    if (startupState.isUnlocked && startupState.session != null) {
+      await refreshEntryIndexCaches(ref);
+    }
+    if (mounted) {
+      context.go(AppRouter.homeRoute);
+      _showMessage(
+        snackbarMessageForPostRestore(
+          startupState.status,
+          sessionMessage: startupState.message,
+        ),
+      );
+    }
   }
 
   Future<void> _resetAppState() async {
@@ -512,10 +628,11 @@ String _sessionSummary(AppSessionState sessionState) {
   final String? message = sessionState.message;
   return switch (sessionState.status) {
     AppLockStatus.uninitialized => message ?? '正在準備中…',
-    AppLockStatus.unlocking => message ?? '正在解鎖…',
+    AppLockStatus.unlocking => message ?? kTrustedUnlockInProgressMessage,
     AppLockStatus.unlocked => message ?? '安全鎖已解除，可以正常使用。',
-    AppLockStatus.locked => message ?? '目前已鎖定，請重新驗證。',
-    AppLockStatus.recoveryRequired => message ?? '這台裝置尚未授權，請輸入復原金鑰解鎖。',
+    AppLockStatus.locked => message ?? kLockedRetryVerificationMessage,
+    AppLockStatus.recoveryRequired =>
+        message ?? kRecoveryRequiredAfterRestoreMessage,
     AppLockStatus.fatalError => message ?? '初始化失敗，請稍後再試。',
   };
 }

@@ -163,9 +163,15 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  sessionState.status == AppLockStatus.recoveryRequired
-                      ? '請先使用復原金鑰解鎖，再繼續編輯日記。'
-                      : sessionState.message ?? '請先重新解鎖日記庫後再繼續。',
+                  switch (sessionState.status) {
+                    AppLockStatus.recoveryRequired =>
+                      sessionState.message ?? kRecoveryRequiredAfterRestoreMessage,
+                    AppLockStatus.unlocking =>
+                      sessionState.message ?? kTrustedUnlockInProgressMessage,
+                    AppLockStatus.locked =>
+                      sessionState.message ?? kLockedRetryVerificationMessage,
+                    _ => sessionState.message ?? '請先重新解鎖日記庫後再繼續。',
+                  },
                 ),
               ),
             ),

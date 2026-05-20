@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -45,19 +46,47 @@ abstract final class _HomePalette {
   }
 }
 
-Widget _blockedEntriesPane(BuildContext context, AppSessionState sessionState) {
-  final bool offerSettings = _blockedOffersSettingsNavigation(sessionState);
-  return _StateCard(
-    icon: _blockedIcon(sessionState.status),
-    title: _blockedTitle(sessionState.status),
-    message: _blockedMessage(sessionState),
-    actionLabel: offerSettings ? '前往設定' : null,
-    onAction: offerSettings ? () => context.push(AppRouter.settingsRoute) : null,
-  );
+class _BlockedEntriesPane extends ConsumerWidget {
+  const _BlockedEntriesPane({required this.sessionState});
+
+  final AppSessionState sessionState;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (sessionState.status == AppLockStatus.unlocking) {
+      return _StateCard(
+        icon: Icons.sync_rounded,
+        title: '正在解鎖',
+        message: sessionState.message ?? kTrustedUnlockInProgressMessage,
+      );
+    }
+
+    if (sessionState.status == AppLockStatus.locked) {
+      return _StateCard(
+        icon: Icons.lock_outline,
+        title: '目前已鎖定',
+        message: sessionState.message ?? kLockedRetryVerificationMessage,
+        actionLabel: '重新驗證',
+        onAction: () => unawaited(ref.read(appSessionProvider.notifier).unlock()),
+      );
+    }
+
+    final bool offerSettings = _blockedOffersSettingsNavigation(sessionState);
+    return _StateCard(
+      icon: _blockedIcon(sessionState.status),
+      title: _blockedTitle(sessionState.status),
+      message: _blockedMessage(sessionState),
+      actionLabel: offerSettings ? '前往設定' : null,
+      onAction: offerSettings ? () => context.push(AppRouter.settingsRoute) : null,
+    );
+  }
 }
 
 bool _blockedOffersSettingsNavigation(AppSessionState sessionState) {
   if (sessionState.status == AppLockStatus.recoveryRequired) {
+    return true;
+  }
+  if (sessionState.status == AppLockStatus.locked) {
     return true;
   }
   return sessionState.status == AppLockStatus.unlocked && sessionState.session == null;
@@ -264,7 +293,7 @@ class _HomeTimelinePane extends ConsumerWidget {
                     message: '$error',
                   ),
                 )
-              : _blockedEntriesPane(context, sessionState),
+              : _BlockedEntriesPane(sessionState: sessionState),
         ),
       ],
     );
@@ -291,7 +320,7 @@ class _CalendarPane extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     if (!canReadEntries) {
-      return _blockedEntriesPane(context, sessionState);
+      return _BlockedEntriesPane(sessionState: sessionState);
     }
 
     return datesAsync.when(
@@ -527,7 +556,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
   @override
   Widget build(BuildContext context) {
     if (!widget.sessionState.isUnlocked || widget.sessionState.session == null) {
-      return _blockedEntriesPane(context, widget.sessionState);
+      return _BlockedEntriesPane(sessionState: widget.sessionState);
     }
 
     final ThemeData theme = Theme.of(context);
@@ -811,7 +840,7 @@ class _OverviewPane extends ConsumerWidget {
     final MemoryScope scope = ref.watch(memoryScopeProvider);
 
     if (!canReadEntries) {
-      return _blockedEntriesPane(context, sessionState);
+      return _BlockedEntriesPane(sessionState: sessionState);
     }
 
     return summaryAsync.when(
@@ -2085,7 +2114,13 @@ String _blockedMessage(AppSessionState sessionState) {
     return '請先建立復原金鑰，之後才能開始建立與解鎖日記。';
   }
   if (sessionState.status == AppLockStatus.recoveryRequired) {
-    return '請先使用復原金鑰解鎖，才能讀取與編輯日記。';
+    return sessionState.message ?? kRecoveryRequiredAfterRestoreMessage;
+  }
+  if (sessionState.status == AppLockStatus.locked) {
+    return sessionState.message ?? kLockedRetryVerificationMessage;
+  }
+  if (sessionState.status == AppLockStatus.unlocking) {
+    return sessionState.message ?? kTrustedUnlockInProgressMessage;
   }
   if (sessionState.status == AppLockStatus.fatalError) {
     return sessionState.message ?? '發生錯誤，暫時無法讀取日記庫。';

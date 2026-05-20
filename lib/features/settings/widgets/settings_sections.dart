@@ -132,6 +132,7 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.bannerMessage,
     required this.bannerTone,
     required this.onUnlockWithRecovery,
+    this.onRetryTrustedUnlock,
     super.key,
   });
 
@@ -142,6 +143,7 @@ class SettingsStatusPanel extends StatelessWidget {
   final String bannerMessage;
   final SettingsBannerTone bannerTone;
   final VoidCallback? onUnlockWithRecovery;
+  final VoidCallback? onRetryTrustedUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +156,20 @@ class SettingsStatusPanel extends StatelessWidget {
           message: bannerMessage,
           tone: bannerTone,
         ),
+        if (sessionState.status == AppLockStatus.unlocking) ...<Widget>[
+          const SizedBox(height: 16),
+          const Center(child: CircularProgressIndicator()),
+        ],
+        if (sessionState.status == AppLockStatus.locked &&
+            onRetryTrustedUnlock != null) ...<Widget>[
+          const SizedBox(height: 14),
+          SettingsActionButton(
+            label: '重新驗證',
+            icon: Icons.fingerprint_rounded,
+            emphasized: true,
+            onPressed: busy ? null : onRetryTrustedUnlock,
+          ),
+        ],
         if (sessionState.status == AppLockStatus.recoveryRequired) ...<Widget>[
           const SizedBox(height: 16),
           TextField(
@@ -166,7 +182,7 @@ class SettingsStatusPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '輸入正確的復原金鑰後，即可在這台裝置重新解鎖。',
+            '輸入建立此備份時保存的復原金鑰後，即可在這台裝置重新解鎖。',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

@@ -5,20 +5,26 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../drive/drive_backup_service.dart';
+import 'restore_precheck.dart';
 import 'vault_archive_io.dart';
+import 'vault_repository.dart';
 
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,
     required DriveBackupService driveBackupService,
+    required VaultRepository vaultRepository,
   })  : _archiveIo = archiveIo,
-        _driveBackupService = driveBackupService;
+        _driveBackupService = driveBackupService,
+        _vaultRepository = vaultRepository;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
+  final VaultRepository _vaultRepository;
 
   Future<void> resetGoogleDriveSignInForConsentRetry() {
     return _driveBackupService.resetSignInSessionForConsentRetry();
@@ -122,7 +128,8 @@ class VaultTransferService {
     );
   }
 
-  Future<bool> restoreBackupFromPicker() async {
+  /// Lets the user pick a `.jbackup` file and resolves it to a readable [File].
+  Future<File?> pickLocalBackupFile() async {
     final FilePickerResult? picked = await FilePicker.pickFiles(
       dialogTitle: '選擇本機備份檔',
       type: FileType.custom,
@@ -130,15 +137,34 @@ class VaultTransferService {
       withData: true,
     );
     if (picked == null || picked.files.isEmpty) {
-      return false;
+      return null;
     }
-    final PlatformFile file = picked.files.single;
+    return _resolvePickedBackupFile(picked.files.single);
+  }
+
+  Future<RestorePrecheck> precheckRestore(File backupFile) async {
+    final BackupRecoveryPreview preview = await _archiveIo.peekBackupRecovery(backupFile);
+    final RecoveryMetadata? localMetadata = await _vaultRepository.readRecoveryMetadata();
+    final bool localHasTrusted = localMetadata != null &&
+        await _vaultRepository.hasTrustedDeviceAccess();
+    return RestorePrecheck(
+      preview: preview,
+      localVaultId: localMetadata?.vaultId,
+      localHasTrustedDevice: localHasTrusted,
+      willOverwriteLocalVault: await _vaultRepository.hasVault(),
+    );
+  }
+
+  Future<void> restoreFromBackupFile(File backupFile) async {
+    await _archiveIo.restoreBackupZip(backupFile);
+  }
+
+  Future<File?> _resolvePickedBackupFile(PlatformFile file) async {
     final String? path = file.path;
     if (path != null && path.isNotEmpty) {
       try {
         if (File(path).existsSync()) {
-          await _archiveIo.restoreBackupZip(File(path));
-          return true;
+          return File(path);
         }
       } on Object {
         // 某些平台會回傳 content URI，無法直接用 dart:io 開啟。
@@ -146,17 +172,12 @@ class VaultTransferService {
     }
     final Uint8List? bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
-      return false;
+      return null;
     }
     final String baseName = file.name.isNotEmpty ? file.name : 'restore.jbackup';
     final File tempBackup = await _createTempFile(baseName);
-    try {
-      await tempBackup.writeAsBytes(bytes, flush: true);
-      await _archiveIo.restoreBackupZip(tempBackup);
-    } finally {
-      await _deleteIfExists(tempBackup);
-    }
-    return true;
+    await tempBackup.writeAsBytes(bytes, flush: true);
+    return tempBackup;
   }
 
   Future<String> uploadBackupToDrive() async {
@@ -174,19 +195,18 @@ class VaultTransferService {
     return _driveBackupService.listBackups();
   }
 
-  Future<void> restoreDriveBackup(DriveBackupFile backup) async {
+  Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {
     final api = await _driveBackupService.createAuthorizedDriveApi();
-    final File tempBackup = await _driveBackupService.downloadBackupById(
+    return _driveBackupService.downloadBackupById(
       fileId: backup.id,
       fileName: backup.name,
       destinationDirectory: await getTemporaryDirectory(),
       reuseApi: api,
     );
-    try {
-      await _archiveIo.restoreBackupZip(tempBackup);
-    } finally {
-      await _deleteIfExists(tempBackup);
-    }
+  }
+
+  Future<void> restoreFromDownloadedBackupFile(File backupFile) async {
+    await restoreFromBackupFile(backupFile);
   }
 
   Future<PortableImportResult?> _tryImportFromPickedFiles(
