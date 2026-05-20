@@ -45,12 +45,22 @@ abstract final class _HomePalette {
   }
 }
 
-Widget _blockedEntriesPane(AppSessionState sessionState) {
+Widget _blockedEntriesPane(BuildContext context, AppSessionState sessionState) {
+  final bool offerSettings = _blockedOffersSettingsNavigation(sessionState);
   return _StateCard(
     icon: _blockedIcon(sessionState.status),
     title: _blockedTitle(sessionState.status),
     message: _blockedMessage(sessionState),
+    actionLabel: offerSettings ? '前往設定' : null,
+    onAction: offerSettings ? () => context.push(AppRouter.settingsRoute) : null,
   );
+}
+
+bool _blockedOffersSettingsNavigation(AppSessionState sessionState) {
+  if (sessionState.status == AppLockStatus.recoveryRequired) {
+    return true;
+  }
+  return sessionState.status == AppLockStatus.unlocked && sessionState.session == null;
 }
 
 /// Main landing page for browsing, searching, and summarizing diary content.
@@ -254,7 +264,7 @@ class _HomeTimelinePane extends ConsumerWidget {
                     message: '$error',
                   ),
                 )
-              : _blockedEntriesPane(sessionState),
+              : _blockedEntriesPane(context, sessionState),
         ),
       ],
     );
@@ -281,7 +291,7 @@ class _CalendarPane extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     if (!canReadEntries) {
-      return _blockedEntriesPane(sessionState);
+      return _blockedEntriesPane(context, sessionState);
     }
 
     return datesAsync.when(
@@ -517,7 +527,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
   @override
   Widget build(BuildContext context) {
     if (!widget.sessionState.isUnlocked || widget.sessionState.session == null) {
-      return _blockedEntriesPane(widget.sessionState);
+      return _blockedEntriesPane(context, widget.sessionState);
     }
 
     final ThemeData theme = Theme.of(context);
@@ -801,7 +811,7 @@ class _OverviewPane extends ConsumerWidget {
     final MemoryScope scope = ref.watch(memoryScopeProvider);
 
     if (!canReadEntries) {
-      return _blockedEntriesPane(sessionState);
+      return _blockedEntriesPane(context, sessionState);
     }
 
     return summaryAsync.when(
@@ -1953,11 +1963,15 @@ class _StateCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1985,8 +1999,19 @@ class _StateCard extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
               ),
+              if (actionLabel != null && onAction != null) ...<Widget>[
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: onAction,
+                  icon: const Icon(Icons.settings_outlined),
+                  label: Text(actionLabel!),
+                ),
+              ],
             ],
           ),
         ),
@@ -2049,7 +2074,7 @@ String _weekdayZhFromDateOnly(DateOnly date) {
 String _blockedTitle(AppLockStatus status) {
   return switch (status) {
     AppLockStatus.locked => '目前已鎖定',
-    AppLockStatus.recoveryRequired => '需要 Recovery Key',
+    AppLockStatus.recoveryRequired => '需要復原金鑰',
     AppLockStatus.fatalError => '無法讀取日記庫',
     _ => '尚未完成設定',
   };
@@ -2057,10 +2082,10 @@ String _blockedTitle(AppLockStatus status) {
 
 String _blockedMessage(AppSessionState sessionState) {
   if (sessionState.status == AppLockStatus.unlocked && sessionState.session == null) {
-    return '請先建立 Recovery Key，之後才能開始建立與解鎖日記。';
+    return '請先建立復原金鑰，之後才能開始建立與解鎖日記。';
   }
   if (sessionState.status == AppLockStatus.recoveryRequired) {
-    return '請先使用 Recovery Key 解鎖，才能讀取與編輯日記。';
+    return '請先使用復原金鑰解鎖，才能讀取與編輯日記。';
   }
   if (sessionState.status == AppLockStatus.fatalError) {
     return sessionState.message ?? '發生錯誤，暫時無法讀取日記庫。';

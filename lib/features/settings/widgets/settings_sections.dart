@@ -17,12 +17,14 @@ class SettingsSectionCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.child,
+    this.icon,
     super.key,
   });
 
   final String title;
   final String description;
   final Widget child;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -39,19 +41,80 @@ class SettingsSectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              description,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (icon != null) ...<Widget>[
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color.alphaBlend(
+                        cs.primary.withValues(alpha: 0.08),
+                        cs.surfaceContainerLow,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Icon(icon, color: cs.primary, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 將多個設定動作按鈕排成一致的全寬直向列表。
+class SettingsActionGroup extends StatelessWidget {
+  const SettingsActionGroup({
+    required this.actions,
+    super.key,
+  });
+
+  final List<SettingsActionButton> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (int index = 0; index < actions.length; index++) ...<Widget>[
+              if (index > 0) const SizedBox(height: 10),
+              actions[index],
+            ],
           ],
         ),
       ),
@@ -97,20 +160,20 @@ class SettingsStatusPanel extends StatelessWidget {
             controller: recoveryKeyInputController,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: '輸入 Recovery Key',
+              labelText: '輸入復原金鑰',
               hintText: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            '輸入正確的 Recovery Key 後，系統會重新建立目前裝置可用的 trusted session。',
+            '輸入正確的復原金鑰後，即可在這台裝置重新解鎖。',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 14),
           SettingsActionButton(
-            label: '使用 Recovery Key 解鎖',
+            label: '使用復原金鑰解鎖',
             icon: Icons.lock_open_rounded,
             emphasized: true,
             onPressed: busy ? null : onUnlockWithRecovery,
@@ -143,12 +206,12 @@ class RecoveryKeySectionBody extends StatelessWidget {
         children: <Widget>[
           const SettingsInfoBanner(
             icon: Icons.key_off_outlined,
-            message: '尚未建立 Recovery Key。若 trusted session 失效，你將無法重新進入保險庫。',
+            message: '尚未建立復原金鑰。日記庫無法自動解鎖時，將無法重新進入。',
             tone: SettingsBannerTone.warning,
           ),
           const SizedBox(height: 14),
           SettingsActionButton(
-            label: '建立 Recovery Key',
+            label: '建立復原金鑰',
             icon: Icons.key_outlined,
             emphasized: true,
             onPressed: busy ? null : onCreateRecoveryKey,
@@ -162,16 +225,16 @@ class RecoveryKeySectionBody extends StatelessWidget {
       children: <Widget>[
         const SettingsInfoBanner(
           icon: Icons.verified_user_outlined,
-          message: 'Recovery Key 已建立。若 trusted session 失效，可用它重新解鎖並重建目前裝置的 trusted session。',
+          message: '復原金鑰已建立。需要時可用它重新解鎖這台裝置。',
         ),
         const SizedBox(height: 14),
         Wrap(
           spacing: 10,
           runSpacing: 10,
           children: <Widget>[
-            SettingsFactChip(label: 'Vault', value: currentMetadata.vaultId),
+            SettingsFactChip(label: '日記庫', value: currentMetadata.vaultId),
             SettingsFactChip(label: '提示', value: currentMetadata.recoveryKeyHint),
-            SettingsFactChip(label: 'KDF', value: currentMetadata.kdf.name),
+            SettingsFactChip(label: '加密方式', value: currentMetadata.kdf.name),
           ],
         ),
       ],
@@ -186,6 +249,7 @@ class SettingsActionButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.emphasized = false,
+    this.fullWidth = false,
     super.key,
   });
 
@@ -193,21 +257,25 @@ class SettingsActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final bool emphasized;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
-    if (emphasized) {
-      return FilledButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-      );
+    final Widget button = emphasized
+        ? FilledButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon),
+            label: Text(label),
+          )
+        : OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: Icon(icon),
+            label: Text(label),
+          );
+    if (!fullWidth) {
+      return button;
     }
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(label),
-    );
+    return SizedBox(width: double.infinity, child: button);
   }
 }
 

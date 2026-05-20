@@ -41,7 +41,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
     final AppLockService appLockService = ref.watch(appLockServiceProvider);
-    final ThemeData theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
@@ -54,7 +53,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 if (!isSupportedPlatform)
                   const SettingsSectionCard(
                     title: '平台限制',
-                    description: '目前這個版本僅支援 Android 裝置上的加密保險庫功能。',
+                    description: '此版本僅支援 Android 上的加密日記庫。',
                     child: SettingsInfoBanner(
                       icon: Icons.phone_android_rounded,
                       message: kAndroidOnlyMessage,
@@ -64,8 +63,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   sessionAsync.when(
                     data: (AppSessionState sessionState) {
                       return SettingsSectionCard(
-                        title: '保險庫狀態',
-                        description: '查看 trusted session 狀態，必要時使用 Recovery Key 重新解鎖。',
+                        title: '安全鎖狀態',
+                        description: '查看安全鎖是否已解除，必要時可用復原金鑰重新進入。',
                         child: SettingsStatusPanel(
                           sessionState: sessionState,
                           busy: _busy,
@@ -86,8 +85,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     },
                     loading: () => const SettingsSectionLoading(),
                     error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: '保險庫狀態',
-                      description: '讀取目前 session 狀態時發生錯誤。',
+                      title: '安全鎖狀態',
+                      description: '讀取狀態時發生錯誤。',
                       child: SettingsInfoBanner(
                         icon: Icons.error_outline_rounded,
                         message: '$error',
@@ -99,8 +98,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   recoveryMetadataAsync.when(
                     data: (RecoveryMetadata? metadata) {
                       return SettingsSectionCard(
-                        title: 'Recovery Key',
-                        description: 'Recovery Key 用來在 trusted device 失效時重新建立 trusted session，請妥善保存。',
+                        title: '復原金鑰',
+                        description: '裝置無法自動解鎖時的備用金鑰，請妥善保存。',
                         child: RecoveryKeySectionBody(
                           metadata: metadata,
                           busy: _busy,
@@ -120,7 +119,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     await showDialog<void>(
                                       context: context,
                                       builder: (BuildContext context) => AlertDialog(
-                                        title: const Text('請保存 Recovery Key'),
+                                        title: const Text('請保存復原金鑰'),
                                         content: SelectableText(result.recoveryKey),
                                         actions: <Widget>[
                                           TextButton(
@@ -136,8 +135,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     },
                     loading: () => const SettingsSectionLoading(),
                     error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: 'Recovery Key',
-                      description: '讀取 Recovery Key 設定時發生錯誤。',
+                      title: '復原金鑰',
+                      description: '讀取復原金鑰設定失敗。',
                       child: SettingsInfoBanner(
                         icon: Icons.error_outline_rounded,
                         message: '$error',
@@ -148,13 +147,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const SizedBox(height: 16),
                   SettingsSectionCard(
                     title: '生物驗證',
-                    description: '開啟後，之後恢復 trusted session 時會要求裝置驗證。',
+                    description: '重新開啟應用程式時，以指紋或臉部驗證解鎖。',
                     child: FutureBuilder<bool>(
                       future: appLockService.isBiometricLockEnabled(),
                       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
                         return SettingsToggleTile(
                           title: '啟用生物驗證',
-                          description: '開啟後，已儲存的 trusted session 需要通過生物驗證才能還原。',
+                          description: '開啟後，重新開啟應用程式需通過裝置驗證才能解鎖。',
                           value: snapshot.data ?? false,
                           onChanged: _busy
                               ? null
@@ -181,27 +180,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
-                    title: '匯入、匯出與備份',
-                    description: 'Markdown 匯出會整理成單篇資料夾結構後再封裝成 zip；匯入支援 zip 或含附件的 Markdown / HTML 資料夾。',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                    Text(
-                      '匯入與匯出',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: <Widget>[
+                    icon: Icons.swap_horiz_rounded,
+                    title: '匯入與匯出',
+                    description: '匯出日記為 Markdown 壓縮檔，或匯入 Markdown、HTML 與 zip 檔。',
+                    child: SettingsActionGroup(
+                      actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: '匯出 Markdown',
+                          label: '匯出日記',
                           icon: Icons.file_open_outlined,
                           emphasized: true,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(
@@ -216,14 +204,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     if (exportPath == null) {
                                       return;
                                     }
-                                    _showMessage('已匯出 Markdown zip：$exportPath');
+                                    _showMessage('已匯出 Markdown 壓縮檔：$exportPath');
                                   },
-                                    progressMessage: '正在匯出 Markdown，整理日記與附件中…',
+                                    progressMessage: '正在匯出日記，整理內容與附件中…',
                                   ),
                         ),
                         SettingsActionButton(
-                          label: '匯入 Markdown / HTML / zip',
+                          label: '匯入 Markdown、HTML 或 zip',
                           icon: Icons.download_rounded,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
@@ -246,23 +235,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      '本機備份與還原',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: <Widget>[
+                  ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
+                    icon: Icons.storage_rounded,
+                    title: '本機備份與還原',
+                    description: '備份全部日記到本機，之後可完整還原。',
+                    child: SettingsActionGroup(
+                      actions: <SettingsActionButton>[
                         SettingsActionButton(
                           label: '建立本機備份',
                           icon: Icons.archive_outlined,
                           emphasized: true,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
@@ -282,6 +267,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         SettingsActionButton(
                           label: '還原本機備份',
                           icon: Icons.restore_rounded,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
@@ -301,22 +287,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Google Drive 備份',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: <Widget>[
+                  ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
+                    icon: Icons.cloud_outlined,
+                    title: 'Google Drive 備份與還原',
+                    description: '上傳備份到 Google Drive，或從雲端還原。',
+                    child: SettingsActionGroup(
+                      actions: <SettingsActionButton>[
                         SettingsActionButton(
                           label: '上傳到 Google Drive',
                           icon: Icons.cloud_upload_outlined,
+                          emphasized: true,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
@@ -333,6 +316,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         SettingsActionButton(
                           label: '從 Google Drive 還原',
                           icon: Icons.cloud_download_outlined,
+                          fullWidth: true,
                           onPressed: _busy
                               ? null
                               : () => _runAction(() async {
@@ -358,8 +342,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     _showMessage('已從 Google Drive 還原：${backup.name}');
                                   }),
                         ),
-                      ],
-                    ),
                       ],
                     ),
                   ),
@@ -495,7 +477,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Text(message),
             const SizedBox(height: 10),
             const Text(
-              '如果你剛調整 Google Drive 權限或 OAuth 設定，先重新登入再重試通常就能完成授權。',
+              '如果你剛調整 Google Drive 權限或授權設定，先重新登入再重試通常就能完成授權。',
               style: TextStyle(fontSize: 13, height: 1.35),
             ),
             const SizedBox(height: 8),
@@ -529,12 +511,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 String _sessionSummary(AppSessionState sessionState) {
   final String? message = sessionState.message;
   return switch (sessionState.status) {
-    AppLockStatus.uninitialized => message ?? '正在準備保險庫狀態。',
-    AppLockStatus.unlocking => message ?? '正在嘗試還原 trusted session。',
-    AppLockStatus.unlocked => message ?? '已解鎖，trusted session 可用。',
-    AppLockStatus.locked => message ?? '目前已鎖定，需要重新驗證。',
-    AppLockStatus.recoveryRequired => message ?? 'trusted device 不可用，請使用 Recovery Key 解鎖。',
-    AppLockStatus.fatalError => message ?? '初始化失敗，請檢查設定後再試一次。',
+    AppLockStatus.uninitialized => message ?? '正在準備中…',
+    AppLockStatus.unlocking => message ?? '正在解鎖…',
+    AppLockStatus.unlocked => message ?? '安全鎖已解除，可以正常使用。',
+    AppLockStatus.locked => message ?? '目前已鎖定，請重新驗證。',
+    AppLockStatus.recoveryRequired => message ?? '這台裝置尚未授權，請輸入復原金鑰解鎖。',
+    AppLockStatus.fatalError => message ?? '初始化失敗，請稍後再試。',
   };
 }
 

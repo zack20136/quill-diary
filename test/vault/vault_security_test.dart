@@ -39,7 +39,7 @@ void main() {
       throwsA(
         predicate<Object>(
           (Object error) =>
-              error is StateError && error.message.contains('Recovery Key 已存在'),
+              error is StateError && error.message.contains('復原金鑰已存在'),
         ),
       ),
     );
@@ -101,7 +101,7 @@ void main() {
         predicate<Object>(
           (Object error) =>
               error is SecretBoxAuthenticationError ||
-              (error is StateError && error.toString().contains('Recovery Key')),
+              (error is StateError && error.toString().contains('復原金鑰')),
         ),
       ),
     );

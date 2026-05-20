@@ -93,9 +93,9 @@ class VaultRepository {
 
   Future<UnlockedVaultSession> openTrustedSession() async {
     final RecoveryMetadata metadata =
-        await readRecoveryMetadata() ?? (throw StateError('尚未建立 Recovery Key。'));
+        await readRecoveryMetadata() ?? (throw StateError('尚未建立復原金鑰。'));
     if (!await _deviceKeyManager.hasTrustedKey(metadata.vaultId)) {
-      throw StateError('這台裝置尚未註冊，請使用 Recovery Key 解鎖。');
+      throw StateError('這台裝置尚未註冊，請使用復原金鑰解鎖。');
     }
 
     final WrappedRecoveryKeyRecord record =
@@ -107,7 +107,7 @@ class VaultRepository {
 
     if (record.slotId != deviceInfo.slotId) {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
-      throw StateError('受信任裝置資料不一致，請使用 Recovery Key 重新建立。');
+      throw StateError('受信任裝置資料不一致，請使用復原金鑰重新建立。');
     }
 
     final List<int> recoveryWrapKey;
@@ -124,7 +124,7 @@ class VaultRepository {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
       Error.throwWithStackTrace(
         StateError(
-          '受信任裝置資料已失效，請重新使用 Recovery Key 解鎖。（unwrapWithDeviceKey：$error）',
+          '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
         ),
         stackTrace,
       );
@@ -178,7 +178,7 @@ class VaultRepository {
 
   Future<RecoverySetupResult> setupRecoveryKey() async {
     if (await readRecoveryMetadata() != null) {
-      throw StateError('Recovery Key 已存在。');
+      throw StateError('復原金鑰已存在。');
     }
 
     final String recoveryKey = _generateRecoveryKey();
@@ -665,14 +665,14 @@ class VaultRepository {
 
     if (verificationProblem != null) {
       throw StateError(
-        '無法用現有加密檔驗證 Recovery Key（至少一個檔案疑似毀損或格式異常）。'
+        '無法用現有加密檔驗證復原金鑰（至少一個檔案疑似毀損或格式異常）。'
         ' 最近一次驗證問題：$verificationProblem',
       );
     }
 
     if (sawParsableEncryptedFile && authFailurePath != null) {
       throw StateError(
-        'Recovery Key 與現有 vault 資料不相符。（路徑：$authFailurePath）',
+        '復原金鑰與現有日記庫資料不相符。（路徑：$authFailurePath）',
       );
     }
 

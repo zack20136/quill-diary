@@ -44,7 +44,7 @@ class RecoveryMetadata {
     }
     final int version = int.tryParse('${json['recovery_key_version'] ?? 0}') ?? 0;
     if (version < 2) {
-      throw FormatException('目前僅支援 Recovery Key v2 以上的資料。');
+      throw FormatException('目前僅支援復原金鑰 v2 以上的資料。');
     }
     return RecoveryMetadata(
       vaultId: (json['vault_id'] ?? 'vlt_UNKNOWN').toString(),

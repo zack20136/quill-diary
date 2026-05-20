@@ -164,7 +164,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   sessionState.status == AppLockStatus.recoveryRequired
-                      ? '請先使用 Recovery Key 解鎖，再繼續編輯日記。'
+                      ? '請先使用復原金鑰解鎖，再繼續編輯日記。'
                       : sessionState.message ?? '請先重新解鎖日記庫後再繼續。',
                 ),
               ),
@@ -187,7 +187,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
-                        child: Text('請先建立 Recovery Key，才能開始建立或編輯日記。'),
+                        child: Text('請先建立復原金鑰，才能開始建立或編輯日記。'),
                       ),
                     );
                   }

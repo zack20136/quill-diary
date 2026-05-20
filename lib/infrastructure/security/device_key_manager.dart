@@ -98,7 +98,7 @@ final class DeviceKeyInvalidatedException extends DeviceKeyException {
 
 final class DeviceKeyLegacyStateException extends DeviceKeyException {
   const DeviceKeyLegacyStateException([
-    super.message = '受信任裝置資料屬於舊版格式，請使用 Recovery Key 重新建立。',
+    super.message = '受信任裝置資料屬於舊版格式，請使用復原金鑰重新建立。',
   ]);
 }
 
@@ -318,7 +318,7 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
         return DeviceKeyAuthFailedException(error.message ?? '裝置驗證失敗。');
       case 'device_key_legacy_slot':
         return DeviceKeyLegacyStateException(
-          error.message ?? '受信任裝置資料屬於舊版格式，請使用 Recovery Key 重新建立。',
+          error.message ?? '受信任裝置資料屬於舊版格式，請使用復原金鑰重新建立。',
         );
       case 'device_key_invalidated':
         return DeviceKeyInvalidatedException(error.message ?? '裝置金鑰已失效。');
