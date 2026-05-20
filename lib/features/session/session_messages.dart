@@ -1,3 +1,5 @@
+import 'package:cryptography/cryptography.dart';
+
 import 'state/app_session_state.dart';
 
 const String kAndroidOnlyMessage = '此應用程式目前僅支援 Android。';
@@ -12,6 +14,19 @@ const String kAppLockedMessage = '應用程式已鎖定。';
 const String kTrustedUnlockInProgressMessage = '正在以本機受信任裝置解鎖…';
 const String kLockedRetryVerificationMessage =
     '目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。';
+const String kUseDeviceLockToUnlockMessage = '請使用裝置螢幕鎖解鎖。';
+const String kBiometricFallbackDeviceLockMessage =
+    '生物驗證已取消。可改用裝置螢幕鎖解鎖。';
+const String kBiometricNotEnrolledSwitchModeMessage =
+    '裝置尚未登錄指紋或臉部。請到設定改為「生物驗證」、「裝置螢幕鎖」或「無」。';
+const String kUnlockModeNoneDescription =
+    '背景逾時回到前景時，自動以本機受信任裝置重新驗證（不額外要求系統驗證）。';
+const String kUnlockModeBiometricDescription =
+    '背景逾時回到前景時，會自動彈出系統指紋驗證；失敗可改用裝置螢幕鎖。';
+const String kUnlockModeDeviceLockDescription =
+    '背景逾時回到前景時，會自動彈出系統螢幕鎖（PIN／圖案／密碼）。須先設定裝置螢幕鎖。';
+const String kUnlockModeNeedsDeviceLockMessage = '請先在裝置設定中建立螢幕鎖，才能使用此模式。';
+const String kRecoveryKeyRotatedMessage = '復原金鑰已更新，請立即保存新金鑰。';
 const String kRecoveryRequiredAfterRestoreMessage =
     '還原後需輸入建立此備份時保存的復原金鑰。';
 const String kRestoreNeedsUnlockMessage = '請先解鎖日記庫後，再進行備份或還原。';
@@ -25,6 +40,19 @@ const String kRestoreSuccessRecoveryRequiredMessage =
 const String kRestoreSuccessNeedsRecoveryKeySetupMessage =
     '已還原備份。此備份尚未建立復原金鑰，請先建立以保護日記庫。';
 const String kRestoreStartupFailedMessage = '已還原備份，但啟動失敗：';
+const String kRecoveryKeyMismatchMessage =
+    '復原金鑰與日記庫資料不相符。若為「更新復原金鑰」前的舊備份，請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。';
+
+/// 將技術性錯誤轉成設定頁／安全鎖狀態可讀訊息。
+String friendlySessionErrorMessage(Object error) {
+  if (error is SecretBoxAuthenticationError) {
+    return kRecoveryKeyMismatchMessage;
+  }
+  if (error is StateError) {
+    return error.message;
+  }
+  return '$error';
+}
 
 String snackbarMessageForPostRestore(AppLockStatus status, {String? sessionMessage}) {
   return switch (status) {

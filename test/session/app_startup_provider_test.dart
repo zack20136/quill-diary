@@ -8,6 +8,8 @@ import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
 import 'package:quill_lock_diary/features/session/session_messages.dart';
 import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
+import 'package:quill_lock_diary/features/session/state/resume_unlock_action.dart';
+import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/shared/providers/core_providers.dart';
 
@@ -149,7 +151,7 @@ void main() {
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
       repository: repository,
-      appLock: FakeAppLockService(biometricEnabled: true),
+      appLock: FakeAppLockService(unlockMode: AppUnlockMode.biometric),
     );
 
     final AppSessionState state = await container.read(appStartupProvider.future);
@@ -166,12 +168,16 @@ void main() {
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
       repository: repository,
-      appLock: FakeAppLockService(biometricEnabled: true),
+      appLock: FakeAppLockService(
+        unlockMode: AppUnlockMode.biometric,
+        canUseDeviceCredentialResult: true,
+      ),
     );
 
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.locked);
-    expect(state.message, 'bio failed');
+    expect(state.message, kBiometricFallbackDeviceLockMessage);
+    expect(state.resumeAction, ResumeUnlockAction.deviceCredentialFallback);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 

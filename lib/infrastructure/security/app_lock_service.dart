@@ -1,80 +1,60 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:local_auth/local_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'app_unlock_mode.dart';
+import 'keystore_unlock_policy.dart';
+
 abstract class AppLockService {
-  Future<bool> isSessionLocked();
+  Future<AppUnlockMode> getUnlockMode();
 
-  Future<bool> unlock();
+  Future<void> setUnlockMode(AppUnlockMode mode);
 
-  Future<void> lock();
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode();
 
-  Future<bool> isBiometricLockEnabled();
-
-  Future<void> setBiometricLockEnabled(bool enabled);
+  Future<bool> canUseDeviceCredential();
 }
 
 class LocalAppLockService implements AppLockService {
-  LocalAppLockService({
-    LocalAuthentication? localAuthentication,
-  }) : _localAuthentication = localAuthentication ?? LocalAuthentication();
+  LocalAppLockService();
 
-  final LocalAuthentication _localAuthentication;
+  static const String _unlockModeKey = 'app_lock.unlock_mode';
 
-  static const String _biometricEnabledKey = 'app_lock.biometric_enabled';
-  static const String _sessionLockedKey = 'app_lock.session_locked';
+  static const MethodChannel _deviceKeyChannel =
+      MethodChannel('quill_lock_diary/device_key_bridge');
+
   Map<String, String>? _cache;
 
   @override
-  Future<bool> isBiometricLockEnabled() async {
-    return (await _readValue(_biometricEnabledKey)) == 'true';
+  Future<AppUnlockMode> getUnlockMode() async {
+    final String? raw = await _readValue(_unlockModeKey);
+    return AppUnlockModeStorage.fromStorage(raw);
   }
 
   @override
-  Future<bool> isSessionLocked() async {
-    if (!await isBiometricLockEnabled()) {
+  Future<void> setUnlockMode(AppUnlockMode mode) async {
+    await _writeValue(_unlockModeKey, mode.storageValue);
+  }
+
+  @override
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async {
+    return keystoreAuthFor(await getUnlockMode());
+  }
+
+  @override
+  Future<bool> canUseDeviceCredential() async {
+    if (!Platform.isAndroid) {
       return false;
     }
-    return (await _readValue(_sessionLockedKey)) == 'true';
-  }
-
-  @override
-  Future<void> lock() {
-    return _writeValue(_sessionLockedKey, 'true');
-  }
-
-  @override
-  Future<void> setBiometricLockEnabled(bool enabled) async {
-    await _writeValue(_biometricEnabledKey, enabled ? 'true' : 'false');
-    if (!enabled) {
-      await _writeValue(_sessionLockedKey, 'false');
+    try {
+      final bool? ok = await _deviceKeyChannel.invokeMethod<bool>('canUseDeviceCredential');
+      return ok ?? false;
+    } on PlatformException {
+      return false;
     }
-  }
-
-  @override
-  Future<bool> unlock() async {
-    if (!await isBiometricLockEnabled()) {
-      await _writeValue(_sessionLockedKey, 'false');
-      return true;
-    }
-
-    final bool canCheck = await _localAuthentication.canCheckBiometrics ||
-        await _localAuthentication.isDeviceSupported();
-    if (!canCheck) {
-      await _writeValue(_sessionLockedKey, 'false');
-      return true;
-    }
-
-    final bool authenticated = await _localAuthentication.authenticate(
-      localizedReason: '請驗證裝置以解鎖 QuillLockDiary',
-      biometricOnly: false,
-      persistAcrossBackgrounding: true,
-    );
-    await _writeValue(_sessionLockedKey, authenticated ? 'false' : 'true');
-    return authenticated;
   }
 
   Future<String?> _readValue(String key) async {
@@ -130,17 +110,14 @@ class UnsupportedAppLockService implements AppLockService {
   const UnsupportedAppLockService();
 
   @override
-  Future<bool> isBiometricLockEnabled() async => false;
+  Future<AppUnlockMode> getUnlockMode() async => AppUnlockMode.none;
 
   @override
-  Future<bool> isSessionLocked() async => false;
+  Future<void> setUnlockMode(AppUnlockMode mode) async {}
 
   @override
-  Future<void> lock() async {}
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async => KeystoreAuthKind.plain;
 
   @override
-  Future<void> setBiometricLockEnabled(bool enabled) async {}
-
-  @override
-  Future<bool> unlock() async => false;
+  Future<bool> canUseDeviceCredential() async => false;
 }

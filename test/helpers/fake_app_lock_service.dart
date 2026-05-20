@@ -1,24 +1,29 @@
 import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
+import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 class FakeAppLockService implements AppLockService {
-  FakeAppLockService({this.biometricEnabled = false});
+  FakeAppLockService({
+    AppUnlockMode unlockMode = AppUnlockMode.none,
+    this.canUseDeviceCredentialResult = true,
+  }) : _unlockMode = unlockMode;
 
-  bool biometricEnabled;
-
-  @override
-  Future<bool> isBiometricLockEnabled() async => biometricEnabled;
-
-  @override
-  Future<bool> isSessionLocked() async => false;
+  AppUnlockMode _unlockMode;
+  bool canUseDeviceCredentialResult;
 
   @override
-  Future<void> lock() async {}
+  Future<AppUnlockMode> getUnlockMode() async => _unlockMode;
 
   @override
-  Future<void> setBiometricLockEnabled(bool enabled) async {
-    biometricEnabled = enabled;
+  Future<void> setUnlockMode(AppUnlockMode mode) async {
+    _unlockMode = mode;
   }
 
   @override
-  Future<bool> unlock() async => true;
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async {
+    return keystoreAuthFor(_unlockMode);
+  }
+
+  @override
+  Future<bool> canUseDeviceCredential() async => canUseDeviceCredentialResult;
 }

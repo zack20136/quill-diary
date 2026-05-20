@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
+import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/shared/value_objects.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
@@ -437,7 +438,8 @@ Imported from zip.
     final RecoveryMetadata? metadata = await harness.repository.readRecoveryMetadata();
     expect(metadata?.vaultId, setup.session.vaultId);
 
-    final UnlockedVaultSession session = await harness.repository.openTrustedSession();
+    final UnlockedVaultSession session =
+        await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.rebuildIndex(session);
     final List<EntryIndexRecord> entries = await harness.repository.listEntries();
     expect(entries, hasLength(1));

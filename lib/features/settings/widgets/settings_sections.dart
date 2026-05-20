@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../domain/recovery/recovery_metadata.dart';
+import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import '../../session/state/resume_unlock_action.dart';
 import '../../../shared/presentation/page_style.dart';
 
 /// 設定頁可重用的提示色系。
@@ -133,6 +136,9 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.bannerTone,
     required this.onUnlockWithRecovery,
     this.onRetryTrustedUnlock,
+    this.onUnlockWithDeviceCredential,
+    this.onCancelUnlock,
+    this.retryActionLabel = '重新驗證',
     super.key,
   });
 
@@ -144,6 +150,9 @@ class SettingsStatusPanel extends StatelessWidget {
   final SettingsBannerTone bannerTone;
   final VoidCallback? onUnlockWithRecovery;
   final VoidCallback? onRetryTrustedUnlock;
+  final VoidCallback? onUnlockWithDeviceCredential;
+  final VoidCallback? onCancelUnlock;
+  final String retryActionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -157,18 +166,45 @@ class SettingsStatusPanel extends StatelessWidget {
           tone: bannerTone,
         ),
         if (sessionState.status == AppLockStatus.unlocking) ...<Widget>[
-          const SizedBox(height: 16),
-          const Center(child: CircularProgressIndicator()),
-        ],
-        if (sessionState.status == AppLockStatus.locked &&
-            onRetryTrustedUnlock != null) ...<Widget>[
-          const SizedBox(height: 14),
-          SettingsActionButton(
-            label: '重新驗證',
-            icon: Icons.fingerprint_rounded,
-            emphasized: true,
-            onPressed: busy ? null : onRetryTrustedUnlock,
+          const SizedBox(height: 12),
+          Text(
+            '若等候過久，可能是驗證視窗被擋住。可取消後改用手動驗證。',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
+          const SizedBox(height: 14),
+          const Center(child: CircularProgressIndicator()),
+          if (onCancelUnlock != null) ...<Widget>[
+            const SizedBox(height: 14),
+            SettingsActionButton(
+              label: '取消並改用手動驗證',
+              icon: Icons.close_rounded,
+              onPressed: busy ? null : onCancelUnlock,
+            ),
+          ],
+        ],
+        if (sessionState.status == AppLockStatus.locked) ...<Widget>[
+          if (sessionState.resumeAction == ResumeUnlockAction.deviceCredentialFallback &&
+              onUnlockWithDeviceCredential != null) ...<Widget>[
+            const SizedBox(height: 14),
+            SettingsActionButton(
+              label: '使用裝置螢幕鎖解鎖',
+              icon: Icons.lock_outline,
+              emphasized: true,
+              onPressed: busy ? null : onUnlockWithDeviceCredential,
+            ),
+          ],
+          if (onRetryTrustedUnlock != null) ...<Widget>[
+            const SizedBox(height: 10),
+            SettingsActionButton(
+              label: retryActionLabel,
+              icon: Icons.lock_open_rounded,
+              emphasized:
+                  sessionState.resumeAction != ResumeUnlockAction.deviceCredentialFallback,
+              onPressed: busy ? null : onRetryTrustedUnlock,
+            ),
+          ],
         ],
         if (sessionState.status == AppLockStatus.recoveryRequired) ...<Widget>[
           const SizedBox(height: 16),
@@ -206,12 +242,14 @@ class RecoveryKeySectionBody extends StatelessWidget {
     required this.metadata,
     required this.busy,
     required this.onCreateRecoveryKey,
+    this.onRotateRecoveryKey,
     super.key,
   });
 
   final RecoveryMetadata? metadata;
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
+  final VoidCallback? onRotateRecoveryKey;
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +291,176 @@ class RecoveryKeySectionBody extends StatelessWidget {
             SettingsFactChip(label: '加密方式', value: currentMetadata.kdf.name),
           ],
         ),
+        if (onRotateRecoveryKey != null) ...<Widget>[
+          const SizedBox(height: 14),
+          SettingsActionButton(
+            label: '更新復原金鑰',
+            icon: Icons.refresh_rounded,
+            onPressed: busy ? null : onRotateRecoveryKey,
+          ),
+        ],
       ],
+    );
+  }
+}
+
+/// 解鎖方式：無／裝置螢幕鎖／生物驗證。
+class UnlockMethodSectionBody extends StatelessWidget {
+  const UnlockMethodSectionBody({
+    required this.enabled,
+    required this.busy,
+    required this.unlockMode,
+    required this.onModeSelected,
+    super.key,
+  });
+
+  final bool enabled;
+  final bool busy;
+  final AppUnlockMode unlockMode;
+  final Future<void> Function(AppUnlockMode mode) onModeSelected;
+
+  static String labelForMode(AppUnlockMode mode) {
+    return switch (mode) {
+      AppUnlockMode.none => '無',
+      AppUnlockMode.deviceLock => '裝置螢幕鎖',
+      AppUnlockMode.biometric => '生物驗證',
+    };
+  }
+
+  static String descriptionForMode(AppUnlockMode mode) {
+    return switch (mode) {
+      AppUnlockMode.none => kUnlockModeNoneDescription,
+      AppUnlockMode.deviceLock => kUnlockModeDeviceLockDescription,
+      AppUnlockMode.biometric => kUnlockModeBiometricDescription,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) {
+      return const SettingsInfoBanner(
+        icon: Icons.lock_outline,
+        message: '請先建立復原金鑰，才能設定解鎖方式。',
+        tone: SettingsBannerTone.warning,
+      );
+    }
+
+    final ThemeData theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          '選擇背景逾時後回到 App 時如何重新進入日記庫。',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...<AppUnlockMode>[
+          AppUnlockMode.none,
+          AppUnlockMode.deviceLock,
+          AppUnlockMode.biometric,
+        ].map(
+          (AppUnlockMode mode) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _UnlockModeOptionTile(
+              title: labelForMode(mode),
+              subtitle: descriptionForMode(mode),
+              icon: switch (mode) {
+                AppUnlockMode.none => Icons.shield_outlined,
+                AppUnlockMode.deviceLock => Icons.lock_outline,
+                AppUnlockMode.biometric => Icons.fingerprint_rounded,
+              },
+              selected: unlockMode == mode,
+              enabled: !busy,
+              onTap: () => onModeSelected(mode),
+            ),
+          ),
+        ),
+        if (unlockMode == AppUnlockMode.biometric) ...<Widget>[
+          const SizedBox(height: 10),
+          Text(
+            '須已設定裝置螢幕鎖，指紋驗證取消時才能改以螢幕鎖解鎖。',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _UnlockModeOptionTile extends StatelessWidget {
+  const _UnlockModeOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color borderColor = selected ? cs.primary : PageStyle.outlineSide(cs).color;
+    final Color fill = selected
+        ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surfaceContainerLow)
+        : cs.surfaceContainerLow;
+
+    return Material(
+      color: fill,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        side: BorderSide(color: borderColor, width: selected ? 1.5 : 1),
+      ),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(icon, color: selected ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: selected ? cs.primary : cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                Icon(Icons.check_circle_rounded, color: cs.primary, size: 22),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -322,7 +529,12 @@ class SettingsToggleTile extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         title: Text(title),
-        subtitle: Text(description),
+        subtitle: Text(
+          description,
+          style: onChanged == null
+              ? theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)
+              : theme.textTheme.bodySmall,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
     );

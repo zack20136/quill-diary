@@ -17,7 +17,10 @@ import '../database/index_database.dart';
 import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
 import '../security/app_lock_service.dart';
+import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
+import '../security/keystore_unlock_policy.dart';
+import 'restore_precheck.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
 
@@ -91,23 +94,35 @@ class VaultRepository {
     return await readRecoveryMetadata() != null;
   }
 
-  Future<UnlockedVaultSession> openTrustedSession() async {
+  Future<UnlockedVaultSession> openTrustedSession({
+    bool deviceCredentialFallback = false,
+  }) async {
     final RecoveryMetadata metadata =
         await readRecoveryMetadata() ?? (throw StateError('尚未建立復原金鑰。'));
     if (!await _deviceKeyManager.hasTrustedKey(metadata.vaultId)) {
       throw StateError('這台裝置尚未註冊，請使用復原金鑰解鎖。');
     }
 
-    final WrappedRecoveryKeyRecord record =
-        await _deviceKeyManager.readWrappedRecoveryKey(metadata.vaultId) ??
-            (throw StateError('找不到受信任裝置的 Recovery 金鑰資料。'));
-    final TrustedDeviceInfo deviceInfo =
-        await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
-            (throw StateError('找不到受信任裝置資訊。'));
-
-    if (record.slotId != deviceInfo.slotId) {
-      await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
-      throw StateError('受信任裝置資料不一致，請使用復原金鑰重新建立。');
+    final WrappedRecoveryKeyRecord record;
+    final TrustedDeviceInfo deviceInfo;
+    if (deviceCredentialFallback) {
+      record = await _deviceKeyManager.readDeviceCredentialBackupWrappedRecoveryKey(
+            metadata.vaultId,
+          ) ??
+          (throw StateError('尚未建立裝置螢幕鎖備援，請先在系統設定螢幕鎖。'));
+      deviceInfo = await _deviceKeyManager.ensureDeviceKey(
+        metadata.vaultId,
+        authKind: KeystoreAuthKind.deviceCredential,
+      );
+    } else {
+      record = await _deviceKeyManager.readWrappedRecoveryKey(metadata.vaultId) ??
+          (throw StateError('找不到受信任裝置的 Recovery 金鑰資料。'));
+      deviceInfo = await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
+          (throw StateError('找不到受信任裝置資訊。'));
+      if (record.slotId != deviceInfo.slotId) {
+        await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
+        throw StateError('受信任裝置資料不一致，請使用復原金鑰重新建立。');
+      }
     }
 
     final List<int> recoveryWrapKey;
@@ -207,14 +222,14 @@ class VaultRepository {
     );
     _cachedRecoveryMetadata = metadata;
 
-    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
       metadata.vaultId,
-      userAuthenticationRequired: biometricEnabled,
+      authKind: KeystoreAuthKind.plain,
     );
     await _storeWrappedRecoveryKey(
       vaultId: metadata.vaultId,
       recoveryWrapKey: recoveryWrapKey,
+      authKind: KeystoreAuthKind.plain,
     );
 
     final UnlockedVaultSession session = UnlockedVaultSession(
@@ -225,11 +240,102 @@ class VaultRepository {
     );
     await _openIndexForSession(session);
     await _writeEncryptedManifest(session, metadata);
+    await _requireOpenIndex().setAppValue(
+      kKeystoreWrapModeKey,
+      KeystoreAuthKind.plain.storageSuffix,
+    );
 
     return RecoverySetupResult(
       recoveryKey: recoveryKey,
       session: session,
     );
+  }
+
+  /// 輪替復原金鑰：先重加密 vault，最後才更新 [recovery.json]。
+  Future<RecoverySetupResult> rotateRecoveryKey(UnlockedVaultSession session) async {
+    final RecoveryMetadata oldMetadata = await _requireMetadataForSession(session);
+    final List<int> oldWrapKey = _requireRecoveryWrapKey(session);
+
+    await _openIndexForSession(session);
+    await _setRewrapState(inProgress: true);
+    try {
+      final String recoveryKey = _generateRecoveryKey();
+      final KdfDescriptor newKdf = KdfDescriptor.argon2idRecovery(
+        saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
+      );
+      final List<int> newWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+        recoveryKey: recoveryKey,
+        kdf: newKdf,
+      );
+      final RecoveryMetadata newMetadata = RecoveryMetadata(
+        vaultId: oldMetadata.vaultId,
+        recoveryEnabled: true,
+        recoveryKeyVersion: oldMetadata.recoveryKeyVersion,
+        recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
+        createdAt: DateTime.now(),
+        kdf: newKdf,
+      );
+
+      await _rewrapVaultRecoveryKey(
+        vaultId: session.vaultId,
+        oldRecoveryWrapKey: oldWrapKey,
+        newRecoveryWrapKey: newWrapKey,
+        newMetadata: newMetadata,
+      );
+
+      final File file = File(await _pathStrategy.recoveryMetadataPath());
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(newMetadata.toJson()),
+        flush: true,
+      );
+      _cachedRecoveryMetadata = newMetadata;
+
+      UnlockedVaultSession updatedSession = session.copyWith(recoveryWrapKey: newWrapKey);
+      await _storeWrappedRecoveryKey(
+        vaultId: oldMetadata.vaultId,
+        recoveryWrapKey: newWrapKey,
+        authKind: await _appLockService.keystoreAuthKindForCurrentMode(),
+      );
+      updatedSession = await ensureKeystoreMatchesUnlockMode(updatedSession);
+      await rebuildIndex(updatedSession);
+      await _setRewrapState(inProgress: false);
+
+      return RecoverySetupResult(
+        recoveryKey: recoveryKey,
+        session: updatedSession,
+      );
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError('復原金鑰輪替失敗（已保留進行中旗標以便下次自動續跑）：$error'),
+        stackTrace,
+      );
+    }
+  }
+
+  /// 還原前驗證復原金鑰能否解密備份內的加密檔（不寫入本機 vault）。
+  Future<void> verifyRecoveryKeyAgainstBackupBytes({
+    required RecoveryMetadata metadata,
+    required String recoveryKey,
+    required List<int> encryptedDocumentBytes,
+  }) async {
+    final List<int> recoveryWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+      recoveryKey: recoveryKey,
+      kdf: metadata.kdf,
+    );
+    final ParsedEncryptedDocument parsed =
+        _cryptoService.parseFileBytes(encryptedDocumentBytes);
+    try {
+      await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: DecryptionContext.recovery(
+          recoveryWrapKey: recoveryWrapKey,
+          vaultId: metadata.vaultId,
+        ),
+      );
+    } on SecretBoxAuthenticationError {
+      throw StateError(kBackupRecoveryKeyMismatchMessage);
+    }
   }
 
   Future<UnlockedVaultSession> unlockWithRecoveryKey(String recoveryKey) async {
@@ -241,10 +347,9 @@ class VaultRepository {
     );
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
 
-    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
       metadata.vaultId,
-      userAuthenticationRequired: biometricEnabled,
+      authKind: KeystoreAuthKind.plain,
     );
 
     final UnlockedVaultSession session = UnlockedVaultSession(
@@ -270,6 +375,11 @@ class VaultRepository {
     await _storeWrappedRecoveryKey(
       vaultId: metadata.vaultId,
       recoveryWrapKey: recoveryWrapKey,
+      authKind: KeystoreAuthKind.plain,
+    );
+    await _requireOpenIndex().setAppValue(
+      kKeystoreWrapModeKey,
+      KeystoreAuthKind.plain.storageSuffix,
     );
     await rebuildIndex(session);
     await _setRewrapState(inProgress: false);
@@ -562,11 +672,17 @@ class VaultRepository {
     DecryptionContext recoveryContext,
   ) async {
     final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
-    await _cryptoService.decryptBytes(
-      headerBytes: parsed.headerBytes,
-      ciphertextBytes: parsed.ciphertextBytes,
-      context: recoveryContext,
-    );
+    try {
+      await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: recoveryContext,
+      );
+    } on SecretBoxAuthenticationError {
+      throw StateError(
+        '復原金鑰與日記庫資料不相符。若為更新金鑰前的舊備份，請輸入建立該備份時保存的復原金鑰。',
+      );
+    }
   }
 
   /// 優先試 `entries/**/*.md.enc`，其餘 `entries|assets/**/*.enc`，不含 manifest。
@@ -795,6 +911,37 @@ class VaultRepository {
     return matches;
   }
 
+  Future<void> _rewrapVaultRecoveryKey({
+    required VaultId vaultId,
+    required List<int> oldRecoveryWrapKey,
+    required List<int> newRecoveryWrapKey,
+    required RecoveryMetadata newMetadata,
+  }) async {
+    final List<File> files = await _allEncryptedFiles();
+    for (final File file in files) {
+      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
+      final List<int> plaintextBytes = await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: DecryptionContext.recovery(
+          recoveryWrapKey: oldRecoveryWrapKey,
+          vaultId: vaultId,
+        ),
+      );
+      final EncryptionResult encryption = await _cryptoService.encryptBytes(
+        documentId: parsed.header.fileId,
+        vaultId: parsed.header.vaultId,
+        plaintextBytes: plaintextBytes,
+        contentType: parsed.header.contentType,
+        recoveryWrapKey: newRecoveryWrapKey,
+        recoverySlotKdf: newMetadata.kdf,
+        createdAt: parsed.header.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      await _atomicWriteBytes(file, encryption.toFileBytes());
+    }
+  }
+
   Future<void> _rewrapVaultForTrustedDevice(
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
@@ -847,12 +994,12 @@ class VaultRepository {
   Future<void> _storeWrappedRecoveryKey({
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
+    required KeystoreAuthKind authKind,
   }) async {
-    final bool biometricEnabled = await _appLockService.isBiometricLockEnabled();
     final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
       vaultId: vaultId,
       plaintextBytes: recoveryWrapKey,
-      userAuthenticationRequired: biometricEnabled,
+      authKind: authKind,
     );
     await _deviceKeyManager.storeWrappedRecoveryKey(
       vaultId: vaultId,
@@ -954,19 +1101,74 @@ class VaultRepository {
     return _indexDatabaseManager.deleteDatabaseFiles();
   }
 
+  /// 若 Keystore wrap 模式與目前 [AppUnlockMode] 不一致，重新包裝 wrapped recovery key。
+  /// 生物模式且裝置已設螢幕鎖時，維護 credential 槽備份供指紋失敗後解鎖。
+  Future<void> syncDeviceCredentialBackupWrapIfNeeded(UnlockedVaultSession session) async {
+    final AppUnlockMode mode = await _appLockService.getUnlockMode();
+    if (mode != AppUnlockMode.biometric || !await _appLockService.canUseDeviceCredential()) {
+      await _deviceKeyManager.clearDeviceCredentialBackupWrappedRecoveryKey(session.vaultId);
+      return;
+    }
+    final List<int> wrapKey = _requireRecoveryWrapKey(session);
+    final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
+      vaultId: session.vaultId,
+      plaintextBytes: wrapKey,
+      authKind: KeystoreAuthKind.deviceCredential,
+    );
+    await _deviceKeyManager.storeDeviceCredentialBackupWrappedRecoveryKey(
+      vaultId: session.vaultId,
+      record: WrappedRecoveryKeyRecord(
+        slotId: payload.slotId,
+        nonceBase64: payload.nonceBase64,
+        ciphertextBase64: payload.ciphertextBase64,
+        wrappedAt: DateTime.now(),
+        formatVersion: 2,
+        platform: payload.platform,
+      ),
+    );
+  }
+
+  Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
+    UnlockedVaultSession session,
+  ) async {
+    final KeystoreAuthKind expected = await _appLockService.keystoreAuthKindForCurrentMode();
+    final String expectedSuffix = expected.storageSuffix;
+    try {
+      final String? synced = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
+      if (synced == expectedSuffix) {
+        await syncDeviceCredentialBackupWrapIfNeeded(session);
+        return session;
+      }
+    } on StateError {
+      await _openIndexForSession(session);
+      final String? synced = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
+      if (synced == expectedSuffix) {
+        await syncDeviceCredentialBackupWrapIfNeeded(session);
+        return session;
+      }
+    }
+    final UnlockedVaultSession refreshed = await refreshTrustedSessionProtection(
+      session,
+      authKind: expected,
+    );
+    await _requireOpenIndex().setAppValue(kKeystoreWrapModeKey, expectedSuffix);
+    await syncDeviceCredentialBackupWrapIfNeeded(refreshed);
+    return refreshed;
+  }
+
   Future<UnlockedVaultSession> refreshTrustedSessionProtection(
     UnlockedVaultSession session, {
-    required bool biometricRequired,
+    required KeystoreAuthKind authKind,
   }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
       metadata.vaultId,
-      userAuthenticationRequired: biometricRequired,
+      authKind: authKind,
     );
     final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
       vaultId: metadata.vaultId,
       plaintextBytes: _requireRecoveryWrapKey(session),
-      userAuthenticationRequired: biometricRequired,
+      authKind: authKind,
     );
     await _deviceKeyManager.storeWrappedRecoveryKey(
       vaultId: metadata.vaultId,

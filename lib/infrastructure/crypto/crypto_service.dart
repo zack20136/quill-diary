@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 
 import '../../domain/recovery/kdf_descriptor.dart';
 import '../../infrastructure/security/device_key_manager.dart';
+import '../../infrastructure/security/keystore_unlock_policy.dart';
 
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
@@ -334,7 +335,7 @@ class LocalCryptoService implements CryptoService {
     final DeviceWrappedPayload devicePayload = await _deviceKeyManager.wrapWithDeviceKey(
       vaultId: vaultId,
       plaintextBytes: fileKeyBytes,
-      userAuthenticationRequired: false,
+      authKind: KeystoreAuthKind.plain,
     );
     final EncryptionKeySlot deviceSlot = EncryptionKeySlot(
       slotId: devicePayload.slotId,

@@ -10,7 +10,9 @@ import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../infrastructure/security/app_lock_service.dart';
+import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
+import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../editor/providers/editor_providers.dart';
@@ -18,7 +20,11 @@ import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import '../../session/state/resume_unlock_action.dart';
+import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
+import '../../restore/restore_backup_flow.dart';
+import '../../session/application/session_unlock_coordinator.dart';
 import '../widgets/settings_sections.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -32,6 +38,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController = TextEditingController();
   bool _busy = false;
   String? _busyMessage;
+  bool _unlockCoordinatorAttached = false;
 
   @override
   void dispose() {
@@ -41,6 +48,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_unlockCoordinatorAttached) {
+      _unlockCoordinatorAttached = true;
+      SessionUnlockCoordinator(ref).listen();
+    }
+
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
@@ -88,15 +100,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   })
                               : null,
                           onRetryTrustedUnlock:
-                              sessionState.status == AppLockStatus.locked
-                                  ? () => _runAction(() async {
-                                        final bool ok =
-                                            await ref.read(appSessionProvider.notifier).unlock();
-                                        if (ok) {
-                                          await refreshEntryIndexCaches(ref);
-                                        }
-                                      })
+                              sessionState.status == AppLockStatus.locked ||
+                                      sessionState.status == AppLockStatus.unlocking
+                                  ? () => _runAction(_retryTrustedUnlock)
                                   : null,
+                          onUnlockWithDeviceCredential:
+                              sessionState.status == AppLockStatus.locked &&
+                                      sessionState.resumeAction ==
+                                          ResumeUnlockAction.deviceCredentialFallback
+                                  ? () => _runAction(_unlockWithDeviceCredential)
+                                  : null,
+                          onCancelUnlock: sessionState.status == AppLockStatus.unlocking
+                              ? () => _runAction(() async {
+                                    await ref.read(appSessionProvider.notifier).lock();
+                                  })
+                              : null,
+                          retryActionLabel: _retryUnlockLabel(sessionState),
                         ),
                       );
                     },
@@ -120,6 +139,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         child: RecoveryKeySectionBody(
                           metadata: metadata,
                           busy: _busy,
+                          onRotateRecoveryKey: metadata != null && canBackupRestore
+                              ? () => _runAction(_rotateRecoveryKey)
+                              : null,
                           onCreateRecoveryKey: metadata != null
                               ? null
                               : () => _runAction(() async {
@@ -163,34 +185,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
-                    title: '生物驗證',
-                    description: '重新開啟應用程式時，以指紋或臉部驗證解鎖。',
-                    child: FutureBuilder<bool>(
-                      future: appLockService.isBiometricLockEnabled(),
-                      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                        return SettingsToggleTile(
-                          title: '啟用生物驗證',
-                          description: '開啟後，重新開啟應用程式需通過裝置驗證才能解鎖。',
-                          value: snapshot.data ?? false,
-                          onChanged: _busy
-                              ? null
-                              : (bool value) => _runAction(() async {
-                                    final UnlockedVaultSession? session =
-                                        await ref.read(activeVaultSessionProvider.future);
-                                    if (session != null) {
-                                      final UnlockedVaultSession refreshed = await ref
-                                          .read(vaultRepositoryProvider)
-                                          .refreshTrustedSessionProtection(
-                                            session,
-                                            biometricRequired: value,
-                                          );
-                                      ref.read(appSessionProvider.notifier).activateSession(refreshed);
-                                    }
-                                    await appLockService.setBiometricLockEnabled(value);
-                                    if (mounted) {
-                                      setState(() {});
-                                    }
-                                  }),
+                    title: '解鎖方式',
+                    description: '選擇重新開啟應用程式時如何解鎖日記庫。',
+                    child: FutureBuilder<AppUnlockMode>(
+                      future: appLockService.getUnlockMode(),
+                      builder: (BuildContext context, AsyncSnapshot<AppUnlockMode> snapshot) {
+                        final AppUnlockMode mode =
+                            snapshot.data ?? AppUnlockMode.none;
+                        return UnlockMethodSectionBody(
+                          enabled: recoveryMetadataAsync.asData?.value != null,
+                          busy: _busy,
+                          unlockMode: mode,
+                          onModeSelected: (AppUnlockMode selected) =>
+                              _runAction(() => _applyUnlockMode(selected)),
                         );
                       },
                     ),
@@ -434,22 +441,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     String? driveBackupName,
   }) async {
     try {
-      final RestorePrecheck precheck =
-          await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
-      if (!mounted) {
-        return;
-      }
-      final bool confirmed = await _confirmRestore(precheck, driveBackupName: driveBackupName);
-      if (!confirmed) {
-        return;
-      }
       await _runAction(
-        () async {
-          await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
-            await ref.read(vaultTransferServiceProvider).restoreFromBackupFile(backupFile);
-          });
-          await _finishRestoreAfterSuccess();
-        },
+        () => RestoreBackupFlow(ref).run(
+          context: context,
+          backupFile: backupFile,
+          driveBackupName: driveBackupName,
+          confirm: _confirmRestore,
+          onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) =>
+              _finishRestoreAfterSuccess(
+            backupRecoveryKey: backupRecoveryKey,
+            precheck: precheck,
+          ),
+        ),
         progressMessage: kRestoreInProgressMessage,
       );
     } on StateError catch (error) {
@@ -506,20 +509,50 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         false;
   }
 
-  Future<void> _finishRestoreAfterSuccess() async {
+  Future<void> _finishRestoreAfterSuccess({
+    String? backupRecoveryKey,
+    RestorePrecheck? precheck,
+  }) async {
     await _resetAppState();
-    final AppSessionState startupState = await ref.read(appStartupProvider.future);
-    if (startupState.isUnlocked && startupState.session != null) {
-      await refreshEntryIndexCaches(ref);
+
+    AppSessionState sessionState;
+    if (backupRecoveryKey != null && backupRecoveryKey.trim().isNotEmpty) {
+      sessionState = await _unlockRestoredVaultWithRecoveryKey(backupRecoveryKey.trim());
+      if (sessionState.status != AppLockStatus.unlocked) {
+        return;
+      }
+    } else {
+      sessionState = await ref.read(appStartupProvider.future);
+      if (sessionState.isUnlocked && sessionState.session != null) {
+        await refreshEntryIndexCaches(ref);
+      }
     }
+
     if (mounted) {
       context.go(AppRouter.homeRoute);
       _showMessage(
         snackbarMessageForPostRestore(
-          startupState.status,
-          sessionMessage: startupState.message,
+          sessionState.status,
+          sessionMessage: sessionState.message,
         ),
       );
+    }
+  }
+
+  Future<AppSessionState> _unlockRestoredVaultWithRecoveryKey(String recoveryKey) async {
+    try {
+      await ref.read(appSessionProvider.notifier).unlockWithRecovery(recoveryKey);
+      final AppSessionState sessionState = ref.read(appSessionProvider);
+      if (sessionState.isUnlocked && sessionState.session != null) {
+        await refreshEntryIndexCaches(ref);
+      }
+      return sessionState;
+    } catch (error) {
+      if (mounted) {
+        final String text = error is StateError ? error.message : '$error';
+        _showMessage(text);
+      }
+      return ref.read(appSessionProvider);
     }
   }
 
@@ -533,6 +566,119 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.invalidate(effectiveAppSessionProvider);
     ref.invalidate(recoveryMetadataProvider);
     ref.read(entryIndexRevisionProvider.notifier).bump();
+  }
+
+  String _retryUnlockLabel(AppSessionState sessionState) {
+    return switch (sessionState.resumeAction) {
+      ResumeUnlockAction.keystoreUnlock => '重新驗證',
+      ResumeUnlockAction.deviceCredentialFallback => '使用裝置螢幕鎖',
+      _ => '重新驗證',
+    };
+  }
+
+  Future<void> _retryTrustedUnlock() async {
+    final UnlockOutcome outcome = await ref.read(appSessionProvider.notifier).unlock();
+    if (outcome == UnlockOutcome.needsUserStep) {
+      await _unlockWithDeviceCredential();
+      return;
+    }
+    if (outcome == UnlockOutcome.success) {
+      await refreshEntryIndexCaches(ref);
+    }
+  }
+
+  Future<void> _unlockWithDeviceCredential() async {
+    final UnlockOutcome outcome = await ref
+        .read(appSessionProvider.notifier)
+        .unlock(deviceCredentialFallback: true);
+    if (outcome == UnlockOutcome.success) {
+      await refreshEntryIndexCaches(ref);
+    }
+  }
+
+  Future<void> _applyUnlockMode(AppUnlockMode mode) async {
+    final AppLockService appLock = ref.read(appLockServiceProvider);
+    final AppUnlockMode current = await appLock.getUnlockMode();
+    if (current == mode) {
+      return;
+    }
+
+    if (mode == AppUnlockMode.deviceLock && !await appLock.canUseDeviceCredential()) {
+      _showMessage(kUnlockModeNeedsDeviceLockMessage);
+      return;
+    }
+
+    if (mode == AppUnlockMode.biometric && !await appLock.canUseDeviceCredential()) {
+      _showMessage(kUnlockModeNeedsDeviceLockMessage);
+      return;
+    }
+
+    await appLock.setUnlockMode(mode);
+    final UnlockedVaultSession? session = await ref.read(activeVaultSessionProvider.future);
+    if (session != null) {
+      final UnlockedVaultSession synced = await ref
+          .read(vaultRepositoryProvider)
+          .ensureKeystoreMatchesUnlockMode(session);
+      ref.read(appSessionProvider.notifier).activateSession(synced);
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _rotateRecoveryKey() async {
+    final bool confirmed = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('更新復原金鑰？'),
+              content: const Text(
+                '將產生全新的復原金鑰，請立即保存。\n\n'
+                '既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('更新'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+    if (!confirmed) {
+      return;
+    }
+    await ref.read(appSessionProvider.notifier).runSensitiveTask((UnlockedVaultSession session) async {
+      final RecoverySetupResult result =
+          await ref.read(vaultRepositoryProvider).rotateRecoveryKey(session);
+      ref.read(appSessionProvider.notifier).activateSession(
+            result.session,
+            message: kRecoveryKeyRotatedMessage,
+          );
+      ref.invalidate(recoveryMetadataProvider);
+      await refreshEntryIndexCaches(ref);
+      if (!mounted) {
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('請保存新的復原金鑰'),
+          content: SelectableText(result.recoveryKey),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('關閉'),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Future<void> _runAction(

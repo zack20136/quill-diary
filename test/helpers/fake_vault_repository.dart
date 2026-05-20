@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
@@ -52,7 +50,9 @@ class FakeVaultRepository extends VaultRepository {
   Future<bool> hasTrustedDeviceAccess() async => hasTrustedDevice;
 
   @override
-  Future<UnlockedVaultSession> openTrustedSession() async {
+  Future<UnlockedVaultSession> openTrustedSession({
+    bool deviceCredentialFallback = false,
+  }) async {
     openTrustedSessionCalls++;
     final Object? result = openTrustedSessionResult;
     if (result == null) {
@@ -89,5 +89,12 @@ class FakeVaultRepository extends VaultRepository {
   @override
   Future<void> clearTrustedDeviceAccess() async {
     clearTrustedDeviceAccessCalls++;
+  }
+
+  @override
+  Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
+    UnlockedVaultSession session,
+  ) async {
+    return session;
   }
 }

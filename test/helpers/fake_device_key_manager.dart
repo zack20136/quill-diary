@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 /// Plain-only fake for crypto unit tests.
 class PlainFakeDeviceKeyManager implements DeviceKeyManager {
@@ -13,19 +14,22 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
   final List<int> _keyBytes;
   final Map<String, WrappedRecoveryKeyRecord> _wrappedRecoveryRecords =
       <String, WrappedRecoveryKeyRecord>{};
+  final Map<String, WrappedRecoveryKeyRecord> _credentialBackupRecords =
+      <String, WrappedRecoveryKeyRecord>{};
 
   @override
   Future<void> clearTrustedKey(String vaultId) async {
     _wrappedRecoveryRecords.remove(vaultId);
+    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
   Future<TrustedDeviceInfo> ensureDeviceKey(
     String vaultId, {
-    required bool userAuthenticationRequired,
+    required KeystoreAuthKind authKind,
   }) async {
     return TrustedDeviceInfo(
-      slotId: 'dev_android_keystore_plain_$vaultId',
+      slotId: 'dev_android_keystore_${authKind.storageSuffix}_$vaultId',
       platform: 'android_keystore_test',
     );
   }
@@ -37,12 +41,31 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
-    return ensureDeviceKey(vaultId, userAuthenticationRequired: false);
+    return ensureDeviceKey(vaultId, authKind: KeystoreAuthKind.plain);
   }
 
   @override
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
     return _wrappedRecoveryRecords[vaultId];
+  }
+
+  @override
+  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
+    String vaultId,
+  ) async =>
+      _credentialBackupRecords[vaultId];
+
+  @override
+  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
+    required String vaultId,
+    required WrappedRecoveryKeyRecord record,
+  }) async {
+    _credentialBackupRecords[vaultId] = record;
+  }
+
+  @override
+  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(String vaultId) async {
+    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -60,9 +83,6 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
     required String nonceBase64,
     required String ciphertextBase64,
   }) async {
-    if (slotId != 'dev_android_keystore_plain_$vaultId') {
-      throw StateError('slot mismatch');
-    }
     final List<int> encryptedBytes = base64Decode(ciphertextBase64);
     final SecretBox box = SecretBox(
       encryptedBytes.sublist(0, encryptedBytes.length - 16),
@@ -79,14 +99,14 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required String vaultId,
     required List<int> plaintextBytes,
-    required bool userAuthenticationRequired,
+    required KeystoreAuthKind authKind,
   }) async {
     final SecretBox box = await _cipher.encrypt(
       plaintextBytes,
       secretKey: SecretKey(_keyBytes),
     );
     return DeviceWrappedPayload(
-      slotId: 'dev_android_keystore_plain_$vaultId',
+      slotId: 'dev_android_keystore_${authKind.storageSuffix}_$vaultId',
       nonceBase64: base64Encode(box.nonce),
       ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
       platform: 'android_keystore_test',
@@ -94,37 +114,40 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
   }
 }
 
-/// Records plain vs auth slot usage for vault integration tests.
+/// Records keystore auth kind usage for vault integration tests.
 class RecordingDeviceKeyManager implements DeviceKeyManager {
   RecordingDeviceKeyManager()
       : _cipher = AesGcm.with256bits(),
         _plainKey = List<int>.generate(32, (int index) => index + 1),
-        _authKey = List<int>.generate(32, (int index) => 255 - index);
+        _secureKey = List<int>.generate(32, (int index) => 255 - index);
 
   final Cipher _cipher;
   final List<int> _plainKey;
-  final List<int> _authKey;
+  final List<int> _secureKey;
   final Map<String, WrappedRecoveryKeyRecord> _wrappedRecords =
       <String, WrappedRecoveryKeyRecord>{};
   final Map<String, TrustedDeviceInfo> _deviceInfos = <String, TrustedDeviceInfo>{};
+  final Map<String, WrappedRecoveryKeyRecord> _credentialBackupRecords =
+      <String, WrappedRecoveryKeyRecord>{};
 
-  bool? lastEnsureAuthRequired;
-  bool? lastWrapAuthRequired;
+  KeystoreAuthKind? lastEnsureAuthKind;
+  KeystoreAuthKind? lastWrapAuthKind;
 
   @override
   Future<void> clearTrustedKey(String vaultId) async {
     _wrappedRecords.remove(vaultId);
     _deviceInfos.remove(vaultId);
+    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
   Future<TrustedDeviceInfo> ensureDeviceKey(
     String vaultId, {
-    required bool userAuthenticationRequired,
+    required KeystoreAuthKind authKind,
   }) async {
-    lastEnsureAuthRequired = userAuthenticationRequired;
+    lastEnsureAuthKind = authKind;
     final TrustedDeviceInfo info = TrustedDeviceInfo(
-      slotId: _slotId(vaultId, userAuthenticationRequired),
+      slotId: _slotId(vaultId, authKind),
       platform: 'android_keystore_test',
     );
     _deviceInfos[vaultId] = info;
@@ -142,6 +165,25 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   @override
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
     return _wrappedRecords[vaultId];
+  }
+
+  @override
+  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
+    String vaultId,
+  ) async =>
+      _credentialBackupRecords[vaultId];
+
+  @override
+  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
+    required String vaultId,
+    required WrappedRecoveryKeyRecord record,
+  }) async {
+    _credentialBackupRecords[vaultId] = record;
+  }
+
+  @override
+  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(String vaultId) async {
+    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -175,31 +217,30 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required String vaultId,
     required List<int> plaintextBytes,
-    required bool userAuthenticationRequired,
+    required KeystoreAuthKind authKind,
   }) async {
     if (plaintextBytes.length == 32) {
-      lastWrapAuthRequired = userAuthenticationRequired;
+      lastWrapAuthKind = authKind;
     }
     final SecretBox box = await _cipher.encrypt(
       plaintextBytes,
       secretKey: SecretKey(
-        userAuthenticationRequired ? _authKey : _plainKey,
+        authKind == KeystoreAuthKind.plain ? _plainKey : _secureKey,
       ),
     );
     return DeviceWrappedPayload(
-      slotId: _slotId(vaultId, userAuthenticationRequired),
+      slotId: _slotId(vaultId, authKind),
       nonceBase64: base64Encode(box.nonce),
       ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
       platform: 'android_keystore_test',
     );
   }
 
-  String _slotId(String vaultId, bool authRequired) {
-    final String mode = authRequired ? 'auth' : 'plain';
-    return 'dev_android_keystore_${mode}_$vaultId';
+  String _slotId(String vaultId, KeystoreAuthKind authKind) {
+    return 'dev_android_keystore_${authKind.storageSuffix}_$vaultId';
   }
 
   List<int> _secretKeyBytes(String slotId) {
-    return slotId.contains('_auth_') ? _authKey : _plainKey;
+    return slotId.contains('_plain_') ? _plainKey : _secureKey;
   }
 }

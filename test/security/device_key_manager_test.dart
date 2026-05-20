@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +31,7 @@ void main() {
     await expectLater(
       () => manager.ensureDeviceKey(
         'vault_test',
-        userAuthenticationRequired: true,
+        authKind: KeystoreAuthKind.biometric,
       ),
       throwsA(isA<DeviceKeyBiometricNotEnrolledException>()),
     );

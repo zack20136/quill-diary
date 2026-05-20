@@ -15,6 +15,8 @@ import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
 import '../../editor/providers/editor_providers.dart';
+import '../../session/application/session_unlock_coordinator.dart';
+import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
@@ -46,13 +48,13 @@ abstract final class _HomePalette {
   }
 }
 
-class _BlockedEntriesPane extends ConsumerWidget {
+class _BlockedEntriesPane extends StatelessWidget {
   const _BlockedEntriesPane({required this.sessionState});
 
   final AppSessionState sessionState;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     if (sessionState.status == AppLockStatus.unlocking) {
       return _StateCard(
         icon: Icons.sync_rounded,
@@ -62,20 +64,27 @@ class _BlockedEntriesPane extends ConsumerWidget {
     }
 
     if (sessionState.status == AppLockStatus.locked) {
+      final bool autoPending = sessionState.resumeAction != null;
       return _StateCard(
         icon: Icons.lock_outline,
-        title: '目前已鎖定',
-        message: sessionState.message ?? kLockedRetryVerificationMessage,
-        actionLabel: '重新驗證',
-        onAction: () => unawaited(ref.read(appSessionProvider.notifier).unlock()),
+        title: blockedTitleForStatus(sessionState.status),
+        message: blockedSubtitleForState(sessionState),
+        actionLabel: autoPending ? null : '重新驗證',
+        onAction: autoPending
+            ? null
+            : () => unawaited(
+                  ProviderScope.containerOf(context)
+                      .read(appSessionProvider.notifier)
+                      .unlock(),
+                ),
       );
     }
 
     final bool offerSettings = _blockedOffersSettingsNavigation(sessionState);
     return _StateCard(
       icon: _blockedIcon(sessionState.status),
-      title: _blockedTitle(sessionState.status),
-      message: _blockedMessage(sessionState),
+      title: blockedTitleForStatus(sessionState.status),
+      message: blockedSubtitleForState(sessionState),
       actionLabel: offerSettings ? '前往設定' : null,
       onAction: offerSettings ? () => context.push(AppRouter.settingsRoute) : null,
     );
@@ -93,11 +102,23 @@ bool _blockedOffersSettingsNavigation(AppSessionState sessionState) {
 }
 
 /// Main landing page for browsing, searching, and summarizing diary content.
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  bool _unlockCoordinatorAttached = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_unlockCoordinatorAttached) {
+      _unlockCoordinatorAttached = true;
+      SessionUnlockCoordinator(ref).listen();
+    }
+
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
 
@@ -2098,34 +2119,6 @@ String _entryListTimeLabel(DateTime at) => DateFormat('HH:mm').format(at);
 String _weekdayZhFromDateOnly(DateOnly date) {
   const List<String> names = <String>['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
   return names[date.toDateTime().weekday - 1];
-}
-
-String _blockedTitle(AppLockStatus status) {
-  return switch (status) {
-    AppLockStatus.locked => '目前已鎖定',
-    AppLockStatus.recoveryRequired => '需要復原金鑰',
-    AppLockStatus.fatalError => '無法讀取日記庫',
-    _ => '尚未完成設定',
-  };
-}
-
-String _blockedMessage(AppSessionState sessionState) {
-  if (sessionState.status == AppLockStatus.unlocked && sessionState.session == null) {
-    return '請先建立復原金鑰，之後才能開始建立與解鎖日記。';
-  }
-  if (sessionState.status == AppLockStatus.recoveryRequired) {
-    return sessionState.message ?? kRecoveryRequiredAfterRestoreMessage;
-  }
-  if (sessionState.status == AppLockStatus.locked) {
-    return sessionState.message ?? kLockedRetryVerificationMessage;
-  }
-  if (sessionState.status == AppLockStatus.unlocking) {
-    return sessionState.message ?? kTrustedUnlockInProgressMessage;
-  }
-  if (sessionState.status == AppLockStatus.fatalError) {
-    return sessionState.message ?? '發生錯誤，暫時無法讀取日記庫。';
-  }
-  return sessionState.message ?? '請先完成設定後再開始使用。';
 }
 
 IconData _blockedIcon(AppLockStatus status) {

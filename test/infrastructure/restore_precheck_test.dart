@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
@@ -34,6 +36,7 @@ void main() {
         metadata: backupMetadata,
       ),
       localVaultId: 'vlt_backup',
+      localRecoverySaltBase64: backupMetadata.kdf.saltBase64,
       localHasTrustedDevice: true,
       willOverwriteLocalVault: true,
     );
@@ -43,6 +46,24 @@ void main() {
     expect(bullets.any((String line) => line.contains('受信任裝置')), isTrue);
   });
 
+  test('buildRestoreConfirmBulletPoints 同 vault 但復原金鑰已輪替時提示舊金鑰', () {
+    final RestorePrecheck precheck = RestorePrecheck(
+      preview: BackupRecoveryPreview(
+        hasRecovery: true,
+        metadata: backupMetadata,
+      ),
+      localVaultId: 'vlt_backup',
+      localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+      localHasTrustedDevice: true,
+      willOverwriteLocalVault: true,
+    );
+
+    final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+    expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
+    expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
+    expect(bullets.any((String line) => line.contains('更新復原金鑰')), isTrue);
+  });
+
   test('buildRestoreConfirmBulletPoints 不同 vault 時提示備份來源復原金鑰', () {
     final RestorePrecheck precheck = RestorePrecheck(
       preview: BackupRecoveryPreview(
@@ -50,6 +71,7 @@ void main() {
         metadata: backupMetadata,
       ),
       localVaultId: 'vlt_other',
+      localRecoverySaltBase64: backupMetadata.kdf.saltBase64,
       localHasTrustedDevice: true,
       willOverwriteLocalVault: true,
     );

@@ -150,9 +150,14 @@ class VaultTransferService {
     return RestorePrecheck(
       preview: preview,
       localVaultId: localMetadata?.vaultId,
+      localRecoverySaltBase64: localMetadata?.kdf.saltBase64,
       localHasTrustedDevice: localHasTrusted,
       willOverwriteLocalVault: await _vaultRepository.hasVault(),
     );
+  }
+
+  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
+    await _archiveIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
   Future<void> restoreFromBackupFile(File backupFile) async {

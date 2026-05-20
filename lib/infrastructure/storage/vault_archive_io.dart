@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
@@ -235,6 +236,23 @@ class VaultArchiveIo {
     }
   }
 
+  /// 還原前驗證復原金鑰；失敗拋 [StateError]，不修改本機 vault。
+  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
+    final BackupRecoveryPreview preview = await peekBackupRecovery(backupFile);
+    if (!preview.hasRecovery || preview.metadata == null) {
+      throw StateError('此備份沒有復原金鑰資訊，無法驗證。');
+    }
+    final List<int>? sampleBytes = await _readSampleEncryptedDocumentFromBackup(backupFile);
+    if (sampleBytes == null) {
+      throw StateError(kBackupNoEncryptedSampleMessage);
+    }
+    await _repository.verifyRecoveryKeyAgainstBackupBytes(
+      metadata: preview.metadata!,
+      recoveryKey: recoveryKey,
+      encryptedDocumentBytes: sampleBytes,
+    );
+  }
+
   /// Reads [recovery.json] from a `.jbackup` without writing to disk.
   Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) async {
     try {
@@ -336,6 +354,56 @@ class VaultArchiveIo {
     await _repository.closeUnlockedResources();
     await _indexDatabaseManager.deleteDatabaseFiles();
     _repository.clearRecoveryMetadataCache();
+    await _repository.clearTrustedDeviceAccess();
+  }
+
+  Future<List<int>?> _readSampleEncryptedDocumentFromBackup(File backupFile) async {
+    try {
+      final Archive archive = ZipDecoder().decodeBytes(
+        await backupFile.readAsBytes(),
+        verify: true,
+      );
+      final ArchiveFile? manifest = _findEncryptedEntry(
+        archive,
+        endsWith: 'manifest.json.enc',
+      );
+      if (manifest != null && manifest.isFile) {
+        return manifest.content as List<int>;
+      }
+      ArchiveFile? firstEntryEnc;
+      for (final ArchiveFile file in archive.files) {
+        if (!file.isFile) {
+          continue;
+        }
+        final String normalized = p.posix.normalize(file.name).toLowerCase();
+        if (normalized.endsWith('.md.enc')) {
+          firstEntryEnc = file;
+          break;
+        }
+      }
+      if (firstEntryEnc != null) {
+        return firstEntryEnc.content as List<int>;
+      }
+      return null;
+    } on Object {
+      throw StateError(kInvalidBackupArchiveMessage);
+    }
+  }
+
+  ArchiveFile? _findEncryptedEntry(
+    Archive archive, {
+    required String endsWith,
+  }) {
+    for (final ArchiveFile file in archive.files) {
+      if (!file.isFile) {
+        continue;
+      }
+      final String normalized = p.posix.normalize(file.name).toLowerCase();
+      if (normalized == endsWith || normalized.endsWith('/$endsWith')) {
+        return file;
+      }
+    }
+    return null;
   }
 
   ArchiveFile? _findRecoveryJsonEntry(Archive archive) {

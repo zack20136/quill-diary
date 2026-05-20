@@ -12,6 +12,9 @@ import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart
 import 'package:quill_lock_diary/features/session/session_messages.dart';
 import 'package:quill_lock_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
+import 'package:quill_lock_diary/features/session/state/resume_unlock_action.dart';
+import 'package:quill_lock_diary/features/session/state/unlock_result.dart';
+import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_lock_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
@@ -36,11 +39,14 @@ void main() {
     deviceSlotId: 'dev_slot',
   );
 
-  ProviderContainer buildContainer(FakeVaultRepository repository) {
+  ProviderContainer buildContainer(
+    FakeVaultRepository repository, {
+    FakeAppLockService? appLock,
+  }) {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         vaultRepositoryProvider.overrideWithValue(repository),
-        appLockServiceProvider.overrideWithValue(FakeAppLockService()),
+        appLockServiceProvider.overrideWithValue(appLock ?? FakeAppLockService()),
       ],
     );
     addTearDown(container.dispose);
@@ -54,9 +60,9 @@ void main() {
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
-    final bool success = await controller.unlock();
+    final UnlockOutcome outcome = await controller.unlock();
 
-    expect(success, isTrue);
+    expect(outcome, UnlockOutcome.success);
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(container.read(appSessionProvider).session, sampleSession);
     expect(repository.ensureIndexReadyCalls, 1);
@@ -69,9 +75,9 @@ void main() {
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
-    final bool success = await controller.unlock();
+    final UnlockOutcome outcome = await controller.unlock();
 
-    expect(success, isFalse);
+    expect(outcome, UnlockOutcome.failed);
     expect(container.read(appSessionProvider).status, AppLockStatus.locked);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
@@ -172,11 +178,63 @@ void main() {
     expect(repository.closeUnlockedResourcesCalls, 1);
   });
 
-  test('背景逾時後會鎖定並嘗試還原 trusted session', () async {
+  test('裝置螢幕鎖模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
-    final ProviderContainer container = buildContainer(repository);
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.deviceLock,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
+    controller.clock = () => fakeNow;
+
+    await controller.handleLifecycleChange(AppLifecycleState.paused);
+    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
+    expect(repository.openTrustedSessionCalls, 0);
+  });
+
+  test('生物驗證模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.biometric,
+      canUseDeviceCredentialResult: true,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
+    controller.clock = () => fakeNow;
+
+    await controller.handleLifecycleChange(AppLifecycleState.paused);
+    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
+    expect(repository.openTrustedSessionCalls, 0);
+  });
+
+  test('無模式：背景逾時回前景後自動還原 trusted session', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.none,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
@@ -189,8 +247,8 @@ void main() {
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.unlocked);
+    expect(state.resumeAction, isNull);
     expect(repository.openTrustedSessionCalls, greaterThanOrEqualTo(1));
-    expect(repository.closeUnlockedResourcesCalls, greaterThanOrEqualTo(1));
   });
 
   test('背景未逾時時不鎖定', () async {

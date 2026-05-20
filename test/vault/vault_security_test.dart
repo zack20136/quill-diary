@@ -1,6 +1,8 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
+import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_lock_diary/domain/shared/value_objects.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
@@ -105,6 +107,32 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('rotateRecoveryKey 會產生新金鑰並更新 metadata，trusted 仍可解鎖', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final String oldKey = setup.recoveryKey;
+    final UnlockedVaultSession session = setup.session;
+
+    await harness.repository.saveEntry(
+      session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: session.vaultId,
+        title: '輪替前',
+        date: const DateOnly('2026-05-15'),
+        createdAt: DateTime.parse('2026-05-15T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-15T08:00:00Z'),
+        markdownBody: 'before rotate body',
+      ),
+    );
+
+    final RecoverySetupResult rotated = await harness.repository.rotateRecoveryKey(session);
+    expect(rotated.recoveryKey, isNot(equals(oldKey)));
+
+    final RecoveryMetadata? metadata = await harness.repository.readRecoveryMetadata();
+    expect(metadata?.recoveryKeyHint, rotated.recoveryKey.substring(rotated.recoveryKey.length - 4));
+    expect(rotated.session.recoveryWrapKey, isNot(setup.session.recoveryWrapKey));
   });
 
   test('正確的 Recovery Key 可在清除 trusted 後重新 unlock', () async {
