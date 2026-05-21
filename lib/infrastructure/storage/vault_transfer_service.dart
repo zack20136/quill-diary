@@ -32,78 +32,46 @@ class VaultTransferService {
 
   Future<String?> createBackupWithPicker() async {
     final String fileName = '${generateBackupId()}.jbackup';
-    final String? initialDirectory = await _downloadsInitialDirectory();
-
-    if (Platform.isAndroid || Platform.isIOS) {
-      final File tempBackup = await _createTempFile(fileName);
-      try {
-        await _archiveIo.writeBackupZip(tempBackup);
-        return await FilePicker.saveFile(
-          dialogTitle: '儲存本機備份',
-          fileName: fileName,
-          initialDirectory: initialDirectory,
-          type: FileType.custom,
-          allowedExtensions: const <String>['jbackup'],
-          bytes: await tempBackup.readAsBytes(),
-        );
-      } finally {
-        await _deleteIfExists(tempBackup);
-      }
-    }
-
-    final String? targetPath = await FilePicker.saveFile(
+    return _saveGeneratedFileWithPicker(
       dialogTitle: '儲存本機備份',
       fileName: fileName,
-      initialDirectory: initialDirectory,
-      type: FileType.custom,
       allowedExtensions: const <String>['jbackup'],
+      writeTarget: _archiveIo.writeBackupZip,
     );
-    if (targetPath == null) {
-      return null;
-    }
-    await _archiveIo.writeBackupZip(File(targetPath));
-    return targetPath;
   }
 
   Future<String?> exportMarkdownWithPicker(UnlockedVaultSession session) async {
     final String fileName = 'markdown_export_${DateTime.now().millisecondsSinceEpoch}.zip';
-    final String? initialDirectory = await _downloadsInitialDirectory();
-
-    if (Platform.isAndroid || Platform.isIOS) {
-      final File tempZip = await _createTempFile(fileName);
-      try {
-        await _archiveIo.writePortableExportZip(
-          session: session,
-          target: tempZip,
-        );
-        return await FilePicker.saveFile(
-          dialogTitle: '儲存 Markdown 匯出 zip',
-          fileName: fileName,
-          initialDirectory: initialDirectory,
-          type: FileType.custom,
-          allowedExtensions: const <String>['zip'],
-          bytes: await tempZip.readAsBytes(),
-        );
-      } finally {
-        await _deleteIfExists(tempZip);
-      }
-    }
-
-    final String? targetPath = await FilePicker.saveFile(
+    return _saveGeneratedFileWithPicker(
       dialogTitle: '儲存 Markdown 匯出 zip',
       fileName: fileName,
-      initialDirectory: initialDirectory,
-      type: FileType.custom,
       allowedExtensions: const <String>['zip'],
+      writeTarget: (File target) => _archiveIo.writePortableExportZip(
+        session: session,
+        target: target,
+      ),
     );
-    if (targetPath == null) {
-      return null;
-    }
-    await _archiveIo.writePortableExportZip(
-      session: session,
-      target: File(targetPath),
+  }
+
+  Future<HtmlExportEstimate> estimateSelectedHtmlExport(Set<EntryId> entryIds) {
+    return _archiveIo.estimateSelectedHtmlExport(entryIds: entryIds);
+  }
+
+  Future<String?> exportSelectedHtmlWithPicker(
+    UnlockedVaultSession session,
+    Set<EntryId> entryIds,
+  ) async {
+    final String fileName = 'diary_export_${DateTime.now().millisecondsSinceEpoch}.html';
+    return _saveGeneratedFileWithPicker(
+      dialogTitle: '儲存 HTML 匯出',
+      fileName: fileName,
+      allowedExtensions: const <String>['html'],
+      writeTarget: (File target) => _archiveIo.writeSelectedHtmlExport(
+        session: session,
+        entryIds: entryIds,
+        target: target,
+      ),
     );
-    return targetPath;
   }
 
   Future<PortableImportResult?> importDocumentsWithPicker(
@@ -382,6 +350,44 @@ class VaultTransferService {
 
   Future<String?> _downloadsInitialDirectory() async {
     return (await getDownloadsDirectory())?.path;
+  }
+
+  Future<String?> _saveGeneratedFileWithPicker({
+    required String dialogTitle,
+    required String fileName,
+    required List<String> allowedExtensions,
+    required Future<void> Function(File target) writeTarget,
+  }) async {
+    final String? initialDirectory = await _downloadsInitialDirectory();
+    if (Platform.isAndroid || Platform.isIOS) {
+      final File tempFile = await _createTempFile(fileName);
+      try {
+        await writeTarget(tempFile);
+        return await FilePicker.saveFile(
+          dialogTitle: dialogTitle,
+          fileName: fileName,
+          initialDirectory: initialDirectory,
+          type: FileType.custom,
+          allowedExtensions: allowedExtensions,
+          bytes: await tempFile.readAsBytes(),
+        );
+      } finally {
+        await _deleteIfExists(tempFile);
+      }
+    }
+
+    final String? targetPath = await FilePicker.saveFile(
+      dialogTitle: dialogTitle,
+      fileName: fileName,
+      initialDirectory: initialDirectory,
+      type: FileType.custom,
+      allowedExtensions: allowedExtensions,
+    );
+    if (targetPath == null) {
+      return null;
+    }
+    await writeTarget(File(targetPath));
+    return targetPath;
   }
 
   Future<void> _deleteIfExists(File file) async {

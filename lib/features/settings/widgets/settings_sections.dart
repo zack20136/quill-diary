@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import '../../../domain/recovery/recovery_metadata.dart';
@@ -160,6 +162,12 @@ class SettingsStatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final bool isUnlocking = sessionState.status == AppLockStatus.unlocking;
+    final bool isLocked = sessionState.status == AppLockStatus.locked;
+    final bool needsRecovery = sessionState.status == AppLockStatus.recoveryRequired;
+    final bool canUseDeviceCredentialFallback =
+        sessionState.resumeAction == ResumeUnlockAction.deviceCredentialFallback &&
+        onUnlockWithDeviceCredential != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -168,7 +176,7 @@ class SettingsStatusPanel extends StatelessWidget {
           message: bannerMessage,
           tone: bannerTone,
         ),
-        if (sessionState.status == AppLockStatus.unlocking) ...<Widget>[
+        if (isUnlocking) ...<Widget>[
           const SizedBox(height: 12),
           Text(
             SettingsSecurityLockCopy.unlockingWaitHint,
@@ -187,9 +195,8 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
           ],
         ],
-        if (sessionState.status == AppLockStatus.locked) ...<Widget>[
-          if (sessionState.resumeAction == ResumeUnlockAction.deviceCredentialFallback &&
-              onUnlockWithDeviceCredential != null) ...<Widget>[
+        if (isLocked) ...<Widget>[
+          if (canUseDeviceCredentialFallback) ...<Widget>[
             const SizedBox(height: 14),
             SettingsActionButton(
               label: SettingsSecurityLockCopy.unlockWithDeviceLockButton,
@@ -209,7 +216,7 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
           ],
         ],
-        if (sessionState.status == AppLockStatus.recoveryRequired) ...<Widget>[
+        if (needsRecovery) ...<Widget>[
           const SizedBox(height: 16),
           if (recoveryKeyHint != null && recoveryKeyHint!.isNotEmpty) ...<Widget>[
             Text(
@@ -417,7 +424,7 @@ class UnlockMethodSectionBody extends StatelessWidget {
               ? null
               : (Set<AppUnlockMode> selected) {
                   if (selected.isNotEmpty) {
-                    onModeSelected(selected.first);
+                    unawaited(onModeSelected(selected.first));
                   }
                 },
         ),

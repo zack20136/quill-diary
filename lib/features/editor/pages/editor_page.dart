@@ -1365,49 +1365,53 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   }
 
   void _openPendingImagePreview(String sourcePath) {
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black54,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.all(12),
-          child: Stack(
-            children: <Widget>[
-              Center(
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 4,
-                  child: Image.file(
-                    File(sourcePath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                        const Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.white,
-                      size: 48,
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (BuildContext dialogContext) {
+          return Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: const EdgeInsets.all(12),
+            child: Stack(
+              children: <Widget>[
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4,
+                    child: Image.file(
+                      File(sourcePath),
+                      fit: BoxFit.contain,
+                      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                          const Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white,
+                        size: 48,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              PositionedDirectional(
-                top: 4,
-                end: 4,
-                child: IconButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  icon: const Icon(Icons.close, color: Colors.white),
+                PositionedDirectional(
+                  top: 4,
+                  end: 4,
+                  child: IconButton(
+                    onPressed: () => unawaited(Navigator.of(dialogContext).maybePop()),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
   void _removeSavedAttachment(AssetAttachment attachment) {
     setState(() {
-      _savedAssetPathFutures.remove(attachment.id);
+      _savedAssetPathFutures.removeWhere(
+        (String id, Future<String> _) => id == attachment.id,
+      );
       _keptExistingAttachmentIds.remove(attachment.id);
     });
     _onDraftFieldChanged();

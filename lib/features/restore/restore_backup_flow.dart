@@ -19,8 +19,12 @@ class RestoreBackupFlow {
     File backupFile,
     RestorePrecheck precheck,
   ) async {
+    final transferService = ref.read(vaultTransferServiceProvider);
     String? validationError;
-    while (context.mounted) {
+    while (true) {
+      if (!context.mounted) {
+        return null;
+      }
       final String? key = await showRestoreRecoveryKeyDialog(
         context,
         precheck: precheck,
@@ -30,7 +34,7 @@ class RestoreBackupFlow {
         return null;
       }
       try {
-        await ref.read(vaultTransferServiceProvider).verifyBackupRecoveryKey(
+        await transferService.verifyBackupRecoveryKey(
           backupFile,
           key,
         );
@@ -39,7 +43,6 @@ class RestoreBackupFlow {
         validationError = error.message;
       }
     }
-    return null;
   }
 
   Future<void> run({
@@ -53,10 +56,18 @@ class RestoreBackupFlow {
     }) onComplete,
     String? driveBackupName,
   }) async {
-    final RestorePrecheck precheck =
-        await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
+    final transferService = ref.read(vaultTransferServiceProvider);
+    final RestorePrecheck precheck = await transferService.precheckRestore(backupFile);
+
+    if (!context.mounted) {
+      return;
+    }
 
     if (!await confirm(precheck, driveBackupName: driveBackupName)) {
+      return;
+    }
+
+    if (!context.mounted) {
       return;
     }
 
@@ -73,7 +84,7 @@ class RestoreBackupFlow {
     }
 
     await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
-      await ref.read(vaultTransferServiceProvider).restoreFromBackupFile(
+      await transferService.restoreFromBackupFile(
         backupFile,
         preserveTrustedDeviceAccess: precheck.expectsTrustedUnlockAfterRestore,
       );

@@ -19,6 +19,10 @@ void main() {
     return container;
   }
 
+  HomeEntrySelectionState selectionStateOf(ProviderContainer container) {
+    return container.read(homeEntrySelectionProvider);
+  }
+
   ProviderContainer buildUnlockedHomeContainer(FakeVaultRepository repository) {
     const UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: 'vlt_home_provider_test',
@@ -26,7 +30,7 @@ void main() {
       recoveryWrapKey: <int>[1, 2, 3],
     );
     final ProviderContainer container = ProviderContainer(
-      overrides: <Override>[
+      overrides: [
         vaultRepositoryProvider.overrideWithValue(repository),
         effectiveAppSessionProvider.overrideWith(
           (Ref ref) async => const AppSessionState(
@@ -47,7 +51,7 @@ void main() {
 
     controller.enterWith('entry-a');
 
-    final HomeEntrySelectionState state = container.read(homeEntrySelectionProvider);
+    final HomeEntrySelectionState state = selectionStateOf(container);
     expect(state.isActive, isTrue);
     expect(state.selectedIds, <String>{'entry-a'});
   });
@@ -59,8 +63,8 @@ void main() {
 
     controller.enterSelection();
 
-    expect(container.read(homeEntrySelectionProvider).isActive, isTrue);
-    expect(container.read(homeEntrySelectionProvider).selectedIds, isEmpty);
+    expect(selectionStateOf(container).isActive, isTrue);
+    expect(selectionStateOf(container).selectedIds, isEmpty);
   });
 
   test('toggle 全不選時維持多選模式', () {
@@ -71,8 +75,8 @@ void main() {
     controller.enterWith('entry-a');
     controller.toggle('entry-a');
 
-    expect(container.read(homeEntrySelectionProvider).isActive, isTrue);
-    expect(container.read(homeEntrySelectionProvider).selectedIds, isEmpty);
+    expect(selectionStateOf(container).isActive, isTrue);
+    expect(selectionStateOf(container).selectedIds, isEmpty);
   });
 
   test('selectAll 全選後再次呼叫會取消全選但維持多選', () {
@@ -81,12 +85,11 @@ void main() {
         container.read(homeEntrySelectionProvider.notifier);
 
     controller.selectAll(<String>['entry-a', 'entry-b']);
-    expect(container.read(homeEntrySelectionProvider).selectedIds,
-        containsAll(<String>{'entry-a', 'entry-b'}));
+    expect(selectionStateOf(container).selectedIds, containsAll(<String>{'entry-a', 'entry-b'}));
 
     controller.selectAll(<String>['entry-a', 'entry-b']);
-    expect(container.read(homeEntrySelectionProvider).isActive, isTrue);
-    expect(container.read(homeEntrySelectionProvider).selectedIds, isEmpty);
+    expect(selectionStateOf(container).isActive, isTrue);
+    expect(selectionStateOf(container).selectedIds, isEmpty);
   });
 
   test('clear 重置多選狀態', () {
@@ -97,7 +100,7 @@ void main() {
     controller.enterWith('entry-a');
     controller.clear();
 
-    expect(container.read(homeEntrySelectionProvider), const HomeEntrySelectionState());
+    expect(selectionStateOf(container), const HomeEntrySelectionState());
   });
 
   test('pruneToVisible 移除不在列表中的選取', () {
@@ -108,9 +111,8 @@ void main() {
     controller.selectAll(<String>['entry-a', 'entry-b', 'entry-c']);
     controller.pruneToVisible(<String>['entry-a', 'entry-c']);
 
-    expect(container.read(homeEntrySelectionProvider).selectedIds,
-        containsAll(<String>{'entry-a', 'entry-c'}));
-    expect(container.read(homeEntrySelectionProvider).selectedIds, isNot(contains('entry-b')));
+    expect(selectionStateOf(container).selectedIds, containsAll(<String>{'entry-a', 'entry-c'}));
+    expect(selectionStateOf(container).selectedIds, isNot(contains('entry-b')));
   });
 
   test('pruneToVisible 在全部移除時維持多選模式', () {
@@ -121,8 +123,8 @@ void main() {
     controller.enterWith('entry-a');
     controller.pruneToVisible(<String>['entry-b']);
 
-    expect(container.read(homeEntrySelectionProvider).isActive, isTrue);
-    expect(container.read(homeEntrySelectionProvider).selectedIds, isEmpty);
+    expect(selectionStateOf(container).isActive, isTrue);
+    expect(selectionStateOf(container).selectedIds, isEmpty);
   });
 
   test('homeEntriesProvider 空搜尋時沿用全量索引快取', () async {

@@ -31,25 +31,40 @@ class SessionUnlockCoordinator {
     }
     _handling = true;
     try {
-      final AppSessionController controller = ref.read(appSessionProvider.notifier);
       switch (action) {
         case ResumeUnlockAction.autoTrusted:
         case ResumeUnlockAction.keystoreUnlock:
-          await controller.unlock();
+          await _unlockTrustedSession();
+          return;
         case ResumeUnlockAction.deviceCredentialFallback:
-          final UnlockOutcome outcome =
-              await controller.unlock(deviceCredentialFallback: true);
-          if (outcome == UnlockOutcome.failed) {
-            final BuildContext? context = ref.context;
-            if (context != null && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text(kUnlockFailedMessage)),
-              );
-            }
-          }
+          await _unlockWithDeviceCredentialFallback();
+          return;
       }
     } finally {
       _handling = false;
     }
+  }
+
+  Future<void> _unlockTrustedSession() async {
+    final AppSessionController controller = ref.read(appSessionProvider.notifier);
+    await controller.unlock();
+  }
+
+  Future<void> _unlockWithDeviceCredentialFallback() async {
+    final AppSessionController controller = ref.read(appSessionProvider.notifier);
+    final UnlockOutcome outcome = await controller.unlock(deviceCredentialFallback: true);
+    if (outcome == UnlockOutcome.failed) {
+      _showUnlockFailedSnackBar();
+    }
+  }
+
+  void _showUnlockFailedSnackBar() {
+    final BuildContext context = ref.context;
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(kUnlockFailedMessage)),
+    );
   }
 }

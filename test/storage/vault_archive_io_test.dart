@@ -323,6 +323,101 @@ Imported from markdown.
     );
   });
 
+  test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'html_source'))
+      ..createSync(recursive: true);
+    final File sourceImage = File(p.join(sourceDirectory.path, 'cover.png'))
+      ..writeAsBytesSync(const <int>[1, 2, 3, 4, 5]);
+    final File sourcePdf = File(p.join(sourceDirectory.path, 'note.pdf'))
+      ..writeAsBytesSync(const <int>[6, 7, 8]);
+
+    final String selectedId = generateEntryId();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: selectedId,
+        vaultId: setup.session.vaultId,
+        title: 'HTML <Export>',
+        date: const DateOnly('2026-05-28'),
+        createdAt: DateTime.parse('2026-05-28T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-28T09:00:00Z'),
+        tags: const <String>['分享', 'HTML'],
+        mood: '開心 & 安心',
+        markdownBody: '# Heading\n\nHello <script>alert(1)</script>\n\n- item',
+      ),
+      pendingAttachments: <PendingAttachment>[
+        PendingAttachment(
+          sourcePath: sourceImage.path,
+          mimeType: 'image/png',
+          originalFilename: 'cover.png',
+        ),
+        PendingAttachment(
+          sourcePath: sourcePdf.path,
+          mimeType: 'application/pdf',
+          originalFilename: 'note.pdf',
+        ),
+      ],
+    );
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Not selected',
+        date: const DateOnly('2026-05-29'),
+        createdAt: DateTime.parse('2026-05-29T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-29T08:00:00Z'),
+        markdownBody: 'should not export',
+      ),
+    );
+
+    final HtmlExportEstimate estimate = await archiveIo.estimateSelectedHtmlExport(
+      entryIds: <String>{selectedId},
+    );
+    final File output = File(p.join(harness.tempDir.path, 'selected.html'));
+    await archiveIo.writeSelectedHtmlExport(
+      session: setup.session,
+      entryIds: <String>{selectedId},
+      target: output,
+    );
+
+    final String html = await output.readAsString();
+    expect(estimate.entryCount, 1);
+    expect(estimate.imageCount, 1);
+    expect(estimate.imageBytes, 5);
+    expect(estimate.estimatedHtmlBytes, greaterThan(5));
+    expect(html, contains('HTML &lt;Export&gt;'));
+    expect(html, contains('開心 &amp; 安心'));
+    expect(html, contains('<h1>Heading</h1>'));
+    expect(html, contains('&lt;script&gt;alert(1)&lt;/script&gt;'));
+    expect(html, contains('data:image/png;base64,AQIDBAU='));
+    expect(html, isNot(contains('<h1>QuillLockDiary 匯出</h1>')));
+    expect(html, isNot(contains('<figcaption>cover.png</figcaption>')));
+    expect(html, contains('note.pdf · application/pdf'));
+    expect(html, isNot(contains('Not selected')));
+  });
+
+  test('HTML 匯出沒有可用日記時回報錯誤', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final File output = File(p.join(harness.tempDir.path, 'empty.html'));
+
+    expect(
+      () => archiveIo.writeSelectedHtmlExport(
+        session: setup.session,
+        entryIds: <String>{'jrn_NOT_FOUND'},
+        target: output,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (StateError error) => error.message,
+          'message',
+          '沒有可匯出的日記。',
+        ),
+      ),
+    );
+  });
+
   test('可從 zip 匯入 Markdown 與附件', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
@@ -351,7 +446,7 @@ Imported from zip.
         ),
       );
 
-    await zipFile.writeAsBytes(ZipEncoder().encode(archive)!);
+    await zipFile.writeAsBytes(ZipEncoder().encode(archive));
 
     final PortableImportResult result = await archiveIo.importDocumentsFromZip(
       session: setup.session,
@@ -469,7 +564,7 @@ Imported from zip.
       () => archiveIo.restoreBackupZip(badBackup),
       throwsA(
         isA<StateError>().having(
-          (StateError error) => error.message ?? '',
+          (StateError error) => error.message,
           'message',
           anyOf(contains('無法讀取備份檔'), contains('備份檔內容不完整')),
         ),

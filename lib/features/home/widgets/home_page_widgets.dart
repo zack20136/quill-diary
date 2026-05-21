@@ -600,7 +600,7 @@ class _EntryList extends ConsumerWidget {
                     ref.read(homeEntrySelectionProvider.notifier).toggle(entry.id);
                     return;
                   }
-                  context.push('/editor/${entry.id}');
+                  unawaited(context.push('/editor/${entry.id}'));
                 },
                 onLongPress: () {
                   if (selection.isActive) {
@@ -759,7 +759,7 @@ class _CompactEntryList extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => context.push('/editor/${entry.id}'),
+                      onTap: () => unawaited(context.push('/editor/${entry.id}')),
                       borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

@@ -11,6 +11,7 @@ import '../../../app/router.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
+import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
@@ -36,6 +37,7 @@ part '../widgets/home_page_widgets.dart';
 
 const double _kPaneSectionGap = 18;
 const double _kHomeEntryListCacheExtent = 600;
+const int _kHtmlExportImageWarningThresholdBytes = 50 * 1024 * 1024;
 
 Widget _buildBrowsingEntryRow(BuildContext context, EntryIndexRecord entry) {
   return _TimelineEntryShell(
@@ -43,8 +45,8 @@ Widget _buildBrowsingEntryRow(BuildContext context, EntryIndexRecord entry) {
       entry: entry,
       selectionActive: false,
       selected: false,
-      onTap: () => context.push('/editor/${entry.id}'),
-      onLongPress: () => context.push('/editor/${entry.id}'),
+      onTap: () => unawaited(context.push('/editor/${entry.id}')),
+      onLongPress: () => unawaited(context.push('/editor/${entry.id}')),
     ),
   );
 }
@@ -181,7 +183,7 @@ class _BlockedEntriesPane extends StatelessWidget {
       title: blockedTitleForStatus(sessionState.status),
       message: blockedSubtitleForState(sessionState),
       actionLabel: offerSettings ? '前往設定' : null,
-      onAction: offerSettings ? () => context.push(AppRouter.settingsRoute) : null,
+      onAction: offerSettings ? () => unawaited(context.push(AppRouter.settingsRoute)) : null,
     );
   }
 }
@@ -261,7 +263,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     tooltip: '新增日記',
                     backgroundColor: cs.secondaryContainer,
                     foregroundColor: cs.onSecondaryContainer,
-                    onPressed: canCreate ? () => context.push(AppRouter.editorRoute) : null,
+                    onPressed: canCreate
+                        ? () => unawaited(context.push(AppRouter.editorRoute))
+                        : null,
                     child: const Icon(Icons.add_rounded),
                   )
                 : null,
@@ -358,7 +362,7 @@ class _HomeHeader extends ConsumerWidget {
               _HeaderIconButton(
                 tooltip: '設定與備份',
                 icon: Icons.tune_rounded,
-                onPressed: () => context.push(AppRouter.settingsRoute),
+                onPressed: () => unawaited(context.push(AppRouter.settingsRoute)),
               ),
             ],
           ),
@@ -402,6 +406,8 @@ class _HomeTimelinePane extends ConsumerWidget {
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(homeEntriesProvider);
     final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
     final List<EntryIndexRecord> entries = entriesAsync.value ?? const <EntryIndexRecord>[];
+    final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
+    final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
 
     ref.listen<String>(homeSearchQueryProvider, (String? previous, String? next) {
       final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
@@ -430,11 +436,26 @@ class _HomeTimelinePane extends ConsumerWidget {
                       ),
                   actions: <HomeSelectionAction>[
                     HomeSelectionAction(
+                      tooltip: '匯出 HTML',
+                      icon: Icons.html,
+                      enabled: canActOnSelectedEntries,
+                      onPressed: !canActOnSelectedEntries
+                          ? null
+                          : () => unawaited(
+                                _exportSelectedHomeEntriesAsHtml(
+                                  context,
+                                  ref,
+                                  sessionState,
+                                  selection.selectedIds,
+                                ),
+                              ),
+                    ),
+                    HomeSelectionAction(
                       tooltip: '刪除',
                       icon: Icons.delete_outline_rounded,
                       destructive: true,
-                      enabled: selection.selectedIds.isNotEmpty && canReadEntries,
-                      onPressed: selection.selectedIds.isEmpty || !canReadEntries
+                      enabled: canActOnSelectedEntries,
+                      onPressed: !canActOnSelectedEntries
                           ? null
                           : () => unawaited(
                                 _deleteSelectedHomeEntries(
@@ -498,6 +519,111 @@ class _HomeTimelinePane extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _exportSelectedHomeEntriesAsHtml(
+  BuildContext context,
+  WidgetRef ref,
+  AppSessionState sessionState,
+  Set<EntryId> selectedIds,
+) async {
+  final UnlockedVaultSession? session = sessionState.session;
+  if (session == null || selectedIds.isEmpty) {
+    return;
+  }
+
+  final Set<EntryId> exportIds = Set<EntryId>.from(selectedIds);
+  final transferService = ref.read(vaultTransferServiceProvider);
+  try {
+    final HtmlExportEstimate estimate =
+        await transferService.estimateSelectedHtmlExport(exportIds);
+    if (!context.mounted) {
+      return;
+    }
+    if (estimate.exceedsImageBytes(_kHtmlExportImageWarningThresholdBytes)) {
+      final bool confirmed = await _confirmLargeHtmlExport(context, estimate);
+      if (!confirmed || !context.mounted) {
+        return;
+      }
+    }
+
+    final String? savedPath = await ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession activeSession) {
+      return transferService.exportSelectedHtmlWithPicker(activeSession, exportIds);
+    });
+    if (savedPath == null || !context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已匯出 HTML：$savedPath')),
+    );
+  } on StateError catch (error) {
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.message)),
+    );
+  } catch (error) {
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$error')),
+    );
+  }
+}
+
+Future<bool> _confirmLargeHtmlExport(
+  BuildContext context,
+  HtmlExportEstimate estimate,
+) async {
+  return await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: const Text('HTML 檔案可能很大'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('選取 ${estimate.entryCount} 篇日記，包含 ${estimate.imageCount} 張圖片。'),
+              const SizedBox(height: 8),
+              Text('圖片原始大小：約 ${_formatHomeExportBytes(estimate.imageBytes)}'),
+              Text('HTML 估算大小：約 ${_formatHomeExportBytes(estimate.estimatedHtmlBytes)}'),
+              const SizedBox(height: 12),
+              const Text('圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。'),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('仍要匯出'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}
+
+String _formatHomeExportBytes(int bytes) {
+  if (bytes < 1024) {
+    return '$bytes B';
+  }
+  final double kib = bytes / 1024;
+  if (kib < 1024) {
+    return '${kib.toStringAsFixed(kib >= 10 ? 0 : 1)} KB';
+  }
+  final double mib = kib / 1024;
+  if (mib < 1024) {
+    return '${mib.toStringAsFixed(mib >= 10 ? 0 : 1)} MB';
+  }
+  final double gib = mib / 1024;
+  return '${gib.toStringAsFixed(gib >= 10 ? 0 : 1)} GB';
 }
 
 Future<void> _deleteSelectedHomeEntries(
