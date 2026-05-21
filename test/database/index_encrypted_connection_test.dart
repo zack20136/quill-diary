@@ -7,16 +7,10 @@ import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_key_derivation.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
-
 import '../helpers/test_vault_path_strategy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUpAll(() async {
-    await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
-  });
 
   test('openIndexConnection 使用正確 key 可成功查詢', () async {
     final Directory dir = Directory.systemTemp.createTempSync('qld_idx_good_key');

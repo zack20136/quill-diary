@@ -156,8 +156,7 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
         _storage = storage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(
-                encryptedSharedPreferences: true,
-                sharedPreferencesName: 'quill_lock_diary_device',
+                storageNamespace: 'quill_lock_diary_device',
               ),
             );
 
