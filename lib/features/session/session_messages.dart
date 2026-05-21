@@ -1,5 +1,6 @@
 import 'package:cryptography/cryptography.dart';
 
+import '../../infrastructure/database/index_database_errors.dart';
 import '../settings/settings_copy.dart';
 import 'state/app_session_state.dart';
 
@@ -47,6 +48,8 @@ const String kRecoveryKeyMismatchMessage =
     '復原金鑰與日記庫資料不相符。若為「更新復原金鑰」前的舊備份，請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。';
 const String kTrustedUnlockFailedAfterRestoreMessage =
     '還原後無法以本機受信任裝置自動解鎖。請在下方輸入建立此備份時保存的復原金鑰。';
+const String kIndexDatabaseUnreadableMessage =
+    '索引資料庫無法讀取（可能已損壞或與目前日記庫金鑰不相符）。請使用復原金鑰重新解鎖；若問題持續，可嘗試重新還原備份。';
 
 /// 將技術性錯誤轉成設定頁／安全鎖狀態可讀訊息。
 String friendlySessionErrorMessage(
@@ -57,6 +60,9 @@ String friendlySessionErrorMessage(
     return afterRestoreTrustedUnlock
         ? kTrustedUnlockFailedAfterRestoreMessage
         : kRecoveryKeyMismatchMessage;
+  }
+  if (isUnreadableEncryptedIndexError(error)) {
+    return kIndexDatabaseUnreadableMessage;
   }
   if (error is StateError) {
     final String message = error.message;

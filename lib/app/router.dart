@@ -28,8 +28,10 @@ class AppRouter {
         ),
         GoRoute(
           path: editorDetailRoute,
-          builder: (_, GoRouterState state) =>
-              EditorPage(entryId: state.pathParameters['entryId']),
+          builder: (_, GoRouterState state) => EditorPage(
+            entryId: state.pathParameters['entryId'],
+            startInEditMode: state.uri.queryParameters['edit'] == '1',
+          ),
         ),
         GoRoute(
           path: settingsRoute,

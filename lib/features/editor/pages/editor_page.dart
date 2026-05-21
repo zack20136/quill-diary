@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
@@ -30,13 +31,17 @@ import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../settings/providers/settings_providers.dart';
+import '../editor_draft.dart';
 import '../providers/editor_providers.dart';
+
+enum _SaveStatus { idle, dirty, saving, saved }
 
 /// Entry editor responsible for creating and updating diary content plus attachments.
 class EditorPage extends ConsumerStatefulWidget {
-  const EditorPage({super.key, this.entryId});
+  const EditorPage({super.key, this.entryId, this.startInEditMode = false});
 
   final String? entryId;
+  final bool startInEditMode;
 
   @override
   ConsumerState<EditorPage> createState() => _EditorPageState();
@@ -58,7 +63,16 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   bool _didLoadExisting = false;
   bool _saving = false;
   bool _suppressTagDraftListener = false;
+  bool _suppressDraftListener = false;
   late final ProviderSubscription<AsyncValue<AppSessionState>> _sessionSubscription;
+  Timer? _autoSaveTimer;
+  Timer? _savedStatusTimer;
+  _SaveStatus _saveStatus = _SaveStatus.idle;
+  EditorDraftSnapshot? _lastSavedSnapshot;
+  UnlockedVaultSession? _activeSession;
+  DiaryEntry? _activeEntry;
+  static const Duration _autoSaveDebounce = Duration(seconds: 5);
+  static const Duration _savedStatusVisible = Duration(seconds: 3);
   bool get _isEditing => !_previewMode;
 
   Map<String, int> _watchedTagAccentArgbMap() {
@@ -77,9 +91,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   @override
   void initState() {
     super.initState();
-    _previewMode = widget.entryId != null;
+    _previewMode = widget.entryId != null && !widget.startInEditMode;
     _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.addListener(_onTagsDraftChanged);
+    _titleController.addListener(_onDraftFieldChanged);
+    _bodyController.addListener(_onDraftFieldChanged);
+    _dateController.addListener(_onDraftFieldChanged);
     _sessionSubscription = ref.listenManual<AsyncValue<AppSessionState>>(
       effectiveAppSessionProvider,
       (_, AsyncValue<AppSessionState> next) {
@@ -97,6 +114,132 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
     setState(() {});
+    _onDraftFieldChanged();
+  }
+
+  void _onDraftFieldChanged() {
+    if (_previewMode || !mounted || _suppressDraftListener) {
+      return;
+    }
+    _updateDirtySaveStatus();
+    _scheduleAutoSave();
+  }
+
+  EditorDraftSnapshot _currentDraftSnapshot() {
+    return buildEditorDraftSnapshot(
+      titleRaw: _titleController.text,
+      dateRaw: _dateController.text,
+      entryHour: _entryTime.hour,
+      entryMinute: _entryTime.minute,
+      tagsRaw: _tagsController.text,
+      moodRaw: _moodController.text,
+      bodyRaw: _bodyController.text,
+      keptAttachmentIds: _keptExistingAttachmentIds,
+      pendingAttachments: _pendingAttachments,
+    );
+  }
+
+  bool _isDraftDirty() {
+    return editorDraftIsDirty(
+      current: _currentDraftSnapshot(),
+      saved: _lastSavedSnapshot,
+    );
+  }
+
+  bool _shouldSkipAutoSave() {
+    if (!_isEditing || _saving) {
+      return true;
+    }
+    final EditorDraftSnapshot current = _currentDraftSnapshot();
+    if (!editorDraftIsDirty(current: current, saved: _lastSavedSnapshot)) {
+      return true;
+    }
+    if (widget.entryId == null && editorDraftIsEmpty(current)) {
+      return true;
+    }
+    return false;
+  }
+
+  void _updateDirtySaveStatus() {
+    if (_saving || _saveStatus == _SaveStatus.saving) {
+      return;
+    }
+    final bool dirty = _isDraftDirty();
+    final _SaveStatus next = dirty ? _SaveStatus.dirty : _SaveStatus.idle;
+    if (next != _saveStatus && _saveStatus != _SaveStatus.saved) {
+      setState(() => _saveStatus = next);
+    } else if (next == _SaveStatus.dirty && _saveStatus != _SaveStatus.dirty) {
+      setState(() => _saveStatus = _SaveStatus.dirty);
+    }
+  }
+
+  void _scheduleAutoSave() {
+    if (_previewMode) {
+      return;
+    }
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_autoSaveDebounce, () {
+      unawaited(_performAutoSave());
+    });
+  }
+
+  void _cancelAutoSaveTimer() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
+  }
+
+  void _markSaved() {
+    _savedStatusTimer?.cancel();
+    setState(() => _saveStatus = _SaveStatus.saved);
+    _savedStatusTimer = Timer(_savedStatusVisible, () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (_saveStatus == _SaveStatus.saved) {
+          _saveStatus = _SaveStatus.idle;
+        }
+      });
+    });
+  }
+
+  Future<void> _performAutoSave() async {
+    if (_shouldSkipAutoSave()) {
+      return;
+    }
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null) {
+      return;
+    }
+    await _saveEntry(session, _activeEntry);
+  }
+
+  Future<void> _flushSaveIfNeeded() async {
+    _cancelAutoSaveTimer();
+    if (_shouldSkipAutoSave()) {
+      return;
+    }
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null) {
+      return;
+    }
+    await _saveEntry(session, _activeEntry);
+  }
+
+  Future<void> _requestClose() async {
+    if (_saving) {
+      return;
+    }
+    if (!_isEditing) {
+      if (mounted) {
+        context.pop();
+      }
+      return;
+    }
+    await _flushSaveIfNeeded();
+    if (mounted) {
+      context.pop();
+    }
   }
 
   void _clearSavedAssetEncryptedPathFutures() {
@@ -109,8 +252,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   @override
   void dispose() {
     _sessionSubscription.close();
+    _cancelAutoSaveTimer();
+    _savedStatusTimer?.cancel();
     _dateController.removeListener(_clearSavedAssetEncryptedPathFutures);
+    _dateController.removeListener(_onDraftFieldChanged);
     _tagsController.removeListener(_onTagsDraftChanged);
+    _titleController.removeListener(_onDraftFieldChanged);
+    _bodyController.removeListener(_onDraftFieldChanged);
     _titleController.dispose();
     _dateController.dispose();
     _tagsController.dispose();
@@ -129,8 +277,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _pendingAttachments.clear();
     _keptExistingAttachmentIds = <AssetId>[];
     _savedAssetPathFutures.clear();
+    _cancelAutoSaveTimer();
+    _savedStatusTimer?.cancel();
+    _lastSavedSnapshot = null;
+    _saveStatus = _SaveStatus.idle;
     _didLoadExisting = false;
-    _previewMode = widget.entryId != null;
+    _previewMode = widget.entryId != null && !widget.startInEditMode;
     _entryTime = TimeOfDay.now();
     if (mounted) {
       setState(() {});
@@ -181,13 +333,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         return entryAsync.when(
           data: (DiaryEntry? entry) {
             _loadExistingEntryIfNeeded(entry);
+            _activeSession = session;
+            _activeEntry = entry;
             final AsyncValue<List<AssetAttachment>> attachmentsAsync = widget.entryId == null
                 ? const AsyncValue<List<AssetAttachment>>.data(<AssetAttachment>[])
                 : ref.watch(entryAttachmentsProvider(widget.entryId!));
-            return Scaffold(
-              backgroundColor:
-                  _previewMode ? Theme.of(context).colorScheme.surfaceContainerLow : null,
-              body: metadataAsync.when(
+            final ColorScheme colorScheme = Theme.of(context).colorScheme;
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (bool didPop, Object? result) {
+                if (didPop) {
+                  return;
+                }
+                unawaited(_requestClose());
+              },
+              child: Scaffold(
+                backgroundColor: PageStyle.scaffoldWash(colorScheme),
+                body: metadataAsync.when(
                 data: (Object? metadata) {
                   if (metadata == null) {
                     return const Center(
@@ -255,7 +417,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                               child: _previewMode
                                   ? SingleChildScrollView(
                                       padding: EdgeInsets.only(
-                                        bottom: 12 + MediaQuery.paddingOf(context).bottom,
+                                        bottom: 8 + MediaQuery.paddingOf(context).bottom,
                                       ),
                                       child: DecoratedBox(
                                         decoration: BoxDecoration(
@@ -267,7 +429,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                                           ),
                                         ),
                                         child: Padding(
-                                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
                                           child: _bodyController.text.isEmpty
                                               ? SelectableText(
                                                   '尚未輸入內容',
@@ -290,15 +452,35 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                                       ),
                                     )
                                   : SingleChildScrollView(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: TextField(
-                                        controller: _bodyController,
-                                        minLines: 6,
-                                        maxLines: null,
-                                        textAlignVertical: TextAlignVertical.top,
-                                        decoration: _editorFieldDecoration(
-                                          context,
-                                          hintText: '在這裡輸入內容…',
+                                      padding: EdgeInsets.only(
+                                        bottom: 8 + MediaQuery.paddingOf(context).bottom,
+                                      ),
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: PageStyle.previewPanelFill(paneTheme.colorScheme),
+                                          borderRadius:
+                                              BorderRadius.circular(PageStyle.radiusPanel),
+                                          border: Border.fromBorderSide(
+                                            PageStyle.outlineSide(paneTheme.colorScheme),
+                                          ),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                                          child: TextField(
+                                            controller: _bodyController,
+                                            minLines: 6,
+                                            maxLines: null,
+                                            textAlignVertical: TextAlignVertical.top,
+                                            style: paneTheme.textTheme.bodyLarge?.copyWith(
+                                              height: 1.76,
+                                              fontWeight: FontWeight.w400,
+                                              letterSpacing: 0.2,
+                                            ),
+                                            decoration: _bodyFieldDecoration(
+                                              context,
+                                              hintText: '在這裡輸入內容…',
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -307,17 +489,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                         );
 
                         return Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            _previewMode ? 20 : 16,
-                            _previewMode ? 10 : 6,
-                            _previewMode ? 20 : 16,
-                            _previewMode ? 14 : 8,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
                               _buildTitleHeader(context),
-                              SizedBox(height: _previewMode ? 10 : 8),
+                              const SizedBox(height: 8),
                               Expanded(
                                 child: showWideSidebarWithStrip
                                     ? Row(
@@ -360,6 +537,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                 ),
               ),
+            ),
             );
           },
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -382,6 +560,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
     _didLoadExisting = true;
+    _suppressDraftListener = true;
     _titleController.text = entry.title ?? '';
     _dateController.text = entry.date.value;
     _tagsController.text = entry.tags.join(', ');
@@ -389,6 +568,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _bodyController.text = entry.markdownBody;
     _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
     _entryTime = TimeOfDay(hour: entry.createdAt.hour, minute: entry.createdAt.minute);
+    _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
+    _suppressDraftListener = false;
   }
 
   DateTime _composeEntryCreatedAt({required DateOnly date, required DiaryEntry? existing}) {
@@ -439,6 +620,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(() {
       _dateController.text = DateOnly.fromDateTime(picked).value;
     });
+    _onDraftFieldChanged();
   }
 
   Future<void> _pickEntryTime() async {
@@ -468,6 +650,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
     setState(() => _entryTime = picked);
+    _onDraftFieldChanged();
   }
 
   String _formattedDisplayDate(BuildContext context) {
@@ -507,6 +690,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (mounted && !_previewMode) {
       setState(() {});
     }
+    _onDraftFieldChanged();
   }
   /// 固定 24 小時制顯示（與時間選擇器一致）。
   String _formattedEntryTime24h() {
@@ -524,80 +708,72 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         .toList();
   }
 
+  Widget _buildTagPill(String tag, ThemeData theme) {
+    final (Color bg, Color fg) = tagResolvedAccentPair(
+      tag,
+      theme.colorScheme,
+      _watchedTagAccentArgbMap(),
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: bg.withValues(alpha: 0.88),
+        border: Border.all(
+          color: fg.withValues(alpha: 0.34),
+          width: 0.9,
+        ),
+      ),
+      child: Text(
+        tag,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+          height: 1.15,
+        ),
+      ),
+    );
+  }
+
   Widget _buildEditorMetaSubtitleRow(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<String> tags = _editableTagListPreview();
     final TextStyle? metaStyle = theme.textTheme.labelSmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w500,
       height: 1.25,
       letterSpacing: 0.15,
     );
-    final TextStyle? chipLabelStyle = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.onSecondaryContainer,
-      fontWeight: FontWeight.w600,
-      height: 1.15,
-    );
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Text(
           '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}',
           style: metaStyle,
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
-        Expanded(
-          child: tags.isEmpty
-              ? const SizedBox.shrink()
-              : Align(
-                  alignment: Alignment.centerRight,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          for (final String tag in tags.take(14))
-                            Padding(
-                              padding: const EdgeInsets.only(left: 5),
-                              child: Builder(
-                                builder: (BuildContext context) {
-                                  final (Color bg, Color fg) = tagResolvedAccentPair(
-                                      tag,
-                                      theme.colorScheme,
-                                      _watchedTagAccentArgbMap(),
-                                    );
-                                  return Chip(
-                                    label: Text(
-                                      tag,
-                                      style: chipLabelStyle?.copyWith(color: fg),
-                                    ),
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    visualDensity: VisualDensity.compact,
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                    labelPadding:
-                                        const EdgeInsets.symmetric(horizontal: 4),
-                                    side: BorderSide(
-                                      color: fg.withValues(alpha: 0.32),
-                                      width: 0.95,
-                                    ),
-                                    backgroundColor: bg.withValues(alpha: 0.95),
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-        ),
+        if (_isEditing && _saveStatus != _SaveStatus.idle) ...<Widget>[
+          Text(' · ', style: metaStyle),
+          _buildSaveStatusLabel(theme),
+        ],
       ],
+    );
+  }
+
+  Widget _buildTagsWrap(ThemeData theme) {
+    final List<String> tags = _editableTagListPreview();
+    if (tags.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: tags
+          .take(24)
+          .map((String tag) => _buildTagPill(tag, theme))
+          .toList(),
     );
   }
 
@@ -605,7 +781,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     final ThemeData theme = Theme.of(context);
     if (_previewMode) {
       final String titleText = _titleController.text.trim();
-      final List<String> previewTags = _editableTagListPreview();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -620,42 +795,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   titleText.isEmpty ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
             ),
           ),
-          if (previewTags.isNotEmpty) ...<Widget>[
+          if (_editableTagListPreview().isNotEmpty) ...<Widget>[
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: previewTags
-                  .take(24)
-                  .map((String tag) {
-                    final (Color bg, Color fg) = tagResolvedAccentPair(
-                      tag,
-                      theme.colorScheme,
-                      _watchedTagAccentArgbMap(),
-                    );
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        color: bg.withValues(alpha: 0.88),
-                        border: Border.all(
-                          color: fg.withValues(alpha: 0.34),
-                          width: 0.9,
-                        ),
-                      ),
-                      child: Text(
-                        tag,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: fg,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.1,
-                          height: 1.15,
-                        ),
-                      ),
-                    );
-                  })
-                  .toList(),
-            ),
+            _buildTagsWrap(theme),
           ],
         ],
       );
@@ -665,15 +807,24 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         _buildEditorMetaSubtitleRow(context),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         TextField(
           controller: _titleController,
           textInputAction: TextInputAction.next,
-          decoration: _editorFieldDecoration(
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.28,
+            letterSpacing: -0.35,
+          ),
+          decoration: _titleFieldDecoration(
             context,
             hintText: '輸入標題',
           ),
         ),
+        if (_editableTagListPreview().isNotEmpty) ...<Widget>[
+          const SizedBox(height: 10),
+          _buildTagsWrap(theme),
+        ],
       ],
     );
   }
@@ -718,117 +869,197 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     Future<void> saveEntry() async {
-      await _saveEntry(session, entry);
+      _cancelAutoSaveTimer();
+      await _saveEntry(session, entry, switchToPreview: true);
     }
 
     final ThemeData barTheme = Theme.of(context);
 
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 2, 4, 2),
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              tooltip: '取消',
-              onPressed: _saving ? null : () => context.pop(),
-              icon: const Icon(Icons.close_rounded),
-            ),
-            if (_isEditing) ...<Widget>[
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      IconButton(
-                        tooltip: '日期',
-                        onPressed: _saving ? null : _pickEntryDate,
-                        icon: const Icon(Icons.calendar_today_outlined),
-                      ),
-                      IconButton(
-                        tooltip: '時間',
-                        onPressed: _saving ? null : _pickEntryTime,
-                        icon: const Icon(Icons.schedule_outlined),
-                      ),
-                      IconButton(
-                        tooltip: '編輯標籤',
-                        onPressed: _saving ? null : _showTagsEditorDialog,
-                        icon: const Icon(Icons.sell_outlined),
-                      ),
-                      IconButton(
-                        tooltip: '上傳圖片（可一次選多張）',
-                        onPressed: _saving ? null : () => _pickImage(),
-                        icon: const Icon(Icons.image_outlined),
-                      ),
-                      IconButton(
-                        tooltip: '新增附件',
-                        onPressed: _saving ? null : () => _pickFile(),
-                        icon: const Icon(Icons.attach_file),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: '儲存',
-                onPressed: _saving ? null : saveEntry,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-              ),
-              if (widget.entryId != null)
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 2, 4, 2),
+            child: Row(
+              children: <Widget>[
                 IconButton(
-                  tooltip: '刪除',
-                  onPressed: _saving ? null : deleteEntry,
-                  icon: const Icon(Icons.delete_outline),
+                  tooltip: '取消',
+                  onPressed: _saving ? null : () => unawaited(_requestClose()),
+                  icon: const Icon(Icons.close_rounded),
                 ),
-            ] else ...<Widget>[
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}',
-                      style: barTheme.textTheme.titleSmall?.copyWith(
-                        color: barTheme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
+                if (_isEditing) ...<Widget>[
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          IconButton(
+                            tooltip: '日期',
+                            onPressed: _saving ? null : _pickEntryDate,
+                            icon: const Icon(Icons.calendar_today_outlined),
+                          ),
+                          IconButton(
+                            tooltip: '時間',
+                            onPressed: _saving ? null : _pickEntryTime,
+                            icon: const Icon(Icons.schedule_outlined),
+                          ),
+                          IconButton(
+                            tooltip: '編輯標籤',
+                            onPressed: _saving ? null : _showTagsEditorDialog,
+                            icon: const Icon(Icons.sell_outlined),
+                          ),
+                          IconButton(
+                            tooltip: '上傳圖片（可一次選多張）',
+                            onPressed: _saving ? null : () => _pickImage(),
+                            icon: const Icon(Icons.image_outlined),
+                          ),
+                          IconButton(
+                            tooltip: '新增附件',
+                            onPressed: _saving ? null : () => _pickFile(),
+                            icon: const Icon(Icons.attach_file),
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
-                ),
-              ),
-              IconButton(
-                tooltip: '編輯',
-                onPressed: _saving ? null : () => setState(() => _previewMode = false),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              if (widget.entryId != null)
-                IconButton(
-                  tooltip: '刪除',
-                  onPressed: _saving ? null : deleteEntry,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-            ],
-          ],
+                  IconButton(
+                    tooltip: '儲存',
+                    onPressed: _saving ? null : saveEntry,
+                    icon: const Icon(Icons.save_outlined),
+                  ),
+                  if (widget.entryId != null)
+                    IconButton(
+                      tooltip: '刪除',
+                      onPressed: _saving ? null : deleteEntry,
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                ] else ...<Widget>[
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}',
+                          style: barTheme.textTheme.titleSmall?.copyWith(
+                            color: barTheme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '編輯',
+                    onPressed: _saving
+                        ? null
+                        : () => setState(() {
+                              _previewMode = false;
+                              if (_activeEntry != null) {
+                                _lastSavedSnapshot =
+                                    editorDraftSnapshotFromEntry(_activeEntry!);
+                              }
+                            }),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  if (widget.entryId != null)
+                    IconButton(
+                      tooltip: '刪除',
+                      onPressed: _saving ? null : deleteEntry,
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                ],
+              ],
+            ),
+          ),
         ),
-      ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: barTheme.colorScheme.outlineVariant.withValues(alpha: 0.34),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaveStatusLabel(ThemeData theme) {
+    final String label;
+    final Color color;
+    switch (_saveStatus) {
+      case _SaveStatus.dirty:
+        label = '有未儲存變更';
+        color = theme.colorScheme.onSurfaceVariant;
+      case _SaveStatus.saving:
+        label = '儲存中…';
+        color = theme.colorScheme.primary;
+      case _SaveStatus.saved:
+        label = '已儲存';
+        color = theme.colorScheme.primary;
+      case _SaveStatus.idle:
+        label = '';
+        color = theme.colorScheme.onSurfaceVariant;
+    }
+    if (label.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        if (_saveStatus == _SaveStatus.saving)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        if (_saveStatus == _SaveStatus.saved)
+          Padding(
+            padding: const EdgeInsets.only(right: 3),
+            child: Icon(
+              Icons.check_circle_outline,
+              size: 14,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+            height: 1.25,
+          ),
+        ),
+      ],
     );
   }
 
   Future<void> _saveEntry(
     UnlockedVaultSession session,
-    DiaryEntry? existing,
-  ) async {
-    setState(() => _saving = true);
+    DiaryEntry? existing, {
+    bool switchToPreview = false,
+  }) async {
+    if (_saving) {
+      return;
+    }
+    _cancelAutoSaveTimer();
+    setState(() {
+      _saving = true;
+      _saveStatus = _SaveStatus.saving;
+    });
     try {
       final DateTime now = DateTime.now();
       final DateOnly parsedDate = DateOnly.parse(_dateController.text.trim());
@@ -839,11 +1070,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         date: parsedDate,
         createdAt: _composeEntryCreatedAt(date: parsedDate, existing: existing),
         updatedAt: now,
-        tags: _tagsController.text
-            .split(',')
-            .map((String tag) => tag.trim())
-            .where((String tag) => tag.isNotEmpty)
-            .toList(),
+        tags: parseEditorTagsCsv(_tagsController.text),
         mood: _moodController.text.trim().isEmpty ? null : _moodController.text.trim(),
         markdownBody: _bodyController.text.trim(),
         attachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
@@ -863,13 +1090,22 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         _keptExistingAttachmentIds = List<AssetId>.from(saved.attachmentIds);
         _pendingAttachments.clear();
         _entryTime = TimeOfDay(hour: saved.createdAt.hour, minute: saved.createdAt.minute);
-        if (widget.entryId != null) {
+        _lastSavedSnapshot = editorDraftSnapshotFromEntry(saved);
+        _activeEntry = saved;
+        if (switchToPreview) {
           _previewMode = true;
+          _saveStatus = _SaveStatus.idle;
         }
       });
+      if (!switchToPreview) {
+        _markSaved();
+      }
       if (widget.entryId == null && mounted) {
         // 保留首頁在堆疊底層，關閉編輯器時才能 pop 回首頁（go 會整段取代路由）。
-        context.pushReplacement('/editor/${saved.id}');
+        final String route = switchToPreview
+            ? '/editor/${saved.id}'
+            : '/editor/${saved.id}?edit=1';
+        context.pushReplacement(route);
       }
     } finally {
       if (mounted) {
@@ -878,11 +1114,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
   }
 
-  /// Pending-only: removes local file from the upload queue; persists only after [儲存].
   void _removePendingAttachment(PendingAttachment attachment) {
     setState(() {
       _pendingAttachments.remove(attachment);
     });
+    _onDraftFieldChanged();
   }
 
   Widget _pendingImageThumbnailTile(PendingAttachment attachment, {required bool editable}) {
@@ -915,23 +1151,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       ),
     );
     if (!editable) {
-      return Material(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
-        clipBehavior: Clip.antiAlias,
-        child: image,
-      );
+      return image;
     }
     return Tooltip(
       message: '點一下從待上傳清單移除（須按儲存才會寫入日記）',
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _removePendingAttachment(attachment),
-          child: image,
-        ),
+      child: InkWell(
+        onTap: () => _removePendingAttachment(attachment),
+        borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+        child: image,
       ),
     );
   }
@@ -1181,6 +1408,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       _savedAssetPathFutures.remove(attachment.id);
       _keptExistingAttachmentIds.remove(attachment.id);
     });
+    _onDraftFieldChanged();
   }
 
   Future<String> _assetEncryptedPath(AssetAttachment attachment) async {
@@ -1239,23 +1467,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ),
       );
       if (!editable) {
-        return Material(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
-          clipBehavior: Clip.antiAlias,
-          child: image,
-        );
+        return image;
       }
       return Tooltip(
         message: '點一下移除此圖（須按儲存才會從日記移除）',
-        child: Material(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _removeSavedAttachment(attachment),
-            child: image,
-          ),
+        child: InkWell(
+          onTap: () => _removeSavedAttachment(attachment),
+          borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+          child: image,
         ),
       );
     }
@@ -1376,6 +1595,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(() {
       _pendingAttachments.addAll(next);
     });
+    _onDraftFieldChanged();
   }
 
   Future<void> _pickFile() async {
@@ -1402,6 +1622,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         );
       }
     });
+    _onDraftFieldChanged();
   }
 
   String _mimeTypeFromPath(String pathValue) {
@@ -1811,27 +2032,46 @@ class _DecryptedImageFullScreenDialog extends ConsumerWidget {
   }
 }
 
-InputDecoration _editorFieldDecoration(
+InputDecoration _titleFieldDecoration(
   BuildContext context, {
   required String hintText,
 }) {
   final ColorScheme cs = Theme.of(context).colorScheme;
-  final OutlineInputBorder border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: PageStyle.outlineSide(cs, opacity: 0.45),
-  );
   return InputDecoration(
     hintText: hintText,
-    filled: true,
-    fillColor: cs.surface,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    border: border,
-    enabledBorder: border,
-    focusedBorder: border.copyWith(
-      borderSide: BorderSide(
-        color: cs.primary,
-        width: 1.5,
-      ),
-    ),
+    hintStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          height: 1.28,
+          letterSpacing: -0.35,
+          fontStyle: FontStyle.italic,
+          color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+        ),
+    filled: false,
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    contentPadding: EdgeInsets.zero,
+    isDense: true,
+  );
+}
+
+InputDecoration _bodyFieldDecoration(
+  BuildContext context, {
+  required String hintText,
+}) {
+  final ColorScheme cs = Theme.of(context).colorScheme;
+  return InputDecoration(
+    hintText: hintText,
+    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          height: 1.72,
+          fontStyle: FontStyle.italic,
+          color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+        ),
+    filled: false,
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    contentPadding: EdgeInsets.zero,
+    isDense: true,
   );
 }

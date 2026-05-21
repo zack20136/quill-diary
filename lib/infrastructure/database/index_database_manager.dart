@@ -4,6 +4,7 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../storage/vault_path_strategy.dart';
 import 'index_database.dart';
 import 'index_database_connection_io.dart';
+import 'index_database_errors.dart';
 import 'index_key_derivation.dart';
 
 class IndexDatabaseManager {
@@ -37,6 +38,27 @@ class IndexDatabaseManager {
           (throw StateError('目前 session 沒有可用的 Recovery wrapping key。')),
       vaultId: session.vaultId,
     );
+    try {
+      return await _connectAndInitialize(
+        session: session,
+        keyBytes: keyBytes,
+      );
+    } on Object catch (error) {
+      if (!isUnreadableEncryptedIndexError(error)) {
+        rethrow;
+      }
+      await deleteDatabaseFiles();
+      return await _connectAndInitialize(
+        session: session,
+        keyBytes: keyBytes,
+      );
+    }
+  }
+
+  Future<IndexDatabase> _connectAndInitialize({
+    required UnlockedVaultSession session,
+    required List<int> keyBytes,
+  }) async {
     final executor = await openIndexConnection(
       pathStrategy: _pathStrategy,
       encryptionKeyBytes: keyBytes,

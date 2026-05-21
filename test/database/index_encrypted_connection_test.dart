@@ -108,4 +108,34 @@ void main() {
       }
     }
   });
+
+  test('IndexDatabaseManager.openForSession 遇到損壞索引檔時自動重建', () async {
+    final Directory dir = await Directory.systemTemp.createTemp('qld_idx_corrupt');
+    try {
+      final TestVaultPathStrategy pathStrategy = TestVaultPathStrategy(dir);
+      final String dbPath = await pathStrategy.indexDatabasePath();
+      await File(dbPath).parent.create(recursive: true);
+      await File(dbPath).writeAsBytes(<int>[0, 1, 2, 3, 4, 5]);
+
+      final IndexDatabaseManager manager = IndexDatabaseManager(pathStrategy);
+      const String vaultId = 'vlt_index_corrupt';
+      final List<int> recoveryWrapKey = List<int>.generate(32, (int i) => i + 3);
+      final UnlockedVaultSession session = UnlockedVaultSession(
+        vaultId: vaultId,
+        trustedDevice: true,
+        recoveryWrapKey: recoveryWrapKey,
+        deviceSlotId: 'dev_test',
+      );
+
+      final IndexDatabase database = await manager.openForSession(session);
+      await database.customStatement('SELECT 1');
+      expect(manager.isOpen, isTrue);
+
+      await manager.close();
+    } finally {
+      if (dir.existsSync()) {
+        await dir.delete(recursive: true);
+      }
+    }
+  });
 }
