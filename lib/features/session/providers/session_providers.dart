@@ -151,6 +151,8 @@ class AppSessionController extends Notifier<AppSessionState> {
 
     );
 
+    _pendingResourceCleanup = true;
+
     await _cleanupUnlockedResourcesIfPossible();
 
   }

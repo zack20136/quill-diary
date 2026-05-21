@@ -28,8 +28,15 @@ final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) asy
   }
 
   final String query = ref.watch(homeSearchQueryProvider);
+  if (query.trim().isEmpty) {
+    final List<EntryIndexRecord> list =
+        List<EntryIndexRecord>.from(await ref.watch(allEntryIndexRecordsProvider.future));
+    list.sort(compareEntriesNewestFirst);
+    return list;
+  }
+
   final List<EntryIndexRecord> list = await ref.read(vaultRepositoryProvider).listEntries(
-        searchQuery: query.isEmpty ? null : query,
+        searchQuery: query,
       );
   list.sort(compareEntriesNewestFirst);
   return list;
@@ -37,41 +44,52 @@ final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) asy
 
 /// 取得目前日曆選取日期對應的日記項目。
 final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
-    return const <EntryIndexRecord>[];
-  }
-
   final DateOnly? date = ref.watch(calendarSelectedDateProvider);
   if (date == null) {
     return const <EntryIndexRecord>[];
   }
 
-  return ref.read(vaultRepositoryProvider).listEntries(date: date);
+  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
+  return entries
+      .where((EntryIndexRecord entry) => entry.date.value == date.value)
+      .toList()
+    ..sort(compareEntriesNewestFirst);
 });
 
 /// 取得日曆目前月份中有日記的日期，用於月曆標記。
 final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
-    return const <DateOnly>[];
+  final DateTime month = ref.watch(calendarVisibleMonthProvider);
+  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
+  final Set<String> seen = <String>{};
+  final List<DateOnly> dates = <DateOnly>[];
+  for (final EntryIndexRecord entry in entries) {
+    final DateTime date = entry.date.toDateTime();
+    if (date.year != month.year || date.month != month.month) {
+      continue;
+    }
+    if (seen.add(entry.date.value)) {
+      dates.add(entry.date);
+    }
   }
-
-  return ref.read(vaultRepositoryProvider).monthEntryDates(
-        ref.watch(calendarVisibleMonthProvider),
-      );
+  dates.sort((DateOnly a, DateOnly b) => a.value.compareTo(b.value));
+  return dates;
 });
 
 /// 取得日曆目前月份的全部日記，供月曆格子顯示標題。
 final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
-    return const <EntryIndexRecord>[];
-  }
-
-  return ref.read(vaultRepositoryProvider).listEntriesForMonth(
-        ref.watch(calendarVisibleMonthProvider),
-      );
+  final DateTime month = ref.watch(calendarVisibleMonthProvider);
+  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
+  return entries.where((EntryIndexRecord entry) {
+    final DateTime date = entry.date.toDateTime();
+    return date.year == month.year && date.month == month.month;
+  }).toList()
+    ..sort((EntryIndexRecord a, EntryIndexRecord b) {
+      final int dateOrder = a.date.value.compareTo(b.date.value);
+      if (dateOrder != 0) {
+        return dateOrder;
+      }
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
 });
 
 /// 將索引紀錄聚合成首頁總覽頁需要的統計資訊。
@@ -169,14 +187,6 @@ Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) asy
     ..invalidate(calendarMonthEntriesProvider)
     ..invalidate(calendarEntriesProvider)
     ..invalidate(allEntryIndexRecordsProvider);
-
-  await Future.wait<void>(<Future<void>>[
-    ref.read(homeEntriesProvider.future),
-    ref.read(calendarMonthEntryDatesProvider.future),
-    ref.read(calendarMonthEntriesProvider.future),
-    ref.read(calendarEntriesProvider.future),
-    ref.read(allEntryIndexRecordsProvider.future),
-  ]);
 
   ref.read(entryIndexRevisionProvider.notifier).bump();
 

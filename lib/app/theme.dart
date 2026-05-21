@@ -1,9 +1,7 @@
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Brightness.light}) {
-  GoogleFonts.config.allowRuntimeFetching = false;
   final ColorScheme scheme = dynamicScheme ??
       ColorScheme.fromSeed(
         seedColor: const Color(0xFF4C7A67),

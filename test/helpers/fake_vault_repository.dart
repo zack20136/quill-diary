@@ -1,5 +1,7 @@
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_lock_diary/domain/shared/value_objects.dart';
+import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
@@ -16,6 +18,7 @@ class FakeVaultRepository extends VaultRepository {
     this.openTrustedSessionResult,
     this.initializeError,
     this.unlockWithRecoveryKeyResult,
+    this.entryIndexRecords = const <EntryIndexRecord>[],
   }) : super(
           pathStrategy: DummyVaultPathStrategy(),
           frontMatterCodec: const FrontMatterCodec(),
@@ -30,11 +33,15 @@ class FakeVaultRepository extends VaultRepository {
   final Object? openTrustedSessionResult;
   final Object? initializeError;
   final Object? unlockWithRecoveryKeyResult;
+  final List<EntryIndexRecord> entryIndexRecords;
 
   int clearTrustedDeviceAccessCalls = 0;
   int closeUnlockedResourcesCalls = 0;
   int ensureIndexReadyCalls = 0;
+  int listEntriesCalls = 0;
   int openTrustedSessionCalls = 0;
+  final List<String?> listEntriesSearchQueries = <String?>[];
+  final List<DateOnly?> listEntriesDates = <DateOnly?>[];
 
   @override
   Future<void> initialize() async {
@@ -79,6 +86,37 @@ class FakeVaultRepository extends VaultRepository {
   @override
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     ensureIndexReadyCalls++;
+  }
+
+  @override
+  Future<List<EntryIndexRecord>> listEntries({
+    String? searchQuery,
+    DateOnly? date,
+    bool includeDeleted = false,
+  }) async {
+    listEntriesCalls++;
+    listEntriesSearchQueries.add(searchQuery);
+    listEntriesDates.add(date);
+    Iterable<EntryIndexRecord> results = entryIndexRecords;
+    if (!includeDeleted) {
+      results = results.where((EntryIndexRecord entry) => !entry.isDeleted);
+    }
+    if (date != null) {
+      results = results.where(
+        (EntryIndexRecord entry) => entry.date.value == date.value,
+      );
+    }
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final String normalized = normalizeText(searchQuery);
+      results = results.where((EntryIndexRecord entry) {
+        return normalizeText(entry.title ?? '').contains(normalized) ||
+            normalizeText(entry.previewText).contains(normalized) ||
+            entry.tags.any(
+              (String tag) => normalizeText(tag).contains(normalized),
+            );
+      });
+    }
+    return results.toList();
   }
 
   @override

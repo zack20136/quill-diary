@@ -94,6 +94,7 @@ void main() {
     expect(state.status, AppLockStatus.locked);
     expect(state.session, isNull);
     expect(state.message, kAppLockedMessage);
+    expect(repository.closeUnlockedResourcesCalls, 1);
   });
 
   test('unlockWithRecovery 成功時進入 unlocked', () async {

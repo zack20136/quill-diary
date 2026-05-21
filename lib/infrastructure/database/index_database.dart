@@ -179,6 +179,18 @@ class IndexDatabase extends GeneratedDatabase {
         updated_at TEXT NOT NULL
       );
     ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_entries_index_active_date_updated
+      ON entries_index (is_deleted, date, updated_at);
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_entry_tags_entry_id
+      ON entry_tags (entry_id);
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_active_created
+      ON entry_attachments (entry_id, is_deleted, created_at);
+    ''');
   }
 
   Future<void> upsertEntry({
