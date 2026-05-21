@@ -398,6 +398,10 @@ class VaultRepository {
     return _requireOpenIndex().monthEntryDates(month);
   }
 
+  Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) {
+    return _requireOpenIndex().listEntriesForMonth(month);
+  }
+
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,
     EntryId entryId,
@@ -456,6 +460,44 @@ class VaultRepository {
   Future<void> deleteTagAccentArgb(String tag) async {
     await _requireOpenIndex().deleteTagAccentArgb(tag);
     await _persistTagStylesToVault();
+  }
+
+  /// Removes [tag] from every diary entry and clears any saved accent color.
+  Future<int> removeTagFromAllEntries(
+    UnlockedVaultSession session,
+    String tag,
+  ) async {
+    final String normalized = normalizeText(tag);
+    if (normalized.isEmpty) {
+      return 0;
+    }
+
+    final List<EntryIndexRecord> records = await listEntries();
+    int updatedCount = 0;
+    for (final EntryIndexRecord record in records) {
+      final bool hasTag = record.tags.any((String t) => normalizeText(t) == normalized);
+      if (!hasTag) {
+        continue;
+      }
+
+      final DiaryEntry? entry = await loadEntry(session, record.id);
+      if (entry == null) {
+        continue;
+      }
+
+      final List<String> nextTags = entry.tags
+          .where((String t) => normalizeText(t) != normalized)
+          .toList(growable: false);
+      if (nextTags.length == entry.tags.length) {
+        continue;
+      }
+
+      await saveEntry(session, entry.copyWith(tags: nextTags));
+      updatedCount++;
+    }
+
+    await deleteTagAccentArgb(tag);
+    return updatedCount;
   }
 
   /// Reads tag accent colors from [vault/tag_styles.json] (included in `.jbackup`).

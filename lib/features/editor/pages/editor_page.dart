@@ -1704,11 +1704,13 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
             top: 26,
             bottom: 26 + MediaQuery.viewInsetsOf(dialogContext).bottom,
           ),
-          child: const Align(
+          child: Align(
             alignment: Alignment.center,
             child: Material(
               color: Colors.transparent,
-              child: TagAccentComposerDialog(),
+              child: TagAccentComposerDialog(
+                primaryButtonLabel: '加入',
+              ),
             ),
           ),
         );
@@ -1836,10 +1838,10 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                     ),
                   ),
                   IconButton(
-                    tooltip: '新增標籤與顏色',
+                    tooltip: '新增標籤',
                     visualDensity: VisualDensity.compact,
                     onPressed: _openTagAccentComposer,
-                    icon: Icon(Icons.palette_outlined, color: theme.colorScheme.primary),
+                    icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
                   ),
                   IconButton(
                     tooltip: '關閉',
@@ -1850,7 +1852,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 ],
               ),
               Text(
-                '右上角可建立新標籤與顏色；下方為文庫標籤，輕觸加入。',
+                '右上角可建立新標籤；下方為文庫標籤，輕觸加入。',
                 style: theme.textTheme.bodySmall?.copyWith(
                   height: 1.4,
                   color: theme.colorScheme.onSurfaceVariant,

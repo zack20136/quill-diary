@@ -11,8 +11,8 @@ abstract final class PageStyle {
   static const double radiusThumb = 14;
 
   static Color scaffoldWash(ColorScheme cs) => Color.alphaBlend(
-        cs.surfaceContainerLow.withValues(alpha: 0.42),
-        Color.alphaBlend(cs.primary.withValues(alpha: 0.055), cs.surface),
+        cs.surfaceContainerLow.withValues(alpha: 0.60),
+        Color.alphaBlend(cs.primary.withValues(alpha: 0.085), cs.surface),
       );
 
   static List<Color> homeHeaderTabGradient(ColorScheme cs) => <Color>[

@@ -62,6 +62,18 @@ final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref)
       );
 });
 
+/// 取得日曆目前月份的全部日記，供月曆格子顯示標題。
+final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <EntryIndexRecord>[];
+  }
+
+  return ref.read(vaultRepositoryProvider).listEntriesForMonth(
+        ref.watch(calendarVisibleMonthProvider),
+      );
+});
+
 /// 將索引紀錄聚合成首頁總覽頁需要的統計資訊。
 final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
@@ -154,12 +166,14 @@ Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) asy
   ref
     ..invalidate(homeEntriesProvider)
     ..invalidate(calendarMonthEntryDatesProvider)
+    ..invalidate(calendarMonthEntriesProvider)
     ..invalidate(calendarEntriesProvider)
     ..invalidate(allEntryIndexRecordsProvider);
 
   await Future.wait<void>(<Future<void>>[
     ref.read(homeEntriesProvider.future),
     ref.read(calendarMonthEntryDatesProvider.future),
+    ref.read(calendarMonthEntriesProvider.future),
     ref.read(calendarEntriesProvider.future),
     ref.read(allEntryIndexRecordsProvider.future),
   ]);

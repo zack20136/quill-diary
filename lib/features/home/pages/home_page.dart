@@ -8,8 +8,10 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../app/router.dart';
+import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
+import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -23,10 +25,104 @@ import '../../session/state/app_session_state.dart';
 import '../models/overview_models.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
+import '../widgets/calendar/calendar_helpers.dart';
+import '../widgets/home_selection_toolbar.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
 
+part '../widgets/calendar/calendar_day_cell.dart';
+part '../widgets/calendar/calendar_pane.dart';
+
 const double _kPaneSectionGap = 18;
+const double _kHomeEntryListCacheExtent = 600;
+
+Widget _buildBrowsingEntryRow(BuildContext context, EntryIndexRecord entry) {
+  return _TimelineEntryShell(
+    child: _EntryCard(
+      entry: entry,
+      selectionActive: false,
+      selected: false,
+      onTap: () => context.push('/editor/${entry.id}'),
+      onLongPress: () => context.push('/editor/${entry.id}'),
+    ),
+  );
+}
+
+List<Widget> _overviewDiarySectionSlivers({
+  required BuildContext context,
+  required ColorScheme cs,
+  required String diarySectionTitle,
+  required String diaryEmptyText,
+  required List<EntryIndexRecord>? diaryEntries,
+  required bool diaryLoading,
+  Object? diaryError,
+}) {
+  if (diaryLoading) {
+    return <Widget>[
+      const SliverToBoxAdapter(child: SizedBox(height: _kPaneSectionGap)),
+      SliverToBoxAdapter(
+        child: _DiaryListSectionCard(
+          title: diarySectionTitle,
+          stripeColor: cs.primary,
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    ];
+  }
+
+  if (diaryError != null) {
+    return <Widget>[
+      const SliverToBoxAdapter(child: SizedBox(height: _kPaneSectionGap)),
+      SliverToBoxAdapter(
+        child: _DiaryListSectionCard(
+          title: diarySectionTitle,
+          stripeColor: cs.primary,
+          child: Text('$diaryError'),
+        ),
+      ),
+    ];
+  }
+
+  final List<EntryIndexRecord> entries = diaryEntries ?? const <EntryIndexRecord>[];
+  if (entries.isEmpty) {
+    return <Widget>[
+      const SliverToBoxAdapter(child: SizedBox(height: _kPaneSectionGap)),
+      SliverToBoxAdapter(
+        child: _DiaryListSectionCard(
+          title: diarySectionTitle,
+          stripeColor: cs.primary,
+          child: _PaneEmptyHint(text: diaryEmptyText),
+        ),
+      ),
+    ];
+  }
+
+  return <Widget>[
+    const SliverToBoxAdapter(child: SizedBox(height: _kPaneSectionGap)),
+    SliverToBoxAdapter(
+      child: _DiaryListSectionCard(
+        title: diarySectionTitle,
+        stripeColor: cs.primary,
+        child: const SizedBox.shrink(),
+      ),
+    ),
+    SliverPadding(
+      padding: const EdgeInsets.only(bottom: 24),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (BuildContext context, int index) {
+            final EntryIndexRecord entry = entries[index];
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < entries.length - 1 ? 14 : 0),
+              child: _buildBrowsingEntryRow(context, entry),
+            );
+          },
+          childCount: entries.length,
+        ),
+      ),
+    ),
+  ];
+}
 
 abstract final class _HomePalette {
   static Color metricSurface(ColorScheme cs, int index) {
@@ -133,25 +229,43 @@ class _HomePageState extends ConsumerState<HomePage> {
       data: (AppSessionState sessionState) {
         final bool canCreate = sessionState.isUnlocked && sessionState.session != null;
         final ColorScheme cs = Theme.of(context).colorScheme;
-        return Scaffold(
-          backgroundColor: PageStyle.scaffoldWash(cs),
-          appBar: const PreferredSize(
-            preferredSize: Size.fromHeight(82),
-            child: _HomeHeader(),
-          ),
-          body: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: _HomeContent(sessionState: sessionState),
+        final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
+        final HomeTab activeTab = ref.watch(homeTabProvider);
+        final bool showFab =
+            activeTab == HomeTab.home && !selection.isActive;
+
+        return PopScope(
+          canPop: !selection.isActive,
+          onPopInvokedWithResult: (bool didPop, Object? result) {
+            if (!didPop && selection.isActive) {
+              ref.read(homeEntrySelectionProvider.notifier).clear();
+            }
+          },
+          child: Scaffold(
+            backgroundColor: PageStyle.scaffoldWash(cs),
+            appBar: const PreferredSize(
+              preferredSize: Size.fromHeight(82),
+              child: _HomeHeader(),
             ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            tooltip: '新增日記',
-            backgroundColor: cs.secondaryContainer,
-            foregroundColor: cs.onSecondaryContainer,
-            onPressed: canCreate ? () => context.push(AppRouter.editorRoute) : null,
-            child: const Icon(Icons.add_rounded),
+            body: ColoredBox(
+              color: PageStyle.scaffoldWash(cs),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: _HomeContent(sessionState: sessionState),
+                ),
+              ),
+            ),
+            floatingActionButton: showFab
+                ? FloatingActionButton(
+                    tooltip: '新增日記',
+                    backgroundColor: cs.secondaryContainer,
+                    foregroundColor: cs.onSecondaryContainer,
+                    onPressed: canCreate ? () => context.push(AppRouter.editorRoute) : null,
+                    child: const Icon(Icons.add_rounded),
+                  )
+                : null,
           ),
         );
       },
@@ -172,10 +286,16 @@ class _HomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color pageBackground = PageStyle.scaffoldWash(cs);
     final HomeTab activeTab = ref.watch(homeTabProvider);
 
     return AppBar(
       automaticallyImplyLeading: false,
+      backgroundColor: pageBackground,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       toolbarHeight: 82,
       titleSpacing: 0,
       title: SafeArea(
@@ -201,22 +321,34 @@ class _HomeHeader extends ConsumerWidget {
                         _HeaderTabButton(
                           label: '首頁',
                           active: activeTab == HomeTab.home,
-                          onTap: () => ref.read(homeTabProvider.notifier).set(HomeTab.home),
+                          onTap: () {
+                            ref.read(homeEntrySelectionProvider.notifier).clear();
+                            ref.read(homeTabProvider.notifier).set(HomeTab.home);
+                          },
                         ),
                         _HeaderTabButton(
                           label: '日曆',
                           active: activeTab == HomeTab.calendar,
-                          onTap: () => ref.read(homeTabProvider.notifier).set(HomeTab.calendar),
+                          onTap: () {
+                            ref.read(homeEntrySelectionProvider.notifier).clear();
+                            ref.read(homeTabProvider.notifier).set(HomeTab.calendar);
+                          },
                         ),
                         _HeaderTabButton(
                           label: '標籤',
                           active: activeTab == HomeTab.tags,
-                          onTap: () => ref.read(homeTabProvider.notifier).set(HomeTab.tags),
+                          onTap: () {
+                            ref.read(homeEntrySelectionProvider.notifier).clear();
+                            ref.read(homeTabProvider.notifier).set(HomeTab.tags);
+                          },
                         ),
                         _HeaderTabButton(
                           label: '總覽',
                           active: activeTab == HomeTab.overview,
-                          onTap: () => ref.read(homeTabProvider.notifier).set(HomeTab.overview),
+                          onTap: () {
+                            ref.read(homeEntrySelectionProvider.notifier).clear();
+                            ref.read(homeTabProvider.notifier).set(HomeTab.overview);
+                          },
                         ),
                       ],
                     ),
@@ -269,43 +401,91 @@ class _HomeTimelinePane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(homeEntriesProvider);
-    final ColorScheme cs = Theme.of(context).colorScheme;
+    final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
+    final List<EntryIndexRecord> entries = entriesAsync.value ?? const <EntryIndexRecord>[];
+
+    ref.listen<String>(homeSearchQueryProvider, (String? previous, String? next) {
+      final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
+      if (visible != null) {
+        ref
+            .read(homeEntrySelectionProvider.notifier)
+            .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
+      }
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        TextField(
-          enabled: canReadEntries,
-          decoration: InputDecoration(
-            hintText: '搜尋標題、內文或標籤',
-            prefixIcon: Icon(Icons.search_rounded, color: cs.primary.withValues(alpha: 0.85)),
-            filled: true,
-            fillColor: Color.alphaBlend(cs.tertiary.withValues(alpha: 0.05), cs.surfaceContainerLowest),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-              borderSide: BorderSide(color: PageStyle.primaryMutedOutline(cs)),
-            ),
-          ),
-          onChanged: (String value) {
-            ref.read(homeSearchQueryProvider.notifier).update(value);
-          },
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: selection.isActive
+              ? HomeSelectionToolbar(
+                  key: const ValueKey<String>('home-selection-toolbar'),
+                  selectedCount: selection.selectedIds.length,
+                  allSelected: entries.isNotEmpty &&
+                      selection.selectedIds.length == entries.length &&
+                      entries.every((EntryIndexRecord item) => selection.selectedIds.contains(item.id)),
+                  onCancel: () => ref.read(homeEntrySelectionProvider.notifier).clear(),
+                  onSelectAll: () => ref.read(homeEntrySelectionProvider.notifier).selectAll(
+                        entries.map((EntryIndexRecord item) => item.id),
+                      ),
+                  actions: <HomeSelectionAction>[
+                    HomeSelectionAction(
+                      tooltip: '刪除',
+                      icon: Icons.delete_outline_rounded,
+                      destructive: true,
+                      enabled: selection.selectedIds.isNotEmpty && canReadEntries,
+                      onPressed: selection.selectedIds.isEmpty || !canReadEntries
+                          ? null
+                          : () => unawaited(
+                                _deleteSelectedHomeEntries(
+                                  context,
+                                  ref,
+                                  sessionState,
+                                  selection.selectedIds,
+                                ),
+                              ),
+                    ),
+                  ],
+                )
+              : SizedBox(
+                  key: const ValueKey<String>('home-search-field'),
+                  height: kHomeSearchRowControlHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Expanded(
+                        child: HomeSearchTextField(
+                          enabled: canReadEntries,
+                          hintText: '搜尋標題、內文或標籤',
+                          onChanged: (String value) {
+                            ref.read(homeSearchQueryProvider.notifier).update(value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      HomeSearchSelectionToggleButton(
+                        onPressed: canReadEntries
+                            ? () => ref.read(homeEntrySelectionProvider.notifier).enterSelection()
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
         ),
         const SizedBox(height: 12),
         Expanded(
           child: canReadEntries
               ? entriesAsync.when(
-                  data: (List<EntryIndexRecord> entries) {
-                    if (entries.isEmpty) {
+                  data: (List<EntryIndexRecord> loadedEntries) {
+                    if (loadedEntries.isEmpty) {
                       return const _StateCard(
                         icon: Icons.auto_stories_outlined,
                         title: '目前沒有日記',
                         message: '建立第一篇日記後，就會在這裡看到你的首頁列表。',
                       );
                     }
-                    return _EntryList(entries: entries);
+                    return _EntryList(entries: loadedEntries);
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (Object error, StackTrace _) => _StateCard(
@@ -321,105 +501,32 @@ class _HomeTimelinePane extends ConsumerWidget {
   }
 }
 
-class _CalendarPane extends ConsumerWidget {
-  const _CalendarPane({
-    required this.sessionState,
-    super.key,
-  });
-
-  final AppSessionState sessionState;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
-    final AsyncValue<List<DateOnly>> datesAsync = ref.watch(calendarMonthEntryDatesProvider);
-    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(calendarEntriesProvider);
-    final DateTime visibleMonth = ref.watch(calendarVisibleMonthProvider);
-    final DateOnly? selectedDateRaw = ref.watch(calendarSelectedDateProvider);
-    final DateOnly selectedDate =
-        selectedDateRaw ?? DateOnly.fromDateTime(DateTime.now());
-    final ColorScheme cs = Theme.of(context).colorScheme;
-
-    if (!canReadEntries) {
-      return _BlockedEntriesPane(sessionState: sessionState);
-    }
-
-    return datesAsync.when(
-      data: (List<DateOnly> dates) {
-        final Set<String> eventDates = dates.map((DateOnly item) => item.value).toSet();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _SectionShell(
-              child: TableCalendar<Object>(
-                firstDay: DateTime(2020),
-                lastDay: DateTime(2100),
-                focusedDay: visibleMonth,
-                selectedDayPredicate: (DateTime day) =>
-                    selectedDate.value == DateOnly.fromDateTime(day).value,
-                onPageChanged: (DateTime focusedDay) {
-                  ref.read(calendarVisibleMonthProvider.notifier).set(
-                        DateTime(focusedDay.year, focusedDay.month),
-                      );
-                },
-                onDaySelected: (DateTime selectedDay, DateTime focusedDay) {
-                  ref.read(calendarVisibleMonthProvider.notifier).set(
-                        DateTime(focusedDay.year, focusedDay.month),
-                      );
-                  ref.read(calendarSelectedDateProvider.notifier).set(
-                        DateOnly.fromDateTime(selectedDay),
-                      );
-                },
-                eventLoader: (DateTime day) {
-                  return eventDates.contains(DateOnly.fromDateTime(day).value)
-                      ? const <Object>[true]
-                      : const <Object>[];
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: entriesAsync.when(
-                data: (List<EntryIndexRecord> entries) {
-                  return _DiaryListSectionCard(
-                    title: '日記 · ${selectedDate.value}',
-                    stripeColor: cs.primary,
-                    expandBody: true,
-                    child: entries.isEmpty
-                        ? _PaneEmptyHint(
-                            text: '「${selectedDate.value}」這一天目前沒有日記。',
-                          )
-                        : SingleChildScrollView(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _CompactEntryList(entries: entries),
-                          ),
-                  );
-                },
-                loading: () => _DiaryListSectionCard(
-                  title: '日記 · ${selectedDate.value}',
-                  stripeColor: cs.primary,
-                  expandBody: true,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                error: (Object error, StackTrace _) => _DiaryListSectionCard(
-                  title: '日記 · ${selectedDate.value}',
-                  stripeColor: cs.primary,
-                  expandBody: true,
-                  child: Text('$error'),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace _) => _StateCard(
-        icon: Icons.error_outline,
-        title: '讀取失敗',
-        message: '$error',
-      ),
-    );
+Future<void> _deleteSelectedHomeEntries(
+  BuildContext context,
+  WidgetRef ref,
+  AppSessionState sessionState,
+  Set<EntryId> selectedIds,
+) async {
+  final UnlockedVaultSession? session = sessionState.session;
+  if (session == null || selectedIds.isEmpty) {
+    return;
   }
+
+  final bool? confirmed = await confirmDeleteHomeEntries(context, selectedIds.length);
+  if (confirmed != true || !context.mounted) {
+    return;
+  }
+
+  final VaultRepository repository = ref.read(vaultRepositoryProvider);
+  for (final EntryId id in selectedIds) {
+    await repository.deleteEntry(session, id);
+  }
+
+  ref.read(homeEntrySelectionProvider.notifier).clear();
+  if (!context.mounted) {
+    return;
+  }
+  await refreshHomeIndexCaches(ref);
 }
 
 class _TagsManagePane extends ConsumerStatefulWidget {
@@ -452,6 +559,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     required Map<String, int> accentMap,
     String? existingLabel,
   }) async {
+    final UnlockedVaultSession? session = widget.sessionState.session;
     final int? initialArgb =
         existingLabel == null ? null : accentMap[normalizeText(existingLabel)];
     await showDialog<String>(
@@ -472,11 +580,14 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                titleText: existingLabel == null ? '新增標籤' : '標籤顏色',
+                titleText: existingLabel == null ? '新增標籤' : '編輯標籤',
                 initialDisplayLabel: existingLabel,
                 lockLabel: existingLabel != null,
                 initialAccentArgb: initialArgb,
-                primaryButtonLabel: existingLabel == null ? '儲存並加入' : '儲存',
+                primaryButtonLabel: '儲存',
+                onDelete: existingLabel == null || session == null
+                    ? null
+                    : () => _deleteTag(existingLabel, session: session),
               ),
             ),
           ),
@@ -485,14 +596,58 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     );
   }
 
-  Future<void> _clearAccent(String label) async {
-    await ref.read(vaultRepositoryProvider).deleteTagAccentArgb(label);
-    ref.invalidate(tagAccentArgbMapProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('「$label」已還原為預設底色')),
+  Future<void> _deleteTag(
+    String label, {
+    required UnlockedVaultSession session,
+  }) async {
+    final bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: const Text('刪除標籤'),
+          content: Text('確定要從所有日記移除「$label」嗎？'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
+              child: const Text('刪除'),
+            ),
+          ],
+        ),
       );
+      if (confirmed != true || !mounted) {
+        return;
+      }
+
+    final List<EntryIndexRecord> records =
+        ref.read(allEntryIndexRecordsProvider).value ?? const <EntryIndexRecord>[];
+    final int entryCount = _entriesMatchingTag(records, label).length;
+
+    await ref.read(vaultRepositoryProvider).removeTagFromAllEntries(session, label);
+    await refreshHomeIndexCaches(ref);
+
+    if (!mounted) {
+      return;
     }
+
+    if (_selectedTagLabel != null && normalizeText(_selectedTagLabel!) == normalizeText(label)) {
+      setState(() => _selectedTagLabel = null);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          entryCount == 0
+              ? '「$label」已刪除'
+              : '已從 $entryCount 篇日記移除「$label」',
+        ),
+      ),
+    );
   }
 
   List<EntryIndexRecord> _entriesMatchingTag(List<EntryIndexRecord> all, String displayLabel) {
@@ -593,44 +748,31 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
+        SizedBox(
+          height: kHomeSearchRowControlHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                child: HomeSearchTextField(
+                  controller: _searchCtrl,
                   hintText: '搜尋標籤…',
-                  prefixIcon:
-                      Icon(Icons.search_rounded, color: cs.primary.withValues(alpha: 0.85)),
-                  filled: true,
-                  fillColor:
-                      Color.alphaBlend(cs.tertiary.withValues(alpha: 0.06), cs.surfaceContainerLowest),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                    borderSide: BorderSide(color: PageStyle.primaryMutedOutline(cs)),
-                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.tonal(
-              onPressed: () => _presentComposer(accentMap: accentMap),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              const SizedBox(width: 8),
+              HomeCircleIconButton(
+                tooltip: '新增標籤',
+                onPressed: () => _presentComposer(accentMap: accentMap),
+                icon: Icons.add_rounded,
+                size: kHomeSearchRowControlHeight,
+                backgroundColor: Color.alphaBlend(
+                  cs.primaryContainer.withValues(alpha: 0.78),
+                  cs.surfaceContainerLow,
+                ),
+                foregroundColor: cs.onPrimaryContainer,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(Icons.palette_outlined, color: cs.primary),
-                  const SizedBox(width: 8),
-                  const Text('新增標籤'),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -641,7 +783,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                 return const _StateCard(
                   icon: Icons.label_outline_rounded,
                   title: '尚未有標籤',
-                  message: '在日記套用標籤後會出現在清單中；你也可以先按「新增標籤」預先選定顏色。',
+                  message: '在日記套用標籤後會出現在清單中；你也可以先按「新增標籤」建立名稱。',
                 );
               }
               final List<MapEntry<String, int>> sorted = freq.entries.toList()
@@ -680,10 +822,9 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                         final MapEntry<String, int> e = list[i];
                         final (Color bg, Color fg) =
                             tagResolvedAccentPair(e.key, cs, accentMap);
-                        final bool hasCustom =
-                            accentMap.containsKey(normalizeText(e.key));
                         final bool isRowSelected = _selectedTagLabel != null &&
                             normalizeText(_selectedTagLabel!) == normalizeText(e.key);
+                        final UnlockedVaultSession? session = widget.sessionState.session;
 
                         return Material(
                           color: cs.surface,
@@ -725,48 +866,37 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             subtitle: Text(
-                              '${e.value} 篇日記 · ${hasCustom ? '自訂顯示色' : '預設底色'} · 輕觸列預覽',
+                              '${e.value} 篇日記 · ${accentMap.containsKey(normalizeText(e.key)) ? '自訂顯示色' : '預設底色'} · 輕觸列預覽',
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
-                                IconButton(
-                                  tooltip: '編輯顏色',
-                                  visualDensity: VisualDensity.compact,
+                                HomeCircleIconButton(
+                                  tooltip: '編輯標籤',
                                   onPressed: () => _presentComposer(
                                     accentMap: accentMap,
                                     existingLabel: e.key,
                                   ),
-                                  icon: Icon(Icons.palette_outlined, color: cs.primary),
+                                  icon: Icons.edit_outlined,
+                                  size: kHomeToolbarActionCircleSize,
+                                  backgroundColor: Color.alphaBlend(
+                                    cs.secondaryContainer.withValues(alpha: 0.65),
+                                    cs.surface,
+                                  ),
+                                  foregroundColor: cs.onSecondaryContainer,
                                 ),
-                                PopupMenuButton<String>(
-                                  tooltip: '選項',
-                                  icon: const Icon(Icons.more_vert_rounded),
-                                  itemBuilder: (BuildContext popupContext) =>
-                                      <PopupMenuEntry<String>>[
-                                    PopupMenuItem<String>(
-                                      value: 'clear',
-                                      enabled: hasCustom,
-                                      child: Text(
-                                        '還原預設底色',
-                                        style: TextStyle(
-                                          color: hasCustom
-                                              ? Theme.of(popupContext).colorScheme.onSurface
-                                              : Theme.of(popupContext)
-                                                  .colorScheme
-                                                  .onSurface
-                                                  .withValues(alpha: 0.38),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  onSelected: (String value) {
-                                    if (value == 'clear' && hasCustom) {
-                                      _clearAccent(e.key);
-                                    }
-                                  },
+                                const SizedBox(width: 6),
+                                HomeCircleIconButton(
+                                  tooltip: '刪除標籤',
+                                  onPressed: session == null
+                                      ? null
+                                      : () => _deleteTag(e.key, session: session),
+                                  icon: Icons.delete_outline_rounded,
+                                  size: kHomeToolbarActionCircleSize,
+                                  backgroundColor: cs.errorContainer,
+                                  foregroundColor: cs.onErrorContainer,
                                 ),
                               ],
                             ),
@@ -881,119 +1011,199 @@ class _OverviewPane extends ConsumerWidget {
             );
         final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
         final int focusedYear = ref.watch(memoryFocusedYearProvider);
+        final String diarySectionTitle = _overviewScopedDiarySectionTitle(scope, selectedTag);
+        final String diaryEmptyText = selectedTag == null
+            ? '此範圍內沒有符合的日記。'
+            : '此範圍內沒有套用「$selectedTag」的日記。';
 
-        final List<Widget> listTiles = <Widget>[
-          const _OverviewScopePicker(),
-          const SizedBox(height: _kPaneSectionGap),
-          _OverviewScopedMetricPanel(
-            scope: scope,
-            focusedMonth: focusedMonth,
-            focusedYear: focusedYear,
-            entriesAsync: scopedEntriesAsync,
-          ),
-          const SizedBox(height: _kPaneSectionGap),
-          _SectionCard(
-            title: '熱門標籤',
-            stripeColor: cs.tertiary,
-            child: summary.topTags.isEmpty
-                ? _PaneEmptyHint(text: '目前沒有標籤。')
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: summary.topTags
-                        .map(
-                          (OverviewTagStat item) {
-                            final (Color chipBg, Color chipFg) =
-                                tagResolvedAccentPair(item.label, cs, tagAccents);
-                            final bool isSelected = selectedTag == item.label;
-                            final Color bg = isSelected
-                                ? Color.alphaBlend(cs.primary.withValues(alpha: 0.2), chipBg)
-                                : chipBg;
-                            return FilterChip(
-                              label: Text(
-                                '${item.label} ${item.count}',
-                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                      color: chipFg,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              selected: isSelected,
-                              showCheckmark: false,
-                              backgroundColor: bg.withValues(alpha: 0.94),
-                              selectedColor: bg.withValues(alpha: 0.98),
-                              checkmarkColor: chipFg,
-                              side: BorderSide(
-                                color: chipFg.withValues(alpha: isSelected ? 0.48 : 0.3),
-                                width: isSelected ? 1.05 : 0.92,
-                              ),
-                              onSelected: (_) {
-                                final notifier = ref.read(overviewTagFilterProvider.notifier);
-                                notifier.set(
-                                  selectedTag == item.label ? null : item.label,
-                                );
-                              },
-                            );
-                          },
-                        )
-                        .toList(),
-                  ),
-          ),
-          const SizedBox(height: _kPaneSectionGap),
-          _SectionCard(
-            title: '心情紀錄',
-            stripeColor: cs.secondary,
-            child: summary.moods.isEmpty
-                ? _PaneEmptyHint(text: '目前沒有心情標註。')
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: summary.moods
-                        .map(
-                          (OverviewMoodStat item) =>
-                              _MetaChip(label: '${item.label} ${item.count}'),
-                        )
-                        .toList(),
-                  ),
-          ),
-          const SizedBox(height: _kPaneSectionGap),
-          scopedEntriesAsync.when(
-            data: (List<EntryIndexRecord> raw) {
-              final List<EntryIndexRecord> list = selectedTag == null
-                  ? raw
-                  : raw
-                      .where(
-                        (EntryIndexRecord e) => e.tags.any(
-                          (String t) => normalizeText(t) == normalizeText(selectedTag),
+        return scopedEntriesAsync.when(
+          data: (List<EntryIndexRecord> raw) {
+            final List<EntryIndexRecord> diaryEntries = selectedTag == null
+                ? raw
+                : raw
+                    .where(
+                      (EntryIndexRecord e) => e.tags.any(
+                        (String t) => normalizeText(t) == normalizeText(selectedTag),
+                      ),
+                    )
+                    .toList(growable: false);
+
+            return NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (OverscrollIndicatorNotification notification) {
+                notification.disallowIndicator();
+                return false;
+              },
+              child: CustomScrollView(
+                cacheExtent: _kHomeEntryListCacheExtent,
+                slivers: <Widget>[
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        const _OverviewScopePicker(),
+                        const SizedBox(height: _kPaneSectionGap),
+                        _OverviewScopedMetricPanel(
+                          scope: scope,
+                          focusedMonth: focusedMonth,
+                          focusedYear: focusedYear,
+                          entriesAsync: scopedEntriesAsync,
                         ),
-                      )
-                      .toList();
-              return _DiaryListSectionCard(
-                title: _overviewScopedDiarySectionTitle(scope, selectedTag),
-                stripeColor: cs.primary,
-                child: list.isEmpty
-                    ? _PaneEmptyHint(
-                        text:
-                            selectedTag == null ? '此範圍內沒有符合的日記。' : '此範圍內沒有套用「$selectedTag」的日記。',
-                      )
-                    : _CompactEntryList(entries: list.take(16).toList()),
-              );
+                        const SizedBox(height: _kPaneSectionGap),
+                        _SectionCard(
+                          title: '熱門標籤',
+                          stripeColor: cs.tertiary,
+                          child: summary.topTags.isEmpty
+                              ? _PaneEmptyHint(text: '目前沒有標籤。')
+                              : Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: summary.topTags
+                                      .map(
+                                        (OverviewTagStat item) {
+                                          final (Color chipBg, Color chipFg) =
+                                              tagResolvedAccentPair(item.label, cs, tagAccents);
+                                          final bool isSelected = selectedTag == item.label;
+                                          final Color bg = isSelected
+                                              ? Color.alphaBlend(
+                                                  cs.primary.withValues(alpha: 0.2),
+                                                  chipBg,
+                                                )
+                                              : chipBg;
+                                          return FilterChip(
+                                            label: Text(
+                                              '${item.label} ${item.count}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    color: chipFg,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                            selected: isSelected,
+                                            showCheckmark: false,
+                                            backgroundColor: bg.withValues(alpha: 0.94),
+                                            selectedColor: bg.withValues(alpha: 0.98),
+                                            checkmarkColor: chipFg,
+                                            side: BorderSide(
+                                              color: chipFg.withValues(
+                                                alpha: isSelected ? 0.48 : 0.3,
+                                              ),
+                                              width: isSelected ? 1.05 : 0.92,
+                                            ),
+                                            onSelected: (_) {
+                                              final notifier = ref.read(overviewTagFilterProvider.notifier);
+                                              notifier.set(
+                                                selectedTag == item.label ? null : item.label,
+                                              );
+                                            },
+                                          );
+                                        },
+                                      )
+                                      .toList(),
+                                ),
+                        ),
+                        const SizedBox(height: _kPaneSectionGap),
+                        _SectionCard(
+                          title: '心情紀錄',
+                          stripeColor: cs.secondary,
+                          child: summary.moods.isEmpty
+                              ? _PaneEmptyHint(text: '目前沒有心情標註。')
+                              : Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: summary.moods
+                                      .map(
+                                        (OverviewMoodStat item) =>
+                                            _MetaChip(label: '${item.label} ${item.count}'),
+                                      )
+                                      .toList(),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ..._overviewDiarySectionSlivers(
+                    context: context,
+                    cs: cs,
+                    diarySectionTitle: diarySectionTitle,
+                    diaryEmptyText: diaryEmptyText,
+                    diaryEntries: diaryEntries,
+                    diaryLoading: false,
+                  ),
+                ],
+              ),
+            );
+          },
+          loading: () => NotificationListener<OverscrollIndicatorNotification>(
+            onNotification: (OverscrollIndicatorNotification notification) {
+              notification.disallowIndicator();
+              return false;
             },
-            loading: () => _DiaryListSectionCard(
-              title: '日記列表',
-              stripeColor: cs.primary,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-            error: (Object error, StackTrace _) => _DiaryListSectionCard(
-              title: '日記列表',
-              stripeColor: cs.primary,
-              child: Text('$error'),
+            child: CustomScrollView(
+              cacheExtent: _kHomeEntryListCacheExtent,
+              slivers: <Widget>[
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const _OverviewScopePicker(),
+                      const SizedBox(height: _kPaneSectionGap),
+                      _OverviewScopedMetricPanel(
+                        scope: scope,
+                        focusedMonth: focusedMonth,
+                        focusedYear: focusedYear,
+                        entriesAsync: scopedEntriesAsync,
+                      ),
+                    ],
+                  ),
+                ),
+                ..._overviewDiarySectionSlivers(
+                  context: context,
+                  cs: cs,
+                  diarySectionTitle: diarySectionTitle,
+                  diaryEmptyText: diaryEmptyText,
+                  diaryEntries: null,
+                  diaryLoading: true,
+                ),
+              ],
             ),
           ),
-        ];
-
-        return ListView(
-          padding: const EdgeInsets.only(bottom: 24),
-          children: listTiles,
+          error: (Object error, StackTrace _) => NotificationListener<OverscrollIndicatorNotification>(
+            onNotification: (OverscrollIndicatorNotification notification) {
+              notification.disallowIndicator();
+              return false;
+            },
+            child: CustomScrollView(
+              cacheExtent: _kHomeEntryListCacheExtent,
+              slivers: <Widget>[
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const _OverviewScopePicker(),
+                      const SizedBox(height: _kPaneSectionGap),
+                      _OverviewScopedMetricPanel(
+                        scope: scope,
+                        focusedMonth: focusedMonth,
+                        focusedYear: focusedYear,
+                        entriesAsync: scopedEntriesAsync,
+                      ),
+                    ],
+                  ),
+                ),
+                ..._overviewDiarySectionSlivers(
+                  context: context,
+                  cs: cs,
+                  diarySectionTitle: diarySectionTitle,
+                  diaryEmptyText: diaryEmptyText,
+                  diaryEntries: null,
+                  diaryLoading: false,
+                  diaryError: error,
+                ),
+              ],
+            ),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -1296,26 +1506,31 @@ class _TimelineEntryShell extends StatelessWidget {
   const _TimelineEntryShell({
     required this.child,
     this.tintedCard = false,
+    this.selected = false,
   });
 
   final Widget child;
   final bool tintedCard;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final Color color =
-        tintedCard ? theme.colorScheme.surfaceContainerLow : theme.colorScheme.surface;
+        tintedCard ? cs.surfaceContainerLow : cs.surface;
     return Material(
       color: color,
       elevation: tintedCard ? 0 : 1,
       surfaceTintColor: Colors.transparent,
-      shadowColor: theme.colorScheme.shadow.withValues(alpha: tintedCard ? 0 : 0.12),
+      shadowColor: cs.shadow.withValues(alpha: tintedCard ? 0 : 0.12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(tintedCard ? PageStyle.radiusPanel : PageStyle.radiusEntry),
-        side: tintedCard
-            ? BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4))
-            : BorderSide.none,
+        side: selected
+            ? BorderSide(color: cs.primary.withValues(alpha: 0.72), width: 1.5)
+            : tintedCard
+                ? BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))
+                : BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -1323,103 +1538,172 @@ class _TimelineEntryShell extends StatelessWidget {
   }
 }
 
-class _EntryList extends StatelessWidget {
+class _EntryList extends ConsumerWidget {
   const _EntryList({required this.entries});
 
   final List<EntryIndexRecord> entries;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(0, 6, 0, 20),
-      itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (BuildContext context, int index) {
-        return _TimelineEntryShell(
-          child: _EntryCard(entry: entries[index]),
-        );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
+    final Color pageBackground = PageStyle.scaffoldWash(Theme.of(context).colorScheme);
+
+    return NotificationListener<OverscrollIndicatorNotification>(
+      onNotification: (OverscrollIndicatorNotification notification) {
+        notification.disallowIndicator();
+        return false;
       },
+      child: ColoredBox(
+        color: pageBackground,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(0, 6, 0, 20),
+          cacheExtent: _kHomeEntryListCacheExtent,
+          itemCount: entries.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          itemBuilder: (BuildContext context, int index) {
+            final EntryIndexRecord entry = entries[index];
+            final bool selected = selection.selectedIds.contains(entry.id);
+            return _TimelineEntryShell(
+              selected: selection.isActive && selected,
+              child: _EntryCard(
+                entry: entry,
+                selectionActive: selection.isActive,
+                selected: selected,
+                onTap: () {
+                  if (selection.isActive) {
+                    ref.read(homeEntrySelectionProvider.notifier).toggle(entry.id);
+                    return;
+                  }
+                  context.push('/editor/${entry.id}');
+                },
+                onLongPress: () {
+                  if (selection.isActive) {
+                    ref.read(homeEntrySelectionProvider.notifier).toggle(entry.id);
+                    return;
+                  }
+                  ref.read(homeEntrySelectionProvider.notifier).enterWith(entry.id);
+                },
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
 class _EntryCard extends StatelessWidget {
-  const _EntryCard({required this.entry});
+  const _EntryCard({
+    required this.entry,
+    required this.selectionActive,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   final EntryIndexRecord entry;
+  final bool selectionActive;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final String? trimmedTitle = entry.title?.trim();
     final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
+    final bool showPreview = hasTitle && entry.previewText.trim().isNotEmpty;
+    final double selectionLeadingWidth = selectionActive ? 34 : 0;
 
-    return InkWell(
-      onTap: () => context.push('/editor/${entry.id}'),
-      borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _EntryTitleAndTagsRow(
-                        titleText: _entryListHeadline(entry),
-                        tags: entry.tags,
-                        titleStyle: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+    return Material(
+      color: selectionActive && selected
+          ? Color.alphaBlend(cs.primaryContainer.withValues(alpha: 0.34), cs.surface)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  if (selectionActive) ...<Widget>[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                        size: 22,
                       ),
-                      if (hasTitle && entry.previewText.trim().isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 8),
-                        Text(
-                          entry.previewText,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.35,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.start,
-                        ),
-                      ],
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: _EntryTitleAndTagsRow(
+                      titleText: _entryListHeadline(entry),
+                      tags: entry.tags,
+                      titleStyle: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (entry.isDeleted) ...<Widget>[
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 2),
+                      child: Icon(Icons.delete_outline, color: cs.error, size: 20),
+                    ),
+                  ],
+                  const SizedBox(width: 10),
+                  _EntryCardRightDateTime(entry: entry),
+                ],
+              ),
+              if (showPreview) ...<Widget>[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.only(left: selectionLeadingWidth),
+                  child: Text(
+                    entry.previewText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.start,
+                  ),
+                ),
+              ],
+              if (entry.mood != null && entry.mood!.trim().isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.only(left: selectionLeadingWidth),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: <Widget>[
+                      _MetaChip(label: entry.mood!),
                     ],
                   ),
                 ),
-                if (entry.isDeleted) ...<Widget>[
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, top: 2),
-                    child: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
-                  ),
-                ],
-                const SizedBox(width: 10),
-                _EntryCardRightDateTime(entry: entry),
               ],
-            ),
-            if (entry.mood != null && entry.mood!.trim().isNotEmpty) ...<Widget>[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: <Widget>[
-                  _MetaChip(label: entry.mood!),
-                ],
-              ),
+              if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.only(left: selectionLeadingWidth),
+                  child: _EntryPreviewImageStrip(
+                    paths: entry.previewImagePaths,
+                    thumbSize: 76,
+                    lazyLoad: true,
+                  ),
+                ),
+              ],
             ],
-            if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 10),
-              _EntryPreviewImageStrip(
-                paths: entry.previewImagePaths,
-                thumbSize: 76,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -1437,79 +1721,79 @@ class _CompactEntryList extends StatelessWidget {
     return Column(
       children: entries
           .map(
-            (EntryIndexRecord entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _TimelineEntryShell(
-                tintedCard: true,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.push('/editor/${entry.id}'),
-                    borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    _EntryTitleAndTagsRow(
-                                      titleText: _entryListHeadline(entry),
-                                      tags: entry.tags,
-                                      titleStyle: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      compactTags: true,
+            (EntryIndexRecord entry) {
+              final String? trimmedTitle = entry.title?.trim();
+              final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
+              final bool showPreview = hasTitle && entry.previewText.trim().isNotEmpty;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _TimelineEntryShell(
+                  tintedCard: true,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.push('/editor/${entry.id}'),
+                      borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(
+                                  child: _EntryTitleAndTagsRow(
+                                    titleText: _entryListHeadline(entry),
+                                    tags: entry.tags,
+                                    titleStyle: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    if (entry.previewText.trim().isNotEmpty &&
-                                        (entry.title ?? '').trim().isNotEmpty) ...<Widget>[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        entry.previewText,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              if (entry.isDeleted) ...<Widget>[
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 4, top: 2),
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    color: theme.colorScheme.error,
-                                    size: 18,
+                                    compactTags: true,
                                   ),
                                 ),
+                                if (entry.isDeleted) ...<Widget>[
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4, top: 2),
+                                    child: Icon(
+                                      Icons.delete_outline,
+                                      color: theme.colorScheme.error,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(width: 10),
+                                _EntryCardRightDateTime(entry: entry, compact: true),
                               ],
-                              const SizedBox(width: 10),
-                              _EntryCardRightDateTime(entry: entry, compact: true),
-                            ],
-                          ),
-                          if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 8),
-                            _EntryPreviewImageStrip(
-                              paths: entry.previewImagePaths,
-                              thumbSize: 52,
                             ),
+                            if (showPreview) ...<Widget>[
+                              const SizedBox(height: 6),
+                              Text(
+                                entry.previewText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                            if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 8),
+                              _EntryPreviewImageStrip(
+                                paths: entry.previewImagePaths,
+                                thumbSize: 52,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           )
           .toList(),
     );
@@ -1627,10 +1911,12 @@ class _EntryPreviewImageStrip extends StatelessWidget {
   const _EntryPreviewImageStrip({
     required this.paths,
     this.thumbSize = 72,
+    this.lazyLoad = false,
   });
 
   final List<String> paths;
   final double thumbSize;
+  final bool lazyLoad;
 
   @override
   Widget build(BuildContext context) {
@@ -1645,11 +1931,18 @@ class _EntryPreviewImageStrip extends StatelessWidget {
           for (int i = 0; i < paths.length; i++)
             Padding(
               padding: EdgeInsets.only(right: i < paths.length - 1 ? 10 : 0),
-              child: EntryCoverThumbnail(
-                encryptedFilePath: paths[i],
-                size: thumbSize,
-                borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
-              ),
+              child: lazyLoad
+                  ? LazyEntryCoverThumbnail(
+                      encryptedFilePath: paths[i],
+                      size: thumbSize,
+                      staggerIndex: i,
+                      borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                    )
+                  : EntryCoverThumbnail(
+                      encryptedFilePath: paths[i],
+                      size: thumbSize,
+                      borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                    ),
             ),
         ],
       ),
@@ -1713,14 +2006,31 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon, color: theme.colorScheme.primary),
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color foregroundColor = cs.onPrimaryContainer;
+    final Color backgroundColor = Color.alphaBlend(
+      cs.primaryContainer.withValues(alpha: 0.78),
+      cs.surfaceContainerLow,
+    );
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          side: BorderSide(color: foregroundColor.withValues(alpha: 0.14)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          child: SizedBox(
+            width: kHomeSearchRowControlHeight,
+            height: kHomeSearchRowControlHeight,
+            child: Icon(icon, size: 22, color: foregroundColor),
+          ),
+        ),
       ),
     );
   }
@@ -2112,6 +2422,16 @@ String _overviewScopedDiarySectionTitle(MemoryScope scope, String? selectedTag) 
 String _entryListHeadline(EntryIndexRecord entry) {
   final String trimmed = entry.title?.trim() ?? '';
   return trimmed.isNotEmpty ? trimmed : entry.previewText;
+}
+
+String _firstNonemptyTag(List<String> tags) {
+  for (final String tag in tags) {
+    final String trimmed = tag.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+  }
+  return '';
 }
 
 String _entryListTimeLabel(DateTime at) => DateFormat('HH:mm').format(at);

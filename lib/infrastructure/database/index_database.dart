@@ -457,6 +457,26 @@ class IndexDatabase extends GeneratedDatabase {
     return EntryIndexRecord.fromRow(rows.first);
   }
 
+  Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) async {
+    final String prefix =
+        '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kPreviewImagePathsSelect
+        FROM entries_index e
+        LEFT JOIN entry_tags t ON t.entry_id = e.id
+        WHERE e.date LIKE ? AND e.is_deleted = 0
+        GROUP BY e.id
+        ORDER BY e.date ASC, e.updated_at DESC;
+      ''',
+      variables: <Variable<Object>>[Variable.withString('$prefix%')],
+    ).get();
+    return rows.map(EntryIndexRecord.fromRow).toList();
+  }
+
   Future<List<DateOnly>> monthEntryDates(DateTime month) async {
     final String prefix = '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
     final List<QueryRow> rows = await customSelect(

@@ -41,7 +41,12 @@ final entryCoverPreviewBytesProvider =
   if (!state.isUnlocked || state.session == null) {
     return null;
   }
-  return ref.read(vaultRepositoryProvider).readDecryptedAssetBytes(state.session!, path);
+  final Uint8List? bytes =
+      await ref.read(vaultRepositoryProvider).readDecryptedAssetBytes(state.session!, path);
+  if (bytes != null && bytes.isNotEmpty) {
+    ref.keepAlive();
+  }
+  return bytes;
 });
 
 final entryProvider = FutureProvider.family<DiaryEntry?, EntryId>((Ref ref, EntryId entryId) async {

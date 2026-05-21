@@ -14,6 +14,7 @@ import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
+import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../home/providers/home_providers.dart';
@@ -70,14 +71,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           hasRecoveryKey: hasRecoveryKey,
         );
 
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color pageBackground = PageStyle.scaffoldWash(cs);
+
     return Scaffold(
-      appBar: AppBar(title: const Text(SettingsCopy.pageTitle)),
-      body: SafeArea(
-        child: Stack(
-          children: <Widget>[
-            ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: <Widget>[
+      backgroundColor: pageBackground,
+      appBar: AppBar(
+        title: const Text(SettingsCopy.pageTitle),
+        backgroundColor: pageBackground,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: ColoredBox(
+        color: pageBackground,
+        child: SafeArea(
+          child: Stack(
+            children: <Widget>[
+              NotificationListener<OverscrollIndicatorNotification>(
+                onNotification: (OverscrollIndicatorNotification notification) {
+                  notification.disallowIndicator();
+                  return false;
+                },
+                child: ColoredBox(
+                  color: pageBackground,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: <Widget>[
                 if (!isSupportedPlatform)
                   const SettingsSectionCard(
                     title: SettingsPlatformCopy.sectionTitle,
@@ -357,13 +377,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                 ],
-              ],
-            ),
-            if (_busy)
-              SettingsBlockingProgressOverlay(
-                message: _busyMessage ?? SettingsCopy.progressDefault,
+                    ],
+                  ),
+                ),
               ),
-          ],
+              if (_busy)
+                SettingsBlockingProgressOverlay(
+                  message: _busyMessage ?? SettingsCopy.progressDefault,
+                ),
+            ],
+          ),
         ),
       ),
     );
