@@ -1,6 +1,8 @@
-# Google Drive 設定
+# Google Drive OAuth 設定（Android）
 
 Google Drive 備份功能所需的 Android OAuth 設定。
+
+> 目前正式版本僅支援 Android。程式碼中 iOS 分支為預留；OAuth 設定文件以 Android 為準。
 
 ## 必要項目
 
@@ -34,3 +36,11 @@ Google Drive 備份功能所需的 Android OAuth 設定。
 - 可列出 Drive 備份
 - 可上傳新備份
 - 可下載並還原既有備份
+
+## 相關文件
+
+- [備份與還原.md](./備份與還原.md) — Drive 備份與還原流程
+
+---
+
+[← 返回文件目錄](./文件目錄.md)

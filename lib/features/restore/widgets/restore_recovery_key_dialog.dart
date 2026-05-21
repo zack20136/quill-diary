@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../settings/settings_copy.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
 
 /// 還原備份前收集建立該備份時保存的復原金鑰。
@@ -47,21 +48,10 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
     super.dispose();
   }
 
-  String _subtitle() {
-    final RestorePrecheck precheck = widget.precheck;
-    if (precheck.recoveryKeyRotatedSinceBackup) {
-      return '此備份在「更新復原金鑰」之前建立。請輸入建立該備份時保存的舊金鑰（不是目前這把新金鑰）。';
-    }
-    if (precheck.sameVaultId) {
-      return '本機無法自動解鎖此備份。請輸入建立此備份時保存的復原金鑰。';
-    }
-    return '此備份來自其他裝置或不同授權狀態。請輸入建立此備份時保存的復原金鑰。';
-  }
-
   void _submit() {
     final String key = _controller.text.trim();
     if (key.isEmpty) {
-      setState(() => _errorText = '請輸入復原金鑰。');
+      setState(() => _errorText = SettingsRestoreDialogCopy.recoveryKeyEmptyError);
       return;
     }
     Navigator.of(context).pop(key);
@@ -73,14 +63,14 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
     final String? hint = widget.precheck.backupRecoveryHint;
 
     return AlertDialog(
-      title: const Text('輸入備份復原金鑰'),
+      title: const Text(SettingsRestoreDialogCopy.recoveryKeyDialogTitle),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(
-              _subtitle(),
+              restoreRecoveryKeyDialogSubtitle(widget.precheck),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 height: 1.45,
@@ -88,7 +78,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              '金鑰正確後才會開始還原；錯誤則不會覆寫本機資料。',
+              SettingsRestoreDialogCopy.recoveryKeyVerifyNote,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w600,
@@ -97,7 +87,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             if (hint != null && hint.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               Text(
-                '金鑰提示：$hint',
+                SettingsCopy.recoveryKeyHintLine(hint),
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -109,8 +99,8 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
               autofocus: true,
               autocorrect: false,
               decoration: InputDecoration(
-                labelText: '復原金鑰',
-                hintText: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+                labelText: SettingsCopy.recoveryKeyFieldLabel,
+                hintText: SettingsCopy.recoveryKeyFieldHint,
                 errorText: _errorText,
               ),
               onSubmitted: (_) => _submit(),
@@ -121,11 +111,11 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: const Text(SettingsCopy.actionCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('驗證並還原'),
+          child: const Text(SettingsCopy.actionVerifyAndRestore),
         ),
       ],
     );

@@ -73,7 +73,10 @@ class RestoreBackupFlow {
     }
 
     await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
-      await ref.read(vaultTransferServiceProvider).restoreFromBackupFile(backupFile);
+      await ref.read(vaultTransferServiceProvider).restoreFromBackupFile(
+        backupFile,
+        preserveTrustedDeviceAccess: precheck.expectsTrustedUnlockAfterRestore,
+      );
     });
 
     await onComplete(backupRecoveryKey: backupRecoveryKey, precheck: precheck);

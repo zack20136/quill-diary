@@ -21,6 +21,7 @@ import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import 'restore_precheck.dart';
+import 'tag_styles_store.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
 
@@ -447,12 +448,50 @@ class VaultRepository {
     return _requireOpenIndex().fetchTagAccentArgbMap();
   }
 
-  Future<void> upsertTagAccentArgb(String tag, int accentArgb) {
-    return _requireOpenIndex().upsertTagAccentArgb(tag, accentArgb);
+  Future<void> upsertTagAccentArgb(String tag, int accentArgb) async {
+    await _requireOpenIndex().upsertTagAccentArgb(tag, accentArgb);
+    await _persistTagStylesToVault();
   }
 
-  Future<void> deleteTagAccentArgb(String tag) {
-    return _requireOpenIndex().deleteTagAccentArgb(tag);
+  Future<void> deleteTagAccentArgb(String tag) async {
+    await _requireOpenIndex().deleteTagAccentArgb(tag);
+    await _persistTagStylesToVault();
+  }
+
+  /// Reads tag accent colors from [vault/tag_styles.json] (included in `.jbackup`).
+  Future<Map<String, int>> readTagStylesFromVault() {
+    return TagStylesStore(_pathStrategy).read();
+  }
+
+  Future<void> _persistTagStylesToVault() async {
+    final Map<String, int> indexMap = await _requireOpenIndex().fetchTagAccentArgbMap();
+    await TagStylesStore(_pathStrategy).write(indexMap);
+  }
+
+  Future<void> _applyTagStylesFromVaultToIndex() async {
+    final Map<String, int> vaultMap = await TagStylesStore(_pathStrategy).read();
+    if (vaultMap.isEmpty) {
+      return;
+    }
+    final IndexDatabase indexDb = _requireOpenIndex();
+    for (final MapEntry<String, int> entry in vaultMap.entries) {
+      await indexDb.upsertTagAccentArgb(entry.key, entry.value);
+    }
+  }
+
+  /// Keeps vault file and index in sync after rebuild or restore.
+  Future<void> syncTagStylesBetweenVaultAndIndex() async {
+    final TagStylesStore store = TagStylesStore(_pathStrategy);
+    final Map<String, int> vaultMap = await store.read();
+    final Map<String, int> indexMap = await _requireOpenIndex().fetchTagAccentArgbMap();
+
+    if (vaultMap.isEmpty && indexMap.isNotEmpty) {
+      await store.write(indexMap);
+      return;
+    }
+    if (vaultMap.isNotEmpty) {
+      await _applyTagStylesFromVaultToIndex();
+    }
   }
 
   Future<DiaryEntry> saveEntry(
@@ -608,6 +647,7 @@ class VaultRepository {
     }
 
     await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
+    await syncTagStylesBetweenVaultAndIndex();
   }
 
   DecryptionContext _decryptionContext(UnlockedVaultSession session) {
@@ -1188,6 +1228,8 @@ class VaultRepository {
     await _openIndexForSession(session);
     if (await _requireOpenIndex().getAppValue(kLastRebuildAtKey) == null) {
       await rebuildIndex(session);
+    } else {
+      await syncTagStylesBetweenVaultAndIndex();
     }
   }
 

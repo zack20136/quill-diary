@@ -70,38 +70,3 @@ class RestorePrecheck {
   bool get expectsRecoveryKeyAfterRestore =>
       backupHasRecovery && !expectsTrustedUnlockAfterRestore;
 }
-
-/// Builds user-facing bullet points for the restore confirmation dialog.
-List<String> buildRestoreConfirmBulletPoints(RestorePrecheck precheck) {
-  final List<String> bullets = <String>[
-    '將以備份內容覆寫本機日記庫，現有資料無法復原。',
-    '索引會在解鎖後重新建立。',
-  ];
-
-  if (!precheck.backupHasRecovery) {
-    bullets.add('此備份尚未建立復原金鑰；還原後請重新建立。');
-    return bullets;
-  }
-
-  if (precheck.recoveryKeyRotatedSinceBackup) {
-    bullets.add(
-      '此備份在「更新復原金鑰」之前建立；還原後請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。',
-    );
-    if (precheck.backupRecoveryHint != null &&
-        precheck.backupRecoveryHint!.isNotEmpty) {
-      bullets.add('備份金鑰提示：${precheck.backupRecoveryHint}');
-    }
-  } else if (precheck.expectsTrustedUnlockAfterRestore) {
-    bullets.add('還原後會先嘗試以本機受信任裝置自動解鎖。');
-    bullets.add('若驗證失敗，再輸入建立此備份時保存的復原金鑰。');
-  } else if (precheck.expectsRecoveryKeyAfterRestore) {
-    bullets.add('還原後需輸入建立此備份時保存的復原金鑰（非本機後來新建的另一把）。');
-    if (precheck.backupRecoveryHint != null &&
-        precheck.backupRecoveryHint!.isNotEmpty) {
-      bullets.add('復原金鑰提示：${precheck.backupRecoveryHint}');
-    }
-  }
-
-  bullets.add('首次解鎖可能需重新包裝加密檔，請保持應用程式開啟。');
-  return bullets;
-}

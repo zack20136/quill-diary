@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_lock_diary/features/settings/settings_copy.dart';
 import 'package:quill_lock_diary/infrastructure/storage/restore_precheck.dart';
 
 void main() {

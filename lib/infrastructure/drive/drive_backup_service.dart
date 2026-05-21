@@ -58,7 +58,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       throw StateError(
         'Android 的 Google 雲端備份需要 Web OAuth Client ID。\n'
         '請設定 android/app/src/main/res/values/oauth_config.xml 的 oauth_request_id_token，'
-        '或使用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫；詳見 docs/Google-Drive-設定.md。',
+        '或使用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫；詳見 docs/Google-Drive-OAuth-設定.md。',
       );
     }
     if (Platform.isIOS) {
@@ -133,8 +133,8 @@ class GoogleDriveBackupService implements DriveBackupService {
         final String? detail = e.description;
         if (detail != null &&
             detail.toLowerCase().contains('no credential')) {
-          return 'Google 登入無法取得憑證（常見於 iOS 未設定 Google Sign-In）。\n'
-              '請確認 Google Cloud 的 iOS OAuth 用戶端與 ios/Runner/Info.plist 設定；詳見 docs/Google-Drive-設定.md。';
+          return 'Google 登入無法取得憑證。此版本僅支援 Android 上的 Google 雲端備份；'
+              '詳見 docs/Google-Drive-OAuth-設定.md。';
         }
         return 'Google 登入發生錯誤。'
             '${detail != null && detail.isNotEmpty ? '\n$detail' : ''}';

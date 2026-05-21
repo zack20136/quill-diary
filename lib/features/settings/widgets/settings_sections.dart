@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../settings_copy.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../session/state/resume_unlock_action.dart';
@@ -135,16 +136,18 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.bannerMessage,
     required this.bannerTone,
     required this.onUnlockWithRecovery,
+    this.recoveryKeyHint,
     this.onRetryTrustedUnlock,
     this.onUnlockWithDeviceCredential,
     this.onCancelUnlock,
-    this.retryActionLabel = '重新驗證',
+    this.retryActionLabel = SettingsSecurityLockCopy.retryVerificationButton,
     super.key,
   });
 
   final AppSessionState sessionState;
   final bool busy;
   final TextEditingController recoveryKeyInputController;
+  final String? recoveryKeyHint;
   final IconData bannerIcon;
   final String bannerMessage;
   final SettingsBannerTone bannerTone;
@@ -168,7 +171,7 @@ class SettingsStatusPanel extends StatelessWidget {
         if (sessionState.status == AppLockStatus.unlocking) ...<Widget>[
           const SizedBox(height: 12),
           Text(
-            '若等候過久，可能是驗證視窗被擋住。可取消後改用手動驗證。',
+            SettingsSecurityLockCopy.unlockingWaitHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -178,7 +181,7 @@ class SettingsStatusPanel extends StatelessWidget {
           if (onCancelUnlock != null) ...<Widget>[
             const SizedBox(height: 14),
             SettingsActionButton(
-              label: '取消並改用手動驗證',
+              label: SettingsSecurityLockCopy.cancelUnlockButton,
               icon: Icons.close_rounded,
               onPressed: busy ? null : onCancelUnlock,
             ),
@@ -189,7 +192,7 @@ class SettingsStatusPanel extends StatelessWidget {
               onUnlockWithDeviceCredential != null) ...<Widget>[
             const SizedBox(height: 14),
             SettingsActionButton(
-              label: '使用裝置螢幕鎖解鎖',
+              label: SettingsSecurityLockCopy.unlockWithDeviceLockButton,
               icon: Icons.lock_outline,
               emphasized: true,
               onPressed: busy ? null : onUnlockWithDeviceCredential,
@@ -208,24 +211,33 @@ class SettingsStatusPanel extends StatelessWidget {
         ],
         if (sessionState.status == AppLockStatus.recoveryRequired) ...<Widget>[
           const SizedBox(height: 16),
+          if (recoveryKeyHint != null && recoveryKeyHint!.isNotEmpty) ...<Widget>[
+            Text(
+              SettingsCopy.recoveryKeyHintLine(recoveryKeyHint!),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: recoveryKeyInputController,
             autocorrect: false,
             decoration: const InputDecoration(
-              labelText: '輸入復原金鑰',
-              hintText: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+              labelText: SettingsCopy.recoveryKeyFieldLabel,
+              hintText: SettingsCopy.recoveryKeyFieldHint,
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            '輸入建立此備份時保存的復原金鑰後，即可在這台裝置重新解鎖。',
+            SettingsSecurityLockCopy.recoveryUnlockHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 14),
           SettingsActionButton(
-            label: '使用復原金鑰解鎖',
+            label: SettingsSecurityLockCopy.unlockWithRecoveryButton,
             icon: Icons.lock_open_rounded,
             emphasized: true,
             onPressed: busy ? null : onUnlockWithRecovery,
@@ -260,12 +272,12 @@ class RecoveryKeySectionBody extends StatelessWidget {
         children: <Widget>[
           const SettingsInfoBanner(
             icon: Icons.key_off_outlined,
-            message: '尚未建立復原金鑰。日記庫無法自動解鎖時，將無法重新進入。',
+            message: SettingsRecoveryKeyCopy.notSetupBanner,
             tone: SettingsBannerTone.warning,
           ),
           const SizedBox(height: 14),
           SettingsActionButton(
-            label: '建立復原金鑰',
+            label: SettingsRecoveryKeyCopy.createButton,
             icon: Icons.key_outlined,
             emphasized: true,
             onPressed: busy ? null : onCreateRecoveryKey,
@@ -279,22 +291,31 @@ class RecoveryKeySectionBody extends StatelessWidget {
       children: <Widget>[
         const SettingsInfoBanner(
           icon: Icons.verified_user_outlined,
-          message: '復原金鑰已建立。需要時可用它重新解鎖這台裝置。',
+          message: SettingsRecoveryKeyCopy.setupBanner,
         ),
         const SizedBox(height: 14),
         Wrap(
           spacing: 10,
           runSpacing: 10,
           children: <Widget>[
-            SettingsFactChip(label: '日記庫', value: currentMetadata.vaultId),
-            SettingsFactChip(label: '提示', value: currentMetadata.recoveryKeyHint),
-            SettingsFactChip(label: '加密方式', value: currentMetadata.kdf.name),
+            SettingsFactChip(
+              label: SettingsRecoveryKeyCopy.factVaultLabel,
+              value: currentMetadata.vaultId,
+            ),
+            SettingsFactChip(
+              label: SettingsRecoveryKeyCopy.factHintLabel,
+              value: currentMetadata.recoveryKeyHint,
+            ),
+            SettingsFactChip(
+              label: SettingsRecoveryKeyCopy.factKdfLabel,
+              value: currentMetadata.kdf.name,
+            ),
           ],
         ),
         if (onRotateRecoveryKey != null) ...<Widget>[
           const SizedBox(height: 14),
           SettingsActionButton(
-            label: '更新復原金鑰',
+            label: SettingsRecoveryKeyCopy.rotateButton,
             icon: Icons.refresh_rounded,
             onPressed: busy ? null : onRotateRecoveryKey,
           ),
@@ -340,127 +361,83 @@ class UnlockMethodSectionBody extends StatelessWidget {
     if (!enabled) {
       return const SettingsInfoBanner(
         icon: Icons.lock_outline,
-        message: '請先建立復原金鑰，才能設定解鎖方式。',
+        message: SettingsUnlockMethodCopy.needsRecoveryKeyBanner,
         tone: SettingsBannerTone.warning,
       );
     }
 
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          '選擇背景逾時後回到 App 時如何重新進入日記庫。',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        SegmentedButton<AppUnlockMode>(
+          showSelectedIcon: false,
+          emptySelectionAllowed: false,
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
+            shape: WidgetStatePropertyAll<OutlinedBorder>(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(PageStyle.radiusPanel)),
+              ),
+            ),
+            backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+              if (states.contains(WidgetState.selected)) {
+                return cs.primaryContainer;
+              }
+              return cs.surfaceContainerHighest.withValues(alpha: 0.55);
+            }),
+            foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+              if (states.contains(WidgetState.selected)) {
+                return cs.onPrimaryContainer;
+              }
+              return cs.onSurfaceVariant;
+            }),
           ),
+          segments: <ButtonSegment<AppUnlockMode>>[
+            ButtonSegment<AppUnlockMode>(
+              value: AppUnlockMode.none,
+              label: Text(labelForMode(AppUnlockMode.none)),
+              icon: Icon(Icons.shield_outlined, size: 18),
+            ),
+            ButtonSegment<AppUnlockMode>(
+              value: AppUnlockMode.deviceLock,
+              label: Text(SettingsUnlockMethodCopy.segmentDeviceLock),
+              icon: Icon(Icons.lock_outline, size: 18),
+            ),
+            ButtonSegment<AppUnlockMode>(
+              value: AppUnlockMode.biometric,
+              label: Text(labelForMode(AppUnlockMode.biometric)),
+              icon: Icon(Icons.fingerprint_rounded, size: 18),
+            ),
+          ],
+          selected: <AppUnlockMode>{unlockMode},
+          onSelectionChanged: busy
+              ? null
+              : (Set<AppUnlockMode> selected) {
+                  if (selected.isNotEmpty) {
+                    onModeSelected(selected.first);
+                  }
+                },
         ),
         const SizedBox(height: 12),
-        ...<AppUnlockMode>[
-          AppUnlockMode.none,
-          AppUnlockMode.deviceLock,
-          AppUnlockMode.biometric,
-        ].map(
-          (AppUnlockMode mode) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _UnlockModeOptionTile(
-              title: labelForMode(mode),
-              subtitle: descriptionForMode(mode),
-              icon: switch (mode) {
-                AppUnlockMode.none => Icons.shield_outlined,
-                AppUnlockMode.deviceLock => Icons.lock_outline,
-                AppUnlockMode.biometric => Icons.fingerprint_rounded,
-              },
-              selected: unlockMode == mode,
-              enabled: !busy,
-              onTap: () => onModeSelected(mode),
-            ),
+        Text(
+          descriptionForMode(unlockMode),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            height: 1.45,
           ),
         ),
         if (unlockMode == AppUnlockMode.biometric) ...<Widget>[
           const SizedBox(height: 10),
-          Text(
-            '須已設定裝置螢幕鎖，指紋驗證取消時才能改以螢幕鎖解鎖。',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          const SettingsInfoBanner(
+            icon: Icons.info_outline_rounded,
+            message: SettingsUnlockMethodCopy.biometricNeedsDeviceLockHint,
+            tone: SettingsBannerTone.neutral,
           ),
         ],
       ],
-    );
-  }
-}
-
-class _UnlockModeOptionTile extends StatelessWidget {
-  const _UnlockModeOptionTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final Color borderColor = selected ? cs.primary : PageStyle.outlineSide(cs).color;
-    final Color fill = selected
-        ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surfaceContainerLow)
-        : cs.surfaceContainerLow;
-
-    return Material(
-      color: fill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        side: BorderSide(color: borderColor, width: selected ? 1.5 : 1),
-      ),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Icon(icon, color: selected ? cs.primary : cs.onSurfaceVariant),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: selected ? cs.primary : cs.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (selected)
-                Icon(Icons.check_circle_rounded, color: cs.primary, size: 22),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

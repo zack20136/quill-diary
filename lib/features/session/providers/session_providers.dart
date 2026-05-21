@@ -69,10 +69,14 @@ class AppSessionController extends Notifier<AppSessionState> {
 
 
 
-  Future<UnlockOutcome> unlock({bool deviceCredentialFallback = false}) async {
-
-    return _restoreTrustedSession(deviceCredentialFallback: deviceCredentialFallback);
-
+  Future<UnlockOutcome> unlock({
+    bool deviceCredentialFallback = false,
+    bool afterRestore = false,
+  }) async {
+    return _restoreTrustedSession(
+      deviceCredentialFallback: deviceCredentialFallback,
+      afterRestore: afterRestore,
+    );
   }
 
 
@@ -317,7 +321,10 @@ class AppSessionController extends Notifier<AppSessionState> {
 
 
 
-  Future<UnlockOutcome> _restoreTrustedSession({required bool deviceCredentialFallback}) async {
+  Future<UnlockOutcome> _restoreTrustedSession({
+    required bool deviceCredentialFallback,
+    bool afterRestore = false,
+  }) async {
 
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
 
@@ -463,7 +470,10 @@ class AppSessionController extends Notifier<AppSessionState> {
 
         status: AppLockStatus.recoveryRequired,
 
-        message: friendlySessionErrorMessage(error),
+        message: friendlySessionErrorMessage(
+          error,
+          afterRestoreTrustedUnlock: afterRestore,
+        ),
 
       );
 
@@ -471,7 +481,10 @@ class AppSessionController extends Notifier<AppSessionState> {
 
     } catch (error) {
 
-      final String message = friendlySessionErrorMessage(error);
+      final String message = friendlySessionErrorMessage(
+        error,
+        afterRestoreTrustedUnlock: afterRestore,
+      );
 
       if (error is SecretBoxAuthenticationError) {
 

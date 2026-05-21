@@ -16,6 +16,7 @@ import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
 import 'restore_precheck.dart';
 import 'vault_path_strategy.dart';
+import 'tag_styles_store.dart';
 import 'vault_repository.dart';
 
 class PortableImportResult {
@@ -279,7 +280,10 @@ class VaultArchiveIo {
     }
   }
 
-  Future<void> restoreBackupZip(File backupFile) async {
+  Future<void> restoreBackupZip(
+    File backupFile, {
+    bool preserveTrustedDeviceAccess = false,
+  }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory tempRoot = Directory('${vaultRoot.path}_restore_tmp');
     if (tempRoot.existsSync()) {
@@ -314,6 +318,18 @@ class VaultArchiveIo {
     }
 
     _validateRestoredVaultPayload(tempRoot);
+
+    Map<String, int> localTagStyles = <String, int>{};
+    try {
+      if (_indexDatabaseManager.isOpen) {
+        localTagStyles = await _repository.fetchTagAccentArgbMap();
+      }
+    } on Object {
+      // Index may already be closed; fall back to vault file on disk.
+    }
+    if (localTagStyles.isEmpty) {
+      localTagStyles = await TagStylesStore(_pathStrategy).read();
+    }
 
     final Directory incomingVault = Directory('${vaultRoot.path}.incoming');
     if (incomingVault.existsSync()) {
@@ -351,10 +367,20 @@ class VaultArchiveIo {
       await strayVaultIndex.delete(recursive: true);
     }
 
+    if (localTagStyles.isNotEmpty) {
+      final TagStylesStore tagStylesStore = TagStylesStore(_pathStrategy);
+      final Map<String, int> restoredVaultStyles = await tagStylesStore.read();
+      await tagStylesStore.write(
+        TagStylesStore.merge(restoredVaultStyles, localTagStyles),
+      );
+    }
+
     await _repository.closeUnlockedResources();
     await _indexDatabaseManager.deleteDatabaseFiles();
     _repository.clearRecoveryMetadataCache();
-    await _repository.clearTrustedDeviceAccess();
+    if (!preserveTrustedDeviceAccess) {
+      await _repository.clearTrustedDeviceAccess();
+    }
   }
 
   Future<List<int>?> _readSampleEncryptedDocumentFromBackup(File backupFile) async {

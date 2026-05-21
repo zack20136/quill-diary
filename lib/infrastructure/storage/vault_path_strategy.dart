@@ -34,6 +34,11 @@ class VaultPathStrategy {
     return p.join(vaultRoot.path, 'recovery.json');
   }
 
+  Future<String> tagStylesPath() async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    return p.join(vaultRoot.path, 'tag_styles.json');
+  }
+
   Future<String> manifestPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
     return p.join(vaultRoot.path, 'manifest.json.enc');

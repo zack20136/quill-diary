@@ -160,8 +160,14 @@ class VaultTransferService {
     await _archiveIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
-  Future<void> restoreFromBackupFile(File backupFile) async {
-    await _archiveIo.restoreBackupZip(backupFile);
+  Future<void> restoreFromBackupFile(
+    File backupFile, {
+    bool preserveTrustedDeviceAccess = false,
+  }) async {
+    await _archiveIo.restoreBackupZip(
+      backupFile,
+      preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+    );
   }
 
   Future<File?> _resolvePickedBackupFile(PlatformFile file) async {

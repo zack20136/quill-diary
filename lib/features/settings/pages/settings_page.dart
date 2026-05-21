@@ -23,6 +23,7 @@ import '../../session/state/app_session_state.dart';
 import '../../session/state/resume_unlock_action.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
+import '../settings_copy.dart';
 import '../../restore/restore_backup_flow.dart';
 import '../../session/application/session_unlock_coordinator.dart';
 import '../widgets/settings_sections.dart';
@@ -58,11 +59,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
     final AppLockService appLockService = ref.watch(appLockServiceProvider);
     final AppSessionState? sessionState = sessionAsync.asData?.value;
-    final bool canBackupRestore =
+    final RecoveryMetadata? recoveryMetadata = recoveryMetadataAsync.asData?.value;
+    final bool hasUnlockedSession =
         sessionState?.isUnlocked == true && sessionState?.session != null;
+    final bool hasRecoveryKey = recoveryMetadata != null;
+    final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
+    final String disabledSensitiveVaultTransferReason =
+        sensitiveVaultTransferDisabledReason(
+          hasUnlockedSession: hasUnlockedSession,
+          hasRecoveryKey: hasRecoveryKey,
+        );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('設定')),
+      appBar: AppBar(title: const Text(SettingsCopy.pageTitle)),
       body: SafeArea(
         child: Stack(
           children: <Widget>[
@@ -71,8 +80,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: <Widget>[
                 if (!isSupportedPlatform)
                   const SettingsSectionCard(
-                    title: '平台限制',
-                    description: '此版本僅支援 Android 上的加密日記庫。',
+                    title: SettingsPlatformCopy.sectionTitle,
+                    description: SettingsPlatformCopy.sectionDescription,
                     child: SettingsInfoBanner(
                       icon: Icons.phone_android_rounded,
                       message: kAndroidOnlyMessage,
@@ -82,12 +91,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   sessionAsync.when(
                     data: (AppSessionState sessionState) {
                       return SettingsSectionCard(
-                        title: '安全鎖狀態',
-                        description: '查看安全鎖是否已解除，必要時可用復原金鑰重新進入。',
+                        title: SettingsSecurityLockCopy.sectionTitle,
+                        description: SettingsSecurityLockCopy.sectionDescription,
                         child: SettingsStatusPanel(
                           sessionState: sessionState,
                           busy: _busy,
                           recoveryKeyInputController: _recoveryKeyInputController,
+                          recoveryKeyHint: recoveryMetadataAsync.asData?.value?.recoveryKeyHint,
                           bannerIcon: _sessionIcon(sessionState.status),
                           bannerMessage: _sessionSummary(sessionState),
                           bannerTone: _sessionTone(sessionState.status),
@@ -121,8 +131,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     },
                     loading: () => const SettingsSectionLoading(),
                     error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: '安全鎖狀態',
-                      description: '讀取狀態時發生錯誤。',
+                      title: SettingsSecurityLockCopy.sectionTitle,
+                      description: SettingsSecurityLockCopy.loadErrorDescription,
                       child: SettingsInfoBanner(
                         icon: Icons.error_outline_rounded,
                         message: '$error',
@@ -134,12 +144,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   recoveryMetadataAsync.when(
                     data: (RecoveryMetadata? metadata) {
                       return SettingsSectionCard(
-                        title: '復原金鑰',
-                        description: '裝置無法自動解鎖時的備用金鑰，請妥善保存。',
+                        title: SettingsRecoveryKeyCopy.sectionTitle,
+                        description: SettingsRecoveryKeyCopy.sectionDescription,
                         child: RecoveryKeySectionBody(
                           metadata: metadata,
                           busy: _busy,
-                          onRotateRecoveryKey: metadata != null && canBackupRestore
+                          onRotateRecoveryKey: metadata != null && canSensitiveVaultTransfer
                               ? () => _runAction(_rotateRecoveryKey)
                               : null,
                           onCreateRecoveryKey: metadata != null
@@ -158,12 +168,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     await showDialog<void>(
                                       context: context,
                                       builder: (BuildContext context) => AlertDialog(
-                                        title: const Text('請保存復原金鑰'),
+                                        title: const Text(SettingsRecoveryKeyCopy.saveDialogTitle),
                                         content: SelectableText(result.recoveryKey),
                                         actions: <Widget>[
                                           TextButton(
                                             onPressed: () => Navigator.of(context).pop(),
-                                            child: const Text('關閉'),
+                                            child: const Text(SettingsCopy.actionClose),
                                           ),
                                         ],
                                       ),
@@ -174,8 +184,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     },
                     loading: () => const SettingsSectionLoading(),
                     error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: '復原金鑰',
-                      description: '讀取復原金鑰設定失敗。',
+                      title: SettingsRecoveryKeyCopy.sectionTitle,
+                      description: SettingsRecoveryKeyCopy.loadErrorDescription,
                       child: SettingsInfoBanner(
                         icon: Icons.error_outline_rounded,
                         message: '$error',
@@ -185,8 +195,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
-                    title: '解鎖方式',
-                    description: '選擇重新開啟應用程式時如何解鎖日記庫。',
+                    title: SettingsUnlockMethodCopy.sectionTitle,
+                    description: SettingsUnlockMethodCopy.sectionDescription,
                     child: FutureBuilder<AppUnlockMode>(
                       future: appLockService.getUnlockMode(),
                       builder: (BuildContext context, AsyncSnapshot<AppUnlockMode> snapshot) {
@@ -205,16 +215,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const SizedBox(height: 16),
                   SettingsSectionCard(
                     icon: Icons.swap_horiz_rounded,
-                    title: '匯入與匯出',
-                    description: '匯出日記為 Markdown 壓縮檔，或匯入 Markdown、HTML 與 zip 檔。',
+                    title: SettingsImportExportCopy.sectionTitle,
+                    description: canSensitiveVaultTransfer
+                        ? SettingsImportExportCopy.sectionDescriptionEnabled
+                        : disabledSensitiveVaultTransferReason,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: '匯出日記',
+                          label: SettingsImportExportCopy.exportButton,
                           icon: Icons.file_open_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runAction(
                                     () async {
@@ -228,16 +240,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     if (exportPath == null) {
                                       return;
                                     }
-                                    _showMessage('已匯出 Markdown 壓縮檔：$exportPath');
+                                    _showMessage(SettingsImportExportCopy.exportSuccess(exportPath));
                                   },
-                                    progressMessage: '正在匯出日記，整理內容與附件中…',
+                                    progressMessage: SettingsImportExportCopy.exportProgress,
                                   ),
                         ),
                         SettingsActionButton(
-                          label: '匯入 Markdown、HTML 或 zip',
+                          label: SettingsImportExportCopy.importButton,
                           icon: Icons.download_rounded,
                           fullWidth: true,
-                          onPressed: _busy
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runAction(() async {
                                     final PortableImportResult? result = await ref
@@ -252,8 +264,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     }
                                     await refreshEntryIndexCaches(ref);
                                     final String importMessage = result.skippedFiles > 0
-                                        ? '已匯入 ${result.importedEntries} 篇日記，略過 ${result.skippedFiles} 個檔案。'
-                                        : '已匯入 ${result.importedEntries} 篇日記。';
+                                        ? SettingsImportExportCopy.importSuccessWithSkipped(
+                                            result.importedEntries,
+                                            result.skippedFiles,
+                                          )
+                                        : SettingsImportExportCopy.importSuccess(
+                                            result.importedEntries,
+                                          );
                                     _showMessage(importMessage);
                                   }),
                         ),
@@ -263,18 +280,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const SizedBox(height: 16),
                   SettingsSectionCard(
                     icon: Icons.storage_rounded,
-                    title: '本機備份與還原',
-                    description: canBackupRestore
-                        ? '備份全部日記到本機；還原會覆寫本機資料，必要時需輸入建立備份時保存的復原金鑰。'
-                        : kRestoreNeedsUnlockMessage,
+                    title: SettingsLocalBackupCopy.sectionTitle,
+                    description: canSensitiveVaultTransfer
+                        ? SettingsLocalBackupCopy.sectionDescriptionEnabled
+                        : disabledSensitiveVaultTransferReason,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: '建立本機備份',
+                          label: SettingsLocalBackupCopy.createButton,
                           icon: Icons.archive_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy || !canBackupRestore
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runAction(() async {
                                     final String? savedPath = await ref
@@ -287,14 +304,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     if (savedPath == null) {
                                       return;
                                     }
-                                    _showMessage('已建立本機備份：$savedPath');
+                                    _showMessage(SettingsLocalBackupCopy.createSuccess(savedPath));
                                   }),
                         ),
                         SettingsActionButton(
-                          label: '還原本機備份',
+                          label: SettingsLocalBackupCopy.restoreButton,
                           icon: Icons.restore_rounded,
                           fullWidth: true,
-                          onPressed: _busy || !canBackupRestore
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runRestoreFromLocalBackup(),
                         ),
@@ -304,18 +321,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const SizedBox(height: 16),
                   SettingsSectionCard(
                     icon: Icons.cloud_outlined,
-                    title: 'Google Drive 備份與還原',
-                    description: canBackupRestore
-                        ? '上傳備份到 Google Drive，或從雲端還原（還原後可能需復原金鑰）。'
-                        : kRestoreNeedsUnlockMessage,
+                    title: SettingsDriveBackupCopy.sectionTitle,
+                    description: canSensitiveVaultTransfer
+                        ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+                        : disabledSensitiveVaultTransferReason,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: '上傳到 Google Drive',
+                          label: SettingsDriveBackupCopy.uploadButton,
                           icon: Icons.cloud_upload_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy || !canBackupRestore
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runAction(() async {
                                     await ref
@@ -325,14 +342,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                           .read(vaultTransferServiceProvider)
                                           .uploadBackupToDrive();
                                     });
-                                    _showMessage('已上傳備份到 Google Drive。');
+                                    _showMessage(SettingsDriveBackupCopy.uploadSuccess);
                                   }),
                         ),
                         SettingsActionButton(
-                          label: '從 Google Drive 還原',
+                          label: SettingsDriveBackupCopy.restoreButton,
                           icon: Icons.cloud_download_outlined,
                           fullWidth: true,
-                          onPressed: _busy || !canBackupRestore
+                          onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
                               : () => _runRestoreFromGoogleDrive(),
                         ),
@@ -344,7 +361,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             if (_busy)
               SettingsBlockingProgressOverlay(
-                message: _busyMessage ?? '處理中，請稍候…',
+                message: _busyMessage ?? SettingsCopy.progressDefault,
               ),
           ],
         ),
@@ -354,7 +371,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<DriveBackupFile?> _pickDriveBackup(List<DriveBackupFile> backups) async {
     if (backups.isEmpty) {
-      _showMessage('Google Drive 上沒有可還原的備份。');
+      _showMessage(SettingsDriveBackupCopy.noBackups);
       return null;
     }
     if (!mounted) {
@@ -364,7 +381,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('選擇 Google Drive 備份'),
+          title: const Text(SettingsDriveBackupCopy.pickDialogTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.separated(
@@ -386,7 +403,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('取消'),
+              child: const Text(SettingsCopy.actionCancel),
             ),
           ],
         );
@@ -396,7 +413,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   String _formatDriveBackupTime(DateTime? value) {
     if (value == null) {
-      return '建立時間未知';
+      return SettingsDriveBackupCopy.unknownCreatedTime;
     }
     return value.toLocal().toString().replaceFirst('.000', '');
   }
@@ -469,14 +486,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           context: context,
           builder: (BuildContext dialogContext) {
             return AlertDialog(
-              title: Text(driveBackupName == null ? '還原本機備份？' : '還原 Google Drive 備份？'),
+              title: Text(
+                driveBackupName == null
+                    ? SettingsRestoreDialogCopy.confirmLocalTitle
+                    : SettingsRestoreDialogCopy.confirmDriveTitle,
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     if (driveBackupName != null) ...<Widget>[
-                      Text('檔案：$driveBackupName'),
+                      Text(SettingsRestoreDialogCopy.driveFileLine(driveBackupName)),
                       const SizedBox(height: 12),
                     ],
                     for (final String bullet in bullets)
@@ -496,11 +517,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('取消'),
+                  child: const Text(SettingsCopy.actionCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('還原'),
+                  child: const Text(SettingsCopy.actionConfirm),
                 ),
               ],
             );
@@ -520,6 +541,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       sessionState = await _unlockRestoredVaultWithRecoveryKey(backupRecoveryKey.trim());
       if (sessionState.status != AppLockStatus.unlocked) {
         return;
+      }
+    } else if (precheck?.expectsTrustedUnlockAfterRestore == true) {
+      final UnlockOutcome outcome = await ref
+          .read(appSessionProvider.notifier)
+          .unlock(afterRestore: true);
+      sessionState = ref.read(appSessionProvider);
+      if (outcome == UnlockOutcome.success &&
+          sessionState.isUnlocked &&
+          sessionState.session != null) {
+        await refreshEntryIndexCaches(ref);
       }
     } else {
       sessionState = await ref.read(appStartupProvider.future);
@@ -570,9 +601,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   String _retryUnlockLabel(AppSessionState sessionState) {
     return switch (sessionState.resumeAction) {
-      ResumeUnlockAction.keystoreUnlock => '重新驗證',
-      ResumeUnlockAction.deviceCredentialFallback => '使用裝置螢幕鎖',
-      _ => '重新驗證',
+      ResumeUnlockAction.keystoreUnlock => SettingsSecurityLockCopy.retryVerificationButton,
+      ResumeUnlockAction.deviceCredentialFallback =>
+          SettingsSecurityLockCopy.unlockWithDeviceLockButton,
+      _ => SettingsSecurityLockCopy.retryVerificationButton,
     };
   }
 
@@ -631,19 +663,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           context: context,
           builder: (BuildContext dialogContext) {
             return AlertDialog(
-              title: const Text('更新復原金鑰？'),
-              content: const Text(
-                '將產生全新的復原金鑰，請立即保存。\n\n'
-                '既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。',
-              ),
+              title: const Text(SettingsRecoveryKeyCopy.rotateDialogTitle),
+              content: const Text(SettingsRecoveryKeyCopy.rotateDialogBody),
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('取消'),
+                  child: const Text(SettingsCopy.actionCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('更新'),
+                  child: const Text(SettingsCopy.actionUpdate),
                 ),
               ],
             );
@@ -668,7 +697,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await showDialog<void>(
         context: context,
         builder: (BuildContext context) => AlertDialog(
-          title: const Text('請保存新的復原金鑰'),
+          title: const Text(SettingsRecoveryKeyCopy.saveNewDialogTitle),
           content: SelectableText(result.recoveryKey),
           actions: <Widget>[
             TextButton(
@@ -739,7 +768,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Text(message),
             const SizedBox(height: 10),
             const Text(
-              '如果你剛調整 Google Drive 權限或授權設定，先重新登入再重試通常就能完成授權。',
+              SettingsDriveBackupCopy.googleHelpHint,
               style: TextStyle(fontSize: 13, height: 1.35),
             ),
             const SizedBox(height: 8),
@@ -750,7 +779,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   messenger.hideCurrentSnackBar();
                   unawaited(_retryGoogleDriveAfterSignOut(action));
                 },
-                child: const Text('重新登入後重試'),
+                child: const Text(SettingsDriveBackupCopy.googleHelpRetryButton),
               ),
             ),
           ],
@@ -773,13 +802,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 String _sessionSummary(AppSessionState sessionState) {
   final String? message = sessionState.message;
   return switch (sessionState.status) {
-    AppLockStatus.uninitialized => message ?? '正在準備中…',
+    AppLockStatus.uninitialized => message ?? SettingsSecurityLockCopy.statusPreparing,
     AppLockStatus.unlocking => message ?? kTrustedUnlockInProgressMessage,
-    AppLockStatus.unlocked => message ?? '安全鎖已解除，可以正常使用。',
+    AppLockStatus.unlocked => message ?? SettingsSecurityLockCopy.statusUnlocked,
     AppLockStatus.locked => message ?? kLockedRetryVerificationMessage,
     AppLockStatus.recoveryRequired =>
         message ?? kRecoveryRequiredAfterRestoreMessage,
-    AppLockStatus.fatalError => message ?? '初始化失敗，請稍後再試。',
+    AppLockStatus.fatalError => message ?? SettingsSecurityLockCopy.statusFatalError,
   };
 }
 
