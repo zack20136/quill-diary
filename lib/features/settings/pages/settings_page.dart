@@ -14,6 +14,7 @@ import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
+import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../editor/providers/editor_providers.dart';
@@ -41,11 +42,117 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _busy = false;
   String? _busyMessage;
   bool _unlockCoordinatorAttached = false;
+  BackupHealthReport? _lastBackupHealthReport;
+  String? _lastBackupPath;
+  IndexRebuildReport? _lastIndexRebuildReport;
 
   @override
   void dispose() {
     _recoveryKeyInputController.dispose();
     super.dispose();
+  }
+
+  Widget _buildSecurityStatusSection({
+    required AppLockService appLockService,
+    required AsyncValue<AppSessionState> sessionAsync,
+    required RecoveryMetadata? recoveryMetadata,
+    required bool canSensitiveVaultTransfer,
+  }) {
+    final AppSessionState? sessionState = sessionAsync.asData?.value;
+    final bool hasUnlockedSession =
+        sessionState?.isUnlocked == true && sessionState?.session != null;
+    return FutureBuilder<List<Object>>(
+      future: Future.wait<Object>(<Future<Object>>[
+        appLockService.getUnlockMode().then<Object>((AppUnlockMode value) => value),
+        ref
+            .read(vaultRepositoryProvider)
+            .hasTrustedDeviceAccess()
+            .then<Object>((bool value) => value),
+      ]),
+      builder: (BuildContext context, AsyncSnapshot<List<Object>> snapshot) {
+        final AppUnlockMode mode = snapshot.hasData
+            ? snapshot.data![0] as AppUnlockMode
+            : AppUnlockMode.none;
+        final bool hasTrustedDevice =
+            snapshot.hasData ? snapshot.data![1] as bool : false;
+        return SettingsSectionCard(
+          icon: Icons.health_and_safety_outlined,
+          title: '安全狀態',
+          description: '集中檢查復原金鑰、解鎖方式、備份與索引狀態。',
+          child: SettingsSecurityOverview(
+            hasRecoveryKey: recoveryMetadata != null,
+            hasUnlockedSession: hasUnlockedSession,
+            hasTrustedDevice: hasTrustedDevice,
+            unlockModeLabel: UnlockMethodSectionBody.labelForMode(mode),
+            lastBackupMessage: _lastBackupStatusMessage(),
+            lastBackupOk: _lastBackupHealthReport?.ok,
+            indexMessage: _indexStatusMessage(hasUnlockedSession),
+            busy: _busy,
+            onCreateRecoveryKey:
+                recoveryMetadata == null ? () => _runAction(_createRecoveryKey) : null,
+            onRotateRecoveryKey:
+                recoveryMetadata != null && canSensitiveVaultTransfer
+                    ? () => _runAction(_rotateRecoveryKey)
+                    : null,
+            onRebuildIndex:
+                hasUnlockedSession ? () => _runAction(_rebuildIndex) : null,
+            recoveryPanel: recoveryMetadataPanel(recoveryMetadata),
+            lockPanel: sessionAsync.when(
+              data: (AppSessionState sessionState) => SettingsStatusPanel(
+                sessionState: sessionState,
+                busy: _busy,
+                recoveryKeyInputController: _recoveryKeyInputController,
+                recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+                bannerIcon: _sessionIcon(sessionState.status),
+                bannerMessage: _sessionSummary(sessionState),
+                bannerTone: _sessionTone(sessionState.status),
+                onUnlockWithRecovery: sessionState.status == AppLockStatus.recoveryRequired
+                    ? () => _runAction(() async {
+                          await ref.read(appSessionProvider.notifier).unlockWithRecovery(
+                                _recoveryKeyInputController.text.trim(),
+                              );
+                          await refreshEntryIndexCaches(ref);
+                        })
+                    : null,
+                onRetryTrustedUnlock:
+                    sessionState.status == AppLockStatus.locked ||
+                            sessionState.status == AppLockStatus.unlocking
+                        ? () => _runAction(_retryTrustedUnlock)
+                        : null,
+                onUnlockWithDeviceCredential:
+                    sessionState.status == AppLockStatus.locked &&
+                            sessionState.resumeAction ==
+                                ResumeUnlockAction.deviceCredentialFallback
+                        ? () => _runAction(_unlockWithDeviceCredential)
+                        : null,
+                onCancelUnlock: sessionState.status == AppLockStatus.unlocking
+                    ? () => _runAction(() async {
+                          await ref.read(appSessionProvider.notifier).lock();
+                        })
+                    : null,
+                retryActionLabel: _retryUnlockLabel(sessionState),
+              ),
+              loading: () => const SettingsSectionLoading(),
+              error: (Object error, StackTrace _) => SettingsInfoBanner(
+                icon: Icons.error_outline_rounded,
+                message: '$error',
+                tone: SettingsBannerTone.error,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget recoveryMetadataPanel(RecoveryMetadata? metadata) {
+    return RecoveryKeySectionBody(
+      metadata: metadata,
+      busy: _busy,
+      showActions: false,
+      onRotateRecoveryKey: null,
+      onCreateRecoveryKey: null,
+    );
   }
 
   @override
@@ -108,110 +215,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                 if (isSupportedPlatform) ...<Widget>[
-                  sessionAsync.when(
-                    data: (AppSessionState sessionState) {
-                      return SettingsSectionCard(
-                        title: SettingsSecurityLockCopy.sectionTitle,
-                        description: SettingsSecurityLockCopy.sectionDescription,
-                        child: SettingsStatusPanel(
-                          sessionState: sessionState,
-                          busy: _busy,
-                          recoveryKeyInputController: _recoveryKeyInputController,
-                          recoveryKeyHint: recoveryMetadataAsync.asData?.value?.recoveryKeyHint,
-                          bannerIcon: _sessionIcon(sessionState.status),
-                          bannerMessage: _sessionSummary(sessionState),
-                          bannerTone: _sessionTone(sessionState.status),
-                          onUnlockWithRecovery: sessionState.status == AppLockStatus.recoveryRequired
-                              ? () => _runAction(() async {
-                                    await ref.read(appSessionProvider.notifier).unlockWithRecovery(
-                                          _recoveryKeyInputController.text.trim(),
-                                        );
-                                    await refreshEntryIndexCaches(ref);
-                                  })
-                              : null,
-                          onRetryTrustedUnlock:
-                              sessionState.status == AppLockStatus.locked ||
-                                      sessionState.status == AppLockStatus.unlocking
-                                  ? () => _runAction(_retryTrustedUnlock)
-                                  : null,
-                          onUnlockWithDeviceCredential:
-                              sessionState.status == AppLockStatus.locked &&
-                                      sessionState.resumeAction ==
-                                          ResumeUnlockAction.deviceCredentialFallback
-                                  ? () => _runAction(_unlockWithDeviceCredential)
-                                  : null,
-                          onCancelUnlock: sessionState.status == AppLockStatus.unlocking
-                              ? () => _runAction(() async {
-                                    await ref.read(appSessionProvider.notifier).lock();
-                                  })
-                              : null,
-                          retryActionLabel: _retryUnlockLabel(sessionState),
-                        ),
-                      );
-                    },
-                    loading: () => const SettingsSectionLoading(),
-                    error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: SettingsSecurityLockCopy.sectionTitle,
-                      description: SettingsSecurityLockCopy.loadErrorDescription,
-                      child: SettingsInfoBanner(
-                        icon: Icons.error_outline_rounded,
-                        message: '$error',
-                        tone: SettingsBannerTone.error,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  recoveryMetadataAsync.when(
-                    data: (RecoveryMetadata? metadata) {
-                      return SettingsSectionCard(
-                        title: SettingsRecoveryKeyCopy.sectionTitle,
-                        description: SettingsRecoveryKeyCopy.sectionDescription,
-                        child: RecoveryKeySectionBody(
-                          metadata: metadata,
-                          busy: _busy,
-                          onRotateRecoveryKey: metadata != null && canSensitiveVaultTransfer
-                              ? () => _runAction(_rotateRecoveryKey)
-                              : null,
-                          onCreateRecoveryKey: metadata != null
-                              ? null
-                              : () => _runAction(() async {
-                                    final result = await ref.read(vaultRepositoryProvider).setupRecoveryKey();
-                                    ref.read(appSessionProvider.notifier).activateSession(
-                                          result.session,
-                                          message: kRecoverySetupSuccessMessage,
-                                        );
-                                    ref.invalidate(recoveryMetadataProvider);
-                                    await refreshEntryIndexCaches(ref);
-                                    if (!context.mounted) {
-                                      return;
-                                    }
-                                    await showDialog<void>(
-                                      context: context,
-                                      builder: (BuildContext context) => AlertDialog(
-                                        title: const Text(SettingsRecoveryKeyCopy.saveDialogTitle),
-                                        content: SelectableText(result.recoveryKey),
-                                        actions: <Widget>[
-                                          TextButton(
-                                            onPressed: () => Navigator.of(context).pop(),
-                                            child: const Text(SettingsCopy.actionClose),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                        ),
-                      );
-                    },
-                    loading: () => const SettingsSectionLoading(),
-                    error: (Object error, StackTrace _) => SettingsSectionCard(
-                      title: SettingsRecoveryKeyCopy.sectionTitle,
-                      description: SettingsRecoveryKeyCopy.loadErrorDescription,
-                      child: SettingsInfoBanner(
-                        icon: Icons.error_outline_rounded,
-                        message: '$error',
-                        tone: SettingsBannerTone.error,
-                      ),
-                    ),
+                  _buildSecurityStatusSection(
+                    appLockService: appLockService,
+                    sessionAsync: sessionAsync,
+                    recoveryMetadata: recoveryMetadata,
+                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
@@ -313,19 +321,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
-                              : () => _runAction(() async {
-                                    final String? savedPath = await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((_) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .createBackupWithPicker();
-                                    });
-                                    if (savedPath == null) {
-                                      return;
-                                    }
-                                    _showMessage(SettingsLocalBackupCopy.createSuccess(savedPath));
-                                  }),
+                              : () => _runAction(_createLocalBackup),
                         ),
                         SettingsActionButton(
                           label: SettingsLocalBackupCopy.restoreButton,
@@ -432,6 +428,85 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         );
       },
     );
+  }
+
+  String? _lastBackupStatusMessage() {
+    final BackupHealthReport? report = _lastBackupHealthReport;
+    if (report == null) {
+      return null;
+    }
+    final String location = _lastBackupPath == null ? '' : '\n位置：$_lastBackupPath';
+    return '${report.message}$location';
+  }
+
+  String _indexStatusMessage(bool hasUnlockedSession) {
+    final IndexRebuildReport? report = _lastIndexRebuildReport;
+    if (report != null) {
+      return '最近重建完成：${report.entryCount} 篇日記，${report.finishedAt.toLocal().toString().replaceFirst('.000', '')}。';
+    }
+    return hasUnlockedSession ? '可隨時從加密日記重建。' : '解鎖後可重建索引。';
+  }
+
+  Future<void> _createRecoveryKey() async {
+    final RecoverySetupResult result =
+        await ref.read(vaultRepositoryProvider).setupRecoveryKey();
+    ref.read(appSessionProvider.notifier).activateSession(
+          result.session,
+          message: kRecoverySetupSuccessMessage,
+        );
+    ref.invalidate(recoveryMetadataProvider);
+    await refreshEntryIndexCaches(ref);
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text(SettingsRecoveryKeyCopy.saveDialogTitle),
+        content: SelectableText(result.recoveryKey),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(SettingsCopy.actionClose),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createLocalBackup() async {
+    final BackupCreationResult? result = await ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((_) {
+      return ref.read(vaultTransferServiceProvider).createBackupWithPicker();
+    });
+    if (result == null) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _lastBackupHealthReport = result.healthReport;
+        _lastBackupPath = result.path;
+      });
+    }
+    final String message = result.healthReport.ok
+        ? SettingsLocalBackupCopy.createSuccess(result.path)
+        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n位置：${result.path}';
+    _showMessage(message);
+  }
+
+  Future<void> _rebuildIndex() async {
+    final IndexRebuildReport report = await ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+      return ref.read(vaultRepositoryProvider).rebuildIndexWithReport(session);
+    });
+    ref.read(entryIndexRevisionProvider.notifier).bump();
+    ref.invalidate(recoveryMetadataProvider);
+    if (mounted) {
+      setState(() => _lastIndexRebuildReport = report);
+    }
+    _showMessage('索引已重建：${report.entryCount} 篇日記，耗時 ${report.duration.inMilliseconds} ms');
   }
 
   String _formatDriveBackupTime(DateTime? value) {

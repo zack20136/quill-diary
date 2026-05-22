@@ -44,6 +44,36 @@ class HtmlExportEstimate {
   bool exceedsImageBytes(int thresholdBytes) => imageBytes >= thresholdBytes;
 }
 
+class BackupHealthStatusItem {
+  const BackupHealthStatusItem({
+    required this.label,
+    required this.ok,
+    required this.message,
+  });
+
+  final String label;
+  final bool ok;
+  final String message;
+}
+
+class BackupHealthReport {
+  const BackupHealthReport({
+    required this.ok,
+    required this.statusItems,
+    required this.entrySampleFound,
+    required this.hasRecoveryMetadata,
+    required this.hasManifest,
+    required this.message,
+  });
+
+  final bool ok;
+  final List<BackupHealthStatusItem> statusItems;
+  final bool entrySampleFound;
+  final bool hasRecoveryMetadata;
+  final bool hasManifest;
+  final String message;
+}
+
 class VaultArchiveIo {
   VaultArchiveIo({
     required VaultPathStrategy pathStrategy,
@@ -80,6 +110,143 @@ class VaultArchiveIo {
     );
     await encoder.close();
     return target;
+  }
+
+  Future<BackupHealthReport> checkBackupHealth(File backupFile) async {
+    final List<BackupHealthStatusItem> items = <BackupHealthStatusItem>[];
+    if (!backupFile.existsSync()) {
+      return const BackupHealthReport(
+        ok: false,
+        statusItems: <BackupHealthStatusItem>[
+          BackupHealthStatusItem(
+            label: '檔案狀態',
+            ok: false,
+            message: '找不到剛建立的備份檔案',
+          ),
+        ],
+        entrySampleFound: false,
+        hasRecoveryMetadata: false,
+        hasManifest: false,
+        message: '找不到備份檔案，請重新建立一次備份。',
+      );
+    }
+
+    late final Archive archive;
+    try {
+      archive = ZipDecoder().decodeBytes(
+        await backupFile.readAsBytes(),
+        verify: true,
+      );
+      items.add(
+        const BackupHealthStatusItem(
+          label: 'ZIP',
+          ok: true,
+          message: '備份壓縮檔可以讀取',
+        ),
+      );
+    } on Object {
+      return const BackupHealthReport(
+        ok: false,
+        statusItems: <BackupHealthStatusItem>[
+          BackupHealthStatusItem(
+            label: 'ZIP',
+            ok: false,
+            message: '備份壓縮檔無法讀取',
+          ),
+        ],
+        entrySampleFound: false,
+        hasRecoveryMetadata: false,
+        hasManifest: false,
+        message: '備份檔不是有效的 .jbackup，請重新建立備份。',
+      );
+    }
+
+    if (archive.files.isEmpty) {
+      return const BackupHealthReport(
+        ok: false,
+        statusItems: <BackupHealthStatusItem>[
+          BackupHealthStatusItem(
+            label: 'ZIP',
+            ok: false,
+            message: '備份壓縮檔沒有內容',
+          ),
+        ],
+        entrySampleFound: false,
+        hasRecoveryMetadata: false,
+        hasManifest: false,
+        message: '備份檔不是有效的 .jbackup，請重新建立備份。',
+      );
+    }
+
+    var safePaths = true;
+    var hasRecovery = false;
+    var hasManifest = false;
+    var entrySampleFound = false;
+    var hasVaultPayload = false;
+
+    for (final ArchiveFile file in archive.files) {
+      final String rawName = file.name.replaceAll('\\', '/');
+      final String normalized = p.posix.normalize(rawName);
+      if (rawName.contains('..') || p.posix.isAbsolute(normalized)) {
+        safePaths = false;
+      }
+      if (file.isFile && normalized == 'recovery.json') {
+        hasRecovery = true;
+      }
+      if (file.isFile && normalized == 'manifest.json.enc') {
+        hasManifest = true;
+      }
+      if (file.isFile && normalized.startsWith('entries/') && normalized.endsWith('.md.enc')) {
+        entrySampleFound = true;
+      }
+      if (normalized.startsWith('entries/') || normalized.startsWith('assets/')) {
+        hasVaultPayload = true;
+      }
+    }
+
+    items
+      ..add(
+        BackupHealthStatusItem(
+          label: '檔案路徑',
+          ok: safePaths,
+          message: safePaths ? '備份內部路徑正常' : '備份內含不安全路徑',
+        ),
+      )
+      ..add(
+        BackupHealthStatusItem(
+          label: '復原金鑰',
+          ok: hasRecovery,
+          message: hasRecovery ? '包含復原金鑰資訊' : '缺少復原金鑰資訊',
+        ),
+      )
+      ..add(
+        BackupHealthStatusItem(
+          label: '日記庫資料',
+          ok: hasVaultPayload || hasManifest,
+          message: hasVaultPayload || hasManifest ? '包含日記庫資料結構' : '找不到日記或附件資料',
+        ),
+      )
+      ..add(
+        BackupHealthStatusItem(
+          label: '加密檢查',
+          ok: hasManifest || entrySampleFound,
+          message: hasManifest
+              ? '包含加密 manifest'
+              : entrySampleFound
+                  ? '包含至少一篇加密日記'
+                  : '缺少可檢查的加密資料',
+        ),
+      );
+
+    final bool ok = safePaths && hasRecovery && (hasManifest || entrySampleFound);
+    return BackupHealthReport(
+      ok: ok,
+      statusItems: List<BackupHealthStatusItem>.unmodifiable(items),
+      entrySampleFound: entrySampleFound,
+      hasRecoveryMetadata: hasRecovery,
+      hasManifest: hasManifest,
+      message: ok ? '備份檔案檢查通過。' : '備份檢查未通過，檔案可能無法還原。',
+    );
   }
 
   Future<Directory> exportMarkdown({

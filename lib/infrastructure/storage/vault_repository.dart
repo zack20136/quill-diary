@@ -50,6 +50,18 @@ class RecoverySetupResult {
   final UnlockedVaultSession session;
 }
 
+class IndexRebuildReport {
+  const IndexRebuildReport({
+    required this.entryCount,
+    required this.duration,
+    required this.finishedAt,
+  });
+
+  final int entryCount;
+  final Duration duration;
+  final DateTime finishedAt;
+}
+
 /// Main coordination layer for encrypted vault storage.
 ///
 /// This repository owns Recovery Key setup/unlock, trusted-device session
@@ -690,6 +702,18 @@ class VaultRepository {
 
     await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
     await syncTagStylesBetweenVaultAndIndex();
+  }
+
+  Future<IndexRebuildReport> rebuildIndexWithReport(UnlockedVaultSession session) async {
+    final Stopwatch stopwatch = Stopwatch()..start();
+    await rebuildIndex(session);
+    final List<EntryIndexRecord> entries = await listEntries();
+    stopwatch.stop();
+    return IndexRebuildReport(
+      entryCount: entries.length,
+      duration: stopwatch.elapsed,
+      finishedAt: DateTime.now(),
+    );
   }
 
   DecryptionContext _decryptionContext(UnlockedVaultSession session) {

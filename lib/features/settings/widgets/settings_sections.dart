@@ -262,6 +262,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
     required this.busy,
     required this.onCreateRecoveryKey,
     this.onRotateRecoveryKey,
+    this.showActions = true,
     super.key,
   });
 
@@ -269,6 +270,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
@@ -282,13 +284,15 @@ class RecoveryKeySectionBody extends StatelessWidget {
             message: SettingsRecoveryKeyCopy.notSetupBanner,
             tone: SettingsBannerTone.warning,
           ),
-          const SizedBox(height: 14),
-          SettingsActionButton(
-            label: SettingsRecoveryKeyCopy.createButton,
-            icon: Icons.key_outlined,
-            emphasized: true,
-            onPressed: busy ? null : onCreateRecoveryKey,
-          ),
+          if (showActions) ...<Widget>[
+            const SizedBox(height: 14),
+            SettingsActionButton(
+              label: SettingsRecoveryKeyCopy.createButton,
+              icon: Icons.key_outlined,
+              emphasized: true,
+              onPressed: busy ? null : onCreateRecoveryKey,
+            ),
+          ],
         ],
       );
     }
@@ -319,7 +323,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
             ),
           ],
         ),
-        if (onRotateRecoveryKey != null) ...<Widget>[
+        if (showActions && onRotateRecoveryKey != null) ...<Widget>[
           const SizedBox(height: 14),
           SettingsActionButton(
             label: SettingsRecoveryKeyCopy.rotateButton,
@@ -617,6 +621,230 @@ class SettingsSectionLoading extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 18),
         child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
+enum SettingsHealthLevel { ok, warning, error }
+
+class SettingsSecurityOverview extends StatelessWidget {
+  const SettingsSecurityOverview({
+    required this.hasRecoveryKey,
+    required this.hasUnlockedSession,
+    required this.hasTrustedDevice,
+    required this.unlockModeLabel,
+    required this.lastBackupMessage,
+    required this.lastBackupOk,
+    required this.indexMessage,
+    required this.busy,
+    required this.onCreateRecoveryKey,
+    required this.onRotateRecoveryKey,
+    required this.onRebuildIndex,
+    required this.recoveryPanel,
+    required this.lockPanel,
+    super.key,
+  });
+
+  final bool hasRecoveryKey;
+  final bool hasUnlockedSession;
+  final bool hasTrustedDevice;
+  final String unlockModeLabel;
+  final String? lastBackupMessage;
+  final bool? lastBackupOk;
+  final String indexMessage;
+  final bool busy;
+  final VoidCallback? onCreateRecoveryKey;
+  final VoidCallback? onRotateRecoveryKey;
+  final VoidCallback? onRebuildIndex;
+  final Widget recoveryPanel;
+  final Widget lockPanel;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_SecurityOverviewItem> items = <_SecurityOverviewItem>[
+      _SecurityOverviewItem(
+        icon: Icons.key_outlined,
+        title: '復原金鑰',
+        message: hasRecoveryKey ? '已建立，可用於還原與換機。' : '尚未建立，資料還原能力不足。',
+        level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
+      ),
+      _SecurityOverviewItem(
+        icon: Icons.lock_open_rounded,
+        title: '解鎖狀態',
+        message: hasUnlockedSession ? '日記庫目前已解鎖。' : '需要重新驗證後才能執行維護動作。',
+        level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
+      ),
+      _SecurityOverviewItem(
+        icon: Icons.phonelink_lock_outlined,
+        title: '解鎖方式',
+        message: unlockModeLabel,
+        level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
+      ),
+      _SecurityOverviewItem(
+        icon: Icons.verified_user_outlined,
+        title: '可信裝置',
+        message: hasTrustedDevice ? '此裝置可使用目前解鎖方式。' : '此裝置尚未具備可信解鎖資料。',
+        level: hasTrustedDevice ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
+      ),
+      _SecurityOverviewItem(
+        icon: Icons.backup_outlined,
+        title: '最近備份檢查',
+        message: lastBackupMessage ?? '尚未建立本機備份；建立後會自動檢查檔案是否可用。',
+        level: lastBackupOk == null
+            ? SettingsHealthLevel.warning
+            : lastBackupOk!
+                ? SettingsHealthLevel.ok
+                : SettingsHealthLevel.error,
+      ),
+      _SecurityOverviewItem(
+        icon: Icons.storage_rounded,
+        title: '索引資料庫',
+        message: indexMessage,
+        level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: items
+              .map((item) => _SecurityOverviewTile(item: item))
+              .toList(growable: false),
+        ),
+        const SizedBox(height: 14),
+        SettingsActionGroup(
+          actions: <SettingsActionButton>[
+            SettingsActionButton(
+              label: hasRecoveryKey ? '更新復原金鑰' : '建立復原金鑰',
+              icon: hasRecoveryKey ? Icons.refresh_rounded : Icons.key_outlined,
+              emphasized: !hasRecoveryKey,
+              onPressed: busy
+                  ? null
+                  : hasRecoveryKey
+                      ? onRotateRecoveryKey
+                      : onCreateRecoveryKey,
+            ),
+            SettingsActionButton(
+              label: '重建索引',
+              icon: Icons.build_rounded,
+              onPressed: busy ? null : onRebuildIndex,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        recoveryPanel,
+        const SizedBox(height: 14),
+        lockPanel,
+      ],
+    );
+  }
+}
+
+class _SecurityOverviewItem {
+  const _SecurityOverviewItem({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.level,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final SettingsHealthLevel level;
+}
+
+class _SecurityOverviewTile extends StatelessWidget {
+  const _SecurityOverviewTile({required this.item});
+
+  final _SecurityOverviewItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color background = switch (item.level) {
+      SettingsHealthLevel.ok => Color.alphaBlend(
+          cs.primary.withValues(alpha: 0.08),
+          cs.surfaceContainerLow,
+        ),
+      SettingsHealthLevel.warning => cs.secondaryContainer.withValues(alpha: 0.75),
+      SettingsHealthLevel.error => cs.errorContainer,
+    };
+    final Color foreground = switch (item.level) {
+      SettingsHealthLevel.ok => cs.onSurface,
+      SettingsHealthLevel.warning => cs.onSecondaryContainer,
+      SettingsHealthLevel.error => cs.onErrorContainer,
+    };
+    final IconData statusIcon = switch (item.level) {
+      SettingsHealthLevel.ok => Icons.check_circle_outline_rounded,
+      SettingsHealthLevel.warning => Icons.info_outline_rounded,
+      SettingsHealthLevel.error => Icons.error_outline_rounded,
+    };
+    final String statusLabel = switch (item.level) {
+      SettingsHealthLevel.ok => '正常',
+      SettingsHealthLevel.warning => '需注意',
+      SettingsHealthLevel.error => '錯誤',
+    };
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 230, maxWidth: 520),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(item.icon, color: foreground),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Icon(statusIcon, size: 16, color: foreground),
+                        const SizedBox(width: 4),
+                        Text(
+                          statusLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: foreground,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.message,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: foreground,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

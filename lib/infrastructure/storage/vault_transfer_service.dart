@@ -13,6 +13,16 @@ import 'restore_precheck.dart';
 import 'vault_archive_io.dart';
 import 'vault_repository.dart';
 
+class BackupCreationResult {
+  const BackupCreationResult({
+    required this.path,
+    required this.healthReport,
+  });
+
+  final String path;
+  final BackupHealthReport healthReport;
+}
+
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,
@@ -30,14 +40,13 @@ class VaultTransferService {
     return _driveBackupService.resetSignInSessionForConsentRetry();
   }
 
-  Future<String?> createBackupWithPicker() async {
-    final String fileName = '${generateBackupId()}.jbackup';
-    return _saveGeneratedFileWithPicker(
-      dialogTitle: '儲存本機備份',
-      fileName: fileName,
-      allowedExtensions: const <String>['jbackup'],
-      writeTarget: _archiveIo.writeBackupZip,
-    );
+  Future<BackupCreationResult?> createBackupWithPicker() async {
+    final String fileName = '${_backupTimestamp(DateTime.now())}.jbackup';
+    return _saveBackupWithPicker(fileName: fileName);
+  }
+
+  Future<BackupHealthReport> checkBackupHealth(File backupFile) {
+    return _archiveIo.checkBackupHealth(backupFile);
   }
 
   Future<String?> exportMarkdownWithPicker(UnlockedVaultSession session) async {
@@ -161,7 +170,7 @@ class VaultTransferService {
 
   Future<String> uploadBackupToDrive() async {
     final api = await _driveBackupService.createAuthorizedDriveApi();
-    final File tempBackup = await _createTempFile('${generateBackupId()}.jbackup');
+    final File tempBackup = await _createTempFile('${_backupTimestamp(DateTime.now())}.jbackup');
     try {
       await _archiveIo.writeBackupZip(tempBackup);
       return await _driveBackupService.uploadBackup(tempBackup, reuseApi: api);
@@ -349,7 +358,67 @@ class VaultTransferService {
   }
 
   Future<String?> _downloadsInitialDirectory() async {
-    return (await getDownloadsDirectory())?.path;
+    final Directory? downloads = await getDownloadsDirectory();
+    if (downloads == null) {
+      return null;
+    }
+    final Directory preferred = Directory(p.join(downloads.path, 'quill-lock-dairy'));
+    try {
+      await preferred.create(recursive: true);
+      return preferred.path;
+    } on Object {
+      return downloads.path;
+    }
+  }
+
+  String _backupTimestamp(DateTime value) {
+    String two(int number) => number.toString().padLeft(2, '0');
+    return 'backup_${value.year}-${two(value.month)}-${two(value.day)}_'
+        '${two(value.hour)}-${two(value.minute)}-${two(value.second)}';
+  }
+
+  Future<BackupCreationResult?> _saveBackupWithPicker({
+    required String fileName,
+  }) async {
+    final String? initialDirectory = await _downloadsInitialDirectory();
+    if (Platform.isAndroid || Platform.isIOS) {
+      final File tempFile = await _createTempFile(fileName);
+      try {
+        await _archiveIo.writeBackupZip(tempFile);
+        final BackupHealthReport report = await checkBackupHealth(tempFile);
+        final String? path = await FilePicker.saveFile(
+          dialogTitle: '儲存本機備份',
+          fileName: fileName,
+          initialDirectory: initialDirectory,
+          type: FileType.custom,
+          allowedExtensions: const <String>['jbackup'],
+          bytes: await tempFile.readAsBytes(),
+        );
+        if (path == null) {
+          return null;
+        }
+        return BackupCreationResult(path: path, healthReport: report);
+      } finally {
+        await _deleteIfExists(tempFile);
+      }
+    }
+
+    final String? targetPath = await FilePicker.saveFile(
+      dialogTitle: '儲存本機備份',
+      fileName: fileName,
+      initialDirectory: initialDirectory,
+      type: FileType.custom,
+      allowedExtensions: const <String>['jbackup'],
+    );
+    if (targetPath == null) {
+      return null;
+    }
+    final File target = File(targetPath);
+    await _archiveIo.writeBackupZip(target);
+    return BackupCreationResult(
+      path: targetPath,
+      healthReport: await checkBackupHealth(target),
+    );
   }
 
   Future<String?> _saveGeneratedFileWithPicker({

@@ -495,6 +495,41 @@ Imported from zip.
     expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
   });
 
+  test('checkBackupHealth accepts a readable vault backup', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Healthy Backup',
+        date: const DateOnly('2026-05-30'),
+        createdAt: DateTime.parse('2026-05-30T10:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-30T10:00:00Z'),
+        markdownBody: 'healthy backup body',
+      ),
+    );
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'healthy.jbackup'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    final BackupHealthReport report = await archiveIo.checkBackupHealth(backupFile);
+
+    expect(report.ok, isTrue);
+    expect(report.hasRecoveryMetadata, isTrue);
+    expect(report.hasManifest || report.entrySampleFound, isTrue);
+  });
+
+  test('checkBackupHealth rejects an invalid zip', () async {
+    final File backupFile = File(p.join(harness.tempDir.path, 'invalid.jbackup'))
+      ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
+
+    final BackupHealthReport report = await archiveIo.checkBackupHealth(backupFile);
+
+    expect(report.ok, isFalse);
+    expect(report.message, contains('.jbackup'));
+  });
+
   test('restoreBackupZip 可還原日記並保留 recovery metadata', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final String entryId = generateEntryId();

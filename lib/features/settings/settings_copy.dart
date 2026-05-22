@@ -127,26 +127,26 @@ abstract final class SettingsImportExportCopy {
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
   static const String sectionDescriptionEnabled =
-      '備份全部日記到本機；還原會覆寫本機資料，必要時需輸入建立備份時保存的復原金鑰。';
+      '將整個加密日記庫儲存成 .jbackup，預設位置為 Downloads/quill-lock-dairy。建立後會立即檢查檔案結構；還原會覆寫本機資料。';
 
-  static const String createButton = '建立本機備份';
-  static const String restoreButton = '還原本機備份';
+  static const String createButton = '建立並檢查備份';
+  static const String restoreButton = '從本機備份還原';
 
-  static String createSuccess(String path) => '已建立本機備份：$path';
+  static String createSuccess(String path) => '備份已建立並通過檢查。\n位置：$path';
 }
 
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
-      '上傳或下載 .jbackup；同裝置還原會嘗試以本機受信任裝置自動解鎖。';
+      '將 .jbackup 上傳到 Google Drive，或從雲端下載備份還原。還原後可能需要輸入建立備份時保存的復原金鑰。';
 
-  static const String uploadButton = '上傳到 Google Drive';
-  static const String restoreButton = '從 Google Drive 還原';
+  static const String uploadButton = '上傳備份到 Google Drive';
+  static const String restoreButton = '從 Google Drive 備份還原';
 
-  static const String uploadSuccess = '已上傳備份到 Google Drive。';
-  static const String noBackups = 'Google Drive 上沒有可還原的備份。';
+  static const String uploadSuccess = '備份已上傳到 Google Drive。';
+  static const String noBackups = 'Google Drive 中找不到 .jbackup 備份檔。';
   static const String pickDialogTitle = '選擇 Google Drive 備份';
-  static const String unknownCreatedTime = '建立時間未知';
+  static const String unknownCreatedTime = '無建立時間';
 
   static const String googleHelpHint =
       '如果你剛調整 Google Drive 權限或授權設定，先重新登入再重試通常就能完成授權。';
