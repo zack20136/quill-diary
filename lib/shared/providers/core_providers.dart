@@ -7,6 +7,7 @@ import '../../infrastructure/drive/drive_backup_service.dart';
 import '../../infrastructure/markdown/front_matter_codec.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/security/device_key_manager.dart';
+import '../../infrastructure/storage/export_save_location_store.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
@@ -82,12 +83,18 @@ final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
   );
 });
 
+/// Persists the last directory chosen for export/backup save dialogs.
+final exportSaveLocationStoreProvider = Provider<ExportSaveLocationStore>((Ref ref) {
+  return ExportSaveLocationStore(ref.watch(vaultPathStrategyProvider));
+});
+
 /// High-level backup and restore coordinator for file picker and Drive flows.
 final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
   return VaultTransferService(
     archiveIo: ref.watch(vaultArchiveIoProvider),
     driveBackupService: ref.watch(driveBackupServiceProvider),
     vaultRepository: ref.watch(vaultRepositoryProvider),
+    exportSaveLocationStore: ref.watch(exportSaveLocationStoreProvider),
   );
 });
 

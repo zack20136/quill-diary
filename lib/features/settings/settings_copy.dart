@@ -127,7 +127,7 @@ abstract final class SettingsImportExportCopy {
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
   static const String sectionDescriptionEnabled =
-      '將整個加密日記庫儲存成 .jbackup，預設位置為 Downloads/quill-lock-dairy。建立後會立即檢查檔案結構；還原會覆寫本機資料。';
+      '將整個加密日記庫儲存成 .jbackup，首次預設為 Downloads/quill-lock-diary，之後會記住你上次選的位置。建立後會立即檢查檔案結構；還原會覆寫本機資料。';
 
   static const String createButton = '建立並檢查備份';
   static const String restoreButton = '從本機備份還原';

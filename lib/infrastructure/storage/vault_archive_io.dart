@@ -1244,6 +1244,15 @@ class VaultArchiveIo {
       return document == null ? const <_ImportedDocument>[] : <_ImportedDocument>[document];
     }
     if (extension == '.html' || extension == '.htm') {
+      final String html = await file.readAsString();
+      if (_isQuillLockDiaryExportHtml(html)) {
+        return _parseQuillLockDiaryHtmlDocuments(
+          file: file,
+          html: html,
+          importRootDirectory: importRootDirectory,
+          tempDirectory: tempDirectory,
+        );
+      }
       return _parseEasyDiaryHtmlDocuments(
         file: file,
         importRootDirectory: importRootDirectory,
@@ -1387,6 +1396,249 @@ class VaultArchiveIo {
     );
 
     return _ImportedDocument(entry: entry, attachments: attachments);
+  }
+
+  bool _isQuillLockDiaryExportHtml(String html) {
+    return RegExp(
+      r'<article\b[^>]*\bclass\s*=\s*"[^"]*\bentry\b',
+      caseSensitive: false,
+    ).hasMatch(html);
+  }
+
+  Future<List<_ImportedDocument>> _parseQuillLockDiaryHtmlDocuments({
+    required File file,
+    required String html,
+    required Directory importRootDirectory,
+    required Directory tempDirectory,
+  }) async {
+    final FileStat stat = await file.stat();
+    final String bodyHtml = _extractHtmlBody(html);
+    final List<String> articleSections = _splitQuillLockDiaryArticles(bodyHtml);
+    final List<_ImportedDocument> documents = <_ImportedDocument>[];
+
+    for (final String articleHtml in articleSections) {
+      final _ImportedDocument? document = await _parseQuillLockDiaryHtmlArticle(
+        articleHtml: articleHtml,
+        file: file,
+        stat: stat,
+        importRootDirectory: importRootDirectory,
+        tempDirectory: tempDirectory,
+      );
+      if (document != null && !document.isEmpty) {
+        documents.add(document);
+      }
+    }
+
+    return documents;
+  }
+
+  Future<_ImportedDocument?> _parseQuillLockDiaryHtmlArticle({
+    required String articleHtml,
+    required File file,
+    required FileStat stat,
+    required Directory importRootDirectory,
+    required Directory tempDirectory,
+  }) async {
+    final String? dateText = _extractHtmlClassText(articleHtml, 'entry-date');
+    final String? title = _extractFirstHtmlTagText(articleHtml, 'h2');
+    final String? entryBodyHtml =
+        _extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'entry-body');
+    if (entryBodyHtml == null && title == null && dateText == null) {
+      return null;
+    }
+
+    final String? entryMetaHtml =
+        _extractQuillLockDiaryBlockInnerHtml(articleHtml, 'div', 'entry-meta');
+    final DateTime? createdAt = entryMetaHtml == null
+        ? null
+        : _findDateTimeInText(
+            _extractQuillLockDiaryMetaValue(entryMetaHtml, '建立') ?? '',
+          );
+    final DateTime? updatedAt = entryMetaHtml == null
+        ? null
+        : _findDateTimeInText(
+            _extractQuillLockDiaryMetaValue(entryMetaHtml, '更新') ?? '',
+          );
+    final String? mood = entryMetaHtml == null
+        ? null
+        : _extractQuillLockDiaryMetaValue(entryMetaHtml, '心情');
+    final List<String> tags = _extractQuillLockDiaryTags(articleHtml);
+
+    final String attachmentSourceHtml =
+        '${_extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'embedded-images') ?? ''}\n'
+        '${_extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'attachment-list') ?? ''}';
+    final List<PendingAttachment> attachments = await _resolveImportAttachments(
+      references: _extractHtmlAttachmentReferences(attachmentSourceHtml),
+      baseDirectory: file.parent,
+      importRootDirectory: importRootDirectory,
+      tempDirectory: tempDirectory,
+    );
+
+    final String markdownBody = _exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
+    final DateOnly entryDate = dateText != null
+        ? (_findDateInText(dateText) ?? DateOnly.fromDateTime(stat.modified))
+        : (_findDateInText(articleHtml) ?? DateOnly.fromDateTime(stat.modified));
+    final DateTime fallbackTimestamp = stat.modified;
+
+    final DiaryEntry entry = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: 'vlt_LOCAL',
+      title: title?.trim().isNotEmpty == true ? title!.trim() : _fallbackImportTitle(file),
+      date: entryDate,
+      createdAt: createdAt ?? fallbackTimestamp,
+      updatedAt: updatedAt ?? createdAt ?? fallbackTimestamp,
+      markdownBody: markdownBody,
+      tags: tags,
+      mood: mood?.trim().isEmpty == true ? null : mood?.trim(),
+    );
+
+    return _ImportedDocument(entry: entry, attachments: attachments);
+  }
+
+  List<String> _splitQuillLockDiaryArticles(String bodyHtml) {
+    final RegExp pattern = RegExp(
+      r'<article\b[^>]*\bclass\s*=\s*"[^"]*\bentry\b[^>]*>([\s\S]*?)</article>',
+      caseSensitive: false,
+    );
+
+    return pattern
+        .allMatches(bodyHtml)
+        .map((Match match) => (match.group(1) ?? '').trim())
+        .where((String value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String? _extractQuillLockDiaryBlockInnerHtml(
+    String html,
+    String tagName,
+    String className,
+  ) {
+    final RegExp pattern = RegExp(
+      r'<' +
+          tagName +
+          r'\b[^>]*\bclass\s*=\s*"[^"]*\b' +
+          RegExp.escape(className) +
+          r'\b[^"]*"[^>]*>([\s\S]*?)</' +
+          tagName +
+          r'>',
+      caseSensitive: false,
+    );
+    final Match? match = pattern.firstMatch(html);
+    if (match == null) {
+      return null;
+    }
+
+    final String value = (match.group(1) ?? '').trim();
+    return value.isEmpty ? null : value;
+  }
+
+  String? _extractQuillLockDiaryMetaValue(String entryMetaHtml, String label) {
+    final RegExp pattern = RegExp(
+      r'<span\b[^>]*>\s*' +
+          RegExp.escape(label) +
+          r'\s*[：:]\s*([^<]+)\s*</span>',
+      caseSensitive: false,
+    );
+    final Match? match = pattern.firstMatch(entryMetaHtml);
+    if (match == null) {
+      return null;
+    }
+
+    final String value = _decodeHtmlEntities((match.group(1) ?? '').trim());
+    return value.isEmpty ? null : value;
+  }
+
+  List<String> _extractQuillLockDiaryTags(String articleHtml) {
+    final String? tagsHtml =
+        _extractQuillLockDiaryBlockInnerHtml(articleHtml, 'ul', 'tags');
+    if (tagsHtml == null) {
+      return const <String>[];
+    }
+
+    final RegExp itemPattern = RegExp(
+      r'<li\b[^>]*>([\s\S]*?)</li>',
+      caseSensitive: false,
+    );
+    return itemPattern
+        .allMatches(tagsHtml)
+        .map((Match match) => _decodeHtmlEntities(_stripHtmlTags(match.group(1) ?? '')).trim())
+        .where((String value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String _exportHtmlBodyToMarkdown(String html) {
+    String output = html.trim();
+    if (output.isEmpty) {
+      return '';
+    }
+
+    output = output.replaceAllMapped(
+      RegExp(r'<pre>\s*<code>([\s\S]*?)</code>\s*</pre>', caseSensitive: false),
+      (Match match) => '```\n${_decodeHtmlEntities(match.group(1) ?? '').trimRight()}\n```\n\n',
+    );
+    for (int level = 6; level >= 1; level--) {
+      output = output.replaceAllMapped(
+        RegExp('<h$level\\b[^>]*>([\\s\\S]*?)</h$level>', caseSensitive: false),
+        (Match match) =>
+            '${'#' * level} ${_inlineExportHtmlToMarkdown(match.group(1) ?? '')}\n\n',
+      );
+    }
+    output = output.replaceAllMapped(
+      RegExp(r'<ul\b[^>]*>([\s\S]*?)</ul>', caseSensitive: false),
+      (Match match) {
+        final String items = (match.group(1) ?? '').replaceAllMapped(
+          RegExp(r'<li\b[^>]*>([\s\S]*?)</li>', caseSensitive: false),
+          (Match itemMatch) =>
+              '- ${_inlineExportHtmlToMarkdown(itemMatch.group(1) ?? '')}\n',
+        );
+        return '$items\n';
+      },
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'<p\b[^>]*>([\s\S]*?)</p>', caseSensitive: false),
+      (Match match) {
+        final String content = (match.group(1) ?? '').replaceAllMapped(
+          RegExp(r'<br\s*/?>', caseSensitive: false),
+          (_) => '\n',
+        );
+        return '${_inlineExportHtmlToMarkdown(content)}\n\n';
+      },
+    );
+
+    output = _decodeHtmlEntities(_stripHtmlTags(output));
+    output = output.replaceAll(RegExp(r'\r\n?'), '\n');
+    output = output.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    output = output.replaceAll(RegExp(r'[ \t]+\n'), '\n');
+    return output.trimRight();
+  }
+
+  String _inlineExportHtmlToMarkdown(String html) {
+    String output = html;
+    output = output.replaceAllMapped(
+      RegExp(r'<strong\b[^>]*>([\s\S]*?)</strong>', caseSensitive: false),
+      (Match match) => '**${_stripHtmlTags(match.group(1) ?? '')}**',
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'<em\b[^>]*>([\s\S]*?)</em>', caseSensitive: false),
+      (Match match) => '*${_stripHtmlTags(match.group(1) ?? '')}*',
+    );
+    output = output.replaceAllMapped(
+      RegExp(r'<code\b[^>]*>([\s\S]*?)</code>', caseSensitive: false),
+      (Match match) => '`${_decodeHtmlEntities(_stripHtmlTags(match.group(1) ?? ''))}`',
+    );
+    output = output.replaceAllMapped(
+      RegExp(
+        r'''<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)</a>''',
+        caseSensitive: false,
+      ),
+      (Match match) {
+        final String href = match.group(1) ?? '';
+        final String text = _stripHtmlTags(match.group(2) ?? '');
+        final String label = text.isEmpty ? href : text;
+        return '[${_escapeMarkdownText(label)}]($href)';
+      },
+    );
+    return _decodeHtmlEntities(_stripHtmlTags(output)).trim();
   }
 
   List<String> _splitEasyDiarySections(String bodyHtml) {

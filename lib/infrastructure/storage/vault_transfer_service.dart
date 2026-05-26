@@ -9,6 +9,7 @@ import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../drive/drive_backup_service.dart';
+import 'export_save_location_store.dart';
 import 'restore_precheck.dart';
 import 'vault_archive_io.dart';
 import 'vault_repository.dart';
@@ -28,13 +29,16 @@ class VaultTransferService {
     required VaultArchiveIo archiveIo,
     required DriveBackupService driveBackupService,
     required VaultRepository vaultRepository,
+    required ExportSaveLocationStore exportSaveLocationStore,
   })  : _archiveIo = archiveIo,
         _driveBackupService = driveBackupService,
-        _vaultRepository = vaultRepository;
+        _vaultRepository = vaultRepository,
+        _exportSaveLocationStore = exportSaveLocationStore;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
   final VaultRepository _vaultRepository;
+  final ExportSaveLocationStore _exportSaveLocationStore;
 
   Future<void> resetGoogleDriveSignInForConsentRetry() {
     return _driveBackupService.resetSignInSessionForConsentRetry();
@@ -93,11 +97,13 @@ class VaultTransferService {
 
     final String? sourceDirectory = await FilePicker.getDirectoryPath(
       dialogTitle: '選擇要匯入的資料夾（含附件的 Markdown / HTML）',
-      initialDirectory: await _downloadsInitialDirectory(),
+      initialDirectory: await _exportSaveLocationStore.resolveInitialDirectory(),
     );
     if (sourceDirectory == null) {
       return null;
     }
+
+    await _exportSaveLocationStore.rememberDirectory(sourceDirectory);
 
     return _archiveIo.importDocuments(
       session: session,
@@ -357,20 +363,6 @@ class VaultTransferService {
     );
   }
 
-  Future<String?> _downloadsInitialDirectory() async {
-    final Directory? downloads = await getDownloadsDirectory();
-    if (downloads == null) {
-      return null;
-    }
-    final Directory preferred = Directory(p.join(downloads.path, 'quill-lock-dairy'));
-    try {
-      await preferred.create(recursive: true);
-      return preferred.path;
-    } on Object {
-      return downloads.path;
-    }
-  }
-
   String _backupTimestamp(DateTime value) {
     String two(int number) => number.toString().padLeft(2, '0');
     return 'backup_${value.year}-${two(value.month)}-${two(value.day)}_'
@@ -380,7 +372,9 @@ class VaultTransferService {
   Future<BackupCreationResult?> _saveBackupWithPicker({
     required String fileName,
   }) async {
-    final String? initialDirectory = await _downloadsInitialDirectory();
+    final String? initialDirectory =
+        await _exportSaveLocationStore.resolveInitialDirectory();
+
     if (Platform.isAndroid || Platform.isIOS) {
       final File tempFile = await _createTempFile(fileName);
       try {
@@ -397,6 +391,7 @@ class VaultTransferService {
         if (path == null) {
           return null;
         }
+        await _exportSaveLocationStore.rememberSavedFilePath(path);
         return BackupCreationResult(path: path, healthReport: report);
       } finally {
         await _deleteIfExists(tempFile);
@@ -415,6 +410,7 @@ class VaultTransferService {
     }
     final File target = File(targetPath);
     await _archiveIo.writeBackupZip(target);
+    await _exportSaveLocationStore.rememberSavedFilePath(targetPath);
     return BackupCreationResult(
       path: targetPath,
       healthReport: await checkBackupHealth(target),
@@ -427,12 +423,14 @@ class VaultTransferService {
     required List<String> allowedExtensions,
     required Future<void> Function(File target) writeTarget,
   }) async {
-    final String? initialDirectory = await _downloadsInitialDirectory();
+    final String? initialDirectory =
+        await _exportSaveLocationStore.resolveInitialDirectory();
+
     if (Platform.isAndroid || Platform.isIOS) {
       final File tempFile = await _createTempFile(fileName);
       try {
         await writeTarget(tempFile);
-        return await FilePicker.saveFile(
+        final String? path = await FilePicker.saveFile(
           dialogTitle: dialogTitle,
           fileName: fileName,
           initialDirectory: initialDirectory,
@@ -440,6 +438,11 @@ class VaultTransferService {
           allowedExtensions: allowedExtensions,
           bytes: await tempFile.readAsBytes(),
         );
+        if (path == null) {
+          return null;
+        }
+        await _exportSaveLocationStore.rememberSavedFilePath(path);
+        return path;
       } finally {
         await _deleteIfExists(tempFile);
       }
@@ -456,6 +459,7 @@ class VaultTransferService {
       return null;
     }
     await writeTarget(File(targetPath));
+    await _exportSaveLocationStore.rememberSavedFilePath(targetPath);
     return targetPath;
   }
 
