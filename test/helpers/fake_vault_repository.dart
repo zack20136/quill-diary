@@ -57,9 +57,7 @@ class FakeVaultRepository extends VaultRepository {
   Future<bool> hasTrustedDeviceAccess() async => hasTrustedDevice;
 
   @override
-  Future<UnlockedVaultSession> openTrustedSession({
-    bool deviceCredentialFallback = false,
-  }) async {
+  Future<UnlockedVaultSession> openTrustedSession() async {
     openTrustedSessionCalls++;
     final Object? result = openTrustedSessionResult;
     if (result == null) {

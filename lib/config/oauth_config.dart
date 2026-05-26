@@ -21,6 +21,19 @@ class OAuthConfig {
     defaultValue: '',
   );
 
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
+    defaultValue: '',
+  );
+
+  /// iOS 端是否已提供 Google Drive OAuth Client ID。
+  static bool get isIosGoogleDriveConfigured {
+    if (kIsWeb || !Platform.isIOS) {
+      return false;
+    }
+    return googleIosClientId.trim().isNotEmpty;
+  }
+
   static Future<String> resolveServerClientId() async {
     final String fromEnv = googleServerClientId.trim();
     if (fromEnv.isNotEmpty) {

@@ -1,6 +1,6 @@
 import 'app_unlock_mode.dart';
 
-/// Android Keystore unwrap 驗證強度（與 [AppUnlockMode] 對應）。
+/// Android Keystore authentication policies used for wrapping recovery material.
 enum KeystoreAuthKind {
   plain,
   deviceCredential,
@@ -8,24 +8,22 @@ enum KeystoreAuthKind {
 }
 
 extension KeystoreAuthKindWire on KeystoreAuthKind {
-  /// 傳給 Android MethodChannel 的值。
   String get wireValue => switch (this) {
         KeystoreAuthKind.plain => 'plain',
         KeystoreAuthKind.deviceCredential => 'deviceCredential',
         KeystoreAuthKind.biometric => 'biometric',
       };
 
-  /// 寫入 index `keystore_wrap_mode` 與 slot id 後綴。
   String get storageSuffix => wireValue;
 
   static KeystoreAuthKind? fromSlotId(String slotId) {
-    if (slotId.contains('_plain_')) {
+    if (slotId.contains('_plain_') || slotId.contains('keystore_plain')) {
       return KeystoreAuthKind.plain;
     }
-    if (slotId.contains('_credential_')) {
+    if (slotId.contains('deviceCredential')) {
       return KeystoreAuthKind.deviceCredential;
     }
-    if (slotId.contains('_biometric_')) {
+    if (slotId.contains('biometric')) {
       return KeystoreAuthKind.biometric;
     }
     return null;

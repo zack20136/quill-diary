@@ -1,12 +1,12 @@
-/// 應用程式解鎖方式（與復原金鑰無關，僅控制 trusted device 解鎖體驗）。
+/// App unlock modes that protect trusted-device recovery material.
 enum AppUnlockMode {
-  /// 不額外要求系統驗證；逾時後自動 plain unwrap。
+  /// No extra system verification; background timeout uses plain unwrap.
   none,
 
-  /// 裝置螢幕鎖（系統 PIN／圖案／密碼）保護 Keystore unwrap。
+  /// Android device credential, such as PIN, pattern, or password.
   deviceLock,
 
-  /// 系統生物辨識保護 Keystore unwrap；失敗時可改以裝置螢幕鎖（credential 槽）備援。
+  /// Strong biometric prompt, with Android device credential as system fallback.
   biometric,
 }
 
@@ -15,9 +15,9 @@ extension AppUnlockModeStorage on AppUnlockMode {
 
   static AppUnlockMode fromStorage(String? raw) {
     return switch (raw) {
-      'none' => AppUnlockMode.none,
-      'deviceLock' => AppUnlockMode.deviceLock,
       'biometric' => AppUnlockMode.biometric,
+      'deviceLock' => AppUnlockMode.deviceLock,
+      'none' => AppUnlockMode.none,
       _ => AppUnlockMode.none,
     };
   }

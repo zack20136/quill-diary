@@ -119,18 +119,6 @@ abstract class DeviceKeyManager {
     required KeystoreAuthKind authKind,
   });
 
-  /// 生物模式備援：以裝置螢幕鎖保護的 wrap 紀錄。
-  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
-    VaultId vaultId,
-  );
-
-  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
-    required VaultId vaultId,
-    required WrappedRecoveryKeyRecord record,
-  });
-
-  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(VaultId vaultId);
-
   Future<List<int>> unwrapWithDeviceKey({
     required VaultId vaultId,
     required DeviceSlotId slotId,
@@ -171,7 +159,6 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     });
     await _storage.delete(key: _deviceInfoStorageKey(vaultId));
     await _storage.delete(key: _wrappedRecoveryKeyStorageKey(vaultId));
-    await clearDeviceCredentialBackupWrappedRecoveryKey(vaultId);
   }
 
   @override
@@ -287,36 +274,6 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
-  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
-    VaultId vaultId,
-  ) async {
-    final String? encoded =
-        await _storage.read(key: _deviceCredentialBackupWrappedRecoveryKeyStorageKey(vaultId));
-    if (encoded == null || encoded.isEmpty) {
-      return null;
-    }
-    return WrappedRecoveryKeyRecord.fromJson(
-      jsonDecode(encoded) as Map<Object?, Object?>,
-    );
-  }
-
-  @override
-  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
-    required VaultId vaultId,
-    required WrappedRecoveryKeyRecord record,
-  }) {
-    return _storage.write(
-      key: _deviceCredentialBackupWrappedRecoveryKeyStorageKey(vaultId),
-      value: jsonEncode(record.toJson()),
-    );
-  }
-
-  @override
-  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(VaultId vaultId) {
-    return _storage.delete(key: _deviceCredentialBackupWrappedRecoveryKeyStorageKey(vaultId));
-  }
-
-  @override
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required VaultId vaultId,
     required List<int> plaintextBytes,
@@ -348,9 +305,6 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
 
   String _wrappedRecoveryKeyStorageKey(VaultId vaultId) =>
       'vault.$vaultId.wrapped_recovery_key';
-
-  String _deviceCredentialBackupWrappedRecoveryKeyStorageKey(VaultId vaultId) =>
-      'vault.$vaultId.wrapped_recovery_key_credential_backup';
 
   DeviceKeyException _mapPlatformException(PlatformException error) {
     if (_isBiometricEnrollmentMissing(error)) {
@@ -392,22 +346,6 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
     VaultId vaultId, {
     required KeystoreAuthKind authKind,
   }) async => throw _error;
-
-  @override
-  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
-    VaultId vaultId,
-  ) async =>
-      null;
-
-  @override
-  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
-    required VaultId vaultId,
-    required WrappedRecoveryKeyRecord record,
-  }) async =>
-      throw _error;
-
-  @override
-  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(VaultId vaultId) async {}
 
   @override
   Future<bool> hasTrustedKey(VaultId vaultId) async => false;

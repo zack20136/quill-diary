@@ -1,11 +1,8 @@
-/// 逾時鎖定後，UI 應執行的自動解鎖步驟（由 [AppSessionController] 設定）。
+/// UI actions requested by [AppSessionController] after the app needs to unlock.
 enum ResumeUnlockAction {
-  /// 模式「無」：直接 trusted unlock。
+  /// Immediately run trusted-device plain unwrap (none mode).
   autoTrusted,
 
-  /// 模式「裝置螢幕鎖」或「生物」：觸發 Keystore 系統對話框。
+  /// Run trusted-device unlock through the configured Android Keystore prompt.
   keystoreUnlock,
-
-  /// 生物模式 Keystore 失敗：改以裝置螢幕鎖（credential 槽）解鎖。
-  deviceCredentialFallback,
 }

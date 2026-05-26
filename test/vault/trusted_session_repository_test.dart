@@ -18,7 +18,7 @@ void main() {
     await harness.dispose();
   });
 
-  test('未開啟生物驗證時，unlockWithRecoveryKey 會重建 plain trusted session', () async {
+  test('預設使用 plain keystore 保護 trusted session（無解鎖模式）', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
 
     await harness.repository.closeUnlockedResources();

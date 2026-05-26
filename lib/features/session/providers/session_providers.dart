@@ -69,14 +69,8 @@ class AppSessionController extends Notifier<AppSessionState> {
 
 
 
-  Future<UnlockOutcome> unlock({
-    bool deviceCredentialFallback = false,
-    bool afterRestore = false,
-  }) async {
-    return _restoreTrustedSession(
-      deviceCredentialFallback: deviceCredentialFallback,
-      afterRestore: afterRestore,
-    );
+  Future<UnlockOutcome> unlock({bool afterRestore = false}) async {
+    return _restoreTrustedSession(afterRestore: afterRestore);
   }
 
 
@@ -323,36 +317,9 @@ class AppSessionController extends Notifier<AppSessionState> {
 
 
 
-  Future<UnlockOutcome> _restoreTrustedSession({
-    required bool deviceCredentialFallback,
-    bool afterRestore = false,
-  }) async {
+  Future<UnlockOutcome> _restoreTrustedSession({bool afterRestore = false}) async {
 
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
-
-    final AppLockService appLock = ref.read(appLockServiceProvider);
-
-    final AppUnlockMode mode = await appLock.getUnlockMode();
-
-
-
-    if (mode == AppUnlockMode.biometric &&
-
-        deviceCredentialFallback &&
-
-        !await appLock.canUseDeviceCredential()) {
-
-      state = const AppSessionState(
-
-        status: AppLockStatus.locked,
-
-        message: kUnlockModeNeedsDeviceLockMessage,
-
-      );
-
-      return UnlockOutcome.failed;
-
-    }
 
 
 
@@ -360,11 +327,7 @@ class AppSessionController extends Notifier<AppSessionState> {
 
     try {
 
-      UnlockedVaultSession session = await repository.openTrustedSession(
-
-        deviceCredentialFallback: mode == AppUnlockMode.biometric && deviceCredentialFallback,
-
-      );
+      UnlockedVaultSession session = await repository.openTrustedSession();
 
       session = await repository.ensureKeystoreMatchesUnlockMode(session);
 
@@ -382,49 +345,13 @@ class AppSessionController extends Notifier<AppSessionState> {
 
     } on DeviceKeyUserCancelledException {
 
-      return _handleTrustedDeviceFailure(
+      return _handleTrustedDeviceFailure();
 
-        appLock: appLock,
+    } on DeviceKeyAuthFailedException {
 
-        mode: mode,
-
-        deviceCredentialFallback: deviceCredentialFallback,
-
-        message: kStartupNeedsBiometricMessage,
-
-      );
-
-    } on DeviceKeyAuthFailedException catch (error) {
-
-      return _handleTrustedDeviceFailure(
-
-        appLock: appLock,
-
-        mode: mode,
-
-        deviceCredentialFallback: deviceCredentialFallback,
-
-        message: error.message,
-
-      );
+      return _handleTrustedDeviceFailure();
 
     } on DeviceKeyBiometricNotEnrolledException {
-
-      if (mode == AppUnlockMode.biometric && await appLock.canUseDeviceCredential()) {
-
-        state = const AppSessionState(
-
-          status: AppLockStatus.locked,
-
-          message: kUseDeviceLockToUnlockMessage,
-
-          resumeAction: ResumeUnlockAction.deviceCredentialFallback,
-
-        );
-
-        return UnlockOutcome.needsUserStep;
-
-      }
 
       state = AppSessionState(
 
@@ -520,37 +447,7 @@ class AppSessionController extends Notifier<AppSessionState> {
 
 
 
-  Future<UnlockOutcome> _handleTrustedDeviceFailure({
-
-    required AppLockService appLock,
-
-    required AppUnlockMode mode,
-
-    required bool deviceCredentialFallback,
-
-    required String message,
-
-  }) async {
-
-    if (mode == AppUnlockMode.biometric &&
-
-        !deviceCredentialFallback &&
-
-        await appLock.canUseDeviceCredential()) {
-
-      state = const AppSessionState(
-
-        status: AppLockStatus.locked,
-
-        message: kBiometricFallbackDeviceLockMessage,
-
-        resumeAction: ResumeUnlockAction.deviceCredentialFallback,
-
-      );
-
-      return UnlockOutcome.needsUserStep;
-
-    }
+  Future<UnlockOutcome> _handleTrustedDeviceFailure() async {
 
     state = AppSessionState(
 

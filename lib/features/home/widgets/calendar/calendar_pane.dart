@@ -303,7 +303,7 @@ class _CalendarPane extends ConsumerWidget {
                       title: '日記 · ${selectedDate.value}',
                       stripeColor: cs.primary,
                       expandBody: true,
-                      child: Text('$error'),
+                      child: Text(userFacingErrorMessage(error)),
                     ),
               ),
             ),
@@ -314,7 +314,7 @@ class _CalendarPane extends ConsumerWidget {
       error: (Object error, StackTrace _) => _StateCard(
         icon: Icons.error_outline,
         title: '讀取失敗',
-        message: '$error',
+        message: userFacingErrorMessage(error),
       ),
     );
   }

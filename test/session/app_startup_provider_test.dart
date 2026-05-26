@@ -8,7 +8,6 @@ import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
 import 'package:quill_lock_diary/features/session/session_messages.dart';
 import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
-import 'package:quill_lock_diary/features/session/state/resume_unlock_action.dart';
 import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/shared/providers/core_providers.dart';
@@ -32,7 +31,7 @@ void main() {
     vaultId: metadata.vaultId,
     trustedDevice: true,
     recoveryWrapKey: List<int>.filled(32, 3),
-    deviceSlotId: 'dev_android_keystore_plain_${metadata.vaultId}',
+    deviceSlotId: 'dev_android_keystore_deviceCredential_${metadata.vaultId}',
   );
 
   ProviderContainer buildContainer({
@@ -176,8 +175,8 @@ void main() {
 
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.locked);
-    expect(state.message, kBiometricFallbackDeviceLockMessage);
-    expect(state.resumeAction, ResumeUnlockAction.deviceCredentialFallback);
+    expect(state.message, kLockedRetryVerificationMessage);
+    expect(state.resumeAction, isNull);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 
@@ -209,7 +208,7 @@ void main() {
 
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.fatalError);
-    expect(state.message, contains('disk failure'));
+    expect(state.message, kUnlockFailedMessage);
   });
 
   test('openTrustedSession 非預期錯誤時回傳 fatalError', () async {
@@ -225,6 +224,6 @@ void main() {
 
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.fatalError);
-    expect(state.message, contains('unexpected keystore'));
+    expect(state.message, kUnlockFailedMessage);
   });
 }

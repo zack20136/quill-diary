@@ -4,9 +4,9 @@ import 'package:cryptography/cryptography.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
 
-/// Plain-only fake for crypto unit tests.
-class PlainFakeDeviceKeyManager implements DeviceKeyManager {
-  PlainFakeDeviceKeyManager()
+/// Device-key fake for crypto unit tests.
+class TestDeviceKeyManager implements DeviceKeyManager {
+  TestDeviceKeyManager()
       : _cipher = AesGcm.with256bits(),
         _keyBytes = List<int>.generate(32, (int index) => index + 1);
 
@@ -14,13 +14,10 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
   final List<int> _keyBytes;
   final Map<String, WrappedRecoveryKeyRecord> _wrappedRecoveryRecords =
       <String, WrappedRecoveryKeyRecord>{};
-  final Map<String, WrappedRecoveryKeyRecord> _credentialBackupRecords =
-      <String, WrappedRecoveryKeyRecord>{};
 
   @override
   Future<void> clearTrustedKey(String vaultId) async {
     _wrappedRecoveryRecords.remove(vaultId);
-    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -41,31 +38,12 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
-    return ensureDeviceKey(vaultId, authKind: KeystoreAuthKind.plain);
+    return ensureDeviceKey(vaultId, authKind: KeystoreAuthKind.deviceCredential);
   }
 
   @override
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
     return _wrappedRecoveryRecords[vaultId];
-  }
-
-  @override
-  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
-    String vaultId,
-  ) async =>
-      _credentialBackupRecords[vaultId];
-
-  @override
-  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
-    required String vaultId,
-    required WrappedRecoveryKeyRecord record,
-  }) async {
-    _credentialBackupRecords[vaultId] = record;
-  }
-
-  @override
-  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(String vaultId) async {
-    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -118,26 +96,31 @@ class PlainFakeDeviceKeyManager implements DeviceKeyManager {
 class RecordingDeviceKeyManager implements DeviceKeyManager {
   RecordingDeviceKeyManager()
       : _cipher = AesGcm.with256bits(),
-        _plainKey = List<int>.generate(32, (int index) => index + 1),
         _secureKey = List<int>.generate(32, (int index) => 255 - index);
 
   final Cipher _cipher;
-  final List<int> _plainKey;
   final List<int> _secureKey;
   final Map<String, WrappedRecoveryKeyRecord> _wrappedRecords =
       <String, WrappedRecoveryKeyRecord>{};
   final Map<String, TrustedDeviceInfo> _deviceInfos = <String, TrustedDeviceInfo>{};
-  final Map<String, WrappedRecoveryKeyRecord> _credentialBackupRecords =
-      <String, WrappedRecoveryKeyRecord>{};
 
   KeystoreAuthKind? lastEnsureAuthKind;
   KeystoreAuthKind? lastWrapAuthKind;
+
+  /// 測試用：直接寫入受信任裝置資料。
+  void seedTrustedDevice({
+    required String vaultId,
+    required WrappedRecoveryKeyRecord record,
+    required TrustedDeviceInfo deviceInfo,
+  }) {
+    _wrappedRecords[vaultId] = record;
+    _deviceInfos[vaultId] = deviceInfo;
+  }
 
   @override
   Future<void> clearTrustedKey(String vaultId) async {
     _wrappedRecords.remove(vaultId);
     _deviceInfos.remove(vaultId);
-    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -165,25 +148,6 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   @override
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
     return _wrappedRecords[vaultId];
-  }
-
-  @override
-  Future<WrappedRecoveryKeyRecord?> readDeviceCredentialBackupWrappedRecoveryKey(
-    String vaultId,
-  ) async =>
-      _credentialBackupRecords[vaultId];
-
-  @override
-  Future<void> storeDeviceCredentialBackupWrappedRecoveryKey({
-    required String vaultId,
-    required WrappedRecoveryKeyRecord record,
-  }) async {
-    _credentialBackupRecords[vaultId] = record;
-  }
-
-  @override
-  Future<void> clearDeviceCredentialBackupWrappedRecoveryKey(String vaultId) async {
-    _credentialBackupRecords.remove(vaultId);
   }
 
   @override
@@ -224,9 +188,7 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     }
     final SecretBox box = await _cipher.encrypt(
       plaintextBytes,
-      secretKey: SecretKey(
-        authKind == KeystoreAuthKind.plain ? _plainKey : _secureKey,
-      ),
+      secretKey: SecretKey(_secureKey),
     );
     return DeviceWrappedPayload(
       slotId: _slotId(vaultId, authKind),
@@ -241,6 +203,6 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   }
 
   List<int> _secretKeyBytes(String slotId) {
-    return slotId.contains('_plain_') ? _plainKey : _secureKey;
+    return _secureKey;
   }
 }

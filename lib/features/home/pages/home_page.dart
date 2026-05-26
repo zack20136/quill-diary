@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../app/router.dart';
@@ -16,6 +17,7 @@ import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/user_facing_error.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../session/application/session_unlock_coordinator.dart';
@@ -277,7 +279,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('$error')),
+        body: Center(child: Text(userFacingErrorMessage(error))),
       ),
     );
   }
@@ -511,7 +513,7 @@ class _HomeTimelinePane extends ConsumerWidget {
                   error: (Object error, StackTrace _) => _StateCard(
                     icon: Icons.error_outline,
                     title: '讀取失敗',
-                    message: '$error',
+                    message: userFacingErrorMessage(error),
                   ),
                 )
               : _BlockedEntriesPane(sessionState: sessionState),
@@ -556,21 +558,21 @@ Future<void> _exportSelectedHomeEntriesAsHtml(
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已匯出 HTML：$savedPath')),
+      SnackBar(content: Text('已匯出 HTML：${p.basename(savedPath)}')),
     );
   } on StateError catch (error) {
     if (!context.mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.message)),
+      SnackBar(content: Text(userFacingErrorMessage(error))),
     );
   } catch (error) {
     if (!context.mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$error')),
+      SnackBar(content: Text(userFacingErrorMessage(error))),
     );
   }
 }

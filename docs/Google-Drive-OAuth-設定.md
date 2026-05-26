@@ -2,7 +2,7 @@
 
 Google Drive 備份功能所需的 Android OAuth 設定。
 
-> 目前正式版本僅支援 Android。程式碼中 iOS 分支為預留；OAuth 設定文件以 Android 為準。
+> 正式版本目前以 Android 為主。iOS 若未提供 `GOOGLE_IOS_CLIENT_ID` 與 `GOOGLE_IOS_REVERSED_CLIENT_ID`，設定頁的 Google Drive 區塊會顯示「尚未設定」並停用按鈕。
 
 ## 必要項目
 
@@ -21,14 +21,17 @@ Google Drive 備份功能所需的 Android OAuth 設定。
 
 - Android 原生層從資源檔提供 `serverClientId`
 - Flutter 端初始化 Google Sign-In 時讀取此值
+- iOS 需以 `--dart-define=GOOGLE_IOS_CLIENT_ID=...` 與 Xcode 的 `GOOGLE_IOS_REVERSED_CLIENT_ID` 設定；未設定時 UI 預先停用 Drive 入口
 
 ## 相關檔案
 
 | 檔案 | 用途 |
 |------|------|
-| `lib/config/oauth_config.dart` | OAuth 讀取邏輯與優先順序 |
+| `lib/config/oauth_config.dart` | OAuth 讀取邏輯與 iOS 是否已設定 |
 | `android/app/src/main/res/values/oauth_config.xml` | `oauth_request_id_token`（Web client id） |
 | `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` | 覆寫 Web client id |
+| `--dart-define=GOOGLE_IOS_CLIENT_ID=...` | iOS OAuth client id |
+| `ios/Runner/Info.plist` | `GIDClientID` / URL scheme 占位 |
 
 ## 驗證重點
 

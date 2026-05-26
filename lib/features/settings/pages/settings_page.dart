@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../config/oauth_config.dart';
 import '../../../app/router.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
@@ -17,12 +19,12 @@ import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/user_facing_error.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
-import '../../session/state/resume_unlock_action.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
 import '../settings_copy.dart';
@@ -42,8 +44,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _busy = false;
   String? _busyMessage;
   bool _unlockCoordinatorAttached = false;
-  BackupHealthReport? _lastBackupHealthReport;
-  String? _lastBackupPath;
   IndexRebuildReport? _lastIndexRebuildReport;
 
   @override
@@ -78,14 +78,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return SettingsSectionCard(
           icon: Icons.health_and_safety_outlined,
           title: '安全狀態',
-          description: '集中檢查復原金鑰、解鎖方式、備份與索引狀態。',
+          description: '集中檢查復原金鑰、解鎖方式與索引狀態。',
           child: SettingsSecurityOverview(
             hasRecoveryKey: recoveryMetadata != null,
             hasUnlockedSession: hasUnlockedSession,
             hasTrustedDevice: hasTrustedDevice,
             unlockModeLabel: UnlockMethodSectionBody.labelForMode(mode),
-            lastBackupMessage: _lastBackupStatusMessage(),
-            lastBackupOk: _lastBackupHealthReport?.ok,
             indexMessage: _indexStatusMessage(hasUnlockedSession),
             busy: _busy,
             onCreateRecoveryKey:
@@ -119,23 +117,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             sessionState.status == AppLockStatus.unlocking
                         ? () => _runAction(_retryTrustedUnlock)
                         : null,
-                onUnlockWithDeviceCredential:
-                    sessionState.status == AppLockStatus.locked &&
-                            sessionState.resumeAction ==
-                                ResumeUnlockAction.deviceCredentialFallback
-                        ? () => _runAction(_unlockWithDeviceCredential)
-                        : null,
                 onCancelUnlock: sessionState.status == AppLockStatus.unlocking
                     ? () => _runAction(() async {
                           await ref.read(appSessionProvider.notifier).lock();
                         })
                     : null,
-                retryActionLabel: _retryUnlockLabel(sessionState),
               ),
               loading: () => const SettingsSectionLoading(),
               error: (Object error, StackTrace _) => SettingsInfoBanner(
                 icon: Icons.error_outline_rounded,
-                message: '$error',
+                message: userFacingErrorMessage(error),
                 tone: SettingsBannerTone.error,
               ),
             ),
@@ -172,11 +163,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         sessionState?.isUnlocked == true && sessionState?.session != null;
     final bool hasRecoveryKey = recoveryMetadata != null;
     final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
+    final bool canUseGoogleDrive =
+        (!Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured) &&
+            canSensitiveVaultTransfer;
     final String disabledSensitiveVaultTransferReason =
         sensitiveVaultTransferDisabledReason(
           hasUnlockedSession: hasUnlockedSession,
           hasRecoveryKey: hasRecoveryKey,
         );
+    final String disabledGoogleDriveReason = !OAuthConfig.isIosGoogleDriveConfigured &&
+            Platform.isIOS
+        ? SettingsDriveBackupCopy.sectionDescriptionDisabled
+        : disabledSensitiveVaultTransferReason;
 
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
@@ -268,7 +266,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     if (exportPath == null) {
                                       return;
                                     }
-                                    _showMessage(SettingsImportExportCopy.exportSuccess(exportPath));
+                                    _showMessage(
+                                      SettingsImportExportCopy.exportSuccess(
+                                        p.basename(exportPath),
+                                      ),
+                                    );
                                   },
                                     progressMessage: SettingsImportExportCopy.exportProgress,
                                   ),
@@ -338,9 +340,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.cloud_outlined,
                     title: SettingsDriveBackupCopy.sectionTitle,
-                    description: canSensitiveVaultTransfer
+                    description: canUseGoogleDrive
                         ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-                        : disabledSensitiveVaultTransferReason,
+                        : disabledGoogleDriveReason,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
@@ -348,7 +350,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.cloud_upload_outlined,
                           emphasized: true,
                           fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
+                          onPressed: _busy || !canUseGoogleDrive
                               ? null
                               : () => _runAction(() async {
                                     await ref
@@ -365,7 +367,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           label: SettingsDriveBackupCopy.restoreButton,
                           icon: Icons.cloud_download_outlined,
                           fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
+                          onPressed: _busy || !canUseGoogleDrive
                               ? null
                               : () => _runRestoreFromGoogleDrive(),
                         ),
@@ -430,15 +432,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  String? _lastBackupStatusMessage() {
-    final BackupHealthReport? report = _lastBackupHealthReport;
-    if (report == null) {
-      return null;
-    }
-    final String location = _lastBackupPath == null ? '' : '\n位置：$_lastBackupPath';
-    return '${report.message}$location';
-  }
-
   String _indexStatusMessage(bool hasUnlockedSession) {
     final IndexRebuildReport? report = _lastIndexRebuildReport;
     if (report != null) {
@@ -483,15 +476,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (result == null) {
       return;
     }
-    if (mounted) {
-      setState(() {
-        _lastBackupHealthReport = result.healthReport;
-        _lastBackupPath = result.path;
-      });
-    }
     final String message = result.healthReport.ok
-        ? SettingsLocalBackupCopy.createSuccess(result.path)
-        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n位置：${result.path}';
+        ? SettingsLocalBackupCopy.createSuccess(p.basename(result.path))
+        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n'
+            '檔案：${p.basename(result.path)}';
     _showMessage(message);
   }
 
@@ -571,7 +559,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         progressMessage: kRestoreInProgressMessage,
       );
     } on StateError catch (error) {
-      _showMessage(error.message);
+      _showMessage(userFacingErrorMessage(error));
     }
   }
 
@@ -678,7 +666,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return sessionState;
     } catch (error) {
       if (mounted) {
-        final String text = error is StateError ? error.message : '$error';
+        final String text = userFacingErrorMessage(error);
         _showMessage(text);
       }
       return ref.read(appSessionProvider);
@@ -697,30 +685,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.read(entryIndexRevisionProvider.notifier).bump();
   }
 
-  String _retryUnlockLabel(AppSessionState sessionState) {
-    return switch (sessionState.resumeAction) {
-      ResumeUnlockAction.keystoreUnlock => SettingsSecurityLockCopy.retryVerificationButton,
-      ResumeUnlockAction.deviceCredentialFallback =>
-          SettingsSecurityLockCopy.unlockWithDeviceLockButton,
-      _ => SettingsSecurityLockCopy.retryVerificationButton,
-    };
-  }
-
   Future<void> _retryTrustedUnlock() async {
     final UnlockOutcome outcome = await ref.read(appSessionProvider.notifier).unlock();
-    if (outcome == UnlockOutcome.needsUserStep) {
-      await _unlockWithDeviceCredential();
-      return;
-    }
-    if (outcome == UnlockOutcome.success) {
-      await refreshEntryIndexCaches(ref);
-    }
-  }
-
-  Future<void> _unlockWithDeviceCredential() async {
-    final UnlockOutcome outcome = await ref
-        .read(appSessionProvider.notifier)
-        .unlock(deviceCredentialFallback: true);
     if (outcome == UnlockOutcome.success) {
       await refreshEntryIndexCaches(ref);
     }
@@ -819,9 +785,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await action();
     } catch (error) {
-      final String text = error is StateError ? error.message : '$error';
+      final String text = userFacingErrorMessage(error);
       if (_shouldOfferGooglePermissionsHelp(text)) {
-        _showGoogleDriveHelpSnackBar(text, action);
+        _showGoogleDriveHelpDialog(text, action);
       } else {
         _showMessage(text);
       }
@@ -849,36 +815,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await _runAction(action);
   }
 
-  void _showGoogleDriveHelpSnackBar(String message, Future<void> Function() action) {
+  void _showGoogleDriveHelpDialog(String message, Future<void> Function() action) {
     if (!mounted) {
       return;
     }
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(message),
-            const SizedBox(height: 10),
-            const Text(
-              SettingsDriveBackupCopy.googleHelpHint,
-              style: TextStyle(fontSize: 13, height: 1.35),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: const Text(SettingsDriveBackupCopy.googleHelpTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(message),
+              const SizedBox(height: 12),
+              const Text(SettingsDriveBackupCopy.googleHelpHint),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(SettingsCopy.actionCancel),
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.tonal(
-                onPressed: () {
-                  messenger.hideCurrentSnackBar();
-                  unawaited(_retryGoogleDriveAfterSignOut(action));
-                },
-                child: const Text(SettingsDriveBackupCopy.googleHelpRetryButton),
-              ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                unawaited(_retryGoogleDriveAfterSignOut(action));
+              },
+              child: const Text(SettingsDriveBackupCopy.googleHelpRetryButton),
             ),
           ],
         ),
@@ -887,9 +852,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   bool _shouldOfferGooglePermissionsHelp(String message) {
-    return message.contains('Google 帳號') ||
-        message.contains('Google 雲端硬碟') ||
+    return message.contains('Google') ||
         message.contains('oauth_config.xml') ||
+        message.contains('OAuth') ||
         message.contains('Cloud Console') ||
         message.contains('No credential available') ||
         message.contains('GIDClientID') ||

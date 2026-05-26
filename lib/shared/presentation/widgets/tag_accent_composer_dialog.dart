@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../features/editor/providers/editor_providers.dart';
 import '../../providers/core_providers.dart';
+import '../../utils/user_facing_error.dart';
 import '../tag_visual.dart';
 
 /// Dialog for creating or editing a tag name and accent color.
@@ -83,7 +84,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('儲存標籤失敗：$error')),
+          SnackBar(content: Text('儲存標籤失敗：${userFacingErrorMessage(error)}')),
         );
       }
     } finally {
@@ -106,7 +107,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('刪除標籤失敗：$error')),
+          SnackBar(content: Text('刪除標籤失敗：${userFacingErrorMessage(error)}')),
         );
       }
     } finally {

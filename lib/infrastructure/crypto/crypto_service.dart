@@ -6,7 +6,6 @@ import 'package:cryptography/cryptography.dart';
 
 import '../../domain/recovery/kdf_descriptor.dart';
 import '../../infrastructure/security/device_key_manager.dart';
-import '../../infrastructure/security/keystore_unlock_policy.dart';
 
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
@@ -332,19 +331,6 @@ class LocalCryptoService implements CryptoService {
   }) async {
     final SecretKey fileKey = await _contentCipher.newSecretKey();
     final List<int> fileKeyBytes = await fileKey.extractBytes();
-    final DeviceWrappedPayload devicePayload = await _deviceKeyManager.wrapWithDeviceKey(
-      vaultId: vaultId,
-      plaintextBytes: fileKeyBytes,
-      authKind: KeystoreAuthKind.plain,
-    );
-    final EncryptionKeySlot deviceSlot = EncryptionKeySlot(
-      slotId: devicePayload.slotId,
-      slotType: 'device',
-      wrapAlgorithm: 'android-keystore-aes-gcm',
-      wrappedKeyBase64: devicePayload.ciphertextBase64,
-      nonceBase64: devicePayload.nonceBase64,
-      platform: devicePayload.platform,
-    );
     final EncryptionKeySlot recoverySlot = await _createRecoverySlot(
       wrappingKey: recoveryWrapKey,
       recoverySlotKdf: recoverySlotKdf,
@@ -361,7 +347,7 @@ class LocalCryptoService implements CryptoService {
       updatedAt: updatedAt,
       cipher: 'aes-256-gcm',
       nonceBase64: base64Encode(contentNonce),
-      keySlots: <EncryptionKeySlot>[deviceSlot, recoverySlot],
+      keySlots: <EncryptionKeySlot>[recoverySlot],
     );
     final Uint8List headerBytes = _canonicalHeaderBytes(header);
     final SecretBox contentBox = await _contentCipher.encrypt(

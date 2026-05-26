@@ -44,7 +44,6 @@ abstract final class SettingsSecurityLockCopy {
   static const String unlockingWaitHint =
       '若等候過久，可能是驗證視窗被擋住。可取消後改用手動驗證。';
   static const String cancelUnlockButton = '取消並改用手動驗證';
-  static const String unlockWithDeviceLockButton = '使用裝置螢幕鎖解鎖';
   static const String unlockWithRecoveryButton = '使用復原金鑰解鎖';
   static const String recoveryUnlockHint =
       '輸入復原金鑰以重新解鎖本機日記庫。';
@@ -82,6 +81,7 @@ abstract final class SettingsUnlockMethodCopy {
   static const String needsRecoveryKeyBanner = '請先建立復原金鑰，才能設定解鎖方式。';
 
   /// 分段按鈕標籤（較短，完整名稱見 [UnlockMethodSectionBody.labelForMode]）。
+  static const String segmentNone = '無';
   static const String segmentDeviceLock = '螢幕鎖';
 
   static const String biometricNeedsDeviceLockHint =
@@ -139,6 +139,7 @@ abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
       '將 .jbackup 上傳到 Google Drive，或從雲端下載備份還原。還原後可能需要輸入建立備份時保存的復原金鑰。';
+  static const String sectionDescriptionDisabled = 'Google Drive 備份尚未設定。';
 
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
@@ -150,6 +151,7 @@ abstract final class SettingsDriveBackupCopy {
 
   static const String googleHelpHint =
       '如果你剛調整 Google Drive 權限或授權設定，先重新登入再重試通常就能完成授權。';
+  static const String googleHelpTitle = 'Google Drive 授權需要處理';
   static const String googleHelpRetryButton = '重新登入後重試';
 }
 

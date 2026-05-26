@@ -7,7 +7,6 @@ import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../settings_copy.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
-import '../../session/state/resume_unlock_action.dart';
 import '../../../shared/presentation/page_style.dart';
 
 /// 設定頁可重用的提示色系。
@@ -140,9 +139,7 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.onUnlockWithRecovery,
     this.recoveryKeyHint,
     this.onRetryTrustedUnlock,
-    this.onUnlockWithDeviceCredential,
     this.onCancelUnlock,
-    this.retryActionLabel = SettingsSecurityLockCopy.retryVerificationButton,
     super.key,
   });
 
@@ -155,9 +152,7 @@ class SettingsStatusPanel extends StatelessWidget {
   final SettingsBannerTone bannerTone;
   final VoidCallback? onUnlockWithRecovery;
   final VoidCallback? onRetryTrustedUnlock;
-  final VoidCallback? onUnlockWithDeviceCredential;
   final VoidCallback? onCancelUnlock;
-  final String retryActionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -165,9 +160,6 @@ class SettingsStatusPanel extends StatelessWidget {
     final bool isUnlocking = sessionState.status == AppLockStatus.unlocking;
     final bool isLocked = sessionState.status == AppLockStatus.locked;
     final bool needsRecovery = sessionState.status == AppLockStatus.recoveryRequired;
-    final bool canUseDeviceCredentialFallback =
-        sessionState.resumeAction == ResumeUnlockAction.deviceCredentialFallback &&
-        onUnlockWithDeviceCredential != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -196,22 +188,12 @@ class SettingsStatusPanel extends StatelessWidget {
           ],
         ],
         if (isLocked) ...<Widget>[
-          if (canUseDeviceCredentialFallback) ...<Widget>[
-            const SizedBox(height: 14),
-            SettingsActionButton(
-              label: SettingsSecurityLockCopy.unlockWithDeviceLockButton,
-              icon: Icons.lock_outline,
-              emphasized: true,
-              onPressed: busy ? null : onUnlockWithDeviceCredential,
-            ),
-          ],
           if (onRetryTrustedUnlock != null) ...<Widget>[
             const SizedBox(height: 10),
             SettingsActionButton(
-              label: retryActionLabel,
+              label: SettingsSecurityLockCopy.retryVerificationButton,
               icon: Icons.lock_open_rounded,
-              emphasized:
-                  sessionState.resumeAction != ResumeUnlockAction.deviceCredentialFallback,
+              emphasized: true,
               onPressed: busy ? null : onRetryTrustedUnlock,
             ),
           ],
@@ -409,8 +391,8 @@ class UnlockMethodSectionBody extends StatelessWidget {
           segments: <ButtonSegment<AppUnlockMode>>[
             ButtonSegment<AppUnlockMode>(
               value: AppUnlockMode.none,
-              label: Text(labelForMode(AppUnlockMode.none)),
-              icon: Icon(Icons.shield_outlined, size: 18),
+              label: Text(SettingsUnlockMethodCopy.segmentNone),
+              icon: Icon(Icons.no_encryption_gmailerrorred_outlined, size: 18),
             ),
             ButtonSegment<AppUnlockMode>(
               value: AppUnlockMode.deviceLock,
@@ -634,8 +616,6 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.hasUnlockedSession,
     required this.hasTrustedDevice,
     required this.unlockModeLabel,
-    required this.lastBackupMessage,
-    required this.lastBackupOk,
     required this.indexMessage,
     required this.busy,
     required this.onCreateRecoveryKey,
@@ -650,8 +630,6 @@ class SettingsSecurityOverview extends StatelessWidget {
   final bool hasUnlockedSession;
   final bool hasTrustedDevice;
   final String unlockModeLabel;
-  final String? lastBackupMessage;
-  final bool? lastBackupOk;
   final String indexMessage;
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
@@ -686,16 +664,6 @@ class SettingsSecurityOverview extends StatelessWidget {
         title: '可信裝置',
         message: hasTrustedDevice ? '此裝置可使用目前解鎖方式。' : '此裝置尚未具備可信解鎖資料。',
         level: hasTrustedDevice ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
-      ),
-      _SecurityOverviewItem(
-        icon: Icons.backup_outlined,
-        title: '最近備份檢查',
-        message: lastBackupMessage ?? '尚未建立本機備份；建立後會自動檢查檔案是否可用。',
-        level: lastBackupOk == null
-            ? SettingsHealthLevel.warning
-            : lastBackupOk!
-                ? SettingsHealthLevel.ok
-                : SettingsHealthLevel.error,
       ),
       _SecurityOverviewItem(
         icon: Icons.storage_rounded,

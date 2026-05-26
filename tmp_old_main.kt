@@ -1,4 +1,4 @@
-package zack20136.com.quill_lock_diary
+﻿package zack20136.com.quill_lock_diary
 
 import android.app.KeyguardManager
 import android.os.Build
@@ -95,19 +95,6 @@ class MainActivity : FlutterFragmentActivity() {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, requireSecretKey(vaultId, kind))
 
-            if (kind == AuthKind.PLAIN) {
-                val ciphertext = cipher.doFinal(plaintext)
-                result.success(
-                    mapOf(
-                        "slotId" to slotIdFor(vaultId, kind),
-                        "nonce" to encode(cipher.iv),
-                        "ciphertext" to encode(ciphertext),
-                        "platform" to platformLabel(),
-                    ),
-                )
-                return
-            }
-
             val onSuccess = { authedCipher: Cipher ->
                 val ciphertext = authedCipher.doFinal(plaintext)
                 result.success(
@@ -119,13 +106,17 @@ class MainActivity : FlutterFragmentActivity() {
                     ),
                 )
             }
-            authenticateCipher(
-                cipher = cipher,
-                kind = kind,
-                reason = "請驗證裝置以保護日記庫",
-                result = result,
-                onSuccess = onSuccess,
-            )
+            if (kind == AuthKind.PLAIN) {
+                onSuccess(cipher)
+            } else {
+                authenticateCipher(
+                    cipher = cipher,
+                    kind = kind,
+                    reason = "隢?霅?蝵桐誑靽風?亥?摨?,
+                    result = result,
+                    onSuccess = onSuccess,
+                )
+            }
         } catch (error: Throwable) {
             result.error(
                 "device_key_invalidated",
@@ -149,15 +140,6 @@ class MainActivity : FlutterFragmentActivity() {
                 GCMParameterSpec(GCM_TAG_BITS, nonce),
             )
 
-            if (kind == AuthKind.PLAIN) {
-                result.success(
-                    cipher.doFinal(ciphertext).map { byteValue ->
-                        byteValue.toInt() and 0xFF
-                    },
-                )
-                return
-            }
-
             val onSuccess = { authedCipher: Cipher ->
                 result.success(
                     authedCipher.doFinal(ciphertext).map { byteValue ->
@@ -165,13 +147,17 @@ class MainActivity : FlutterFragmentActivity() {
                     },
                 )
             }
-            authenticateCipher(
-                cipher = cipher,
-                kind = kind,
-                reason = "請驗證裝置以解鎖日記庫",
-                result = result,
-                onSuccess = onSuccess,
-            )
+            if (kind == AuthKind.PLAIN) {
+                onSuccess(cipher)
+            } else {
+                authenticateCipher(
+                    cipher = cipher,
+                    kind = kind,
+                    reason = "隢?霅?蝵桐誑閫???亥?摨?,
+                    result = result,
+                    onSuccess = onSuccess,
+                )
+            }
         } catch (error: Throwable) {
             result.error(
                 "device_key_invalidated",
@@ -216,21 +202,30 @@ class MainActivity : FlutterFragmentActivity() {
         when (kind) {
             AuthKind.PLAIN -> Unit
             AuthKind.DEVICE_CREDENTIAL -> {
-                builder.setUserAuthenticationParameters(
-                    0,
-                    KeyProperties.AUTH_DEVICE_CREDENTIAL,
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    builder.setUserAuthenticationParameters(
+                        0,
+                        KeyProperties.AUTH_DEVICE_CREDENTIAL,
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    builder.setUserAuthenticationValidityDurationSeconds(0)
+                }
                 builder.setUserAuthenticationRequired(true)
             }
             AuthKind.BIOMETRIC -> {
-                builder.setUserAuthenticationParameters(
-                    0,
-                    (
-                        KeyProperties.AUTH_BIOMETRIC_STRONG or
-                            KeyProperties.AUTH_DEVICE_CREDENTIAL
-                    ),
-                )
-                builder.setUserAuthenticationRequired(true)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    builder.setUserAuthenticationParameters(
+                        0,
+                        KeyProperties.AUTH_BIOMETRIC_STRONG,
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    builder.setUserAuthenticationValidityDurationSeconds(0)
+                }
+                builder
+                    .setUserAuthenticationRequired(true)
+                    .setInvalidatedByBiometricEnrollment(true)
             }
         }
         val spec = builder.build()
@@ -319,15 +314,11 @@ class MainActivity : FlutterFragmentActivity() {
     ) {
         val authenticators =
             when (kind) {
-                AuthKind.PLAIN ->
-                    throw IllegalStateException("Plain keys do not require authentication.")
                 AuthKind.DEVICE_CREDENTIAL ->
                     BiometricManager.Authenticators.DEVICE_CREDENTIAL
                 AuthKind.BIOMETRIC ->
-                    (
-                        BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                            BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                    )
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG
+                AuthKind.PLAIN -> throw IllegalStateException("Plain keys do not require authentication.")
             }
         val prompt =
             BiometricPrompt(
@@ -376,6 +367,9 @@ class MainActivity : FlutterFragmentActivity() {
                 .setTitle("QuillLockDiary")
                 .setSubtitle(reason)
                 .setAllowedAuthenticators(authenticators)
+        if (kind == AuthKind.BIOMETRIC) {
+            promptBuilder.setNegativeButtonText("??")
+        }
         prompt.authenticate(
             promptBuilder.build(),
             BiometricPrompt.CryptoObject(cipher),

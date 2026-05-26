@@ -20,6 +20,7 @@ import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/presentation/page_style.dart';
+import '../../../shared/utils/user_facing_error.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/presentation/widgets/local_file_thumbnail.dart';
@@ -745,7 +746,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 error: (Object error, StackTrace _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('$error'),
+                    child: Text(userFacingErrorMessage(error)),
                   ),
                 ),
               ),
@@ -755,14 +756,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (Object error, StackTrace _) => Scaffold(
             appBar: AppBar(title: const Text('編輯日記')),
-            body: Center(child: Text('$error')),
+            body: Center(child: Text(userFacingErrorMessage(error))),
           ),
         );
       },
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(title: const Text('編輯日記')),
-        body: Center(child: Text('$error')),
+        body: Center(child: Text(userFacingErrorMessage(error))),
       ),
     );
   }

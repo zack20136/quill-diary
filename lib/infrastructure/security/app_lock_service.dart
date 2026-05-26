@@ -116,7 +116,8 @@ class UnsupportedAppLockService implements AppLockService {
   Future<void> setUnlockMode(AppUnlockMode mode) async {}
 
   @override
-  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async => KeystoreAuthKind.plain;
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async =>
+      KeystoreAuthKind.deviceCredential;
 
   @override
   Future<bool> canUseDeviceCredential() async => false;

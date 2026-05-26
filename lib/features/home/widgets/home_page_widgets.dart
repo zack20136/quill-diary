@@ -236,7 +236,7 @@ class _OverviewPane extends ConsumerWidget {
       error: (Object error, StackTrace _) => _StateCard(
         icon: Icons.error_outline,
         title: '讀取失敗',
-        message: '$error',
+        message: userFacingErrorMessage(error),
       ),
     );
   }
@@ -326,7 +326,7 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
         ),
         error: (Object error, StackTrace _) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Text('$error'),
+          child: Text(userFacingErrorMessage(error)),
         ),
       ),
     );
@@ -411,7 +411,7 @@ class _MemoryFocusedPeriodBar extends ConsumerWidget {
             height: 40,
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (Object error, StackTrace _) => Text('$error'),
+          error: (Object error, StackTrace _) => Text(userFacingErrorMessage(error)),
         );
   }
 }

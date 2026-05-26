@@ -179,6 +179,29 @@ void main() {
     expect(repository.closeUnlockedResourcesCalls, 1);
   });
 
+  test('無解鎖模式：背景逾時後自動以 plain trusted 解鎖', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.none,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
+    controller.clock = () => fakeNow;
+
+    await controller.handleLifecycleChange(AppLifecycleState.paused);
+    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.unlocked);
+    expect(repository.openTrustedSessionCalls, 1);
+  });
+
   test('裝置螢幕鎖模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       openTrustedSessionResult: sampleSession,
@@ -226,30 +249,6 @@ void main() {
     expect(state.status, AppLockStatus.locked);
     expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
     expect(repository.openTrustedSessionCalls, 0);
-  });
-
-  test('無模式：背景逾時回前景後自動還原 trusted session', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      openTrustedSessionResult: sampleSession,
-    );
-    final FakeAppLockService appLock = FakeAppLockService(
-      unlockMode: AppUnlockMode.none,
-    );
-    final ProviderContainer container = buildContainer(repository, appLock: appLock);
-    final AppSessionController controller = container.read(appSessionProvider.notifier);
-
-    controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
-
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
-
-    final AppSessionState state = container.read(appSessionProvider);
-    expect(state.status, AppLockStatus.unlocked);
-    expect(state.resumeAction, isNull);
-    expect(repository.openTrustedSessionCalls, greaterThanOrEqualTo(1));
   });
 
   test('背景未逾時時不鎖定', () async {

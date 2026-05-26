@@ -7,11 +7,11 @@ import 'package:quill_lock_diary/infrastructure/crypto/crypto_service.dart';
 import '../helpers/fake_device_key_manager.dart';
 
 void main() {
-  late PlainFakeDeviceKeyManager deviceKeyManager;
+  late TestDeviceKeyManager deviceKeyManager;
   late LocalCryptoService crypto;
 
   setUp(() {
-    deviceKeyManager = PlainFakeDeviceKeyManager();
+    deviceKeyManager = TestDeviceKeyManager();
     crypto = LocalCryptoService(deviceKeyManager: deviceKeyManager);
   });
 
@@ -142,7 +142,7 @@ void main() {
     );
   });
 
-  test('device slot 可成功 round-trip 解密', () async {
+  test('新加密檔只寫入 recovery slot，不產生 device slot', () async {
     const String vaultId = 'vlt_TEST01';
     final KdfDescriptor kdf = KdfDescriptor.argon2idRecovery(
       saltBytes: List<int>.filled(16, 3),
@@ -162,13 +162,17 @@ void main() {
     );
     final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
 
+    expect(
+      parsed.header.keySlots.where((EncryptionKeySlot slot) => slot.slotType == 'device'),
+      isEmpty,
+    );
+
     final String markdown = await crypto.decryptMarkdown(
       headerBytes: parsed.headerBytes,
       ciphertextBytes: parsed.ciphertextBytes,
-      context: DecryptionContext(
+      context: DecryptionContext.recovery(
+        recoveryWrapKey: wrapKey,
         vaultId: vaultId,
-        trustedDevice: true,
-        deviceSlotId: 'dev_android_keystore_plain_$vaultId',
       ),
     );
     expect(markdown, 'device slot test');

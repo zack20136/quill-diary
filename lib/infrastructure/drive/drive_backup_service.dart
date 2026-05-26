@@ -7,6 +7,27 @@ import '../../config/oauth_config.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
 
+String sanitizeDriveBackupFileName(String fileName) {
+  final String trimmed = fileName.trim();
+  final String normalizedSeparators = trimmed.replaceAll('\\', '/');
+  final String basename = p.posix.basename(normalizedSeparators);
+  final bool hasPathSegments = basename != normalizedSeparators;
+  final bool hasUnsafeCharacters = RegExp(r'[<>:"/\\|?*\x00-\x1F]').hasMatch(basename);
+  if (trimmed.isEmpty ||
+      hasPathSegments ||
+      basename == '.' ||
+      basename == '..' ||
+      hasUnsafeCharacters ||
+      basename.endsWith('.') ||
+      basename.endsWith(' ')) {
+    throw StateError('Google Drive 備份檔名不安全，已停止下載。');
+  }
+  if (p.extension(basename).toLowerCase() != '.jbackup') {
+    throw StateError('Google Drive 備份檔副檔名不正確。');
+  }
+  return basename;
+}
+
 final class DriveBackupFile {
   const DriveBackupFile({
     required this.id,
@@ -62,6 +83,12 @@ class GoogleDriveBackupService implements DriveBackupService {
       );
     }
     if (Platform.isIOS) {
+      if (OAuthConfig.googleIosClientId.trim().isEmpty) {
+        throw StateError(
+          'iOS Google Drive 備份尚未設定 OAuth Client ID，'
+          '請設定 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
+        );
+      }
       await _googleSignIn.initialize();
     } else {
       await _googleSignIn.initialize(
@@ -204,7 +231,12 @@ class GoogleDriveBackupService implements DriveBackupService {
   }) async {
     final drive.DriveApi api = reuseApi ?? await createAuthorizedDriveApi();
     await destinationDirectory.create(recursive: true);
-    final File output = File(p.join(destinationDirectory.path, fileName));
+    final String safeFileName = sanitizeDriveBackupFileName(fileName);
+    final File output = File(p.join(destinationDirectory.path, safeFileName));
+    _ensurePathInsideDirectory(
+      directory: destinationDirectory,
+      file: output,
+    );
     final drive.Media media = await api.files.get(
           fileId,
           downloadOptions: drive.DownloadOptions.fullMedia,
@@ -218,5 +250,16 @@ class GoogleDriveBackupService implements DriveBackupService {
       await sink?.close();
     }
     return output;
+  }
+
+  void _ensurePathInsideDirectory({
+    required Directory directory,
+    required File file,
+  }) {
+    final String root = p.normalize(directory.absolute.path);
+    final String target = p.normalize(file.absolute.path);
+    if (target != root && !p.isWithin(root, target)) {
+      throw StateError('Google Drive 備份下載路徑不安全。');
+    }
   }
 }
