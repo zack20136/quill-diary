@@ -122,7 +122,7 @@ class MainActivity : FlutterFragmentActivity() {
             authenticateCipher(
                 cipher = cipher,
                 kind = kind,
-                reason = "請驗證裝置以保護日記庫",
+                reason = WRAP_PROMPT_REASON,
                 result = result,
                 onSuccess = onSuccess,
             )
@@ -168,7 +168,7 @@ class MainActivity : FlutterFragmentActivity() {
             authenticateCipher(
                 cipher = cipher,
                 kind = kind,
-                reason = "請驗證裝置以解鎖日記庫",
+                reason = UNWRAP_PROMPT_REASON,
                 result = result,
                 onSuccess = onSuccess,
             )
@@ -402,5 +402,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val GCM_TAG_BITS = 128
+        private const val WRAP_PROMPT_REASON = "請驗證身分以保護復原金鑰"
+        private const val UNWRAP_PROMPT_REASON = "請驗證身分以解鎖復原金鑰"
     }
 }
