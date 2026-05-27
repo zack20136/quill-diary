@@ -45,5 +45,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/.gradle/
+/android/key.properties
+*.jks
+*.keystore
 tmp_old*
 .tmp_old*

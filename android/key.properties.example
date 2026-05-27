@@ -1,0 +1,11 @@
+# 請先把這個檔案複製成 `android/key.properties`，再把下面的範例值改成你的正式簽章資料。
+# `storeFile` 要填 keystore 檔案路徑，路徑是以 `android/` 目錄為基準。
+# `storePassword` 要填整個 keystore 檔案的密碼。
+# `keyAlias` 要填 keystore 內實際要拿來簽章的金鑰別名。
+# `keyPassword` 要填上面那把金鑰別名對應的密碼。
+# & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v -keystore android\upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+storeFile=upload-keystore.jks
+storePassword=replace_with_keystore_password
+keyAlias=replace_with_key_alias
+keyPassword=replace_with_key_password
