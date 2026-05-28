@@ -2,7 +2,9 @@ import 'package:go_router/go_router.dart';
 
 import '../features/editor/pages/editor_page.dart';
 import '../features/home/pages/home_page.dart';
+import '../features/settings/pages/security_info_page.dart';
 import '../features/settings/pages/settings_page.dart';
+import '../features/settings/pages/support_page.dart';
 
 /// Central application routes.
 ///
@@ -13,6 +15,8 @@ class AppRouter {
   static const String editorRoute = '/editor';
   static const String editorDetailRoute = '/editor/:entryId';
   static const String settingsRoute = '/settings';
+  static const String securityInfoRoute = '/settings/security';
+  static const String supportRoute = '/settings/support';
 
   static GoRouter createRouter() {
     return GoRouter(
@@ -36,6 +40,14 @@ class AppRouter {
         GoRoute(
           path: settingsRoute,
           builder: (_, _) => const SettingsPage(),
+        ),
+        GoRoute(
+          path: securityInfoRoute,
+          builder: (_, _) => const SecurityInfoPage(),
+        ),
+        GoRoute(
+          path: supportRoute,
+          builder: (_, _) => const SupportPage(),
         ),
       ],
     );

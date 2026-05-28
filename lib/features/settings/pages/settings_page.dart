@@ -187,6 +187,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        actions: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: OutlinedButton.icon(
+              onPressed: () => unawaited(context.push(AppRouter.securityInfoRoute)),
+              icon: const Icon(Icons.info_outline_rounded, size: 18),
+              label: const Text('說明'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 8, right: 12, bottom: 8),
+            child: FilledButton.tonalIcon(
+              onPressed: () => unawaited(context.push(AppRouter.supportRoute)),
+              icon: const Icon(Icons.favorite_border_rounded, size: 18),
+              label: const Text('\u8d0a\u52a9'),
+            ),
+          ),
+        ],
       ),
       body: ColoredBox(
         color: pageBackground,
