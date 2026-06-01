@@ -82,4 +82,5 @@ flutter {
 
 dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("io.realm:realm-android-library:10.19.0")
 }

@@ -12,6 +12,7 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.realm.Realm
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -21,6 +22,7 @@ import javax.crypto.spec.GCMParameterSpec
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        Realm.init(applicationContext)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -32,6 +34,37 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(if (id.isEmpty()) null else id)
                 }
                 else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            EASY_DIARY_REALM_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "readDiaryBackup" -> {
+                        val path = call.argument<String>("realmPath")
+                        if (path.isNullOrBlank()) {
+                            result.error(
+                                "invalid_argument",
+                                "realmPath is required.",
+                                null,
+                            )
+                            return@setMethodCallHandler
+                        }
+                        val entries = EasyDiaryRealmReader.readDiaries(path)
+                        result.success(mapOf("entries" to entries))
+                    }
+
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "easy_diary_realm_error",
+                    error.message ?: "Unable to read Easy Diary backup.",
+                    null,
+                )
             }
         }
 
@@ -398,6 +431,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
+        private const val EASY_DIARY_REALM_CHANNEL_NAME = "quill_lock_diary/easy_diary_realm"
         private const val DEVICE_KEY_CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"

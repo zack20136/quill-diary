@@ -112,7 +112,13 @@ abstract final class SettingsSensitiveVaultCopy {
 abstract final class SettingsImportExportCopy {
   static const String sectionTitle = '匯入與匯出';
   static const String sectionDescriptionEnabled =
-      '匯出日記為 Markdown 壓縮檔；可匯入 Markdown、HTML 或 zip。';
+      '匯出日記為 Markdown 壓縮檔；可匯入本 App 的 Markdown、本 App 匯出 HTML、'
+      'Easy Diary 完整備份 zip，或本 App 匯出之 zip。';
+
+  static const String importNoEntriesMessage =
+      '找不到可匯入的內容，請確認檔案格式。';
+
+  static String importFailure(String message) => message;
 
   static const String exportButton = '匯出日記';
   static const String importButton = '匯入檔案';

@@ -103,7 +103,7 @@ class VaultTransferService {
     }
 
     final String? sourceDirectory = await FilePicker.getDirectoryPath(
-      dialogTitle: '選擇要匯入的資料夾（含附件的 Markdown / HTML）',
+      dialogTitle: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
       initialDirectory: await _exportSaveLocationStore.resolveInitialDirectory(),
     );
     if (sourceDirectory == null) {

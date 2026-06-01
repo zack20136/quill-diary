@@ -328,7 +328,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                           .read(vaultTransferServiceProvider)
                                           .importDocumentsWithPicker(session);
                                     });
-                                    if (result == null || result.importedEntries == 0) {
+                                    if (result == null) {
+                                      return;
+                                    }
+                                    if (result.importedEntries == 0) {
+                                      _showMessage(
+                                        result.failureMessage ??
+                                            SettingsImportExportCopy.importNoEntriesMessage,
+                                      );
                                       return;
                                     }
                                     await refreshEntryIndexCaches(ref);

@@ -15,26 +15,12 @@ import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
 import 'restore_precheck.dart';
 import 'vault_path_strategy.dart';
+import 'easy_diary_backup_import.dart';
+import 'portable_import_result.dart';
 import 'tag_styles_store.dart';
 import 'vault_repository.dart';
 
-/// 可攜式匯入（資料夾或 zip 解壓後）的統計結果。
-class PortableImportResult {
-  const PortableImportResult({
-    required this.importedEntries,
-    required this.skippedFiles,
-    this.skippedAttachments = 0,
-  });
-
-  /// 成功寫入日記庫的篇數。
-  final int importedEntries;
-
-  /// 整份檔案無法解析或無有效段落而略過的次數。
-  final int skippedFiles;
-
-  /// 附件參考無法解碼或找不到本機檔案的次數。
-  final int skippedAttachments;
-}
+export 'portable_import_result.dart';
 
 class HtmlExportEstimate {
   const HtmlExportEstimate({
@@ -82,21 +68,27 @@ class BackupHealthReport {
   final String message;
 }
 
+typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
+
 class VaultArchiveIo {
   VaultArchiveIo({
     required VaultPathStrategy pathStrategy,
     required VaultRepository repository,
     required FrontMatterCodec frontMatterCodec,
     required IndexDatabaseManager indexDatabaseManager,
+    EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
   })  : _pathStrategy = pathStrategy,
         _repository = repository,
         _frontMatterCodec = frontMatterCodec,
-        _indexDatabaseManager = indexDatabaseManager;
+        _indexDatabaseManager = indexDatabaseManager,
+        _easyDiaryBackupImporterFactory =
+            easyDiaryBackupImporterFactory ?? EasyDiaryBackupImporter.new;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
   final FrontMatterCodec _frontMatterCodec;
   final IndexDatabaseManager _indexDatabaseManager;
+  final EasyDiaryBackupImporterFactory _easyDiaryBackupImporterFactory;
   static const String _kNoHtmlExportEntriesMessage = '沒有可匯出的日記。';
 
   Future<File> writeBackupZip(File target) async {
@@ -380,17 +372,13 @@ class VaultArchiveIo {
   // ---------------------------------------------------------------------------
   // 可攜式匯入（Portable import）
   //
-  // 支援來源與辨識方式：
   // | 來源 | 辨識 | 入口 |
-  // | Easy Diary（第三方 Android 匯出 HTML） | 非 QuillLock；`div.title-right` 切篇；
-  //   內文 `contents`～`photo-container`；附件僅 `photo-container` | `_importEasyDiaryExportFile` |
-  // | QuillLockDiary（本 App HTML 匯出） | `<article class="… entry …">` | `_importQuillLockExportFile` |
-  // | 本 App Markdown | `.md` + YAML front matter；zip 內同上 | `_parseMarkdownExportFile` |
-  //
-  // HTML 由 `_importHtmlExportFile` 依內容分流；`.md` 走 Markdown 路徑。
+  // | 本 App Markdown | `.md` + YAML front matter | `_parseMarkdownExportFile` |
+  // | 本 App HTML 匯出 | `<article class="… entry …">` | `_importQuillLockHtmlFile` |
+  // | Easy Diary 完整備份 zip | `preference.json` + realm + `Photos/` | `EasyDiaryBackupImporter` |
   // ---------------------------------------------------------------------------
 
-  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`（含上述三種來源）。
+  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`。
   Future<PortableImportResult> importDocuments({
     required UnlockedVaultSession session,
     required Directory rootDirectory,
@@ -407,7 +395,7 @@ class VaultArchiveIo {
     for (final File file in importFiles) {
       final String extension = p.extension(file.path).toLowerCase();
       if (extension == '.html' || extension == '.htm') {
-        final _ImportFileTotals fileTotals = await _importHtmlExportFile(
+        final _ImportFileTotals fileTotals = await _importQuillLockHtmlFile(
           session: session,
           file: file,
           importRootDirectory: rootDirectory,
@@ -450,7 +438,7 @@ class VaultArchiveIo {
     );
   }
 
-  /// 解壓 zip 後呼叫 [importDocuments]（Markdown / HTML 來源規則相同）。
+  /// 解壓 zip 後優先嘗試 Easy Diary 完整備份，否則走 Markdown / HTML 可攜式匯入。
   Future<PortableImportResult> importDocumentsFromZip({
     required UnlockedVaultSession session,
     required File zipFile,
@@ -475,16 +463,41 @@ class VaultArchiveIo {
           await Directory(outputPath).create(recursive: true);
         }
       }
-      return await importDocuments(
+
+      final EasyDiaryBackupImporter easyDiaryImporter = _easyDiaryBackupImporterFactory();
+      final PortableImportResult? easyDiaryResult =
+          await easyDiaryImporter.tryImportFromExtractedRoot(
+        session: session,
+        repository: _repository,
+        extractedRoot: tempRoot,
+      );
+      if (easyDiaryResult != null) {
+        return easyDiaryResult;
+      }
+
+      final PortableImportResult portableResult = await importDocuments(
         session: session,
         rootDirectory: tempRoot,
       );
+      if (portableResult.importedEntries == 0 &&
+          portableResult.skippedFiles == 0 &&
+          portableResult.skippedAttachments == 0) {
+        return PortableImportResult(
+          importedEntries: 0,
+          skippedFiles: 0,
+          failureMessage: _zipImportNoEntriesMessage,
+        );
+      }
+      return portableResult;
     } finally {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
     }
   }
+
+  static const String _zipImportNoEntriesMessage =
+      'zip 內找不到可匯入的 Markdown、本 App HTML 或 Easy Diary 完整備份。';
 
   /// 還原前驗證復原金鑰；失敗拋 [StateError]，不修改本機 vault。
   Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
@@ -1309,78 +1322,27 @@ class VaultArchiveIo {
     return const <_ParsedImportEntry>[];
   }
 
-  /// 依 HTML 內容分流至 QuillLock 或 Easy Diary 匯入。
-  Future<_ImportFileTotals> _importHtmlExportFile({
+  /// 僅匯入本 App 匯出的 HTML；非 QuillLock 格式略過。
+  Future<_ImportFileTotals> _importQuillLockHtmlFile({
     required UnlockedVaultSession session,
     required File file,
     required Directory importRootDirectory,
   }) async {
     final String html = await file.readAsString();
-    if (_isQuillLockExportHtml(html)) {
-      return _importQuillLockExportFile(
-        session: session,
-        file: file,
-        html: html,
-        importRootDirectory: importRootDirectory,
+    if (!_isQuillLockExportHtml(html)) {
+      return const _ImportFileTotals(
+        importedEntries: 0,
+        skippedFiles: 1,
+        skippedAttachments: 0,
       );
     }
-    return _importEasyDiaryExportFile(
+    return _importQuillLockExportFile(
       session: session,
       file: file,
       html: html,
       importRootDirectory: importRootDirectory,
     );
   }
-
-  // --- Easy Diary 匯入（第三方 Android Easy Diary 匯出 HTML） ---
-
-  Future<_ImportFileTotals> _importEasyDiaryExportFile({
-    required UnlockedVaultSession session,
-    required File file,
-    required String html,
-    required Directory importRootDirectory,
-  }) async {
-    final FileStat stat = await file.stat();
-    final String bodyHtml = _extractHtmlBody(html);
-    final List<String> easyDiarySections = _splitEasyDiarySections(bodyHtml);
-
-    var importedEntries = 0;
-    var skippedFiles = 0;
-    var skippedAttachments = 0;
-
-    for (final String easyDiarySectionHtml in easyDiarySections) {
-      final _ParsedImportEntry? parsedEntry = await _parseEasyDiarySection(
-        easyDiarySectionHtml: easyDiarySectionHtml,
-        file: file,
-        html: html,
-        stat: stat,
-        importRootDirectory: importRootDirectory,
-      );
-      if (parsedEntry == null || parsedEntry.isEmpty) {
-        continue;
-      }
-
-      await _repository.saveEntry(
-        session,
-        parsedEntry.entry,
-        pendingAttachments: parsedEntry.attachments,
-      );
-      importedEntries++;
-      skippedAttachments += parsedEntry.skippedAttachments;
-    }
-
-    if (importedEntries == 0) {
-      skippedFiles = 1;
-    }
-
-    return _ImportFileTotals(
-      importedEntries: importedEntries,
-      skippedFiles: skippedFiles,
-      skippedAttachments: skippedAttachments,
-    );
-  }
-
-  // --- QuillLockDiary 匯入（本 App HTML 匯出） ---
 
   Future<_ImportFileTotals> _importQuillLockExportFile({
     required UnlockedVaultSession session,
@@ -1469,71 +1431,6 @@ class VaultArchiveIo {
       markdownBody: body,
       tags: decoded.entry.tags,
       mood: decoded.entry.mood,
-    );
-
-    return _ParsedImportEntry(
-      entry: entry,
-      attachments: resolvedAttachments.attachments,
-      skippedAttachments: resolvedAttachments.skippedAttachments,
-    );
-  }
-
-  Future<_ParsedImportEntry?> _parseEasyDiarySection({
-    required String easyDiarySectionHtml,
-    required File file,
-    required String html,
-    required FileStat stat,
-    required Directory importRootDirectory,
-  }) async {
-    if (!_isEasyDiarySection(easyDiarySectionHtml)) {
-      return null;
-    }
-
-    final String photoContainerHtml = _extractAllHtmlClassInnerHtml(
-      easyDiarySectionHtml,
-      'photo-container',
-    ).join('\n');
-    final _ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
-      references: _extractHtmlAttachmentReferences(photoContainerHtml),
-      baseDirectory: file.parent,
-      importRootDirectory: importRootDirectory,
-    );
-
-    final String? contentsHtml = _extractEasyDiaryContentsHtml(easyDiarySectionHtml);
-    final String markdownSourceHtml = contentsHtml != null && contentsHtml.trim().isNotEmpty
-        ? contentsHtml
-        : _stripHtmlImageTags(easyDiarySectionHtml);
-    final String markdownBody = _htmlToMarkdown(
-      markdownSourceHtml,
-      includeImages: false,
-    ).trimRight();
-
-    final String? easyDiaryTitle = _extractHtmlClassText(easyDiarySectionHtml, 'title-right');
-    final String? easyDiaryDateText = _extractHtmlClassText(easyDiarySectionHtml, 'datetime');
-    final String title = _extractFirstHtmlTagText(easyDiarySectionHtml, 'h1') ??
-        easyDiaryTitle ??
-        _extractFirstHtmlTagText(html, 'title') ??
-        _fallbackImportTitle(file);
-
-    final String dateSource =
-        '${file.path}\n${easyDiaryDateText ?? ''}\n$easyDiarySectionHtml';
-    final DateTime? parsedDateTime = _findDateTimeInText(easyDiaryDateText ?? '') ??
-        _findDateTimeInText(dateSource);
-    final DateOnly entryDate = parsedDateTime != null
-        ? DateOnly.fromDateTime(parsedDateTime)
-        : (_findDateInText(dateSource) ?? DateOnly.fromDateTime(stat.modified));
-    final DateTime entryTimestamp = parsedDateTime ??
-        _findDateInText(dateSource)?.toDateTime() ??
-        stat.modified;
-
-    final DiaryEntry entry = DiaryEntry(
-      id: generateEntryId(),
-      vaultId: 'vlt_LOCAL',
-      title: title.trim().isEmpty ? _fallbackImportTitle(file) : title.trim(),
-      date: entryDate,
-      createdAt: entryTimestamp,
-      updatedAt: entryTimestamp,
-      markdownBody: markdownBody,
     );
 
     return _ParsedImportEntry(
@@ -1786,80 +1683,6 @@ class VaultArchiveIo {
     return _decodeHtmlEntities(_stripHtmlTags(output)).trim();
   }
 
-  static final RegExp _easyDiaryEntryStartPattern = RegExp(
-    "<div\\s+class\\s*=\\s*['\"][^'\"]*\\btitle-right\\b",
-    caseSensitive: false,
-  );
-
-  static final RegExp _easyDiaryContentsStartPattern = RegExp(
-    "<[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\bcontents\\b[^'\"]*['\"][^>]*>",
-    caseSensitive: false,
-  );
-
-  static final RegExp _easyDiaryPhotoContainerStartPattern = RegExp(
-    "<[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\bphoto-container\\b",
-    caseSensitive: false,
-  );
-
-  List<String> _splitEasyDiarySections(String bodyHtml) {
-    final String trimmed = bodyHtml.trim();
-    if (trimmed.isEmpty) {
-      return const <String>[];
-    }
-
-    final List<RegExpMatch> entryStarts =
-        _easyDiaryEntryStartPattern.allMatches(trimmed).toList(growable: false);
-    if (entryStarts.length < 2) {
-      return <String>[trimmed];
-    }
-
-    final List<String> sections = <String>[];
-    for (var index = 0; index < entryStarts.length; index++) {
-      final int start = entryStarts[index].start;
-      final int end = index + 1 < entryStarts.length
-          ? entryStarts[index + 1].start
-          : trimmed.length;
-      final String section = trimmed.substring(start, end).trim();
-      if (section.isNotEmpty && _isEasyDiarySection(section)) {
-        sections.add(section);
-      }
-    }
-    return sections;
-  }
-
-  String? _extractEasyDiaryContentsHtml(String sectionHtml) {
-    final RegExpMatch? contentsStart =
-        _easyDiaryContentsStartPattern.firstMatch(sectionHtml);
-    if (contentsStart == null) {
-      return null;
-    }
-
-    final int from = contentsStart.end;
-    final RegExpMatch? photoStart = _easyDiaryPhotoContainerStartPattern.firstMatch(
-      sectionHtml.substring(from),
-    );
-    final int sliceEnd = photoStart == null
-        ? sectionHtml.length
-        : from + photoStart.start;
-    final String slice = sectionHtml.substring(from, sliceEnd);
-    final String trimmed = slice.trim();
-    return trimmed.isEmpty ? null : trimmed;
-  }
-
-  static final RegExp _easyDiarySectionMarkerPattern = RegExp(
-    "\\bclass\\s*=\\s*['\"][^'\"]*\\b(title-right|contents|photo-container)\\b",
-    caseSensitive: false,
-  );
-
-  bool _isEasyDiarySection(String sectionHtml) {
-    return sectionHtml.trim().isNotEmpty &&
-        _easyDiarySectionMarkerPattern.hasMatch(sectionHtml);
-  }
-
-  String _stripHtmlImageTags(String html) {
-    return html.replaceAll(RegExp(r'<img\b[^>]*>', caseSensitive: false), '');
-  }
-
   Future<_ResolvedImportAttachments> _resolveImportAttachments({
     required Iterable<String> references,
     required Directory baseDirectory,
@@ -1975,73 +1798,6 @@ class VaultArchiveIo {
     }
 
     return references;
-  }
-
-  String _htmlToMarkdown(String html, {bool includeImages = true}) {
-    String output = html;
-
-    output = output.replaceAll(
-      RegExp(r'<(script|style)\b[^>]*>[\s\S]*?</\1>', caseSensitive: false),
-      '',
-    );
-    output = output.replaceAll(
-      RegExp(r'<!--[\s\S]*?-->'),
-      '',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'<br\s*/?>', caseSensitive: false),
-      (_) => '\n',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'</(p|div|section|article|h[1-6]|ul|ol)\s*>', caseSensitive: false),
-      (_) => '\n\n',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'</(li|tr)\s*>', caseSensitive: false),
-      (_) => '\n',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'<li\b[^>]*>', caseSensitive: false),
-      (_) => '- ',
-    );
-    if (includeImages) {
-      output = output.replaceAllMapped(
-        RegExp(r"""<img\b[^>]*src=["']([^"']+)["'][^>]*>""", caseSensitive: false),
-        (Match match) {
-          final String src = (match.group(1) ?? '').trim();
-          final String alt = _extractAttributeValue(match.group(0) ?? '', 'alt');
-          final String label = alt.isEmpty ? 'image' : alt;
-          final String target =
-              src.startsWith('data:') ? label : p.basename(src.split('?').first);
-          return '![${_escapeMarkdownText(label)}]($target)';
-        },
-      );
-    } else {
-      output = output.replaceAll(
-        RegExp(r'<img\b[^>]*>', caseSensitive: false),
-        '',
-      );
-    }
-    output = output.replaceAllMapped(
-      RegExp(
-        r"""<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)</a>""",
-        caseSensitive: false,
-      ),
-      (Match match) {
-        final String href = (match.group(1) ?? '').trim();
-        final String text = _stripHtmlTags(match.group(2) ?? '').trim();
-        final String label = text.isEmpty ? href : text;
-        return '[${_escapeMarkdownText(label)}]($href)';
-      },
-    );
-    output = output.replaceAll(RegExp(r'<[^>]+>'), ' ');
-    output = _decodeHtmlEntities(output);
-    output = output.replaceAll(RegExp(r'\r\n?'), '\n');
-    output = output.replaceAll(RegExp(r'[ \t]{2,}'), ' ');
-    output = output.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-    output = output.replaceAll(RegExp(r'\n[ \t]+'), '\n');
-    output = output.replaceAll(RegExp(r'[ \t]+\n'), '\n');
-    return output.trim();
   }
 
   String _extractHtmlBody(String html) {
@@ -2195,14 +1951,6 @@ class VaultArchiveIo {
       },
     );
     return output;
-  }
-
-  String _extractAttributeValue(String tagSource, String attributeName) {
-    final Match? match = RegExp(
-      '$attributeName\\s*=\\s*["\']([^"\']*)["\']',
-      caseSensitive: false,
-    ).firstMatch(tagSource);
-    return match?.group(1)?.trim() ?? '';
   }
 
   String _escapeMarkdownText(String input) {
