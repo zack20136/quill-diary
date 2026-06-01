@@ -376,7 +376,7 @@ class _HomeContent extends ConsumerWidget {
   }
 }
 
-class _HomeTimelinePane extends ConsumerWidget {
+class _HomeTimelinePane extends ConsumerStatefulWidget {
   const _HomeTimelinePane({
     required this.sessionState,
     super.key,
@@ -385,22 +385,73 @@ class _HomeTimelinePane extends ConsumerWidget {
   final AppSessionState sessionState;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HomeTimelinePane> createState() => _HomeTimelinePaneState();
+}
+
+class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
+  late final TextEditingController _searchController;
+  ProviderSubscription<String>? _searchQuerySubscription;
+  bool _syncingController = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(
+      text: ref.read(homeSearchQueryProvider),
+    );
+    _searchQuerySubscription = ref.listenManual<String>(
+      homeSearchQueryProvider,
+      (String? previous, String next) {
+        _syncSearchController(next);
+        final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
+        if (visible != null) {
+          ref
+              .read(homeEntrySelectionProvider.notifier)
+              .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
+        }
+      },
+      fireImmediately: true,
+    );
+  }
+
+  void _syncSearchController(String value) {
+    if (_searchController.text == value) {
+      return;
+    }
+    _syncingController = true;
+    _searchController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+    _syncingController = false;
+  }
+
+  void _handleSearchChanged(String value) {
+    if (_syncingController) {
+      return;
+    }
+    if (ref.read(homeSearchQueryProvider) == value) {
+      return;
+    }
+    ref.read(homeSearchQueryProvider.notifier).update(value);
+  }
+
+  @override
+  void dispose() {
+    _searchQuerySubscription?.close();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AppSessionState sessionState = widget.sessionState;
     final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(homeEntriesProvider);
     final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
     final List<EntryIndexRecord> entries = entriesAsync.value ?? const <EntryIndexRecord>[];
     final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
     final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
-
-    ref.listen<String>(homeSearchQueryProvider, (String? previous, String? next) {
-      final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
-      if (visible != null) {
-        ref
-            .read(homeEntrySelectionProvider.notifier)
-            .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
-      }
-    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,11 +511,10 @@ class _HomeTimelinePane extends ConsumerWidget {
                     children: <Widget>[
                       Expanded(
                         child: HomeSearchTextField(
+                          controller: _searchController,
                           enabled: canReadEntries,
                           hintText: '搜尋標題、內文或標籤',
-                          onChanged: (String value) {
-                            ref.read(homeSearchQueryProvider.notifier).update(value);
-                          },
+                          onChanged: _handleSearchChanged,
                         ),
                       ),
                       const SizedBox(width: 8),

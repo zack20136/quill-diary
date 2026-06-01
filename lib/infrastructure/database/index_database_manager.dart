@@ -64,10 +64,15 @@ class IndexDatabaseManager {
       encryptionKeyBytes: keyBytes,
     );
     final IndexDatabase database = IndexDatabase(executor);
-    await database.initialize();
-    _database = database;
-    _openVaultId = session.vaultId;
-    return database;
+    try {
+      await database.initialize();
+      _database = database;
+      _openVaultId = session.vaultId;
+      return database;
+    } on Object {
+      await database.close();
+      rethrow;
+    }
   }
 
   Future<void> close() async {

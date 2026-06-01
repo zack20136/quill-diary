@@ -21,15 +21,19 @@ String normalizeText(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
 String previewTextFromMarkdown(String markdown, {int maxLength = 80}) {
-  final String compact = markdown
-      .replaceAll(RegExp(r'[#>*_`\[\]\(\)!-]'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  final String compact = searchableTextFromMarkdown(markdown);
   if (compact.length <= maxLength) {
     return compact;
   }
 
   return '${compact.substring(0, maxLength).trim()}...';
+}
+
+String searchableTextFromMarkdown(String markdown) {
+  return markdown
+      .replaceAll(RegExp(r'[#>*_`\[\]\(\)!-]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 class DateOnly {

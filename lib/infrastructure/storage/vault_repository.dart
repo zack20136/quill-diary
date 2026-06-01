@@ -589,11 +589,14 @@ class VaultRepository {
     );
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
+    final String previewText = previewTextFromMarkdown(normalized.markdownBody);
 
     await _requireOpenIndex().upsertEntry(
       entry: normalized,
       filePath: filePath,
-      previewText: previewTextFromMarkdown(normalized.markdownBody),
+      previewText: previewText,
+      titleSearchText: _titleSearchText(normalized.title),
+      bodySearchText: _bodySearchText(normalized.markdownBody),
       contentHash: await _hashString(markdown),
       encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
@@ -607,12 +610,8 @@ class VaultRepository {
             date: normalized.date,
             assetId: attachment.id,
             extension: p.extension(attachment.safeFilename).replaceFirst('.', ''),
-          ),
+        ),
       },
-    );
-    await _requireOpenIndex().upsertSearchDocument(
-      entry: normalized,
-      previewText: previewTextFromMarkdown(normalized.markdownBody),
     );
     await _writeEncryptedManifest(session, metadata);
     return normalized;
@@ -644,6 +643,10 @@ class VaultRepository {
     final Directory entriesDirectory = Directory(p.join(vaultRoot.path, 'entries'));
     if (!entriesDirectory.existsSync()) {
       await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
+      await indexDb.setAppValue(
+        kSearchSchemaVersionKey,
+        IndexDatabase.searchSchemaVersion.toString(),
+      );
       return;
     }
 
@@ -663,18 +666,17 @@ class VaultRepository {
             vaultId: metadata.vaultId,
           );
       final List<AssetAttachment> attachments = await _findAttachmentsForEntry(entry);
+      final String previewText = previewTextFromMarkdown(entry.markdownBody);
 
       await indexDb.upsertEntry(
         entry: entry,
         filePath: entity.path,
-        previewText: previewTextFromMarkdown(entry.markdownBody),
+        previewText: previewText,
+        titleSearchText: _titleSearchText(entry.title),
+        bodySearchText: _bodySearchText(entry.markdownBody),
         contentHash: await _hashString(markdown),
         encryptedFileSize: await entity.length(),
         encryptedModifiedAt: await entity.lastModified(),
-      );
-      await indexDb.upsertSearchDocument(
-        entry: entry,
-        previewText: previewTextFromMarkdown(entry.markdownBody),
       );
       await indexDb.replaceAttachments(
         entry.id,
@@ -691,6 +693,10 @@ class VaultRepository {
     }
 
     await indexDb.setAppValue(kLastRebuildAtKey, DateTime.now().toIso8601String());
+    await indexDb.setAppValue(
+      kSearchSchemaVersionKey,
+      IndexDatabase.searchSchemaVersion.toString(),
+    );
     await syncTagStylesBetweenVaultAndIndex();
   }
 
@@ -1263,7 +1269,12 @@ class VaultRepository {
 
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
-    if (await _requireOpenIndex().getAppValue(kLastRebuildAtKey) == null) {
+    final IndexDatabase indexDb = _requireOpenIndex();
+    final String? lastRebuildAt = await indexDb.getAppValue(kLastRebuildAtKey);
+    final String? searchSchemaVersion = await indexDb.getAppValue(kSearchSchemaVersionKey);
+    final bool needsSearchSchemaRebuild =
+        searchSchemaVersion != IndexDatabase.searchSchemaVersion.toString();
+    if (lastRebuildAt == null || needsSearchSchemaRebuild) {
       await rebuildIndex(session);
     } else {
       await syncTagStylesBetweenVaultAndIndex();
@@ -1286,6 +1297,18 @@ class VaultRepository {
       }
     }
     return true;
+  }
+
+  String _titleSearchText(String? title) {
+    final String? trimmed = title?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return '';
+    }
+    return normalizeText(trimmed);
+  }
+
+  String _bodySearchText(String markdownBody) {
+    return normalizeText(searchableTextFromMarkdown(markdownBody));
   }
 
 }

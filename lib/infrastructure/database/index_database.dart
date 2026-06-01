@@ -114,8 +114,10 @@ class EntryIndexRecord {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
+  static const int searchSchemaVersion = 2;
+
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
@@ -140,7 +142,9 @@ class IndexDatabase extends GeneratedDatabase {
         file_path TEXT NOT NULL,
         title TEXT,
         title_normalized TEXT,
+        title_search_text TEXT,
         preview_text TEXT,
+        body_search_text TEXT,
         date TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -180,14 +184,6 @@ class IndexDatabase extends GeneratedDatabase {
       );
     ''');
     await customStatement('''
-      CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
-        entry_id,
-        title,
-        tags,
-        preview_text
-      );
-    ''');
-    await customStatement('''
       CREATE TABLE IF NOT EXISTS app_kv (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
@@ -213,12 +209,16 @@ class IndexDatabase extends GeneratedDatabase {
       CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_active_created
       ON entry_attachments (entry_id, is_deleted, created_at);
     ''');
+    await _ensureEntriesIndexColumn('title_search_text', 'TEXT');
+    await _ensureEntriesIndexColumn('body_search_text', 'TEXT');
   }
 
   Future<void> upsertEntry({
     required DiaryEntry entry,
     required String filePath,
     required String previewText,
+    required String titleSearchText,
+    required String bodySearchText,
     required String contentHash,
     required int encryptedFileSize,
     required DateTime encryptedModifiedAt,
@@ -226,17 +226,20 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement(
       '''
         INSERT INTO entries_index (
-          id, vault_id, file_path, title, title_normalized, preview_text, date,
+          id, vault_id, file_path, title, title_normalized, title_search_text, preview_text,
+          body_search_text, date,
           created_at, updated_at, mood, word_count, char_count, attachment_count,
           has_attachments, is_deleted, schema_version, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
           title = excluded.title,
           title_normalized = excluded.title_normalized,
+          title_search_text = excluded.title_search_text,
           preview_text = excluded.preview_text,
+          body_search_text = excluded.body_search_text,
           date = excluded.date,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
@@ -257,7 +260,9 @@ class IndexDatabase extends GeneratedDatabase {
         filePath,
         entry.normalizedTitle,
         entry.normalizedTitle == null ? null : normalizeText(entry.normalizedTitle!),
+        titleSearchText,
         previewText,
+        bodySearchText,
         entry.date.value,
         entry.createdAt.toIso8601String(),
         entry.updatedAt.toIso8601String(),
@@ -355,28 +360,6 @@ class IndexDatabase extends GeneratedDatabase {
     }
   }
 
-  Future<void> upsertSearchDocument({
-    required DiaryEntry entry,
-    required String previewText,
-  }) async {
-    await customStatement(
-      'DELETE FROM entries_fts WHERE entry_id = ?;',
-      <Object?>[entry.id],
-    );
-    await customStatement(
-      '''
-        INSERT INTO entries_fts (entry_id, title, tags, preview_text)
-        VALUES (?, ?, ?, ?);
-      ''',
-      <Object?>[
-        entry.id,
-        entry.normalizedTitle ?? '',
-        entry.tags.join(' '),
-        previewText,
-      ],
-    );
-  }
-
   Future<List<EntryIndexRecord>> listEntries({
     String? searchQuery,
     DateOnly? date,
@@ -421,59 +404,47 @@ class IndexDatabase extends GeneratedDatabase {
     String query, {
     bool includeDeleted = false,
   }) async {
-    final String sanitized = query
-        .trim()
-        .replaceAll(RegExp(r'[^\w\u4e00-\u9fff\s-]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ');
-    if (sanitized.isEmpty) {
+    final String normalizedQuery = normalizeText(query);
+    if (normalizedQuery.isEmpty) {
       return listEntries(includeDeleted: includeDeleted);
     }
+    return _searchEntriesByLike(normalizedQuery, includeDeleted: includeDeleted);
+  }
 
-    try {
-      final List<QueryRow> rows = await customSelect(
-        '''
-          SELECT
-            e.*,
-            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
-            $_kImageAttachmentCountSelect,
-            $_kFileAttachmentCountSelect,
-            $_kPreviewImagePathsSelect
-          FROM entries_fts f
-          JOIN entries_index e ON e.id = f.entry_id
-          LEFT JOIN entry_tags t ON t.entry_id = e.id
-          WHERE f.entries_fts MATCH ? ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
-          GROUP BY e.id
-          ORDER BY e.date DESC, e.updated_at DESC;
-        ''',
-        variables: <Variable<Object>>[Variable.withString('$sanitized*')],
-      ).get();
-      return rows.map(EntryIndexRecord.fromRow).toList();
-    } catch (_) {
-      final String likeQuery = '%${normalizeText(query)}%';
-      final List<QueryRow> rows = await customSelect(
-        '''
-          SELECT
-            e.*,
-            GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
-            $_kImageAttachmentCountSelect,
-            $_kFileAttachmentCountSelect,
-            $_kPreviewImagePathsSelect
-          FROM entries_index e
-          LEFT JOIN entry_tags t ON t.entry_id = e.id
-          WHERE (
-            COALESCE(e.title_normalized, '') LIKE ? OR
-            COALESCE(e.preview_text, '') LIKE ?
-          ) ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
-          GROUP BY e.id
-          ORDER BY e.date DESC, e.updated_at DESC;
-        ''',
-        variables: <Variable<Object>>[
-          Variable.withString(likeQuery),
-          Variable.withString(likeQuery),
-        ],
-      ).get();
-      return rows.map(EntryIndexRecord.fromRow).toList();
-    }
+  Future<List<EntryIndexRecord>> _searchEntriesByLike(
+    String normalizedQuery, {
+    required bool includeDeleted,
+  }) async {
+    final String likeQuery = '%$normalizedQuery%';
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
+          $_kPreviewImagePathsSelect
+        FROM entries_index e
+        LEFT JOIN entry_tags t ON t.entry_id = e.id
+        WHERE (
+          COALESCE(e.title_search_text, '') LIKE ? OR
+          COALESCE(e.body_search_text, '') LIKE ? OR
+          EXISTS (
+            SELECT 1
+            FROM entry_tags et
+            WHERE et.entry_id = e.id AND et.tag_normalized LIKE ?
+          )
+        ) ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
+        GROUP BY e.id
+        ORDER BY e.date DESC, e.updated_at DESC;
+      ''',
+      variables: <Variable<Object>>[
+        Variable.withString(likeQuery),
+        Variable.withString(likeQuery),
+        Variable.withString(likeQuery),
+      ],
+    ).get();
+    return rows.map(EntryIndexRecord.fromRow).toList();
   }
 
   Future<EntryIndexRecord?> getEntryById(EntryId entryId) async {
@@ -573,7 +544,6 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM entries_index;');
     await customStatement('DELETE FROM entry_tags;');
     await customStatement('DELETE FROM entry_attachments;');
-    await customStatement('DELETE FROM entries_fts;');
   }
 
   Future<void> rebuild() async {
@@ -619,5 +589,16 @@ class IndexDatabase extends GeneratedDatabase {
         .where((String token) => token.isNotEmpty)
         .toList();
     return words.isEmpty ? 0 : words.length;
+  }
+
+  Future<void> _ensureEntriesIndexColumn(String columnName, String columnType) async {
+    final List<QueryRow> rows = await customSelect("PRAGMA table_info('entries_index');").get();
+    final bool exists = rows.any((QueryRow row) => row.read<String>('name') == columnName);
+    if (exists) {
+      return;
+    }
+    await customStatement(
+      'ALTER TABLE entries_index ADD COLUMN $columnName $columnType;',
+    );
   }
 }
