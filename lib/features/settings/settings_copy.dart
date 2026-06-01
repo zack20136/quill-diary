@@ -86,6 +86,10 @@ abstract final class SettingsUnlockMethodCopy {
 
   static const String biometricNeedsDeviceLockHint =
       '須已登錄至少一種生物辨識，並設定裝置螢幕鎖；驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
+
+  static const String unlockModeChangeCancelled = '已取消變更，解鎖方式維持不變。';
+
+  static const String unlockModeChangeAuthFailed = '驗證失敗，解鎖方式維持不變。';
 }
 
 /// 備份／還原／匯入／匯出在設定頁不可用時的說明（空字串表示可用）。

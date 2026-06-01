@@ -206,3 +206,24 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     return _secureKey;
   }
 }
+
+/// 於 [wrapWithDeviceKey] 時拋出取消，供解鎖方式切換測試使用。
+class CancellingDeviceKeyManager extends RecordingDeviceKeyManager {
+  bool cancelWrap = false;
+
+  @override
+  Future<DeviceWrappedPayload> wrapWithDeviceKey({
+    required String vaultId,
+    required List<int> plaintextBytes,
+    required KeystoreAuthKind authKind,
+  }) async {
+    if (cancelWrap && plaintextBytes.length == 32) {
+      throw const DeviceKeyUserCancelledException();
+    }
+    return super.wrapWithDeviceKey(
+      vaultId: vaultId,
+      plaintextBytes: plaintextBytes,
+      authKind: authKind,
+    );
+  }
+}

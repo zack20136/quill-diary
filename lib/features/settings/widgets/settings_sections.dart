@@ -364,55 +364,10 @@ class UnlockMethodSectionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SegmentedButton<AppUnlockMode>(
-          showSelectedIcon: false,
-          emptySelectionAllowed: false,
-          style: ButtonStyle(
-            visualDensity: VisualDensity.compact,
-            side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
-            shape: WidgetStatePropertyAll<OutlinedBorder>(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(PageStyle.radiusPanel)),
-              ),
-            ),
-            backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-              if (states.contains(WidgetState.selected)) {
-                return cs.primaryContainer;
-              }
-              return cs.surfaceContainerHighest.withValues(alpha: 0.55);
-            }),
-            foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-              if (states.contains(WidgetState.selected)) {
-                return cs.onPrimaryContainer;
-              }
-              return cs.onSurfaceVariant;
-            }),
-          ),
-          segments: <ButtonSegment<AppUnlockMode>>[
-            ButtonSegment<AppUnlockMode>(
-              value: AppUnlockMode.none,
-              label: Text(SettingsUnlockMethodCopy.segmentNone),
-              icon: Icon(Icons.no_encryption_gmailerrorred_outlined, size: 18),
-            ),
-            ButtonSegment<AppUnlockMode>(
-              value: AppUnlockMode.deviceLock,
-              label: Text(SettingsUnlockMethodCopy.segmentDeviceLock),
-              icon: Icon(Icons.lock_outline, size: 18),
-            ),
-            ButtonSegment<AppUnlockMode>(
-              value: AppUnlockMode.biometric,
-              label: Text(labelForMode(AppUnlockMode.biometric)),
-              icon: Icon(Icons.fingerprint_rounded, size: 18),
-            ),
-          ],
-          selected: <AppUnlockMode>{unlockMode},
-          onSelectionChanged: busy
-              ? null
-              : (Set<AppUnlockMode> selected) {
-                  if (selected.isNotEmpty) {
-                    unawaited(onModeSelected(selected.first));
-                  }
-                },
+        _UnlockModeChoiceBar(
+          selected: unlockMode,
+          busy: busy,
+          onSelected: onModeSelected,
         ),
         const SizedBox(height: 12),
         Text(
@@ -431,6 +386,132 @@ class UnlockMethodSectionBody extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// 解鎖方式分段列：無（窄）／螢幕鎖／生物驗證（寬）。
+class _UnlockModeChoiceBar extends StatelessWidget {
+  const _UnlockModeChoiceBar({
+    required this.selected,
+    required this.busy,
+    required this.onSelected,
+  });
+
+  final AppUnlockMode selected;
+  final bool busy;
+  final Future<void> Function(AppUnlockMode mode) onSelected;
+
+  static const List<({AppUnlockMode mode, int flex, IconData icon, String label})> _choices =
+      <({AppUnlockMode mode, int flex, IconData icon, String label})>[
+    (
+      mode: AppUnlockMode.none,
+      flex: 2,
+      icon: Icons.no_encryption_gmailerrorred_outlined,
+      label: SettingsUnlockMethodCopy.segmentNone,
+    ),
+    (
+      mode: AppUnlockMode.deviceLock,
+      flex: 3,
+      icon: Icons.lock_outline,
+      label: SettingsUnlockMethodCopy.segmentDeviceLock,
+    ),
+    (
+      mode: AppUnlockMode.biometric,
+      flex: 4,
+      icon: Icons.fingerprint_rounded,
+      label: '生物驗證',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+      child: Row(
+        children: <Widget>[
+          for (var index = 0; index < _choices.length; index++) ...<Widget>[
+            if (index > 0)
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.35),
+              ),
+            Expanded(
+              flex: _choices[index].flex,
+              child: _UnlockModeSegment(
+                label: _choices[index].label,
+                icon: _choices[index].icon,
+                selected: selected == _choices[index].mode,
+                compact: _choices[index].mode == AppUnlockMode.none,
+                onTap: busy
+                    ? null
+                    : () => unawaited(onSelected(_choices[index].mode)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UnlockModeSegment extends StatelessWidget {
+  const _UnlockModeSegment({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.compact,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool compact;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final TextStyle? labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          fontSize: compact ? 13 : null,
+        );
+    return Material(
+      color: selected
+          ? cs.primaryContainer
+          : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 8,
+            vertical: compact ? 10 : 12,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  style: labelStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

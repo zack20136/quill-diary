@@ -5,6 +5,7 @@ import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
+import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
 
@@ -125,8 +126,9 @@ class FakeVaultRepository extends VaultRepository {
 
   @override
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    AppUnlockMode? targetMode,
+  }) async {
     return session;
   }
 }

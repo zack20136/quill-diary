@@ -1312,9 +1312,12 @@ class VaultRepository {
   }
 
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
-    UnlockedVaultSession session,
-  ) async {
-    final KeystoreAuthKind expected = await _requireCurrentKeystoreAuthKind();
+    UnlockedVaultSession session, {
+    AppUnlockMode? targetMode,
+  }) async {
+    final KeystoreAuthKind expected = targetMode != null
+        ? keystoreAuthFor(targetMode)
+        : await _requireCurrentKeystoreAuthKind();
     final String expectedSuffix = expected.storageSuffix;
     try {
       final String? synced = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);

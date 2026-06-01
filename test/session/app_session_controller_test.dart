@@ -140,7 +140,7 @@ void main() {
     );
   });
 
-  test('runSensitiveTask 執行期間延後 closeUnlockedResources', () async {
+  test('runSensitiveTask 執行期間背景逾時不鎖定也不釋放資源', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -160,11 +160,13 @@ void main() {
     await controller.handleLifecycleChange(AppLifecycleState.paused);
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
     await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.closeUnlockedResourcesCalls, 0);
 
     gate.complete('ok');
     await task;
-    expect(repository.closeUnlockedResourcesCalls, 1);
+    expect(repository.closeUnlockedResourcesCalls, 0);
   });
 
   test('reset 會回到 uninitialized 並關閉資源', () async {
@@ -249,6 +251,31 @@ void main() {
     expect(state.status, AppLockStatus.locked);
     expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
     expect(repository.openTrustedSessionCalls, 0);
+  });
+
+  test('敏感任務進行中背景逾時不鎖定', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final Completer<void> holdSensitiveTask = Completer<void>();
+
+    controller.activateSession(sampleSession);
+    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
+    controller.clock = () => fakeNow;
+
+    unawaited(
+      controller.runSensitiveTask((UnlockedVaultSession _) => holdSensitiveTask.future),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    await controller.handleLifecycleChange(AppLifecycleState.paused);
+    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
+    holdSensitiveTask.complete();
   });
 
   test('背景未逾時時不鎖定', () async {

@@ -217,6 +217,12 @@ class AppSessionController extends Notifier<AppSessionState> {
 
         }
 
+        if (_activeSensitiveTasks > 0) {
+
+          return;
+
+        }
+
         if (!hasSessionTimedOut(
 
           lastForegroundExitAt: exitAt,

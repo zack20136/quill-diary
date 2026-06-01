@@ -13,6 +13,7 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../infrastructure/security/app_lock_service.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
@@ -70,6 +71,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String? _busyMessage;
   bool _unlockCoordinatorAttached = false;
   IndexRebuildReport? _lastIndexRebuildReport;
+  AppUnlockMode? _pendingUnlockMode;
 
   @override
   void dispose() {
@@ -265,12 +267,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: FutureBuilder<AppUnlockMode>(
                       future: appLockService.getUnlockMode(),
                       builder: (BuildContext context, AsyncSnapshot<AppUnlockMode> snapshot) {
-                        final AppUnlockMode mode =
+                        final AppUnlockMode storedMode =
                             snapshot.data ?? AppUnlockMode.none;
+                        final AppUnlockMode displayMode =
+                            _pendingUnlockMode ?? storedMode;
                         return UnlockMethodSectionBody(
                           enabled: recoveryMetadataAsync.asData?.value != null,
                           busy: _busy,
-                          unlockMode: mode,
+                          unlockMode: displayMode,
                           onModeSelected: (AppUnlockMode selected) =>
                               _runAction(() => _applyUnlockMode(selected)),
                         );
@@ -827,8 +831,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _applyUnlockMode(AppUnlockMode mode) async {
     final AppLockService appLock = ref.read(appLockServiceProvider);
-    final AppUnlockMode current = await appLock.getUnlockMode();
-    if (current == mode) {
+    final AppUnlockMode previousMode = await appLock.getUnlockMode();
+    if (previousMode == mode) {
       return;
     }
 
@@ -842,16 +846,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
 
-    await appLock.setUnlockMode(mode);
-    final UnlockedVaultSession? session = await ref.read(activeVaultSessionProvider.future);
-    if (session != null) {
-      final UnlockedVaultSession synced = await ref
-          .read(vaultRepositoryProvider)
-          .ensureKeystoreMatchesUnlockMode(session);
-      ref.read(appSessionProvider.notifier).activateSession(synced);
-    }
     if (mounted) {
-      setState(() {});
+      setState(() => _pendingUnlockMode = mode);
+    }
+
+    try {
+      final UnlockedVaultSession? session = await ref.read(activeVaultSessionProvider.future);
+      if (session == null) {
+        await appLock.setUnlockMode(mode);
+        return;
+      }
+
+      await ref.read(appSessionProvider.notifier).runSensitiveTask((UnlockedVaultSession active) async {
+        final UnlockedVaultSession synced = await ref
+            .read(vaultRepositoryProvider)
+            .ensureKeystoreMatchesUnlockMode(active, targetMode: mode);
+        await appLock.setUnlockMode(mode);
+        ref.read(appSessionProvider.notifier).activateSession(synced);
+      });
+    } on DeviceKeyUserCancelledException {
+      await appLock.setUnlockMode(previousMode);
+      _showMessage(SettingsUnlockMethodCopy.unlockModeChangeCancelled);
+    } on DeviceKeyAuthFailedException {
+      await appLock.setUnlockMode(previousMode);
+      _showMessage(SettingsUnlockMethodCopy.unlockModeChangeAuthFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _pendingUnlockMode = null);
+      }
     }
   }
 

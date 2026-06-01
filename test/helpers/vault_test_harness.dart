@@ -18,12 +18,15 @@ class VaultTestHarness {
   late FakeAppLockService appLockService;
   late VaultRepository repository;
 
-  static Future<VaultTestHarness> create() async {
+  static Future<VaultTestHarness> create({
+    RecordingDeviceKeyManager? deviceKeyManager,
+    FakeAppLockService? appLockService,
+  }) async {
     final VaultTestHarness harness = VaultTestHarness._();
     harness.tempDir = await Directory.systemTemp.createTemp('qld_vault_test_');
     harness.pathStrategy = TestVaultPathStrategy(harness.tempDir);
-    harness.deviceKeyManager = RecordingDeviceKeyManager();
-    harness.appLockService = FakeAppLockService();
+    harness.deviceKeyManager = deviceKeyManager ?? RecordingDeviceKeyManager();
+    harness.appLockService = appLockService ?? FakeAppLockService();
     harness.repository = VaultRepository(
       pathStrategy: harness.pathStrategy,
       frontMatterCodec: const FrontMatterCodec(),
