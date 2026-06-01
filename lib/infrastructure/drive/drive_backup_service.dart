@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
-import '../../config/oauth_config.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
+
+import '../../config/oauth_config.dart';
 
 String sanitizeDriveBackupFileName(String fileName) {
   final String trimmed = fileName.trim();
@@ -28,6 +28,18 @@ String sanitizeDriveBackupFileName(String fileName) {
   return basename;
 }
 
+bool isVisibleDriveBackupFileName(String? fileName) {
+  if (fileName == null) {
+    return false;
+  }
+  try {
+    sanitizeDriveBackupFileName(fileName);
+    return true;
+  } on StateError {
+    return false;
+  }
+}
+
 final class DriveBackupFile {
   const DriveBackupFile({
     required this.id,
@@ -41,15 +53,13 @@ final class DriveBackupFile {
 }
 
 abstract class DriveBackupService {
-  Future<void> ensureSignedIn();
+  Future<bool> isConnected();
 
-  /// 清除本機 Google 登入狀態，讓下次重試時重新顯示登入／同意畫面。
-  Future<void> resetSignInSessionForConsentRetry();
+  Future<void> connect();
 
-  /// 完成登入與 Drive 授權，供長時間作業重用同一個 client。
-  Future<drive.DriveApi> createAuthorizedDriveApi();
+  Future<void> reconnect();
 
-  Future<String> uploadBackup(File backupFile, {drive.DriveApi? reuseApi});
+  Future<String> uploadBackup(File backupFile);
 
   Future<List<DriveBackupFile>> listBackups();
 
@@ -57,7 +67,6 @@ abstract class DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
-    drive.DriveApi? reuseApi,
   });
 }
 
@@ -77,16 +86,17 @@ class GoogleDriveBackupService implements DriveBackupService {
     final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
     if (Platform.isAndroid && serverClientId.isEmpty) {
       throw StateError(
-        'Android 的 Google 雲端備份需要 Web OAuth Client ID。\n'
-        '請設定 android/app/src/main/res/values/oauth_config.xml 的 oauth_request_id_token，'
-        '或使用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫；詳見 docs/Google-Drive-OAuth-設定.md。',
+        'Android 的 Google Drive OAuth 尚未設定 Web OAuth Client ID。'
+        '\n請設定 android/app/src/main/res/values/oauth_config.xml 的 oauth_request_id_token，'
+        '\n或使用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫。'
+        '\n詳見 docs/Google-Drive-OAuth-設定.md。',
       );
     }
     if (Platform.isIOS) {
       if (OAuthConfig.googleIosClientId.trim().isEmpty) {
         throw StateError(
-          'iOS Google Drive 備份尚未設定 OAuth Client ID，'
-          '請設定 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
+          'iOS Google Drive 備份尚未設定 OAuth Client ID。'
+          '\n請提供 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
         );
       }
       await _googleSignIn.initialize();
@@ -98,8 +108,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     _initialized = true;
   }
 
-  @override
-  Future<void> resetSignInSessionForConsentRetry() async {
+  Future<void> _resetSignInSession() async {
     try {
       await _ensureInitialized();
     } on Object {
@@ -118,9 +127,13 @@ class GoogleDriveBackupService implements DriveBackupService {
 
   Future<GoogleSignInClientAuthorization> _authorization({
     required bool interactive,
+    bool resetSession = false,
   }) async {
     try {
       await _ensureInitialized();
+      if (resetSession) {
+        await _resetSignInSession();
+      }
       final Future<GoogleSignInAccount?>? lightweight =
           _googleSignIn.attemptLightweightAuthentication();
       final GoogleSignInAccount? existing =
@@ -130,7 +143,7 @@ class GoogleDriveBackupService implements DriveBackupService {
         account = await _googleSignIn.authenticate(scopeHint: _scopes);
       }
       if (account == null) {
-        throw StateError('請先登入 Google 帳號。');
+        throw StateError('你尚未完成 Google 登入。');
       }
       final GoogleSignInClientAuthorization authorization =
           await account.authorizationClient.authorizationForScopes(_scopes) ??
@@ -142,48 +155,93 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   static String _userMessageForGoogleSignIn(GoogleSignInException e) {
+    final String? detail = e.description?.trim();
+    final String detailLine =
+        detail != null && detail.isNotEmpty ? '\n技術資訊：$detail' : '';
+    final String lowerDetail = detail?.toLowerCase() ?? '';
+
+    if (lowerDetail.contains('admin_policy_enforced')) {
+      return 'Google 帳號所屬的組織政策拒絕了這次登入或授權。'
+          '\n如果你使用的是公司或學校帳號，請管理員允許這個 App 使用 Google 登入與 Drive 權限。'
+          '$detailLine';
+    }
+    if (lowerDetail.contains('access_denied')) {
+      return 'Google 直接拒絕了這次授權。'
+          '\n若你在選完帳號後完全沒有看到 Google Drive 權限頁，請優先檢查 oauth_config.xml 的 Web Client ID、Cloud Console 的 Android OAuth client、套件名稱與 SHA-1 是否一致。'
+          '$detailLine';
+    }
+
     switch (e.code) {
       case GoogleSignInExceptionCode.canceled:
-        return '已取消或未同意 Google 雲端備份所需權限。若要使用雲端備份，請完成登入並允許應用程式存取 Google Drive。';
+        return '你已取消 Google 登入或沒有同意 Google Drive 所需權限。'
+            '\n若要使用 Google Drive 備份，請重新登入並允許應用程式存取 Google Drive。'
+            '$detailLine';
       case GoogleSignInExceptionCode.interrupted:
-        return '登入流程被中斷，請再試一次。';
+        return 'Google 登入流程被中斷，請稍後再試。$detailLine';
       case GoogleSignInExceptionCode.uiUnavailable:
-        return '目前無法開啟登入畫面，請稍後再試。';
+        return '目前裝置無法顯示 Google 登入畫面，請確認 Google Play 服務與系統元件可正常使用。$detailLine';
       case GoogleSignInExceptionCode.clientConfigurationError:
       case GoogleSignInExceptionCode.providerConfigurationError:
-        final String? detail = e.description;
-        return 'Google 登入設定有誤。請確認 oauth_config.xml 的 Client ID 與 Cloud Console 的套件名稱、SHA-1 是否正確。'
-            '${detail != null && detail.isNotEmpty ? '\n（$detail）' : ''}';
+        return 'Google 登入設定有誤。'
+            '\n請確認 oauth_config.xml 的 Client ID 是否為同一個 GCP 專案下的 Web OAuth client，並確認 Cloud Console 的 Android OAuth client、套件名稱與 SHA-1 都正確。'
+            '$detailLine';
       case GoogleSignInExceptionCode.userMismatch:
-        return '帳號狀態不符，請改用正確的 Google 帳號或稍後再試。';
+        return '目前登入的 Google 帳號與流程預期不一致，請重新選擇帳號後再試。$detailLine';
       case GoogleSignInExceptionCode.unknownError:
-        final String? detail = e.description;
-        if (detail != null &&
-            detail.toLowerCase().contains('no credential')) {
-          return 'Google 登入無法取得憑證。此版本僅支援 Android 上的 Google 雲端備份；'
-              '詳見 docs/Google-Drive-OAuth-設定.md。';
+        if (lowerDetail.contains('no credential')) {
+          return 'Google 沒有提供可用的登入憑證。'
+              '\n若你是在選完帳號後、完全沒有看到 Google Drive 權限頁就失敗，通常要優先檢查 Android 的 Google Sign-In / OAuth 設定與 SHA-1。'
+              '\n詳見 docs/Google-Drive-OAuth-設定.md。'
+              '$detailLine';
         }
-        return 'Google 登入發生錯誤。'
-            '${detail != null && detail.isNotEmpty ? '\n$detail' : ''}';
+        return 'Google 登入發生未知錯誤。'
+            '\n若帳號選擇器有出現，但 Google Drive 權限頁完全沒有出現，請優先檢查 OAuth 設定，而不是只重試帳號授權。'
+            '$detailLine';
     }
   }
 
   @override
-  Future<drive.DriveApi> createAuthorizedDriveApi() async {
+  Future<bool> isConnected() async {
+    try {
+      await _ensureInitialized();
+      final Future<GoogleSignInAccount?>? lightweight =
+          _googleSignIn.attemptLightweightAuthentication();
+      final GoogleSignInAccount? account =
+          lightweight == null ? null : await lightweight;
+      if (account == null) {
+        return false;
+      }
+      final GoogleSignInClientAuthorization? authorization =
+          await account.authorizationClient.authorizationForScopes(_scopes);
+      return authorization != null;
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<drive.DriveApi> _createAuthorizedDriveApi({
+    bool resetSession = false,
+  }) async {
     final GoogleSignInClientAuthorization authorization = await _authorization(
       interactive: true,
+      resetSession: resetSession,
     );
     return drive.DriveApi(authorization.authClient(scopes: _scopes));
   }
 
   @override
-  Future<void> ensureSignedIn() async {
-    await _authorization(interactive: true);
+  Future<void> connect() async {
+    await _createAuthorizedDriveApi();
   }
 
   @override
-  Future<String> uploadBackup(File backupFile, {drive.DriveApi? reuseApi}) async {
-    final drive.DriveApi api = reuseApi ?? await createAuthorizedDriveApi();
+  Future<void> reconnect() async {
+    await _createAuthorizedDriveApi(resetSession: true);
+  }
+
+  @override
+  Future<String> uploadBackup(File backupFile) async {
+    final drive.DriveApi api = await _createAuthorizedDriveApi();
     final drive.File metadata = drive.File(
       name: p.basename(backupFile.path),
       parents: const <String>['appDataFolder'],
@@ -203,7 +261,7 @@ class GoogleDriveBackupService implements DriveBackupService {
 
   @override
   Future<List<DriveBackupFile>> listBackups() async {
-    final drive.DriveApi api = await createAuthorizedDriveApi();
+    final drive.DriveApi api = await _createAuthorizedDriveApi();
     final drive.FileList list = await api.files.list(
       spaces: 'appDataFolder',
       q: "name contains '.jbackup' and trashed = false",
@@ -211,7 +269,12 @@ class GoogleDriveBackupService implements DriveBackupService {
       $fields: 'files(id,name,createdTime)',
     );
     return (list.files ?? const <drive.File>[])
-        .where((drive.File file) => file.id != null && file.name != null)
+        .where(
+          (drive.File file) =>
+              file.id != null &&
+              file.name != null &&
+              isVisibleDriveBackupFileName(file.name),
+        )
         .map(
           (drive.File file) => DriveBackupFile(
             id: file.id!,
@@ -227,9 +290,8 @@ class GoogleDriveBackupService implements DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
-    drive.DriveApi? reuseApi,
   }) async {
-    final drive.DriveApi api = reuseApi ?? await createAuthorizedDriveApi();
+    final drive.DriveApi api = await _createAuthorizedDriveApi();
     await destinationDirectory.create(recursive: true);
     final String safeFileName = sanitizeDriveBackupFileName(fileName);
     final File output = File(p.join(destinationDirectory.path, safeFileName));

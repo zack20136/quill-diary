@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
 
 void main() {
+  group('isVisibleDriveBackupFileName', () {
+    test('accepts visible backup names', () {
+      expect(isVisibleDriveBackupFileName('backup_2026-05-26.jbackup'), isTrue);
+    });
+
+    test('rejects names that download step would block', () {
+      expect(isVisibleDriveBackupFileName(null), isFalse);
+      expect(isVisibleDriveBackupFileName('backup.jbackup.tmp'), isFalse);
+      expect(isVisibleDriveBackupFileName('../backup.jbackup'), isFalse);
+      expect(isVisibleDriveBackupFileName(r'C:\temp\backup.jbackup'), isFalse);
+    });
+  });
+
   group('sanitizeDriveBackupFileName', () {
     test('accepts safe jbackup file names', () {
       expect(

@@ -40,8 +40,15 @@ class VaultTransferService {
   final VaultRepository _vaultRepository;
   final ExportSaveLocationStore _exportSaveLocationStore;
 
-  Future<void> resetGoogleDriveSignInForConsentRetry() {
-    return _driveBackupService.resetSignInSessionForConsentRetry();
+  Future<bool> isGoogleDriveConnected() {
+    return _driveBackupService.isConnected();
+  }
+
+  Future<void> connectGoogleDrive({bool reconnect = false}) {
+    if (reconnect) {
+      return _driveBackupService.reconnect();
+    }
+    return _driveBackupService.connect();
   }
 
   Future<BackupCreationResult?> createBackupWithPicker() async {
@@ -175,11 +182,10 @@ class VaultTransferService {
   }
 
   Future<String> uploadBackupToDrive() async {
-    final api = await _driveBackupService.createAuthorizedDriveApi();
     final File tempBackup = await _createTempFile('${_backupTimestamp(DateTime.now())}.jbackup');
     try {
       await _archiveIo.writeBackupZip(tempBackup);
-      return await _driveBackupService.uploadBackup(tempBackup, reuseApi: api);
+      return await _driveBackupService.uploadBackup(tempBackup);
     } finally {
       await _deleteIfExists(tempBackup);
     }
@@ -190,12 +196,10 @@ class VaultTransferService {
   }
 
   Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {
-    final api = await _driveBackupService.createAuthorizedDriveApi();
     return _driveBackupService.downloadBackupById(
       fileId: backup.id,
       fileName: backup.name,
       destinationDirectory: await getTemporaryDirectory(),
-      reuseApi: api,
     );
   }
 

@@ -138,21 +138,24 @@ abstract final class SettingsLocalBackupCopy {
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
-      '將 .jbackup 上傳到 Google Drive，或從雲端下載備份還原。還原後可能需要輸入建立備份時保存的復原金鑰。';
+      '先連結 Google Drive，再把 .jbackup 備份上傳到雲端，或從雲端挑選備份還原。';
   static const String sectionDescriptionDisabled = 'Google Drive 備份尚未設定。';
 
+  static const String connectButton = '連結 Google Drive';
+  static const String reconnectButton = '重新連結 Google Drive';
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
 
+  static const String connectedHint = '已連結 Google Drive。可直接上傳新備份，或從雲端還原。';
+  static const String disconnectedHint = '尚未連結 Google Drive。請先完成 Google 登入與授權。';
+  static const String actionsLockedHint = '要使用雲端備份與還原，請先解鎖日記庫並建立復原金鑰。';
+
+  static const String connectSuccess = 'Google Drive 已連結。';
+  static const String reconnectSuccess = '已重新連結 Google Drive。';
   static const String uploadSuccess = '備份已上傳到 Google Drive。';
   static const String noBackups = 'Google Drive 中找不到 .jbackup 備份檔。';
   static const String pickDialogTitle = '選擇 Google Drive 備份';
   static const String unknownCreatedTime = '無建立時間';
-
-  static const String googleHelpHint =
-      '如果你剛調整 Google Drive 權限或授權設定，先重新登入再重試通常就能完成授權。';
-  static const String googleHelpTitle = 'Google Drive 授權需要處理';
-  static const String googleHelpRetryButton = '重新登入後重試';
 }
 
 abstract final class SettingsRestoreDialogCopy {

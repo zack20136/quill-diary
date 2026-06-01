@@ -59,7 +59,6 @@ class RestorePrecheck {
   bool get recoveryKeyRotatedSinceBackup =>
       backupHasRecovery &&
       sameVaultId &&
-      localHasTrustedDevice &&
       localRecoverySaltBase64 != null &&
       backupRecoverySaltBase64 != null &&
       !sameRecoveryGeneration;

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
@@ -679,6 +680,49 @@ Imported from zip.
 
     expect(report.ok, isFalse);
     expect(report.message, contains('.jbackup'));
+  });
+
+  test('restoreBackupZip 會在覆寫前拒絕缺少加密資料的備份', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoveryMetadata metadata =
+        await harness.repository.readRecoveryMetadata() ??
+            (throw StateError('測試前置失敗：缺少 recovery metadata。'));
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Keep Me',
+        date: const DateOnly('2026-05-31'),
+        createdAt: DateTime.parse('2026-05-31T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-31T08:00:00Z'),
+        markdownBody: 'keep',
+      ),
+    );
+
+    final File incompleteBackup = File(p.join(harness.tempDir.path, 'incomplete.jbackup'));
+    final Archive archive = Archive()
+      ..addFile(
+        ArchiveFile.string(
+          'recovery.json',
+          jsonEncode(metadata.toJson()),
+        ),
+      );
+    await incompleteBackup.writeAsBytes(ZipEncoder().encode(archive));
+
+    expect(
+      () => archiveIo.restoreBackupZip(incompleteBackup),
+      throwsA(
+        isA<StateError>().having(
+          (StateError error) => error.message,
+          'message',
+          contains('缺少必要的加密資料'),
+        ),
+      ),
+    );
+
+    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
   });
 
   test('restoreBackupZip 可還原日記並保留 recovery metadata', () async {

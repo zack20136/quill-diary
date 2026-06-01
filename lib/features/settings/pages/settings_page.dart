@@ -163,18 +163,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         sessionState?.isUnlocked == true && sessionState?.session != null;
     final bool hasRecoveryKey = recoveryMetadata != null;
     final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
-    final bool canUseGoogleDrive =
-        (!Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured) &&
-            canSensitiveVaultTransfer;
+    final bool isGoogleDriveConfigured =
+        !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
     final String disabledSensitiveVaultTransferReason =
         sensitiveVaultTransferDisabledReason(
           hasUnlockedSession: hasUnlockedSession,
           hasRecoveryKey: hasRecoveryKey,
         );
-    final String disabledGoogleDriveReason = !OAuthConfig.isIosGoogleDriveConfigured &&
-            Platform.isIOS
-        ? SettingsDriveBackupCopy.sectionDescriptionDisabled
-        : disabledSensitiveVaultTransferReason;
 
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
@@ -356,42 +351,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    icon: Icons.cloud_outlined,
-                    title: SettingsDriveBackupCopy.sectionTitle,
-                    description: canUseGoogleDrive
-                        ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-                        : disabledGoogleDriveReason,
-                    child: SettingsActionGroup(
-                      actions: <SettingsActionButton>[
-                        SettingsActionButton(
-                          label: SettingsDriveBackupCopy.uploadButton,
-                          icon: Icons.cloud_upload_outlined,
-                          emphasized: true,
-                          fullWidth: true,
-                          onPressed: _busy || !canUseGoogleDrive
-                              ? null
-                              : () => _runAction(() async {
-                                    await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((_) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .uploadBackupToDrive();
-                                    });
-                                    _showMessage(SettingsDriveBackupCopy.uploadSuccess);
-                                  }),
-                        ),
-                        SettingsActionButton(
-                          label: SettingsDriveBackupCopy.restoreButton,
-                          icon: Icons.cloud_download_outlined,
-                          fullWidth: true,
-                          onPressed: _busy || !canUseGoogleDrive
-                              ? null
-                              : () => _runRestoreFromGoogleDrive(),
-                        ),
-                      ],
-                    ),
+                  _buildDriveBackupSection(
+                    isGoogleDriveConfigured: isGoogleDriveConfigured,
+                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                    disabledSensitiveVaultTransferReason:
+                        disabledSensitiveVaultTransferReason,
                   ),
                 ],
                     ],
@@ -448,6 +412,119 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDriveBackupSection({
+    required bool isGoogleDriveConfigured,
+    required bool canSensitiveVaultTransfer,
+    required String disabledSensitiveVaultTransferReason,
+  }) {
+    return SettingsSectionCard(
+      icon: Icons.cloud_outlined,
+      title: SettingsDriveBackupCopy.sectionTitle,
+      description: isGoogleDriveConfigured
+          ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+          : SettingsDriveBackupCopy.sectionDescriptionDisabled,
+      child: !isGoogleDriveConfigured
+          ? const SettingsInfoBanner(
+              icon: Icons.cloud_off_rounded,
+              message: SettingsDriveBackupCopy.sectionDescriptionDisabled,
+            )
+          : FutureBuilder<bool>(
+              future: ref.read(vaultTransferServiceProvider).isGoogleDriveConnected(),
+              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                if (!snapshot.hasData &&
+                    snapshot.connectionState == ConnectionState.waiting) {
+                  return const SettingsSectionLoading();
+                }
+                final bool isConnected = snapshot.data ?? false;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    SettingsInfoBanner(
+                      icon: isConnected
+                          ? Icons.cloud_done_outlined
+                          : Icons.cloud_off_rounded,
+                      message: isConnected
+                          ? SettingsDriveBackupCopy.connectedHint
+                          : SettingsDriveBackupCopy.disconnectedHint,
+                    ),
+                    const SizedBox(height: 12),
+                    SettingsActionGroup(
+                      actions: <SettingsActionButton>[
+                        if (!isConnected)
+                          SettingsActionButton(
+                            label: SettingsDriveBackupCopy.connectButton,
+                            icon: Icons.link_rounded,
+                            emphasized: true,
+                            fullWidth: true,
+                            onPressed: _busy
+                                ? null
+                                : () => _runAction(
+                                      () => _connectGoogleDrive(),
+                                      progressMessage: '正在連結 Google Drive…',
+                                    ),
+                          ),
+                        if (isConnected)
+                          SettingsActionButton(
+                            label: SettingsDriveBackupCopy.uploadButton,
+                            icon: Icons.cloud_upload_outlined,
+                            emphasized: true,
+                            fullWidth: true,
+                            onPressed: _busy || !canSensitiveVaultTransfer
+                                ? null
+                                : () => _runAction(() async {
+                                      await ref
+                                          .read(appSessionProvider.notifier)
+                                          .runSensitiveTask((_) {
+                                        return ref
+                                            .read(vaultTransferServiceProvider)
+                                            .uploadBackupToDrive();
+                                      });
+                                      _showMessage(SettingsDriveBackupCopy.uploadSuccess);
+                                    }),
+                          ),
+                        if (isConnected)
+                          SettingsActionButton(
+                            label: SettingsDriveBackupCopy.restoreButton,
+                            icon: Icons.cloud_download_outlined,
+                            fullWidth: true,
+                            onPressed: _busy || !canSensitiveVaultTransfer
+                                ? null
+                                : () => _runRestoreFromGoogleDrive(),
+                          ),
+                      ],
+                    ),
+                    if (isConnected) ...<Widget>[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () => _runAction(
+                                    () => _connectGoogleDrive(reconnect: true),
+                                    progressMessage: '正在重新連結 Google Drive…',
+                                  ),
+                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                          label: const Text(SettingsDriveBackupCopy.reconnectButton),
+                        ),
+                      ),
+                    ],
+                    if (!canSensitiveVaultTransfer) ...<Widget>[
+                      const SizedBox(height: 12),
+                      SettingsInfoBanner(
+                        icon: Icons.lock_outline_rounded,
+                        message: disabledSensitiveVaultTransferReason.isEmpty
+                            ? SettingsDriveBackupCopy.actionsLockedHint
+                            : disabledSensitiveVaultTransferReason,
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
     );
   }
 
@@ -556,6 +633,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         }
       }
     });
+  }
+
+  Future<void> _connectGoogleDrive({bool reconnect = false}) async {
+    await ref.read(vaultTransferServiceProvider).connectGoogleDrive(
+          reconnect: reconnect,
+        );
+    _showMessage(
+      reconnect
+          ? SettingsDriveBackupCopy.reconnectSuccess
+          : SettingsDriveBackupCopy.connectSuccess,
+    );
   }
 
   Future<void> _restoreBackupFileWithFlow(
@@ -805,11 +893,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await action();
     } catch (error) {
       final String text = userFacingErrorMessage(error);
-      if (_shouldOfferGooglePermissionsHelp(text)) {
-        _showGoogleDriveHelpDialog(text, action);
-      } else {
-        _showMessage(text);
-      }
+      _showMessage(text);
     } finally {
       if (mounted) {
         setState(() {
@@ -827,57 +911,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> _retryGoogleDriveAfterSignOut(Future<void> Function() action) async {
-    await ref.read(vaultTransferServiceProvider).resetGoogleDriveSignInForConsentRetry();
-    await _runAction(action);
-  }
-
-  void _showGoogleDriveHelpDialog(String message, Future<void> Function() action) {
-    if (!mounted) {
-      return;
-    }
-    unawaited(
-      showDialog<void>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text(SettingsDriveBackupCopy.googleHelpTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(message),
-              const SizedBox(height: 12),
-              const Text(SettingsDriveBackupCopy.googleHelpHint),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(SettingsCopy.actionCancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                unawaited(_retryGoogleDriveAfterSignOut(action));
-              },
-              child: const Text(SettingsDriveBackupCopy.googleHelpRetryButton),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  bool _shouldOfferGooglePermissionsHelp(String message) {
-    return message.contains('Google') ||
-        message.contains('oauth_config.xml') ||
-        message.contains('OAuth') ||
-        message.contains('Cloud Console') ||
-        message.contains('No credential available') ||
-        message.contains('GIDClientID') ||
-        message.contains('GIDServerClientID');
   }
 }
 

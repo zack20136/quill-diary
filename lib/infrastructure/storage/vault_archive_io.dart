@@ -133,10 +133,7 @@ class VaultArchiveIo {
 
     late final Archive archive;
     try {
-      archive = ZipDecoder().decodeBytes(
-        await backupFile.readAsBytes(),
-        verify: true,
-      );
+      archive = await _decodeBackupArchive(backupFile);
       items.add(
         const BackupHealthStatusItem(
           label: 'ZIP',
@@ -178,73 +175,51 @@ class VaultArchiveIo {
       );
     }
 
-    var safePaths = true;
-    var hasRecovery = false;
-    var hasManifest = false;
-    var entrySampleFound = false;
-    var hasVaultPayload = false;
-
-    for (final ArchiveFile file in archive.files) {
-      final String rawName = file.name.replaceAll('\\', '/');
-      final String normalized = p.posix.normalize(rawName);
-      if (rawName.contains('..') || p.posix.isAbsolute(normalized)) {
-        safePaths = false;
-      }
-      if (file.isFile && normalized == 'recovery.json') {
-        hasRecovery = true;
-      }
-      if (file.isFile && normalized == 'manifest.json.enc') {
-        hasManifest = true;
-      }
-      if (file.isFile && normalized.startsWith('entries/') && normalized.endsWith('.md.enc')) {
-        entrySampleFound = true;
-      }
-      if (normalized.startsWith('entries/') || normalized.startsWith('assets/')) {
-        hasVaultPayload = true;
-      }
-    }
+    final _BackupArchiveInspection inspection = _inspectArchive(archive);
 
     items
       ..add(
         BackupHealthStatusItem(
           label: '檔案路徑',
-          ok: safePaths,
-          message: safePaths ? '備份內部路徑正常' : '備份內含不安全路徑',
+          ok: inspection.safePaths,
+          message: inspection.safePaths ? '備份內部路徑正常' : '備份內含不安全路徑',
         ),
       )
       ..add(
         BackupHealthStatusItem(
           label: '復原金鑰',
-          ok: hasRecovery,
-          message: hasRecovery ? '包含復原金鑰資訊' : '缺少復原金鑰資訊',
+          ok: inspection.hasRecovery,
+          message: inspection.hasRecovery ? '包含復原金鑰資訊' : '缺少復原金鑰資訊',
         ),
       )
       ..add(
         BackupHealthStatusItem(
           label: '日記庫資料',
-          ok: hasVaultPayload || hasManifest,
-          message: hasVaultPayload || hasManifest ? '包含日記庫資料結構' : '找不到日記或附件資料',
+          ok: inspection.hasVaultPayload || inspection.hasManifest,
+          message: inspection.hasVaultPayload || inspection.hasManifest
+              ? '包含日記庫資料結構'
+              : '找不到日記或附件資料',
         ),
       )
       ..add(
         BackupHealthStatusItem(
           label: '加密檢查',
-          ok: hasManifest || entrySampleFound,
-          message: hasManifest
+          ok: inspection.hasManifest || inspection.entrySampleFound,
+          message: inspection.hasManifest
               ? '包含加密 manifest'
-              : entrySampleFound
+              : inspection.entrySampleFound
                   ? '包含至少一篇加密日記'
                   : '缺少可檢查的加密資料',
         ),
       );
 
-    final bool ok = safePaths && hasRecovery && (hasManifest || entrySampleFound);
+    final bool ok = inspection.isRestorable;
     return BackupHealthReport(
       ok: ok,
       statusItems: List<BackupHealthStatusItem>.unmodifiable(items),
-      entrySampleFound: entrySampleFound,
-      hasRecoveryMetadata: hasRecovery,
-      hasManifest: hasManifest,
+      entrySampleFound: inspection.entrySampleFound,
+      hasRecoveryMetadata: inspection.hasRecovery,
+      hasManifest: inspection.hasManifest,
       message: ok ? '備份檔案檢查通過。' : '備份檢查未通過，檔案可能無法還原。',
     );
   }
@@ -500,10 +475,7 @@ class VaultArchiveIo {
   /// Reads [recovery.json] from a `.jbackup` without writing to disk.
   Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) async {
     try {
-      final Archive archive = ZipDecoder().decodeBytes(
-        await backupFile.readAsBytes(),
-        verify: true,
-      );
+      final Archive archive = await _decodeBackupArchive(backupFile);
       final ArchiveFile? recoveryEntry = _findRecoveryJsonEntry(archive);
       if (recoveryEntry == null || !recoveryEntry.isFile) {
         return const BackupRecoveryPreview(hasRecovery: false);
@@ -535,10 +507,8 @@ class VaultArchiveIo {
     await tempRoot.create(recursive: true);
 
     try {
-      final Archive archive = ZipDecoder().decodeBytes(
-        await backupFile.readAsBytes(),
-        verify: true,
-      );
+      final Archive archive = await _decodeBackupArchive(backupFile);
+      _ensureArchiveRestorable(archive);
       for (final ArchiveFile archiveFile in archive.files) {
         _ensureSafeArchivePath(archiveFile.name);
         final String outputPath = p.join(tempRoot.path, archiveFile.name);
@@ -553,6 +523,11 @@ class VaultArchiveIo {
           await Directory(outputPath).create(recursive: true);
         }
       }
+    } on StateError {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+      rethrow;
     } on Object {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
@@ -628,10 +603,7 @@ class VaultArchiveIo {
 
   Future<List<int>?> _readSampleEncryptedDocumentFromBackup(File backupFile) async {
     try {
-      final Archive archive = ZipDecoder().decodeBytes(
-        await backupFile.readAsBytes(),
-        verify: true,
-      );
+      final Archive archive = await _decodeBackupArchive(backupFile);
       final ArchiveFile? manifest = _findEncryptedEntry(
         archive,
         endsWith: 'manifest.json.enc',
@@ -657,6 +629,13 @@ class VaultArchiveIo {
     } on Object {
       throw StateError(kInvalidBackupArchiveMessage);
     }
+  }
+
+  Future<Archive> _decodeBackupArchive(File backupFile) async {
+    return ZipDecoder().decodeBytes(
+      await backupFile.readAsBytes(),
+      verify: true,
+    );
   }
 
   ArchiveFile? _findEncryptedEntry(
@@ -686,6 +665,57 @@ class VaultArchiveIo {
       }
     }
     return null;
+  }
+
+  void _ensureArchiveRestorable(Archive archive) {
+    final _BackupArchiveInspection inspection = _inspectArchive(archive);
+    if (!inspection.safePaths) {
+      throw StateError(kInvalidBackupArchiveMessage);
+    }
+    if (!inspection.isRestorable) {
+      throw StateError('備份檔內容不完整，缺少必要的加密資料。');
+    }
+  }
+
+  _BackupArchiveInspection _inspectArchive(Archive archive) {
+    var safePaths = true;
+    var hasRecovery = false;
+    var hasManifest = false;
+    var entrySampleFound = false;
+    var hasVaultPayload = false;
+
+    for (final ArchiveFile file in archive.files) {
+      final String rawName = file.name.replaceAll('\\', '/');
+      final String normalized = p.posix.normalize(rawName);
+      if (rawName.contains('..') || p.posix.isAbsolute(normalized)) {
+        safePaths = false;
+      }
+      if (file.isFile &&
+          (normalized == 'recovery.json' || normalized.endsWith('/recovery.json'))) {
+        hasRecovery = true;
+      }
+      if (file.isFile &&
+          (normalized == 'manifest.json.enc' ||
+              normalized.endsWith('/manifest.json.enc'))) {
+        hasManifest = true;
+      }
+      if (file.isFile &&
+          normalized.startsWith('entries/') &&
+          normalized.endsWith('.md.enc')) {
+        entrySampleFound = true;
+      }
+      if (normalized.startsWith('entries/') || normalized.startsWith('assets/')) {
+        hasVaultPayload = true;
+      }
+    }
+
+    return _BackupArchiveInspection(
+      safePaths: safePaths,
+      hasRecovery: hasRecovery,
+      hasManifest: hasManifest,
+      entrySampleFound: entrySampleFound,
+      hasVaultPayload: hasVaultPayload,
+    );
   }
 
   void _validateRestoredVaultPayload(Directory root) {
@@ -2302,6 +2332,24 @@ class VaultArchiveIo {
     await workingDirectory.create(recursive: true);
     return workingDirectory;
   }
+}
+
+class _BackupArchiveInspection {
+  const _BackupArchiveInspection({
+    required this.safePaths,
+    required this.hasRecovery,
+    required this.hasManifest,
+    required this.entrySampleFound,
+    required this.hasVaultPayload,
+  });
+
+  final bool safePaths;
+  final bool hasRecovery;
+  final bool hasManifest;
+  final bool entrySampleFound;
+  final bool hasVaultPayload;
+
+  bool get isRestorable => safePaths && hasRecovery && (hasManifest || entrySampleFound);
 }
 
 class _ImportedDocument {
