@@ -32,7 +32,7 @@ void main() {
     expect(harness.deviceKeyManager.lastWrapAuthKind, KeystoreAuthKind.plain);
     expect(session.deviceSlotId, 'dev_android_keystore_plain_${session.vaultId}');
     expect(record?.slotId, 'dev_android_keystore_plain_${session.vaultId}');
-    expect(record?.formatVersion, 2);
+    expect(record?.formatVersion, WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion);
   });
 
   test('開啟生物驗證後，refreshTrustedSessionProtection 會切到 biometric trusted session', () async {
@@ -50,6 +50,20 @@ void main() {
     expect(harness.deviceKeyManager.lastWrapAuthKind, KeystoreAuthKind.biometric);
     expect(refreshed.deviceSlotId, 'dev_android_keystore_biometric_${refreshed.vaultId}');
     expect(record?.slotId, 'dev_android_keystore_biometric_${refreshed.vaultId}');
-    expect(record?.formatVersion, 2);
+    expect(record?.formatVersion, WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion);
+  });
+
+  test('WrappedRecoveryKeyRecord 拒絕 format_version 2', () {
+    expect(
+      () => WrappedRecoveryKeyRecord.fromJson(<Object?, Object?>{
+        'slot_id': 'dev_test',
+        'nonce': 'abc',
+        'ciphertext': 'def',
+        'wrapped_at': DateTime.now().toIso8601String(),
+        'format_version': 2,
+        'platform': 'android',
+      }),
+      throwsA(isA<DeviceKeyLegacyStateException>()),
+    );
   });
 }

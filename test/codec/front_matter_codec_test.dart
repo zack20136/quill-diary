@@ -91,25 +91,4 @@ void main() {
     expect(document, contains('tags: []'));
     expect(codec.decode(document).tags, isEmpty);
   });
-
-  test('is_deleted 可從 front matter 解析', () {
-    const String document = '''---
-id: "jrn_DEL0001"
-title: null
-date: "2026-01-01"
-created_at: "2026-01-01T00:00:00.000Z"
-updated_at: "2026-01-02T00:00:00.000Z"
-tags: []
-mood: null
-attachments: []
-schema_version: 1
-is_deleted: true
----
-
-deleted body
-''';
-    final DiaryEntry decoded = codec.decode(document);
-    expect(decoded.isDeleted, isTrue);
-    expect(decoded.markdownBody, 'deleted body');
-  });
 }

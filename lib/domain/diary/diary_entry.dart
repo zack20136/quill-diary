@@ -12,7 +12,6 @@ class DiaryEntry {
     this.tags = const <String>[],
     this.attachmentIds = const <AssetId>[],
     this.mood,
-    this.isDeleted = false,
   });
 
   final EntryId id;
@@ -25,7 +24,6 @@ class DiaryEntry {
   final String? mood;
   final String markdownBody;
   final List<AssetId> attachmentIds;
-  final bool isDeleted;
 
   String? get normalizedTitle {
     final String? candidate = title?.trim();
@@ -48,7 +46,6 @@ class DiaryEntry {
     bool clearMood = false,
     String? markdownBody,
     List<AssetId>? attachmentIds,
-    bool? isDeleted,
   }) {
     return DiaryEntry(
       id: id ?? this.id,
@@ -61,7 +58,6 @@ class DiaryEntry {
       mood: clearMood ? null : (mood ?? this.mood),
       markdownBody: markdownBody ?? this.markdownBody,
       attachmentIds: attachmentIds ?? this.attachmentIds,
-      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }

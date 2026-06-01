@@ -17,7 +17,6 @@ EntryIndexRecord buildEntryIndexRecord({
   int attachmentCount = 0,
   int imageAttachmentCount = 0,
   int fileAttachmentCount = 0,
-  bool isDeleted = false,
 }) {
   final DateTime created = createdAt ?? DateTime.parse('2026-05-13T20:30:12Z');
   return EntryIndexRecord(
@@ -34,7 +33,6 @@ EntryIndexRecord buildEntryIndexRecord({
     wordCount: wordCount,
     charCount: charCount,
     attachmentCount: attachmentCount,
-    isDeleted: isDeleted,
     imageAttachmentCount: imageAttachmentCount,
     fileAttachmentCount: fileAttachmentCount,
   );

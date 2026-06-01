@@ -1299,7 +1299,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         tags: parseEditorTagsCsv(_tagsController.text),
         markdownBody: _bodyController.text.trim(),
         attachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
-        isDeleted: false,
       );
       final DiaryEntry saved = await ref.read(vaultRepositoryProvider).saveEntry(
             session,

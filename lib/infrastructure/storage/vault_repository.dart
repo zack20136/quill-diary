@@ -219,7 +219,7 @@ class VaultRepository {
     final RecoveryMetadata metadata = RecoveryMetadata(
       vaultId: generateVaultId(),
       recoveryEnabled: true,
-      recoveryKeyVersion: 2,
+      recoveryKeyVersion: 1,
       recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
       createdAt: DateTime.now(),
       kdf: recoveryKdf,
@@ -557,12 +557,19 @@ class VaultRepository {
   }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
-    final List<AssetAttachment> existingFromDb =
-        await _requireOpenIndex().attachmentsForEntry(draft.id);
+    final IndexDatabase indexDb = _requireOpenIndex();
+    final EntryIndexRecord? previousRecord = await indexDb.getEntryById(draft.id);
+    final DateOnly previousDate = previousRecord?.date ?? draft.date;
+    final List<AssetAttachment> existingFromDb = await indexDb.attachmentsForEntry(draft.id);
     final Set<AssetId> keepExistingIds = draft.attachmentIds.toSet();
     final List<AssetAttachment> existingKept = existingFromDb
         .where((AssetAttachment a) => keepExistingIds.contains(a.id))
         .toList();
+    final List<AssetAttachment> removedAttachments = existingFromDb
+        .where((AssetAttachment a) => !keepExistingIds.contains(a.id))
+        .toList(growable: false);
+    await _deleteAttachmentsOnDisk(date: previousDate, attachments: removedAttachments);
+
     final List<AssetAttachment> newAttachments = await _storePendingAttachments(
       entry: draft,
       pendingAttachments: pendingAttachments,
@@ -580,6 +587,27 @@ class VaultRepository {
       attachmentIds: allAttachments.map((AssetAttachment asset) => asset.id).toList(),
       updatedAt: DateTime.now(),
     );
+
+    if (previousRecord != null && previousRecord.date != normalized.date) {
+      for (final AssetAttachment attachment in existingKept) {
+        final String oldPath =
+            await _assetAbsolutePathFor(date: previousRecord.date, attachment: attachment);
+        final String newPath =
+            await _assetAbsolutePathFor(date: normalized.date, attachment: attachment);
+        if (oldPath == newPath) {
+          continue;
+        }
+        final File oldFile = File(oldPath);
+        if (!oldFile.existsSync()) {
+          continue;
+        }
+        final Directory newParent = File(newPath).parent;
+        if (!newParent.existsSync()) {
+          await newParent.create(recursive: true);
+        }
+        await oldFile.rename(newPath);
+      }
+    }
 
     final String markdown = _frontMatterCodec.encode(
       normalized,
@@ -601,9 +629,13 @@ class VaultRepository {
     );
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
+    if (previousRecord != null && previousRecord.filePath != filePath) {
+      await _deleteFileIfExists(previousRecord.filePath);
+    }
+
     final _EntrySearchFields searchFields = _buildEntrySearchFields(normalized);
 
-    await _requireOpenIndex().upsertEntry(
+    await indexDb.upsertEntry(
       entry: normalized,
       filePath: filePath,
       previewText: searchFields.previewText,
@@ -613,16 +645,15 @@ class VaultRepository {
       encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
     );
-    await _requireOpenIndex().replaceAttachments(
+    await indexDb.replaceAttachments(
       normalized.id,
       allAttachments,
       <AssetId, String>{
         for (final AssetAttachment attachment in allAttachments)
-          attachment.id: await _pathStrategy.assetAbsolutePath(
+          attachment.id: await _assetAbsolutePathFor(
             date: normalized.date,
-            assetId: attachment.id,
-            extension: p.extension(attachment.safeFilename).replaceFirst('.', ''),
-        ),
+            attachment: attachment,
+          ),
       },
     );
     await _writeEncryptedManifest(session, metadata);
@@ -633,12 +664,18 @@ class VaultRepository {
     UnlockedVaultSession session,
     EntryId entryId,
   ) async {
-    final DiaryEntry? entry = await loadEntry(session, entryId);
-    if (entry == null) {
+    final IndexDatabase indexDb = _requireOpenIndex();
+    final EntryIndexRecord? record = await indexDb.getEntryById(entryId);
+    if (record == null) {
       return;
     }
-    await saveEntry(session, entry.copyWith(isDeleted: true));
-    await _requireOpenIndex().markEntryDeleted(entryId);
+
+    final List<AssetAttachment> attachments = await indexDb.attachmentsForEntry(entryId);
+    await _deleteEntryFilesOnDisk(record: record, attachments: attachments);
+    await indexDb.removeEntry(entryId);
+
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    await _writeEncryptedManifest(session, metadata);
   }
 
   Future<List<EntryIndexRecord>> searchEntries(String query) {
@@ -920,7 +957,7 @@ class VaultRepository {
     final Map<String, Object?> manifest = <String, Object?>{
       'schema_version': 1,
       'vault_id': metadata.vaultId,
-      'entry_count': entries.where((EntryIndexRecord item) => !item.isDeleted).length,
+      'entry_count': entries.length,
       'asset_count': 0,
       'oldest_entry_date': entries.isEmpty ? null : entries.last.date.value,
       'newest_entry_date': entries.isEmpty ? null : entries.first.date.value,
@@ -1122,7 +1159,7 @@ class VaultRepository {
         nonceBase64: payload.nonceBase64,
         ciphertextBase64: payload.ciphertextBase64,
         wrappedAt: DateTime.now(),
-        formatVersion: 2,
+        formatVersion: WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion,
         platform: payload.platform,
       ),
     );
@@ -1162,6 +1199,43 @@ class VaultRepository {
       return;
     }
     await indexDb.deleteAppValue(kRewrapStartedAtKey);
+  }
+
+  Future<void> _deleteEntryFilesOnDisk({
+    required EntryIndexRecord record,
+    required List<AssetAttachment> attachments,
+  }) async {
+    await _deleteFileIfExists(record.filePath);
+    await _deleteAttachmentsOnDisk(date: record.date, attachments: attachments);
+  }
+
+  Future<String> _assetAbsolutePathFor({
+    required DateOnly date,
+    required AssetAttachment attachment,
+  }) async {
+    final String extension = p.extension(attachment.safeFilename).replaceFirst('.', '');
+    return _pathStrategy.assetAbsolutePath(
+      date: date,
+      assetId: attachment.id,
+      extension: extension.isEmpty ? 'bin' : extension,
+    );
+  }
+
+  Future<void> _deleteFileIfExists(String path) async {
+    final File file = File(path);
+    if (file.existsSync()) {
+      await file.delete();
+    }
+  }
+
+  Future<void> _deleteAttachmentsOnDisk({
+    required DateOnly date,
+    required Iterable<AssetAttachment> attachments,
+  }) async {
+    for (final AssetAttachment attachment in attachments) {
+      final String assetPath = await _assetAbsolutePathFor(date: date, attachment: attachment);
+      await _deleteFileIfExists(assetPath);
+    }
   }
 
   Future<void> _atomicWriteBytes(File file, Uint8List bytes) async {
@@ -1272,7 +1346,7 @@ class VaultRepository {
         nonceBase64: payload.nonceBase64,
         ciphertextBase64: payload.ciphertextBase64,
         wrappedAt: DateTime.now(),
-        formatVersion: 2,
+        formatVersion: WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion,
         platform: deviceInfo.platform,
       ),
     );

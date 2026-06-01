@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_lock_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
 import 'package:quill_lock_diary/domain/shared/value_objects.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
@@ -39,6 +40,10 @@ void main() {
     );
 
     final DiaryEntry saved = await harness.repository.saveEntry(session, draft);
+    final String entryPath = await harness.pathStrategy.entryAbsolutePath(
+      date: saved.date,
+      entryId: saved.id,
+    );
     final List<EntryIndexRecord> entries = await harness.repository.listEntries();
     expect(entries.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
 
@@ -57,10 +62,12 @@ void main() {
     await harness.repository.deleteEntry(session, saved.id);
     final List<EntryIndexRecord> afterDelete = await harness.repository.listEntries();
     expect(afterDelete.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
+    expect(File(entryPath).existsSync(), isFalse);
 
     await harness.repository.rebuildIndex(session);
-    final DiaryEntry? afterRebuild = await harness.repository.loadEntry(session, saved.id);
-    expect(afterRebuild?.markdownBody, draft.markdownBody);
+    final List<EntryIndexRecord> afterRebuildList = await harness.repository.listEntries();
+    expect(afterRebuildList.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
+    expect(await harness.repository.loadEntry(session, saved.id), isNull);
   });
 
   test('searchEntries matches substrings anywhere in the full body', () async {
@@ -195,5 +202,163 @@ void main() {
 
     expect(dashedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
     expect(spacedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
+  });
+
+  test('deleteEntry removes entry and attachment files from disk', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final session = setup.session;
+    final File sourceAttachment = File('${harness.tempDir.path}/photo.jpg')
+      ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
+
+    final DiaryEntry draft = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: session.vaultId,
+      title: 'with photo',
+      date: const DateOnly('2026-05-18'),
+      createdAt: DateTime.parse('2026-05-18T10:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-18T10:00:00Z'),
+      markdownBody: 'entry with attachment',
+    );
+
+    final DiaryEntry saved = await harness.repository.saveEntry(
+      session,
+      draft,
+      pendingAttachments: <PendingAttachment>[
+        PendingAttachment(
+          sourcePath: sourceAttachment.path,
+          mimeType: 'image/jpeg',
+          originalFilename: 'photo.jpg',
+        ),
+      ],
+    );
+    final String entryPath = await harness.pathStrategy.entryAbsolutePath(
+      date: saved.date,
+      entryId: saved.id,
+    );
+    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    expect(attachments, hasLength(1));
+    final String assetPath = await harness.pathStrategy.assetAbsolutePath(
+      date: saved.date,
+      assetId: attachments.single.id,
+      extension: 'jpg',
+    );
+    expect(File(entryPath).existsSync(), isTrue);
+    expect(File(assetPath).existsSync(), isTrue);
+
+    await harness.repository.deleteEntry(session, saved.id);
+
+    expect(File(entryPath).existsSync(), isFalse);
+    expect(File(assetPath).existsSync(), isFalse);
+  });
+
+  test('saveEntry removes detached attachment files from disk', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final session = setup.session;
+    final File sourceAttachment = File('${harness.tempDir.path}/detach.jpg')
+      ..writeAsBytesSync(const <int>[5, 6, 7]);
+
+    final DiaryEntry draft = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: session.vaultId,
+      date: const DateOnly('2026-05-19'),
+      createdAt: DateTime.parse('2026-05-19T10:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-19T10:00:00Z'),
+      markdownBody: 'keep then drop attachment',
+    );
+
+    final DiaryEntry saved = await harness.repository.saveEntry(
+      session,
+      draft,
+      pendingAttachments: <PendingAttachment>[
+        PendingAttachment(
+          sourcePath: sourceAttachment.path,
+          mimeType: 'image/jpeg',
+          originalFilename: 'detach.jpg',
+        ),
+      ],
+    );
+    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    expect(attachments, hasLength(1));
+    final String assetPath = await harness.pathStrategy.assetAbsolutePath(
+      date: saved.date,
+      assetId: attachments.single.id,
+      extension: 'jpg',
+    );
+    expect(File(assetPath).existsSync(), isTrue);
+
+    await harness.repository.saveEntry(
+      session,
+      saved.copyWith(
+        attachmentIds: const <AssetId>[],
+        updatedAt: DateTime.parse('2026-05-19T11:00:00Z'),
+      ),
+    );
+
+    expect(File(assetPath).existsSync(), isFalse);
+  });
+
+  test('saveEntry moves entry and attachments when date changes', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final session = setup.session;
+    final File sourceAttachment = File('${harness.tempDir.path}/move.jpg')
+      ..writeAsBytesSync(const <int>[8, 9, 10]);
+
+    final DiaryEntry draft = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: session.vaultId,
+      date: const DateOnly('2026-05-20'),
+      createdAt: DateTime.parse('2026-05-20T10:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-20T10:00:00Z'),
+      markdownBody: 'move with attachment',
+    );
+
+    final DiaryEntry saved = await harness.repository.saveEntry(
+      session,
+      draft,
+      pendingAttachments: <PendingAttachment>[
+        PendingAttachment(
+          sourcePath: sourceAttachment.path,
+          mimeType: 'image/jpeg',
+          originalFilename: 'move.jpg',
+        ),
+      ],
+    );
+    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    expect(attachments, hasLength(1));
+    final AssetAttachment attachment = attachments.single;
+    final String oldEntryPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-05-20'),
+      entryId: saved.id,
+    );
+    final String oldAssetPath = await harness.pathStrategy.assetAbsolutePath(
+      date: const DateOnly('2026-05-20'),
+      assetId: attachment.id,
+      extension: 'jpg',
+    );
+
+    final DiaryEntry moved = await harness.repository.saveEntry(
+      session,
+      saved.copyWith(
+        date: const DateOnly('2026-06-01'),
+        updatedAt: DateTime.parse('2026-06-01T10:00:00Z'),
+      ),
+    );
+
+    final String newEntryPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-06-01'),
+      entryId: saved.id,
+    );
+    final String newAssetPath = await harness.pathStrategy.assetAbsolutePath(
+      date: const DateOnly('2026-06-01'),
+      assetId: attachment.id,
+      extension: 'jpg',
+    );
+
+    expect(File(oldEntryPath).existsSync(), isFalse);
+    expect(File(oldAssetPath).existsSync(), isFalse);
+    expect(File(newEntryPath).existsSync(), isTrue);
+    expect(File(newAssetPath).existsSync(), isTrue);
+    expect(moved.date, const DateOnly('2026-06-01'));
+    expect(await harness.repository.loadEntry(session, saved.id), isNotNull);
   });
 }

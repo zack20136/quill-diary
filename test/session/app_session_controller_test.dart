@@ -24,7 +24,7 @@ void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
     vaultId: 'vlt_controller_test',
     recoveryEnabled: true,
-    recoveryKeyVersion: 2,
+    recoveryKeyVersion: 1,
     recoveryKeyHint: 'ABCD',
     createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
     kdf: KdfDescriptor.argon2idRecovery(

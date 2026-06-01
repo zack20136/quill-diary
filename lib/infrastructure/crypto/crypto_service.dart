@@ -10,7 +10,7 @@ import '../../infrastructure/security/device_key_manager.dart';
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
-const int _schemaVersion = 2;
+const int _schemaVersion = 1;
 
 class EncryptionKeySlot {
   const EncryptionKeySlot({

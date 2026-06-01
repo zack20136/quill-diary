@@ -12,7 +12,7 @@ void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
     vaultId: 'vlt_META_TEST',
     recoveryEnabled: true,
-    recoveryKeyVersion: 2,
+    recoveryKeyVersion: 1,
     recoveryKeyHint: 'WXYZ',
     createdAt: DateTime.parse('2026-05-19T12:00:00Z'),
     kdf: kdf,
@@ -24,14 +24,23 @@ void main() {
 
     expect(restored.vaultId, metadata.vaultId);
     expect(restored.recoveryEnabled, isTrue);
-    expect(restored.recoveryKeyVersion, 2);
+    expect(restored.recoveryKeyVersion, 1);
     expect(restored.recoveryKeyHint, metadata.recoveryKeyHint);
     expect(restored.kdf.name, KdfDescriptor.kAlgorithmName);
     expect(restored.kdf.saltBase64, kdf.saltBase64);
   });
 
-  test('RecoveryMetadata 拒絕 v1 recovery_key_version', () {
-    final Map<String, Object?> json = metadata.toJson()..['recovery_key_version'] = 1;
+  test('RecoveryMetadata 拒絕 v0 recovery_key_version', () {
+    final Map<String, Object?> json = metadata.toJson()..['recovery_key_version'] = 0;
+
+    expect(
+      () => RecoveryMetadata.fromJson(json),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('RecoveryMetadata 拒絕 schema_version 2', () {
+    final Map<String, Object?> json = metadata.toJson()..['schema_version'] = 2;
 
     expect(
       () => RecoveryMetadata.fromJson(json),

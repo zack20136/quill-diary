@@ -718,12 +718,6 @@ class _EntryCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (entry.isDeleted) ...<Widget>[
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, top: 2),
-                      child: Icon(Icons.delete_outline, color: cs.error, size: 20),
-                    ),
-                  ],
                   const SizedBox(width: 10),
                   _EntryCardRightDateTime(entry: entry),
                 ],
@@ -806,16 +800,6 @@ class _CompactEntryList extends StatelessWidget {
                                     compactTags: true,
                                   ),
                                 ),
-                                if (entry.isDeleted) ...<Widget>[
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 4, top: 2),
-                                    child: Icon(
-                                      Icons.delete_outline,
-                                      color: theme.colorScheme.error,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ],
                                 const SizedBox(width: 10),
                                 _EntryCardRightDateTime(entry: entry, compact: true),
                               ],

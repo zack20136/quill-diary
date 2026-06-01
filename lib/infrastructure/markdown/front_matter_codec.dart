@@ -78,7 +78,6 @@ class FrontMatterCodec {
         mood: _nullableString(frontMatter['mood']),
         markdownBody: parsed.body,
         attachmentIds: attachmentIds,
-        isDeleted: frontMatter['is_deleted'] == true,
       ),
       frontMatter: frontMatter,
       body: parsed.body,

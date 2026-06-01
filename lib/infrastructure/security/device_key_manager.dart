@@ -40,6 +40,8 @@ class WrappedRecoveryKeyRecord {
     required this.platform,
   });
 
+  static const int kWrappedRecoveryKeyFormatVersion = 1;
+
   final DeviceSlotId slotId;
   final String nonceBase64;
   final String ciphertextBase64;
@@ -59,13 +61,21 @@ class WrappedRecoveryKeyRecord {
   }
 
   factory WrappedRecoveryKeyRecord.fromJson(Map<Object?, Object?> json) {
+    final int formatVersion =
+        int.tryParse('${json['format_version'] ?? kWrappedRecoveryKeyFormatVersion}') ??
+            kWrappedRecoveryKeyFormatVersion;
+    if (formatVersion != kWrappedRecoveryKeyFormatVersion) {
+      throw DeviceKeyLegacyStateException(
+        '不支援的受信任裝置金鑰格式版本：$formatVersion。',
+      );
+    }
     return WrappedRecoveryKeyRecord(
       slotId: '${json['slot_id'] ?? ''}',
       nonceBase64: '${json['nonce'] ?? ''}',
       ciphertextBase64: '${json['ciphertext'] ?? ''}',
       wrappedAt: DateTime.tryParse('${json['wrapped_at'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      formatVersion: int.tryParse('${json['format_version'] ?? 1}') ?? 1,
+      formatVersion: formatVersion,
       platform: '${json['platform'] ?? ''}',
     );
   }

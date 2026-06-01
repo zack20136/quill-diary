@@ -26,7 +26,7 @@ void main() {
     final metadata = await harness.repository.readRecoveryMetadata();
     expect(metadata, isNotNull);
     expect(metadata!.vaultId, setup.session.vaultId);
-    expect(metadata.recoveryKeyVersion, 2);
+    expect(metadata.recoveryKeyVersion, 1);
     expect(metadata.recoveryEnabled, isTrue);
     expect(setup.recoveryKey, matches(RegExp(r'^[A-Z0-9]{4}(-[A-Z0-9]{4}){5}$')));
     expect(await harness.repository.hasTrustedDeviceAccess(), isTrue);

@@ -19,7 +19,7 @@ void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
     vaultId: 'vlt_test_startup',
     recoveryEnabled: true,
-    recoveryKeyVersion: 2,
+    recoveryKeyVersion: 1,
     recoveryKeyHint: 'UVWX',
     createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
     kdf: KdfDescriptor.argon2idRecovery(

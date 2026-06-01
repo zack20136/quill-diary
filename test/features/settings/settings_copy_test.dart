@@ -39,7 +39,7 @@ void main() {
     final RecoveryMetadata backupMetadata = RecoveryMetadata(
       vaultId: 'vlt_backup',
       recoveryEnabled: true,
-      recoveryKeyVersion: 2,
+      recoveryKeyVersion: 1,
       recoveryKeyHint: 'WXYZ',
       createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
       kdf: KdfDescriptor.argon2idRecovery(

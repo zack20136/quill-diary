@@ -12,7 +12,7 @@ const String _kPreviewImagePathsSelect = '''
     FROM (
       SELECT a.file_path AS path
       FROM entry_attachments a
-      WHERE a.entry_id = e.id AND a.is_deleted = 0
+      WHERE a.entry_id = e.id
         AND a.mime_type LIKE 'image/%'
       ORDER BY a.created_at ASC
       LIMIT 5
@@ -23,7 +23,7 @@ const String _kImageAttachmentCountSelect = '''
   (
     SELECT COUNT(*)
     FROM entry_attachments a
-    WHERE a.entry_id = e.id AND a.is_deleted = 0
+    WHERE a.entry_id = e.id
       AND a.mime_type LIKE 'image/%'
   ) AS image_attachment_count''';
 
@@ -31,7 +31,7 @@ const String _kFileAttachmentCountSelect = '''
   (
     SELECT COUNT(*)
     FROM entry_attachments a
-    WHERE a.entry_id = e.id AND a.is_deleted = 0
+    WHERE a.entry_id = e.id
       AND a.mime_type NOT LIKE 'image/%'
   ) AS file_attachment_count''';
 
@@ -50,7 +50,6 @@ class EntryIndexRecord {
     required this.wordCount,
     required this.charCount,
     required this.attachmentCount,
-    required this.isDeleted,
     this.imageAttachmentCount = 0,
     this.fileAttachmentCount = 0,
     this.previewImagePaths = const <String>[],
@@ -69,7 +68,6 @@ class EntryIndexRecord {
   final int wordCount;
   final int charCount;
   final int attachmentCount;
-  final bool isDeleted;
   final int imageAttachmentCount;
   final int fileAttachmentCount;
   final List<String> previewImagePaths;
@@ -89,7 +87,6 @@ class EntryIndexRecord {
       wordCount: row.read<int>('word_count'),
       charCount: row.read<int>('char_count'),
       attachmentCount: row.read<int>('attachment_count'),
-      isDeleted: row.read<int>('is_deleted') == 1,
       imageAttachmentCount: row.readNullable<int>('image_attachment_count') ?? 0,
       fileAttachmentCount: row.readNullable<int>('file_attachment_count') ?? 0,
       previewImagePaths: _parsePreviewPaths(row.readNullable<String>('preview_image_paths_joined')),
@@ -114,10 +111,10 @@ class EntryIndexRecord {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
-  static const int searchSchemaVersion = 3;
+  static const int searchSchemaVersion = 1;
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 1;
 
   @override
   List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
@@ -129,9 +126,9 @@ class IndexDatabase extends GeneratedDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async => initialize(),
         onUpgrade: (Migrator m, int from, int to) async {
-          if (from < 5) {
-            await customStatement('DROP TABLE IF EXISTS entries_index;');
-          }
+          await customStatement('DROP TABLE IF EXISTS entries_index;');
+          await customStatement('DROP TABLE IF EXISTS entry_attachments;');
+          await customStatement('DROP TABLE IF EXISTS entry_tags;');
           await initialize();
         },
         beforeOpen: (OpeningDetails details) async {
@@ -157,7 +154,6 @@ class IndexDatabase extends GeneratedDatabase {
         char_count INTEGER NOT NULL DEFAULT 0,
         attachment_count INTEGER NOT NULL DEFAULT 0,
         has_attachments INTEGER NOT NULL DEFAULT 0,
-        is_deleted INTEGER NOT NULL DEFAULT 0,
         schema_version INTEGER NOT NULL DEFAULT 1,
         encrypted_file_size INTEGER,
         encrypted_file_mtime TEXT,
@@ -183,8 +179,7 @@ class IndexDatabase extends GeneratedDatabase {
         height INTEGER,
         byte_size INTEGER NOT NULL,
         sha256 TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        is_deleted INTEGER NOT NULL DEFAULT 0
+        created_at TEXT NOT NULL
       );
     ''');
     await customStatement('''
@@ -202,16 +197,16 @@ class IndexDatabase extends GeneratedDatabase {
       );
     ''');
     await customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_entries_index_active_date_updated
-      ON entries_index (is_deleted, date, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_entries_index_date_updated
+      ON entries_index (date, updated_at);
     ''');
     await customStatement('''
       CREATE INDEX IF NOT EXISTS idx_entry_tags_entry_id
       ON entry_tags (entry_id);
     ''');
     await customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_active_created
-      ON entry_attachments (entry_id, is_deleted, created_at);
+      CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_created
+      ON entry_attachments (entry_id, created_at);
     ''');
   }
 
@@ -231,9 +226,9 @@ class IndexDatabase extends GeneratedDatabase {
           id, vault_id, file_path, title, title_search_text, preview_text,
           body_search_text, date,
           created_at, updated_at, mood, word_count, char_count, attachment_count,
-          has_attachments, is_deleted, schema_version, encrypted_file_size,
+          has_attachments, schema_version, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
@@ -249,7 +244,6 @@ class IndexDatabase extends GeneratedDatabase {
           char_count = excluded.char_count,
           attachment_count = excluded.attachment_count,
           has_attachments = excluded.has_attachments,
-          is_deleted = excluded.is_deleted,
           schema_version = excluded.schema_version,
           encrypted_file_size = excluded.encrypted_file_size,
           encrypted_file_mtime = excluded.encrypted_file_mtime,
@@ -271,7 +265,6 @@ class IndexDatabase extends GeneratedDatabase {
         entry.markdownBody.runes.length,
         entry.attachmentIds.length,
         entry.attachmentIds.isEmpty ? 0 : 1,
-        entry.isDeleted ? 1 : 0,
         1,
         encryptedFileSize,
         encryptedModifiedAt.toIso8601String(),
@@ -341,8 +334,8 @@ class IndexDatabase extends GeneratedDatabase {
         '''
           INSERT OR REPLACE INTO entry_attachments (
             id, entry_id, file_path, mime_type, safe_filename, width, height,
-            byte_size, sha256, created_at, is_deleted
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+            byte_size, sha256, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           attachment.id,
@@ -363,15 +356,13 @@ class IndexDatabase extends GeneratedDatabase {
   Future<List<EntryIndexRecord>> listEntries({
     String? searchQuery,
     DateOnly? date,
-    bool includeDeleted = false,
   }) async {
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      return searchEntries(searchQuery, includeDeleted: includeDeleted);
+      return searchEntries(searchQuery);
     }
 
     final List<Object?> variables = <Object?>[];
     final List<String> where = <String>[
-      if (!includeDeleted) 'e.is_deleted = 0',
       if (date != null) 'e.date = ?',
     ];
     if (date != null) {
@@ -400,21 +391,15 @@ class IndexDatabase extends GeneratedDatabase {
     return rows.map(EntryIndexRecord.fromRow).toList();
   }
 
-  Future<List<EntryIndexRecord>> searchEntries(
-    String query, {
-    bool includeDeleted = false,
-  }) async {
+  Future<List<EntryIndexRecord>> searchEntries(String query) async {
     final String normalizedQuery = normalizeSearchText(query);
     if (normalizedQuery.isEmpty) {
-      return listEntries(includeDeleted: includeDeleted);
+      return listEntries();
     }
-    return _searchEntriesByLike(normalizedQuery, includeDeleted: includeDeleted);
+    return _searchEntriesByLike(normalizedQuery);
   }
 
-  Future<List<EntryIndexRecord>> _searchEntriesByLike(
-    String normalizedQuery, {
-    required bool includeDeleted,
-  }) async {
+  Future<List<EntryIndexRecord>> _searchEntriesByLike(String normalizedQuery) async {
     final String likeQuery = '%$normalizedQuery%';
     final List<QueryRow> rows = await customSelect(
       '''
@@ -434,7 +419,7 @@ class IndexDatabase extends GeneratedDatabase {
             FROM entry_tags et
             WHERE et.entry_id = e.id AND et.tag_normalized LIKE ?
           )
-        ) ${includeDeleted ? '' : 'AND e.is_deleted = 0'}
+        )
         GROUP BY e.id
         ORDER BY e.date DESC, e.updated_at DESC;
       ''',
@@ -483,7 +468,7 @@ class IndexDatabase extends GeneratedDatabase {
           $_kPreviewImagePathsSelect
         FROM entries_index e
         LEFT JOIN entry_tags t ON t.entry_id = e.id
-        WHERE e.date LIKE ? AND e.is_deleted = 0
+        WHERE e.date LIKE ?
         GROUP BY e.id
         ORDER BY e.date ASC, e.updated_at DESC;
       ''',
@@ -498,7 +483,7 @@ class IndexDatabase extends GeneratedDatabase {
       '''
         SELECT DISTINCT date
         FROM entries_index
-        WHERE date LIKE ? AND is_deleted = 0
+        WHERE date LIKE ?
         ORDER BY date ASC;
       ''',
       variables: <Variable<Object>>[Variable.withString('$prefix%')],
@@ -511,7 +496,7 @@ class IndexDatabase extends GeneratedDatabase {
       '''
         SELECT *
         FROM entry_attachments
-        WHERE entry_id = ? AND is_deleted = 0
+        WHERE entry_id = ?
         ORDER BY created_at ASC;
       ''',
       variables: <Variable<Object>>[Variable.withString(entryId)],
@@ -533,11 +518,11 @@ class IndexDatabase extends GeneratedDatabase {
         .toList();
   }
 
-  Future<void> markEntryDeleted(EntryId entryId) async {
-    await customStatement(
-      'UPDATE entries_index SET is_deleted = 1 WHERE id = ?;',
-      <Object?>[entryId],
-    );
+  /// 硬刪除：移除索引中的日記、標籤與附件紀錄。
+  Future<void> removeEntry(EntryId entryId) async {
+    await customStatement('DELETE FROM entry_tags WHERE entry_id = ?;', <Object?>[entryId]);
+    await customStatement('DELETE FROM entry_attachments WHERE entry_id = ?;', <Object?>[entryId]);
+    await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[entryId]);
   }
 
   Future<void> clearForRebuild() async {

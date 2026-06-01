@@ -90,15 +90,11 @@ class FakeVaultRepository extends VaultRepository {
   Future<List<EntryIndexRecord>> listEntries({
     String? searchQuery,
     DateOnly? date,
-    bool includeDeleted = false,
   }) async {
     listEntriesCalls++;
     listEntriesSearchQueries.add(searchQuery);
     listEntriesDates.add(date);
     Iterable<EntryIndexRecord> results = entryIndexRecords;
-    if (!includeDeleted) {
-      results = results.where((EntryIndexRecord entry) => !entry.isDeleted);
-    }
     if (date != null) {
       results = results.where(
         (EntryIndexRecord entry) => entry.date.value == date.value,

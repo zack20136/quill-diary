@@ -10,9 +10,11 @@ class RecoveryMetadata {
     required this.createdAt,
     required this.kdf,
   }) : assert(
-          recoveryKeyVersion >= 2,
-          'recovery_key_version must be >= 2 (Argon2id only).',
+          recoveryKeyVersion >= 1,
+          'recovery_key_version must be >= 1.',
         );
+
+  static const int kSchemaVersion = 1;
 
   final VaultId vaultId;
   final bool recoveryEnabled;
@@ -23,7 +25,7 @@ class RecoveryMetadata {
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
-      'schema_version': 2,
+      'schema_version': kSchemaVersion,
       'vault_id': vaultId,
       'recovery_enabled': recoveryEnabled,
       'recovery_key_version': recoveryKeyVersion,
@@ -42,9 +44,14 @@ class RecoveryMetadata {
     if (kdfMap == null) {
       throw const FormatException('Recovery metadata missing kdf.');
     }
+    final int schemaVersion =
+        int.tryParse('${json['schema_version'] ?? kSchemaVersion}') ?? kSchemaVersion;
+    if (schemaVersion != kSchemaVersion) {
+      throw FormatException('不支援的 recovery metadata 版本：$schemaVersion。');
+    }
     final int version = int.tryParse('${json['recovery_key_version'] ?? 0}') ?? 0;
-    if (version < 2) {
-      throw FormatException('目前僅支援復原金鑰 v2 以上的資料。');
+    if (version < 1) {
+      throw FormatException('不支援的復原金鑰版本：$version。');
     }
     return RecoveryMetadata(
       vaultId: (json['vault_id'] ?? 'vlt_UNKNOWN').toString(),
