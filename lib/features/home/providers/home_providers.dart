@@ -95,13 +95,11 @@ final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref
 /// 將索引紀錄聚合成首頁總覽頁需要的統計資訊。
 final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  final Map<String, int> moodCounts = <String, int>{};
   int totalWords = 0;
   int totalCharacters = 0;
   int totalAttachments = 0;
   int entriesWithTags = 0;
   int entriesWithAttachments = 0;
-  int entriesWithMoodSet = 0;
 
   for (final EntryIndexRecord entry in entries) {
     totalWords += entry.wordCount;
@@ -113,22 +111,12 @@ final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async 
     if (entry.attachmentCount > 0) {
       entriesWithAttachments++;
     }
-    final String? mood = entry.mood?.trim();
-    if (mood != null && mood.isNotEmpty) {
-      entriesWithMoodSet++;
-      moodCounts.update(mood, (int count) => count + 1, ifAbsent: () => 1);
-    }
   }
 
   final Map<String, int> tagCounts = diaryPresenceTagCounts(entries);
 
   final List<OverviewTagStat> topTags = tagCounts.entries
       .map((item) => OverviewTagStat(label: item.key, count: item.value))
-      .toList()
-    ..sort((a, b) => b.count.compareTo(a.count));
-
-  final List<OverviewMoodStat> moods = moodCounts.entries
-      .map((item) => OverviewMoodStat(label: item.key, count: item.value))
       .toList()
     ..sort((a, b) => b.count.compareTo(a.count));
 
@@ -143,10 +131,8 @@ final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async 
     activeDays: entries.map((EntryIndexRecord item) => item.date.value).toSet().length,
     entriesWithTags: entriesWithTags,
     entriesWithAttachments: entriesWithAttachments,
-    entriesWithMoodSet: entriesWithMoodSet,
     avgWordsPerEntryRounded: avgWordsPerEntryRounded,
     topTags: topTags.take(8).toList(),
-    moods: moods.take(6).toList(),
   );
 });
 

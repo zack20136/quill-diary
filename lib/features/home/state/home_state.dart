@@ -46,7 +46,7 @@ class OverviewTagFilterController extends Notifier<String?> {
 
 class MemoryScopeController extends Notifier<MemoryScope> {
   @override
-  MemoryScope build() => MemoryScope.all;
+  MemoryScope build() => MemoryScope.month;
 
   void set(MemoryScope value) => state = value;
 }

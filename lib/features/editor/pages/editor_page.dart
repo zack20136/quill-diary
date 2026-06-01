@@ -291,7 +291,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     text: DateOnly.fromDateTime(DateTime.now()).value,
   );
   final TextEditingController _tagsController = TextEditingController();
-  final TextEditingController _moodController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
   final List<PendingAttachment> _pendingAttachments = <PendingAttachment>[];
   List<AssetId> _keptExistingAttachmentIds = <AssetId>[];
@@ -370,7 +369,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       entryHour: _entryTime.hour,
       entryMinute: _entryTime.minute,
       tagsRaw: _tagsController.text,
-      moodRaw: _moodController.text,
       bodyRaw: _bodyController.text,
       keptAttachmentIds: _keptExistingAttachmentIds,
       pendingAttachments: _pendingAttachments,
@@ -500,7 +498,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _titleController.dispose();
     _dateController.dispose();
     _tagsController.dispose();
-    _moodController.dispose();
     _bodyController.dispose();
     _savedAssetPathFutures.clear();
     super.dispose();
@@ -510,7 +507,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _titleController.clear();
     _dateController.text = DateOnly.fromDateTime(DateTime.now()).value;
     _tagsController.clear();
-    _moodController.clear();
     _bodyController.clear();
     _pendingAttachments.clear();
     _keptExistingAttachmentIds = <AssetId>[];
@@ -795,7 +791,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _titleController.text = entry.title ?? '';
     _dateController.text = entry.date.value;
     _tagsController.text = entry.tags.join(', ');
-    _moodController.text = entry.mood ?? '';
     _bodyController.text = entry.markdownBody;
     _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
     _entryTime = TimeOfDay(hour: entry.createdAt.hour, minute: entry.createdAt.minute);
@@ -1302,7 +1297,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         createdAt: _composeEntryCreatedAt(date: parsedDate, existing: existing),
         updatedAt: now,
         tags: parseEditorTagsCsv(_tagsController.text),
-        mood: _moodController.text.trim().isEmpty ? null : _moodController.text.trim(),
         markdownBody: _bodyController.text.trim(),
         attachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
         isDeleted: false,

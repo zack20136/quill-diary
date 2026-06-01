@@ -143,23 +143,6 @@ class _OverviewPane extends ConsumerWidget {
                                       .toList(),
                                 ),
                         ),
-                        const SizedBox(height: _kPaneSectionGap),
-                        _SectionCard(
-                          title: '心情紀錄',
-                          stripeColor: cs.secondary,
-                          child: summary.moods.isEmpty
-                              ? _PaneEmptyHint(text: '目前沒有心情標註。')
-                              : Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: summary.moods
-                                      .map(
-                                        (OverviewMoodStat item) =>
-                                            _MetaChip(label: '${item.label} ${item.count}'),
-                                      )
-                                      .toList(),
-                                ),
-                        ),
                       ],
                     ),
                   ),
@@ -265,6 +248,31 @@ String _overviewMetricRangeCaption(MemoryScope scope, DateTime focusedMonth, int
   };
 }
 
+int _overviewScopeTotalDays({
+  required MemoryScope scope,
+  required DateTime focusedMonth,
+  required int focusedYear,
+  required List<EntryIndexRecord> entries,
+}) {
+  switch (scope) {
+    case MemoryScope.month:
+      return DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
+    case MemoryScope.year:
+      final DateTime start = DateTime(focusedYear, 1, 1);
+      final DateTime end = DateTime(focusedYear + 1, 1, 1);
+      return end.difference(start).inDays;
+    case MemoryScope.all:
+      if (entries.isEmpty) {
+        return 0;
+      }
+      final List<DateTime> dates = entries
+          .map((EntryIndexRecord item) => item.date.toDateTime())
+          .toList()
+        ..sort();
+      return dates.last.difference(dates.first).inDays + 1;
+  }
+}
+
 class _OverviewScopedMetricPanel extends StatelessWidget {
   const _OverviewScopedMetricPanel({
     required this.scope,
@@ -287,7 +295,12 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
       child: entriesAsync.when(
         data: (List<EntryIndexRecord> entries) {
           final OverviewScopeMetrics metrics = OverviewScopeMetrics.fromEntries(entries);
-          final String? density = metrics.writingDensitySubtitle();
+          final int scopeTotalDays = _overviewScopeTotalDays(
+            scope: scope,
+            focusedMonth: focusedMonth,
+            focusedYear: focusedYear,
+            entries: entries,
+          );
           return LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final double width = constraints.maxWidth;
@@ -297,27 +310,27 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
 
               final List<_OverviewNumericTile> tiles = <_OverviewNumericTile>[
                 _OverviewNumericTile(
-                  label: '總篇數',
-                  value: '${metrics.totalEntries}',
+                  label: '最長連續寫作',
+                  value: '${metrics.longestWritingStreakDays}天',
                   toneIndex: 0,
                 ),
                 _OverviewNumericTile(
                   label: '撰寫天數',
-                  value: '${metrics.activeDays}',
+                  value: '${metrics.activeDays}/$scopeTotalDays天',
                   toneIndex: 1,
-                  detail: density,
+                  detail: metrics.mostEntriesInSingleDayDetail(),
                 ),
                 _OverviewNumericTile(
                   label: '平均篇幅',
-                  value: '${metrics.avgWordsPerEntryRounded} 字／篇',
+                  value: '${metrics.avgCharactersPerEntryRounded} 字／篇',
                   toneIndex: 2,
-                  detail: '累計 ${metrics.totalWords} 字 · ${metrics.totalCharacters} 字元',
+                  detail: '共 ${metrics.totalEntries} 篇 · 累計 ${metrics.totalCharacters} 字',
                 ),
                 _OverviewNumericTile(
-                  label: '標記與素材',
+                  label: '附件總數',
                   value: '${metrics.totalAttachments} 個附件',
                   toneIndex: 3,
-                  detail: metrics.annotationMixedDetail(),
+                  detail: metrics.attachmentDetail(),
                 ),
               ];
 
@@ -728,19 +741,6 @@ class _EntryCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                  ),
-                ),
-              ],
-              if (entry.mood != null && entry.mood!.trim().isNotEmpty) ...<Widget>[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: EdgeInsets.only(left: selectionLeadingWidth),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: <Widget>[
-                      _MetaChip(label: entry.mood!),
-                    ],
                   ),
                 ),
               ],
@@ -1208,13 +1208,17 @@ class _OverviewNumericTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        value,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.6,
-                          height: 1.05,
-                          color: onFill,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          value,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            height: 1.02,
+                            color: onFill,
+                          ),
                         ),
                       ),
                       if (detail != null && detail!.trim().isNotEmpty)
@@ -1414,34 +1418,6 @@ class _StateCard extends StatelessWidget {
               ],
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(cs.tertiary.withValues(alpha: 0.12), cs.tertiaryContainer),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: cs.onTertiaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
         ),
       ),
     );

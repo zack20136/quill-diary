@@ -10,7 +10,6 @@ class EditorDraftSnapshot {
     required this.entryHour,
     required this.entryMinute,
     required this.tags,
-    this.mood,
     required this.markdownBody,
     required this.keptAttachmentIds,
     required this.pendingFingerprints,
@@ -21,7 +20,6 @@ class EditorDraftSnapshot {
   final int entryHour;
   final int entryMinute;
   final List<String> tags;
-  final String? mood;
   final String markdownBody;
   final List<AssetId> keptAttachmentIds;
   final List<String> pendingFingerprints;
@@ -46,10 +44,6 @@ EditorDraftSnapshot editorDraftSnapshotFromEntry(DiaryEntry entry) {
     entryHour: entry.createdAt.hour,
     entryMinute: entry.createdAt.minute,
     tags: List<String>.from(entry.tags),
-    mood: () {
-      final String? trimmed = entry.mood?.trim();
-      return trimmed == null || trimmed.isEmpty ? null : trimmed;
-    }(),
     markdownBody: entry.markdownBody.trim(),
     keptAttachmentIds: List<AssetId>.from(entry.attachmentIds),
     pendingFingerprints: const <String>[],
@@ -62,13 +56,11 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
   required int entryHour,
   required int entryMinute,
   required String tagsRaw,
-  required String moodRaw,
   required String bodyRaw,
   required List<AssetId> keptAttachmentIds,
   required List<PendingAttachment> pendingAttachments,
 }) {
   final String trimmedTitle = titleRaw.trim();
-  final String trimmedMood = moodRaw.trim();
   final List<String> pendingFingerprints = pendingAttachments
       .map(pendingAttachmentFingerprint)
       .toList()
@@ -79,7 +71,6 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
     entryHour: entryHour,
     entryMinute: entryMinute,
     tags: parseEditorTagsCsv(tagsRaw),
-    mood: trimmedMood.isEmpty ? null : trimmedMood,
     markdownBody: bodyRaw.trim(),
     keptAttachmentIds: List<AssetId>.from(keptAttachmentIds),
     pendingFingerprints: pendingFingerprints,
@@ -105,7 +96,6 @@ bool editorDraftIsDirty({
       current.entryHour != saved.entryHour ||
       current.entryMinute != saved.entryMinute ||
       !_listEquals(current.tags, saved.tags) ||
-      current.mood != saved.mood ||
       current.markdownBody != saved.markdownBody ||
       !_listEquals(current.keptAttachmentIds, saved.keptAttachmentIds) ||
       !_listEquals(current.pendingFingerprints, saved.pendingFingerprints);

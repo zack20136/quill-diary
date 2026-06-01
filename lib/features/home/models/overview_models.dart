@@ -10,16 +10,6 @@ class OverviewTagStat {
   final int count;
 }
 
-class OverviewMoodStat {
-  const OverviewMoodStat({
-    required this.label,
-    required this.count,
-  });
-
-  final String label;
-  final int count;
-}
-
 class OverviewSummary {
   const OverviewSummary({
     required this.totalEntries,
@@ -29,10 +19,8 @@ class OverviewSummary {
     required this.activeDays,
     required this.entriesWithTags,
     required this.entriesWithAttachments,
-    required this.entriesWithMoodSet,
     required this.avgWordsPerEntryRounded,
     required this.topTags,
-    required this.moods,
   });
 
   final int totalEntries;
@@ -42,10 +30,8 @@ class OverviewSummary {
   final int activeDays;
   final int entriesWithTags;
   final int entriesWithAttachments;
-  final int entriesWithMoodSet;
   final int avgWordsPerEntryRounded;
   final List<OverviewTagStat> topTags;
-  final List<OverviewMoodStat> moods;
 }
 
 class OverviewScopeMetrics {
@@ -55,9 +41,12 @@ class OverviewScopeMetrics {
     required this.totalCharacters,
     required this.totalAttachments,
     required this.activeDays,
+    required this.longestWritingStreakDays,
+    required this.maxEntriesOnSingleDay,
     required this.entriesWithTags,
     required this.entriesWithAttachments,
-    required this.entriesWithMoodSet,
+    required this.totalPhotoAttachments,
+    required this.totalFileAttachments,
     required this.avgWordsPerEntryRounded,
   });
 
@@ -66,10 +55,16 @@ class OverviewScopeMetrics {
   final int totalCharacters;
   final int totalAttachments;
   final int activeDays;
+  final int longestWritingStreakDays;
+  final int maxEntriesOnSingleDay;
   final int entriesWithTags;
   final int entriesWithAttachments;
-  final int entriesWithMoodSet;
+  final int totalPhotoAttachments;
+  final int totalFileAttachments;
   final int avgWordsPerEntryRounded;
+
+  int get avgCharactersPerEntryRounded =>
+      totalEntries == 0 ? 0 : (totalCharacters / totalEntries).round();
 
   factory OverviewScopeMetrics.empty() => const OverviewScopeMetrics(
         totalEntries: 0,
@@ -77,9 +72,12 @@ class OverviewScopeMetrics {
         totalCharacters: 0,
         totalAttachments: 0,
         activeDays: 0,
+        longestWritingStreakDays: 0,
+        maxEntriesOnSingleDay: 0,
         entriesWithTags: 0,
         entriesWithAttachments: 0,
-        entriesWithMoodSet: 0,
+        totalPhotoAttachments: 0,
+        totalFileAttachments: 0,
         avgWordsPerEntryRounded: 0,
       );
 
@@ -92,27 +90,28 @@ class OverviewScopeMetrics {
     int totalAttachments = 0;
     int tagged = 0;
     int withAttachments = 0;
-    int withMood = 0;
+    int photoAttachments = 0;
+    int fileAttachments = 0;
 
     for (final EntryIndexRecord entry in entries) {
       totalWords += entry.wordCount;
       totalCharacters += entry.charCount;
       totalAttachments += entry.attachmentCount;
+      photoAttachments += entry.imageAttachmentCount;
+      fileAttachments += entry.fileAttachmentCount;
       if (entry.tags.isNotEmpty) {
         tagged++;
       }
       if (entry.attachmentCount > 0) {
         withAttachments++;
       }
-      final String? mood = entry.mood?.trim();
-      if (mood != null && mood.isNotEmpty) {
-        withMood++;
-      }
     }
 
     final int activeDays =
         entries.map((EntryIndexRecord item) => item.date.value).toSet().length;
     final int avgWordsRounded = (totalWords / entries.length).round();
+    final int longestStreakDays = _longestWritingStreakDays(entries);
+    final int maxEntriesOnSingleDay = _maxEntriesOnSingleDay(entries);
 
     return OverviewScopeMetrics(
       totalEntries: entries.length,
@@ -120,24 +119,62 @@ class OverviewScopeMetrics {
       totalCharacters: totalCharacters,
       totalAttachments: totalAttachments,
       activeDays: activeDays,
+      longestWritingStreakDays: longestStreakDays,
+      maxEntriesOnSingleDay: maxEntriesOnSingleDay,
       entriesWithTags: tagged,
       entriesWithAttachments: withAttachments,
-      entriesWithMoodSet: withMood,
+      totalPhotoAttachments: photoAttachments,
+      totalFileAttachments: fileAttachments,
       avgWordsPerEntryRounded: avgWordsRounded,
     );
   }
 
-  String? writingDensitySubtitle() {
-    if (totalEntries <= 0 || activeDays <= 0) {
+  String attachmentDetail() =>
+      '\u7167\u7247 $totalPhotoAttachments \u30fb \u6a94\u6848 $totalFileAttachments';
+
+  String? mostEntriesInSingleDayDetail() {
+    if (maxEntriesOnSingleDay <= 0) {
       return null;
     }
-    final int numerator = totalEntries * 10 ~/ activeDays;
-    final int hi = numerator ~/ 10;
-    final int lo = numerator % 10;
-    final String pace = lo == 0 ? '$hi' : '$hi.$lo';
-    return 'Average $pace entries per day';
+    return '\u55ae\u5929\u6700\u591a $maxEntriesOnSingleDay \u7bc7';
   }
 
-  String annotationMixedDetail() =>
-      '$entriesWithTags tagged, $entriesWithAttachments with attachments, $entriesWithMoodSet with mood';
+  static int _longestWritingStreakDays(List<EntryIndexRecord> entries) {
+    final List<DateTime> uniqueDates = entries
+        .map((EntryIndexRecord item) => item.date.toDateTime())
+        .toSet()
+        .toList()
+      ..sort();
+    if (uniqueDates.isEmpty) {
+      return 0;
+    }
+
+    int best = 1;
+    int current = 1;
+    for (int i = 1; i < uniqueDates.length; i++) {
+      final int diff = uniqueDates[i].difference(uniqueDates[i - 1]).inDays;
+      if (diff == 1) {
+        current++;
+        if (current > best) {
+          best = current;
+        }
+        continue;
+      }
+      current = 1;
+    }
+    return best;
+  }
+
+  static int _maxEntriesOnSingleDay(List<EntryIndexRecord> entries) {
+    int best = 0;
+    final Map<String, int> counts = <String, int>{};
+    for (final EntryIndexRecord entry in entries) {
+      final int next = (counts[entry.date.value] ?? 0) + 1;
+      counts[entry.date.value] = next;
+      if (next > best) {
+        best = next;
+      }
+    }
+    return best;
+  }
 }

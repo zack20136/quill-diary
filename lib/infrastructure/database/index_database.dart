@@ -19,6 +19,22 @@ const String _kPreviewImagePathsSelect = '''
     ) AS sfp
   ) AS preview_image_paths_joined''';
 
+const String _kImageAttachmentCountSelect = '''
+  (
+    SELECT COUNT(*)
+    FROM entry_attachments a
+    WHERE a.entry_id = e.id AND a.is_deleted = 0
+      AND a.mime_type LIKE 'image/%'
+  ) AS image_attachment_count''';
+
+const String _kFileAttachmentCountSelect = '''
+  (
+    SELECT COUNT(*)
+    FROM entry_attachments a
+    WHERE a.entry_id = e.id AND a.is_deleted = 0
+      AND a.mime_type NOT LIKE 'image/%'
+  ) AS file_attachment_count''';
+
 class EntryIndexRecord {
   const EntryIndexRecord({
     required this.id,
@@ -35,6 +51,8 @@ class EntryIndexRecord {
     required this.charCount,
     required this.attachmentCount,
     required this.isDeleted,
+    this.imageAttachmentCount = 0,
+    this.fileAttachmentCount = 0,
     this.previewImagePaths = const <String>[],
   });
 
@@ -52,6 +70,8 @@ class EntryIndexRecord {
   final int charCount;
   final int attachmentCount;
   final bool isDeleted;
+  final int imageAttachmentCount;
+  final int fileAttachmentCount;
   final List<String> previewImagePaths;
 
   factory EntryIndexRecord.fromRow(QueryRow row) {
@@ -70,6 +90,8 @@ class EntryIndexRecord {
       charCount: row.read<int>('char_count'),
       attachmentCount: row.read<int>('attachment_count'),
       isDeleted: row.read<int>('is_deleted') == 1,
+      imageAttachmentCount: row.readNullable<int>('image_attachment_count') ?? 0,
+      fileAttachmentCount: row.readNullable<int>('file_attachment_count') ?? 0,
       previewImagePaths: _parsePreviewPaths(row.readNullable<String>('preview_image_paths_joined')),
     );
   }
@@ -374,10 +396,12 @@ class IndexDatabase extends GeneratedDatabase {
     }
 
     final String sql = '''
-      SELECT
-        e.*,
-        GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
-        $_kPreviewImagePathsSelect
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
+          $_kPreviewImagePathsSelect
       FROM entries_index e
       LEFT JOIN entry_tags t ON t.entry_id = e.id
       ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
@@ -411,6 +435,8 @@ class IndexDatabase extends GeneratedDatabase {
           SELECT
             e.*,
             GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+            $_kImageAttachmentCountSelect,
+            $_kFileAttachmentCountSelect,
             $_kPreviewImagePathsSelect
           FROM entries_fts f
           JOIN entries_index e ON e.id = f.entry_id
@@ -429,6 +455,8 @@ class IndexDatabase extends GeneratedDatabase {
           SELECT
             e.*,
             GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+            $_kImageAttachmentCountSelect,
+            $_kFileAttachmentCountSelect,
             $_kPreviewImagePathsSelect
           FROM entries_index e
           LEFT JOIN entry_tags t ON t.entry_id = e.id
@@ -454,6 +482,8 @@ class IndexDatabase extends GeneratedDatabase {
         SELECT
           e.*,
           GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
           $_kPreviewImagePathsSelect
         FROM entries_index e
         LEFT JOIN entry_tags t ON t.entry_id = e.id
@@ -477,6 +507,8 @@ class IndexDatabase extends GeneratedDatabase {
         SELECT
           e.*,
           GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
           $_kPreviewImagePathsSelect
         FROM entries_index e
         LEFT JOIN entry_tags t ON t.entry_id = e.id
