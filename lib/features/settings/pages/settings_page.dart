@@ -32,6 +32,31 @@ import '../../restore/restore_backup_flow.dart';
 import '../../session/application/session_unlock_coordinator.dart';
 import '../widgets/settings_sections.dart';
 
+String _formatImportSuccessMessage(PortableImportResult result) {
+  final bool hasSkippedFiles = result.skippedFiles > 0;
+  final bool hasSkippedAttachments = result.skippedAttachments > 0;
+  if (hasSkippedFiles && hasSkippedAttachments) {
+    return SettingsImportExportCopy.importSuccessWithSkippedFilesAndAttachments(
+      result.importedEntries,
+      result.skippedFiles,
+      result.skippedAttachments,
+    );
+  }
+  if (hasSkippedFiles) {
+    return SettingsImportExportCopy.importSuccessWithSkippedFiles(
+      result.importedEntries,
+      result.skippedFiles,
+    );
+  }
+  if (hasSkippedAttachments) {
+    return SettingsImportExportCopy.importSuccessWithSkippedAttachments(
+      result.importedEntries,
+      result.skippedAttachments,
+    );
+  }
+  return SettingsImportExportCopy.importSuccess(result.importedEntries);
+}
+
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -307,14 +332,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       return;
                                     }
                                     await refreshEntryIndexCaches(ref);
-                                    final String importMessage = result.skippedFiles > 0
-                                        ? SettingsImportExportCopy.importSuccessWithSkipped(
-                                            result.importedEntries,
-                                            result.skippedFiles,
-                                          )
-                                        : SettingsImportExportCopy.importSuccess(
-                                            result.importedEntries,
-                                          );
+                                    final String importMessage =
+                                        _formatImportSuccessMessage(result);
                                     _showMessage(importMessage);
                                   }),
                         ),

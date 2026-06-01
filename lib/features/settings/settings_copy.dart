@@ -120,8 +120,16 @@ abstract final class SettingsImportExportCopy {
 
   static String exportSuccess(String path) => '已匯出 Markdown 壓縮檔：$path';
   static String importSuccess(int count) => '已匯入 $count 篇日記。';
-  static String importSuccessWithSkipped(int count, int skipped) =>
-      '已匯入 $count 篇日記，略過 $skipped 個檔案。';
+  static String importSuccessWithSkippedFiles(int count, int skippedFiles) =>
+      '已匯入 $count 篇日記，略過 $skippedFiles 個檔案。';
+  static String importSuccessWithSkippedAttachments(int count, int skippedAttachments) =>
+      '已匯入 $count 篇日記，$skippedAttachments 張圖片無法匯入。';
+  static String importSuccessWithSkippedFilesAndAttachments(
+    int count,
+    int skippedFiles,
+    int skippedAttachments,
+  ) =>
+      '已匯入 $count 篇日記，略過 $skippedFiles 個檔案，$skippedAttachments 張圖片無法匯入。';
 }
 
 abstract final class SettingsLocalBackupCopy {

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_lock_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/shared/value_objects.dart';
@@ -16,6 +18,32 @@ import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
+
+// 本檔驗證 VaultArchiveIo 的匯出、可攜式匯入與備份／還原。
+//
+// 匯入 fixture 與 production 辨識規則一致：
+// - Easy Diary（第三方 Android HTML）：非 QuillLock；`div.title-right` 切篇；附件僅 `photo-container`
+// - QuillLockDiary（本 App HTML）：`<article class="… entry …">`
+// - 本 App Markdown：`.md` + YAML front matter；zip 解壓後同上
+
+String _easyDiaryEmbeddedPngDataUri(List<int> bytes) =>
+    'data:image/png;base64,${base64Encode(bytes)}';
+
+Future<Uint8List?> _readDecryptedAttachmentBytes({
+  required VaultTestHarness harness,
+  required UnlockedVaultSession session,
+  required DiaryEntry entry,
+  required AssetAttachment attachment,
+}) async {
+  final String extension =
+      p.extension(attachment.safeFilename).replaceFirst('.', '');
+  final String assetPath = await harness.pathStrategy.assetAbsolutePath(
+    date: entry.date,
+    assetId: attachment.id,
+    extension: extension.isEmpty ? 'bin' : extension,
+  );
+  return harness.repository.readDecryptedAssetBytes(session, assetPath);
+}
 
 void main() {
   late VaultTestHarness harness;
@@ -35,6 +63,7 @@ void main() {
     await harness.dispose();
   });
 
+  group('匯出：Markdown', () {
   test('Markdown 匯出會把 index.md 與附件放在同一個資料夾', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'source'))
@@ -81,7 +110,9 @@ void main() {
     expect(await exportedIndex.readAsString(), contains('  - "./photo.jpg"'));
     expect(await exportedAttachment.readAsBytes(), const <int>[1, 2, 3, 4]);
   });
+  });
 
+  group('匯入：Markdown / zip', () {
   test('可匯入單篇 Markdown 與同資料夾附件', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_md'))
@@ -125,7 +156,10 @@ Imported from markdown.
     expect(attachments, hasLength(1));
     expect(attachments.single.safeFilename, 'image.png');
   });
+  });
 
+  group('匯入：Easy Diary HTML', () {
+  // 標準結構：title-right + contents + photo-container 內 1 張本機圖
   test('可匯入 Easy Diary HTML 與本地圖片', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_html'))
@@ -138,10 +172,10 @@ Imported from markdown.
     <title>Easy Diary Entry</title>
   </head>
   <body>
-    <h1>Easy Diary Entry</h1>
-    <p>2026-05-21</p>
-    <p>Hello <strong>HTML</strong> import.</p>
-    <img src="cover.jpg" alt="cover">
+    <div class='title-right'>Easy Diary Entry</div>
+    <div class='datetime'>2026-05-21</div>
+    <div class='contents'><p>Hello <strong>HTML</strong> import.</p></div>
+    <div class='photo-container'><img src="cover.jpg" alt="cover"></div>
   </body>
 </html>
 ''');
@@ -171,6 +205,7 @@ Imported from markdown.
     expect(attachments.single.safeFilename, 'cover.jpg');
   });
 
+  // 單行壓縮 HTML；photo-container 內 data URI 圖
   test('可匯入 Easy Diary 匯出的單行 HTML 版面', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_easy_diary'))
@@ -210,21 +245,24 @@ Imported from markdown.
     expect((await harness.repository.loadAttachments(entries.single.id)), isNotEmpty);
   });
 
+  // 兩篇 title-right；各 photo-container 1 張 data URI，位元組不可串篇
   test('可從單一 Easy Diary HTML 匯入多篇日記', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_multi_html'))
       ..createSync(recursive: true);
 
+    final List<int> firstImageBytes = <int>[11, 12, 13];
+    final List<int> secondImageBytes = <int>[21, 22, 23];
     File(p.join(importRoot.path, 'multi.html')).writeAsStringSync(
       '<html><body>'
       "<div class='title-right'>第一篇</div>"
       "<motion class='datetime'>2026年5月17日 星期日 上午10:28:28 [台北標準時間]</div>"
       "<div class='contents'>第一篇內容</div>"
-      "<div class='photo-container'><img src='data:image/png;base64,iVBORw0KGgo=' alt='snap'></div>"
-      '<hr>'
+      "<div class='photo-container'><img src='${_easyDiaryEmbeddedPngDataUri(firstImageBytes)}' alt='snap'></div>"
       "<div class='title-right'>第二篇</div>"
       "<div class='datetime'>2026年4月18日 星期六 上午2:01:15 [台北標準時間]</div>"
       "<div class='contents'>第二篇內容</div>"
+      "<div class='photo-container'><img src='${_easyDiaryEmbeddedPngDataUri(secondImageBytes)}' alt='snap2'></div>"
       '</body></html>',
     );
 
@@ -258,22 +296,154 @@ Imported from markdown.
     expect(firstLoaded.createdAt.hour, 10);
     expect(firstLoaded.createdAt.minute, 28);
     expect(firstLoaded.createdAt.second, 28);
+    expect(firstLoaded.markdownBody, contains('第一篇內容'));
 
     final DiaryEntry secondLoaded = loaded.firstWhere((DiaryEntry entry) => entry.title == '第二篇');
     expect(secondLoaded.createdAt.hour, 2);
     expect(secondLoaded.createdAt.minute, 1);
     expect(secondLoaded.createdAt.second, 15);
+    expect(secondLoaded.markdownBody, contains('第二篇內容'));
 
-    final EntryIndexRecord firstEntry = entries.firstWhere(
-      (EntryIndexRecord record) => loaded.any(
-        (DiaryEntry entry) => entry.id == record.id && entry.title == '第一篇',
+    final List<AssetAttachment> firstAttachments =
+        await harness.repository.loadAttachments(firstLoaded.id);
+    expect(firstAttachments, hasLength(1));
+    expect(
+      await _readDecryptedAttachmentBytes(
+        harness: harness,
+        session: setup.session,
+        entry: firstLoaded,
+        attachment: firstAttachments.single,
       ),
+      firstImageBytes,
     );
-    final attachments = await harness.repository.loadAttachments(firstEntry.id);
-    expect(attachments, hasLength(1));
-    expect(attachments.single.safeFilename, 'embedded_1.png');
+
+    final List<AssetAttachment> secondAttachments =
+        await harness.repository.loadAttachments(secondLoaded.id);
+    expect(secondAttachments, hasLength(1));
+    expect(
+      await _readDecryptedAttachmentBytes(
+        harness: harness,
+        session: setup.session,
+        entry: secondLoaded,
+        attachment: secondAttachments.single,
+      ),
+      secondImageBytes,
+    );
   });
 
+  // title 區心情圖不進附件；僅 photo-container 內 1 圖
+  test('Easy Diary 標題心情圖不會變成附件', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_mood_icon'))
+      ..createSync(recursive: true);
+
+    final List<int> photoBytes = <int>[9, 9, 9];
+    File(p.join(importRoot.path, 'mood.html')).writeAsStringSync(
+      '<html><body>'
+      "<div class='title'><img src='${_easyDiaryEmbeddedPngDataUri(const <int>[1])}' alt='mood'></div>"
+      "<div class='title-right'>心情日記</div>"
+      "<div class='datetime'>2026-05-20 12:00:00</div>"
+      "<div class='contents'>只有本文</div>"
+      "<div class='photo-container'><img src='${_easyDiaryEmbeddedPngDataUri(photoBytes)}' alt='snap'></div>"
+      '</body></html>',
+    );
+
+    final PortableImportResult result = await archiveIo.importDocuments(
+      session: setup.session,
+      rootDirectory: importRoot,
+    );
+
+    expect(result.importedEntries, 1);
+
+    final entries = await harness.repository.listEntries();
+    final DiaryEntry? imported = await harness.repository.loadEntry(
+      setup.session,
+      entries.single.id,
+    );
+    expect(imported?.title, '心情日記');
+    expect(imported?.markdownBody, contains('只有本文'));
+
+    final List<AssetAttachment> attachments =
+        await harness.repository.loadAttachments(entries.single.id);
+    expect(attachments, hasLength(1));
+    expect(
+      await _readDecryptedAttachmentBytes(
+        harness: harness,
+        session: setup.session,
+        entry: imported!,
+        attachment: attachments.single,
+      ),
+      photoBytes,
+    );
+  });
+
+  // 五篇 title-right；每篇 photo-container 各 1 張不同 data URI
+  test('可從 Easy Diary HTML 依 title-right 匯入五篇且附件不串篇', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_five_html'))
+      ..createSync(recursive: true);
+
+    final List<List<int>> imageBytesByEntry = <List<int>>[
+      <int>[1, 1, 1],
+      <int>[2, 2, 2],
+      <int>[3, 3, 3],
+      <int>[4, 4, 4],
+      <int>[5, 5, 5],
+    ];
+    final StringBuffer html = StringBuffer('<html><body>');
+    for (var index = 0; index < imageBytesByEntry.length; index++) {
+      final int entryNumber = index + 1;
+      html
+        ..write("<div class='title-right'>第$entryNumber篇</div>")
+        ..write("<div class='datetime'>2026-05-${entryNumber.toString().padLeft(2, '0')} 10:00:00</div>")
+        ..write("<div class='contents'><pre>內容$entryNumber</pre></div>")
+        ..write(
+          "<div class='photo-container'><img src='${_easyDiaryEmbeddedPngDataUri(imageBytesByEntry[index])}' alt='p$entryNumber'></div>",
+        );
+    }
+    html.write('</body></html>');
+    File(p.join(importRoot.path, 'five.html')).writeAsStringSync(html.toString());
+
+    final PortableImportResult result = await archiveIo.importDocuments(
+      session: setup.session,
+      rootDirectory: importRoot,
+    );
+
+    expect(result.importedEntries, 5);
+
+    final List<DiaryEntry> loaded = <DiaryEntry>[];
+    for (final EntryIndexRecord record in await harness.repository.listEntries()) {
+      final DiaryEntry? entry = await harness.repository.loadEntry(setup.session, record.id);
+      if (entry != null) {
+        loaded.add(entry);
+      }
+    }
+    expect(loaded, hasLength(5));
+    expect(loaded.map((DiaryEntry entry) => entry.title).toList(),
+        containsAll(<String>['第1篇', '第2篇', '第3篇', '第4篇', '第5篇']));
+
+    for (var index = 0; index < imageBytesByEntry.length; index++) {
+      final int entryNumber = index + 1;
+      final DiaryEntry entry =
+          loaded.firstWhere((DiaryEntry item) => item.title == '第$entryNumber篇');
+      expect(entry.markdownBody, contains('內容$entryNumber'));
+      final List<AssetAttachment> attachments =
+          await harness.repository.loadAttachments(entry.id);
+      expect(attachments, hasLength(1));
+      expect(
+        await _readDecryptedAttachmentBytes(
+          harness: harness,
+          session: setup.session,
+          entry: entry,
+          attachment: attachments.single,
+        ),
+        imageBytesByEntry[index],
+      );
+    }
+  });
+  });
+
+  group('匯出：Markdown', () {
   test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'zip_source'))
@@ -323,7 +493,9 @@ Imported from markdown.
       ),
     );
   });
+  });
 
+  group('匯出：HTML', () {
   test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'html_source'))
@@ -398,7 +570,9 @@ Imported from markdown.
     expect(html, contains('note.pdf · application/pdf'));
     expect(html, isNot(contains('Not selected')));
   });
+  });
 
+  group('匯入：QuillLockDiary HTML', () {
   test('可匯入 QuillLockDiary 匯出的 HTML', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'roundtrip_source'))
@@ -549,7 +723,9 @@ Imported from markdown.
     expect(attachments, hasLength(1));
     expect(attachments.single.mimeType, 'image/png');
   });
+  });
 
+  group('匯出：HTML', () {
   test('HTML 匯出沒有可用日記時回報錯誤', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final File output = File(p.join(harness.tempDir.path, 'empty.html'));
@@ -569,7 +745,9 @@ Imported from markdown.
       ),
     );
   });
+  });
 
+  group('匯入：Markdown / zip', () {
   test('可從 zip 匯入 Markdown 與附件', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
@@ -622,7 +800,9 @@ Imported from zip.
     expect(attachments, hasLength(1));
     expect(attachments.single.safeFilename, 'photo.png');
   });
+  });
 
+  group('備份與還原', () {
   test('peekBackupRecovery 可讀取備份內 recovery.json', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     await harness.repository.saveEntry(
@@ -803,5 +983,6 @@ Imported from zip.
 
     final List<EntryIndexRecord> entries = await harness.repository.listEntries();
     expect(entries, hasLength(1));
+  });
   });
 }

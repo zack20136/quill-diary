@@ -34,7 +34,10 @@ List<String> parseEditorTagsCsv(String tagsRaw) {
 }
 
 String pendingAttachmentFingerprint(PendingAttachment attachment) {
-  return '${attachment.sourcePath}|${attachment.mimeType}|${attachment.originalFilename}';
+  final String sourceKey = attachment.bytes != null
+      ? 'bytes:${attachment.bytes!.length}'
+      : attachment.sourcePath ?? '';
+  return '$sourceKey|${attachment.mimeType}|${attachment.originalFilename}';
 }
 
 EditorDraftSnapshot editorDraftSnapshotFromEntry(DiaryEntry entry) {

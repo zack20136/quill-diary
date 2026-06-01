@@ -27,13 +27,22 @@ import 'vault_state_keys.dart';
 
 /// Attachment selected in the UI but not yet persisted into the encrypted vault.
 class PendingAttachment {
-  const PendingAttachment({
-    required this.sourcePath,
+  PendingAttachment({
+    this.bytes,
+    this.sourcePath,
     required this.mimeType,
     required this.originalFilename,
-  });
+  }) : assert(
+          (bytes != null && bytes.isNotEmpty) ||
+              (sourcePath != null && sourcePath.trim().isNotEmpty),
+          'PendingAttachment 需要 bytes 或 sourcePath',
+        );
 
-  final String sourcePath;
+  /// 內嵌或已讀入記憶體的附件（例如 HTML data URI）。
+  final Uint8List? bytes;
+
+  /// 本機檔案路徑（編輯器選檔或匯入的外部圖片）。
+  final String? sourcePath;
   final String mimeType;
   final String originalFilename;
 }
@@ -995,7 +1004,9 @@ class VaultRepository {
       final String safeFilename = originalFilename.isEmpty
           ? (extension.isEmpty ? assetId : '$assetId.$extension')
           : originalFilename;
-      final List<int> sourceBytes = await File(pending.sourcePath).readAsBytes();
+      final List<int> sourceBytes = pending.bytes != null
+          ? pending.bytes!
+          : await File(pending.sourcePath!).readAsBytes();
       final EncryptionResult encrypted = await _cryptoService.encryptBytes(
         documentId: assetId,
         vaultId: vaultId,

@@ -1602,13 +1602,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       );
     }
     for (final PendingAttachment attachment in pendingImages) {
-      if (attachment.sourcePath.trim().isEmpty) {
+      final String? path = attachment.sourcePath?.trim();
+      if (path == null || path.isEmpty) {
         continue;
       }
       items.add(
         _PreviewGalleryImage.local(
-          previewId: attachment.sourcePath,
-          path: attachment.sourcePath,
+          previewId: path,
+          path: path,
         ),
       );
     }

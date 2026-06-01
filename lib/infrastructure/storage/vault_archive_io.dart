@@ -18,14 +18,22 @@ import 'vault_path_strategy.dart';
 import 'tag_styles_store.dart';
 import 'vault_repository.dart';
 
+/// 可攜式匯入（資料夾或 zip 解壓後）的統計結果。
 class PortableImportResult {
   const PortableImportResult({
     required this.importedEntries,
     required this.skippedFiles,
+    this.skippedAttachments = 0,
   });
 
+  /// 成功寫入日記庫的篇數。
   final int importedEntries;
+
+  /// 整份檔案無法解析或無有效段落而略過的次數。
   final int skippedFiles;
+
+  /// 附件參考無法解碼或找不到本機檔案的次數。
+  final int skippedAttachments;
 }
 
 class HtmlExportEstimate {
@@ -369,6 +377,20 @@ class VaultArchiveIo {
     return target;
   }
 
+  // ---------------------------------------------------------------------------
+  // 可攜式匯入（Portable import）
+  //
+  // 支援來源與辨識方式：
+  // | 來源 | 辨識 | 入口 |
+  // | Easy Diary（第三方 Android 匯出 HTML） | 非 QuillLock；`div.title-right` 切篇；
+  //   內文 `contents`～`photo-container`；附件僅 `photo-container` | `_importEasyDiaryExportFile` |
+  // | QuillLockDiary（本 App HTML 匯出） | `<article class="… entry …">` | `_importQuillLockExportFile` |
+  // | 本 App Markdown | `.md` + YAML front matter；zip 內同上 | `_parseMarkdownExportFile` |
+  //
+  // HTML 由 `_importHtmlExportFile` 依內容分流；`.md` 走 Markdown 路徑。
+  // ---------------------------------------------------------------------------
+
+  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`（含上述三種來源）。
   Future<PortableImportResult> importDocuments({
     required UnlockedVaultSession session,
     required Directory rootDirectory,
@@ -377,49 +399,58 @@ class VaultArchiveIo {
       throw StateError('找不到要匯入的資料夾：${rootDirectory.path}');
     }
 
-    final Directory tempDirectory = await _createWorkingDirectory('import_work');
-    try {
-      final List<File> importFiles = await _discoverImportFiles(rootDirectory);
-      int importedEntries = 0;
-      int skippedFiles = 0;
+    final List<File> importFiles = await _discoverImportFiles(rootDirectory);
+    int importedEntries = 0;
+    int skippedFiles = 0;
+    int skippedAttachments = 0;
 
-      for (final File file in importFiles) {
-        final List<_ImportedDocument> documents = await _parseImportFile(
+    for (final File file in importFiles) {
+      final String extension = p.extension(file.path).toLowerCase();
+      if (extension == '.html' || extension == '.htm') {
+        final _ImportFileTotals fileTotals = await _importHtmlExportFile(
+          session: session,
           file: file,
           importRootDirectory: rootDirectory,
-          tempDirectory: tempDirectory,
         );
-        if (documents.isEmpty) {
+        importedEntries += fileTotals.importedEntries;
+        skippedFiles += fileTotals.skippedFiles;
+        skippedAttachments += fileTotals.skippedAttachments;
+        continue;
+      }
+
+      final List<_ParsedImportEntry> parsedEntries = await _parseMarkdownExportFile(
+        file: file,
+        importRootDirectory: rootDirectory,
+      );
+      if (parsedEntries.isEmpty) {
+        skippedFiles++;
+        continue;
+      }
+
+      for (final _ParsedImportEntry parsedEntry in parsedEntries) {
+        if (parsedEntry.isEmpty) {
           skippedFiles++;
           continue;
         }
 
-        for (final _ImportedDocument document in documents) {
-          if (document.isEmpty) {
-            skippedFiles++;
-            continue;
-          }
-
-          await _repository.saveEntry(
-            session,
-            document.entry,
-            pendingAttachments: document.attachments,
-          );
-          importedEntries++;
-        }
-      }
-
-      return PortableImportResult(
-        importedEntries: importedEntries,
-        skippedFiles: skippedFiles,
-      );
-    } finally {
-      if (tempDirectory.existsSync()) {
-        await tempDirectory.delete(recursive: true);
+        await _repository.saveEntry(
+          session,
+          parsedEntry.entry,
+          pendingAttachments: parsedEntry.attachments,
+        );
+        importedEntries++;
+        skippedAttachments += parsedEntry.skippedAttachments;
       }
     }
+
+    return PortableImportResult(
+      importedEntries: importedEntries,
+      skippedFiles: skippedFiles,
+      skippedAttachments: skippedAttachments,
+    );
   }
 
+  /// 解壓 zip 後呼叫 [importDocuments]（Markdown / HTML 來源規則相同）。
   Future<PortableImportResult> importDocumentsFromZip({
     required UnlockedVaultSession session,
     required File zipFile,
@@ -1259,43 +1290,147 @@ class VaultArchiveIo {
     return files;
   }
 
-  Future<List<_ImportedDocument>> _parseImportFile({
+  // --- 本 App Markdown 匯入 ---
+
+  Future<List<_ParsedImportEntry>> _parseMarkdownExportFile({
     required File file,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
   }) async {
     final String extension = p.extension(file.path).toLowerCase();
     if (extension == '.md') {
-      final _ImportedDocument? document = await _parseMarkdownDocument(
+      final _ParsedImportEntry? parsedEntry = await _parseMarkdownExportDocument(
         file: file,
         importRootDirectory: importRootDirectory,
-        tempDirectory: tempDirectory,
       );
-      return document == null ? const <_ImportedDocument>[] : <_ImportedDocument>[document];
+      return parsedEntry == null
+          ? const <_ParsedImportEntry>[]
+          : <_ParsedImportEntry>[parsedEntry];
     }
-    if (extension == '.html' || extension == '.htm') {
-      final String html = await file.readAsString();
-      if (_isQuillLockDiaryExportHtml(html)) {
-        return _parseQuillLockDiaryHtmlDocuments(
-          file: file,
-          html: html,
-          importRootDirectory: importRootDirectory,
-          tempDirectory: tempDirectory,
-        );
-      }
-      return _parseEasyDiaryHtmlDocuments(
-        file: file,
-        importRootDirectory: importRootDirectory,
-        tempDirectory: tempDirectory,
-      );
-    }
-    return const <_ImportedDocument>[];
+    return const <_ParsedImportEntry>[];
   }
 
-  Future<_ImportedDocument?> _parseMarkdownDocument({
+  /// 依 HTML 內容分流至 QuillLock 或 Easy Diary 匯入。
+  Future<_ImportFileTotals> _importHtmlExportFile({
+    required UnlockedVaultSession session,
     required File file,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
+  }) async {
+    final String html = await file.readAsString();
+    if (_isQuillLockExportHtml(html)) {
+      return _importQuillLockExportFile(
+        session: session,
+        file: file,
+        html: html,
+        importRootDirectory: importRootDirectory,
+      );
+    }
+    return _importEasyDiaryExportFile(
+      session: session,
+      file: file,
+      html: html,
+      importRootDirectory: importRootDirectory,
+    );
+  }
+
+  // --- Easy Diary 匯入（第三方 Android Easy Diary 匯出 HTML） ---
+
+  Future<_ImportFileTotals> _importEasyDiaryExportFile({
+    required UnlockedVaultSession session,
+    required File file,
+    required String html,
+    required Directory importRootDirectory,
+  }) async {
+    final FileStat stat = await file.stat();
+    final String bodyHtml = _extractHtmlBody(html);
+    final List<String> easyDiarySections = _splitEasyDiarySections(bodyHtml);
+
+    var importedEntries = 0;
+    var skippedFiles = 0;
+    var skippedAttachments = 0;
+
+    for (final String easyDiarySectionHtml in easyDiarySections) {
+      final _ParsedImportEntry? parsedEntry = await _parseEasyDiarySection(
+        easyDiarySectionHtml: easyDiarySectionHtml,
+        file: file,
+        html: html,
+        stat: stat,
+        importRootDirectory: importRootDirectory,
+      );
+      if (parsedEntry == null || parsedEntry.isEmpty) {
+        continue;
+      }
+
+      await _repository.saveEntry(
+        session,
+        parsedEntry.entry,
+        pendingAttachments: parsedEntry.attachments,
+      );
+      importedEntries++;
+      skippedAttachments += parsedEntry.skippedAttachments;
+    }
+
+    if (importedEntries == 0) {
+      skippedFiles = 1;
+    }
+
+    return _ImportFileTotals(
+      importedEntries: importedEntries,
+      skippedFiles: skippedFiles,
+      skippedAttachments: skippedAttachments,
+    );
+  }
+
+  // --- QuillLockDiary 匯入（本 App HTML 匯出） ---
+
+  Future<_ImportFileTotals> _importQuillLockExportFile({
+    required UnlockedVaultSession session,
+    required File file,
+    required String html,
+    required Directory importRootDirectory,
+  }) async {
+    final List<_ParsedImportEntry> parsedEntries = await _parseQuillLockExportArticles(
+      file: file,
+      html: html,
+      importRootDirectory: importRootDirectory,
+    );
+
+    if (parsedEntries.isEmpty) {
+      return const _ImportFileTotals(
+        importedEntries: 0,
+        skippedFiles: 1,
+        skippedAttachments: 0,
+      );
+    }
+
+    var importedEntries = 0;
+    var skippedFiles = 0;
+    var skippedAttachments = 0;
+
+    for (final _ParsedImportEntry parsedEntry in parsedEntries) {
+      if (parsedEntry.isEmpty) {
+        skippedFiles++;
+        continue;
+      }
+
+      await _repository.saveEntry(
+        session,
+        parsedEntry.entry,
+        pendingAttachments: parsedEntry.attachments,
+      );
+      importedEntries++;
+      skippedAttachments += parsedEntry.skippedAttachments;
+    }
+
+    return _ImportFileTotals(
+      importedEntries: importedEntries,
+      skippedFiles: skippedFiles,
+      skippedAttachments: skippedAttachments,
+    );
+  }
+
+  Future<_ParsedImportEntry?> _parseMarkdownExportDocument({
+    required File file,
+    required Directory importRootDirectory,
   }) async {
     final String document = await file.readAsString();
     final FileStat stat = await file.stat();
@@ -1308,11 +1443,10 @@ class VaultArchiveIo {
       ..._extractMarkdownLocalLinks(body),
     }.toList(growable: false);
 
-    final List<PendingAttachment> attachments = await _resolveImportAttachments(
+    final _ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
       references: attachmentReferences,
       baseDirectory: file.parent,
       importRootDirectory: importRootDirectory,
-      tempDirectory: tempDirectory,
     );
 
     final DateTime fallbackTime = stat.modified;
@@ -1337,75 +1471,52 @@ class VaultArchiveIo {
       mood: decoded.entry.mood,
     );
 
-    return _ImportedDocument(entry: entry, attachments: attachments);
+    return _ParsedImportEntry(
+      entry: entry,
+      attachments: resolvedAttachments.attachments,
+      skippedAttachments: resolvedAttachments.skippedAttachments,
+    );
   }
 
-  Future<List<_ImportedDocument>> _parseEasyDiaryHtmlDocuments({
-    required File file,
-    required Directory importRootDirectory,
-    required Directory tempDirectory,
-  }) async {
-    final String html = await file.readAsString();
-    final FileStat stat = await file.stat();
-    final String bodyHtml = _extractHtmlBody(html);
-    final List<String> sections = _splitEasyDiarySections(bodyHtml);
-    final List<_ImportedDocument> documents = <_ImportedDocument>[];
-
-    for (final String sectionHtml in sections) {
-      final _ImportedDocument? document = await _parseEasyDiaryHtmlSection(
-        sectionHtml: sectionHtml,
-        file: file,
-        html: html,
-        stat: stat,
-        importRootDirectory: importRootDirectory,
-        tempDirectory: tempDirectory,
-      );
-      if (document != null && !document.isEmpty) {
-        documents.add(document);
-      }
-    }
-
-    return documents;
-  }
-
-  Future<_ImportedDocument?> _parseEasyDiaryHtmlSection({
-    required String sectionHtml,
+  Future<_ParsedImportEntry?> _parseEasyDiarySection({
+    required String easyDiarySectionHtml,
     required File file,
     required String html,
     required FileStat stat,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
   }) async {
-    if (!_isEasyDiarySection(sectionHtml)) {
+    if (!_isEasyDiarySection(easyDiarySectionHtml)) {
       return null;
     }
 
-    final List<String> attachmentReferences =
-        _extractHtmlAttachmentReferences(sectionHtml);
-    final List<PendingAttachment> attachments = await _resolveImportAttachments(
-      references: attachmentReferences,
+    final String photoContainerHtml = _extractAllHtmlClassInnerHtml(
+      easyDiarySectionHtml,
+      'photo-container',
+    ).join('\n');
+    final _ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
+      references: _extractHtmlAttachmentReferences(photoContainerHtml),
       baseDirectory: file.parent,
       importRootDirectory: importRootDirectory,
-      tempDirectory: tempDirectory,
     );
 
-    final String? contentsHtml = _extractHtmlClassInnerHtml(sectionHtml, 'contents');
+    final String? contentsHtml = _extractEasyDiaryContentsHtml(easyDiarySectionHtml);
     final String markdownSourceHtml = contentsHtml != null && contentsHtml.trim().isNotEmpty
         ? contentsHtml
-        : _stripHtmlImageTags(_composeEasyDiaryEntryHtml(sectionHtml));
+        : _stripHtmlImageTags(easyDiarySectionHtml);
     final String markdownBody = _htmlToMarkdown(
       markdownSourceHtml,
       includeImages: false,
     ).trimRight();
 
-    final String? easyDiaryTitle = _extractHtmlClassText(sectionHtml, 'title-right');
-    final String? easyDiaryDateText = _extractHtmlClassText(sectionHtml, 'datetime');
-    final String title = _extractFirstHtmlTagText(sectionHtml, 'h1') ??
+    final String? easyDiaryTitle = _extractHtmlClassText(easyDiarySectionHtml, 'title-right');
+    final String? easyDiaryDateText = _extractHtmlClassText(easyDiarySectionHtml, 'datetime');
+    final String title = _extractFirstHtmlTagText(easyDiarySectionHtml, 'h1') ??
         easyDiaryTitle ??
         _extractFirstHtmlTagText(html, 'title') ??
         _fallbackImportTitle(file);
 
-    final String dateSource = '${file.path}\n${easyDiaryDateText ?? ''}\n$sectionHtml';
+    final String dateSource =
+        '${file.path}\n${easyDiaryDateText ?? ''}\n$easyDiarySectionHtml';
     final DateTime? parsedDateTime = _findDateTimeInText(easyDiaryDateText ?? '') ??
         _findDateTimeInText(dateSource);
     final DateOnly entryDate = parsedDateTime != null
@@ -1425,60 +1536,61 @@ class VaultArchiveIo {
       markdownBody: markdownBody,
     );
 
-    return _ImportedDocument(entry: entry, attachments: attachments);
+    return _ParsedImportEntry(
+      entry: entry,
+      attachments: resolvedAttachments.attachments,
+      skippedAttachments: resolvedAttachments.skippedAttachments,
+    );
   }
 
-  bool _isQuillLockDiaryExportHtml(String html) {
+  bool _isQuillLockExportHtml(String html) {
     return RegExp(
       r'<article\b[^>]*\bclass\s*=\s*"[^"]*\bentry\b',
       caseSensitive: false,
     ).hasMatch(html);
   }
 
-  Future<List<_ImportedDocument>> _parseQuillLockDiaryHtmlDocuments({
+  Future<List<_ParsedImportEntry>> _parseQuillLockExportArticles({
     required File file,
     required String html,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
   }) async {
     final FileStat stat = await file.stat();
     final String bodyHtml = _extractHtmlBody(html);
-    final List<String> articleSections = _splitQuillLockDiaryArticles(bodyHtml);
-    final List<_ImportedDocument> documents = <_ImportedDocument>[];
+    final List<String> quillLockArticleSections = _splitQuillLockDiaryArticles(bodyHtml);
+    final List<_ParsedImportEntry> parsedEntries = <_ParsedImportEntry>[];
 
-    for (final String articleHtml in articleSections) {
-      final _ImportedDocument? document = await _parseQuillLockDiaryHtmlArticle(
-        articleHtml: articleHtml,
+    for (final String quillLockArticleHtml in quillLockArticleSections) {
+      final _ParsedImportEntry? parsedEntry = await _parseQuillLockExportArticle(
+        quillLockArticleHtml: quillLockArticleHtml,
         file: file,
         stat: stat,
         importRootDirectory: importRootDirectory,
-        tempDirectory: tempDirectory,
       );
-      if (document != null && !document.isEmpty) {
-        documents.add(document);
+      if (parsedEntry != null && !parsedEntry.isEmpty) {
+        parsedEntries.add(parsedEntry);
       }
     }
 
-    return documents;
+    return parsedEntries;
   }
 
-  Future<_ImportedDocument?> _parseQuillLockDiaryHtmlArticle({
-    required String articleHtml,
+  Future<_ParsedImportEntry?> _parseQuillLockExportArticle({
+    required String quillLockArticleHtml,
     required File file,
     required FileStat stat,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
   }) async {
-    final String? dateText = _extractHtmlClassText(articleHtml, 'entry-date');
-    final String? title = _extractFirstHtmlTagText(articleHtml, 'h2');
+    final String? dateText = _extractHtmlClassText(quillLockArticleHtml, 'entry-date');
+    final String? title = _extractFirstHtmlTagText(quillLockArticleHtml, 'h2');
     final String? entryBodyHtml =
-        _extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'entry-body');
+        _extractQuillLockDiaryBlockInnerHtml(quillLockArticleHtml, 'section', 'entry-body');
     if (entryBodyHtml == null && title == null && dateText == null) {
       return null;
     }
 
     final String? entryMetaHtml =
-        _extractQuillLockDiaryBlockInnerHtml(articleHtml, 'div', 'entry-meta');
+        _extractQuillLockDiaryBlockInnerHtml(quillLockArticleHtml, 'div', 'entry-meta');
     final DateTime? createdAt = entryMetaHtml == null
         ? null
         : _findDateTimeInText(
@@ -1492,22 +1604,21 @@ class VaultArchiveIo {
     final String? mood = entryMetaHtml == null
         ? null
         : _extractQuillLockDiaryMetaValue(entryMetaHtml, '心情');
-    final List<String> tags = _extractQuillLockDiaryTags(articleHtml);
+    final List<String> tags = _extractQuillLockDiaryTags(quillLockArticleHtml);
 
     final String attachmentSourceHtml =
-        '${_extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'embedded-images') ?? ''}\n'
-        '${_extractQuillLockDiaryBlockInnerHtml(articleHtml, 'section', 'attachment-list') ?? ''}';
-    final List<PendingAttachment> attachments = await _resolveImportAttachments(
+        '${_extractQuillLockDiaryBlockInnerHtml(quillLockArticleHtml, 'section', 'embedded-images') ?? ''}\n'
+        '${_extractQuillLockDiaryBlockInnerHtml(quillLockArticleHtml, 'section', 'attachment-list') ?? ''}';
+    final _ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
       references: _extractHtmlAttachmentReferences(attachmentSourceHtml),
       baseDirectory: file.parent,
       importRootDirectory: importRootDirectory,
-      tempDirectory: tempDirectory,
     );
 
     final String markdownBody = _exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
     final DateOnly entryDate = dateText != null
         ? (_findDateInText(dateText) ?? DateOnly.fromDateTime(stat.modified))
-        : (_findDateInText(articleHtml) ?? DateOnly.fromDateTime(stat.modified));
+        : (_findDateInText(quillLockArticleHtml) ?? DateOnly.fromDateTime(stat.modified));
     final DateTime fallbackTimestamp = stat.modified;
 
     final DiaryEntry entry = DiaryEntry(
@@ -1522,7 +1633,11 @@ class VaultArchiveIo {
       mood: mood?.trim().isEmpty == true ? null : mood?.trim(),
     );
 
-    return _ImportedDocument(entry: entry, attachments: attachments);
+    return _ParsedImportEntry(
+      entry: entry,
+      attachments: resolvedAttachments.attachments,
+      skippedAttachments: resolvedAttachments.skippedAttachments,
+    );
   }
 
   List<String> _splitQuillLockDiaryArticles(String bodyHtml) {
@@ -1671,63 +1786,89 @@ class VaultArchiveIo {
     return _decodeHtmlEntities(_stripHtmlTags(output)).trim();
   }
 
+  static final RegExp _easyDiaryEntryStartPattern = RegExp(
+    "<div\\s+class\\s*=\\s*['\"][^'\"]*\\btitle-right\\b",
+    caseSensitive: false,
+  );
+
+  static final RegExp _easyDiaryContentsStartPattern = RegExp(
+    "<[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\bcontents\\b[^'\"]*['\"][^>]*>",
+    caseSensitive: false,
+  );
+
+  static final RegExp _easyDiaryPhotoContainerStartPattern = RegExp(
+    "<[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\bphoto-container\\b",
+    caseSensitive: false,
+  );
+
   List<String> _splitEasyDiarySections(String bodyHtml) {
-    final List<String> parts = bodyHtml.split(
-      RegExp(r'<hr\b[^>]*>', caseSensitive: false),
-    );
-    if (parts.length > 1) {
-      return parts.where(_isEasyDiarySection).toList(growable: false);
+    final String trimmed = bodyHtml.trim();
+    if (trimmed.isEmpty) {
+      return const <String>[];
     }
-    return bodyHtml.trim().isEmpty ? const <String>[] : <String>[bodyHtml];
+
+    final List<RegExpMatch> entryStarts =
+        _easyDiaryEntryStartPattern.allMatches(trimmed).toList(growable: false);
+    if (entryStarts.length < 2) {
+      return <String>[trimmed];
+    }
+
+    final List<String> sections = <String>[];
+    for (var index = 0; index < entryStarts.length; index++) {
+      final int start = entryStarts[index].start;
+      final int end = index + 1 < entryStarts.length
+          ? entryStarts[index + 1].start
+          : trimmed.length;
+      final String section = trimmed.substring(start, end).trim();
+      if (section.isNotEmpty && _isEasyDiarySection(section)) {
+        sections.add(section);
+      }
+    }
+    return sections;
   }
+
+  String? _extractEasyDiaryContentsHtml(String sectionHtml) {
+    final RegExpMatch? contentsStart =
+        _easyDiaryContentsStartPattern.firstMatch(sectionHtml);
+    if (contentsStart == null) {
+      return null;
+    }
+
+    final int from = contentsStart.end;
+    final RegExpMatch? photoStart = _easyDiaryPhotoContainerStartPattern.firstMatch(
+      sectionHtml.substring(from),
+    );
+    final int sliceEnd = photoStart == null
+        ? sectionHtml.length
+        : from + photoStart.start;
+    final String slice = sectionHtml.substring(from, sliceEnd);
+    final String trimmed = slice.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  static final RegExp _easyDiarySectionMarkerPattern = RegExp(
+    "\\bclass\\s*=\\s*['\"][^'\"]*\\b(title-right|contents|photo-container)\\b",
+    caseSensitive: false,
+  );
 
   bool _isEasyDiarySection(String sectionHtml) {
-    final String trimmed = sectionHtml.trim();
-    if (trimmed.isEmpty) {
-      return false;
-    }
-    if (_extractHtmlClassText(sectionHtml, 'title-right') != null ||
-        _extractHtmlClassInnerHtml(sectionHtml, 'contents') != null ||
-        _extractAllHtmlClassInnerHtml(sectionHtml, 'photo-container').isNotEmpty) {
-      return true;
-    }
-
-    return RegExp(
-      r'<(h[1-6]|p|div|img|ul|ol|blockquote)\b',
-      caseSensitive: false,
-    ).hasMatch(trimmed);
-  }
-
-  String _composeEasyDiaryEntryHtml(String sectionHtml) {
-    final StringBuffer buffer = StringBuffer();
-    final String? contents = _extractHtmlClassInnerHtml(sectionHtml, 'contents');
-    if (contents != null) {
-      buffer.writeln(contents);
-    }
-    for (final String photos in _extractAllHtmlClassInnerHtml(
-      sectionHtml,
-      'photo-container',
-    )) {
-      buffer.writeln(photos);
-    }
-
-    final String composed = buffer.toString().trim();
-    return composed.isEmpty ? sectionHtml.trim() : composed;
+    return sectionHtml.trim().isNotEmpty &&
+        _easyDiarySectionMarkerPattern.hasMatch(sectionHtml);
   }
 
   String _stripHtmlImageTags(String html) {
     return html.replaceAll(RegExp(r'<img\b[^>]*>', caseSensitive: false), '');
   }
 
-  Future<List<PendingAttachment>> _resolveImportAttachments({
+  Future<_ResolvedImportAttachments> _resolveImportAttachments({
     required Iterable<String> references,
     required Directory baseDirectory,
     required Directory importRootDirectory,
-    required Directory tempDirectory,
   }) async {
     final List<PendingAttachment> attachments = <PendingAttachment>[];
     final Set<String> seenPaths = <String>{};
-    int embeddedIndex = 1;
+    var embeddedIndex = 1;
+    var skippedAttachments = 0;
 
     for (final String rawReference in references) {
       final String reference = rawReference.trim();
@@ -1742,16 +1883,15 @@ class VaultArchiveIo {
         final ({String mimeType, Uint8List bytes})? decoded =
             _decodeDataUriReference(reference);
         if (decoded == null) {
+          skippedAttachments++;
           continue;
         }
 
         final String extension = _extensionFromMimeType(decoded.mimeType);
         final String fileName = 'embedded_${embeddedIndex++}.$extension';
-        final File tempFile = File(p.join(tempDirectory.path, fileName));
-        await tempFile.writeAsBytes(decoded.bytes, flush: true);
         attachments.add(
           PendingAttachment(
-            sourcePath: tempFile.path,
+            bytes: decoded.bytes,
             mimeType: decoded.mimeType,
             originalFilename: fileName,
           ),
@@ -1766,6 +1906,7 @@ class VaultArchiveIo {
         p.join(baseDirectory.path, normalizedReference),
       );
       if (!_isPathWithinRoot(resolvedPath, importRootDirectory.path)) {
+        skippedAttachments++;
         continue;
       }
 
@@ -1776,6 +1917,7 @@ class VaultArchiveIo {
 
       final File sourceFile = File(resolvedPath);
       if (!sourceFile.existsSync()) {
+        skippedAttachments++;
         continue;
       }
 
@@ -1789,7 +1931,10 @@ class VaultArchiveIo {
       );
     }
 
-    return attachments;
+    return (
+      attachments: attachments,
+      skippedAttachments: skippedAttachments,
+    );
   }
 
   List<String> _extractMarkdownLocalLinks(String markdown) {
@@ -2352,14 +2497,36 @@ class _BackupArchiveInspection {
   bool get isRestorable => safePaths && hasRecovery && (hasManifest || entrySampleFound);
 }
 
-class _ImportedDocument {
-  const _ImportedDocument({
+/// 單次附件解析結果（本機路徑或 data URI）。
+typedef _ResolvedImportAttachments = ({
+  List<PendingAttachment> attachments,
+  int skippedAttachments,
+});
+
+/// 單一匯入檔（HTML 或 Markdown）的累計統計。
+class _ImportFileTotals {
+  const _ImportFileTotals({
+    required this.importedEntries,
+    required this.skippedFiles,
+    required this.skippedAttachments,
+  });
+
+  final int importedEntries;
+  final int skippedFiles;
+  final int skippedAttachments;
+}
+
+/// 已解析、尚未寫入日記庫的一篇日記與其待存附件。
+class _ParsedImportEntry {
+  const _ParsedImportEntry({
     required this.entry,
     required this.attachments,
+    this.skippedAttachments = 0,
   });
 
   final DiaryEntry entry;
   final List<PendingAttachment> attachments;
+  final int skippedAttachments;
 
   bool get isEmpty =>
       entry.markdownBody.trim().isEmpty &&
