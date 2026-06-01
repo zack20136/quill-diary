@@ -331,6 +331,60 @@ Imported from markdown.
     );
   });
 
+  // 單一 photo-container 內 2 張 data URI（含巢狀 div 包裝）
+  test('可從 Easy Diary 單篇匯入多張 photo-container 圖片', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_multi_photo'))
+      ..createSync(recursive: true);
+
+    final List<int> firstImageBytes = <int>[31, 32, 33];
+    final List<int> secondImageBytes = <int>[41, 42, 43];
+    File(p.join(importRoot.path, 'multi-photo.html')).writeAsStringSync(
+      '<html><body>'
+      "<div class='title-right'>多圖日記</div>"
+      "<div class='datetime'>2026-05-25 14:00:00</div>"
+      "<div class='contents'>兩張照片</div>"
+      "<div class='photo-container'>"
+      "<div class='photo-item'><img src='${_easyDiaryEmbeddedPngDataUri(firstImageBytes)}' alt='p1'></div>"
+      "<div class='photo-item'><img src='${_easyDiaryEmbeddedPngDataUri(secondImageBytes)}' alt='p2'></div>"
+      '</div>'
+      '</body></html>',
+    );
+
+    final PortableImportResult result = await archiveIo.importDocuments(
+      session: setup.session,
+      rootDirectory: importRoot,
+    );
+
+    expect(result.importedEntries, 1);
+
+    final entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
+
+    final DiaryEntry? imported = await harness.repository.loadEntry(
+      setup.session,
+      entries.single.id,
+    );
+    expect(imported?.title, '多圖日記');
+
+    final List<AssetAttachment> attachments =
+        await harness.repository.loadAttachments(entries.single.id);
+    expect(attachments, hasLength(2));
+
+    final List<Uint8List?> decrypted = <Uint8List?>[];
+    for (final AssetAttachment attachment in attachments) {
+      decrypted.add(
+        await _readDecryptedAttachmentBytes(
+          harness: harness,
+          session: setup.session,
+          entry: imported!,
+          attachment: attachment,
+        ),
+      );
+    }
+    expect(decrypted, containsAll(<List<int>>[firstImageBytes, secondImageBytes]));
+  });
+
   // title 區心情圖不進附件；僅 photo-container 內 1 圖
   test('Easy Diary 標題心情圖不會變成附件', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();

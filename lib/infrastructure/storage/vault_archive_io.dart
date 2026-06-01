@@ -2085,18 +2085,86 @@ class VaultArchiveIo {
   }
 
   List<String> _extractAllHtmlClassInnerHtml(String html, String className) {
-    final RegExp pattern = RegExp(
-      r'''<[^>]*\bclass\s*=\s*['"][^'"]*\b''' +
-          RegExp.escape(className) +
-          r'''\b[^'"]*['"][^>]*>([\s\S]*?)</[^>]+>''',
+    final RegExp opener = RegExp(
+      "<([a-zA-Z][a-zA-Z0-9]*)[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\b"
+      '${RegExp.escape(className)}'
+      "\\b[^'\"]*['\"][^>]*>",
       caseSensitive: false,
     );
 
-    return pattern
-        .allMatches(html)
-        .map((Match match) => (match.group(1) ?? '').trim())
-        .where((String value) => value.isNotEmpty)
-        .toList(growable: false);
+    final List<String> results = <String>[];
+    for (final Match match in opener.allMatches(html)) {
+      final String tagName = (match.group(1) ?? '').toLowerCase();
+      if (tagName.isEmpty) {
+        continue;
+      }
+      final String? inner = _extractBalancedElementInnerHtml(
+        html: html,
+        contentStart: match.end,
+        tagName: tagName,
+      );
+      final String trimmed = inner?.trim() ?? '';
+      if (trimmed.isNotEmpty) {
+        results.add(trimmed);
+      }
+    }
+    return results;
+  }
+
+  /// 依標籤深度擷取元素內文，避免巢狀同標籤時只取到第一層結尾。
+  String? _extractBalancedElementInnerHtml({
+    required String html,
+    required int contentStart,
+    required String tagName,
+  }) {
+    final String lowerTag = tagName.toLowerCase();
+    final RegExp openTag = RegExp('<$lowerTag\\b', caseSensitive: false);
+    final RegExp closeTag = RegExp('</$lowerTag\\s*>', caseSensitive: false);
+
+    var depth = 1;
+    var index = contentStart;
+
+    while (index < html.length && depth > 0) {
+      final Match? nextOpen = openTag.matchAsPrefix(html, index) ??
+          _nextRegExpMatch(openTag, html, index);
+      final Match? nextClose = closeTag.matchAsPrefix(html, index) ??
+          _nextRegExpMatch(closeTag, html, index);
+
+      final int? openAt = nextOpen?.start;
+      final int? closeAt = nextClose?.start;
+      if (closeAt == null) {
+        return null;
+      }
+      if (openAt != null && openAt < closeAt) {
+        depth++;
+        final int? tagEnd = _indexOfHtmlTagEnd(html, openAt);
+        if (tagEnd == null) {
+          return null;
+        }
+        index = tagEnd + 1;
+        continue;
+      }
+
+      depth--;
+      if (depth == 0) {
+        return html.substring(contentStart, closeAt);
+      }
+      index = nextClose!.end;
+    }
+
+    return null;
+  }
+
+  Match? _nextRegExpMatch(RegExp pattern, String html, int from) {
+    for (final Match match in pattern.allMatches(html, from)) {
+      return match;
+    }
+    return null;
+  }
+
+  int? _indexOfHtmlTagEnd(String html, int openBracketIndex) {
+    final int tagEnd = html.indexOf('>', openBracketIndex);
+    return tagEnd < 0 ? null : tagEnd;
   }
 
   String _stripHtmlTags(String input) {
