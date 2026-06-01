@@ -62,6 +62,18 @@ class IndexRebuildReport {
   final DateTime finishedAt;
 }
 
+class _EntrySearchFields {
+  const _EntrySearchFields({
+    required this.previewText,
+    required this.titleSearchText,
+    required this.bodySearchText,
+  });
+
+  final String previewText;
+  final String titleSearchText;
+  final String bodySearchText;
+}
+
 /// Main coordination layer for encrypted vault storage.
 ///
 /// This repository owns Recovery Key setup/unlock, trusted-device session
@@ -589,14 +601,14 @@ class VaultRepository {
     );
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
-    final String previewText = previewTextFromMarkdown(normalized.markdownBody);
+    final _EntrySearchFields searchFields = _buildEntrySearchFields(normalized);
 
     await _requireOpenIndex().upsertEntry(
       entry: normalized,
       filePath: filePath,
-      previewText: previewText,
-      titleSearchText: _titleSearchText(normalized.title),
-      bodySearchText: _bodySearchText(normalized.markdownBody),
+      previewText: searchFields.previewText,
+      titleSearchText: searchFields.titleSearchText,
+      bodySearchText: searchFields.bodySearchText,
       contentHash: await _hashString(markdown),
       encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
@@ -666,14 +678,14 @@ class VaultRepository {
             vaultId: metadata.vaultId,
           );
       final List<AssetAttachment> attachments = await _findAttachmentsForEntry(entry);
-      final String previewText = previewTextFromMarkdown(entry.markdownBody);
+      final _EntrySearchFields searchFields = _buildEntrySearchFields(entry);
 
       await indexDb.upsertEntry(
         entry: entry,
         filePath: entity.path,
-        previewText: previewText,
-        titleSearchText: _titleSearchText(entry.title),
-        bodySearchText: _bodySearchText(entry.markdownBody),
+        previewText: searchFields.previewText,
+        titleSearchText: searchFields.titleSearchText,
+        bodySearchText: searchFields.bodySearchText,
         contentHash: await _hashString(markdown),
         encryptedFileSize: await entity.length(),
         encryptedModifiedAt: await entity.lastModified(),
@@ -1299,16 +1311,24 @@ class VaultRepository {
     return true;
   }
 
+  _EntrySearchFields _buildEntrySearchFields(DiaryEntry entry) {
+    return _EntrySearchFields(
+      previewText: previewTextFromMarkdown(entry.markdownBody),
+      titleSearchText: _titleSearchText(entry.title),
+      bodySearchText: _bodySearchText(entry.markdownBody),
+    );
+  }
+
   String _titleSearchText(String? title) {
     final String? trimmed = title?.trim();
     if (trimmed == null || trimmed.isEmpty) {
       return '';
     }
-    return normalizeText(trimmed);
+    return normalizeSearchText(trimmed);
   }
 
   String _bodySearchText(String markdownBody) {
-    return normalizeText(searchableTextFromMarkdown(markdownBody));
+    return normalizeSearchText(searchableTextFromMarkdown(markdownBody));
   }
 
 }

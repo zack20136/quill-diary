@@ -188,9 +188,12 @@ void main() {
     await manager.close();
 
     await harness.repository.ensureIndexReady(session);
-    final List<EntryIndexRecord> results =
+    final List<EntryIndexRecord> dashedResults =
+        await harness.repository.searchEntries('marker-x30');
+    final List<EntryIndexRecord> spacedResults =
         await harness.repository.searchEntries('marker x30');
 
-    expect(results.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
+    expect(dashedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
+    expect(spacedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
   });
 }

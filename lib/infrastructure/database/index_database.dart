@@ -114,10 +114,10 @@ class EntryIndexRecord {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
-  static const int searchSchemaVersion = 2;
+  static const int searchSchemaVersion = 3;
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
@@ -128,7 +128,12 @@ class IndexDatabase extends GeneratedDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async => initialize(),
-        onUpgrade: (Migrator m, int from, int to) async => initialize(),
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 5) {
+            await customStatement('DROP TABLE IF EXISTS entries_index;');
+          }
+          await initialize();
+        },
         beforeOpen: (OpeningDetails details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
         },
@@ -141,7 +146,6 @@ class IndexDatabase extends GeneratedDatabase {
         vault_id TEXT NOT NULL,
         file_path TEXT NOT NULL,
         title TEXT,
-        title_normalized TEXT,
         title_search_text TEXT,
         preview_text TEXT,
         body_search_text TEXT,
@@ -209,8 +213,6 @@ class IndexDatabase extends GeneratedDatabase {
       CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_active_created
       ON entry_attachments (entry_id, is_deleted, created_at);
     ''');
-    await _ensureEntriesIndexColumn('title_search_text', 'TEXT');
-    await _ensureEntriesIndexColumn('body_search_text', 'TEXT');
   }
 
   Future<void> upsertEntry({
@@ -226,17 +228,16 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement(
       '''
         INSERT INTO entries_index (
-          id, vault_id, file_path, title, title_normalized, title_search_text, preview_text,
+          id, vault_id, file_path, title, title_search_text, preview_text,
           body_search_text, date,
           created_at, updated_at, mood, word_count, char_count, attachment_count,
           has_attachments, is_deleted, schema_version, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
           title = excluded.title,
-          title_normalized = excluded.title_normalized,
           title_search_text = excluded.title_search_text,
           preview_text = excluded.preview_text,
           body_search_text = excluded.body_search_text,
@@ -259,7 +260,6 @@ class IndexDatabase extends GeneratedDatabase {
         entry.vaultId,
         filePath,
         entry.normalizedTitle,
-        entry.normalizedTitle == null ? null : normalizeText(entry.normalizedTitle!),
         titleSearchText,
         previewText,
         bodySearchText,
@@ -322,7 +322,7 @@ class IndexDatabase extends GeneratedDatabase {
     for (final String tag in tags) {
       await customStatement(
         'INSERT INTO entry_tags (entry_id, tag, tag_normalized) VALUES (?, ?, ?);',
-        <Object?>[entryId, tag, normalizeText(tag)],
+        <Object?>[entryId, tag, normalizeSearchText(tag)],
       );
     }
   }
@@ -404,7 +404,7 @@ class IndexDatabase extends GeneratedDatabase {
     String query, {
     bool includeDeleted = false,
   }) async {
-    final String normalizedQuery = normalizeText(query);
+    final String normalizedQuery = normalizeSearchText(query);
     if (normalizedQuery.isEmpty) {
       return listEntries(includeDeleted: includeDeleted);
     }
@@ -589,16 +589,5 @@ class IndexDatabase extends GeneratedDatabase {
         .where((String token) => token.isNotEmpty)
         .toList();
     return words.isEmpty ? 0 : words.length;
-  }
-
-  Future<void> _ensureEntriesIndexColumn(String columnName, String columnType) async {
-    final List<QueryRow> rows = await customSelect("PRAGMA table_info('entries_index');").get();
-    final bool exists = rows.any((QueryRow row) => row.read<String>('name') == columnName);
-    if (exists) {
-      return;
-    }
-    await customStatement(
-      'ALTER TABLE entries_index ADD COLUMN $columnName $columnType;',
-    );
   }
 }

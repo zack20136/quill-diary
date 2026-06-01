@@ -20,6 +20,14 @@ String generateDeviceSlotId() => 'dev_${Ulid().toCanonical().toUpperCase()}';
 String normalizeText(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+String normalizeSearchText(String value) {
+  return value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[#>*_`\[\]\(\)!-]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
 String previewTextFromMarkdown(String markdown, {int maxLength = 80}) {
   final String compact = searchableTextFromMarkdown(markdown);
   if (compact.length <= maxLength) {

@@ -105,12 +105,12 @@ class FakeVaultRepository extends VaultRepository {
       );
     }
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      final String normalized = normalizeText(searchQuery);
+      final String normalized = normalizeSearchText(searchQuery);
       results = results.where((EntryIndexRecord entry) {
-        return normalizeText(entry.title ?? '').contains(normalized) ||
-            normalizeText(entry.previewText).contains(normalized) ||
+        return normalizeSearchText(entry.title ?? '').contains(normalized) ||
+            normalizeSearchText(entry.previewText).contains(normalized) ||
             entry.tags.any(
-              (String tag) => normalizeText(tag).contains(normalized),
+              (String tag) => normalizeSearchText(tag).contains(normalized),
             );
       });
     }
