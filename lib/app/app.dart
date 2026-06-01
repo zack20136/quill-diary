@@ -43,7 +43,7 @@ class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp.router(
-          title: 'QuillLockDiary',
+          title: 'Quill Diary',
           theme: buildAppTheme(dynamicScheme: lightDynamic),
           darkTheme: buildAppTheme(
             dynamicScheme: darkDynamic,
