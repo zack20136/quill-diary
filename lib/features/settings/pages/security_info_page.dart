@@ -115,9 +115,6 @@ class _SecurityFlowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
     return _SectionShell(
       title: '加密與解密圖解',
       subtitle: '把整個流程想成 5 個步驟，會比直接看技術名詞更容易理解。',
@@ -665,12 +662,10 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.label,
     required this.body,
-    this.compact = false,
   });
 
   final String label;
   final String body;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -679,11 +674,11 @@ class _InfoRow extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: compact ? Colors.transparent : cs.surfaceContainerLow,
+        color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
       child: Padding(
-        padding: EdgeInsets.all(compact ? 0 : 14),
+        padding: const EdgeInsets.all(14),
         child: RichText(
           text: TextSpan(
             style: theme.textTheme.bodyMedium?.copyWith(

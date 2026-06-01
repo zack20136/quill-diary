@@ -41,17 +41,6 @@ const double _kPaneSectionGap = 18;
 const double _kHomeEntryListCacheExtent = 600;
 const int _kHtmlExportImageWarningThresholdBytes = 50 * 1024 * 1024;
 
-Widget _buildBrowsingEntryRow(BuildContext context, EntryIndexRecord entry) {
-  return _TimelineEntryShell(
-    child: _EntryCard(
-      entry: entry,
-      selectionActive: false,
-      selected: false,
-      onTap: () => unawaited(context.push('/editor/${entry.id}')),
-      onLongPress: () => unawaited(context.push('/editor/${entry.id}')),
-    ),
-  );
-}
 List<Widget> _overviewDiarySectionSlivers({
   required BuildContext context,
   required ColorScheme cs,
@@ -59,6 +48,7 @@ List<Widget> _overviewDiarySectionSlivers({
   required String diaryEmptyText,
   required List<EntryIndexRecord>? diaryEntries,
   required bool diaryLoading,
+  Widget? titleTrail,
   Object? diaryError,
 }) {
   if (diaryLoading) {
@@ -68,6 +58,7 @@ List<Widget> _overviewDiarySectionSlivers({
         child: _DiaryListSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
+          titleTrail: titleTrail,
           child: const Center(child: CircularProgressIndicator()),
         ),
       ),
@@ -81,6 +72,7 @@ List<Widget> _overviewDiarySectionSlivers({
         child: _DiaryListSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
+          titleTrail: titleTrail,
           child: Text('$diaryError'),
         ),
       ),
@@ -95,6 +87,7 @@ List<Widget> _overviewDiarySectionSlivers({
         child: _DiaryListSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
+          titleTrail: titleTrail,
           child: _PaneEmptyHint(text: diaryEmptyText),
         ),
       ),
@@ -107,24 +100,11 @@ List<Widget> _overviewDiarySectionSlivers({
       child: _DiaryListSectionCard(
         title: diarySectionTitle,
         stripeColor: cs.primary,
-        child: const SizedBox.shrink(),
+        titleTrail: titleTrail,
+        child: _ScrollableCompactEntryList(entries: entries),
       ),
     ),
-    SliverPadding(
-      padding: const EdgeInsets.only(bottom: 24),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (BuildContext context, int index) {
-            final EntryIndexRecord entry = entries[index];
-            return Padding(
-              padding: EdgeInsets.only(bottom: index < entries.length - 1 ? 14 : 0),
-              child: _buildBrowsingEntryRow(context, entry),
-            );
-          },
-          childCount: entries.length,
-        ),
-      ),
-    ),
+    const SliverToBoxAdapter(child: SizedBox(height: 24)),
   ];
 }
 
@@ -247,7 +227,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Scaffold(
             backgroundColor: PageStyle.scaffoldWash(cs),
             appBar: const PreferredSize(
-              preferredSize: Size.fromHeight(82),
+              preferredSize: Size.fromHeight(76),
               child: _HomeHeader(),
             ),
             body: ColoredBox(
@@ -255,7 +235,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   child: _HomeContent(sessionState: sessionState),
                 ),
               ),
@@ -288,6 +268,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 class _HomeHeader extends ConsumerWidget {
   const _HomeHeader();
 
+  void _selectTab(WidgetRef ref, HomeTab tab) {
+    ref.read(homeEntrySelectionProvider.notifier).clear();
+    ref.read(homeTabProvider.notifier).set(tab);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
@@ -301,66 +286,63 @@ class _HomeHeader extends ConsumerWidget {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      toolbarHeight: 82,
+      toolbarHeight: 76,
       titleSpacing: 0,
       title: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Row(
             children: <Widget>[
-              Expanded(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: PageStyle.homeHeaderTabGradient(theme.colorScheme),
+              SizedBox(
+                height: kHomeSearchRowControlHeight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 50,
+                      child: _HeaderTabButton(
+                        label: '首頁',
+                        icon: Icons.home_rounded,
+                        active: activeTab == HomeTab.home,
+                        onTap: () => _selectTab(ref, HomeTab.home),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                    border: Border.all(color: PageStyle.primaryMutedOutline(theme.colorScheme)),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      children: <Widget>[
-                        _HeaderTabButton(
-                          label: '首頁',
-                          active: activeTab == HomeTab.home,
-                          onTap: () {
-                            ref.read(homeEntrySelectionProvider.notifier).clear();
-                            ref.read(homeTabProvider.notifier).set(HomeTab.home);
-                          },
-                        ),
-                        _HeaderTabButton(
-                          label: '日曆',
-                          active: activeTab == HomeTab.calendar,
-                          onTap: () {
-                            ref.read(homeEntrySelectionProvider.notifier).clear();
-                            ref.read(homeTabProvider.notifier).set(HomeTab.calendar);
-                          },
-                        ),
-                        _HeaderTabButton(
-                          label: '標籤',
-                          active: activeTab == HomeTab.tags,
-                          onTap: () {
-                            ref.read(homeEntrySelectionProvider.notifier).clear();
-                            ref.read(homeTabProvider.notifier).set(HomeTab.tags);
-                          },
-                        ),
-                        _HeaderTabButton(
-                          label: '總覽',
-                          active: activeTab == HomeTab.overview,
-                          onTap: () {
-                            ref.read(homeEntrySelectionProvider.notifier).clear();
-                            ref.read(homeTabProvider.notifier).set(HomeTab.overview);
-                          },
-                        ),
-                      ],
+                    const SizedBox(width: 5),
+                    SizedBox(
+                      width: 50,
+                      child: _HeaderTabButton(
+                        label: '日曆',
+                        icon: Icons.calendar_month_rounded,
+                        active: activeTab == HomeTab.calendar,
+                        onTap: () => _selectTab(ref, HomeTab.calendar),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 5),
+                    SizedBox(
+                      width: 50,
+                      child: _HeaderTabButton(
+                        label: '標籤',
+                        icon: Icons.sell_rounded,
+                        active: activeTab == HomeTab.tags,
+                        onTap: () => _selectTab(ref, HomeTab.tags),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    SizedBox(
+                      width: 50,
+                      child: _HeaderTabButton(
+                        label: '總覽',
+                        icon: Icons.insights_rounded,
+                        active: activeTab == HomeTab.overview,
+                        onTap: () => _selectTab(ref, HomeTab.overview),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const Spacer(),
+              const SizedBox(width: 12),
               _HeaderIconButton(
                 tooltip: '設定與備份',
                 icon: Icons.tune_rounded,
@@ -529,8 +511,19 @@ Future<void> _exportSelectedHomeEntriesAsHtml(
   AppSessionState sessionState,
   Set<EntryId> selectedIds,
 ) async {
-  final UnlockedVaultSession? session = sessionState.session;
-  if (session == null || selectedIds.isEmpty) {
+  if (sessionState.session == null || selectedIds.isEmpty) {
+    return;
+  }
+
+  await _exportEntriesAsHtml(context, ref, selectedIds);
+}
+
+Future<void> _exportEntriesAsHtml(
+  BuildContext context,
+  WidgetRef ref,
+  Set<EntryId> selectedIds,
+) async {
+  if (selectedIds.isEmpty) {
     return;
   }
 
@@ -575,6 +568,14 @@ Future<void> _exportSelectedHomeEntriesAsHtml(
       SnackBar(content: Text(userFacingErrorMessage(error))),
     );
   }
+}
+
+String _overviewExportLabel(MemoryScope scope) {
+  return switch (scope) {
+    MemoryScope.all => '匯出總回顧',
+    MemoryScope.year => '匯出年度回顧',
+    MemoryScope.month => '匯出月份回顧',
+  };
 }
 
 Future<bool> _confirmLargeHtmlExport(

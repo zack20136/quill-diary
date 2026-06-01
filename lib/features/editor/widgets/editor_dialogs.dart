@@ -323,16 +323,31 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   }
 }
 
+class _EntryImageGalleryDialog extends StatefulWidget {
+  const _EntryImageGalleryDialog({
+    required this.items,
+    required this.initialIndex,
+  });
 
-class _DecryptedImageFullScreenDialog extends ConsumerWidget {
-  const _DecryptedImageFullScreenDialog({required this.encryptedPath});
-
-  final String encryptedPath;
+  final List<_PreviewGalleryImage> items;
+  final int initialIndex;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<Uint8List?> async =
-        ref.watch(entryCoverPreviewBytesProvider(encryptedPath));
+  State<_EntryImageGalleryDialog> createState() => _EntryImageGalleryDialogState();
+}
+
+class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
+  late final PageController _pageController = PageController(initialPage: widget.initialIndex);
+  late int _currentIndex = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final Size mq = MediaQuery.sizeOf(context);
     return Dialog(
       backgroundColor: Colors.black,
@@ -342,36 +357,31 @@ class _DecryptedImageFullScreenDialog extends ConsumerWidget {
         height: mq.height * 0.88,
         child: Stack(
           children: <Widget>[
-            Positioned.fill(
-              child: async.when(
-                data: (Uint8List? bytes) {
-                  if (bytes == null || bytes.isEmpty) {
-                    return Center(
-                      child: Text(
-                        '無法預覽',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
-                      ),
-                    );
-                  }
-                  return InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4,
-                    child: Center(
-                      child: Image.memory(
-                        bytes,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                      ),
-                    ),
-                  );
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.items.length,
+              onPageChanged: (int index) => setState(() => _currentIndex = index),
+              itemBuilder: (BuildContext context, int index) {
+                return _GalleryImagePane(item: widget.items[index]);
+              },
+            ),
+            PositionedDirectional(
+              top: 12,
+              start: 16,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                error: (Object _, StackTrace _) => const Icon(
-                  Icons.broken_image_outlined,
-                  color: Colors.white,
-                  size: 56,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    '${_currentIndex + 1} / ${widget.items.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -385,6 +395,77 @@ class _DecryptedImageFullScreenDialog extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GalleryImagePane extends ConsumerWidget {
+  const _GalleryImagePane({required this.item});
+
+  final _PreviewGalleryImage item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return switch (item.sourceKind) {
+      _PreviewGallerySourceKind.encrypted => _EncryptedGalleryImage(path: item.path),
+      _PreviewGallerySourceKind.local => Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4,
+            child: Image.file(
+              File(item.path),
+              fit: BoxFit.contain,
+              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                  const Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white,
+                size: 56,
+              ),
+            ),
+          ),
+        ),
+    };
+  }
+}
+
+class _EncryptedGalleryImage extends ConsumerWidget {
+  const _EncryptedGalleryImage({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<Uint8List?> async = ref.watch(entryCoverPreviewBytesProvider(path));
+    return async.when(
+      data: (Uint8List? bytes) {
+        if (bytes == null || bytes.isEmpty) {
+          return Center(
+            child: Text(
+              '無法預覽',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+            ),
+          );
+        }
+        return Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4,
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
+            ),
+          ),
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+      error: (Object _, StackTrace _) => const Icon(
+        Icons.broken_image_outlined,
+        color: Colors.white,
+        size: 56,
       ),
     );
   }

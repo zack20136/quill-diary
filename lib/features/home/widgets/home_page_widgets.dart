@@ -53,6 +53,20 @@ class _OverviewPane extends ConsumerWidget {
                       ),
                     )
                     .toList(growable: false);
+            final Set<EntryId> diaryEntryIds =
+                diaryEntries.map((EntryIndexRecord entry) => entry.id).toSet();
+            final Widget? exportButton = scope == MemoryScope.all
+                ? null
+                : Tooltip(
+                    message: _overviewExportLabel(scope),
+                    child: FilledButton.icon(
+                      onPressed: diaryEntryIds.isEmpty
+                          ? null
+                          : () => unawaited(_exportEntriesAsHtml(context, ref, diaryEntryIds)),
+                      icon: const Icon(Icons.ios_share_rounded, size: 18),
+                      label: const Text('匯出回顧'),
+                    ),
+                  );
 
             return NotificationListener<OverscrollIndicatorNotification>(
               onNotification: (OverscrollIndicatorNotification notification) {
@@ -66,7 +80,7 @@ class _OverviewPane extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        const _OverviewScopePicker(),
+                        _OverviewScopePicker(exportButton: exportButton),
                         const SizedBox(height: _kPaneSectionGap),
                         _OverviewScopedMetricPanel(
                           scope: scope,
@@ -277,7 +291,7 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
           return LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final double width = constraints.maxWidth;
-              final int columns = width >= 880 ? 4 : 2;
+              const int columns = 2;
               const double gap = 13;
               final double itemWidth = (width - (gap * (columns - 1))) / columns;
 
@@ -417,7 +431,9 @@ class _MemoryFocusedPeriodBar extends ConsumerWidget {
 }
 
 class _OverviewScopePicker extends ConsumerWidget {
-  const _OverviewScopePicker();
+  const _OverviewScopePicker({this.exportButton});
+
+  final Widget? exportButton;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -430,48 +446,59 @@ class _OverviewScopePicker extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          SegmentedButton<MemoryScope>(
-            showSelectedIcon: false,
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
-              shape: WidgetStatePropertyAll<OutlinedBorder>(
-                RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Expanded(
+                child: SegmentedButton<MemoryScope>(
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
+                    shape: WidgetStatePropertyAll<OutlinedBorder>(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+                    ),
+                    backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return cs.primaryContainer;
+                      }
+                      return cs.surfaceContainerHighest.withValues(alpha: 0.55);
+                    }),
+                    foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return cs.onPrimaryContainer;
+                      }
+                      return cs.onSurfaceVariant;
+                    }),
+                  ),
+                  segments: const <ButtonSegment<MemoryScope>>[
+                    ButtonSegment<MemoryScope>(
+                      value: MemoryScope.all,
+                      label: Text('全部'),
+                    ),
+                    ButtonSegment<MemoryScope>(
+                      value: MemoryScope.year,
+                      label: Text('年'),
+                    ),
+                    ButtonSegment<MemoryScope>(
+                      value: MemoryScope.month,
+                      label: Text('月'),
+                    ),
+                  ],
+                  selected: <MemoryScope>{scope},
+                  onSelectionChanged: (Set<MemoryScope> next) {
+                    if (next.isEmpty) {
+                      return;
+                    }
+                    ref.read(memoryScopeProvider.notifier).set(next.first);
+                  },
+                ),
               ),
-              backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-                if (states.contains(WidgetState.selected)) {
-                  return cs.primaryContainer;
-                }
-                return cs.surfaceContainerHighest.withValues(alpha: 0.55);
-              }),
-              foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-                if (states.contains(WidgetState.selected)) {
-                  return cs.onPrimaryContainer;
-                }
-                return cs.onSurfaceVariant;
-              }),
-            ),
-            segments: const <ButtonSegment<MemoryScope>>[
-              ButtonSegment<MemoryScope>(
-                value: MemoryScope.all,
-                label: Text('全部'),
-              ),
-              ButtonSegment<MemoryScope>(
-                value: MemoryScope.year,
-                label: Text('年'),
-              ),
-              ButtonSegment<MemoryScope>(
-                value: MemoryScope.month,
-                label: Text('月'),
-              ),
+              if (exportButton != null) ...<Widget>[
+                const SizedBox(width: 10),
+                exportButton!,
+              ],
             ],
-            selected: <MemoryScope>{scope},
-            onSelectionChanged: (Set<MemoryScope> next) {
-              if (next.isEmpty) {
-                return;
-              }
-              ref.read(memoryScopeProvider.notifier).set(next.first);
-            },
           ),
           const SizedBox(height: 14),
           const _MemoryFocusedPeriodBar(),
@@ -979,39 +1006,36 @@ class _EntryPreviewImageStrip extends StatelessWidget {
 class _HeaderTabButton extends StatelessWidget {
   const _HeaderTabButton({
     required this.label,
+    required this.icon,
     required this.active,
     required this.onTap,
   });
 
   final String label;
+  final IconData icon;
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color foreground = active ? cs.onPrimary : cs.onSurfaceVariant;
+    return Tooltip(
+      message: label,
       child: InkWell(
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          constraints: const BoxConstraints(minWidth: 72),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          height: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
           decoration: BoxDecoration(
-            color: active ? theme.colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+            color: active ? cs.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
           ),
           child: Center(
-            child: Text(
-              label,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: active ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: Icon(icon, size: 20, color: foreground),
           ),
         ),
       ),
@@ -1033,28 +1057,18 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final Color foregroundColor = cs.onPrimaryContainer;
-    final Color backgroundColor = Color.alphaBlend(
-      cs.primaryContainer.withValues(alpha: 0.78),
-      cs.surfaceContainerLow,
-    );
+    final Color foregroundColor = cs.onSurfaceVariant;
 
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-          side: BorderSide(color: foregroundColor.withValues(alpha: 0.14)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-          child: SizedBox(
-            width: kHomeSearchRowControlHeight,
-            height: kHomeSearchRowControlHeight,
-            child: Icon(icon, size: 22, color: foregroundColor),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        child: SizedBox(
+          width: kHomeSearchRowControlHeight,
+          height: kHomeSearchRowControlHeight,
+          child: Center(
+            child: Icon(icon, size: 20, color: foregroundColor),
           ),
         ),
       ),

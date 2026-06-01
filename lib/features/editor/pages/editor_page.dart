@@ -39,6 +39,24 @@ part '../widgets/editor_dialogs.dart';
 
 enum _SaveStatus { idle, dirty, saving, saved }
 
+enum _PreviewGallerySourceKind { encrypted, local }
+
+class _PreviewGalleryImage {
+  const _PreviewGalleryImage.encrypted({
+    required this.previewId,
+    required this.path,
+  }) : sourceKind = _PreviewGallerySourceKind.encrypted;
+
+  const _PreviewGalleryImage.local({
+    required this.previewId,
+    required this.path,
+  }) : sourceKind = _PreviewGallerySourceKind.local;
+
+  final String previewId;
+  final String path;
+  final _PreviewGallerySourceKind sourceKind;
+}
+
 class _MarkdownPreviewBody extends StatelessWidget {
   const _MarkdownPreviewBody({required this.markdown});
 
@@ -1450,9 +1468,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _previewPhotoTileSaved(
     AssetAttachment attachment,
-    ThemeData theme,
     double thumbSide, {
     double leadingInset = 6,
+    required VoidCallback onTap,
   }) {
     final double edge = thumbSide.clamp(40.0, 400.0);
     return Padding(
@@ -1460,7 +1478,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _openSavedAttachmentImagePreview(attachment),
+          onTap: onTap,
           borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
           child: FutureBuilder<String>(
             future: _cachedEncryptedPathFuture(attachment),
@@ -1479,9 +1497,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _previewPhotoTilePending(
     PendingAttachment attachment,
-    ThemeData theme,
     double thumbSide, {
     double leadingInset = 6,
+    required VoidCallback onTap,
   }) {
     final double edge = thumbSide.clamp(40.0, 400.0);
     return Padding(
@@ -1489,7 +1507,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _openPendingImagePreview(attachment.sourcePath),
+          onTap: onTap,
           borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
           child: localFileThumbnail(
             attachment.sourcePath,
@@ -1518,8 +1536,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return const SizedBox.shrink();
     }
 
-    final ThemeData theme = Theme.of(context);
-
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : 360;
@@ -1543,16 +1559,28 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 if (index < savedImages.length) {
                   return _previewPhotoTileSaved(
                     savedImages[index],
-                    theme,
                     thumbSide,
                     leadingInset: first ? 0 : 6,
+                    onTap: () => unawaited(
+                      _openImagePreviewGallery(
+                        savedImages: savedImages,
+                        pendingImages: pending,
+                        initialIndex: index,
+                      ),
+                    ),
                   );
                 }
                 return _previewPhotoTilePending(
                   pending[index - savedImages.length],
-                  theme,
                   thumbSide,
                   leadingInset: first ? 0 : 6,
+                  onTap: () => unawaited(
+                    _openImagePreviewGallery(
+                      savedImages: savedImages,
+                      pendingImages: pending,
+                      initialIndex: index,
+                    ),
+                  ),
                 );
               },
             ),
@@ -1562,59 +1590,44 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Future<void> _openSavedAttachmentImagePreview(AssetAttachment attachment) async {
-    final String path = await _cachedEncryptedPathFuture(attachment);
-    if (!mounted || path.trim().isEmpty) {
+  Future<void> _openImagePreviewGallery({
+    required List<AssetAttachment> savedImages,
+    required List<PendingAttachment> pendingImages,
+    required int initialIndex,
+  }) async {
+    final List<_PreviewGalleryImage> items = <_PreviewGalleryImage>[];
+    for (final AssetAttachment attachment in savedImages) {
+      final String path = await _cachedEncryptedPathFuture(attachment);
+      if (path.trim().isEmpty) {
+        continue;
+      }
+      items.add(
+        _PreviewGalleryImage.encrypted(
+          previewId: attachment.id,
+          path: path,
+        ),
+      );
+    }
+    for (final PendingAttachment attachment in pendingImages) {
+      if (attachment.sourcePath.trim().isEmpty) {
+        continue;
+      }
+      items.add(
+        _PreviewGalleryImage.local(
+          previewId: attachment.sourcePath,
+          path: attachment.sourcePath,
+        ),
+      );
+    }
+    if (!mounted || items.isEmpty) {
       return;
     }
+    final int safeInitialIndex = initialIndex.clamp(0, items.length - 1);
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black54,
       builder: (BuildContext dialogContext) =>
-          _DecryptedImageFullScreenDialog(encryptedPath: path),
-    );
-  }
-
-  void _openPendingImagePreview(String sourcePath) {
-    unawaited(
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.black54,
-        builder: (BuildContext dialogContext) {
-          return Dialog(
-            backgroundColor: Colors.black,
-            insetPadding: const EdgeInsets.all(12),
-            child: Stack(
-              children: <Widget>[
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4,
-                    child: Image.file(
-                      File(sourcePath),
-                      fit: BoxFit.contain,
-                      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                          const Icon(
-                        Icons.broken_image_outlined,
-                        color: Colors.white,
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                ),
-                PositionedDirectional(
-                  top: 4,
-                  end: 4,
-                  child: IconButton(
-                    onPressed: () => unawaited(Navigator.of(dialogContext).maybePop()),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+          _EntryImageGalleryDialog(items: items, initialIndex: safeInitialIndex),
     );
   }
 
