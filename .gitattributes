@@ -1,0 +1,25 @@
+# 統一文字檔換行為 LF，避免跨平台 diff 雜訊
+* text=auto eol=lf
+
+*.dart text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.gradle text eol=lf
+*.kt text eol=lf
+*.swift text eol=lf
+*.sh text eol=lf
+*.xml text eol=lf
+*.properties text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
