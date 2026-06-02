@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/presentation/page_style.dart';
+import '../settings_copy.dart';
 
 class SecurityInfoPage extends StatelessWidget {
   const SecurityInfoPage({super.key});
@@ -10,32 +11,257 @@ class SecurityInfoPage extends StatelessWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
 
-    return Scaffold(
-      backgroundColor: pageBackground,
-      appBar: AppBar(
-        title: const Text('安全性說明'),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
         backgroundColor: pageBackground,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: const <Widget>[
-            _HeroCard(),
-            SizedBox(height: 16),
-            _SecurityFlowCard(),
-            SizedBox(height: 16),
-            _SecurityHighlightsCard(),
-            SizedBox(height: 16),
-            _BackupRestoreCard(),
-            SizedBox(height: 16),
-            _RecoveryKeyCard(),
-            SizedBox(height: 16),
-            _SecurityLimitsCard(),
+        appBar: AppBar(
+          title: const Text(SettingsAboutCopy.pageTitle),
+          backgroundColor: pageBackground,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          bottom: TabBar(
+            tabs: const <Widget>[
+              Tab(text: SettingsAboutCopy.tabOverview),
+              Tab(text: SettingsAboutCopy.tabData),
+              Tab(text: SettingsAboutCopy.tabSecurity),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: <Widget>[
+            _AboutTabBody(
+              children: <Widget>[
+                _OverviewHeroCard(),
+                SizedBox(height: 16),
+                _AppFeaturesCard(),
+                SizedBox(height: 16),
+                _PlatformLimitCard(),
+              ],
+            ),
+            _AboutTabBody(
+              children: <Widget>[
+                _TagCatalogCard(),
+                SizedBox(height: 16),
+                _BackupDataCard(),
+                SizedBox(height: 16),
+                _ImportExportCard(),
+              ],
+            ),
+            _AboutTabBody(
+              children: <Widget>[
+                _HeroCard(),
+                SizedBox(height: 16),
+                _SecurityFlowCard(),
+                SizedBox(height: 16),
+                _SecurityHighlightsCard(),
+                SizedBox(height: 16),
+                _BackupRestoreCard(),
+                SizedBox(height: 16),
+                _RecoveryKeyCard(),
+                SizedBox(height: 16),
+                _SecurityLimitsCard(),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AboutTabBody extends StatelessWidget {
+  const _AboutTabBody({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: children,
+      ),
+    );
+  }
+}
+
+class _OverviewHeroCard extends StatelessWidget {
+  const _OverviewHeroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color.alphaBlend(cs.primary.withValues(alpha: 0.16), cs.surface),
+            Color.alphaBlend(cs.tertiary.withValues(alpha: 0.10), cs.surfaceContainerLow),
+          ],
+        ),
+        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(Icons.menu_book_rounded, color: cs.primary, size: 28),
+            const SizedBox(height: 14),
+            Text(
+              SettingsAboutCopy.overviewHeroTitle,
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              SettingsAboutCopy.overviewHeroBody,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.55,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: SettingsAboutCopy.overviewChips
+                  .map((String label) => _FactChip(label: label))
+                  .toList(growable: false),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppFeaturesCard extends StatelessWidget {
+  const _AppFeaturesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionShell(
+      title: SettingsAboutCopy.featuresSectionTitle,
+      subtitle: SettingsAboutCopy.featuresSectionSubtitle,
+      child: const Column(
+        children: <Widget>[
+          _BulletPanel(
+            icon: Icons.home_outlined,
+            title: SettingsAboutCopy.featuresHomeTitle,
+            body: SettingsAboutCopy.featuresHomeBody,
+          ),
+          SizedBox(height: 10),
+          _BulletPanel(
+            icon: Icons.edit_note_rounded,
+            title: SettingsAboutCopy.featuresEditorTitle,
+            body: SettingsAboutCopy.featuresEditorBody,
+          ),
+          SizedBox(height: 10),
+          _BulletPanel(
+            icon: Icons.search_rounded,
+            title: SettingsAboutCopy.featuresSearchTitle,
+            body: SettingsAboutCopy.featuresSearchBody,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlatformLimitCard extends StatelessWidget {
+  const _PlatformLimitCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _SectionShell(
+      title: SettingsAboutCopy.platformSectionTitle,
+      subtitle: SettingsAboutCopy.platformSectionBody,
+    );
+  }
+}
+
+class _TagCatalogCard extends StatelessWidget {
+  const _TagCatalogCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionShell(
+      title: SettingsAboutCopy.tagCatalogSectionTitle,
+      subtitle: SettingsAboutCopy.tagCatalogSectionSubtitle,
+      child: const Column(
+        children: <Widget>[
+          _InfoRow(
+            label: SettingsAboutCopy.tagCatalogFileLabel,
+            body: SettingsAboutCopy.tagCatalogFileBody,
+          ),
+          SizedBox(height: 10),
+          _InfoRow(
+            label: SettingsAboutCopy.tagCatalogSyncLabel,
+            body: SettingsAboutCopy.tagCatalogSyncBody,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupDataCard extends StatelessWidget {
+  const _BackupDataCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionShell(
+      title: SettingsAboutCopy.backupSectionTitle,
+      subtitle: SettingsAboutCopy.backupSectionSubtitle,
+      child: const Column(
+        children: <Widget>[
+          _InfoRow(
+            label: SettingsAboutCopy.backupLocalLabel,
+            body: SettingsAboutCopy.backupLocalBody,
+          ),
+          SizedBox(height: 10),
+          _InfoRow(
+            label: SettingsAboutCopy.backupDriveLabel,
+            body: SettingsAboutCopy.backupDriveBody,
+          ),
+          SizedBox(height: 10),
+          _InfoRow(
+            label: SettingsAboutCopy.backupRestoreAfterLabel,
+            body: SettingsAboutCopy.backupRestoreAfterBody,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportExportCard extends StatelessWidget {
+  const _ImportExportCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionShell(
+      title: SettingsAboutCopy.portableSectionTitle,
+      subtitle: SettingsAboutCopy.portableSectionSubtitle,
+      child: const Column(
+        children: <Widget>[
+          _InfoRow(
+            label: SettingsAboutCopy.portableExportLabel,
+            body: SettingsAboutCopy.portableExportBody,
+          ),
+          SizedBox(height: 10),
+          _InfoRow(
+            label: SettingsAboutCopy.portableImportLabel,
+            body: SettingsAboutCopy.portableImportBody,
+          ),
+        ],
       ),
     );
   }
@@ -79,29 +305,24 @@ class _HeroCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              '你的資料，預設先在本機加密',
+              SettingsAboutCopy.securityHeroTitle,
               style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             Text(
-              '這個 App 以離線優先為設計原則。日記內容、附件與主要中繼資料會先在裝置上完成加密，再寫入本機 vault；除非你主動備份或匯出，否則不會自動把明文日記傳到外部服務。',
+              SettingsAboutCopy.securityHeroBody,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
                 height: 1.55,
               ),
             ),
             const SizedBox(height: 16),
-            const Wrap(
+            Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: <Widget>[
-                _FactChip(label: 'LDJ2'),
-                _FactChip(label: 'AES-256-GCM'),
-                _FactChip(label: 'Argon2id'),
-                _FactChip(label: '本機儲存'),
-                _FactChip(label: '受信任裝置'),
-                _FactChip(label: '復原金鑰'),
-              ],
+              children: SettingsAboutCopy.securityChips
+                  .map((String label) => _FactChip(label: label))
+                  .toList(growable: false),
             ),
           ],
         ),
@@ -116,32 +337,32 @@ class _SecurityFlowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: '加密與解密圖解',
-      subtitle: '把整個流程想成 5 個步驟，會比直接看技術名詞更容易理解。',
+      title: SettingsAboutCopy.securityFlowSectionTitle,
+      subtitle: SettingsAboutCopy.securityFlowSectionSubtitle,
       child: Column(
         children: const <Widget>[
           _FlowStep(
             icon: Icons.edit_note_rounded,
-            title: '1. 寫下內容',
-            body: '你輸入的日記或附件會先在裝置端處理，還不會直接寫成可讀的明文檔案。',
+            title: SettingsAboutCopy.securityFlowStep1Title,
+            body: SettingsAboutCopy.securityFlowStep1Body,
           ),
           _FlowConnector(),
           _FlowStep(
             icon: Icons.vpn_key_outlined,
-            title: '2. 產生隨機 file key',
-            body: '每一個加密檔都會有自己的 file key，不會固定共用同一把。',
+            title: SettingsAboutCopy.securityFlowStep2Title,
+            body: SettingsAboutCopy.securityFlowStep2Body,
           ),
           _FlowConnector(),
           _FlowStep(
             icon: Icons.lock_rounded,
-            title: '3. 用 AES-256-GCM 加密',
-            body: '內容會被加密並寫成 LDJ2 格式，同時附帶完整性驗證資訊，避免被靜默竄改。',
+            title: SettingsAboutCopy.securityFlowStep3Title,
+            body: SettingsAboutCopy.securityFlowStep3Body,
           ),
           _FlowConnector(),
           _FlowStep(
             icon: Icons.folder_special_outlined,
-            title: '4. 寫入 vault',
-            body: '本機保存的是加密檔、`recovery.json` 與索引資料，不是直接可讀的日記明文。',
+            title: SettingsAboutCopy.securityFlowStep4Title,
+            body: SettingsAboutCopy.securityFlowStep4Body,
           ),
           _FlowConnector(),
           _FlowSplitStep(),
@@ -157,29 +378,26 @@ class _SecurityHighlightsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: '安全性重點',
-      subtitle: '這一頁最重要的三件事：加密方式、保護範圍，以及安全機制的適用邊界。',
+      title: SettingsAboutCopy.securityHighlightsSectionTitle,
+      subtitle: SettingsAboutCopy.securityHighlightsSectionSubtitle,
       child: const Column(
         children: <Widget>[
           _BulletPanel(
             icon: Icons.lock_outline_rounded,
-            title: '加密方式',
-            body:
-                '每一筆日記或附件在寫入時，都會先產生隨機 file key，再用 AES-256-GCM 加密內容。檔案格式使用 LDJ2，真正落地保存的是加密後的資料。',
+            title: SettingsAboutCopy.securityHighlightEncryptTitle,
+            body: SettingsAboutCopy.securityHighlightEncryptBody,
           ),
           SizedBox(height: 10),
           _BulletPanel(
             icon: Icons.security_rounded,
-            title: '保護範圍',
-            body:
-                '資料預設存放在本機，不會自動把明文同步到外部。只要裝置與復原金鑰都保護得當，單純拿到加密檔案的人也無法直接讀出日記內容。',
+            title: SettingsAboutCopy.securityHighlightScopeTitle,
+            body: SettingsAboutCopy.securityHighlightScopeBody,
           ),
           SizedBox(height: 10),
           _BulletPanel(
             icon: Icons.warning_amber_rounded,
-            title: '風險邊界',
-            body:
-                '如果裝置已被 root、遭惡意程式控制，或攻擊者已能讀取執行中的記憶體，任何本機加密 App 的保護都會受限。這也是為什麼復原金鑰必須另外保存。',
+            title: SettingsAboutCopy.securityHighlightLimitTitle,
+            body: SettingsAboutCopy.securityHighlightLimitBody,
           ),
         ],
       ),
@@ -193,29 +411,23 @@ class _BackupRestoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: '備份與還原',
-      subtitle: '備份檔保存的是加密後的 vault，不是未加密日記；還原後 App 也會重新建立本機狀態。',
+      title: SettingsAboutCopy.securityBackupSectionTitle,
+      subtitle: SettingsAboutCopy.securityBackupSectionSubtitle,
       child: const Column(
         children: <Widget>[
           _InfoRow(
-            label: '備份內容',
-            body: '本機 `.jbackup` 與 Google Drive 備份都封裝整個已加密的 vault，不會另外保存明文日記。',
+            label: SettingsAboutCopy.securityBackupEncryptedLabel,
+            body: SettingsAboutCopy.securityBackupEncryptedBody,
           ),
           SizedBox(height: 10),
           _InfoRow(
-            label: '還原後會發生什麼',
-            body: '還原後索引資料庫會清除並重建，App 也會重新進入啟動與解鎖流程。',
+            label: SettingsAboutCopy.securityBackupUnlockLabel,
+            body: SettingsAboutCopy.securityBackupUnlockBody,
           ),
           SizedBox(height: 10),
           _InfoRow(
-            label: '什麼情況可沿用本機解鎖',
-            body:
-                '同裝置、同 vault_id、同一代復原金鑰，且本機原本就有受信任裝置狀態時，才可能沿用本機解鎖路徑。',
-          ),
-          SizedBox(height: 10),
-          _InfoRow(
-            label: '其他情況',
-            body: '若條件不符合，就需要輸入建立該備份時保存的復原金鑰，才能完成還原後解鎖。',
+            label: SettingsAboutCopy.securityBackupOtherLabel,
+            body: SettingsAboutCopy.securityBackupOtherBody,
           ),
         ],
       ),
@@ -229,29 +441,26 @@ class _RecoveryKeyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: '復原金鑰',
-      subtitle: '它不是可有可無的備用選項，而是整個資料保護機制裡的最終備援。',
+      title: SettingsAboutCopy.securityRecoverySectionTitle,
+      subtitle: SettingsAboutCopy.securityRecoverySectionSubtitle,
       child: const Column(
         children: <Widget>[
           _BulletPanel(
             icon: Icons.key_rounded,
-            title: '不是直接加密日記',
-            body:
-                '復原金鑰不會直接拿來加密日記內容，而是先透過 Argon2id 推導出 recovery wrapping key，再用來保護 `file key`。',
+            title: SettingsAboutCopy.securityRecoveryRoleTitle,
+            body: SettingsAboutCopy.securityRecoveryRoleBody,
           ),
           SizedBox(height: 10),
           _BulletPanel(
             icon: Icons.smartphone_rounded,
-            title: '不被受信任裝置取代',
-            body:
-                '受信任裝置解鎖只是在你自己的裝置上提供更順手的使用體驗，並不代表可以不保存復原金鑰。',
+            title: SettingsAboutCopy.securityRecoveryDeviceTitle,
+            body: SettingsAboutCopy.securityRecoveryDeviceBody,
           ),
           SizedBox(height: 10),
           _BulletPanel(
             icon: Icons.history_toggle_off_rounded,
-            title: '舊備份仍可能需要舊金鑰',
-            body:
-                '如果你後來更新過復原金鑰，較早以前做的備份，仍可能需要當時那一把舊金鑰，而不是目前的新金鑰。',
+            title: SettingsAboutCopy.securityRecoveryRotateTitle,
+            body: SettingsAboutCopy.securityRecoveryRotateBody,
           ),
         ],
       ),
@@ -265,23 +474,23 @@ class _SecurityLimitsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: '使用限制與提醒',
-      subtitle: '這些提醒不是例外，而是實際使用時最容易誤解的地方。',
+      title: SettingsAboutCopy.securityLimitsSectionTitle,
+      subtitle: SettingsAboutCopy.securityLimitsSectionSubtitle,
       child: const Column(
         children: <Widget>[
           _InfoRow(
-            label: '備份的限制',
-            body: '有備份不代表不需要復原金鑰。備份保存的是加密後的資料，還原時仍可能需要驗證。',
+            label: SettingsAboutCopy.securityLimitBackupLabel,
+            body: SettingsAboutCopy.securityLimitBackupBody,
           ),
           SizedBox(height: 10),
           _InfoRow(
-            label: '金鑰保存原則',
-            body: '復原金鑰建議離線保存，不要和手機、平板或備份檔放在同一個地方。',
+            label: SettingsAboutCopy.securityLimitKeyLabel,
+            body: SettingsAboutCopy.securityLimitKeyBody,
           ),
           SizedBox(height: 10),
           _InfoRow(
-            label: '裝置驗證的角色',
-            body: '它們只影響本機受信任裝置的解鎖體驗，不等於可以取代復原金鑰。',
+            label: SettingsAboutCopy.securityLimitVerifyLabel,
+            body: SettingsAboutCopy.securityLimitVerifyBody,
           ),
         ],
       ),
@@ -293,12 +502,12 @@ class _SectionShell extends StatelessWidget {
   const _SectionShell({
     required this.title,
     required this.subtitle,
-    required this.child,
+    this.child,
   });
 
   final String title;
   final String subtitle;
-  final Widget child;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
@@ -328,8 +537,10 @@ class _SectionShell extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 16),
-            child,
+            if (child != null) ...<Widget>[
+              const SizedBox(height: 16),
+              child!,
+            ],
           ],
         ),
       ),
@@ -464,12 +675,12 @@ class _FlowSplitStep extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        '5. 解密前先取回 file key',
+                        SettingsAboutCopy.securityFlowStep5Title,
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '先拿到 file key，才能真正解開日記內容。通常會從下面兩條路徑擇一處理。',
+                        SettingsAboutCopy.securityFlowStep5Body,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                           height: 1.45,
@@ -483,16 +694,16 @@ class _FlowSplitStep extends StatelessWidget {
             const SizedBox(height: 14),
             const _FlowRouteCard(
               icon: Icons.smartphone_rounded,
-              title: '受信任裝置',
-              badge: '優先使用',
-              body: '若目前裝置仍保有可用的本機受信任狀態，系統會先嘗試走這條路徑。',
+              title: SettingsAboutCopy.securityFlowTrustedTitle,
+              badge: SettingsAboutCopy.securityFlowTrustedBadge,
+              body: SettingsAboutCopy.securityFlowTrustedBody,
             ),
             const SizedBox(height: 10),
             const _FlowRouteCard(
               icon: Icons.key_rounded,
-              title: '復原金鑰',
-              badge: '備援路徑',
-              body: '若受信任裝置不可用，就改用你輸入的復原金鑰推導出 wrapping key 來解開。',
+              title: SettingsAboutCopy.securityFlowRecoveryTitle,
+              badge: SettingsAboutCopy.securityFlowRecoveryBadge,
+              body: SettingsAboutCopy.securityFlowRecoveryBody,
             ),
           ],
         ),
