@@ -276,6 +276,9 @@ Imported from markdown.
     expect(estimate.imageBytes, 5);
     expect(estimate.estimatedHtmlBytes, greaterThan(5));
     expect(html, contains('HTML &lt;Export&gt;'));
+    expect(html, contains('class="entry-date">2026-05-28'));
+    expect(html, isNot(contains('建立：')));
+    expect(html, isNot(contains('更新：')));
     expect(html, contains('開心 &amp; 安心'));
     expect(html, contains('<h1>Heading</h1>'));
     expect(html, contains('&lt;script&gt;alert(1)&lt;/script&gt;'));
@@ -346,6 +349,7 @@ Imported from markdown.
 
     expect(imported?.title, 'HTML Roundtrip');
     expect(imported?.date.value, '2026-05-28');
+    expect(imported?.createdAt, DateTime.parse('2026-05-28T08:00:00Z').toLocal());
     expect(imported?.tags, const <String>['分享', 'HTML']);
     expect(imported?.mood, '開心 & 安心');
     expect(imported?.markdownBody, contains('# Heading'));

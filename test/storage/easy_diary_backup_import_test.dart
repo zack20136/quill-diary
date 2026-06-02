@@ -8,7 +8,6 @@ import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_lock_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
-import 'package:quill_lock_diary/infrastructure/storage/shared/portable_import_result.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
 
 import '../helpers/vault_test_harness.dart';

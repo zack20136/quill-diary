@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../features/editor/providers/editor_providers.dart';
+import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
 import '../tag_visual.dart';
@@ -77,6 +77,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     setState(() => _saving = true);
     try {
       await ref.read(vaultRepositoryProvider).upsertTagAccentArgb(name, colorArgb32(_accent));
+      ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
       if (mounted) {
         Navigator.of(context).pop(name);

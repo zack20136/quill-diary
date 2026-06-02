@@ -7,6 +7,7 @@ import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart
 import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_lock_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
 
 import 'stub_crypto_service.dart';
@@ -20,6 +21,7 @@ class FakeVaultRepository extends VaultRepository {
     this.initializeError,
     this.unlockWithRecoveryKeyResult,
     this.entryIndexRecords = const <EntryIndexRecord>[],
+    this.tagCatalog = const <TagCatalogItem>[],
   }) : super(
           pathStrategy: DummyVaultPathStrategy(),
           frontMatterCodec: const FrontMatterCodec(),
@@ -35,6 +37,7 @@ class FakeVaultRepository extends VaultRepository {
   final Object? initializeError;
   final Object? unlockWithRecoveryKeyResult;
   final List<EntryIndexRecord> entryIndexRecords;
+  final List<TagCatalogItem> tagCatalog;
 
   int clearTrustedDeviceAccessCalls = 0;
   int closeUnlockedResourcesCalls = 0;
@@ -113,6 +116,9 @@ class FakeVaultRepository extends VaultRepository {
     }
     return results.toList();
   }
+
+  @override
+  Future<List<TagCatalogItem>> listTagCatalog() async => tagCatalog;
 
   @override
   Future<void> closeUnlockedResources() async {

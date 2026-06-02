@@ -11,7 +11,8 @@ class _OverviewPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
-    final AsyncValue<OverviewSummary> summaryAsync = ref.watch(overviewSummaryProvider);
+    final AsyncValue<List<EntryIndexRecord>> allEntriesAsync =
+        ref.watch(allEntryIndexRecordsProvider);
     final AsyncValue<List<EntryIndexRecord>> scopedEntriesAsync = ref.watch(memoryEntriesProvider);
     final String? selectedTag = ref.watch(overviewTagFilterProvider);
     final MemoryScope scope = ref.watch(memoryScopeProvider);
@@ -20,9 +21,9 @@ class _OverviewPane extends ConsumerWidget {
       return _BlockedEntriesPane(sessionState: sessionState);
     }
 
-    return summaryAsync.when(
-      data: (OverviewSummary summary) {
-        if (summary.totalEntries == 0) {
+    return allEntriesAsync.when(
+      data: (List<EntryIndexRecord> allEntries) {
+        if (allEntries.isEmpty) {
           return const _StateCard(
             icon: Icons.insights_outlined,
             title: '尚無可分析內容',
@@ -55,6 +56,7 @@ class _OverviewPane extends ConsumerWidget {
                     .toList(growable: false);
             final Set<EntryId> diaryEntryIds =
                 diaryEntries.map((EntryIndexRecord entry) => entry.id).toSet();
+            final List<TagCatalogUsageItem> scopedTopTags = rankedTagUsageFromEntries(raw);
             final Widget? exportButton = scope == MemoryScope.all
                 ? null
                 : Tooltip(
@@ -112,14 +114,14 @@ class _OverviewPane extends ConsumerWidget {
                         _SectionCard(
                           title: '熱門標籤',
                           stripeColor: cs.tertiary,
-                          child: summary.topTags.isEmpty
-                              ? _PaneEmptyHint(text: '目前沒有標籤。')
+                          child: scopedTopTags.isEmpty
+                              ? _PaneEmptyHint(text: '此範圍內沒有標籤。')
                               : Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: summary.topTags
+                                  children: scopedTopTags
                                       .map(
-                                        (OverviewTagStat item) {
+                                        (TagCatalogUsageItem item) {
                                           final (Color chipBg, Color chipFg) =
                                               tagResolvedAccentPair(item.label, cs, tagAccents);
                                           final bool isSelected = selectedTag == item.label;
@@ -332,7 +334,7 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
                 detail: [
                   metrics.mostEntriesInSingleDayDetail(),
                   '連續最長 ${metrics.longestWritingStreakDays} 天',
-                ].whereType<String>().join(' ・ '),
+                ].whereType<String>().join('\n'),
               ),
               const SizedBox(height: 13),
               _OverviewNumericTile(
@@ -1206,12 +1208,12 @@ class _OverviewNumericTile extends StatelessWidget {
                             padding: const EdgeInsets.only(right: 92),
                             child: Text(
                               detail!,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.left,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: onFill.withValues(alpha: 0.74),
-                                height: 1.0,
+                                height: 1.1,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

@@ -9,7 +9,7 @@ class _TagsStudioDialog extends ConsumerStatefulWidget {
   });
 
   final String initialCsv;
-  final List<MapEntry<String, int>> suggestions;
+  final List<TagCatalogUsageItem> suggestions;
   final ValueChanged<String> onApply;
   final VoidCallback onDismiss;
 
@@ -142,10 +142,10 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           orElse: () => const <String, int>{},
         );
     final String qlow = _filterCtrl.text.trim().toLowerCase();
-    final Iterable<MapEntry<String, int>> pool = widget.suggestions.where(
-      (MapEntry<String, int> e) =>
-          !_chosenNormSet.contains(normalizeText(e.key)) &&
-          (qlow.isEmpty || e.key.toLowerCase().contains(qlow)),
+    final Iterable<TagCatalogUsageItem> pool = widget.suggestions.where(
+      (TagCatalogUsageItem item) =>
+          !_chosenNormSet.contains(normalizeText(item.label)) &&
+          (qlow.isEmpty || item.label.toLowerCase().contains(qlow)),
     );
 
     return ConstrainedBox(
@@ -244,7 +244,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               TextField(
                 controller: _filterCtrl,
                 decoration: InputDecoration(
-                  hintText: '搜尋已用過的標籤…',
+                  hintText: '搜尋標籤…',
                   prefixIcon: const Icon(Icons.search_rounded, size: 22),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
@@ -288,16 +288,15 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8, bottom: 8),
                             child: Text(
-                              qlow.isEmpty ? '索引裡尚無可用標籤，或已全部加入目前清單' : '沒有符合的標籤',
+                              qlow.isEmpty ? '文庫裡暫時沒有其他可用標籤，或已全部加入目前清單' : '沒有符合的標籤',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontStyle: FontStyle.italic,
                                 color: theme.colorScheme.outline,
                               ),
                             ),
                           ),
-                        for (final String label
-                            in pool.map((MapEntry<String, int> e) => e.key).take(60))
-                          _suggestionChip(label, theme, accentArgbByNorm),
+                        for (final TagCatalogUsageItem item in pool.take(60))
+                          _suggestionChip(item.label, theme, accentArgbByNorm),
                       ],
                     ),
                   ),

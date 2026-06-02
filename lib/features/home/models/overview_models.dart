@@ -1,39 +1,5 @@
 import '../../../infrastructure/database/index_database.dart';
 
-class OverviewTagStat {
-  const OverviewTagStat({
-    required this.label,
-    required this.count,
-  });
-
-  final String label;
-  final int count;
-}
-
-class OverviewSummary {
-  const OverviewSummary({
-    required this.totalEntries,
-    required this.totalWords,
-    required this.totalCharacters,
-    required this.totalAttachments,
-    required this.activeDays,
-    required this.entriesWithTags,
-    required this.entriesWithAttachments,
-    required this.avgWordsPerEntryRounded,
-    required this.topTags,
-  });
-
-  final int totalEntries;
-  final int totalWords;
-  final int totalCharacters;
-  final int totalAttachments;
-  final int activeDays;
-  final int entriesWithTags;
-  final int entriesWithAttachments;
-  final int avgWordsPerEntryRounded;
-  final List<OverviewTagStat> topTags;
-}
-
 class OverviewScopeMetrics {
   const OverviewScopeMetrics({
     required this.totalEntries,

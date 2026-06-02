@@ -1,4 +1,4 @@
-/// HTML 匯入解析：平衡標籤擷取、實體解碼、HTML 轉 Markdown 等。
+// HTML 匯入解析：從 Quill Lock 匯出的單一或多篇 HTML 擷取內容並轉回 Markdown。
 
 bool isQuillLockExportHtml(String html) {
   return RegExp(
@@ -20,7 +20,6 @@ List<String> splitQuillLockDiaryArticles(String bodyHtml) {
       .toList(growable: false);
 }
 
-/// 依標籤名稱與 class 以平衡深度擷取元素內文。
 String? extractBlockInnerHtml(
   String html,
   String tagName,
@@ -223,7 +222,6 @@ List<String> extractAllHtmlClassInnerHtml(String html, String className) {
   return results;
 }
 
-/// 依標籤深度擷取元素內文，避免巢狀同標籤時只取到第一層結尾。
 String? extractBalancedElementInnerHtml({
   required String html,
   required int contentStart,

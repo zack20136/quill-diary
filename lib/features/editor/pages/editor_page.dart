@@ -26,7 +26,9 @@ import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/presentation/widgets/local_file_thumbnail.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
+import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
@@ -894,13 +896,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
   }
 
-  Future<Map<String, int>> _tagFrequencyFromIndexAsync() async {
+  Future<List<TagCatalogUsageItem>> _tagSuggestionsFromIndexAsync() async {
     try {
       final List<EntryIndexRecord> records =
           await ref.read(allEntryIndexRecordsProvider.future);
-      return diaryPresenceTagCounts(records);
+      final catalog = await ref.read(tagCatalogProvider.future);
+      return mergeTagCatalogWithUsage(catalog, diaryPresenceTagCounts(records));
     } catch (_) {
-      return <String, int>{};
+      return const <TagCatalogUsageItem>[];
     }
   }
 
@@ -1725,18 +1728,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (!mounted) {
       return;
     }
-    final Map<String, int> freqMap = await _tagFrequencyFromIndexAsync();
+    final List<TagCatalogUsageItem> sorted = await _tagSuggestionsFromIndexAsync();
     if (!mounted) {
       return;
     }
-    final List<MapEntry<String, int>> sorted = freqMap.entries.toList()
-      ..sort((MapEntry<String, int> a, MapEntry<String, int> b) {
-        final int cmp = b.value.compareTo(a.value);
-        if (cmp != 0) {
-          return cmp;
-        }
-        return a.key.compareTo(b.key);
-      });
 
     await showDialog<void>(
       context: context,

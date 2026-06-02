@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
@@ -230,16 +229,14 @@ class VaultBackupIo {
 
     _validateRestoredVaultPayload(tempRoot);
 
-    Map<String, int> localTagStyles = <String, int>{};
+    List<TagCatalogItem> localTagCatalog = const <TagCatalogItem>[];
     try {
-      if (_indexDatabaseManager.isOpen) {
-        localTagStyles = await _repository.fetchTagAccentArgbMap();
-      }
+      localTagCatalog = await _repository.listTagCatalog();
     } on Object {
-      // Index may already be closed; fall back to vault file on disk.
+      // Repository or index may already be closed; fall back to vault file on disk.
     }
-    if (localTagStyles.isEmpty) {
-      localTagStyles = await TagStylesStore(_pathStrategy).read();
+    if (localTagCatalog.isEmpty) {
+      localTagCatalog = await TagStylesStore(_pathStrategy).read();
     }
 
     final Directory incomingVault = Directory('${vaultRoot.path}.incoming');
@@ -278,11 +275,11 @@ class VaultBackupIo {
       await strayVaultIndex.delete(recursive: true);
     }
 
-    if (localTagStyles.isNotEmpty) {
+    if (localTagCatalog.isNotEmpty) {
       final TagStylesStore tagStylesStore = TagStylesStore(_pathStrategy);
-      final Map<String, int> restoredVaultStyles = await tagStylesStore.read();
+      final List<TagCatalogItem> restoredVaultStyles = await tagStylesStore.read();
       await tagStylesStore.write(
-        TagStylesStore.merge(restoredVaultStyles, localTagStyles),
+        TagStylesStore.merge(restoredVaultStyles, localTagCatalog),
       );
     }
 

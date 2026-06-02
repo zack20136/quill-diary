@@ -58,14 +58,18 @@ void main() {
     await harness.repository.closeUnlockedResources();
     await archiveIo.restoreBackupZip(backupFile);
 
-    final Map<String, int> vaultStyles = await TagStylesStore(harness.pathStrategy).read();
-    expect(vaultStyles[normalizeText('Work')], workColor);
+    final List<TagCatalogItem> vaultStyles = await TagStylesStore(harness.pathStrategy).read();
+    expect(
+      TagStylesStore.toAccentMap(vaultStyles)[normalizeText('Work')],
+      workColor,
+    );
 
     final UnlockedVaultSession session =
         await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.rebuildIndex(session);
 
-    final Map<String, int> indexStyles = await harness.repository.fetchTagAccentArgbMap();
+    final Map<String, int> indexStyles =
+        TagStylesStore.toAccentMap(await harness.repository.listTagCatalog());
     expect(indexStyles[normalizeText('Work')], workColor);
   });
 }

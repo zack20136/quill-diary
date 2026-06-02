@@ -12,13 +12,15 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
+import '../../../infrastructure/storage/tag_styles_store.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/utils/user_facing_error.dart';
+import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
-import '../../editor/providers/editor_providers.dart';
+import '../../../shared/utils/tag_catalog_merge.dart';
+import '../../../shared/utils/user_facing_error.dart';
 import '../../session/application/session_unlock_coordinator.dart';
 import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
@@ -806,6 +808,8 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     final int entryCount = _entriesMatchingTag(records, label).length;
 
     await ref.read(vaultRepositoryProvider).removeTagFromAllEntries(session, label);
+    ref.invalidate(tagCatalogProvider);
+    ref.invalidate(tagAccentArgbMapProvider);
     await refreshHomeIndexCaches(ref);
 
     if (!mounted) {
@@ -956,22 +960,24 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
           child: entriesAsync.when(
             data: (List<EntryIndexRecord> records) {
               final Map<String, int> freq = diaryPresenceTagCounts(records);
-              if (freq.isEmpty) {
+              final List<TagCatalogUsageItem> mergedTags = mergeTagCatalogWithUsage(
+                ref.watch(tagCatalogProvider).maybeWhen(
+                      data: (List<TagCatalogItem> items) => items,
+                      orElse: () => const <TagCatalogItem>[],
+                    ),
+                freq,
+              );
+              if (mergedTags.isEmpty) {
                 return const _StateCard(
                   icon: Icons.label_outline_rounded,
                   title: '尚未有標籤',
-                  message: '在日記套用標籤後會出現在清單中；你也可以先按「新增標籤」建立名稱。',
+                  message: '可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。',
                 );
               }
-              final List<MapEntry<String, int>> sorted = freq.entries.toList()
-                ..sort((MapEntry<String, int> a, MapEntry<String, int> b) {
-                  final int cmp = b.value.compareTo(a.value);
-                  return cmp != 0 ? cmp : a.key.compareTo(b.key);
-                });
-              final List<MapEntry<String, int>> list = sorted
+              final List<TagCatalogUsageItem> list = mergedTags
                   .where(
-                    (MapEntry<String, int> e) =>
-                        q.isEmpty || e.key.toLowerCase().contains(q),
+                    (TagCatalogUsageItem item) =>
+                        q.isEmpty || item.label.toLowerCase().contains(q),
                   )
                   .toList();
               if (list.isEmpty) {
@@ -996,11 +1002,11 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                       separatorBuilder: (BuildContext context, int index) =>
                           const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int i) {
-                        final MapEntry<String, int> e = list[i];
+                        final TagCatalogUsageItem e = list[i];
                         final (Color bg, Color fg) =
-                            tagResolvedAccentPair(e.key, cs, accentMap);
+                            tagResolvedAccentPair(e.label, cs, accentMap);
                         final bool isRowSelected = _selectedTagLabel != null &&
-                            normalizeText(_selectedTagLabel!) == normalizeText(e.key);
+                            normalizeText(_selectedTagLabel!) == normalizeText(e.label);
                         final UnlockedVaultSession? session = widget.sessionState.session;
 
                         return Material(
@@ -1025,7 +1031,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                             ),
                             selected: isRowSelected,
                             selectedTileColor: cs.primaryContainer.withValues(alpha: 0.42),
-                            onTap: () => _toggleSelectTag(e.key),
+                            onTap: () => _toggleSelectTag(e.label),
                             leading: Container(
                               width: 44,
                               height: 44,
@@ -1038,12 +1044,12 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                               child: Icon(Icons.sell_rounded, color: fg, size: 22),
                             ),
                             title: Text(
-                              e.key,
+                              e.label,
                               style: theme.textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             subtitle: Text(
-                              '${e.value} 篇日記 · ${accentMap.containsKey(normalizeText(e.key)) ? '自訂顯示色' : '預設底色'} · 輕觸列預覽',
+                              '${e.count} 篇日記 · ${accentMap.containsKey(normalizeText(e.label)) ? '已設定顯示色' : '預設底色'} · 輕觸列預覽',
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
@@ -1054,7 +1060,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                                   tooltip: '編輯標籤',
                                   onPressed: () => _presentComposer(
                                     accentMap: accentMap,
-                                    existingLabel: e.key,
+                                    existingLabel: e.label,
                                   ),
                                   icon: Icons.edit_outlined,
                                   size: kHomeToolbarActionCircleSize,
@@ -1069,7 +1075,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                                   tooltip: '刪除標籤',
                                   onPressed: session == null
                                       ? null
-                                      : () => _deleteTag(e.key, session: session),
+                                      : () => _deleteTag(e.label, session: session),
                                   icon: Icons.delete_outline_rounded,
                                   size: kHomeToolbarActionCircleSize,
                                   backgroundColor: cs.errorContainer,

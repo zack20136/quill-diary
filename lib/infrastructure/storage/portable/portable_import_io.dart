@@ -17,6 +17,7 @@ import '../shared/vault_file_ops.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'html_import_parser.dart';
+import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
 typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
@@ -162,11 +163,24 @@ class PortableImportIo {
       skippedAttachments += parsedEntry.skippedAttachments;
     }
 
+    await _upsertImportedTagsToCatalog(parsedEntries);
+
     return ImportFileTotals(
       importedEntries: importedEntries,
       skippedFiles: skippedFiles,
       skippedAttachments: skippedAttachments,
     );
+  }
+
+  Future<void> _upsertImportedTagsToCatalog(List<ParsedImportEntry> parsedEntries) async {
+    final List<String> labels = <String>[];
+    for (final ParsedImportEntry parsedEntry in parsedEntries) {
+      if (parsedEntry.isEmpty) {
+        continue;
+      }
+      labels.addAll(parsedEntry.entry.tags);
+    }
+    await _repository.ensureTagCatalogLabels(labels);
   }
 
   Future<List<File>> _discoverImportFiles(Directory rootDirectory) async {
@@ -281,7 +295,8 @@ class PortableImportIo {
       title: decoded.entry.normalizedTitle ?? inferredTitle,
       date: frontMatter.containsKey('date')
           ? decoded.entry.date
-          : (_findDateInText('${file.path}\n$document') ?? DateOnly.fromDateTime(fallbackTime)),
+          : (parsePortableDateOnly('${file.path}\n$document') ??
+              DateOnly.fromDateTime(fallbackTime)),
       createdAt: frontMatter.containsKey('created_at') &&
               decoded.entry.createdAt.millisecondsSinceEpoch > 0
           ? decoded.entry.createdAt
@@ -343,16 +358,6 @@ class PortableImportIo {
 
     final String? entryMetaHtml =
         extractBlockInnerHtml(quillLockArticleHtml, 'div', 'entry-meta');
-    final DateTime? createdAt = entryMetaHtml == null
-        ? null
-        : _findDateTimeInText(
-            extractQuillLockDiaryMetaValue(entryMetaHtml, '建立') ?? '',
-          );
-    final DateTime? updatedAt = entryMetaHtml == null
-        ? null
-        : _findDateTimeInText(
-            extractQuillLockDiaryMetaValue(entryMetaHtml, '更新') ?? '',
-          );
     final String? mood = entryMetaHtml == null
         ? null
         : extractQuillLockDiaryMetaValue(entryMetaHtml, '心情');
@@ -368,18 +373,23 @@ class PortableImportIo {
     );
 
     final String markdownBody = exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
-    final DateOnly entryDate = dateText != null
-        ? (_findDateInText(dateText) ?? DateOnly.fromDateTime(stat.modified))
-        : (_findDateInText(quillLockArticleHtml) ?? DateOnly.fromDateTime(stat.modified));
     final DateTime fallbackTimestamp = stat.modified;
+    final ({DateOnly date, DateTime createdAt, DateTime updatedAt}) times =
+        resolveQuillLockImportEntryTimes(
+      dateText: dateText,
+      fallback: fallbackTimestamp,
+    );
+    final DateOnly entryDate = dateText == null
+        ? (parsePortableDateOnly(quillLockArticleHtml) ?? times.date)
+        : times.date;
 
     final DiaryEntry entry = DiaryEntry(
       id: generateEntryId(),
       vaultId: 'vlt_LOCAL',
       title: title?.trim().isNotEmpty == true ? title!.trim() : _fallbackImportTitle(file),
       date: entryDate,
-      createdAt: createdAt ?? fallbackTimestamp,
-      updatedAt: updatedAt ?? createdAt ?? fallbackTimestamp,
+      createdAt: times.createdAt,
+      updatedAt: times.updatedAt,
       markdownBody: markdownBody,
       tags: tags,
       mood: mood?.trim().isEmpty == true ? null : mood?.trim(),
@@ -508,98 +518,6 @@ class PortableImportIo {
     ).firstMatch(body);
     final String value = match?.group(1)?.trim() ?? '';
     return value.isEmpty ? null : value;
-  }
-
-  DateTime? _findDateTimeInText(String text) {
-    final Match? ymdTime = RegExp(
-      r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?',
-    ).firstMatch(text);
-    if (ymdTime != null) {
-      return _dateTimeFromParts(
-        year: int.parse(ymdTime.group(1)!),
-        month: int.parse(ymdTime.group(2)!),
-        day: int.parse(ymdTime.group(3)!),
-        hour: int.parse(ymdTime.group(4)!),
-        minute: int.parse(ymdTime.group(5)!),
-        second: ymdTime.group(6) != null ? int.parse(ymdTime.group(6)!) : 0,
-      );
-    }
-
-    final Match? cjkTime = RegExp(
-      r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日'
-      r'(?:\s*星期[一二三四五六日])?'
-      r'\s*(上午|下午)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?',
-    ).firstMatch(text);
-    if (cjkTime != null) {
-      return _dateTimeFromParts(
-        year: int.parse(cjkTime.group(1)!),
-        month: int.parse(cjkTime.group(2)!),
-        day: int.parse(cjkTime.group(3)!),
-        hour: _hourFromChinesePeriod(
-          hour: int.parse(cjkTime.group(5)!),
-          period: cjkTime.group(4),
-        ),
-        minute: int.parse(cjkTime.group(6)!),
-        second: cjkTime.group(7) != null ? int.parse(cjkTime.group(7)!) : 0,
-      );
-    }
-
-    return null;
-  }
-
-  DateTime _dateTimeFromParts({
-    required int year,
-    required int month,
-    required int day,
-    required int hour,
-    required int minute,
-    required int second,
-  }) {
-    return DateTime(year, month, day, hour, minute, second);
-  }
-
-  int _hourFromChinesePeriod({required int hour, String? period}) {
-    if (period == '下午' && hour < 12) {
-      return hour + 12;
-    }
-    if (period == '上午' && hour == 12) {
-      return 0;
-    }
-    return hour;
-  }
-
-  DateOnly? _findDateInText(String text) {
-    final Match? ymd = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})').firstMatch(text);
-    if (ymd != null) {
-      return DateOnly(
-        '${ymd.group(1)}-${_pad2(ymd.group(2))}-${_pad2(ymd.group(3))}',
-      );
-    }
-
-    final Match? korean = RegExp(
-      r'(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일',
-    ).firstMatch(text);
-    if (korean != null) {
-      return DateOnly(
-        '${korean.group(1)}-${_pad2(korean.group(2))}-${_pad2(korean.group(3))}',
-      );
-    }
-
-    final Match? cjk = RegExp(
-      r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日',
-    ).firstMatch(text);
-    if (cjk != null) {
-      return DateOnly(
-        '${cjk.group(1)}-${_pad2(cjk.group(2))}-${_pad2(cjk.group(3))}',
-      );
-    }
-
-    return null;
-  }
-
-  String _pad2(String? value) {
-    final int parsed = int.tryParse(value ?? '') ?? 1;
-    return parsed.toString().padLeft(2, '0');
   }
 
   ({String mimeType, Uint8List bytes})? _decodeDataUriReference(String dataUri) {

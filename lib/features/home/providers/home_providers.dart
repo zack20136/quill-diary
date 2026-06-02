@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/utils/diary_presence_tag_counts.dart';
+import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/entry_sorting.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../session/providers/session_providers.dart';
-import '../models/overview_models.dart';
 import '../state/home_state.dart';
 
 /// 載入目前保險庫的全部索引紀錄，作為首頁各子視圖的基底資料源。
@@ -92,50 +91,6 @@ final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref
     });
 });
 
-/// 將索引紀錄聚合成首頁總覽頁需要的統計資訊。
-final overviewSummaryProvider = FutureProvider<OverviewSummary>((Ref ref) async {
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  int totalWords = 0;
-  int totalCharacters = 0;
-  int totalAttachments = 0;
-  int entriesWithTags = 0;
-  int entriesWithAttachments = 0;
-
-  for (final EntryIndexRecord entry in entries) {
-    totalWords += entry.wordCount;
-    totalCharacters += entry.charCount;
-    totalAttachments += entry.attachmentCount;
-    if (entry.tags.isNotEmpty) {
-      entriesWithTags++;
-    }
-    if (entry.attachmentCount > 0) {
-      entriesWithAttachments++;
-    }
-  }
-
-  final Map<String, int> tagCounts = diaryPresenceTagCounts(entries);
-
-  final List<OverviewTagStat> topTags = tagCounts.entries
-      .map((item) => OverviewTagStat(label: item.key, count: item.value))
-      .toList()
-    ..sort((a, b) => b.count.compareTo(a.count));
-
-  final int avgWordsPerEntryRounded =
-      entries.isEmpty ? 0 : (totalWords / entries.length).round();
-
-  return OverviewSummary(
-    totalEntries: entries.length,
-    totalWords: totalWords,
-    totalCharacters: totalCharacters,
-    totalAttachments: totalAttachments,
-    activeDays: entries.map((EntryIndexRecord item) => item.date.value).toSet().length,
-    entriesWithTags: entriesWithTags,
-    entriesWithAttachments: entriesWithAttachments,
-    avgWordsPerEntryRounded: avgWordsPerEntryRounded,
-    topTags: topTags.take(8).toList(),
-  );
-});
-
 /// 提供「回顧」模式可選的年份清單。
 final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
@@ -172,7 +127,8 @@ Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) asy
     ..invalidate(calendarMonthEntryDatesProvider)
     ..invalidate(calendarMonthEntriesProvider)
     ..invalidate(calendarEntriesProvider)
-    ..invalidate(allEntryIndexRecordsProvider);
+    ..invalidate(allEntryIndexRecordsProvider)
+    ..invalidate(tagCatalogProvider);
 
   ref.read(entryIndexRevisionProvider.notifier).bump();
 

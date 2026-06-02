@@ -268,6 +268,7 @@ class VaultRepository {
       kKeystoreWrapModeKey,
       authKind.storageSuffix,
     );
+    await _seedDefaultTagCatalog();
 
     return RecoverySetupResult(
       recoveryKey: recoveryKey,
@@ -473,18 +474,68 @@ class VaultRepository {
     return _requireOpenIndex().attachmentsForEntry(entryId);
   }
 
-  Future<Map<String, int>> fetchTagAccentArgbMap() {
-    return _requireOpenIndex().fetchTagAccentArgbMap();
+  Future<List<TagCatalogItem>> listTagCatalog() {
+    return TagStylesStore(_pathStrategy).read();
+  }
+
+  Future<void> upsertTagCatalogItem(String label, {int? accentArgb}) async {
+    final String displayLabel = label.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final String normalized = normalizeText(displayLabel);
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(label, 'label', '標籤名稱不可為空白');
+    }
+
+    final List<TagCatalogItem> catalog = await listTagCatalog();
+    final List<TagCatalogItem> merged = TagStylesStore.merge(
+      catalog,
+      <TagCatalogItem>[TagCatalogItem(label: displayLabel, accentArgb: accentArgb)],
+    );
+    await _persistTagCatalogToVault(merged);
+    final TagCatalogItem saved = merged.firstWhere(
+      (TagCatalogItem item) => item.normalized == normalized,
+    );
+    if (saved.accentArgb != null) {
+      await _requireOpenIndex().upsertTagAccentArgb(saved.label, saved.accentArgb!);
+    }
+  }
+
+  Future<void> ensureTagCatalogLabels(Iterable<String> labels) async {
+    final Set<String> seenNormalized = <String>{};
+    final List<TagCatalogItem> overlay = <TagCatalogItem>[];
+    for (final String raw in labels) {
+      final String displayLabel = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+      final String normalized = normalizeText(displayLabel);
+      if (normalized.isEmpty || !seenNormalized.add(normalized)) {
+        continue;
+      }
+      overlay.add(TagCatalogItem(label: displayLabel));
+    }
+    if (overlay.isEmpty) {
+      return;
+    }
+    final List<TagCatalogItem> catalog = await listTagCatalog();
+    await _persistTagCatalogToVault(TagStylesStore.merge(catalog, overlay));
+  }
+
+  Future<void> deleteTagCatalogItem(String label) async {
+    final String normalized = normalizeText(label);
+    if (normalized.isEmpty) {
+      return;
+    }
+    final List<TagCatalogItem> catalog = await listTagCatalog();
+    final List<TagCatalogItem> next = catalog
+        .where((TagCatalogItem item) => item.normalized != normalized)
+        .toList(growable: false);
+    await _persistTagCatalogToVault(next);
+    await _requireOpenIndex().deleteTagAccentArgb(label);
   }
 
   Future<void> upsertTagAccentArgb(String tag, int accentArgb) async {
-    await _requireOpenIndex().upsertTagAccentArgb(tag, accentArgb);
-    await _persistTagStylesToVault();
+    await upsertTagCatalogItem(tag, accentArgb: accentArgb);
   }
 
   Future<void> deleteTagAccentArgb(String tag) async {
-    await _requireOpenIndex().deleteTagAccentArgb(tag);
-    await _persistTagStylesToVault();
+    await deleteTagCatalogItem(tag);
   }
 
   /// Removes [tag] from every diary entry and clears any saved accent color.
@@ -521,44 +572,31 @@ class VaultRepository {
       updatedCount++;
     }
 
-    await deleteTagAccentArgb(tag);
+    await deleteTagCatalogItem(tag);
     return updatedCount;
   }
 
-  /// Reads tag accent colors from [vault/tag_styles.json] (included in `.jbackup`).
-  Future<Map<String, int>> readTagStylesFromVault() {
-    return TagStylesStore(_pathStrategy).read();
+  Future<void> _persistTagCatalogToVault(List<TagCatalogItem> catalog) {
+    return TagStylesStore(_pathStrategy).write(catalog);
   }
 
-  Future<void> _persistTagStylesToVault() async {
-    final Map<String, int> indexMap = await _requireOpenIndex().fetchTagAccentArgbMap();
-    await TagStylesStore(_pathStrategy).write(indexMap);
-  }
-
-  Future<void> _applyTagStylesFromVaultToIndex() async {
-    final Map<String, int> vaultMap = await TagStylesStore(_pathStrategy).read();
-    if (vaultMap.isEmpty) {
+  Future<void> _applyTagCatalogFromVaultToIndex() async {
+    final List<TagCatalogItem> catalog = await TagStylesStore(_pathStrategy).read();
+    if (catalog.isEmpty) {
       return;
     }
     final IndexDatabase indexDb = _requireOpenIndex();
-    for (final MapEntry<String, int> entry in vaultMap.entries) {
-      await indexDb.upsertTagAccentArgb(entry.key, entry.value);
+    for (final TagCatalogItem item in catalog) {
+      if (item.accentArgb == null) {
+        continue;
+      }
+      await indexDb.upsertTagAccentArgb(item.label, item.accentArgb!);
     }
   }
 
   /// Keeps vault file and index in sync after rebuild or restore.
   Future<void> syncTagStylesBetweenVaultAndIndex() async {
-    final TagStylesStore store = TagStylesStore(_pathStrategy);
-    final Map<String, int> vaultMap = await store.read();
-    final Map<String, int> indexMap = await _requireOpenIndex().fetchTagAccentArgbMap();
-
-    if (vaultMap.isEmpty && indexMap.isNotEmpty) {
-      await store.write(indexMap);
-      return;
-    }
-    if (vaultMap.isNotEmpty) {
-      await _applyTagStylesFromVaultToIndex();
-    }
+    await _applyTagCatalogFromVaultToIndex();
   }
 
   Future<DiaryEntry> saveEntry(
@@ -668,6 +706,7 @@ class VaultRepository {
       },
     );
     await _writeEncryptedManifest(session, metadata);
+    await ensureTagCatalogLabels(normalized.tags);
     return normalized;
   }
 
@@ -809,6 +848,21 @@ class VaultRepository {
       return Uint8List.fromList(plain);
     } on Object {
       return null;
+    }
+  }
+
+  Future<void> _seedDefaultTagCatalog() async {
+    final List<TagCatalogItem> existing = await listTagCatalog();
+    if (existing.isNotEmpty) {
+      return;
+    }
+    await _persistTagCatalogToVault(kDefaultTagCatalog);
+    final IndexDatabase indexDb = _requireOpenIndex();
+    for (final TagCatalogItem item in kDefaultTagCatalog) {
+      if (item.accentArgb == null) {
+        continue;
+      }
+      await indexDb.upsertTagAccentArgb(item.label, item.accentArgb!);
     }
   }
 
@@ -1350,6 +1404,7 @@ class VaultRepository {
 
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
+    await _seedDefaultTagCatalog();
     final IndexDatabase indexDb = _requireOpenIndex();
     final String? lastRebuildAt = await indexDb.getAppValue(kLastRebuildAtKey);
     final String? searchSchemaVersion = await indexDb.getAppValue(kSearchSchemaVersionKey);

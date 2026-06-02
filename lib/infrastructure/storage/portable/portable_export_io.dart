@@ -14,6 +14,7 @@ import '../../markdown/front_matter_codec.dart';
 import '../shared/vault_file_ops.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
+import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
 class HtmlExportEstimate {
@@ -318,17 +319,17 @@ class PortableExportIo {
       final DiaryEntry entry = document.entry!;
       body.writeln('<article class="entry">');
       body.writeln('<header class="entry-header">');
-      body.writeln('<p class="entry-date">${_escapeHtml(entry.date.value)}</p>');
+      body.writeln(
+        '<p class="entry-date">${_escapeHtml(formatQuillLockExportEntryDateTime(entry))}</p>',
+      );
       body.writeln(
         '<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>',
       );
-      body.writeln('<div class="entry-meta">');
-      body.writeln('<span>建立：${_escapeHtml(_formatExportDateTime(entry.createdAt))}</span>');
-      body.writeln('<span>更新：${_escapeHtml(_formatExportDateTime(entry.updatedAt))}</span>');
       if (entry.mood?.trim().isNotEmpty == true) {
+        body.writeln('<div class="entry-meta">');
         body.writeln('<span>心情：${_escapeHtml(entry.mood!.trim())}</span>');
+        body.writeln('</div>');
       }
-      body.writeln('</div>');
       if (entry.tags.isNotEmpty) {
         body.writeln('<ul class="tags">');
         for (final String tag in entry.tags) {
@@ -653,15 +654,6 @@ class PortableExportIo {
     return originalFilename == null || originalFilename.isEmpty
         ? attachment.safeFilename
         : originalFilename;
-  }
-
-  String _formatExportDateTime(DateTime value) {
-    final DateTime local = value.toLocal();
-    return '${local.year.toString().padLeft(4, '0')}-'
-        '${local.month.toString().padLeft(2, '0')}-'
-        '${local.day.toString().padLeft(2, '0')} '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   String _escapeHtml(String input) {
