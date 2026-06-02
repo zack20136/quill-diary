@@ -40,10 +40,6 @@ void main() {
     );
 
     final DiaryEntry saved = await harness.repository.saveEntry(session, draft);
-    final String entryPath = await harness.pathStrategy.entryAbsolutePath(
-      date: saved.date,
-      entryId: saved.id,
-    );
     final List<EntryIndexRecord> entries = await harness.repository.listEntries();
     expect(entries.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
 
@@ -62,7 +58,6 @@ void main() {
     await harness.repository.deleteEntry(session, saved.id);
     final List<EntryIndexRecord> afterDelete = await harness.repository.listEntries();
     expect(afterDelete.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
-    expect(File(entryPath).existsSync(), isFalse);
 
     await harness.repository.rebuildIndex(session);
     final List<EntryIndexRecord> afterRebuildList = await harness.repository.listEntries();

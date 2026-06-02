@@ -1,0 +1,657 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
+import 'package:path/path.dart' as p;
+
+import '../../../domain/diary/diary_entry.dart';
+import '../../../domain/security/unlocked_vault_session.dart';
+import '../../../domain/shared/value_objects.dart';
+import '../../markdown/front_matter_codec.dart';
+import '../import/easy_diary/easy_diary_backup_import.dart';
+import '../shared/archive_extract.dart';
+import '../shared/media_type_utils.dart';
+import '../shared/portable_import_result.dart';
+import '../shared/vault_file_ops.dart';
+import '../vault_path_strategy.dart';
+import '../vault_repository.dart';
+import 'html_import_parser.dart';
+import 'portable_io_types.dart';
+
+typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
+
+class PortableImportIo {
+  PortableImportIo({
+    required VaultPathStrategy pathStrategy,
+    required VaultRepository repository,
+    required FrontMatterCodec frontMatterCodec,
+    EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
+  })  : _pathStrategy = pathStrategy,
+        _repository = repository,
+        _frontMatterCodec = frontMatterCodec,
+        _easyDiaryBackupImporterFactory =
+            easyDiaryBackupImporterFactory ?? EasyDiaryBackupImporter.new;
+
+  final VaultPathStrategy _pathStrategy;
+  final VaultRepository _repository;
+  final FrontMatterCodec _frontMatterCodec;
+  final EasyDiaryBackupImporterFactory _easyDiaryBackupImporterFactory;
+
+  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`。
+  Future<PortableImportResult> importDocuments({
+    required UnlockedVaultSession session,
+    required Directory rootDirectory,
+  }) async {
+    if (!rootDirectory.existsSync()) {
+      throw StateError('找不到要匯入的資料夾：${rootDirectory.path}');
+    }
+
+    final List<File> importFiles = await _discoverImportFiles(rootDirectory);
+    int importedEntries = 0;
+    int skippedFiles = 0;
+    int skippedAttachments = 0;
+
+    for (final File file in importFiles) {
+      final String extension = p.extension(file.path).toLowerCase();
+      if (extension == '.html' || extension == '.htm') {
+        final ImportFileTotals fileTotals = await _importQuillLockHtmlFile(
+          session: session,
+          file: file,
+          importRootDirectory: rootDirectory,
+        );
+        importedEntries += fileTotals.importedEntries;
+        skippedFiles += fileTotals.skippedFiles;
+        skippedAttachments += fileTotals.skippedAttachments;
+        continue;
+      }
+
+      final List<ParsedImportEntry> parsedEntries = await _parseMarkdownExportFile(
+        file: file,
+        importRootDirectory: rootDirectory,
+      );
+      if (parsedEntries.isEmpty) {
+        skippedFiles++;
+        continue;
+      }
+
+      final ImportFileTotals totals = await _persistParsedEntries(
+        session: session,
+        parsedEntries: parsedEntries,
+      );
+      importedEntries += totals.importedEntries;
+      skippedFiles += totals.skippedFiles;
+      skippedAttachments += totals.skippedAttachments;
+    }
+
+    return PortableImportResult(
+      importedEntries: importedEntries,
+      skippedFiles: skippedFiles,
+      skippedAttachments: skippedAttachments,
+    );
+  }
+
+  /// 解壓 zip 後優先嘗試 Easy Diary 完整備份，否則走 Markdown / HTML 可攜式匯入。
+  Future<PortableImportResult> importDocumentsFromZip({
+    required UnlockedVaultSession session,
+    required File zipFile,
+  }) async {
+    final Directory tempRoot = await createWorkingDirectory(_pathStrategy, 'import_zip');
+    try {
+      final Archive archive = ZipDecoder().decodeBytes(
+        await zipFile.readAsBytes(),
+        verify: true,
+      );
+      await extractArchiveToDirectory(
+        archive: archive,
+        targetDirectory: tempRoot,
+      );
+
+      final EasyDiaryBackupImporter easyDiaryImporter = _easyDiaryBackupImporterFactory();
+      final PortableImportResult? easyDiaryResult =
+          await easyDiaryImporter.tryImportFromExtractedRoot(
+        session: session,
+        repository: _repository,
+        extractedRoot: tempRoot,
+      );
+      if (easyDiaryResult != null) {
+        return easyDiaryResult;
+      }
+
+      final PortableImportResult portableResult = await importDocuments(
+        session: session,
+        rootDirectory: tempRoot,
+      );
+      if (portableResult.importedEntries == 0 &&
+          portableResult.skippedFiles == 0 &&
+          portableResult.skippedAttachments == 0) {
+        return const PortableImportResult(
+          importedEntries: 0,
+          skippedFiles: 0,
+          failureCode: PortableImportFailureCode.zipNoEntries,
+        );
+      }
+      return portableResult;
+    } finally {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+    }
+  }
+
+  Future<ImportFileTotals> _persistParsedEntries({
+    required UnlockedVaultSession session,
+    required List<ParsedImportEntry> parsedEntries,
+  }) async {
+    var importedEntries = 0;
+    var skippedFiles = 0;
+    var skippedAttachments = 0;
+
+    for (final ParsedImportEntry parsedEntry in parsedEntries) {
+      if (parsedEntry.isEmpty) {
+        skippedFiles++;
+        continue;
+      }
+
+      await _repository.saveEntry(
+        session,
+        parsedEntry.entry,
+        pendingAttachments: parsedEntry.attachments,
+      );
+      importedEntries++;
+      skippedAttachments += parsedEntry.skippedAttachments;
+    }
+
+    return ImportFileTotals(
+      importedEntries: importedEntries,
+      skippedFiles: skippedFiles,
+      skippedAttachments: skippedAttachments,
+    );
+  }
+
+  Future<List<File>> _discoverImportFiles(Directory rootDirectory) async {
+    final List<File> files = <File>[];
+
+    await for (final FileSystemEntity entity
+        in rootDirectory.list(recursive: true, followLinks: false)) {
+      if (entity is! File) {
+        continue;
+      }
+
+      final String extension = p.extension(entity.path).toLowerCase();
+      if (extension == '.md' || extension == '.html' || extension == '.htm') {
+        files.add(entity);
+      }
+    }
+
+    files.sort((File a, File b) => a.path.compareTo(b.path));
+    return files;
+  }
+
+  Future<List<ParsedImportEntry>> _parseMarkdownExportFile({
+    required File file,
+    required Directory importRootDirectory,
+  }) async {
+    final String extension = p.extension(file.path).toLowerCase();
+    if (extension == '.md') {
+      final ParsedImportEntry? parsedEntry = await _parseMarkdownExportDocument(
+        file: file,
+        importRootDirectory: importRootDirectory,
+      );
+      return parsedEntry == null
+          ? const <ParsedImportEntry>[]
+          : <ParsedImportEntry>[parsedEntry];
+    }
+    return const <ParsedImportEntry>[];
+  }
+
+  Future<ImportFileTotals> _importQuillLockHtmlFile({
+    required UnlockedVaultSession session,
+    required File file,
+    required Directory importRootDirectory,
+  }) async {
+    final String html = await file.readAsString();
+    if (!isQuillLockExportHtml(html)) {
+      return const ImportFileTotals(
+        importedEntries: 0,
+        skippedFiles: 1,
+        skippedAttachments: 0,
+      );
+    }
+    return _importQuillLockExportFile(
+      session: session,
+      file: file,
+      html: html,
+      importRootDirectory: importRootDirectory,
+    );
+  }
+
+  Future<ImportFileTotals> _importQuillLockExportFile({
+    required UnlockedVaultSession session,
+    required File file,
+    required String html,
+    required Directory importRootDirectory,
+  }) async {
+    final List<ParsedImportEntry> parsedEntries = await _parseQuillLockExportArticles(
+      file: file,
+      html: html,
+      importRootDirectory: importRootDirectory,
+    );
+
+    if (parsedEntries.isEmpty) {
+      return const ImportFileTotals(
+        importedEntries: 0,
+        skippedFiles: 1,
+        skippedAttachments: 0,
+      );
+    }
+
+    return _persistParsedEntries(
+      session: session,
+      parsedEntries: parsedEntries,
+    );
+  }
+
+  Future<ParsedImportEntry?> _parseMarkdownExportDocument({
+    required File file,
+    required Directory importRootDirectory,
+  }) async {
+    final String document = await file.readAsString();
+    final FileStat stat = await file.stat();
+    final DecodedFrontMatterDocument decoded = _frontMatterCodec.decodeDocument(document);
+    final Map<String, Object?> frontMatter = decoded.frontMatter;
+    final String body = decoded.body.trimRight();
+
+    final List<String> attachmentReferences = <String>{
+      ...decoded.attachmentPaths,
+      ..._extractMarkdownLocalLinks(body),
+    }.toList(growable: false);
+
+    final ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
+      references: attachmentReferences,
+      baseDirectory: file.parent,
+      importRootDirectory: importRootDirectory,
+    );
+
+    final DateTime fallbackTime = stat.modified;
+    final String inferredTitle = _inferMarkdownTitle(file, body);
+    final DiaryEntry entry = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: 'vlt_LOCAL',
+      title: decoded.entry.normalizedTitle ?? inferredTitle,
+      date: frontMatter.containsKey('date')
+          ? decoded.entry.date
+          : (_findDateInText('${file.path}\n$document') ?? DateOnly.fromDateTime(fallbackTime)),
+      createdAt: frontMatter.containsKey('created_at') &&
+              decoded.entry.createdAt.millisecondsSinceEpoch > 0
+          ? decoded.entry.createdAt
+          : fallbackTime,
+      updatedAt: frontMatter.containsKey('updated_at') &&
+              decoded.entry.updatedAt.millisecondsSinceEpoch > 0
+          ? decoded.entry.updatedAt
+          : fallbackTime,
+      markdownBody: body,
+      tags: decoded.entry.tags,
+      mood: decoded.entry.mood,
+    );
+
+    return ParsedImportEntry(
+      entry: entry,
+      attachments: resolvedAttachments.attachments,
+      skippedAttachments: resolvedAttachments.skippedAttachments,
+    );
+  }
+
+  Future<List<ParsedImportEntry>> _parseQuillLockExportArticles({
+    required File file,
+    required String html,
+    required Directory importRootDirectory,
+  }) async {
+    final FileStat stat = await file.stat();
+    final String bodyHtml = extractHtmlBody(html);
+    final List<String> quillLockArticleSections = splitQuillLockDiaryArticles(bodyHtml);
+    final List<ParsedImportEntry> parsedEntries = <ParsedImportEntry>[];
+
+    for (final String quillLockArticleHtml in quillLockArticleSections) {
+      final ParsedImportEntry? parsedEntry = await _parseQuillLockExportArticle(
+        quillLockArticleHtml: quillLockArticleHtml,
+        file: file,
+        stat: stat,
+        importRootDirectory: importRootDirectory,
+      );
+      if (parsedEntry != null && !parsedEntry.isEmpty) {
+        parsedEntries.add(parsedEntry);
+      }
+    }
+
+    return parsedEntries;
+  }
+
+  Future<ParsedImportEntry?> _parseQuillLockExportArticle({
+    required String quillLockArticleHtml,
+    required File file,
+    required FileStat stat,
+    required Directory importRootDirectory,
+  }) async {
+    final String? dateText = extractHtmlClassText(quillLockArticleHtml, 'entry-date');
+    final String? title = extractFirstHtmlTagText(quillLockArticleHtml, 'h2');
+    final String? entryBodyHtml =
+        extractBlockInnerHtml(quillLockArticleHtml, 'section', 'entry-body');
+    if (entryBodyHtml == null && title == null && dateText == null) {
+      return null;
+    }
+
+    final String? entryMetaHtml =
+        extractBlockInnerHtml(quillLockArticleHtml, 'div', 'entry-meta');
+    final DateTime? createdAt = entryMetaHtml == null
+        ? null
+        : _findDateTimeInText(
+            extractQuillLockDiaryMetaValue(entryMetaHtml, '建立') ?? '',
+          );
+    final DateTime? updatedAt = entryMetaHtml == null
+        ? null
+        : _findDateTimeInText(
+            extractQuillLockDiaryMetaValue(entryMetaHtml, '更新') ?? '',
+          );
+    final String? mood = entryMetaHtml == null
+        ? null
+        : extractQuillLockDiaryMetaValue(entryMetaHtml, '心情');
+    final List<String> tags = extractQuillLockDiaryTags(quillLockArticleHtml);
+
+    final String attachmentSourceHtml =
+        '${extractBlockInnerHtml(quillLockArticleHtml, 'section', 'embedded-images') ?? ''}\n'
+        '${extractBlockInnerHtml(quillLockArticleHtml, 'section', 'attachment-list') ?? ''}';
+    final ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
+      references: extractHtmlAttachmentReferences(attachmentSourceHtml),
+      baseDirectory: file.parent,
+      importRootDirectory: importRootDirectory,
+    );
+
+    final String markdownBody = exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
+    final DateOnly entryDate = dateText != null
+        ? (_findDateInText(dateText) ?? DateOnly.fromDateTime(stat.modified))
+        : (_findDateInText(quillLockArticleHtml) ?? DateOnly.fromDateTime(stat.modified));
+    final DateTime fallbackTimestamp = stat.modified;
+
+    final DiaryEntry entry = DiaryEntry(
+      id: generateEntryId(),
+      vaultId: 'vlt_LOCAL',
+      title: title?.trim().isNotEmpty == true ? title!.trim() : _fallbackImportTitle(file),
+      date: entryDate,
+      createdAt: createdAt ?? fallbackTimestamp,
+      updatedAt: updatedAt ?? createdAt ?? fallbackTimestamp,
+      markdownBody: markdownBody,
+      tags: tags,
+      mood: mood?.trim().isEmpty == true ? null : mood?.trim(),
+    );
+
+    return ParsedImportEntry(
+      entry: entry,
+      attachments: resolvedAttachments.attachments,
+      skippedAttachments: resolvedAttachments.skippedAttachments,
+    );
+  }
+
+  Future<ResolvedImportAttachments> _resolveImportAttachments({
+    required Iterable<String> references,
+    required Directory baseDirectory,
+    required Directory importRootDirectory,
+  }) async {
+    final List<PendingAttachment> attachments = <PendingAttachment>[];
+    final Set<String> seenPaths = <String>{};
+    var embeddedIndex = 1;
+    var skippedAttachments = 0;
+
+    for (final String rawReference in references) {
+      final String reference = rawReference.trim();
+      if (reference.isEmpty) {
+        continue;
+      }
+      if (isIgnoredImportReference(reference)) {
+        continue;
+      }
+
+      if (reference.startsWith('data:')) {
+        final ({String mimeType, Uint8List bytes})? decoded =
+            _decodeDataUriReference(reference);
+        if (decoded == null) {
+          skippedAttachments++;
+          continue;
+        }
+
+        final String extension = extensionFromMimeType(decoded.mimeType);
+        final String fileName = 'embedded_${embeddedIndex++}.$extension';
+        attachments.add(
+          PendingAttachment(
+            bytes: decoded.bytes,
+            mimeType: decoded.mimeType,
+            originalFilename: fileName,
+          ),
+        );
+        continue;
+      }
+
+      final String normalizedReference = Uri.decodeFull(
+        reference.split('#').first.split('?').first,
+      );
+      final String resolvedPath = p.normalize(
+        p.join(baseDirectory.path, normalizedReference),
+      );
+      if (!_isPathWithinRoot(resolvedPath, importRootDirectory.path)) {
+        skippedAttachments++;
+        continue;
+      }
+
+      final String dedupeKey = resolvedPath.toLowerCase();
+      if (!seenPaths.add(dedupeKey)) {
+        continue;
+      }
+
+      final File sourceFile = File(resolvedPath);
+      if (!sourceFile.existsSync()) {
+        skippedAttachments++;
+        continue;
+      }
+
+      final String originalFilename = p.basename(sourceFile.path);
+      attachments.add(
+        PendingAttachment(
+          sourcePath: sourceFile.path,
+          mimeType: mimeTypeFromFileName(originalFilename),
+          originalFilename: originalFilename,
+        ),
+      );
+    }
+
+    return (
+      attachments: attachments,
+      skippedAttachments: skippedAttachments,
+    );
+  }
+
+  List<String> _extractMarkdownLocalLinks(String markdown) {
+    final RegExp linkPattern = RegExp(
+      r'!?\[[^\]]*\]\(([^)]+)\)',
+      multiLine: true,
+    );
+
+    return linkPattern
+        .allMatches(markdown)
+        .map((Match match) => (match.group(1) ?? '').trim())
+        .where((String value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String _inferMarkdownTitle(File file, String body) {
+    final String? heading = _extractFirstMarkdownHeading(body);
+    if (heading != null) {
+      return heading;
+    }
+    return _fallbackImportTitle(file);
+  }
+
+  String _fallbackImportTitle(File file) {
+    final String stem = p.basenameWithoutExtension(file.path);
+    if (stem.toLowerCase() == 'index') {
+      final String parentName = p.basename(file.parent.path).trim();
+      if (parentName.isNotEmpty) {
+        return parentName;
+      }
+    }
+    return stem.trim().isEmpty ? 'Imported Entry' : stem.trim();
+  }
+
+  String? _extractFirstMarkdownHeading(String body) {
+    final Match? match = RegExp(
+      r'^\s*#\s+(.+)$',
+      multiLine: true,
+    ).firstMatch(body);
+    final String value = match?.group(1)?.trim() ?? '';
+    return value.isEmpty ? null : value;
+  }
+
+  DateTime? _findDateTimeInText(String text) {
+    final Match? ymdTime = RegExp(
+      r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?',
+    ).firstMatch(text);
+    if (ymdTime != null) {
+      return _dateTimeFromParts(
+        year: int.parse(ymdTime.group(1)!),
+        month: int.parse(ymdTime.group(2)!),
+        day: int.parse(ymdTime.group(3)!),
+        hour: int.parse(ymdTime.group(4)!),
+        minute: int.parse(ymdTime.group(5)!),
+        second: ymdTime.group(6) != null ? int.parse(ymdTime.group(6)!) : 0,
+      );
+    }
+
+    final Match? cjkTime = RegExp(
+      r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日'
+      r'(?:\s*星期[一二三四五六日])?'
+      r'\s*(上午|下午)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?',
+    ).firstMatch(text);
+    if (cjkTime != null) {
+      return _dateTimeFromParts(
+        year: int.parse(cjkTime.group(1)!),
+        month: int.parse(cjkTime.group(2)!),
+        day: int.parse(cjkTime.group(3)!),
+        hour: _hourFromChinesePeriod(
+          hour: int.parse(cjkTime.group(5)!),
+          period: cjkTime.group(4),
+        ),
+        minute: int.parse(cjkTime.group(6)!),
+        second: cjkTime.group(7) != null ? int.parse(cjkTime.group(7)!) : 0,
+      );
+    }
+
+    return null;
+  }
+
+  DateTime _dateTimeFromParts({
+    required int year,
+    required int month,
+    required int day,
+    required int hour,
+    required int minute,
+    required int second,
+  }) {
+    return DateTime(year, month, day, hour, minute, second);
+  }
+
+  int _hourFromChinesePeriod({required int hour, String? period}) {
+    if (period == '下午' && hour < 12) {
+      return hour + 12;
+    }
+    if (period == '上午' && hour == 12) {
+      return 0;
+    }
+    return hour;
+  }
+
+  DateOnly? _findDateInText(String text) {
+    final Match? ymd = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})').firstMatch(text);
+    if (ymd != null) {
+      return DateOnly(
+        '${ymd.group(1)}-${_pad2(ymd.group(2))}-${_pad2(ymd.group(3))}',
+      );
+    }
+
+    final Match? korean = RegExp(
+      r'(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일',
+    ).firstMatch(text);
+    if (korean != null) {
+      return DateOnly(
+        '${korean.group(1)}-${_pad2(korean.group(2))}-${_pad2(korean.group(3))}',
+      );
+    }
+
+    final Match? cjk = RegExp(
+      r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日',
+    ).firstMatch(text);
+    if (cjk != null) {
+      return DateOnly(
+        '${cjk.group(1)}-${_pad2(cjk.group(2))}-${_pad2(cjk.group(3))}',
+      );
+    }
+
+    return null;
+  }
+
+  String _pad2(String? value) {
+    final int parsed = int.tryParse(value ?? '') ?? 1;
+    return parsed.toString().padLeft(2, '0');
+  }
+
+  ({String mimeType, Uint8List bytes})? _decodeDataUriReference(String dataUri) {
+    if (!dataUri.startsWith('data:')) {
+      return null;
+    }
+
+    final int commaIndex = dataUri.indexOf(',');
+    if (commaIndex == -1) {
+      return null;
+    }
+
+    final String metadata = dataUri.substring('data:'.length, commaIndex).trim();
+    String payload = dataUri.substring(commaIndex + 1);
+    if (payload.startsWith(' ')) {
+      payload = payload.trimLeft();
+    }
+    if (payload.isEmpty) {
+      return null;
+    }
+
+    final String mimeType = metadata
+        .split(';')
+        .first
+        .trim()
+        .toLowerCase();
+    final bool isBase64 = metadata.toLowerCase().contains(';base64');
+
+    if (!isBase64) {
+      return null;
+    }
+
+    try {
+      final Uint8List bytes = Uint8List.fromList(
+        base64Decode(payload.replaceAll(RegExp(r'\s'), '')),
+      );
+      if (bytes.isEmpty) {
+        return null;
+      }
+
+      return (
+        mimeType: mimeType.isEmpty ? 'application/octet-stream' : mimeType,
+        bytes: bytes,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  bool _isPathWithinRoot(String targetPath, String rootPath) {
+    final String normalizedTarget = p.normalize(targetPath);
+    final String normalizedRoot = p.normalize(rootPath);
+    return normalizedTarget == normalizedRoot || p.isWithin(normalizedRoot, normalizedTarget);
+  }
+}

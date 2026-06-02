@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
 import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_lock_diary/domain/shared/value_objects.dart';
@@ -25,22 +23,6 @@ import '../helpers/vault_test_harness.dart';
 // - 本 App Markdown：`.md` + YAML front matter
 // - 本 App HTML：`<article class="… entry …">`
 // - Easy Diary 完整備份 zip：見 easy_diary_backup_*_test.dart
-
-Future<Uint8List?> _readDecryptedAttachmentBytes({
-  required VaultTestHarness harness,
-  required UnlockedVaultSession session,
-  required DiaryEntry entry,
-  required AssetAttachment attachment,
-}) async {
-  final String extension =
-      p.extension(attachment.safeFilename).replaceFirst('.', '');
-  final String assetPath = await harness.pathStrategy.assetAbsolutePath(
-    date: entry.date,
-    assetId: attachment.id,
-    extension: extension.isEmpty ? 'bin' : extension,
-  );
-  return harness.repository.readDecryptedAssetBytes(session, assetPath);
-}
 
 void main() {
   late VaultTestHarness harness;
@@ -106,6 +88,56 @@ void main() {
     expect(exportedAttachment.existsSync(), isTrue);
     expect(await exportedIndex.readAsString(), contains('  - "./photo.jpg"'));
     expect(await exportedAttachment.readAsBytes(), const <int>[1, 2, 3, 4]);
+  });
+
+  test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'zip_source'))
+      ..createSync(recursive: true);
+    final File sourceAttachment = File(p.join(sourceDirectory.path, 'receipt.pdf'))
+      ..writeAsBytesSync(const <int>[7, 7, 7]);
+
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Zip Export',
+        date: const DateOnly('2026-05-22'),
+        createdAt: DateTime.parse('2026-05-22T09:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-22T09:00:00Z'),
+        markdownBody: 'Zip body',
+      ),
+      pendingAttachments: <PendingAttachment>[
+        PendingAttachment(
+          sourcePath: sourceAttachment.path,
+          mimeType: 'application/pdf',
+          originalFilename: 'receipt.pdf',
+        ),
+      ],
+    );
+
+    final File zipFile = File(p.join(harness.tempDir.path, 'portable_export.zip'));
+    await archiveIo.writePortableExportZip(
+      session: setup.session,
+      target: zipFile,
+    );
+
+    final Archive archive = ZipDecoder().decodeBytes(await zipFile.readAsBytes());
+    final List<String> names = archive.files.map((ArchiveFile file) => file.name).toList();
+
+    expect(
+      names,
+      contains(
+        allOf(contains('2026-05-22'), contains('Zip Export'), contains('index.md')),
+      ),
+    );
+    expect(
+      names,
+      contains(
+        allOf(contains('2026-05-22'), contains('Zip Export'), contains('receipt.pdf')),
+      ),
+    );
   });
   });
 
@@ -177,58 +209,6 @@ Imported from markdown.
   });
   });
 
-
-  group('匯出：Markdown', () {
-  test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'zip_source'))
-      ..createSync(recursive: true);
-    final File sourceAttachment = File(p.join(sourceDirectory.path, 'receipt.pdf'))
-      ..writeAsBytesSync(const <int>[7, 7, 7]);
-
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: generateEntryId(),
-        vaultId: setup.session.vaultId,
-        title: 'Zip Export',
-        date: const DateOnly('2026-05-22'),
-        createdAt: DateTime.parse('2026-05-22T09:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-22T09:00:00Z'),
-        markdownBody: 'Zip body',
-      ),
-      pendingAttachments: <PendingAttachment>[
-        PendingAttachment(
-          sourcePath: sourceAttachment.path,
-          mimeType: 'application/pdf',
-          originalFilename: 'receipt.pdf',
-        ),
-      ],
-    );
-
-    final File zipFile = File(p.join(harness.tempDir.path, 'portable_export.zip'));
-    await archiveIo.writePortableExportZip(
-      session: setup.session,
-      target: zipFile,
-    );
-
-    final Archive archive = ZipDecoder().decodeBytes(await zipFile.readAsBytes());
-    final List<String> names = archive.files.map((ArchiveFile file) => file.name).toList();
-
-    expect(
-      names,
-      contains(
-        allOf(contains('2026-05-22'), contains('Zip Export'), contains('index.md')),
-      ),
-    );
-    expect(
-      names,
-      contains(
-        allOf(contains('2026-05-22'), contains('Zip Export'), contains('receipt.pdf')),
-      ),
-    );
-  });
-  });
 
   group('匯出：HTML', () {
   test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
@@ -458,9 +438,7 @@ Imported from markdown.
     expect(attachments, hasLength(1));
     expect(attachments.single.mimeType, 'image/png');
   });
-  });
 
-  group('匯出：HTML', () {
   test('HTML 匯出沒有可用日記時回報錯誤', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final File output = File(p.join(harness.tempDir.path, 'empty.html'));

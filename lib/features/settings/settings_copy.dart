@@ -1,4 +1,6 @@
+import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
+import '../../infrastructure/storage/shared/portable_import_result.dart';
 
 /// 設定頁與相關對話框的繁體中文文案（單一來源）。
 ///
@@ -33,10 +35,6 @@ abstract final class SettingsPlatformCopy {
 }
 
 abstract final class SettingsSecurityLockCopy {
-  static const String sectionTitle = '安全鎖狀態';
-  static const String sectionDescription = '查看安全鎖是否已解除，必要時可用復原金鑰重新進入。';
-  static const String loadErrorDescription = '讀取狀態時發生錯誤。';
-
   static const String statusPreparing = '正在準備中…';
   static const String statusUnlocked = '安全鎖已解除，可以正常使用。';
   static const String statusFatalError = '初始化失敗，請稍後再試。';
@@ -51,10 +49,6 @@ abstract final class SettingsSecurityLockCopy {
 }
 
 abstract final class SettingsRecoveryKeyCopy {
-  static const String sectionTitle = '復原金鑰';
-  static const String sectionDescription = '裝置無法自動解鎖時的備用金鑰，請妥善保存。';
-  static const String loadErrorDescription = '讀取復原金鑰設定失敗。';
-
   static const String notSetupBanner =
       '尚未建立復原金鑰。日記庫無法自動解鎖時，將無法重新進入。';
   static const String setupBanner = '復原金鑰已建立。需要時可用它重新解鎖本機日記庫。';
@@ -74,15 +68,55 @@ abstract final class SettingsRecoveryKeyCopy {
       '既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。';
 }
 
+abstract final class SettingsSecurityOverviewCopy {
+  static const String sectionTitle = '安全狀態';
+  static const String sectionDescription = '集中檢查復原金鑰、解鎖方式與索引狀態。';
+
+  static const String recoveryKeyTitle = '復原金鑰';
+  static const String recoveryKeyReady = '已建立，可用於還原與換機。';
+  static const String recoveryKeyMissing = '尚未建立，資料還原能力不足。';
+
+  static const String unlockStatusTitle = '解鎖狀態';
+  static const String unlockStatusUnlocked = '日記庫目前已解鎖。';
+  static const String unlockStatusLocked = '需要重新驗證後才能執行維護動作。';
+
+  static const String unlockModeTitle = '解鎖方式';
+  static const String trustedDeviceTitle = '可信裝置';
+  static const String trustedDeviceReady = '此裝置可使用目前解鎖方式。';
+  static const String trustedDeviceMissing = '此裝置尚未具備可信解鎖資料。';
+
+  static const String indexTitle = '索引資料庫';
+
+  static const String createRecoveryKeyButton = '建立復原金鑰';
+  static const String rotateRecoveryKeyButton = '更新復原金鑰';
+  static const String rebuildIndexButton = '重建索引';
+}
+
+extension AppUnlockModeSettingsCopy on AppUnlockMode {
+  /// 分段按鈕等短標籤。
+  String get shortLabel => switch (this) {
+        AppUnlockMode.none => SettingsUnlockMethodCopy.segmentNone,
+        AppUnlockMode.deviceLock => SettingsUnlockMethodCopy.segmentDeviceLock,
+        AppUnlockMode.biometric => SettingsUnlockMethodCopy.segmentBiometric,
+      };
+
+  /// 安全概覽等完整標籤。
+  String get fullLabel => switch (this) {
+        AppUnlockMode.none => '無',
+        AppUnlockMode.deviceLock => '裝置螢幕鎖',
+        AppUnlockMode.biometric => '生物驗證',
+      };
+}
+
 abstract final class SettingsUnlockMethodCopy {
   static const String sectionTitle = '解鎖方式';
   static const String sectionDescription =
       'App 在背景一段時間後回到前景時，要如何重新驗證身分以進入日記庫。';
   static const String needsRecoveryKeyBanner = '請先建立復原金鑰，才能設定解鎖方式。';
 
-  /// 分段按鈕標籤（較短，完整名稱見 [UnlockMethodSectionBody.labelForMode]）。
   static const String segmentNone = '無';
   static const String segmentDeviceLock = '螢幕鎖';
+  static const String segmentBiometric = '生物驗證';
 
   static const String biometricNeedsDeviceLockHint =
       '須已登錄至少一種生物辨識，並設定裝置螢幕鎖；驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
@@ -116,22 +150,54 @@ abstract final class SettingsSensitiveVaultCopy {
 abstract final class SettingsImportExportCopy {
   static const String sectionTitle = '匯入與匯出';
   static const String sectionDescriptionEnabled =
-      '匯出日記為 Markdown 壓縮檔；可匯入本 App 的 Markdown、本 App 匯出 HTML、'
-      'Easy Diary 完整備份 zip，或本 App 匯出之 zip。';
+      '匯出 Markdown 壓縮檔；可匯入 Markdown、HTML 或 Easy Diary 備份 zip。';
 
   static const String importNoEntriesMessage =
-      '找不到可匯入的內容，請確認檔案格式。';
+      '找不到可匯入的日記，請確認檔案格式。';
 
-  static String importFailure(String message) => message;
+  static const String importAllSkippedMessage =
+      '所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。';
 
-  static const String exportButton = '匯出日記';
-  static const String importButton = '匯入檔案';
-  static const String exportProgress = '正在匯出日記，整理內容與附件中…';
+  static const String importFailureZipNoEntries =
+      'zip 內找不到可匯入的 Markdown、本 App HTML 或 Easy Diary 完整備份。';
 
-  static String exportSuccess(String path) => '已匯出 Markdown 壓縮檔：$path';
+  static const String importFailureEasyDiaryUnsupportedPlatform =
+      'Easy Diary 完整備份 zip 目前僅支援在 Android 裝置上匯入；'
+      '請改用 Android 版 App。';
+
+  static const String importFailureEasyDiaryRealmReadFailed =
+      '無法讀取 Easy Diary 備份資料庫（可能版本不相容）。'
+      '請在 Easy Diary 重新建立完整備份後再試。';
+
+  static const String importFailureEasyDiaryEmptyBackup =
+      'Easy Diary 備份檔內沒有可匯入的日記。';
+
+  static const String importFailureEasyDiaryAllEncrypted =
+      'Easy Diary 備份內的日記皆為加密狀態，無法匯入。';
+
+  static String messageForFailureCode(String? failureCode) {
+    return switch (failureCode) {
+      PortableImportFailureCode.zipNoEntries => importFailureZipNoEntries,
+      PortableImportFailureCode.easyDiaryUnsupportedPlatform =>
+        importFailureEasyDiaryUnsupportedPlatform,
+      PortableImportFailureCode.easyDiaryRealmReadFailed =>
+        importFailureEasyDiaryRealmReadFailed,
+      PortableImportFailureCode.easyDiaryEmptyBackup => importFailureEasyDiaryEmptyBackup,
+      PortableImportFailureCode.easyDiaryAllEncrypted => importFailureEasyDiaryAllEncrypted,
+      _ => '',
+    };
+  }
+
+  static const String importProgress = '正在匯入日記，請稍候…';
+
+  static const String exportButton = '匯出 Markdown';
+  static const String importButton = '匯入日記';
+  static const String exportProgress = '正在匯出 Markdown，整理內容與附件中…';
+
+  static String exportSuccess(String path) => '已匯出：$path';
   static String importSuccess(int count) => '已匯入 $count 篇日記。';
   static String importSuccessWithSkippedFiles(int count, int skippedFiles) =>
-      '已匯入 $count 篇日記，略過 $skippedFiles 個檔案。';
+      '已匯入 $count 篇日記，$skippedFiles 個檔案無法解析。';
   static String importSuccessWithSkippedAttachments(int count, int skippedAttachments) =>
       '已匯入 $count 篇日記，$skippedAttachments 張圖片無法匯入。';
   static String importSuccessWithSkippedFilesAndAttachments(
@@ -139,13 +205,15 @@ abstract final class SettingsImportExportCopy {
     int skippedFiles,
     int skippedAttachments,
   ) =>
-      '已匯入 $count 篇日記，略過 $skippedFiles 個檔案，$skippedAttachments 張圖片無法匯入。';
+      '已匯入 $count 篇日記，$skippedFiles 個檔案無法解析，'
+      '$skippedAttachments 張圖片無法匯入。';
 }
 
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
   static const String sectionDescriptionEnabled =
-      '將整個加密日記庫儲存成 .jbackup，首次預設為 Downloads/quill-lock-diary，之後會記住你上次選的位置。建立後會立即檢查檔案結構；還原會覆寫本機資料。';
+      '將整個加密日記庫封裝為 .jbackup；建立後會立即檢查檔案結構。'
+      '還原會覆寫本機日記庫。';
 
   static const String createButton = '建立並檢查備份';
   static const String restoreButton = '從本機備份還原';
@@ -156,16 +224,17 @@ abstract final class SettingsLocalBackupCopy {
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
-      '先連結 Google Drive，再把 .jbackup 備份上傳到雲端，或從雲端挑選備份還原。';
-  static const String sectionDescriptionDisabled = 'Google Drive 備份尚未設定。';
+      '連結 Google Drive 後，可上傳 .jbackup 到雲端，或從雲端挑選備份還原。';
+  static const String sectionDescriptionOAuthNotConfigured =
+      '尚未完成 Google 登入設定（OAuth）。';
 
   static const String connectButton = '連結 Google Drive';
   static const String reconnectButton = '重新連結 Google Drive';
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
 
-  static const String connectedHint = '已連結 Google Drive。可直接上傳新備份，或從雲端還原。';
-  static const String disconnectedHint = '尚未連結 Google Drive。請先完成 Google 登入與授權。';
+  static const String connectedHint = '已連結 Google Drive，可上傳或還原備份。';
+  static const String disconnectedHint = '尚未連結 Google Drive，請先完成 Google 登入與授權。';
   static const String actionsLockedHint = '要使用雲端備份與還原，請先解鎖日記庫並建立復原金鑰。';
 
   static const String connectSuccess = 'Google Drive 已連結。';

@@ -5,12 +5,10 @@ import 'package:path/path.dart' as p;
 /// Easy Diary 完整備份 zip 解壓後的目錄配置（preference.json + Backup/Database + Photos）。
 class EasyDiaryBackupLayout {
   const EasyDiaryBackupLayout({
-    required this.rootDirectory,
     required this.realmSnapshotFile,
     required this.photosDirectory,
   });
 
-  final Directory rootDirectory;
   final File realmSnapshotFile;
   final Directory photosDirectory;
 
@@ -42,7 +40,6 @@ class EasyDiaryBackupLayout {
       }
 
       return EasyDiaryBackupLayout(
-        rootDirectory: candidateRoot,
         realmSnapshotFile: realmFile,
         photosDirectory: photosDir,
       );

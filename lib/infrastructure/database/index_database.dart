@@ -525,14 +525,10 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[entryId]);
   }
 
-  Future<void> clearForRebuild() async {
+  Future<void> rebuild() async {
     await customStatement('DELETE FROM entries_index;');
     await customStatement('DELETE FROM entry_tags;');
     await customStatement('DELETE FROM entry_attachments;');
-  }
-
-  Future<void> rebuild() async {
-    await clearForRebuild();
   }
 
   Future<void> setAppValue(String key, String value) async {

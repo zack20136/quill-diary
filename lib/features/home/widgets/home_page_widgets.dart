@@ -63,6 +63,26 @@ class _OverviewPane extends ConsumerWidget {
                       onPressed: diaryEntryIds.isEmpty
                           ? null
                           : () => unawaited(_exportEntriesAsHtml(context, ref, diaryEntryIds)),
+                      style: const ButtonStyle(
+                        fixedSize: WidgetStatePropertyAll<Size>(
+                          Size.fromHeight(_kOverviewScopeControlHeight),
+                        ),
+                        minimumSize: WidgetStatePropertyAll<Size>(
+                          Size(0, _kOverviewScopeControlHeight),
+                        ),
+                        maximumSize: WidgetStatePropertyAll<Size>(
+                          Size(double.infinity, _kOverviewScopeControlHeight),
+                        ),
+                        padding: WidgetStatePropertyAll<EdgeInsetsGeometry>(
+                          EdgeInsets.symmetric(horizontal: 18),
+                        ),
+                        shape: WidgetStatePropertyAll<OutlinedBorder>(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                          ),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
                       icon: const Icon(Icons.ios_share_rounded, size: 18),
                       label: const Text('匯出回顧'),
                     ),
@@ -239,6 +259,8 @@ class _OverviewPane extends ConsumerWidget {
   }
 }
 
+const double _kOverviewScopeControlHeight = 40;
+
 String _overviewMetricRangeCaption(MemoryScope scope, DateTime focusedMonth, int focusedYear) {
   return switch (scope) {
     MemoryScope.all => '目前範圍 · 全部日記',
@@ -301,50 +323,32 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
             focusedYear: focusedYear,
             entries: entries,
           );
-          return LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double width = constraints.maxWidth;
-              const int columns = 2;
-              const double gap = 13;
-              final double itemWidth = (width - (gap * (columns - 1))) / columns;
-
-              final List<_OverviewNumericTile> tiles = <_OverviewNumericTile>[
-                _OverviewNumericTile(
-                  label: '最長連續寫作',
-                  value: '${metrics.longestWritingStreakDays}天',
-                  toneIndex: 0,
-                ),
-                _OverviewNumericTile(
-                  label: '撰寫天數',
-                  value: '${metrics.activeDays}/$scopeTotalDays天',
-                  toneIndex: 1,
-                  detail: metrics.mostEntriesInSingleDayDetail(),
-                ),
-                _OverviewNumericTile(
-                  label: '平均篇幅',
-                  value: '${metrics.avgCharactersPerEntryRounded} 字／篇',
-                  toneIndex: 2,
-                  detail: '共 ${metrics.totalEntries} 篇 · 累計 ${metrics.totalCharacters} 字',
-                ),
-                _OverviewNumericTile(
-                  label: '附件總數',
-                  value: '${metrics.totalAttachments} 個附件',
-                  toneIndex: 3,
-                  detail: metrics.attachmentDetail(),
-                ),
-              ];
-
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: tiles
-                    .map(
-                      (Widget t) =>
-                          SizedBox(width: math.max(148.0, itemWidth), child: t),
-                    )
-                    .toList(),
-              );
-            },
+          return Column(
+            children: <Widget>[
+              _OverviewNumericTile(
+                label: '撰寫天數',
+                value: '${metrics.activeDays}/$scopeTotalDays天',
+                toneIndex: 0,
+                detail: [
+                  metrics.mostEntriesInSingleDayDetail(),
+                  '連續最長 ${metrics.longestWritingStreakDays} 天',
+                ].whereType<String>().join(' ・ '),
+              ),
+              const SizedBox(height: 13),
+              _OverviewNumericTile(
+                label: '平均篇幅',
+                value: '${metrics.avgCharactersPerEntryRounded} 字／篇',
+                toneIndex: 1,
+                detail: '共 ${metrics.totalEntries} 篇 · 累計 ${metrics.totalCharacters} 字',
+              ),
+              const SizedBox(height: 13),
+              _OverviewNumericTile(
+                label: '附件總數',
+                value: '${metrics.totalAttachments} 個附件',
+                toneIndex: 2,
+                detail: metrics.attachmentDetail(),
+              ),
+            ],
           );
         },
         loading: () => const SizedBox(
@@ -463,48 +467,51 @@ class _OverviewScopePicker extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Expanded(
-                child: SegmentedButton<MemoryScope>(
-                  showSelectedIcon: false,
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
-                    shape: WidgetStatePropertyAll<OutlinedBorder>(
-                      RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+                child: SizedBox(
+                  height: _kOverviewScopeControlHeight,
+                  child: SegmentedButton<MemoryScope>(
+                    showSelectedIcon: false,
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
+                      shape: WidgetStatePropertyAll<OutlinedBorder>(
+                        RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+                      ),
+                      backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return cs.primaryContainer;
+                        }
+                        return cs.surfaceContainerHighest.withValues(alpha: 0.55);
+                      }),
+                      foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return cs.onPrimaryContainer;
+                        }
+                        return cs.onSurfaceVariant;
+                      }),
                     ),
-                    backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return cs.primaryContainer;
+                    segments: const <ButtonSegment<MemoryScope>>[
+                      ButtonSegment<MemoryScope>(
+                        value: MemoryScope.all,
+                        label: Text('全部'),
+                      ),
+                      ButtonSegment<MemoryScope>(
+                        value: MemoryScope.year,
+                        label: Text('年'),
+                      ),
+                      ButtonSegment<MemoryScope>(
+                        value: MemoryScope.month,
+                        label: Text('月'),
+                      ),
+                    ],
+                    selected: <MemoryScope>{scope},
+                    onSelectionChanged: (Set<MemoryScope> next) {
+                      if (next.isEmpty) {
+                        return;
                       }
-                      return cs.surfaceContainerHighest.withValues(alpha: 0.55);
-                    }),
-                    foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return cs.onPrimaryContainer;
-                      }
-                      return cs.onSurfaceVariant;
-                    }),
+                      ref.read(memoryScopeProvider.notifier).set(next.first);
+                    },
                   ),
-                  segments: const <ButtonSegment<MemoryScope>>[
-                    ButtonSegment<MemoryScope>(
-                      value: MemoryScope.all,
-                      label: Text('全部'),
-                    ),
-                    ButtonSegment<MemoryScope>(
-                      value: MemoryScope.year,
-                      label: Text('年'),
-                    ),
-                    ButtonSegment<MemoryScope>(
-                      value: MemoryScope.month,
-                      label: Text('月'),
-                    ),
-                  ],
-                  selected: <MemoryScope>{scope},
-                  onSelectionChanged: (Set<MemoryScope> next) {
-                    if (next.isEmpty) {
-                      return;
-                    }
-                    ref.read(memoryScopeProvider.notifier).set(next.first);
-                  },
                 ),
               ),
               if (exportButton != null) ...<Widget>[
@@ -1170,55 +1177,63 @@ class _OverviewNumericTile extends StatelessWidget {
         border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.48)),
       ),
       child: SizedBox(
-        height: 126,
+        height: 92,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 12),
+          padding: const EdgeInsets.fromLTRB(16, 8, 14, 7),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
                 label,
-                style: theme.textTheme.labelMedium?.copyWith(
+                style: theme.textTheme.titleSmall?.copyWith(
                   color: onFill.withValues(alpha: 0.88),
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.1,
+                  height: 1.0,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 1),
               Expanded(
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                child: Transform.translate(
+                  offset: const Offset(0, -3),
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: <Widget>[
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          value,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            height: 1.02,
-                            color: onFill,
-                          ),
-                        ),
-                      ),
                       if (detail != null && detail!.trim().isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            detail!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: onFill.withValues(alpha: 0.74),
-                              height: 1.35,
-                              fontWeight: FontWeight.w500,
+                        Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 92),
+                            child: Text(
+                              detail!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.left,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: onFill.withValues(alpha: 0.74),
+                                height: 1.0,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            value,
+                            textAlign: TextAlign.right,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              height: 1.0,
+                              color: onFill,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1449,4 +1464,3 @@ IconData _blockedIcon(AppLockStatus status) {
     _ => Icons.info_outline,
   };
 }
-

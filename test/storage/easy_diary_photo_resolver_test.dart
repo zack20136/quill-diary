@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/infrastructure/storage/easy_diary_photo_resolver.dart';
-import 'package:test/test.dart';
+import 'package:quill_lock_diary/infrastructure/storage/import/easy_diary/easy_diary_photo_resolver.dart';
 
 void main() {
   test('可解析無副檔名的 UUID 相片檔', () {

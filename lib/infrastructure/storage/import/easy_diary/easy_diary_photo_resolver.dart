@@ -1,7 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'easy_diary_realm_entry.dart';
 import 'package:path/path.dart' as p;
+
+import '../../../../domain/shared/value_objects.dart';
+import '../../vault_repository.dart';
 
 /// Easy Diary 將相片存成 `Photos/{uuid}`（常無副檔名），需索引並嗅探 MIME。
 class EasyDiaryPhotoIndex {
@@ -32,23 +36,19 @@ class EasyDiaryPhotoIndex {
     return EasyDiaryPhotoIndex._(byKey);
   }
 
-  File? resolve(String photoReference) {
-    final String trimmed = photoReference.trim();
+  /// Kotlin 端已正規化為檔名 key；保留 `content:` 防禦性略過。
+  File? resolve(String photoKey) {
+    final String trimmed = photoKey.trim();
     if (trimmed.isEmpty || trimmed.startsWith('content:')) {
       return null;
     }
 
-    final String fileName = p.basename(trimmed.split('?').first.split('#').first);
-    if (fileName.isEmpty) {
-      return null;
-    }
-
-    final File? direct = _byLookupKey[fileName.toLowerCase()];
+    final File? direct = _byLookupKey[trimmed.toLowerCase()];
     if (direct != null) {
       return direct;
     }
 
-    final String stem = p.basenameWithoutExtension(fileName).toLowerCase();
+    final String stem = p.basenameWithoutExtension(trimmed).toLowerCase();
     if (stem.isNotEmpty) {
       return _byLookupKey[stem];
     }
@@ -159,4 +159,90 @@ String stripEasyDiaryPhotoPlaceholderLines(
     kept.add(line);
   }
   return kept.join('\n').trimRight();
+}
+
+class ResolvedEasyDiaryAttachments {
+  const ResolvedEasyDiaryAttachments({
+    required this.attachments,
+    required this.skippedAttachments,
+    required this.importedPhotoKeys,
+  });
+
+  final List<PendingAttachment> attachments;
+  final int skippedAttachments;
+  final Set<String> importedPhotoKeys;
+}
+
+Future<ResolvedEasyDiaryAttachments> resolveEasyDiaryPhotoAttachments({
+  required List<EasyDiaryPhotoRef> photos,
+  required EasyDiaryPhotoIndex photoIndex,
+}) async {
+  final List<PendingAttachment> attachments = <PendingAttachment>[];
+  final Set<String> seen = <String>{};
+  final Set<String> importedPhotoKeys = <String>{};
+  var skippedAttachments = 0;
+
+  for (final EasyDiaryPhotoRef photo in photos) {
+    final File? photoFile = photoIndex.resolve(photo.photoKey);
+    if (photoFile == null) {
+      skippedAttachments++;
+      continue;
+    }
+
+    final String dedupeKey = photoFile.path.toLowerCase();
+    if (!seen.add(dedupeKey)) {
+      continue;
+    }
+
+    final Uint8List header = await readFileHeader(photoFile);
+    final String mimeType = resolveEasyDiaryMimeType(
+      header: header,
+      realmMimeType: photo.mimeType,
+      fileNameHint: photoFile.path,
+    );
+    if (!mimeType.startsWith('image/')) {
+      skippedAttachments++;
+      continue;
+    }
+
+    attachments.add(
+      PendingAttachment(
+        sourcePath: photoFile.path,
+        mimeType: mimeType,
+        originalFilename: preferredImageFilename(
+          storedName: p.basename(photoFile.path),
+          mimeType: mimeType,
+        ),
+      ),
+    );
+    importedPhotoKeys.add(photo.photoKey);
+  }
+
+  return ResolvedEasyDiaryAttachments(
+    attachments: attachments,
+    skippedAttachments: skippedAttachments,
+    importedPhotoKeys: importedPhotoKeys,
+  );
+}
+
+String resolveEasyDiaryMimeType({
+  required Uint8List header,
+  required String? realmMimeType,
+  required String fileNameHint,
+}) {
+  final String? trimmedRealm = realmMimeType?.trim();
+  if (trimmedRealm != null &&
+      trimmedRealm.isNotEmpty &&
+      trimmedRealm.startsWith('image/')) {
+    return trimmedRealm;
+  }
+  return sniffImageMimeType(header, fileNameHint: fileNameHint);
+}
+
+DateOnly entryDateFromEasyDiaryRealm(String? dateString, DateTime fallback) {
+  final String? trimmed = dateString?.trim();
+  if (trimmed != null && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmed)) {
+    return DateOnly.parse(trimmed);
+  }
+  return DateOnly.fromDateTime(fallback);
 }

@@ -18,6 +18,8 @@ class RecoveryMetadata {
 
   final VaultId vaultId;
   final bool recoveryEnabled;
+
+  /// Schema 保留欄位；金鑰輪替與還原世代判斷以 [kdf] salt 為準。
   final int recoveryKeyVersion;
   final String recoveryKeyHint;
   final DateTime createdAt;

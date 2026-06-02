@@ -333,14 +333,6 @@ class UnlockMethodSectionBody extends StatelessWidget {
   final AppUnlockMode unlockMode;
   final Future<void> Function(AppUnlockMode mode) onModeSelected;
 
-  static String labelForMode(AppUnlockMode mode) {
-    return switch (mode) {
-      AppUnlockMode.none => '無',
-      AppUnlockMode.deviceLock => '裝置螢幕鎖',
-      AppUnlockMode.biometric => '生物驗證',
-    };
-  }
-
   static String descriptionForMode(AppUnlockMode mode) {
     return switch (mode) {
       AppUnlockMode.none => kUnlockModeNoneDescription,
@@ -420,7 +412,7 @@ class _UnlockModeChoiceBar extends StatelessWidget {
       mode: AppUnlockMode.biometric,
       flex: 4,
       icon: Icons.fingerprint_rounded,
-      label: '生物驗證',
+      label: SettingsUnlockMethodCopy.segmentBiometric,
     ),
   ];
 
@@ -553,45 +545,6 @@ class SettingsActionButton extends StatelessWidget {
   }
 }
 
-/// 包住 `SwitchListTile` 的外觀元件，讓設定列維持一致的 panel 風格。
-class SettingsToggleTile extends StatelessWidget {
-  const SettingsToggleTile({
-    required this.title,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-    super.key,
-  });
-
-  final String title;
-  final String description;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      child: SwitchListTile.adaptive(
-        value: value,
-        onChanged: onChanged,
-        title: Text(title),
-        subtitle: Text(
-          description,
-          style: onChanged == null
-              ? theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)
-              : theme.textTheme.bodySmall,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      ),
-    );
-  }
-}
-
 /// 顯示中性、警告或錯誤訊息的設定頁橫幅。
 class SettingsInfoBanner extends StatelessWidget {
   const SettingsInfoBanner({
@@ -702,7 +655,6 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
     required this.onRebuildIndex,
-    required this.recoveryPanel,
     required this.lockPanel,
     super.key,
   });
@@ -716,7 +668,6 @@ class SettingsSecurityOverview extends StatelessWidget {
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
   final VoidCallback? onRebuildIndex;
-  final Widget recoveryPanel;
   final Widget lockPanel;
 
   @override
@@ -724,31 +675,37 @@ class SettingsSecurityOverview extends StatelessWidget {
     final List<_SecurityOverviewItem> items = <_SecurityOverviewItem>[
       _SecurityOverviewItem(
         icon: Icons.key_outlined,
-        title: '復原金鑰',
-        message: hasRecoveryKey ? '已建立，可用於還原與換機。' : '尚未建立，資料還原能力不足。',
+        title: SettingsSecurityOverviewCopy.recoveryKeyTitle,
+        message: hasRecoveryKey
+            ? SettingsSecurityOverviewCopy.recoveryKeyReady
+            : SettingsSecurityOverviewCopy.recoveryKeyMissing,
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.lock_open_rounded,
-        title: '解鎖狀態',
-        message: hasUnlockedSession ? '日記庫目前已解鎖。' : '需要重新驗證後才能執行維護動作。',
+        title: SettingsSecurityOverviewCopy.unlockStatusTitle,
+        message: hasUnlockedSession
+            ? SettingsSecurityOverviewCopy.unlockStatusUnlocked
+            : SettingsSecurityOverviewCopy.unlockStatusLocked,
         level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.phonelink_lock_outlined,
-        title: '解鎖方式',
+        title: SettingsSecurityOverviewCopy.unlockModeTitle,
         message: unlockModeLabel,
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.verified_user_outlined,
-        title: '可信裝置',
-        message: hasTrustedDevice ? '此裝置可使用目前解鎖方式。' : '此裝置尚未具備可信解鎖資料。',
+        title: SettingsSecurityOverviewCopy.trustedDeviceTitle,
+        message: hasTrustedDevice
+            ? SettingsSecurityOverviewCopy.trustedDeviceReady
+            : SettingsSecurityOverviewCopy.trustedDeviceMissing,
         level: hasTrustedDevice ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.storage_rounded,
-        title: '索引資料庫',
+        title: SettingsSecurityOverviewCopy.indexTitle,
         message: indexMessage,
         level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
@@ -768,7 +725,9 @@ class SettingsSecurityOverview extends StatelessWidget {
         SettingsActionGroup(
           actions: <SettingsActionButton>[
             SettingsActionButton(
-              label: hasRecoveryKey ? '更新復原金鑰' : '建立復原金鑰',
+              label: hasRecoveryKey
+                  ? SettingsSecurityOverviewCopy.rotateRecoveryKeyButton
+                  : SettingsSecurityOverviewCopy.createRecoveryKeyButton,
               icon: hasRecoveryKey ? Icons.refresh_rounded : Icons.key_outlined,
               emphasized: !hasRecoveryKey,
               onPressed: busy
@@ -778,14 +737,12 @@ class SettingsSecurityOverview extends StatelessWidget {
                       : onCreateRecoveryKey,
             ),
             SettingsActionButton(
-              label: '重建索引',
+              label: SettingsSecurityOverviewCopy.rebuildIndexButton,
               icon: Icons.build_rounded,
               onPressed: busy ? null : onRebuildIndex,
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        recoveryPanel,
         const SizedBox(height: 14),
         lockPanel,
       ],

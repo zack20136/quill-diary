@@ -11,9 +11,7 @@ import '../../../app/router.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
-import '../../../infrastructure/security/app_lock_service.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
-import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
@@ -28,35 +26,12 @@ import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
+import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
+import '../unlock_mode_change.dart';
 import '../../restore/restore_backup_flow.dart';
 import '../../session/application/session_unlock_coordinator.dart';
 import '../widgets/settings_sections.dart';
-
-String _formatImportSuccessMessage(PortableImportResult result) {
-  final bool hasSkippedFiles = result.skippedFiles > 0;
-  final bool hasSkippedAttachments = result.skippedAttachments > 0;
-  if (hasSkippedFiles && hasSkippedAttachments) {
-    return SettingsImportExportCopy.importSuccessWithSkippedFilesAndAttachments(
-      result.importedEntries,
-      result.skippedFiles,
-      result.skippedAttachments,
-    );
-  }
-  if (hasSkippedFiles) {
-    return SettingsImportExportCopy.importSuccessWithSkippedFiles(
-      result.importedEntries,
-      result.skippedFiles,
-    );
-  }
-  if (hasSkippedAttachments) {
-    return SettingsImportExportCopy.importSuccessWithSkippedAttachments(
-      result.importedEntries,
-      result.skippedAttachments,
-    );
-  }
-  return SettingsImportExportCopy.importSuccess(result.importedEntries);
-}
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -71,7 +46,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String? _busyMessage;
   bool _unlockCoordinatorAttached = false;
   IndexRebuildReport? _lastIndexRebuildReport;
-  AppUnlockMode? _pendingUnlockMode;
 
   @override
   void dispose() {
@@ -80,37 +54,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildSecurityStatusSection({
-    required AppLockService appLockService,
     required AsyncValue<AppSessionState> sessionAsync,
     required RecoveryMetadata? recoveryMetadata,
     required bool canSensitiveVaultTransfer,
+    required AsyncValue<AppUnlockMode> unlockModeAsync,
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final bool hasUnlockedSession =
         sessionState?.isUnlocked == true && sessionState?.session != null;
-    return FutureBuilder<List<Object>>(
-      future: Future.wait<Object>(<Future<Object>>[
-        appLockService.getUnlockMode().then<Object>((AppUnlockMode value) => value),
-        ref
-            .read(vaultRepositoryProvider)
-            .hasTrustedDeviceAccess()
-            .then<Object>((bool value) => value),
-      ]),
-      builder: (BuildContext context, AsyncSnapshot<List<Object>> snapshot) {
-        final AppUnlockMode mode = snapshot.hasData
-            ? snapshot.data![0] as AppUnlockMode
-            : AppUnlockMode.none;
-        final bool hasTrustedDevice =
-            snapshot.hasData ? snapshot.data![1] as bool : false;
+    return FutureBuilder<bool>(
+      future: ref.read(vaultRepositoryProvider).hasTrustedDeviceAccess(),
+      builder: (BuildContext context, AsyncSnapshot<bool> trustedSnapshot) {
+        final AppUnlockMode mode = unlockModeAsync.asData?.value ?? AppUnlockMode.none;
+        final bool hasTrustedDevice = trustedSnapshot.data ?? false;
         return SettingsSectionCard(
           icon: Icons.health_and_safety_outlined,
-          title: '安全狀態',
-          description: '集中檢查復原金鑰、解鎖方式與索引狀態。',
+          title: SettingsSecurityOverviewCopy.sectionTitle,
+          description: SettingsSecurityOverviewCopy.sectionDescription,
           child: SettingsSecurityOverview(
             hasRecoveryKey: recoveryMetadata != null,
             hasUnlockedSession: hasUnlockedSession,
             hasTrustedDevice: hasTrustedDevice,
-            unlockModeLabel: UnlockMethodSectionBody.labelForMode(mode),
+            unlockModeLabel: mode.fullLabel,
             indexMessage: _indexStatusMessage(hasUnlockedSession),
             busy: _busy,
             onCreateRecoveryKey:
@@ -121,7 +86,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     : null,
             onRebuildIndex:
                 hasUnlockedSession ? () => _runAction(_rebuildIndex) : null,
-            recoveryPanel: recoveryMetadataPanel(recoveryMetadata),
             lockPanel: sessionAsync.when(
               data: (AppSessionState sessionState) => SettingsStatusPanel(
                 sessionState: sessionState,
@@ -163,16 +127,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget recoveryMetadataPanel(RecoveryMetadata? metadata) {
-    return RecoveryKeySectionBody(
-      metadata: metadata,
-      busy: _busy,
-      showActions: false,
-      onRotateRecoveryKey: null,
-      onCreateRecoveryKey: null,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!_unlockCoordinatorAttached) {
@@ -183,7 +137,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);
-    final AppLockService appLockService = ref.watch(appLockServiceProvider);
+    final AsyncValue<AppUnlockMode> unlockModeAsync = ref.watch(unlockModeProvider);
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final RecoveryMetadata? recoveryMetadata = recoveryMetadataAsync.asData?.value;
     final bool hasUnlockedSession =
@@ -192,6 +146,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
+    final AsyncValue<bool> driveConnectionAsync = isGoogleDriveConfigured
+        ? ref.watch(settingsDriveConnectionProvider)
+        : const AsyncData<bool>(false);
     final String disabledSensitiveVaultTransferReason =
         sensitiveVaultTransferDisabledReason(
           hasUnlockedSession: hasUnlockedSession,
@@ -255,30 +212,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                 if (isSupportedPlatform) ...<Widget>[
                   _buildSecurityStatusSection(
-                    appLockService: appLockService,
                     sessionAsync: sessionAsync,
                     recoveryMetadata: recoveryMetadata,
                     canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                    unlockModeAsync: unlockModeAsync,
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
                     title: SettingsUnlockMethodCopy.sectionTitle,
                     description: SettingsUnlockMethodCopy.sectionDescription,
-                    child: FutureBuilder<AppUnlockMode>(
-                      future: appLockService.getUnlockMode(),
-                      builder: (BuildContext context, AsyncSnapshot<AppUnlockMode> snapshot) {
-                        final AppUnlockMode storedMode =
-                            snapshot.data ?? AppUnlockMode.none;
-                        final AppUnlockMode displayMode =
-                            _pendingUnlockMode ?? storedMode;
-                        return UnlockMethodSectionBody(
-                          enabled: recoveryMetadataAsync.asData?.value != null,
-                          busy: _busy,
-                          unlockMode: displayMode,
-                          onModeSelected: (AppUnlockMode selected) =>
-                              _runAction(() => _applyUnlockMode(selected)),
-                        );
-                      },
+                    child: unlockModeAsync.when(
+                      data: (AppUnlockMode unlockMode) => UnlockMethodSectionBody(
+                        enabled: recoveryMetadataAsync.asData?.value != null,
+                        busy: _busy,
+                        unlockMode: unlockMode,
+                        onModeSelected: (AppUnlockMode selected) => _runAction(
+                          () => _applyUnlockMode(selected),
+                        ),
+                      ),
+                      loading: () => const SettingsSectionLoading(),
+                      error: (Object error, StackTrace _) => SettingsInfoBanner(
+                        icon: Icons.error_outline_rounded,
+                        message: userFacingErrorMessage(error),
+                        tone: SettingsBannerTone.error,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -336,17 +293,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       return;
                                     }
                                     if (result.importedEntries == 0) {
-                                      _showMessage(
-                                        result.failureMessage ??
-                                            SettingsImportExportCopy.importNoEntriesMessage,
-                                      );
+                                      _showMessage(result.messageWhenNoEntriesImported());
                                       return;
                                     }
                                     await refreshEntryIndexCaches(ref);
-                                    final String importMessage =
-                                        _formatImportSuccessMessage(result);
-                                    _showMessage(importMessage);
-                                  }),
+                                    _showMessage(result.formatSuccessMessage());
+                                  },
+                                    progressMessage: SettingsImportExportCopy.importProgress,
+                                  ),
                         ),
                       ],
                     ),
@@ -383,6 +337,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const SizedBox(height: 16),
                   _buildDriveBackupSection(
                     isGoogleDriveConfigured: isGoogleDriveConfigured,
+                    driveConnectionAsync: driveConnectionAsync,
                     canSensitiveVaultTransfer: canSensitiveVaultTransfer,
                     disabledSensitiveVaultTransferReason:
                         disabledSensitiveVaultTransferReason,
@@ -447,114 +402,124 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildDriveBackupSection({
     required bool isGoogleDriveConfigured,
+    required AsyncValue<bool> driveConnectionAsync,
     required bool canSensitiveVaultTransfer,
     required String disabledSensitiveVaultTransferReason,
   }) {
+    final String description = !canSensitiveVaultTransfer
+        ? disabledSensitiveVaultTransferReason
+        : isGoogleDriveConfigured
+            ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+            : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
+
     return SettingsSectionCard(
       icon: Icons.cloud_outlined,
       title: SettingsDriveBackupCopy.sectionTitle,
-      description: isGoogleDriveConfigured
-          ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-          : SettingsDriveBackupCopy.sectionDescriptionDisabled,
+      description: description,
       child: !isGoogleDriveConfigured
           ? const SettingsInfoBanner(
               icon: Icons.cloud_off_rounded,
-              message: SettingsDriveBackupCopy.sectionDescriptionDisabled,
+              message: SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured,
             )
-          : FutureBuilder<bool>(
-              future: ref.read(vaultTransferServiceProvider).isGoogleDriveConnected(),
-              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                if (!snapshot.hasData &&
-                    snapshot.connectionState == ConnectionState.waiting) {
-                  return const SettingsSectionLoading();
-                }
-                final bool isConnected = snapshot.data ?? false;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    SettingsInfoBanner(
-                      icon: isConnected
-                          ? Icons.cloud_done_outlined
-                          : Icons.cloud_off_rounded,
-                      message: isConnected
-                          ? SettingsDriveBackupCopy.connectedHint
-                          : SettingsDriveBackupCopy.disconnectedHint,
-                    ),
-                    const SizedBox(height: 12),
-                    SettingsActionGroup(
-                      actions: <SettingsActionButton>[
-                        if (!isConnected)
-                          SettingsActionButton(
-                            label: SettingsDriveBackupCopy.connectButton,
-                            icon: Icons.link_rounded,
-                            emphasized: true,
-                            fullWidth: true,
-                            onPressed: _busy
-                                ? null
-                                : () => _runAction(
-                                      () => _connectGoogleDrive(),
-                                      progressMessage: '正在連結 Google Drive…',
-                                    ),
-                          ),
-                        if (isConnected)
-                          SettingsActionButton(
-                            label: SettingsDriveBackupCopy.uploadButton,
-                            icon: Icons.cloud_upload_outlined,
-                            emphasized: true,
-                            fullWidth: true,
-                            onPressed: _busy || !canSensitiveVaultTransfer
-                                ? null
-                                : () => _runAction(() async {
-                                      await ref
-                                          .read(appSessionProvider.notifier)
-                                          .runSensitiveTask((_) {
-                                        return ref
-                                            .read(vaultTransferServiceProvider)
-                                            .uploadBackupToDrive();
-                                      });
-                                      _showMessage(SettingsDriveBackupCopy.uploadSuccess);
-                                    }),
-                          ),
-                        if (isConnected)
-                          SettingsActionButton(
-                            label: SettingsDriveBackupCopy.restoreButton,
-                            icon: Icons.cloud_download_outlined,
-                            fullWidth: true,
-                            onPressed: _busy || !canSensitiveVaultTransfer
-                                ? null
-                                : () => _runRestoreFromGoogleDrive(),
-                          ),
-                      ],
-                    ),
-                    if (isConnected) ...<Widget>[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => _runAction(
-                                    () => _connectGoogleDrive(reconnect: true),
-                                    progressMessage: '正在重新連結 Google Drive…',
-                                  ),
-                          icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                          label: const Text(SettingsDriveBackupCopy.reconnectButton),
-                        ),
-                      ),
-                    ],
-                    if (!canSensitiveVaultTransfer) ...<Widget>[
-                      const SizedBox(height: 12),
-                      SettingsInfoBanner(
-                        icon: Icons.lock_outline_rounded,
-                        message: disabledSensitiveVaultTransferReason.isEmpty
-                            ? SettingsDriveBackupCopy.actionsLockedHint
-                            : disabledSensitiveVaultTransferReason,
-                      ),
-                    ],
-                  ],
-                );
-              },
+          : driveConnectionAsync.when(
+              loading: () => const SettingsSectionLoading(),
+              error: (_, _) => _buildDriveBackupContent(
+                isConnected: false,
+                canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                disabledSensitiveVaultTransferReason:
+                    disabledSensitiveVaultTransferReason,
+              ),
+              data: (bool isConnected) => _buildDriveBackupContent(
+                isConnected: isConnected,
+                canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                disabledSensitiveVaultTransferReason:
+                    disabledSensitiveVaultTransferReason,
+              ),
             ),
+    );
+  }
+
+  Widget _buildDriveBackupContent({
+    required bool isConnected,
+    required bool canSensitiveVaultTransfer,
+    required String disabledSensitiveVaultTransferReason,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SettingsInfoBanner(
+          icon: isConnected ? Icons.cloud_done_outlined : Icons.cloud_off_rounded,
+          message: isConnected
+              ? SettingsDriveBackupCopy.connectedHint
+              : SettingsDriveBackupCopy.disconnectedHint,
+        ),
+        const SizedBox(height: 12),
+        SettingsActionGroup(
+          actions: <SettingsActionButton>[
+            if (!isConnected)
+              SettingsActionButton(
+                label: SettingsDriveBackupCopy.connectButton,
+                icon: Icons.link_rounded,
+                emphasized: true,
+                fullWidth: true,
+                onPressed: _busy || !canSensitiveVaultTransfer
+                    ? null
+                    : () => _runAction(
+                          () => _connectGoogleDrive(),
+                          progressMessage: '正在連結 Google Drive…',
+                        ),
+              ),
+            if (isConnected)
+              SettingsActionButton(
+                label: SettingsDriveBackupCopy.uploadButton,
+                icon: Icons.cloud_upload_outlined,
+                emphasized: true,
+                fullWidth: true,
+                onPressed: _busy || !canSensitiveVaultTransfer
+                    ? null
+                    : () => _runAction(() async {
+                          await ref.read(appSessionProvider.notifier).runSensitiveTask((_) {
+                            return ref.read(vaultTransferServiceProvider).uploadBackupToDrive();
+                          });
+                          _showMessage(SettingsDriveBackupCopy.uploadSuccess);
+                        }),
+              ),
+            if (isConnected)
+              SettingsActionButton(
+                label: SettingsDriveBackupCopy.restoreButton,
+                icon: Icons.cloud_download_outlined,
+                fullWidth: true,
+                onPressed:
+                    _busy || !canSensitiveVaultTransfer ? null : () => _runRestoreFromGoogleDrive(),
+              ),
+          ],
+        ),
+        if (isConnected) ...<Widget>[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy || !canSensitiveVaultTransfer
+                  ? null
+                  : () => _runAction(
+                        () => _connectGoogleDrive(reconnect: true),
+                        progressMessage: '正在重新連結 Google Drive…',
+                      ),
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+              label: const Text(SettingsDriveBackupCopy.reconnectButton),
+            ),
+          ),
+        ],
+        if (!canSensitiveVaultTransfer && isConnected) ...<Widget>[
+          const SizedBox(height: 12),
+          SettingsInfoBanner(
+            icon: Icons.lock_outline_rounded,
+            message: disabledSensitiveVaultTransferReason.isEmpty
+                ? SettingsDriveBackupCopy.actionsLockedHint
+                : disabledSensitiveVaultTransferReason,
+          ),
+        ],
+      ],
     );
   }
 
@@ -669,6 +634,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await ref.read(vaultTransferServiceProvider).connectGoogleDrive(
           reconnect: reconnect,
         );
+    ref.invalidate(settingsDriveConnectionProvider);
+    await ref.read(settingsDriveConnectionProvider.future);
     _showMessage(
       reconnect
           ? SettingsDriveBackupCopy.reconnectSuccess
@@ -819,6 +786,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
     ref.invalidate(recoveryMetadataProvider);
+    ref.invalidate(settingsDriveConnectionProvider);
+    ref.invalidate(unlockModeProvider);
     ref.read(entryIndexRevisionProvider.notifier).bump();
   }
 
@@ -830,50 +799,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _applyUnlockMode(AppUnlockMode mode) async {
-    final AppLockService appLock = ref.read(appLockServiceProvider);
-    final AppUnlockMode previousMode = await appLock.getUnlockMode();
-    if (previousMode == mode) {
-      return;
-    }
-
-    if (mode == AppUnlockMode.deviceLock && !await appLock.canUseDeviceCredential()) {
-      _showMessage(kUnlockModeNeedsDeviceLockMessage);
-      return;
-    }
-
-    if (mode == AppUnlockMode.biometric && !await appLock.canUseDeviceCredential()) {
-      _showMessage(kUnlockModeNeedsDeviceLockMessage);
-      return;
-    }
-
-    if (mounted) {
-      setState(() => _pendingUnlockMode = mode);
-    }
-
-    try {
-      final UnlockedVaultSession? session = await ref.read(activeVaultSessionProvider.future);
-      if (session == null) {
-        await appLock.setUnlockMode(mode);
-        return;
-      }
-
-      await ref.read(appSessionProvider.notifier).runSensitiveTask((UnlockedVaultSession active) async {
-        final UnlockedVaultSession synced = await ref
-            .read(vaultRepositoryProvider)
-            .ensureKeystoreMatchesUnlockMode(active, targetMode: mode);
-        await appLock.setUnlockMode(mode);
-        ref.read(appSessionProvider.notifier).activateSession(synced);
-      });
-    } on DeviceKeyUserCancelledException {
-      await appLock.setUnlockMode(previousMode);
-      _showMessage(SettingsUnlockMethodCopy.unlockModeChangeCancelled);
-    } on DeviceKeyAuthFailedException {
-      await appLock.setUnlockMode(previousMode);
-      _showMessage(SettingsUnlockMethodCopy.unlockModeChangeAuthFailed);
-    } finally {
-      if (mounted) {
-        setState(() => _pendingUnlockMode = null);
-      }
+    final UnlockModeChangeOutcome outcome = await applyUnlockModeChange(
+      ref: ref,
+      mode: mode,
+    );
+    if (outcome is UnlockModeChangeMessage) {
+      _showMessage(outcome.message);
     }
   }
 

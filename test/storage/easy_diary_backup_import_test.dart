@@ -7,9 +7,9 @@ import 'package:path/path.dart' as p;
 import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
 import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_lock_diary/infrastructure/storage/easy_diary_backup_import.dart';
+import 'package:quill_lock_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
+import 'package:quill_lock_diary/infrastructure/storage/shared/portable_import_result.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
 
@@ -232,5 +232,79 @@ void main() {
       entries.single.id,
     );
     expect(imported?.title, 'Zip Backup Entry');
+  });
+
+  test('全部加密日記時略過且不匯入', () async {
+    const MethodChannel channel = MethodChannel('quill_lock_diary/easy_diary_realm');
+    final Directory backupRoot = Directory(p.join(harness.tempDir.path, 'encrypted_only'))
+      ..createSync(recursive: true);
+    final Directory databaseDir = Directory(p.join(backupRoot.path, 'Backup', 'Database'))
+      ..createSync(recursive: true);
+    Directory(p.join(backupRoot.path, 'Photos')).createSync(recursive: true);
+    File(p.join(databaseDir.path, 'diary.realm_20260601_235852')).writeAsStringSync('');
+    await File(p.join(backupRoot.path, 'preference.json')).writeAsString('{}');
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall call) async {
+      if (call.method == 'readDiaryBackup') {
+        return <String, Object>{
+          'entries': <Map<String, Object?>>[
+            <String, Object?>{
+              'title': 'Secret',
+              'contents': 'hidden',
+              'dateString': '2026-06-01',
+              'currentTimeMillis': DateTime.parse('2026-06-01T12:00:00').millisecondsSinceEpoch,
+              'isEncrypt': true,
+              'photos': <Map<String, Object?>>[],
+            },
+          ],
+        };
+      }
+      return null;
+    });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final setup = await harness.repository.setupRecoveryKey();
+    final EasyDiaryBackupImporter importer = EasyDiaryBackupImporter(
+      realmChannel: channel,
+      realmReaderEnabled: true,
+    );
+    final result = await importer.tryImportFromExtractedRoot(
+      session: setup.session,
+      repository: harness.repository,
+      extractedRoot: backupRoot,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.importedEntries, 0);
+    expect(result.skippedFiles, 1);
+    expect(result.failureCode, PortableImportFailureCode.easyDiaryAllEncrypted);
+    expect(await harness.repository.listEntries(), isEmpty);
+  });
+
+  test('非 Android 平台回報不支援', () async {
+    final Directory backupRoot = Directory(p.join(harness.tempDir.path, 'unsupported_platform'))
+      ..createSync(recursive: true);
+    final Directory databaseDir = Directory(p.join(backupRoot.path, 'Backup', 'Database'))
+      ..createSync(recursive: true);
+    Directory(p.join(backupRoot.path, 'Photos')).createSync(recursive: true);
+    File(p.join(databaseDir.path, 'diary.realm_20260601_235852')).writeAsStringSync('');
+    await File(p.join(backupRoot.path, 'preference.json')).writeAsString('{}');
+
+    final setup = await harness.repository.setupRecoveryKey();
+    final EasyDiaryBackupImporter importer = EasyDiaryBackupImporter(
+      realmReaderEnabled: false,
+    );
+    final result = await importer.tryImportFromExtractedRoot(
+      session: setup.session,
+      repository: harness.repository,
+      extractedRoot: backupRoot,
+    );
+
+    expect(result?.failureCode, PortableImportFailureCode.easyDiaryUnsupportedPlatform);
+    expect(result?.importedEntries, 0);
   });
 }

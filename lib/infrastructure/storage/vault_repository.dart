@@ -22,6 +22,8 @@ import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import 'restore_precheck.dart';
 import 'tag_styles_store.dart';
+import 'shared/media_type_utils.dart';
+import 'shared/vault_file_ops.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
 
@@ -639,7 +641,7 @@ class VaultRepository {
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
     if (previousRecord != null && previousRecord.filePath != filePath) {
-      await _deleteFileIfExists(previousRecord.filePath);
+      await deleteFileIfExists(previousRecord.filePath);
     }
 
     final _EntrySearchFields searchFields = _buildEntrySearchFields(normalized);
@@ -1062,7 +1064,7 @@ class VaultRepository {
         AssetAttachment(
           id: assetId,
           entryId: entry.id,
-          mimeType: _mimeTypeFromExtension(p.extension(fileName)),
+          mimeType: mimeTypeFromExtension(p.extension(fileName)),
           safeFilename: fileName,
           byteSize: await entity.length(),
           createdAt: await entity.lastModified(),
@@ -1216,7 +1218,7 @@ class VaultRepository {
     required EntryIndexRecord record,
     required List<AssetAttachment> attachments,
   }) async {
-    await _deleteFileIfExists(record.filePath);
+    await deleteFileIfExists(record.filePath);
     await _deleteAttachmentsOnDisk(date: record.date, attachments: attachments);
   }
 
@@ -1232,20 +1234,13 @@ class VaultRepository {
     );
   }
 
-  Future<void> _deleteFileIfExists(String path) async {
-    final File file = File(path);
-    if (file.existsSync()) {
-      await file.delete();
-    }
-  }
-
   Future<void> _deleteAttachmentsOnDisk({
     required DateOnly date,
     required Iterable<AssetAttachment> attachments,
   }) async {
     for (final AssetAttachment attachment in attachments) {
       final String assetPath = await _assetAbsolutePathFor(date: date, attachment: attachment);
-      await _deleteFileIfExists(assetPath);
+      await deleteFileIfExists(assetPath);
     }
   }
 
@@ -1266,20 +1261,6 @@ class VaultRepository {
   Future<String> _hashBytes(List<int> bytes) async {
     final Hash hash = await Sha256().hash(bytes);
     return hash.bytes.map((int byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-  }
-
-  String _mimeTypeFromExtension(String extension) {
-    switch (extension.toLowerCase()) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.png':
-        return 'image/png';
-      case '.webp':
-        return 'image/webp';
-      default:
-        return 'application/octet-stream';
-    }
   }
 
   String _generateRecoveryKey() {
