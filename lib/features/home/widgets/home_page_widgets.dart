@@ -722,7 +722,7 @@ class _EntryCard extends StatelessWidget {
                     child: _EntryTitleAndTagsRow(
                       titleText: _entryListHeadline(entry),
                       tags: entry.tags,
-                      titleStyle: theme.textTheme.titleLarge?.copyWith(
+                      titleStyle: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),

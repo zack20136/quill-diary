@@ -650,69 +650,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                             if (_previewMode)
                               _buildPreviewImageGallery(attachmentsAsync),
                             Expanded(
-                              child: _previewMode
-                                  ? SingleChildScrollView(
-                                      padding: EdgeInsets.only(
-                                        bottom: 8 + MediaQuery.paddingOf(context).bottom,
-                                      ),
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: PageStyle.previewPanelFill(paneTheme.colorScheme),
-                                          borderRadius:
-                                              BorderRadius.circular(PageStyle.radiusPanel),
-                                          border: Border.fromBorderSide(
-                                            PageStyle.outlineSide(paneTheme.colorScheme),
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                                          child: _bodyController.text.isEmpty
-                                              ? SelectableText(
-                                                  '尚未輸入內容',
-                                                  style: paneTheme.textTheme.bodyLarge?.copyWith(
-                                                    fontStyle: FontStyle.italic,
-                                                    height: 1.72,
-                                                    color: paneTheme.colorScheme.onSurfaceVariant
-                                                        .withValues(alpha: 0.85),
-                                                  ),
-                                                )
-                                              : _MarkdownPreviewBody(markdown: _bodyController.text),
-                                        ),
-                                      ),
-                                    )
-                                  : SingleChildScrollView(
-                                      padding: EdgeInsets.only(
-                                        bottom: 8 + MediaQuery.paddingOf(context).bottom,
-                                      ),
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: PageStyle.previewPanelFill(paneTheme.colorScheme),
-                                          borderRadius:
-                                              BorderRadius.circular(PageStyle.radiusPanel),
-                                          border: Border.fromBorderSide(
-                                            PageStyle.outlineSide(paneTheme.colorScheme),
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                                          child: TextField(
-                                            controller: _bodyController,
-                                            minLines: 6,
-                                            maxLines: null,
-                                            textAlignVertical: TextAlignVertical.top,
-                                            style: paneTheme.textTheme.bodyLarge?.copyWith(
-                                              height: 1.76,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: 0.2,
-                                            ),
-                                            decoration: _bodyFieldDecoration(
-                                              context,
-                                              hintText: '在這裡輸入內容…',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: 8 + MediaQuery.paddingOf(context).bottom,
+                                ),
+                                child: _buildBodyContentPanel(paneTheme),
+                              ),
                             ),
                           ],
                         );
@@ -1058,6 +1001,53 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
+  /// 內容區外框固定填滿可用高度，僅框內文字捲動或編輯。
+  Widget _buildBodyContentPanel(ThemeData paneTheme) {
+    final Widget body = _previewMode
+        ? SingleChildScrollView(
+            child: _bodyController.text.isEmpty
+                ? SelectableText(
+                    '尚未輸入內容',
+                    style: paneTheme.textTheme.bodyLarge?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      height: 1.72,
+                      color: paneTheme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+                    ),
+                  )
+                : _MarkdownPreviewBody(markdown: _bodyController.text),
+          )
+        : TextField(
+            controller: _bodyController,
+            expands: true,
+            maxLines: null,
+            minLines: null,
+            textAlignVertical: TextAlignVertical.top,
+            style: paneTheme.textTheme.bodyLarge?.copyWith(
+              height: 1.76,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.2,
+            ),
+            decoration: _bodyFieldDecoration(
+              context,
+              hintText: '在這裡輸入內容…',
+            ),
+          );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: PageStyle.previewPanelFill(paneTheme.colorScheme),
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        border: Border.fromBorderSide(
+          PageStyle.outlineSide(paneTheme.colorScheme),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+        child: body,
+      ),
+    );
+  }
+
   Widget _buildEditorTopBar(UnlockedVaultSession session, DiaryEntry? entry) {
     Future<void> deleteEntry() async {
       if (widget.entryId == null || _saving) {
@@ -1103,6 +1093,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     final ThemeData barTheme = Theme.of(context);
+    final Color saveButtonColor = barTheme.colorScheme.primary;
+    final Color deleteButtonColor = barTheme.colorScheme.error;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1158,12 +1150,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   IconButton(
                     tooltip: '儲存',
                     onPressed: _saving ? null : saveEntry,
+                    style: IconButton.styleFrom(foregroundColor: saveButtonColor),
                     icon: const Icon(Icons.save_outlined),
                   ),
                   if (widget.entryId != null)
                     IconButton(
                       tooltip: '刪除',
                       onPressed: _saving ? null : deleteEntry,
+                      style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),
                     ),
                 ] else ...<Widget>[
@@ -1202,6 +1196,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     IconButton(
                       tooltip: '刪除',
                       onPressed: _saving ? null : deleteEntry,
+                      style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),
                     ),
                 ],

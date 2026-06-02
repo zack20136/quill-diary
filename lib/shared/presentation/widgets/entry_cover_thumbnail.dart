@@ -45,21 +45,26 @@ class EntryCoverThumbnail extends ConsumerWidget {
         }
         final double dpr = MediaQuery.of(context).devicePixelRatio;
         final int cacheDim = (size * dpr).round().clamp(64, 512);
-        return ClipRRect(
-          borderRadius: borderRadius,
-          child: Image.memory(
-            bytes,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-            cacheWidth: cacheDim,
-            cacheHeight: cacheDim,
-            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                EntryCoverThumbnailPlaceholder(
-              size: size,
-              borderRadius: borderRadius,
-              icon: placeholderIcon,
+        return SizedBox(
+          width: size,
+          height: size,
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            clipBehavior: Clip.antiAlias,
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              width: double.infinity,
+              height: double.infinity,
+              gaplessPlayback: true,
+              cacheWidth: cacheDim,
+              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                  EntryCoverThumbnailPlaceholder(
+                size: size,
+                borderRadius: borderRadius,
+                icon: placeholderIcon,
+              ),
             ),
           ),
         );

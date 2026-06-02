@@ -15,15 +15,22 @@ Widget localFileThumbnail(
   if (!file.existsSync()) {
     return SizedBox(width: size, height: size);
   }
-  return ClipRRect(
-    borderRadius: borderRadius,
-    child: Image.file(
-      file,
-      width: size,
-      height: size,
-      fit: fit,
-      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-          SizedBox(width: size, height: size),
+  return SizedBox(
+    width: size,
+    height: size,
+    child: ClipRRect(
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: Image.file(
+        file,
+        fit: fit,
+        alignment: Alignment.center,
+        width: double.infinity,
+        height: double.infinity,
+        cacheWidth: size.round().clamp(64, 512),
+        errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+            SizedBox(width: size, height: size),
+      ),
     ),
   );
 }

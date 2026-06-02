@@ -378,6 +378,7 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
               itemBuilder: (BuildContext context, int index) {
                 return _GalleryImagePane(
                   item: widget.items[index],
+                  isActive: index == _currentIndex,
                   onZoomChanged: _onGalleryZoomChanged,
                 );
               },
@@ -420,10 +421,12 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
 class _GalleryImagePane extends ConsumerWidget {
   const _GalleryImagePane({
     required this.item,
+    required this.isActive,
     this.onZoomChanged,
   });
 
   final _PreviewGalleryImage item;
+  final bool isActive;
   final ValueChanged<bool>? onZoomChanged;
 
   @override
@@ -431,9 +434,11 @@ class _GalleryImagePane extends ConsumerWidget {
     return switch (item.sourceKind) {
       _PreviewGallerySourceKind.encrypted => _EncryptedGalleryImage(
           path: item.path,
+          isActive: isActive,
           onZoomChanged: onZoomChanged,
         ),
       _PreviewGallerySourceKind.local => _ZoomableGalleryImage(
+          isActive: isActive,
           onZoomChanged: onZoomChanged,
           child: Image.file(
             File(item.path),
@@ -453,64 +458,147 @@ class _GalleryImagePane extends ConsumerWidget {
 class _ZoomableGalleryImage extends StatefulWidget {
   const _ZoomableGalleryImage({
     required this.child,
+    required this.isActive,
     this.onZoomChanged,
   });
 
   final Widget child;
+  final bool isActive;
   final ValueChanged<bool>? onZoomChanged;
 
   @override
   State<_ZoomableGalleryImage> createState() => _ZoomableGalleryImageState();
 }
 
-class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage> {
+class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage>
+    with SingleTickerProviderStateMixin {
   static const double _minScale = 1;
   static const double _maxScale = 4;
+  static const double _doubleTapScale = 2.5;
   static const double _zoomedScaleThreshold = 1.01;
+  static const Duration _zoomAnimationDuration = Duration(milliseconds: 220);
 
   final TransformationController _transformController = TransformationController();
+  late final AnimationController _zoomAnimationController = AnimationController(
+    vsync: this,
+    duration: _zoomAnimationDuration,
+  );
+
+  Animation<Matrix4>? _zoomAnimation;
   bool _isZoomed = false;
+  bool _panEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _transformController.addListener(_onTransformChanged);
+    _zoomAnimationController.addListener(_onZoomAnimationTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ZoomableGalleryImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive && oldWidget.isActive && _isZoomed) {
+      _resetTransform(animated: false);
+    }
   }
 
   @override
   void dispose() {
     _transformController.removeListener(_onTransformChanged);
+    _zoomAnimationController.removeListener(_onZoomAnimationTick);
+    _zoomAnimationController.dispose();
     _transformController.dispose();
     super.dispose();
   }
 
-  void _onTransformChanged() {
-    final bool zoomed = _transformController.value.getMaxScaleOnAxis() > _zoomedScaleThreshold;
-    if (zoomed == _isZoomed) {
+  void _onZoomAnimationTick() {
+    final Animation<Matrix4>? animation = _zoomAnimation;
+    if (animation == null) {
       return;
     }
-    _isZoomed = zoomed;
-    widget.onZoomChanged?.call(zoomed);
+    _transformController.value = animation.value;
+  }
+
+  void _onTransformChanged() {
+    if (_zoomAnimationController.isAnimating) {
+      return;
+    }
+    _syncZoomState(notifyParent: true);
+  }
+
+  void _syncZoomState({required bool notifyParent}) {
+    final double scale = _transformController.value.getMaxScaleOnAxis();
+    final bool zoomed = scale > _zoomedScaleThreshold;
+    final bool panEnabled = zoomed;
+
+    if (notifyParent && zoomed != _isZoomed) {
+      widget.onZoomChanged?.call(zoomed);
+    }
+
+    if (zoomed != _isZoomed || panEnabled != _panEnabled) {
+      setState(() {
+        _isZoomed = zoomed;
+        _panEnabled = panEnabled;
+      });
+    }
+  }
+
+  void _resetTransform({required bool animated}) {
+    _zoomAnimationController.stop();
+    _zoomAnimation = null;
+    if (animated) {
+      _animateToMatrix(Matrix4.identity());
+      return;
+    }
+    _transformController.value = Matrix4.identity();
+    _syncZoomState(notifyParent: true);
+  }
+
+  void _animateToMatrix(Matrix4 target) {
+    _zoomAnimationController.stop();
+    final bool targetZoomed = target.getMaxScaleOnAxis() > _zoomedScaleThreshold;
+    if (targetZoomed != _isZoomed) {
+      setState(() {
+        _isZoomed = targetZoomed;
+        _panEnabled = targetZoomed;
+      });
+      widget.onZoomChanged?.call(targetZoomed);
+    }
+    _zoomAnimation = Matrix4Tween(
+      begin: _transformController.value.clone(),
+      end: target,
+    ).animate(
+      CurvedAnimation(
+        parent: _zoomAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+    unawaited(
+      _zoomAnimationController.forward(from: 0).whenComplete(() {
+        if (!mounted) {
+          return;
+        }
+        _syncZoomState(notifyParent: true);
+      }),
+    );
   }
 
   void _handleDoubleTapDown(TapDownDetails details) {
-    final Matrix4 matrix = _transformController.value.clone();
-    final double currentScale = matrix.getMaxScaleOnAxis();
-    if (currentScale > _zoomedScaleThreshold) {
-      _transformController.value = Matrix4.identity();
+    _zoomAnimationController.stop();
+    _zoomAnimation = null;
+
+    if (_isZoomed) {
+      _resetTransform(animated: true);
       return;
     }
 
-    final RenderBox? box = context.findRenderObject() as RenderBox?;
-    if (box == null) {
-      return;
-    }
-    final Offset focalPoint = box.globalToLocal(details.globalPosition);
-    final Matrix4 next = Matrix4.identity()
+    final Offset focalPoint = details.localPosition;
+    final Matrix4 target = Matrix4.identity()
       ..translateByDouble(focalPoint.dx, focalPoint.dy, 0, 1)
-      ..scaleByDouble(2.5, 2.5, 1, 1)
+      ..scaleByDouble(_doubleTapScale, _doubleTapScale, 1, 1)
       ..translateByDouble(-focalPoint.dx, -focalPoint.dy, 0, 1);
-    _transformController.value = next;
+    _animateToMatrix(target);
   }
 
   @override
@@ -519,12 +607,31 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage> {
       builder: (BuildContext context, BoxConstraints constraints) {
         return GestureDetector(
           onDoubleTapDown: _handleDoubleTapDown,
+          behavior: HitTestBehavior.opaque,
           child: InteractiveViewer(
             transformationController: _transformController,
+            clipBehavior: Clip.none,
+            boundaryMargin: const EdgeInsets.all(80),
             minScale: _minScale,
             maxScale: _maxScale,
-            panEnabled: true,
+            panEnabled: _panEnabled,
             scaleEnabled: true,
+            trackpadScrollCausesScale: true,
+            onInteractionStart: (_) {
+              if (_zoomAnimationController.isAnimating) {
+                _zoomAnimationController.stop();
+                _zoomAnimation = null;
+              }
+            },
+            onInteractionEnd: (_) {
+              if (_zoomAnimationController.isAnimating) {
+                return;
+              }
+              final double scale = _transformController.value.getMaxScaleOnAxis();
+              if (scale < _zoomedScaleThreshold) {
+                _resetTransform(animated: true);
+              }
+            },
             child: SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight,
@@ -540,10 +647,12 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage> {
 class _EncryptedGalleryImage extends ConsumerWidget {
   const _EncryptedGalleryImage({
     required this.path,
+    required this.isActive,
     this.onZoomChanged,
   });
 
   final String path;
+  final bool isActive;
   final ValueChanged<bool>? onZoomChanged;
 
   @override
@@ -560,6 +669,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
           );
         }
         return _ZoomableGalleryImage(
+          isActive: isActive,
           onZoomChanged: onZoomChanged,
           child: Image.memory(
             bytes,
