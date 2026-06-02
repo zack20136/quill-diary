@@ -338,11 +338,20 @@ class _EntryImageGalleryDialog extends StatefulWidget {
 class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
   late final PageController _pageController = PageController(initialPage: widget.initialIndex);
   late int _currentIndex = widget.initialIndex;
+  bool _pageScrollEnabled = true;
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _onGalleryZoomChanged(bool zoomed) {
+    final bool pageScrollEnabled = !zoomed;
+    if (_pageScrollEnabled == pageScrollEnabled) {
+      return;
+    }
+    setState(() => _pageScrollEnabled = pageScrollEnabled);
   }
 
   @override
@@ -359,9 +368,18 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
             PageView.builder(
               controller: _pageController,
               itemCount: widget.items.length,
-              onPageChanged: (int index) => setState(() => _currentIndex = index),
+              physics: _pageScrollEnabled && widget.items.length > 1
+                  ? const PageScrollPhysics()
+                  : const NeverScrollableScrollPhysics(),
+              onPageChanged: (int index) => setState(() {
+                _currentIndex = index;
+                _pageScrollEnabled = true;
+              }),
               itemBuilder: (BuildContext context, int index) {
-                return _GalleryImagePane(item: widget.items[index]);
+                return _GalleryImagePane(
+                  item: widget.items[index],
+                  onZoomChanged: _onGalleryZoomChanged,
+                );
               },
             ),
             PositionedDirectional(
@@ -400,27 +418,31 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
 }
 
 class _GalleryImagePane extends ConsumerWidget {
-  const _GalleryImagePane({required this.item});
+  const _GalleryImagePane({
+    required this.item,
+    this.onZoomChanged,
+  });
 
   final _PreviewGalleryImage item;
+  final ValueChanged<bool>? onZoomChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (item.sourceKind) {
-      _PreviewGallerySourceKind.encrypted => _EncryptedGalleryImage(path: item.path),
-      _PreviewGallerySourceKind.local => Center(
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4,
-            child: Image.file(
-              File(item.path),
-              fit: BoxFit.contain,
-              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                  const Icon(
-                Icons.broken_image_outlined,
-                color: Colors.white,
-                size: 56,
-              ),
+      _PreviewGallerySourceKind.encrypted => _EncryptedGalleryImage(
+          path: item.path,
+          onZoomChanged: onZoomChanged,
+        ),
+      _PreviewGallerySourceKind.local => _ZoomableGalleryImage(
+          onZoomChanged: onZoomChanged,
+          child: Image.file(
+            File(item.path),
+            fit: BoxFit.contain,
+            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                const Icon(
+              Icons.broken_image_outlined,
+              color: Colors.white,
+              size: 56,
             ),
           ),
         ),
@@ -428,10 +450,101 @@ class _GalleryImagePane extends ConsumerWidget {
   }
 }
 
+class _ZoomableGalleryImage extends StatefulWidget {
+  const _ZoomableGalleryImage({
+    required this.child,
+    this.onZoomChanged,
+  });
+
+  final Widget child;
+  final ValueChanged<bool>? onZoomChanged;
+
+  @override
+  State<_ZoomableGalleryImage> createState() => _ZoomableGalleryImageState();
+}
+
+class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage> {
+  static const double _minScale = 1;
+  static const double _maxScale = 4;
+  static const double _zoomedScaleThreshold = 1.01;
+
+  final TransformationController _transformController = TransformationController();
+  bool _isZoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformController.addListener(_onTransformChanged);
+  }
+
+  @override
+  void dispose() {
+    _transformController.removeListener(_onTransformChanged);
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  void _onTransformChanged() {
+    final bool zoomed = _transformController.value.getMaxScaleOnAxis() > _zoomedScaleThreshold;
+    if (zoomed == _isZoomed) {
+      return;
+    }
+    _isZoomed = zoomed;
+    widget.onZoomChanged?.call(zoomed);
+  }
+
+  void _handleDoubleTapDown(TapDownDetails details) {
+    final Matrix4 matrix = _transformController.value.clone();
+    final double currentScale = matrix.getMaxScaleOnAxis();
+    if (currentScale > _zoomedScaleThreshold) {
+      _transformController.value = Matrix4.identity();
+      return;
+    }
+
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      return;
+    }
+    final Offset focalPoint = box.globalToLocal(details.globalPosition);
+    final Matrix4 next = Matrix4.identity()
+      ..translateByDouble(focalPoint.dx, focalPoint.dy, 0, 1)
+      ..scaleByDouble(2.5, 2.5, 1, 1)
+      ..translateByDouble(-focalPoint.dx, -focalPoint.dy, 0, 1);
+    _transformController.value = next;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return GestureDetector(
+          onDoubleTapDown: _handleDoubleTapDown,
+          child: InteractiveViewer(
+            transformationController: _transformController,
+            minScale: _minScale,
+            maxScale: _maxScale,
+            panEnabled: true,
+            scaleEnabled: true,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: Center(child: widget.child),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _EncryptedGalleryImage extends ConsumerWidget {
-  const _EncryptedGalleryImage({required this.path});
+  const _EncryptedGalleryImage({
+    required this.path,
+    this.onZoomChanged,
+  });
 
   final String path;
+  final ValueChanged<bool>? onZoomChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -446,15 +559,12 @@ class _EncryptedGalleryImage extends ConsumerWidget {
             ),
           );
         }
-        return Center(
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4,
-            child: Image.memory(
-              bytes,
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-            ),
+        return _ZoomableGalleryImage(
+          onZoomChanged: onZoomChanged,
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
           ),
         );
       },
