@@ -43,6 +43,7 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(if (id.isEmpty()) null else id)
                 }
                 "signInGoogleDrive" -> signInGoogleDrive(call, result)
+                "getGoogleDriveConnectionSnapshot" -> getGoogleDriveConnectionSnapshot(result)
                 else -> result.notImplemented()
             }
         }
@@ -81,6 +82,15 @@ class MainActivity : FlutterFragmentActivity() {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun getGoogleDriveConnectionSnapshot(result: MethodChannel.Result) {
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        if (account != null && hasDriveAppDataPermission(account)) {
+            result.success(googleDriveAccountPayload(account))
+            return
+        }
+        result.success(null)
     }
 
     private fun signInGoogleDrive(call: MethodCall, result: MethodChannel.Result) {
@@ -169,16 +179,28 @@ class MainActivity : FlutterFragmentActivity() {
         )
     }
 
+    private fun appendGoogleDriveAndroidOAuthChecklist(builder: StringBuilder) {
+        builder.apply {
+            append("\n請到 Google Cloud Console 確認 Android OAuth client：")
+            append("\n- package name：")
+            append(ANDROID_PACKAGE_NAME)
+            append("\n- debug 安裝請加入 SHA-1：")
+            append(DEBUG_SHA1_FINGERPRINT)
+            append("\n- release / upload keystore 安裝請加入 SHA-1：")
+            append(RELEASE_UPLOAD_SHA1_FINGERPRINT)
+            append("\n- 若從 Google Play 安裝，還需 Play Console → App signing 的 SHA-1（通常與 upload 不同）")
+        }
+    }
+
     private fun googleDriveAuthErrorMessage(error: ApiException): String {
         val detail = error.localizedMessage?.trim()
+        val lowerDetail = detail?.lowercase() ?: ""
         return when (error.statusCode) {
             10 -> buildString {
                 append("[10] Google OAuth 設定不匹配（DEVELOPER_ERROR）。")
-                append("\n請到 Google Cloud Console 檢查 Android OAuth client 是否與目前安裝包一致：")
-                append("\n- package name：zack20136.com.quill_lock_diary")
-                append("\n- debug 安裝請加入 SHA-1：B3:E5:72:2A:66:65:7F:A2:68:9D:4C:BA:64:35:52:A1:61:18:6E:5E")
-                append("\n- release / upload keystore 安裝請加入 SHA-1：F2:13:1B:D9:A1:C4:B3:F8:49:E6:58:D2:EB:2B:7E:DA:0B:97:EB:0E")
-                append("\n- 若是從 Google Play 安裝，請改用 Play Console 的 App signing SHA-1，不是 upload keystore")
+                append("\n通常是 package name 或 SHA-1 與目前安裝包不一致。")
+                appendGoogleDriveAndroidOAuthChecklist(this)
+                append("\n並確認 oauth_config.xml 填的是 Web OAuth client id。")
                 if (!detail.isNullOrEmpty()) {
                     append("\n詳細資訊：")
                     append(detail)
@@ -193,8 +215,11 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
             16 -> buildString {
-                append("[16] Google 帳號驗證沒有完成。")
-                append("\n請先確認 Google Play 服務、裝置上的 Google 帳號狀態，以及 OAuth 設定是否正確。")
+                append("[16] Google 帳號驗證沒有完成（Account reauth failed）。")
+                append("\n常見原因：")
+                append("\n1. GCP 的 SHA-1 與目前安裝包不一致")
+                appendGoogleDriveAndroidOAuthChecklist(this)
+                append("\n2. 先前登入狀態異常：請按「重新連結 Google Drive」，或到 Google 帳號移除本 App 的第三方存取權後再試")
                 if (!detail.isNullOrEmpty()) {
                     append("\n詳細資訊：")
                     append(detail)
@@ -209,7 +234,17 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
             12501 -> buildString {
-                append("[12501] 你已取消 Google 登入，尚未連結 Google Drive。")
+                if (lowerDetail.contains("activity is cancelled by the user") ||
+                    lowerDetail.contains("account reauth failed") ||
+                    lowerDetail.contains("account auth failed")
+                ) {
+                    append("[12501] Google 帳號登入未完成。")
+                    append("\n若你沒有按取消，多半是 OAuth 設定與安裝包簽章不一致。")
+                    appendGoogleDriveAndroidOAuthChecklist(this)
+                } else {
+                    append("[12501] 你已取消 Google 登入，尚未連結 Google Drive。")
+                    append("\n若要連結，請再按一次「連結 Google Drive」。")
+                }
                 if (!detail.isNullOrEmpty()) {
                     append("\n詳細資訊：")
                     append(detail)
@@ -217,6 +252,12 @@ class MainActivity : FlutterFragmentActivity() {
             }
             else -> buildString {
                 append("[${error.statusCode}] Google 帳號登入失敗。")
+                if (lowerDetail.contains("no credential") ||
+                    lowerDetail.contains("developer_error") ||
+                    lowerDetail.contains("account auth failed")
+                ) {
+                    appendGoogleDriveAndroidOAuthChecklist(this)
+                }
                 if (!detail.isNullOrEmpty()) {
                     append("\n詳細資訊：")
                     append(detail)
@@ -559,6 +600,14 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     companion object {
+        // 更新 keystore 後請同步 docs/Google-Drive-OAuth-設定.md 並執行 signingReport。
+        // 與 lib/infrastructure/drive/google_drive_oauth_errors.dart 保持一致。
+        private const val ANDROID_PACKAGE_NAME = "zack20136.com.quill_lock_diary"
+        private const val DEBUG_SHA1_FINGERPRINT =
+            "B0:B3:BC:E7:7C:68:8E:67:84:B4:B8:BB:FF:E5:A8:AE:24:6F:53:BB"
+        private const val RELEASE_UPLOAD_SHA1_FINGERPRINT =
+            "3D:40:C1:59:06:52:4E:C5:76:2D:29:51:30:92:77:7C:54:D5:42:1C"
+
         private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
         private const val DEVICE_KEY_CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
         private const val GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE = 43021

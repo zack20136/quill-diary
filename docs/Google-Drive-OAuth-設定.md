@@ -40,8 +40,21 @@ Google Drive 備份功能在 Android 上依賴 Google Sign-In 與 Google Drive A
 
 Cloud Console 內的 Android OAuth client 必須與實際 APK / AAB 一致：
 
-- package name
-- SHA-1
+- package name：`zack20136.com.quill_lock_diary`
+- SHA-1（依安裝方式擇一或多組登記）
+
+| 安裝方式 | SHA-1 |
+| --- | --- |
+| debug（本機開發） | `B0:B3:BC:E7:7C:68:8E:67:84:B4:B8:BB:FF:E5:A8:AE:24:6F:53:BB` |
+| release / upload keystore | `3D:40:C1:59:06:52:4E:C5:76:2D:29:51:30:92:77:7C:54:D5:42:1C` |
+| Google Play 安裝 | Play Console → **App signing** 的 SHA-1（通常與 upload 不同） |
+
+查詢本機 SHA-1：
+
+```bash
+cd android
+./gradlew :app:signingReport
+```
 
 最常見錯誤是：
 
@@ -90,6 +103,15 @@ Cloud Console 內的 Android OAuth client 必須與實際 APK / AAB 一致：
 - Google Play 服務是否正常
 - Web client id 是否正確
 - Android OAuth client 與 SHA-1 是否正確
+
+### `[16] Account reauth failed` 或選帳號後立刻失敗
+
+常見於 release / Play 安裝，優先檢查：
+
+- GCP 是否已登記正確的 **release** 或 **Play App signing** SHA-1
+- App 內按「重新連結 Google Drive」，或到 Google 帳號移除本 App 第三方存取權後再試
+
+`google_sign_in` 7.x 在 Android 上，`canceled` 與 `Activity is cancelled by the user` **常是 OAuth 設定錯誤被誤報**，不代表使用者真的按了取消。
 
 ## 重新連結
 

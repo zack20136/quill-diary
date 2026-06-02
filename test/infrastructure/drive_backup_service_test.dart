@@ -68,6 +68,45 @@ void main() {
       expect(state.accountLabel, 'Writer (writer@example.com)');
     });
 
+    test('getConnectionState 使用 Android 快照時不呼叫輕量登入', () async {
+      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
+        lightweightAccount: FakeGoogleDriveSignedInAccount(
+          email: 'writer@example.com',
+          displayName: 'Writer',
+          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
+        ),
+      );
+      final GoogleDriveBackupService service = GoogleDriveBackupService(
+        signInClient: signInClient,
+        androidConnectionSnapshotOverride: () async => null,
+      );
+
+      final DriveConnectionState state = await service.getConnectionState();
+
+      expect(state.isConnected, isFalse);
+      expect(signInClient.lightweightCalls, 0);
+      expect(signInClient.initializeCalls, 0);
+    });
+
+    test('getConnectionState 使用 Android 快照回傳已連結帳號', () async {
+      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient();
+      final GoogleDriveBackupService service = GoogleDriveBackupService(
+        signInClient: signInClient,
+        androidConnectionSnapshotOverride: () async => const DriveConnectionState(
+          isConnected: true,
+          email: 'writer@example.com',
+          displayName: 'Writer',
+        ),
+      );
+
+      final DriveConnectionState state = await service.getConnectionState();
+
+      expect(state.isConnected, isTrue);
+      expect(state.email, 'writer@example.com');
+      expect(state.displayName, 'Writer');
+      expect(signInClient.lightweightCalls, 0);
+    });
+
     test('getConnectionState returns disconnected when account has no Drive authorization', () async {
       final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
         lightweightAccount: FakeGoogleDriveSignedInAccount(

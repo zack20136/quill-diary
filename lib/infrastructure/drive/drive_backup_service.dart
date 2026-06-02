@@ -7,6 +7,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
 
 import '../../config/oauth_config.dart';
+import 'google_drive_oauth_errors.dart';
 
 final class DriveConnectionState {
   const DriveConnectionState({
@@ -222,13 +223,19 @@ abstract class DriveBackupService {
 }
 
 class GoogleDriveBackupService implements DriveBackupService {
-  GoogleDriveBackupService({GoogleDriveSignInClient? signInClient})
-      : _signInClient = signInClient ?? GoogleSignInClientAdapter();
+  GoogleDriveBackupService({
+    GoogleDriveSignInClient? signInClient,
+    Future<DriveConnectionState?> Function()? androidConnectionSnapshotOverride,
+  }) : _signInClient = signInClient ?? GoogleSignInClientAdapter(),
+       _androidConnectionSnapshotOverride = androidConnectionSnapshotOverride;
+
+  /// 測試用：覆寫 Android 連線快照，不觸發 [attemptLightweightAuthentication]。
+  final Future<DriveConnectionState?> Function()? _androidConnectionSnapshotOverride;
 
   static const MethodChannel _androidDriveAuthChannel = MethodChannel(
     'quill_lock_diary/oauth_config',
   );
-  static const String _oauthSetupDocPath = 'docs/Google-Drive-OAuth-設定.md';
+  static const String _oauthSetupDocPath = GoogleDriveOAuthFingerprints.oauthSetupDocPath;
   static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];
 
   final GoogleDriveSignInClient _signInClient;
@@ -328,7 +335,9 @@ class GoogleDriveBackupService implements DriveBackupService {
       if (recovered != null) {
         return recovered;
       }
-      throw StateError(_userMessageForGoogleSignIn(error));
+      throw StateError(
+        userMessageForGoogleSignIn(error, oauthSetupDocPath: _oauthSetupDocPath),
+      );
     }
   }
 
@@ -432,79 +441,69 @@ class GoogleDriveBackupService implements DriveBackupService {
     }
   }
 
-  static String _userMessageForGoogleSignIn(GoogleSignInException error) {
-    final String? detail = error.description?.trim();
-    final String detailLine =
-        detail != null && detail.isNotEmpty ? '\n詳細資訊：$detail' : '';
-    final String lowerDetail = detail?.toLowerCase() ?? '';
+  DriveConnectionState? _connectionStateFromNativePayload(Object? payload) {
+    if (payload is! Map<Object?, Object?>) {
+      return null;
+    }
+    final String? email = payload['email'] as String?;
+    if (email == null || email.trim().isEmpty) {
+      return null;
+    }
+    final String? trimmedName = (payload['displayName'] as String?)?.trim();
+    return DriveConnectionState(
+      isConnected: true,
+      email: email.trim(),
+      displayName:
+          trimmedName != null && trimmedName.isNotEmpty ? trimmedName : null,
+    );
+  }
 
-    if (lowerDetail.contains('admin_policy_enforced')) {
-      return '這個 Google 帳號受到組織政策限制，暫時無法授權 Google Drive 給此 App。\n'
-          '請改用可自行授權的個人帳號，或請管理員確認是否允許此 App 使用 Drive 權限。'
-          '$detailLine';
+  Future<DriveConnectionState?> _readAndroidConnectionSnapshot() async {
+    if (_androidConnectionSnapshotOverride != null) {
+      return _androidConnectionSnapshotOverride!();
     }
-    if (lowerDetail.contains('access_denied')) {
-      return 'Google Drive 權限授權沒有完成。\n'
-          '如果你在選完帳號後沒有看到 Drive 權限頁，請優先檢查 Web Client ID、Android OAuth client、package name 與 SHA-1 是否設定正確。\n'
-          '詳細設定請參考 $_oauthSetupDocPath。'
-          '$detailLine';
+    if (!Platform.isAndroid) {
+      return null;
     }
+    try {
+      final Object? payload = await _androidDriveAuthChannel.invokeMethod<Object?>(
+        'getGoogleDriveConnectionSnapshot',
+      );
+      return _connectionStateFromNativePayload(payload);
+    } on Object {
+      return null;
+    }
+  }
 
-    switch (error.code) {
-      case GoogleSignInExceptionCode.canceled:
-        return '你已取消 Google 登入，尚未連結 Google Drive。\n'
-            '請重新按一次「連結 Google Drive」，並完成帳號選擇與授權。'
-            '$detailLine';
-      case GoogleSignInExceptionCode.interrupted:
-        return 'Google 登入流程被中斷，請稍後再試一次。$detailLine';
-      case GoogleSignInExceptionCode.uiUnavailable:
-        return '目前裝置無法顯示 Google 登入畫面。\n'
-            '請先確認 Google Play 服務可正常使用，再重新嘗試。'
-            '$detailLine';
-      case GoogleSignInExceptionCode.clientConfigurationError:
-      case GoogleSignInExceptionCode.providerConfigurationError:
-        return 'Google 登入設定有誤。\n'
-            '請確認 `oauth_config.xml` 的 Client ID 正確，且 Google Cloud Console 內的 Web OAuth client、Android OAuth client、package name 與 SHA-1 都屬於同一個專案。\n'
-            '詳細設定請參考 $_oauthSetupDocPath。'
-            '$detailLine';
-      case GoogleSignInExceptionCode.userMismatch:
-        return '目前登入中的 Google 帳號與授權帳號不一致。\n'
-            '請重新連結 Google Drive，並確認選擇的是同一個帳號。'
-            '$detailLine';
-      case GoogleSignInExceptionCode.unknownError:
-        if (lowerDetail.contains('no credential')) {
-          return '目前找不到可用的 Google 登入憑證。\n'
-              '請檢查 Android 端的 Google Sign-In / OAuth 設定，特別是 package name、SHA-1 與 Web Client ID。\n'
-              '詳細設定請參考 $_oauthSetupDocPath。'
-              '$detailLine';
-        }
-        if (lowerDetail.contains('account auth failed')) {
-          return 'Google 帳號驗證沒有完成。\n'
-              '這通常代表 OAuth 設定或裝置端登入狀態有問題，請先確認 Google Cloud Console 的 Android OAuth client、SHA-1 與目前安裝包一致。\n'
-              '詳細設定請參考 $_oauthSetupDocPath。'
-              '$detailLine';
-        }
-        return 'Google 登入發生未預期錯誤，請稍後再試一次。\n'
-            '如果問題持續發生，請優先檢查 OAuth 設定是否完整。'
-            '$detailLine';
+  Future<DriveConnectionState> _getAndroidConnectionState() async {
+    final DriveConnectionState? snapshot = await _readAndroidConnectionSnapshot();
+    return snapshot ?? const DriveConnectionState.disconnected();
+  }
+
+  Future<DriveConnectionState> _getPluginConnectionState() async {
+    await _ensureInitialized();
+    final GoogleDriveSignedInAccount? account =
+        await _signInClient.attemptLightweightAuthentication();
+    if (account == null) {
+      return const DriveConnectionState.disconnected();
     }
+    final GoogleDriveAuthorizationHandle? authorization =
+        await account.authorizationForScopes(_scopes);
+    if (authorization == null) {
+      return const DriveConnectionState.disconnected();
+    }
+    return _connectedStateForAccount(account);
   }
 
   @override
   Future<DriveConnectionState> getConnectionState() async {
     try {
-      await _ensureInitialized();
-      final GoogleDriveSignedInAccount? account =
-          await _signInClient.attemptLightweightAuthentication();
-      if (account == null) {
-        return const DriveConnectionState.disconnected();
+      // Android：僅讀取本機已授權帳號快照。不可呼叫 attemptLightweightAuthentication，
+      // 否則 Credential Manager 會在設定頁載入時彈出 Google 登入 UI。
+      if (Platform.isAndroid || _androidConnectionSnapshotOverride != null) {
+        return _getAndroidConnectionState();
       }
-      final GoogleDriveAuthorizationHandle? authorization =
-          await account.authorizationForScopes(_scopes);
-      if (authorization == null) {
-        return const DriveConnectionState.disconnected();
-      }
-      return _connectedStateForAccount(account);
+      return _getPluginConnectionState();
     } on Object {
       return const DriveConnectionState.disconnected();
     }
