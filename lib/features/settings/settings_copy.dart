@@ -233,12 +233,28 @@ abstract final class SettingsDriveBackupCopy {
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
 
-  static const String connectedHint = '已連結 Google Drive，可上傳或還原備份。';
+  static String connectedHint(String? accountLabel) {
+    if (accountLabel == null || accountLabel.trim().isEmpty) {
+      return '已連結 Google Drive，可上傳或還原備份。';
+    }
+    return '已連結 Google Drive：$accountLabel，可上傳或還原備份。';
+  }
   static const String disconnectedHint = '尚未連結 Google Drive，請先完成 Google 登入與授權。';
   static const String actionsLockedHint = '要使用雲端備份與還原，請先解鎖日記庫並建立復原金鑰。';
 
-  static const String connectSuccess = 'Google Drive 已連結。';
-  static const String reconnectSuccess = '已重新連結 Google Drive。';
+  static String connectSuccess(String? accountLabel) {
+    if (accountLabel == null || accountLabel.trim().isEmpty) {
+      return 'Google Drive 已連結。';
+    }
+    return 'Google Drive 已連結：$accountLabel';
+  }
+
+  static String reconnectSuccess(String? accountLabel) {
+    if (accountLabel == null || accountLabel.trim().isEmpty) {
+      return '已重新連結 Google Drive。';
+    }
+    return '已重新連結 Google Drive：$accountLabel';
+  }
   static const String uploadSuccess = '備份已上傳到 Google Drive。';
   static const String noBackups = 'Google Drive 中找不到 .jbackup 備份檔。';
   static const String pickDialogTitle = '選擇 Google Drive 備份';

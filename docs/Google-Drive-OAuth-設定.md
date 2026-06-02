@@ -1,99 +1,101 @@
 # Google Drive OAuth 設定（Android）
 
 Google Drive 備份功能在 Android 上依賴 Google Sign-In 與 Google Drive API 授權。
-若設定正確，流程應該是：
 
-1. App 叫出 Google 帳號選擇器
-2. 使用者選擇帳號
-3. Google 顯示 Drive 權限頁
-4. 使用者按允許
-5. App 成功進入 Google Drive 備份流程
+## 目標流程
 
-如果流程卡在不同位置，代表問題來源不同。
+正確設定完成後，使用者在 App 內應看到這條流程：
 
-## 必備設定
+1. 按下 `連結 Google Drive`
+2. 出現 Google 帳號選擇器
+3. 選擇帳號
+4. 出現 Google Drive 權限頁
+5. 同意授權
+6. App 顯示已連結帳號，例如 `姓名 (email)` 或 `email`
 
-需要在同一個 Google Cloud 專案中建立並確認：
+如果只出現帳號選擇器、沒有出現 Drive 權限頁，通常是 OAuth 設定不完整。
 
-- Android application OAuth client
-- Web application OAuth client
-- 已啟用 Google Drive API
-- OAuth consent screen 已完成可用狀態
+## 必要設定
 
-## 專案對應位置
+同一個 Google Cloud 專案中需要完成：
+
+- 啟用 `Google Drive API`
+- 建立 `Android application` OAuth client
+- 建立 `Web application` OAuth client
+- 完成 OAuth consent screen 設定
+
+## 專案內設定位置
 
 | 位置 | 用途 |
-|------|------|
-| `android/app/src/main/res/values/oauth_config.xml` | `oauth_request_id_token`，必須填入 Web OAuth client id |
-| `lib/config/oauth_config.dart` | Android / iOS 讀取 Google OAuth 設定 |
-| `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` | 可覆寫 Android 使用的 Web client id |
-| `ios/Runner/Info.plist` | iOS 的 `GIDClientID` / URL scheme |
+| --- | --- |
+| `android/app/src/main/res/values/oauth_config.xml` | 設定 Android 使用的 Web client id |
+| `lib/config/oauth_config.dart` | 讀取 Android / iOS OAuth 設定 |
+| `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` | 覆寫 Android 使用的 Web client id |
 
-## Android 端重點
+### `oauth_config.xml`
 
-- `oauth_request_id_token` 必須是同一個 GCP 專案下的 **Web application client ID**
-- Cloud Console 中必須另外建立 **Android OAuth client**
-- Android OAuth client 的：
-  - 套件名稱必須對應目前 app 的 `applicationId`
-  - SHA-1 必須對應你現在實際簽署 APK / AAB 所用的金鑰
+`oauth_request_id_token` 必須填入同一個 GCP 專案下的 **Web OAuth client ID**。
 
-如果 Web client id、Android client、套件名稱、SHA-1 不匹配，常見現象就是：
+## Android 端需要對上的項目
 
-- Google 帳號選擇器有出現
-- 選完帳號後 **完全沒有出現 Google Drive 權限頁**
-- App 直接跳回來並顯示授權失敗 / 授權需要處理
+Cloud Console 內的 Android OAuth client 必須與實際 APK / AAB 一致：
 
-## 故障現象對照
+- package name
+- SHA-1
 
-### 1. 帳號選擇器有出現，但權限頁沒出現
+最常見錯誤是：
+
+- `oauth_request_id_token` 放錯成 Android client id
+- Web client id 與 Android client 不在同一個 GCP 專案
+- Cloud Console 的 SHA-1 跟實際簽章不一致
+
+## App 內如何判定「連結成功」
+
+設定頁現在會用兩個條件一起判定：
+
+1. 是否有目前登入中的 Google 帳號
+2. 該帳號是否已取得 Google Drive scope 授權
+
+只有兩者都成立，才會顯示：
+
+- 已連結 Google Drive
+- 帳號資訊，例如 `姓名 (email)` 或 `email`
+- 可進一步執行上傳／列出／下載備份
+
+如果只有登入痕跡、沒有 Drive scope，UI 仍會視為「尚未連結」。
+
+## 常見錯誤
+
+### 選完帳號後沒有出現 Drive 權限頁
 
 優先檢查：
 
-- `oauth_request_id_token` 是否真的是 Web OAuth client id
-- Cloud Console 是否有建立 Android OAuth client
-- Android OAuth client 的套件名稱是否正確
+- `oauth_config.xml` 是否填的是 Web OAuth client id
+- Android OAuth client 的 package name 是否正確
 - Android OAuth client 的 SHA-1 是否正確
-- Google Drive API 是否啟用
+- Google Drive API 是否已啟用
 
-這種情況通常 **不是** 單純的帳號拒絕授權殘留。
+### `access_denied`
 
-### 2. 有出現權限頁，但使用者按了拒絕
+通常代表權限授權被拒絕，或 OAuth 設定不一致，導致 Drive scope 無法正常核發。
 
-先做：
+### `admin_policy_enforced`
 
-- App 內先按 `連結 Google Drive`
-- 若已連結過，改按 `重新連結 Google Drive`
-- 若仍有問題，到 Google 帳號的第三方連線管理移除 App 存取權後重試
+代表帳號所屬的公司或學校組織政策禁止此 App 存取 Google Drive。請改用個人帳號，或由管理員放行。
 
-### 3. 出現 `admin_policy_enforced`
+### `No credential`
 
-這代表帳號所屬的公司 / 學校組織政策禁止這個第三方 App 存取 Google 資料。
-需要組織管理員放行，不是重新登入能解。
+通常表示 Google Sign-In / OAuth 設定異常，優先檢查：
 
-### 4. 出現 `No credential`
+- Google Play 服務是否正常
+- Web client id 是否正確
+- Android OAuth client 與 SHA-1 是否正確
 
-優先檢查：
+## 重新連結
 
-- Android 上的 Google Play 服務
-- Google Sign-In / OAuth 設定
-- `oauth_request_id_token`、Android client、SHA-1 是否一致
+如果之前授權過、現在需要改帳號或重走授權流程：
 
-## 建議驗證流程
+1. 在 App 內按 `重新連結 Google Drive`
+2. 重新選擇帳號並完成授權
 
-### 設定正確時
-
-1. 按 `連結 Google Drive`
-2. 出現 Google 帳號選擇器
-3. 選帳號後出現 Google Drive 權限頁
-4. 按允許
-5. App 顯示已連結 Google Drive
-6. 之後可直接上傳備份或從雲端還原
-
-### 設定錯誤時
-
-1. 按 `連結 Google Drive`，或在已連結狀態下按 `重新連結 Google Drive`
-2. 出現 Google 帳號選擇器
-3. 選帳號後直接失敗
-4. 權限頁完全沒有出現
-
-這時應優先查 OAuth / SHA-1，不要只重試帳號。
+這個動作會重置目前的 Google Sign-In session，再重新建立新的 Drive 授權狀態。

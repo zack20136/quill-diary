@@ -1,0 +1,156 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
+import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
+import 'package:quill_lock_diary/features/settings/pages/settings_page.dart';
+import 'package:quill_lock_diary/features/settings/providers/settings_providers.dart';
+import 'package:quill_lock_diary/features/settings/settings_copy.dart';
+import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_lock_diary/shared/providers/core_providers.dart';
+
+import '../../helpers/fake_vault_repository.dart';
+import '../../helpers/fake_vault_transfer_service.dart';
+
+void main() {
+  Future<void> ensureVisibleText(
+    WidgetTester tester,
+    String text,
+  ) async {
+    final Finder textFinder = find.text(text, skipOffstage: false);
+    if (textFinder.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        textFinder,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+  }
+
+  Future<ButtonStyleButton> findButtonByLabel(
+    WidgetTester tester,
+    String label,
+  ) async {
+    await ensureVisibleText(tester, label);
+
+    final Finder labelFinder = find.text(label, skipOffstage: false);
+    expect(labelFinder, findsOneWidget);
+
+    final Finder buttonFinder = find.ancestor(
+      of: labelFinder,
+      matching: find.byWidgetPredicate(
+        (Widget widget) => widget is ButtonStyleButton,
+      ),
+    );
+    expect(buttonFinder, findsAtLeastNWidgets(1));
+    return tester.widget<ButtonStyleButton>(buttonFinder.first);
+  }
+
+  Future<void> pumpSettingsPage(
+    WidgetTester tester, {
+    required DriveConnectionState connectionState,
+    required AppSessionState sessionState,
+    required FakeVaultTransferService transferService,
+  }) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          supportedPlatformProvider.overrideWith((Ref ref) => true),
+          vaultRepositoryProvider.overrideWithValue(FakeVaultRepository()),
+          vaultTransferServiceProvider.overrideWithValue(transferService),
+          effectiveAppSessionProvider.overrideWith(
+            (Ref ref) async => sessionState,
+          ),
+          recoveryMetadataProvider.overrideWith(
+            (Ref ref) async => null,
+          ),
+          unlockModeProvider.overrideWith(
+            (Ref ref) async => AppUnlockMode.none,
+          ),
+          settingsDriveConnectionProvider.overrideWith(
+            (Ref ref) async => connectionState,
+          ),
+        ],
+        child: const MaterialApp(home: SettingsPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('未解鎖時仍可連結 Google Drive', (WidgetTester tester) async {
+    final FakeVaultTransferService transferService = FakeVaultTransferService(
+      connectionState: const DriveConnectionState.disconnected(),
+    );
+
+    await pumpSettingsPage(
+      tester,
+      connectionState: const DriveConnectionState.disconnected(),
+      sessionState: const AppSessionState(status: AppLockStatus.locked),
+      transferService: transferService,
+    );
+
+    final ButtonStyleButton connectButton = await findButtonByLabel(
+      tester,
+      SettingsDriveBackupCopy.connectButton,
+    );
+
+    expect(connectButton.onPressed, isNotNull);
+  });
+
+  testWidgets('未解鎖時已連結帳號仍不可上傳或還原', (WidgetTester tester) async {
+    final DriveConnectionState connectedState = const DriveConnectionState(
+      isConnected: true,
+      email: 'writer@example.com',
+      displayName: 'Writer',
+    );
+    final FakeVaultTransferService transferService = FakeVaultTransferService(
+      connectionState: connectedState,
+    );
+
+    await pumpSettingsPage(
+      tester,
+      connectionState: connectedState,
+      sessionState: const AppSessionState(status: AppLockStatus.locked),
+      transferService: transferService,
+    );
+
+    final ButtonStyleButton uploadButton = await findButtonByLabel(
+      tester,
+      SettingsDriveBackupCopy.uploadButton,
+    );
+    final ButtonStyleButton restoreButton = await findButtonByLabel(
+      tester,
+      SettingsDriveBackupCopy.restoreButton,
+    );
+
+    expect(uploadButton.onPressed, isNull);
+    expect(restoreButton.onPressed, isNull);
+  });
+
+  testWidgets('已連結時會顯示 Google Drive 帳號資訊', (WidgetTester tester) async {
+    final DriveConnectionState connectedState = const DriveConnectionState(
+      isConnected: true,
+      email: 'writer@example.com',
+      displayName: 'Writer',
+    );
+
+    await pumpSettingsPage(
+      tester,
+      connectionState: connectedState,
+      sessionState: const AppSessionState(status: AppLockStatus.locked),
+      transferService: FakeVaultTransferService(connectionState: connectedState),
+    );
+
+    final String connectedHint = SettingsDriveBackupCopy.connectedHint(
+      connectedState.accountLabel,
+    );
+    await ensureVisibleText(tester, connectedHint);
+
+    expect(
+      find.text(connectedHint, skipOffstage: false),
+      findsOneWidget,
+    );
+  });
+}

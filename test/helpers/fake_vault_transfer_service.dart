@@ -12,8 +12,8 @@ import 'test_vault_path_strategy.dart';
 
 class FakeVaultTransferService extends VaultTransferService {
   FakeVaultTransferService({
-    this.isConnectedResult = false,
-    this.isConnectedValues,
+    DriveConnectionState? connectionState,
+    this.connectionStates,
   }) : super(
           archiveIo: VaultArchiveIo(
             pathStrategy: DummyVaultPathStrategy(),
@@ -24,37 +24,44 @@ class FakeVaultTransferService extends VaultTransferService {
           driveBackupService: _UnusedDriveBackupService(),
           vaultRepository: FakeVaultRepository(),
           exportSaveLocationStore: ExportSaveLocationStore(DummyVaultPathStrategy()),
-        );
+        ) {
+    _connectionState = connectionState ?? const DriveConnectionState.disconnected();
+  }
 
-  bool isConnectedResult;
-  final List<bool>? isConnectedValues;
+  late DriveConnectionState _connectionState;
+  final List<DriveConnectionState>? connectionStates;
   int isConnectedCalls = 0;
   int connectCalls = 0;
   int reconnectCalls = 0;
 
   @override
-  Future<bool> isGoogleDriveConnected() async {
+  Future<DriveConnectionState> getGoogleDriveConnectionState() async {
     final int callIndex = isConnectedCalls++;
-    final List<bool>? values = isConnectedValues;
+    final List<DriveConnectionState>? values = connectionStates;
     if (values != null && callIndex < values.length) {
-      return values[callIndex];
+      _connectionState = values[callIndex];
+      return _connectionState;
     }
-    return isConnectedResult;
+    return _connectionState;
   }
 
   @override
-  Future<void> connectGoogleDrive({bool reconnect = false}) async {
+  Future<DriveConnectionState> connectGoogleDrive({bool reconnect = false}) async {
     if (reconnect) {
       reconnectCalls++;
-    } else {
-      connectCalls++;
+      return _connectionState;
     }
+    connectCalls++;
+    return _connectionState;
   }
 }
 
 class _UnusedDriveBackupService implements DriveBackupService {
   @override
-  Future<void> connect() => throw UnimplementedError();
+  Future<DriveConnectionState> connect() => throw UnimplementedError();
+
+  @override
+  Future<DriveConnectionState> getConnectionState() => throw UnimplementedError();
 
   @override
   Future<File> downloadBackupById({
@@ -64,13 +71,10 @@ class _UnusedDriveBackupService implements DriveBackupService {
   }) => throw UnimplementedError();
 
   @override
-  Future<bool> isConnected() => throw UnimplementedError();
-
-  @override
   Future<List<DriveBackupFile>> listBackups() => throw UnimplementedError();
 
   @override
-  Future<void> reconnect() => throw UnimplementedError();
+  Future<DriveConnectionState> reconnect() => throw UnimplementedError();
 
   @override
   Future<String> uploadBackup(File backupFile) => throw UnimplementedError();

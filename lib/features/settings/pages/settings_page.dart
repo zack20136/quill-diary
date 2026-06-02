@@ -146,9 +146,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
-    final AsyncValue<bool> driveConnectionAsync = isGoogleDriveConfigured
+    final AsyncValue<DriveConnectionState> driveConnectionAsync = isGoogleDriveConfigured
         ? ref.watch(settingsDriveConnectionProvider)
-        : const AsyncData<bool>(false);
+        : const AsyncData<DriveConnectionState>(DriveConnectionState.disconnected());
     final String disabledSensitiveVaultTransferReason =
         sensitiveVaultTransferDisabledReason(
           hasUnlockedSession: hasUnlockedSession,
@@ -402,15 +402,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildDriveBackupSection({
     required bool isGoogleDriveConfigured,
-    required AsyncValue<bool> driveConnectionAsync,
+    required AsyncValue<DriveConnectionState> driveConnectionAsync,
     required bool canSensitiveVaultTransfer,
     required String disabledSensitiveVaultTransferReason,
   }) {
-    final String description = !canSensitiveVaultTransfer
-        ? disabledSensitiveVaultTransferReason
-        : isGoogleDriveConfigured
-            ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-            : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
+    final String description = isGoogleDriveConfigured
+        ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+        : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
 
     return SettingsSectionCard(
       icon: Icons.cloud_outlined,
@@ -424,13 +422,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           : driveConnectionAsync.when(
               loading: () => const SettingsSectionLoading(),
               error: (_, _) => _buildDriveBackupContent(
-                isConnected: false,
+                connectionState: const DriveConnectionState.disconnected(),
                 canSensitiveVaultTransfer: canSensitiveVaultTransfer,
                 disabledSensitiveVaultTransferReason:
                     disabledSensitiveVaultTransferReason,
               ),
-              data: (bool isConnected) => _buildDriveBackupContent(
-                isConnected: isConnected,
+              data: (DriveConnectionState connectionState) => _buildDriveBackupContent(
+                connectionState: connectionState,
                 canSensitiveVaultTransfer: canSensitiveVaultTransfer,
                 disabledSensitiveVaultTransferReason:
                     disabledSensitiveVaultTransferReason,
@@ -440,17 +438,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildDriveBackupContent({
-    required bool isConnected,
+    required DriveConnectionState connectionState,
     required bool canSensitiveVaultTransfer,
     required String disabledSensitiveVaultTransferReason,
   }) {
+    final bool isConnected = connectionState.isConnected;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         SettingsInfoBanner(
           icon: isConnected ? Icons.cloud_done_outlined : Icons.cloud_off_rounded,
           message: isConnected
-              ? SettingsDriveBackupCopy.connectedHint
+              ? SettingsDriveBackupCopy.connectedHint(connectionState.accountLabel)
               : SettingsDriveBackupCopy.disconnectedHint,
         ),
         const SizedBox(height: 12),
@@ -462,7 +461,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 icon: Icons.link_rounded,
                 emphasized: true,
                 fullWidth: true,
-                onPressed: _busy || !canSensitiveVaultTransfer
+                onPressed: _busy
                     ? null
                     : () => _runAction(
                           () => _connectGoogleDrive(),
@@ -499,7 +498,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: _busy || !canSensitiveVaultTransfer
+              onPressed: _busy
                   ? null
                   : () => _runAction(
                         () => _connectGoogleDrive(reconnect: true),
@@ -631,15 +630,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _connectGoogleDrive({bool reconnect = false}) async {
-    await ref.read(vaultTransferServiceProvider).connectGoogleDrive(
+    final DriveConnectionState connectionState =
+        await ref.read(vaultTransferServiceProvider).connectGoogleDrive(
           reconnect: reconnect,
         );
     ref.invalidate(settingsDriveConnectionProvider);
     await ref.read(settingsDriveConnectionProvider.future);
     _showMessage(
       reconnect
-          ? SettingsDriveBackupCopy.reconnectSuccess
-          : SettingsDriveBackupCopy.connectSuccess,
+          ? SettingsDriveBackupCopy.reconnectSuccess(connectionState.accountLabel)
+          : SettingsDriveBackupCopy.connectSuccess(connectionState.accountLabel),
     );
   }
 

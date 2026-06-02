@@ -40,11 +40,11 @@ class VaultTransferService {
   final VaultRepository _vaultRepository;
   final ExportSaveLocationStore _exportSaveLocationStore;
 
-  Future<bool> isGoogleDriveConnected() {
-    return _driveBackupService.isConnected();
+  Future<DriveConnectionState> getGoogleDriveConnectionState() {
+    return _driveBackupService.getConnectionState();
   }
 
-  Future<void> connectGoogleDrive({bool reconnect = false}) {
+  Future<DriveConnectionState> connectGoogleDrive({bool reconnect = false}) {
     if (reconnect) {
       return _driveBackupService.reconnect();
     }

@@ -7,12 +7,161 @@ import 'package:path/path.dart' as p;
 
 import '../../config/oauth_config.dart';
 
+final class DriveConnectionState {
+  const DriveConnectionState({
+    required this.isConnected,
+    this.email,
+    this.displayName,
+  });
+
+  const DriveConnectionState.disconnected()
+      : isConnected = false,
+        email = null,
+        displayName = null;
+
+  final bool isConnected;
+  final String? email;
+  final String? displayName;
+
+  String? get accountLabel {
+    final String? trimmedName = displayName?.trim();
+    final String? trimmedEmail = email?.trim();
+    if (trimmedName != null && trimmedName.isNotEmpty) {
+      if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
+        return '$trimmedName ($trimmedEmail)';
+      }
+      return trimmedName;
+    }
+    if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
+      return trimmedEmail;
+    }
+    return null;
+  }
+}
+
+abstract interface class GoogleDriveAuthorizationHandle {
+  drive.DriveApi createDriveApi(List<String> scopes);
+}
+
+abstract interface class GoogleDriveSignedInAccount {
+  String get email;
+  String? get displayName;
+
+  Future<GoogleDriveAuthorizationHandle?> authorizationForScopes(
+    List<String> scopes,
+  );
+
+  Future<GoogleDriveAuthorizationHandle> authorizeScopes(
+    List<String> scopes,
+  );
+}
+
+abstract interface class GoogleDriveSignInClient {
+  Future<void> initialize({String? serverClientId});
+
+  Future<GoogleDriveSignedInAccount?> attemptLightweightAuthentication();
+
+  Future<GoogleDriveSignedInAccount?> authenticate({
+    List<String> scopeHint = const <String>[],
+  });
+
+  Future<void> disconnect();
+
+  Future<void> signOut();
+}
+
+final class GoogleSignInAuthorizationHandle
+    implements GoogleDriveAuthorizationHandle {
+  const GoogleSignInAuthorizationHandle(this._authorization);
+
+  final GoogleSignInClientAuthorization _authorization;
+
+  @override
+  drive.DriveApi createDriveApi(List<String> scopes) {
+    return drive.DriveApi(_authorization.authClient(scopes: scopes));
+  }
+}
+
+final class GoogleSignInAccountHandle implements GoogleDriveSignedInAccount {
+  const GoogleSignInAccountHandle(this._account);
+
+  final GoogleSignInAccount _account;
+
+  @override
+  String get email => _account.email;
+
+  @override
+  String? get displayName => _account.displayName;
+
+  @override
+  Future<GoogleDriveAuthorizationHandle?> authorizationForScopes(
+    List<String> scopes,
+  ) async {
+    final GoogleSignInClientAuthorization? authorization =
+        await _account.authorizationClient.authorizationForScopes(scopes);
+    if (authorization == null) {
+      return null;
+    }
+    return GoogleSignInAuthorizationHandle(authorization);
+  }
+
+  @override
+  Future<GoogleDriveAuthorizationHandle> authorizeScopes(
+    List<String> scopes,
+  ) async {
+    final GoogleSignInClientAuthorization authorization =
+        await _account.authorizationClient.authorizeScopes(scopes);
+    return GoogleSignInAuthorizationHandle(authorization);
+  }
+}
+
+final class GoogleSignInClientAdapter implements GoogleDriveSignInClient {
+  GoogleSignInClientAdapter({GoogleSignIn? googleSignIn})
+      : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+
+  final GoogleSignIn _googleSignIn;
+
+  @override
+  Future<void> initialize({String? serverClientId}) {
+    return _googleSignIn.initialize(serverClientId: serverClientId);
+  }
+
+  @override
+  Future<GoogleDriveSignedInAccount?> attemptLightweightAuthentication() async {
+    final Future<GoogleSignInAccount?>? lightweight =
+        _googleSignIn.attemptLightweightAuthentication();
+    final GoogleSignInAccount? account =
+        lightweight == null ? null : await lightweight;
+    return account == null ? null : GoogleSignInAccountHandle(account);
+  }
+
+  @override
+  Future<GoogleDriveSignedInAccount?> authenticate({
+    List<String> scopeHint = const <String>[],
+  }) async {
+    final GoogleSignInAccount account =
+        await _googleSignIn.authenticate(scopeHint: scopeHint);
+    return GoogleSignInAccountHandle(account);
+  }
+
+  @override
+  Future<void> disconnect() {
+    return _googleSignIn.disconnect();
+  }
+
+  @override
+  Future<void> signOut() {
+    return _googleSignIn.signOut();
+  }
+}
+
 String sanitizeDriveBackupFileName(String fileName) {
   final String trimmed = fileName.trim();
   final String normalizedSeparators = trimmed.replaceAll('\\', '/');
   final String basename = p.posix.basename(normalizedSeparators);
   final bool hasPathSegments = basename != normalizedSeparators;
-  final bool hasUnsafeCharacters = RegExp(r'[<>:"/\\|?*\x00-\x1F]').hasMatch(basename);
+  final bool hasUnsafeCharacters =
+      RegExp(r'[<>:"/\\|?*\x00-\x1F]').hasMatch(basename);
   if (trimmed.isEmpty ||
       hasPathSegments ||
       basename == '.' ||
@@ -20,10 +169,10 @@ String sanitizeDriveBackupFileName(String fileName) {
       hasUnsafeCharacters ||
       basename.endsWith('.') ||
       basename.endsWith(' ')) {
-    throw StateError('Google Drive 備份檔名不安全，已停止下載。');
+    throw StateError('Google Drive 備份檔名無效，請重新建立備份。');
   }
   if (p.extension(basename).toLowerCase() != '.jbackup') {
-    throw StateError('Google Drive 備份檔副檔名不正確。');
+    throw StateError('Google Drive 備份檔必須是 .jbackup 格式。');
   }
   return basename;
 }
@@ -53,11 +202,11 @@ final class DriveBackupFile {
 }
 
 abstract class DriveBackupService {
-  Future<bool> isConnected();
+  Future<DriveConnectionState> getConnectionState();
 
-  Future<void> connect();
+  Future<DriveConnectionState> connect();
 
-  Future<void> reconnect();
+  Future<DriveConnectionState> reconnect();
 
   Future<String> uploadBackup(File backupFile);
 
@@ -71,10 +220,10 @@ abstract class DriveBackupService {
 }
 
 class GoogleDriveBackupService implements DriveBackupService {
-  GoogleDriveBackupService({GoogleSignIn? googleSignIn})
-      : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+  GoogleDriveBackupService({GoogleDriveSignInClient? signInClient})
+      : _signInClient = signInClient ?? GoogleSignInClientAdapter();
 
-  final GoogleSignIn _googleSignIn;
+  final GoogleDriveSignInClient _signInClient;
   bool _initialized = false;
 
   static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];
@@ -83,25 +232,27 @@ class GoogleDriveBackupService implements DriveBackupService {
     if (_initialized) {
       return;
     }
+
     final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
     if (Platform.isAndroid && serverClientId.isEmpty) {
       throw StateError(
-        'Android 的 Google Drive OAuth 尚未設定 Web OAuth Client ID。'
-        '\n請設定 android/app/src/main/res/values/oauth_config.xml 的 oauth_request_id_token，'
-        '\n或使用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫。'
-        '\n詳見 docs/Google-Drive-OAuth-設定.md。',
+        'Android 尚未設定 Google Drive OAuth 的 Web Client ID。\n'
+        '請設定 android/app/src/main/res/values/oauth_config.xml 的 '
+        'oauth_request_id_token，或用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫。\n'
+        '詳細設定請參考 docs/Google-Drive-OAuth-設定.md。',
       );
     }
+
     if (Platform.isIOS) {
       if (OAuthConfig.googleIosClientId.trim().isEmpty) {
         throw StateError(
-          'iOS Google Drive 備份尚未設定 OAuth Client ID。'
-          '\n請提供 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
+          'iOS 尚未設定 Google Drive OAuth Client ID。\n'
+          '請補上 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
         );
       }
-      await _googleSignIn.initialize();
+      await _signInClient.initialize();
     } else {
-      await _googleSignIn.initialize(
+      await _signInClient.initialize(
         serverClientId: serverClientId.isEmpty ? null : serverClientId,
       );
     }
@@ -115,17 +266,20 @@ class GoogleDriveBackupService implements DriveBackupService {
       return;
     }
     try {
-      await _googleSignIn.disconnect();
+      await _signInClient.disconnect();
     } on Object {
       try {
-        await _googleSignIn.signOut();
+        await _signInClient.signOut();
       } on Object {
         // best-effort
       }
     }
   }
 
-  Future<GoogleSignInClientAuthorization> _authorization({
+  Future<({
+    GoogleDriveSignedInAccount account,
+    GoogleDriveAuthorizationHandle authorization,
+  })> _authorization({
     required bool interactive,
     bool resetSession = false,
   }) async {
@@ -134,21 +288,20 @@ class GoogleDriveBackupService implements DriveBackupService {
       if (resetSession) {
         await _resetSignInSession();
       }
-      final Future<GoogleSignInAccount?>? lightweight =
-          _googleSignIn.attemptLightweightAuthentication();
-      final GoogleSignInAccount? existing =
-          lightweight == null ? null : await lightweight;
-      GoogleSignInAccount? account = existing;
+
+      GoogleDriveSignedInAccount? account =
+          await _signInClient.attemptLightweightAuthentication();
       if (account == null && interactive) {
-        account = await _googleSignIn.authenticate(scopeHint: _scopes);
+        account = await _signInClient.authenticate(scopeHint: _scopes);
       }
       if (account == null) {
-        throw StateError('你尚未完成 Google 登入。');
+        throw StateError('尚未完成 Google 登入。');
       }
-      final GoogleSignInClientAuthorization authorization =
-          await account.authorizationClient.authorizationForScopes(_scopes) ??
-              await account.authorizationClient.authorizeScopes(_scopes);
-      return authorization;
+
+      final GoogleDriveAuthorizationHandle authorization =
+          await account.authorizationForScopes(_scopes) ??
+              await account.authorizeScopes(_scopes);
+      return (account: account, authorization: authorization);
     } on GoogleSignInException catch (e) {
       throw StateError(_userMessageForGoogleSignIn(e));
     }
@@ -157,86 +310,106 @@ class GoogleDriveBackupService implements DriveBackupService {
   static String _userMessageForGoogleSignIn(GoogleSignInException e) {
     final String? detail = e.description?.trim();
     final String detailLine =
-        detail != null && detail.isNotEmpty ? '\n技術資訊：$detail' : '';
+        detail != null && detail.isNotEmpty ? '\n詳細資訊：$detail' : '';
     final String lowerDetail = detail?.toLowerCase() ?? '';
 
     if (lowerDetail.contains('admin_policy_enforced')) {
-      return 'Google 帳號所屬的組織政策拒絕了這次登入或授權。'
-          '\n如果你使用的是公司或學校帳號，請管理員允許這個 App 使用 Google 登入與 Drive 權限。'
+      return '這個 Google 帳號受組織政策限制，無法授權 Google Drive 給此 App。\n'
+          '如果是公司或學校帳號，請改用個人帳號，或請管理員放行第三方 App 存取。'
           '$detailLine';
     }
     if (lowerDetail.contains('access_denied')) {
-      return 'Google 直接拒絕了這次授權。'
-          '\n若你在選完帳號後完全沒有看到 Google Drive 權限頁，請優先檢查 oauth_config.xml 的 Web Client ID、Cloud Console 的 Android OAuth client、套件名稱與 SHA-1 是否一致。'
+      return 'Google Drive 權限授權被拒絕。\n'
+          '如果你在選完帳號後沒有看到 Drive 權限頁，請優先檢查 '
+          'oauth_config.xml 的 Web Client ID、Cloud Console 的 Android OAuth client、'
+          '套件名稱與 SHA-1 是否一致。'
           '$detailLine';
     }
 
     switch (e.code) {
       case GoogleSignInExceptionCode.canceled:
-        return '你已取消 Google 登入或沒有同意 Google Drive 所需權限。'
-            '\n若要使用 Google Drive 備份，請重新登入並允許應用程式存取 Google Drive。'
+        return '你已取消 Google 登入，尚未連結 Google Drive。\n'
+            '請重新按一次「連結 Google Drive」並完成授權。'
             '$detailLine';
       case GoogleSignInExceptionCode.interrupted:
         return 'Google 登入流程被中斷，請稍後再試。$detailLine';
       case GoogleSignInExceptionCode.uiUnavailable:
-        return '目前裝置無法顯示 Google 登入畫面，請確認 Google Play 服務與系統元件可正常使用。$detailLine';
+        return '目前裝置無法顯示 Google 登入介面。\n'
+            '請確認 Google Play 服務正常，然後再試一次。'
+            '$detailLine';
       case GoogleSignInExceptionCode.clientConfigurationError:
       case GoogleSignInExceptionCode.providerConfigurationError:
-        return 'Google 登入設定有誤。'
-            '\n請確認 oauth_config.xml 的 Client ID 是否為同一個 GCP 專案下的 Web OAuth client，並確認 Cloud Console 的 Android OAuth client、套件名稱與 SHA-1 都正確。'
+        return 'Google 登入設定錯誤。\n'
+            '請確認 oauth_config.xml 的 Client ID 為同一個 GCP 專案下的 '
+            'Web OAuth client，並確認 Android OAuth client、套件名稱與 SHA-1 都正確。'
             '$detailLine';
       case GoogleSignInExceptionCode.userMismatch:
-        return '目前登入的 Google 帳號與流程預期不一致，請重新選擇帳號後再試。$detailLine';
+        return '目前登入的 Google 帳號與授權帳號不一致，請重新連結 Google Drive。'
+            '$detailLine';
       case GoogleSignInExceptionCode.unknownError:
         if (lowerDetail.contains('no credential')) {
-          return 'Google 沒有提供可用的登入憑證。'
-              '\n若你是在選完帳號後、完全沒有看到 Google Drive 權限頁就失敗，通常要優先檢查 Android 的 Google Sign-In / OAuth 設定與 SHA-1。'
-              '\n詳見 docs/Google-Drive-OAuth-設定.md。'
+          return 'Google 無法取得有效憑證。\n'
+              '請優先檢查 Android 的 Google Sign-In / OAuth 設定與 SHA-1，'
+              '詳細步驟請參考 docs/Google-Drive-OAuth-設定.md。'
               '$detailLine';
         }
-        return 'Google 登入發生未知錯誤。'
-            '\n若帳號選擇器有出現，但 Google Drive 權限頁完全沒有出現，請優先檢查 OAuth 設定，而不是只重試帳號授權。'
+        return 'Google 登入發生未預期錯誤，請稍後重試。\n'
+            '如果持續失敗，請重新檢查 OAuth 設定。'
             '$detailLine';
     }
   }
 
   @override
-  Future<bool> isConnected() async {
+  Future<DriveConnectionState> getConnectionState() async {
     try {
       await _ensureInitialized();
-      final Future<GoogleSignInAccount?>? lightweight =
-          _googleSignIn.attemptLightweightAuthentication();
-      final GoogleSignInAccount? account =
-          lightweight == null ? null : await lightweight;
+      final GoogleDriveSignedInAccount? account =
+          await _signInClient.attemptLightweightAuthentication();
       if (account == null) {
-        return false;
+        return const DriveConnectionState.disconnected();
       }
-      final GoogleSignInClientAuthorization? authorization =
-          await account.authorizationClient.authorizationForScopes(_scopes);
-      return authorization != null;
+      final GoogleDriveAuthorizationHandle? authorization =
+          await account.authorizationForScopes(_scopes);
+      if (authorization == null) {
+        return const DriveConnectionState.disconnected();
+      }
+      return _connectedStateForAccount(account);
     } on Object {
-      return false;
+      return const DriveConnectionState.disconnected();
     }
   }
 
-  Future<drive.DriveApi> _createAuthorizedDriveApi({
-    bool resetSession = false,
-  }) async {
-    final GoogleSignInClientAuthorization authorization = await _authorization(
+  @override
+  Future<DriveConnectionState> connect() async {
+    final ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    }) authorized = await _authorization(
       interactive: true,
-      resetSession: resetSession,
     );
-    return drive.DriveApi(authorization.authClient(scopes: _scopes));
+    return _connectedStateForAccount(authorized.account);
   }
 
   @override
-  Future<void> connect() async {
-    await _createAuthorizedDriveApi();
+  Future<DriveConnectionState> reconnect() async {
+    final ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    }) authorized = await _authorization(
+      interactive: true,
+      resetSession: true,
+    );
+    return _connectedStateForAccount(authorized.account);
   }
 
-  @override
-  Future<void> reconnect() async {
-    await _createAuthorizedDriveApi(resetSession: true);
+  Future<drive.DriveApi> _createAuthorizedDriveApi() async {
+    final ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    }) authorized = await _authorization(
+      interactive: true,
+    );
+    return authorized.authorization.createDriveApi(_scopes);
   }
 
   @override
@@ -254,7 +427,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       ),
     );
     if (created.id == null || created.id!.isEmpty) {
-      throw StateError('Google Drive 沒有回傳備份檔案識別碼。');
+      throw StateError('Google Drive 上傳完成後沒有回傳有效檔案 ID。');
     }
     return created.id!;
   }
@@ -314,6 +487,16 @@ class GoogleDriveBackupService implements DriveBackupService {
     return output;
   }
 
+  DriveConnectionState _connectedStateForAccount(
+    GoogleDriveSignedInAccount account,
+  ) {
+    return DriveConnectionState(
+      isConnected: true,
+      email: account.email,
+      displayName: account.displayName,
+    );
+  }
+
   void _ensurePathInsideDirectory({
     required Directory directory,
     required File file,
@@ -321,7 +504,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     final String root = p.normalize(directory.absolute.path);
     final String target = p.normalize(file.absolute.path);
     if (target != root && !p.isWithin(root, target)) {
-      throw StateError('Google Drive 備份下載路徑不安全。');
+      throw StateError('Google Drive 備份下載路徑無效。');
     }
   }
 }
