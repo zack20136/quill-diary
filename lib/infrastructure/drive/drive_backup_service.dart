@@ -4,6 +4,7 @@ import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sig
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
+import 'package:flutter/services.dart';
 
 import '../../config/oauth_config.dart';
 
@@ -223,6 +224,10 @@ class GoogleDriveBackupService implements DriveBackupService {
   GoogleDriveBackupService({GoogleDriveSignInClient? signInClient})
       : _signInClient = signInClient ?? GoogleSignInClientAdapter();
 
+  static const MethodChannel _androidDriveAuthChannel = MethodChannel(
+    'quill_lock_diary/oauth_config',
+  );
+
   final GoogleDriveSignInClient _signInClient;
   bool _initialized = false;
 
@@ -285,6 +290,17 @@ class GoogleDriveBackupService implements DriveBackupService {
   }) async {
     try {
       await _ensureInitialized();
+      if (Platform.isAndroid && interactive) {
+        final ({
+          GoogleDriveSignedInAccount account,
+          GoogleDriveAuthorizationHandle authorization,
+        })? nativeAuthorized = await _tryNativeAndroidAuthorization(
+          resetSession: resetSession,
+        );
+        if (nativeAuthorized != null) {
+          return nativeAuthorized;
+        }
+      }
       if (resetSession) {
         await _resetSignInSession();
       }
@@ -303,7 +319,114 @@ class GoogleDriveBackupService implements DriveBackupService {
               await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on GoogleSignInException catch (e) {
+      final ({
+        GoogleDriveSignedInAccount account,
+        GoogleDriveAuthorizationHandle authorization,
+      })? recovered = await _tryRecoverAuthorizedSessionAfterInteractiveError(e);
+      if (recovered != null) {
+        return recovered;
+      }
       throw StateError(_userMessageForGoogleSignIn(e));
+    }
+  }
+
+  Future<({
+    GoogleDriveSignedInAccount account,
+    GoogleDriveAuthorizationHandle authorization,
+  })?> _tryNativeAndroidAuthorization({
+    required bool resetSession,
+  }) async {
+    try {
+      final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
+      if (serverClientId.isEmpty) {
+        return null;
+      }
+
+      await _androidDriveAuthChannel.invokeMethod<Object?>(
+        'signInGoogleDrive',
+        <String, Object>{
+          'serverClientId': serverClientId,
+          'resetSession': resetSession,
+        },
+      );
+
+      final GoogleDriveSignedInAccount? account =
+          await _signInClient.attemptLightweightAuthentication();
+      if (account == null) {
+        return null;
+      }
+
+      final GoogleDriveAuthorizationHandle authorization =
+          await account.authorizationForScopes(_scopes) ??
+              await account.authorizeScopes(_scopes);
+      return (account: account, authorization: authorization);
+    } on PlatformException catch (error) {
+      final String? message = error.message?.trim();
+      if (message != null && message.isNotEmpty) {
+        throw StateError(message);
+      }
+      return null;
+    } on GoogleSignInException {
+      return null;
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<({
+    GoogleDriveSignedInAccount account,
+    GoogleDriveAuthorizationHandle authorization,
+  })?> _tryRecoverAuthorizedSessionAfterInteractiveError(
+    GoogleSignInException exception,
+  ) async {
+    try {
+      if (!_shouldAttemptPostErrorRecovery(exception)) {
+        return null;
+      }
+
+      final GoogleDriveSignedInAccount? recoveredAccount =
+          await _signInClient.attemptLightweightAuthentication();
+      if (recoveredAccount == null) {
+        return null;
+      }
+
+      GoogleDriveAuthorizationHandle? recoveredAuthorization =
+          await recoveredAccount.authorizationForScopes(_scopes);
+      recoveredAuthorization ??= await _tryAuthorizeRecoveredAccount(
+        recoveredAccount,
+      );
+      if (recoveredAuthorization == null) {
+        return null;
+      }
+
+      return (
+        account: recoveredAccount,
+        authorization: recoveredAuthorization,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  bool _shouldAttemptPostErrorRecovery(GoogleSignInException exception) {
+    if (exception.code == GoogleSignInExceptionCode.canceled ||
+        exception.code == GoogleSignInExceptionCode.interrupted) {
+      return true;
+    }
+
+    final String lowerDescription = exception.description?.toLowerCase() ?? '';
+    return lowerDescription.contains('account auth failed');
+  }
+
+  Future<GoogleDriveAuthorizationHandle?> _tryAuthorizeRecoveredAccount(
+    GoogleDriveSignedInAccount account,
+  ) async {
+    try {
+      return await account.authorizeScopes(_scopes);
+    } on GoogleSignInException {
+      return null;
+    } on Object {
+      return null;
     }
   }
 

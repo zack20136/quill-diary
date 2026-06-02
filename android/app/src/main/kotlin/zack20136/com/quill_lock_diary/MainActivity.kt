@@ -1,6 +1,7 @@
 package zack20136.com.quill_lock_diary
 
 import android.app.KeyguardManager
+import android.content.Intent
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -8,6 +9,12 @@ import android.util.Base64
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -19,6 +26,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterFragmentActivity() {
+    private var pendingGoogleDriveAuthResult: MethodChannel.Result? = null
+    private var googleDriveSignInClient: GoogleSignInClient? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         EasyDiaryRealmChannel.register(flutterEngine, applicationContext)
@@ -32,6 +42,7 @@ class MainActivity : FlutterFragmentActivity() {
                     val id = getString(R.string.oauth_request_id_token).trim()
                     result.success(if (id.isEmpty()) null else id)
                 }
+                "signInGoogleDrive" -> signInGoogleDrive(call, result)
                 else -> result.notImplemented()
             }
         }
@@ -62,6 +73,100 @@ class MainActivity : FlutterFragmentActivity() {
                 )
             }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE) {
+            handleGoogleDriveSignInResult(data)
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun signInGoogleDrive(call: MethodCall, result: MethodChannel.Result) {
+        if (pendingGoogleDriveAuthResult != null) {
+            result.error(
+                "google_drive_auth_in_progress",
+                "Google Drive sign-in is already in progress.",
+                null,
+            )
+            return
+        }
+
+        val serverClientId = requireString(call, "serverClientId")
+        val resetSession = call.argument<Boolean>("resetSession") ?: false
+        val signInClient = createGoogleDriveSignInClient(serverClientId)
+        googleDriveSignInClient = signInClient
+
+        if (!resetSession) {
+            val existingAccount = GoogleSignIn.getLastSignedInAccount(this)
+            if (existingAccount != null && hasDriveAppDataPermission(existingAccount)) {
+                result.success(googleDriveAccountPayload(existingAccount))
+                return
+            }
+        }
+
+        pendingGoogleDriveAuthResult = result
+        if (resetSession) {
+            signInClient.revokeAccess().addOnCompleteListener {
+                signInClient.signOut().addOnCompleteListener {
+                    launchGoogleDriveSignIn(signInClient)
+                }
+            }
+        } else {
+            launchGoogleDriveSignIn(signInClient)
+        }
+    }
+
+    private fun createGoogleDriveSignInClient(serverClientId: String): GoogleSignInClient {
+        val signInOptions =
+            GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestIdToken(serverClientId)
+                .requestScopes(Scope(GOOGLE_DRIVE_APPDATA_SCOPE))
+                .build()
+        return GoogleSignIn.getClient(this, signInOptions)
+    }
+
+    private fun launchGoogleDriveSignIn(signInClient: GoogleSignInClient) {
+        startActivityForResult(signInClient.signInIntent, GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE)
+    }
+
+    private fun handleGoogleDriveSignInResult(data: Intent?) {
+        val pendingResult = pendingGoogleDriveAuthResult ?: return
+        pendingGoogleDriveAuthResult = null
+        try {
+            val account = GoogleSignIn.getSignedInAccountFromIntent(data)
+                .getResult(ApiException::class.java)
+                ?: throw IllegalStateException("Google account is unavailable after sign-in.")
+            if (!hasDriveAppDataPermission(account)) {
+                throw IllegalStateException("Google Drive scope is missing after sign-in.")
+            }
+            pendingResult.success(googleDriveAccountPayload(account))
+        } catch (error: ApiException) {
+            pendingResult.error(
+                "google_drive_auth_failed",
+                "[${error.statusCode}] ${error.localizedMessage ?: "Google account sign-in failed."}",
+                null,
+            )
+        } catch (error: Throwable) {
+            pendingResult.error(
+                "google_drive_auth_failed",
+                error.message ?: "Google account sign-in failed.",
+                null,
+            )
+        }
+    }
+
+    private fun hasDriveAppDataPermission(account: GoogleSignInAccount): Boolean {
+        return GoogleSignIn.hasPermissions(account, Scope(GOOGLE_DRIVE_APPDATA_SCOPE))
+    }
+
+    private fun googleDriveAccountPayload(account: GoogleSignInAccount): Map<String, Any?> {
+        return mapOf(
+            "email" to account.email,
+            "displayName" to account.displayName,
+        )
     }
 
     private fun canUseDeviceCredential(): Boolean {
@@ -400,6 +505,9 @@ class MainActivity : FlutterFragmentActivity() {
     companion object {
         private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
         private const val DEVICE_KEY_CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
+        private const val GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE = 43021
+        private const val GOOGLE_DRIVE_APPDATA_SCOPE =
+            "https://www.googleapis.com/auth/drive.appdata"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val GCM_TAG_BITS = 128

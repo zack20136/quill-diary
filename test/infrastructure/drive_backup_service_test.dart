@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
 
 void main() {
@@ -117,24 +118,95 @@ void main() {
       expect(state.email, 'after@example.com');
       expect(state.displayName, 'After');
     });
+
+    test('connect recovers when plugin reports canceled but session is already authorized', () async {
+      final FakeGoogleDriveSignedInAccount authorizedAccount =
+          FakeGoogleDriveSignedInAccount(
+        email: 'writer@example.com',
+        displayName: 'Writer',
+        existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
+      );
+      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
+        lightweightAccounts: <GoogleDriveSignedInAccount?>[
+          null,
+          authorizedAccount,
+        ],
+        authenticateError: const GoogleSignInException(
+          code: GoogleSignInExceptionCode.canceled,
+        ),
+      );
+      final GoogleDriveBackupService service = GoogleDriveBackupService(
+        signInClient: signInClient,
+      );
+
+      final DriveConnectionState state = await service.connect();
+
+      expect(signInClient.authenticateCalls, 1);
+      expect(state.isConnected, isTrue);
+      expect(state.email, 'writer@example.com');
+      expect(state.displayName, 'Writer');
+    });
+
+    test('connect recovers by authorizing recovered account after canceled callback', () async {
+      final FakeGoogleDriveSignedInAccount recoveredAccount =
+          FakeGoogleDriveSignedInAccount(
+        email: 'writer@example.com',
+        displayName: 'Writer',
+        authorizedAccount: FakeGoogleDriveSignedInAccount(
+          email: 'writer@example.com',
+          displayName: 'Writer',
+          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
+        ),
+      );
+      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
+        lightweightAccounts: <GoogleDriveSignedInAccount?>[
+          null,
+          recoveredAccount,
+        ],
+        authenticateError: const GoogleSignInException(
+          code: GoogleSignInExceptionCode.canceled,
+          description: 'Account auth failed.',
+        ),
+      );
+      final GoogleDriveBackupService service = GoogleDriveBackupService(
+        signInClient: signInClient,
+      );
+
+      final DriveConnectionState state = await service.connect();
+
+      expect(signInClient.authenticateCalls, 1);
+      expect(state.isConnected, isTrue);
+      expect(state.email, 'writer@example.com');
+      expect(recoveredAccount.authorizeScopesCalls, 1);
+    });
   });
 }
 
 final class FakeGoogleDriveSignInClient implements GoogleDriveSignInClient {
   FakeGoogleDriveSignInClient({
     this.lightweightAccount,
+    this.lightweightAccounts,
     this.interactiveAccount,
+    this.authenticateError,
   });
 
   GoogleDriveSignedInAccount? lightweightAccount;
+  final List<GoogleDriveSignedInAccount?>? lightweightAccounts;
   GoogleDriveSignedInAccount? interactiveAccount;
+  final Object? authenticateError;
   int initializeCalls = 0;
   int authenticateCalls = 0;
   int disconnectCalls = 0;
   int signOutCalls = 0;
+  int lightweightCalls = 0;
 
   @override
   Future<GoogleDriveSignedInAccount?> attemptLightweightAuthentication() async {
+    final List<GoogleDriveSignedInAccount?>? sequence = lightweightAccounts;
+    if (sequence != null && lightweightCalls < sequence.length) {
+      return sequence[lightweightCalls++];
+    }
+    lightweightCalls++;
     return lightweightAccount;
   }
 
@@ -143,6 +215,10 @@ final class FakeGoogleDriveSignInClient implements GoogleDriveSignInClient {
     List<String> scopeHint = const <String>[],
   }) async {
     authenticateCalls++;
+    final Object? error = authenticateError;
+    if (error != null) {
+      throw error;
+    }
     return interactiveAccount;
   }
 
@@ -179,6 +255,7 @@ final class FakeGoogleDriveSignedInAccount implements GoogleDriveSignedInAccount
 
   final GoogleDriveAuthorizationHandle? existingAuthorization;
   final GoogleDriveSignedInAccount? authorizedAccount;
+  int authorizeScopesCalls = 0;
 
   @override
   Future<GoogleDriveAuthorizationHandle?> authorizationForScopes(
@@ -189,6 +266,7 @@ final class FakeGoogleDriveSignedInAccount implements GoogleDriveSignedInAccount
 
   @override
   Future<GoogleDriveAuthorizationHandle> authorizeScopes(List<String> scopes) async {
+    authorizeScopesCalls++;
     final GoogleDriveSignedInAccount target = authorizedAccount ?? this;
     final GoogleDriveAuthorizationHandle? authorization =
         await target.authorizationForScopes(scopes);
