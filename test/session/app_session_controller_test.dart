@@ -181,7 +181,7 @@ void main() {
     expect(repository.closeUnlockedResourcesCalls, 1);
   });
 
-  test('無解鎖模式：背景逾時後自動以 plain trusted 解鎖', () async {
+  test('無解鎖模式：背景逾時後標記 autoTrusted 供 coordinator 解鎖', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -200,8 +200,9 @@ void main() {
     await controller.handleLifecycleChange(AppLifecycleState.resumed);
 
     final AppSessionState state = container.read(appSessionProvider);
-    expect(state.status, AppLockStatus.unlocked);
-    expect(repository.openTrustedSessionCalls, 1);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.resumeAction, ResumeUnlockAction.autoTrusted);
+    expect(repository.openTrustedSessionCalls, 0);
   });
 
   test('裝置螢幕鎖模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {

@@ -21,7 +21,6 @@ import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../../shared/utils/user_facing_error.dart';
-import '../../session/application/session_unlock_coordinator.dart';
 import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
@@ -190,15 +189,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  bool _unlockCoordinatorAttached = false;
-
   @override
   Widget build(BuildContext context) {
-    if (!_unlockCoordinatorAttached) {
-      _unlockCoordinatorAttached = true;
-      SessionUnlockCoordinator(ref).listen();
-    }
-
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
 

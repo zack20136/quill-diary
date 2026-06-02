@@ -249,8 +249,6 @@ class AppSessionController extends Notifier<AppSessionState> {
 
             state = state.copyWith(resumeAction: ResumeUnlockAction.autoTrusted);
 
-            await unlock();
-
           case AppUnlockMode.deviceLock:
 
             state = const AppSessionState(

@@ -30,7 +30,6 @@ import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
 import '../../restore/restore_backup_flow.dart';
-import '../../session/application/session_unlock_coordinator.dart';
 import '../widgets/settings_sections.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -44,7 +43,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController = TextEditingController();
   bool _busy = false;
   String? _busyMessage;
-  bool _unlockCoordinatorAttached = false;
   IndexRebuildReport? _lastIndexRebuildReport;
 
   @override
@@ -104,7 +102,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         })
                     : null,
                 onRetryTrustedUnlock:
-                    sessionState.status == AppLockStatus.locked ||
+                    (sessionState.status == AppLockStatus.locked &&
+                            sessionState.resumeAction == null) ||
                             sessionState.status == AppLockStatus.unlocking
                         ? () => _runAction(_retryTrustedUnlock)
                         : null,
@@ -129,11 +128,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_unlockCoordinatorAttached) {
-      _unlockCoordinatorAttached = true;
-      SessionUnlockCoordinator(ref).listen();
-    }
-
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(recoveryMetadataProvider);

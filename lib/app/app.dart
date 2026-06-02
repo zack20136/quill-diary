@@ -5,6 +5,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/session/application/session_unlock_coordinator.dart';
 import '../features/session/providers/session_providers.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -19,6 +20,7 @@ class QuillLockDiaryApp extends ConsumerStatefulWidget {
 class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
     with WidgetsBindingObserver {
   late final GoRouter _router = AppRouter.createRouter();
+  bool _unlockCoordinatorAttached = false;
 
   @override
   void initState() {
@@ -40,6 +42,11 @@ class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
 
   @override
   Widget build(BuildContext context) {
+    if (!_unlockCoordinatorAttached) {
+      _unlockCoordinatorAttached = true;
+      SessionUnlockCoordinator(ref).listen();
+    }
+
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp.router(
