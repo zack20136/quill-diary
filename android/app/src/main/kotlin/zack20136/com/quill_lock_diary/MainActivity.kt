@@ -87,7 +87,7 @@ class MainActivity : FlutterFragmentActivity() {
         if (pendingGoogleDriveAuthResult != null) {
             result.error(
                 "google_drive_auth_in_progress",
-                "Google Drive sign-in is already in progress.",
+                "Google Drive 連線流程進行中，請稍候。",
                 null,
             )
             return
@@ -138,21 +138,21 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val account = GoogleSignIn.getSignedInAccountFromIntent(data)
                 .getResult(ApiException::class.java)
-                ?: throw IllegalStateException("Google account is unavailable after sign-in.")
+                ?: throw IllegalStateException("Google 登入完成後，App 沒有取得帳號資訊。")
             if (!hasDriveAppDataPermission(account)) {
-                throw IllegalStateException("Google Drive scope is missing after sign-in.")
+                throw IllegalStateException("Google 登入完成後，仍缺少 Google Drive 權限。")
             }
             pendingResult.success(googleDriveAccountPayload(account))
         } catch (error: ApiException) {
             pendingResult.error(
                 "google_drive_auth_failed",
-                "[${error.statusCode}] ${error.localizedMessage ?: "Google account sign-in failed."}",
+                googleDriveAuthErrorMessage(error),
                 null,
             )
         } catch (error: Throwable) {
             pendingResult.error(
                 "google_drive_auth_failed",
-                error.message ?: "Google account sign-in failed.",
+                error.message ?: "Google 帳號登入失敗。",
                 null,
             )
         }
@@ -167,6 +167,62 @@ class MainActivity : FlutterFragmentActivity() {
             "email" to account.email,
             "displayName" to account.displayName,
         )
+    }
+
+    private fun googleDriveAuthErrorMessage(error: ApiException): String {
+        val detail = error.localizedMessage?.trim()
+        return when (error.statusCode) {
+            10 -> buildString {
+                append("[10] Google OAuth 設定不匹配（DEVELOPER_ERROR）。")
+                append("\n請到 Google Cloud Console 檢查 Android OAuth client 是否與目前安裝包一致：")
+                append("\n- package name：zack20136.com.quill_lock_diary")
+                append("\n- debug 安裝請加入 SHA-1：B3:E5:72:2A:66:65:7F:A2:68:9D:4C:BA:64:35:52:A1:61:18:6E:5E")
+                append("\n- release / upload keystore 安裝請加入 SHA-1：F2:13:1B:D9:A1:C4:B3:F8:49:E6:58:D2:EB:2B:7E:DA:0B:97:EB:0E")
+                append("\n- 若是從 Google Play 安裝，請改用 Play Console 的 App signing SHA-1，不是 upload keystore")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+            7 -> buildString {
+                append("[7] 目前無法連上 Google 服務。")
+                append("\n請確認網路正常，並檢查 Google Play 服務是否可使用。")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+            16 -> buildString {
+                append("[16] Google 帳號驗證沒有完成。")
+                append("\n請先確認 Google Play 服務、裝置上的 Google 帳號狀態，以及 OAuth 設定是否正確。")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+            12500 -> buildString {
+                append("[12500] 目前裝置無法完成 Google 登入。")
+                append("\n請確認這台裝置支援 Google Play 服務，並稍後再試。")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+            12501 -> buildString {
+                append("[12501] 你已取消 Google 登入，尚未連結 Google Drive。")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+            else -> buildString {
+                append("[${error.statusCode}] Google 帳號登入失敗。")
+                if (!detail.isNullOrEmpty()) {
+                    append("\n詳細資訊：")
+                    append(detail)
+                }
+            }
+        }
     }
 
     private fun canUseDeviceCredential(): Boolean {
@@ -511,7 +567,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val GCM_TAG_BITS = 128
-        private const val WRAP_PROMPT_REASON = "請驗證身分以保護復原金鑰"
-        private const val UNWRAP_PROMPT_REASON = "請驗證身分以解鎖復原金鑰"
+        private const val WRAP_PROMPT_REASON = "請驗證裝置身分以保護恢復金鑰"
+        private const val UNWRAP_PROMPT_REASON = "請驗證裝置身分以解鎖恢復金鑰"
     }
 }

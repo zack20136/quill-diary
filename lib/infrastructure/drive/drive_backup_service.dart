@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
-import 'package:flutter/services.dart';
 
 import '../../config/oauth_config.dart';
 
@@ -46,6 +46,7 @@ abstract interface class GoogleDriveAuthorizationHandle {
 
 abstract interface class GoogleDriveSignedInAccount {
   String get email;
+
   String? get displayName;
 
   Future<GoogleDriveAuthorizationHandle?> authorizationForScopes(
@@ -227,11 +228,11 @@ class GoogleDriveBackupService implements DriveBackupService {
   static const MethodChannel _androidDriveAuthChannel = MethodChannel(
     'quill_lock_diary/oauth_config',
   );
+  static const String _oauthSetupDocPath = 'docs/Google-Drive-OAuth-設定.md';
+  static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];
 
   final GoogleDriveSignInClient _signInClient;
   bool _initialized = false;
-
-  static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];
 
   Future<void> _ensureInitialized() async {
     if (_initialized) {
@@ -241,18 +242,18 @@ class GoogleDriveBackupService implements DriveBackupService {
     final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
     if (Platform.isAndroid && serverClientId.isEmpty) {
       throw StateError(
-        'Android 尚未設定 Google Drive OAuth 的 Web Client ID。\n'
-        '請設定 android/app/src/main/res/values/oauth_config.xml 的 '
-        'oauth_request_id_token，或用 --dart-define=GOOGLE_SERVER_CLIENT_ID=... 覆寫。\n'
-        '詳細設定請參考 docs/Google-Drive-OAuth-設定.md。',
+        'Android 尚未完成 Google Drive OAuth 設定。\n'
+        '請先確認 `android/app/src/main/res/values/oauth_config.xml` 內的 '
+        '`oauth_request_id_token`，或以 `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` 提供 Web Client ID。\n'
+        '詳細設定請參考 $_oauthSetupDocPath。',
       );
     }
 
     if (Platform.isIOS) {
       if (OAuthConfig.googleIosClientId.trim().isEmpty) {
         throw StateError(
-          'iOS 尚未設定 Google Drive OAuth Client ID。\n'
-          '請補上 GOOGLE_IOS_CLIENT_ID 與 GOOGLE_IOS_REVERSED_CLIENT_ID。',
+          'iOS 尚未完成 Google Drive OAuth 設定。\n'
+          '請先提供 `GOOGLE_IOS_CLIENT_ID` 與 `GOOGLE_IOS_REVERSED_CLIENT_ID`。',
         );
       }
       await _signInClient.initialize();
@@ -276,7 +277,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       try {
         await _signInClient.signOut();
       } on Object {
-        // best-effort
+        // Best effort only.
       }
     }
   }
@@ -311,22 +312,23 @@ class GoogleDriveBackupService implements DriveBackupService {
         account = await _signInClient.authenticate(scopeHint: _scopes);
       }
       if (account == null) {
-        throw StateError('尚未完成 Google 登入。');
+        throw StateError('尚未完成 Google 帳號登入。');
       }
 
       final GoogleDriveAuthorizationHandle authorization =
           await account.authorizationForScopes(_scopes) ??
               await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
-    } on GoogleSignInException catch (e) {
+    } on GoogleSignInException catch (error) {
       final ({
         GoogleDriveSignedInAccount account,
         GoogleDriveAuthorizationHandle authorization,
-      })? recovered = await _tryRecoverAuthorizedSessionAfterInteractiveError(e);
+      })? recovered =
+          await _tryRecoverAuthorizedSessionAfterInteractiveError(error);
       if (recovered != null) {
         return recovered;
       }
-      throw StateError(_userMessageForGoogleSignIn(e));
+      throw StateError(_userMessageForGoogleSignIn(error));
     }
   }
 
@@ -430,54 +432,60 @@ class GoogleDriveBackupService implements DriveBackupService {
     }
   }
 
-  static String _userMessageForGoogleSignIn(GoogleSignInException e) {
-    final String? detail = e.description?.trim();
+  static String _userMessageForGoogleSignIn(GoogleSignInException error) {
+    final String? detail = error.description?.trim();
     final String detailLine =
         detail != null && detail.isNotEmpty ? '\n詳細資訊：$detail' : '';
     final String lowerDetail = detail?.toLowerCase() ?? '';
 
     if (lowerDetail.contains('admin_policy_enforced')) {
-      return '這個 Google 帳號受組織政策限制，無法授權 Google Drive 給此 App。\n'
-          '如果是公司或學校帳號，請改用個人帳號，或請管理員放行第三方 App 存取。'
+      return '這個 Google 帳號受到組織政策限制，暫時無法授權 Google Drive 給此 App。\n'
+          '請改用可自行授權的個人帳號，或請管理員確認是否允許此 App 使用 Drive 權限。'
           '$detailLine';
     }
     if (lowerDetail.contains('access_denied')) {
-      return 'Google Drive 權限授權被拒絕。\n'
-          '如果你在選完帳號後沒有看到 Drive 權限頁，請優先檢查 '
-          'oauth_config.xml 的 Web Client ID、Cloud Console 的 Android OAuth client、'
-          '套件名稱與 SHA-1 是否一致。'
+      return 'Google Drive 權限授權沒有完成。\n'
+          '如果你在選完帳號後沒有看到 Drive 權限頁，請優先檢查 Web Client ID、Android OAuth client、package name 與 SHA-1 是否設定正確。\n'
+          '詳細設定請參考 $_oauthSetupDocPath。'
           '$detailLine';
     }
 
-    switch (e.code) {
+    switch (error.code) {
       case GoogleSignInExceptionCode.canceled:
         return '你已取消 Google 登入，尚未連結 Google Drive。\n'
-            '請重新按一次「連結 Google Drive」並完成授權。'
+            '請重新按一次「連結 Google Drive」，並完成帳號選擇與授權。'
             '$detailLine';
       case GoogleSignInExceptionCode.interrupted:
-        return 'Google 登入流程被中斷，請稍後再試。$detailLine';
+        return 'Google 登入流程被中斷，請稍後再試一次。$detailLine';
       case GoogleSignInExceptionCode.uiUnavailable:
-        return '目前裝置無法顯示 Google 登入介面。\n'
-            '請確認 Google Play 服務正常，然後再試一次。'
+        return '目前裝置無法顯示 Google 登入畫面。\n'
+            '請先確認 Google Play 服務可正常使用，再重新嘗試。'
             '$detailLine';
       case GoogleSignInExceptionCode.clientConfigurationError:
       case GoogleSignInExceptionCode.providerConfigurationError:
-        return 'Google 登入設定錯誤。\n'
-            '請確認 oauth_config.xml 的 Client ID 為同一個 GCP 專案下的 '
-            'Web OAuth client，並確認 Android OAuth client、套件名稱與 SHA-1 都正確。'
+        return 'Google 登入設定有誤。\n'
+            '請確認 `oauth_config.xml` 的 Client ID 正確，且 Google Cloud Console 內的 Web OAuth client、Android OAuth client、package name 與 SHA-1 都屬於同一個專案。\n'
+            '詳細設定請參考 $_oauthSetupDocPath。'
             '$detailLine';
       case GoogleSignInExceptionCode.userMismatch:
-        return '目前登入的 Google 帳號與授權帳號不一致，請重新連結 Google Drive。'
+        return '目前登入中的 Google 帳號與授權帳號不一致。\n'
+            '請重新連結 Google Drive，並確認選擇的是同一個帳號。'
             '$detailLine';
       case GoogleSignInExceptionCode.unknownError:
         if (lowerDetail.contains('no credential')) {
-          return 'Google 無法取得有效憑證。\n'
-              '請優先檢查 Android 的 Google Sign-In / OAuth 設定與 SHA-1，'
-              '詳細步驟請參考 docs/Google-Drive-OAuth-設定.md。'
+          return '目前找不到可用的 Google 登入憑證。\n'
+              '請檢查 Android 端的 Google Sign-In / OAuth 設定，特別是 package name、SHA-1 與 Web Client ID。\n'
+              '詳細設定請參考 $_oauthSetupDocPath。'
               '$detailLine';
         }
-        return 'Google 登入發生未預期錯誤，請稍後重試。\n'
-            '如果持續失敗，請重新檢查 OAuth 設定。'
+        if (lowerDetail.contains('account auth failed')) {
+          return 'Google 帳號驗證沒有完成。\n'
+              '這通常代表 OAuth 設定或裝置端登入狀態有問題，請先確認 Google Cloud Console 的 Android OAuth client、SHA-1 與目前安裝包一致。\n'
+              '詳細設定請參考 $_oauthSetupDocPath。'
+              '$detailLine';
+        }
+        return 'Google 登入發生未預期錯誤，請稍後再試一次。\n'
+            '如果問題持續發生，請優先檢查 OAuth 設定是否完整。'
             '$detailLine';
     }
   }
@@ -507,9 +515,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
-    }) authorized = await _authorization(
-      interactive: true,
-    );
+    }) authorized = await _authorization(interactive: true);
     return _connectedStateForAccount(authorized.account);
   }
 
@@ -529,9 +535,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
-    }) authorized = await _authorization(
-      interactive: true,
-    );
+    }) authorized = await _authorization(interactive: true);
     return authorized.authorization.createDriveApi(_scopes);
   }
 
