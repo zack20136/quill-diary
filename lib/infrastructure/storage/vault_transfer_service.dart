@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
+import '../../domain/shared/vault_backup_policy.dart';
 import '../../domain/shared/value_objects.dart';
 import '../drive/drive_backup_service.dart';
 import 'export_save_location_store.dart';
@@ -58,7 +59,7 @@ class VaultTransferService {
   final ExportSaveLocationStore _exportSaveLocationStore;
   final VaultPathStrategy _pathStrategy;
 
-  static const int driveBackupRetainCount = 10;
+  static const int backupRetainCount = VaultBackupPolicy.retainCount;
 
   Future<DriveConnectionState> getGoogleDriveConnectionState() {
     return _driveBackupService.getConnectionState();
@@ -81,16 +82,25 @@ class VaultTransferService {
     await backupsDirectory.create(recursive: true);
     final File target = File(p.join(backupsDirectory.path, fileName));
     await _archiveIo.writeBackupZip(target);
-    return BackupCreationResult(
+    final BackupCreationResult result = BackupCreationResult(
       path: target.path,
       healthReport: await checkBackupHealth(target),
     );
+    final List<LocalBackupFile> backups = await _loadAppLocalBackups();
+    await _pruneExcessAppLocalBackupsFromSorted(backups);
+    return result;
   }
 
   Future<List<LocalBackupFile>> listAppLocalBackups() async {
+    final List<LocalBackupFile> backups = await _loadAppLocalBackups();
+    await _pruneExcessAppLocalBackupsFromSorted(backups);
+    return backups;
+  }
+
+  Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
     final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
     if (!backupsDirectory.existsSync()) {
-      return const <LocalBackupFile>[];
+      return <LocalBackupFile>[];
     }
     final List<LocalBackupFile> backups = <LocalBackupFile>[];
     await for (final FileSystemEntity entity
@@ -107,14 +117,30 @@ class VaultTransferService {
         ),
       );
     }
-    backups.sort((LocalBackupFile a, LocalBackupFile b) {
-      final int createdOrder = b.createdAt.compareTo(a.createdAt);
-      if (createdOrder != 0) {
-        return createdOrder;
-      }
-      return b.name.compareTo(a.name);
-    });
+    backups.sort(_compareLocalBackupsNewestFirst);
     return backups;
+  }
+
+  int _compareLocalBackupsNewestFirst(LocalBackupFile a, LocalBackupFile b) {
+    final int createdOrder = b.createdAt.compareTo(a.createdAt);
+    if (createdOrder != 0) {
+      return createdOrder;
+    }
+    return b.name.compareTo(a.name);
+  }
+
+  Future<void> _pruneExcessAppLocalBackupsFromSorted(
+    List<LocalBackupFile> sortedNewestFirst,
+  ) async {
+    if (sortedNewestFirst.length <= backupRetainCount) {
+      return;
+    }
+    final List<LocalBackupFile> stale =
+        sortedNewestFirst.sublist(backupRetainCount);
+    for (final LocalBackupFile backup in stale) {
+      await deleteAppLocalBackup(backup);
+    }
+    sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
   }
 
   Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
@@ -270,7 +296,7 @@ class VaultTransferService {
     try {
       await _archiveIo.writeBackupZip(tempBackup);
       final String uploadedId = await _driveBackupService.uploadBackup(tempBackup);
-      await _driveBackupService.pruneBackups(retainCount: driveBackupRetainCount);
+      await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
       return uploadedId;
     } finally {
       await _deleteIfExists(tempBackup);

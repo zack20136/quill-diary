@@ -722,6 +722,7 @@ class _EntryCard extends StatelessWidget {
                     child: _EntryTitleAndTagsRow(
                       titleText: _entryListHeadline(entry),
                       tags: entry.tags,
+                      charCount: entry.charCount,
                       titleStyle: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -803,6 +804,7 @@ class _CompactEntryList extends StatelessWidget {
                                   child: _EntryTitleAndTagsRow(
                                     titleText: _entryListHeadline(entry),
                                     tags: entry.tags,
+                                    charCount: entry.charCount,
                                     titleStyle: theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -850,12 +852,14 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
   const _EntryTitleAndTagsRow({
     required this.titleText,
     required this.tags,
+    required this.charCount,
     required this.titleStyle,
     this.compactTags = false,
   });
 
   final String titleText;
   final List<String> tags;
+  final int charCount;
   final TextStyle? titleStyle;
   final bool compactTags;
 
@@ -868,6 +872,7 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
         );
     final List<String> trimmedTags =
         tags.map((String t) => t.trim()).where((String t) => t.isNotEmpty).toList();
+    final bool showTagRow = trimmedTags.isNotEmpty || charCount > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,44 +885,79 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.start,
         ),
-        if (trimmedTags.isNotEmpty)
+        if (showTagRow)
           Padding(
             padding: EdgeInsets.only(top: compactTags ? 4 : 5),
             child: Wrap(
               spacing: compactTags ? 5 : 6,
               runSpacing: 4,
-              children: trimmedTags
-                  .take(4)
-                  .map((String tag) {
-                    final (Color bg, Color fg) =
-                        tagResolvedAccentPair(tag, theme.colorScheme, accents);
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        color: bg.withValues(alpha: 0.92),
-                        border: Border.all(
-                          color: fg.withValues(alpha: 0.32),
-                          width: 0.9,
-                        ),
-                      ),
-                      child: Text(
-                        tag,
-                        style: (compactTags
-                                ? theme.textTheme.labelSmall
-                                : theme.textTheme.labelMedium)
-                            ?.copyWith(
-                              color: fg,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.1,
-                            ),
-                      ),
-                    );
-                  })
-                  .toList(),
+              children: <Widget>[
+                if (charCount > 0)
+                  _EntryListTagChip(
+                    label: '$charCount字',
+                    background: Color.alphaBlend(
+                      theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
+                      theme.colorScheme.surface,
+                    ),
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    compact: compactTags,
+                  ),
+                ...trimmedTags.take(4).map((String tag) {
+                  final (Color bg, Color fg) =
+                      tagResolvedAccentPair(tag, theme.colorScheme, accents);
+                  return _EntryListTagChip(
+                    label: tag,
+                    background: bg,
+                    foreground: fg,
+                    compact: compactTags,
+                  );
+                }),
+              ],
             ),
           ),
       ],
+    );
+  }
+}
+
+class _EntryListTagChip extends StatelessWidget {
+  const _EntryListTagChip({
+    required this.label,
+    required this.background,
+    required this.foreground,
+    this.compact = false,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 4 : 5,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: background.withValues(alpha: 0.92),
+        border: Border.all(
+          color: foreground.withValues(alpha: 0.32),
+          width: 0.9,
+        ),
+      ),
+      child: Text(
+        label,
+        style: (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+        ),
+      ),
     );
   }
 }
@@ -939,7 +979,7 @@ class _EntryCardRightDateTime extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          '${entry.date.value} ${_weekdayZhFromDateOnly(entry.date)}',
+          '${entry.date.value} ${weekdayZhLongFromDateOnly(entry.date)}',
           style: muted,
           textAlign: TextAlign.right,
         ),
@@ -1452,11 +1492,6 @@ String _firstNonemptyTag(List<String> tags) {
 }
 
 String _entryListTimeLabel(DateTime at) => DateFormat('HH:mm').format(at);
-
-String _weekdayZhFromDateOnly(DateOnly date) {
-  const List<String> names = <String>['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
-  return names[date.toDateTime().weekday - 1];
-}
 
 IconData _blockedIcon(AppLockStatus status) {
   return switch (status) {

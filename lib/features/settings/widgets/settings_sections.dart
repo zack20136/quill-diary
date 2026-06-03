@@ -309,7 +309,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
           const SizedBox(height: 14),
           SettingsActionButton(
             label: SettingsRecoveryKeyCopy.rotateButton,
-            icon: Icons.refresh_rounded,
+            icon: Icons.lock_reset_outlined,
             onPressed: busy ? null : onRotateRecoveryKey,
           ),
         ],
@@ -722,7 +722,7 @@ class SettingsSecurityOverview extends StatelessWidget {
               label: hasRecoveryKey
                   ? SettingsSecurityOverviewCopy.rotateRecoveryKeyButton
                   : SettingsSecurityOverviewCopy.createRecoveryKeyButton,
-              icon: hasRecoveryKey ? Icons.refresh_rounded : Icons.key_outlined,
+              icon: hasRecoveryKey ? Icons.lock_reset_outlined : Icons.key_outlined,
               emphasized: !hasRecoveryKey,
               onPressed: busy
                   ? null
@@ -732,7 +732,7 @@ class SettingsSecurityOverview extends StatelessWidget {
             ),
             SettingsActionButton(
               label: SettingsSecurityOverviewCopy.rebuildIndexButton,
-              icon: Icons.build_rounded,
+              icon: Icons.manage_search_outlined,
               onPressed: busy ? null : onRebuildIndex,
             ),
           ],

@@ -1,3 +1,4 @@
+import '../../domain/shared/vault_backup_policy.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
@@ -16,6 +17,7 @@ abstract final class SettingsCopy {
 
   static const String actionCancel = '取消';
   static const String actionClose = '關閉';
+  static const String actionDelete = '刪除';
   static const String actionConfirm = '還原';
   static const String actionUpdate = '更新';
   static const String actionVerifyAndRestore = '驗證並還原';
@@ -150,7 +152,8 @@ abstract final class SettingsSensitiveVaultCopy {
 abstract final class SettingsImportExportCopy {
   static const String sectionTitle = '匯入與匯出';
   static const String sectionDescriptionEnabled =
-      '匯出 Markdown 壓縮檔；可匯入 Markdown、HTML 或 Easy Diary 備份 zip。';
+      '可匯入 Markdown、HTML、Easy Diary 備份 zip。'
+      '匯出日記為 Markdown 壓縮檔。';
 
   static const String importNoEntriesMessage =
       '找不到可匯入的日記，請確認檔案格式。';
@@ -159,7 +162,7 @@ abstract final class SettingsImportExportCopy {
       '所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。';
 
   static const String importFailureZipNoEntries =
-      'zip 內找不到可匯入的 Markdown、本 App HTML 或 Easy Diary 完整備份。';
+      'zip 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。';
 
   static const String importFailureEasyDiaryUnsupportedPlatform =
       'Easy Diary 完整備份 zip 目前僅支援在 Android 裝置上匯入；'
@@ -190,9 +193,9 @@ abstract final class SettingsImportExportCopy {
 
   static const String importProgress = '正在匯入日記，請稍候…';
 
-  static const String exportButton = '匯出 Markdown';
+  static const String exportButton = '匯出日記';
   static const String importButton = '匯入日記';
-  static const String exportProgress = '正在匯出 Markdown，整理內容與附件中…';
+  static const String exportProgress = '正在匯出日記，整理內容與附件中…';
 
   static String exportSuccess(String path) => '已匯出：$path';
   static String importSuccess(int count) => '已匯入 $count 篇日記。';
@@ -211,14 +214,29 @@ abstract final class SettingsImportExportCopy {
 
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
-  static const String sectionDescriptionEnabled =
-      '將整個加密日記庫封裝為 .jbackup；建立後會立即檢查檔案結構。'
-      '還原會覆寫本機日記庫。';
+  static String get sectionDescriptionEnabled =>
+      '可建立完整日記庫 .jbackup 備份並從本機還原；還原會覆寫目前日記庫。'
+      '本機最多保留 ${VaultBackupPolicy.retainCount} 份，超出時自動刪除最舊備份。';
 
-  static const String createButton = '建立並檢查備份';
+  static const String createButton = '建立本機備份';
   static const String restoreButton = '從本機備份還原';
+  static const String exportToExternalButton = '匯出備份到外部';
+  static const String importFromExternalButton = '匯入外部備份';
+  static const String pickDialogTitle = '選擇本機備份';
+  static const String noBackups = '目前沒有本機備份。';
+  static const String deleteBackupTooltip = '刪除備份';
+  static const String deleteConfirmTitle = '刪除本機備份？';
 
   static String createSuccess(String path) => '備份已建立並通過檢查。\n位置：$path';
+  static String createSuccessInApp(String fileName) => '已建立本機備份：$fileName';
+  static String deleteBackupSuccess(String fileName) => '已刪除本機備份：$fileName';
+  static String deleteConfirmBody(String fileName) =>
+      '將刪除 $fileName。此動作不會影響目前日記庫。';
+  static String createHealthCheckFailed(String message, String fileName) =>
+      '備份已建立，但檢查未通過。\n$message\n檔案：$fileName';
+  static String exportSuccess(String fileName) => '已匯出備份：$fileName';
+  static String exportHealthCheckFailed(String message, String fileName) =>
+      '備份已匯出，但檢查未通過。\n$message\n檔案：$fileName';
 }
 
 abstract final class SettingsDriveBackupCopy {
@@ -232,6 +250,8 @@ abstract final class SettingsDriveBackupCopy {
   static const String reconnectButton = '重新連結 Google Drive';
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
+  static String get retainHint =>
+      'Google Drive 會自動保留最新 ${VaultBackupPolicy.retainCount} 份 .jbackup 備份。';
 
   static String connectedHint(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {

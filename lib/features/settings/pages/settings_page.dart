@@ -247,36 +247,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: SettingsImportExportCopy.exportButton,
-                          icon: Icons.file_open_outlined,
-                          emphasized: true,
-                          fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
-                              ? null
-                              : () => _runAction(
-                                    () async {
-                                    final String? exportPath = await ref
-                                        .read(appSessionProvider.notifier)
-                                        .runSensitiveTask((UnlockedVaultSession session) {
-                                      return ref
-                                          .read(vaultTransferServiceProvider)
-                                          .exportMarkdownWithPicker(session);
-                                    });
-                                    if (exportPath == null) {
-                                      return;
-                                    }
-                                    _showMessage(
-                                      SettingsImportExportCopy.exportSuccess(
-                                        p.basename(exportPath),
-                                      ),
-                                    );
-                                  },
-                                    progressMessage: SettingsImportExportCopy.exportProgress,
-                                  ),
-                        ),
-                        SettingsActionButton(
                           label: SettingsImportExportCopy.importButton,
-                          icon: Icons.download_rounded,
+                          icon: Icons.file_download_outlined,
+                          emphasized: true,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
@@ -301,6 +274,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     progressMessage: SettingsImportExportCopy.importProgress,
                                   ),
                         ),
+                        SettingsActionButton(
+                          label: SettingsImportExportCopy.exportButton,
+                          icon: Icons.file_upload_outlined,
+                          fullWidth: true,
+                          onPressed: _busy || !canSensitiveVaultTransfer
+                              ? null
+                              : () => _runAction(
+                                    () async {
+                                    final String? exportPath = await ref
+                                        .read(appSessionProvider.notifier)
+                                        .runSensitiveTask((UnlockedVaultSession session) {
+                                      return ref
+                                          .read(vaultTransferServiceProvider)
+                                          .exportMarkdownWithPicker(session);
+                                    });
+                                    if (exportPath == null) {
+                                      return;
+                                    }
+                                    _showMessage(
+                                      SettingsImportExportCopy.exportSuccess(
+                                        p.basename(exportPath),
+                                      ),
+                                    );
+                                  },
+                                    progressMessage: SettingsImportExportCopy.exportProgress,
+                                  ),
+                        ),
                       ],
                     ),
                   ),
@@ -314,7 +314,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: '建立 App 內備份',
+                          label: SettingsLocalBackupCopy.createButton,
                           icon: Icons.archive_outlined,
                           emphasized: true,
                           fullWidth: true,
@@ -323,7 +323,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               : () => _runAction(_createLocalBackup),
                         ),
                         SettingsActionButton(
-                          label: '從 App 內備份還原',
+                          label: SettingsLocalBackupCopy.restoreButton,
                           icon: Icons.restore_rounded,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
@@ -331,7 +331,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               : () => _runRestoreFromAppLocalBackup(),
                         ),
                         SettingsActionButton(
-                          label: '匯出備份到外部位置',
+                          label: SettingsLocalBackupCopy.exportToExternalButton,
                           icon: Icons.file_upload_outlined,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
@@ -339,7 +339,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               : () => _runAction(_exportLocalBackup),
                         ),
                         SettingsActionButton(
-                          label: '匯入外部備份',
+                          label: SettingsLocalBackupCopy.importFromExternalButton,
                           icon: Icons.file_download_outlined,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
@@ -417,7 +417,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<LocalBackupFile?> _pickAppLocalBackup(List<LocalBackupFile> backups) async {
     if (backups.isEmpty) {
-      _showMessage('目前沒有 App 內本機備份。');
+      _showMessage(SettingsLocalBackupCopy.noBackups);
       return null;
     }
     if (!mounted) {
@@ -429,12 +429,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setDialogState) {
+            final ColorScheme colorScheme = Theme.of(context).colorScheme;
+            final TextTheme textTheme = Theme.of(context).textTheme;
             return AlertDialog(
-              title: const Text('選擇 App 內本機備份'),
+              title: const Text(SettingsLocalBackupCopy.pickDialogTitle),
               content: SizedBox(
                 width: double.maxFinite,
                 child: visibleBackups.isEmpty
-                    ? const Text('目前沒有 App 內本機備份。')
+                    ? const Text(SettingsLocalBackupCopy.noBackups)
                     : ListView.separated(
                         shrinkWrap: true,
                         itemCount: visibleBackups.length,
@@ -442,13 +444,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         itemBuilder: (BuildContext context, int index) {
                           final LocalBackupFile backup = visibleBackups[index];
                           return ListTile(
-                            leading: const Icon(Icons.archive_outlined),
-                            title: Text(backup.name),
-                            subtitle: Text(_formatLocalBackupSubtitle(backup)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                            title: Text(
+                              _formatLocalBackupTime(backup),
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  backup.name,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _formatBytes(backup.sizeBytes),
+                                  style: textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
                             onTap: () => Navigator.of(dialogContext).pop(backup),
                             trailing: IconButton(
-                              tooltip: '刪除備份',
-                              icon: const Icon(Icons.delete_outline_rounded),
+                              tooltip: SettingsLocalBackupCopy.deleteBackupTooltip,
+                              icon: Icon(
+                                Icons.delete_outline_rounded,
+                                color: colorScheme.error,
+                              ),
                               onPressed: _busy
                                   ? null
                                   : () async {
@@ -463,7 +488,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       setDialogState(() {
                                         visibleBackups.removeAt(index);
                                       });
-                                      _showMessage('已刪除本機備份：${backup.name}');
+                                      _showMessage(
+                                        SettingsLocalBackupCopy.deleteBackupSuccess(backup.name),
+                                      );
                                     },
                             ),
                           );
@@ -490,8 +517,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) => AlertDialog(
-            title: const Text('刪除本機備份？'),
-            content: Text('將刪除 ${backup.name}。此動作不會影響目前日記庫。'),
+            title: const Text(SettingsLocalBackupCopy.deleteConfirmTitle),
+            content: Text(SettingsLocalBackupCopy.deleteConfirmBody(backup.name)),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -499,7 +526,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('刪除'),
+                child: const Text(SettingsCopy.actionDelete),
               ),
             ],
           ),
@@ -602,9 +629,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         if (isConnected) ...<Widget>[
           const SizedBox(height: 8),
-          const SettingsInfoBanner(
+          SettingsInfoBanner(
             icon: Icons.history_rounded,
-            message: 'Google Drive 會自動保留最新 10 份 .jbackup 備份。',
+            message: SettingsDriveBackupCopy.retainHint,
           ),
           const SizedBox(height: 8),
           Align(
@@ -676,9 +703,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return ref.read(vaultTransferServiceProvider).createAppLocalBackup();
     });
     final String message = result.healthReport.ok
-        ? '已建立 App 內本機備份：${p.basename(result.path)}'
-        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n'
-            '檔案：${p.basename(result.path)}';
+        ? SettingsLocalBackupCopy.createSuccessInApp(p.basename(result.path))
+        : SettingsLocalBackupCopy.createHealthCheckFailed(
+            result.healthReport.message,
+            p.basename(result.path),
+          );
     _showMessage(message);
   }
 
@@ -692,9 +721,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
     final String message = result.healthReport.ok
-        ? '已匯出備份：${p.basename(result.path)}'
-        : '備份已匯出，但檢查未通過。\n${result.healthReport.message}\n'
-            '檔案：${p.basename(result.path)}';
+        ? SettingsLocalBackupCopy.exportSuccess(p.basename(result.path))
+        : SettingsLocalBackupCopy.exportHealthCheckFailed(
+            result.healthReport.message,
+            p.basename(result.path),
+          );
     _showMessage(message);
   }
 
@@ -733,9 +764,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return value.toLocal().toString().replaceFirst('.000', '');
   }
 
-  String _formatLocalBackupSubtitle(LocalBackupFile backup) {
-    return '${backup.createdAt.toLocal().toString().replaceFirst('.000', '')} · '
-        '${_formatBytes(backup.sizeBytes)}';
+  String _formatLocalBackupTime(LocalBackupFile backup) {
+    return backup.createdAt.toLocal().toString().replaceFirst('.000', '');
   }
 
   String _formatBytes(int bytes) {

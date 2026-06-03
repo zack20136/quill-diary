@@ -13,13 +13,6 @@ import 'package:quill_lock_diary/shared/providers/core_providers.dart';
 import '../../helpers/fake_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
 
-const String kCreateAppBackupLabel = '\u5efa\u7acb App \u5167\u5099\u4efd';
-const String kRestoreAppBackupLabel =
-    '\u5f9e App \u5167\u5099\u4efd\u9084\u539f';
-const String kExportBackupLabel =
-    '\u532f\u51fa\u5099\u4efd\u5230\u5916\u90e8\u4f4d\u7f6e';
-const String kImportBackupLabel = '\u532f\u5165\u5916\u90e8\u5099\u4efd';
-
 void main() {
   Future<void> ensureVisibleText(
     WidgetTester tester,
@@ -173,15 +166,21 @@ void main() {
       ),
     );
 
-    await ensureVisibleText(tester, kCreateAppBackupLabel);
-    await ensureVisibleText(tester, kRestoreAppBackupLabel);
-    await ensureVisibleText(tester, kExportBackupLabel);
-    await ensureVisibleText(tester, kImportBackupLabel);
+    await ensureVisibleText(tester, SettingsLocalBackupCopy.createButton);
+    await ensureVisibleText(tester, SettingsLocalBackupCopy.restoreButton);
+    await ensureVisibleText(tester, SettingsLocalBackupCopy.exportToExternalButton);
+    await ensureVisibleText(tester, SettingsLocalBackupCopy.importFromExternalButton);
 
-    expect(find.text(kCreateAppBackupLabel, skipOffstage: false), findsOneWidget);
-    expect(find.text(kRestoreAppBackupLabel, skipOffstage: false), findsOneWidget);
-    expect(find.text(kExportBackupLabel, skipOffstage: false), findsOneWidget);
-    expect(find.text(kImportBackupLabel, skipOffstage: false), findsOneWidget);
+    expect(find.text(SettingsLocalBackupCopy.createButton, skipOffstage: false), findsOneWidget);
+    expect(find.text(SettingsLocalBackupCopy.restoreButton, skipOffstage: false), findsOneWidget);
+    expect(
+      find.text(SettingsLocalBackupCopy.exportToExternalButton, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text(SettingsLocalBackupCopy.importFromExternalButton, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('security overview removes duplicated unlock status card',

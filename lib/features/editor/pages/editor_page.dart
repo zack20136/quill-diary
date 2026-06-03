@@ -28,6 +28,7 @@ import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
+import '../../../shared/utils/weekday_zh.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
@@ -833,16 +834,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     try {
       final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
       final DateTime d = parsed.toDateTime();
-      try {
-        return DateFormat('yyyy年M月d日', 'zh_Hant').format(d);
-      } catch (_) {
-        return DateFormat('yyyy年M月d日').format(d);
-      }
+      final String datePart = _formatEditorDatePartZh(d);
+      return '$datePart ${weekdayZhLong(d)}';
     } catch (_) {
       final String raw = _dateController.text.trim();
       return raw.isEmpty ? '—' : raw;
     }
   }
+
+  String _formatEditorDatePartZh(DateTime date) {
+    try {
+      return DateFormat('yyyy年M月d日', 'zh_Hant').format(date);
+    } catch (_) {
+      return DateFormat('yyyy年M月d日').format(date);
+    }
+  }
+
+  int _bodyMarkdownCharCount() => _bodyController.text.runes.length;
 
   Future<List<TagCatalogUsageItem>> _tagSuggestionsFromIndexAsync() async {
     try {
@@ -883,6 +891,33 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         .map((String t) => t.trim())
         .where((String t) => t.isNotEmpty)
         .toList();
+  }
+
+  Widget _buildCharCountTagPill(ThemeData theme, int charCount) {
+    final ColorScheme cs = theme.colorScheme;
+    final Color bg = Color.alphaBlend(cs.onSurfaceVariant.withValues(alpha: 0.12), cs.surface);
+    final Color fg = cs.onSurfaceVariant;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: bg.withValues(alpha: 0.92),
+        border: Border.all(
+          color: fg.withValues(alpha: 0.32),
+          width: 0.9,
+        ),
+      ),
+      child: Text(
+        '$charCount字',
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+          height: 1.15,
+        ),
+      ),
+    );
   }
 
   Widget _buildTagPill(String tag, ThemeData theme) {
@@ -939,23 +974,32 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _buildTagsWrap(ThemeData theme) {
+  Widget _buildTagsWrap(
+    ThemeData theme, {
+    bool showCharCount = false,
+    required int bodyCharCount,
+  }) {
     final List<String> tags = _editableTagListPreview();
-    if (tags.isEmpty) {
+    if (tags.isEmpty && (!showCharCount || bodyCharCount <= 0)) {
       return const SizedBox.shrink();
     }
     return Wrap(
       spacing: 8,
       runSpacing: 6,
-      children: tags
-          .take(24)
-          .map((String tag) => _buildTagPill(tag, theme))
-          .toList(),
+      children: <Widget>[
+        if (showCharCount && bodyCharCount > 0) _buildCharCountTagPill(theme, bodyCharCount),
+        ...tags
+            .take(24)
+            .map((String tag) => _buildTagPill(tag, theme)),
+      ],
     );
   }
 
   Widget _buildTitleHeader(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final int bodyCharCount = _bodyMarkdownCharCount();
+    final bool showTagsRow =
+        _editableTagListPreview().isNotEmpty || bodyCharCount > 0;
     if (_previewMode) {
       final String titleText = _titleController.text.trim();
       return Column(
@@ -972,9 +1016,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   titleText.isEmpty ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
             ),
           ),
-          if (_editableTagListPreview().isNotEmpty) ...<Widget>[
+          if (showTagsRow) ...<Widget>[
             const SizedBox(height: 10),
-            _buildTagsWrap(theme),
+            _buildTagsWrap(
+              theme,
+              showCharCount: true,
+              bodyCharCount: bodyCharCount,
+            ),
           ],
         ],
       );
@@ -998,9 +1046,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             hintText: '輸入標題',
           ),
         ),
-        if (_editableTagListPreview().isNotEmpty) ...<Widget>[
+        if (showTagsRow) ...<Widget>[
           const SizedBox(height: 10),
-          _buildTagsWrap(theme),
+          _buildTagsWrap(
+            theme,
+            showCharCount: true,
+            bodyCharCount: bodyCharCount,
+          ),
         ],
       ],
     );

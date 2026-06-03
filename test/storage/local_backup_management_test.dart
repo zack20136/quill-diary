@@ -10,6 +10,7 @@ import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart
 import 'package:quill_lock_diary/infrastructure/storage/export_save_location_store.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_lock_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_lock_diary/infrastructure/storage/vault_transfer_service.dart';
 
 import '../helpers/vault_test_harness.dart';
@@ -83,6 +84,33 @@ void main() {
 
     expect(newer.existsSync(), isFalse);
     expect(older.existsSync(), isTrue);
+  });
+
+  test('listAppLocalBackups keeps only the newest five backups', () async {
+    final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
+    await backupsDirectory.create(recursive: true);
+    for (int index = 0; index < 6; index++) {
+      final File backup = File(p.join(backupsDirectory.path, 'backup_$index.jbackup'))
+        ..writeAsBytesSync(<int>[index]);
+      await backup.setLastModified(
+        DateTime.parse('2026-06-0${index + 1}T00:00:00Z'),
+      );
+    }
+
+    final List<LocalBackupFile> backups = await transferService.listAppLocalBackups();
+
+    expect(backups, hasLength(VaultBackupPolicy.retainCount));
+    expect(
+      backups.map((LocalBackupFile backup) => backup.name),
+      <String>[
+        'backup_5.jbackup',
+        'backup_4.jbackup',
+        'backup_3.jbackup',
+        'backup_2.jbackup',
+        'backup_1.jbackup',
+      ],
+    );
+    expect(File(p.join(backupsDirectory.path, 'backup_0.jbackup')).existsSync(), isFalse);
   });
 }
 
