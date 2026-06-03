@@ -43,9 +43,13 @@ class FakeVaultRepository extends VaultRepository {
   int closeUnlockedResourcesCalls = 0;
   int ensureIndexReadyCalls = 0;
   int listEntriesCalls = 0;
+  int listEntriesForMonthCalls = 0;
+  int monthEntryDatesCalls = 0;
   int openTrustedSessionCalls = 0;
   final List<String?> listEntriesSearchQueries = <String?>[];
   final List<DateOnly?> listEntriesDates = <DateOnly?>[];
+  final List<DateTime> listEntriesForMonths = <DateTime>[];
+  final List<DateTime> monthEntryDateMonths = <DateTime>[];
 
   @override
   Future<void> initialize() async {
@@ -115,6 +119,41 @@ class FakeVaultRepository extends VaultRepository {
       });
     }
     return results.toList();
+  }
+
+  @override
+  Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) async {
+    listEntriesForMonthCalls++;
+    listEntriesForMonths.add(DateTime(month.year, month.month));
+    return entryIndexRecords.where((EntryIndexRecord entry) {
+      final DateTime date = entry.date.toDateTime();
+      return date.year == month.year && date.month == month.month;
+    }).toList()
+      ..sort((EntryIndexRecord a, EntryIndexRecord b) {
+        final int dateOrder = a.date.value.compareTo(b.date.value);
+        if (dateOrder != 0) {
+          return dateOrder;
+        }
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
+  }
+
+  @override
+  Future<List<DateOnly>> monthEntryDates(DateTime month) async {
+    monthEntryDatesCalls++;
+    monthEntryDateMonths.add(DateTime(month.year, month.month));
+    final Set<String> seen = <String>{};
+    final List<DateOnly> dates = <DateOnly>[];
+    for (final EntryIndexRecord entry in entryIndexRecords) {
+      final DateTime date = entry.date.toDateTime();
+      if (date.year == month.year &&
+          date.month == month.month &&
+          seen.add(entry.date.value)) {
+        dates.add(entry.date);
+      }
+    }
+    dates.sort((DateOnly a, DateOnly b) => a.value.compareTo(b.value));
+    return dates;
   }
 
   @override

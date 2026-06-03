@@ -224,6 +224,42 @@ void main() {
       'jrn_A',
     ]);
     expect(repository.listEntriesCalls, 1);
-    expect(repository.listEntriesDates, <DateOnly?>[null]);
+    expect(repository.listEntriesDates, <DateOnly?>[const DateOnly('2026-05-20')]);
+    expect(repository.monthEntryDatesCalls, 1);
+    expect(repository.listEntriesForMonthCalls, 1);
+  });
+
+  test('memoryEntriesProvider 的月份範圍直接查詢 repository 月資料', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      entryIndexRecords: <EntryIndexRecord>[
+        buildEntryIndexRecord(
+          id: 'jrn_MAY',
+          date: const DateOnly('2026-05-20'),
+          updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
+        ),
+        buildEntryIndexRecord(
+          id: 'jrn_MAY_NEWER',
+          date: const DateOnly('2026-05-21'),
+          updatedAt: DateTime.parse('2026-05-21T08:00:00Z'),
+        ),
+        buildEntryIndexRecord(
+          id: 'jrn_JUNE',
+          date: const DateOnly('2026-06-01'),
+        ),
+      ],
+    );
+    final ProviderContainer container = buildUnlockedHomeContainer(repository);
+    container.read(memoryScopeProvider.notifier).set(MemoryScope.month);
+    container.read(memoryFocusedMonthProvider.notifier).set(DateTime(2026, 5));
+
+    final List<EntryIndexRecord> entries =
+        await container.read(memoryEntriesProvider.future);
+
+    expect(
+      entries.map((EntryIndexRecord entry) => entry.id),
+      <String>['jrn_MAY_NEWER', 'jrn_MAY'],
+    );
+    expect(repository.listEntriesForMonthCalls, 1);
+    expect(repository.listEntriesCalls, 0);
   });
 }

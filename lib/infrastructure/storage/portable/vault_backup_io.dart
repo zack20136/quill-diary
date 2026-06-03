@@ -31,19 +31,22 @@ class VaultBackupIo {
     await target.parent.create(recursive: true);
     final ZipFileEncoder encoder = ZipFileEncoder();
     encoder.create(target.path);
-    await encoder.addDirectory(
-      vaultRoot,
-      includeDirName: false,
-      filter: (FileSystemEntity entity, double progress) {
-        final String relative = p.relative(entity.path, from: vaultRoot.path);
-        final List<String> segments = p.split(relative);
-        if (segments.isNotEmpty && segments.first == 'index') {
-          return ZipFileOperation.skip;
-        }
-        return ZipFileOperation.include;
-      },
-    );
-    await encoder.close();
+    try {
+      await encoder.addDirectory(
+        vaultRoot,
+        includeDirName: false,
+        filter: (FileSystemEntity entity, double progress) {
+          final String relative = p.relative(entity.path, from: vaultRoot.path);
+          final List<String> segments = p.split(relative);
+          if (segments.isNotEmpty && segments.first == 'index') {
+            return ZipFileOperation.skip;
+          }
+          return ZipFileOperation.include;
+        },
+      );
+    } finally {
+      await encoder.close();
+    }
     return target;
   }
 
@@ -160,16 +163,18 @@ class VaultBackupIo {
   }
 
   Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
-    final BackupRecoveryPreview preview = await peekBackupRecovery(backupFile);
-    if (!preview.hasRecovery || preview.metadata == null) {
+    final _BackupRecoveryVerificationData verificationData =
+        await _readRecoveryVerificationDataFromBackup(backupFile);
+    final RecoveryMetadata? metadata = verificationData.metadata;
+    if (metadata == null) {
       throw StateError('此備份沒有復原金鑰資訊，無法驗證。');
     }
-    final List<int>? sampleBytes = await _readSampleEncryptedDocumentFromBackup(backupFile);
+    final List<int>? sampleBytes = verificationData.encryptedSampleBytes;
     if (sampleBytes == null) {
       throw StateError(kBackupNoEncryptedSampleMessage);
     }
     await _repository.verifyRecoveryKeyAgainstBackupBytes(
-      metadata: preview.metadata!,
+      metadata: metadata,
       recoveryKey: recoveryKey,
       encryptedDocumentBytes: sampleBytes,
     );
@@ -291,34 +296,53 @@ class VaultBackupIo {
     }
   }
 
-  Future<List<int>?> _readSampleEncryptedDocumentFromBackup(File backupFile) async {
+  Future<_BackupRecoveryVerificationData> _readRecoveryVerificationDataFromBackup(
+    File backupFile,
+  ) async {
     try {
       final Archive archive = await decodeBackupArchive(backupFile);
-      final ArchiveFile? manifest = _findEncryptedEntry(
-        archive,
-        endsWith: 'manifest.json.enc',
+      RecoveryMetadata? metadata;
+      final ArchiveFile? recoveryEntry = _findRecoveryJsonEntry(archive);
+      if (recoveryEntry != null && recoveryEntry.isFile) {
+        final Object? decoded = jsonDecode(
+          utf8.decode(recoveryEntry.content as List<int>),
+        );
+        if (decoded is Map<String, Object?>) {
+          metadata = RecoveryMetadata.fromJson(decoded);
+        }
+      }
+      return _BackupRecoveryVerificationData(
+        metadata: metadata,
+        encryptedSampleBytes: _findEncryptedSampleBytes(archive),
       );
-      if (manifest != null && manifest.isFile) {
-        return manifest.content as List<int>;
-      }
-      ArchiveFile? firstEntryEnc;
-      for (final ArchiveFile file in archive.files) {
-        if (!file.isFile) {
-          continue;
-        }
-        final String normalized = p.posix.normalize(file.name).toLowerCase();
-        if (normalized.endsWith('.md.enc')) {
-          firstEntryEnc = file;
-          break;
-        }
-      }
-      if (firstEntryEnc != null) {
-        return firstEntryEnc.content as List<int>;
-      }
-      return null;
     } on Object {
       throw StateError(kInvalidBackupArchiveMessage);
     }
+  }
+
+  List<int>? _findEncryptedSampleBytes(Archive archive) {
+    final ArchiveFile? manifest = _findEncryptedEntry(
+      archive,
+      endsWith: 'manifest.json.enc',
+    );
+    if (manifest != null && manifest.isFile) {
+      return manifest.content as List<int>;
+    }
+    ArchiveFile? firstEntryEnc;
+    for (final ArchiveFile file in archive.files) {
+      if (!file.isFile) {
+        continue;
+      }
+      final String normalized = p.posix.normalize(file.name).toLowerCase();
+      if (normalized.endsWith('.md.enc')) {
+        firstEntryEnc = file;
+        break;
+      }
+    }
+    if (firstEntryEnc != null) {
+      return firstEntryEnc.content as List<int>;
+    }
+    return null;
   }
 
   ArchiveFile? _findEncryptedEntry(
@@ -370,7 +394,9 @@ class VaultBackupIo {
     for (final ArchiveFile file in archive.files) {
       final String rawName = file.name.replaceAll('\\', '/');
       final String normalized = p.posix.normalize(rawName);
-      if (rawName.contains('..') || p.posix.isAbsolute(normalized)) {
+      try {
+        ensureSafeArchivePath(rawName);
+      } on FormatException {
         safePaths = false;
       }
       if (file.isFile &&
@@ -453,4 +479,14 @@ class BackupHealthReport {
   final bool hasRecoveryMetadata;
   final bool hasManifest;
   final String message;
+}
+
+class _BackupRecoveryVerificationData {
+  const _BackupRecoveryVerificationData({
+    required this.metadata,
+    required this.encryptedSampleBytes,
+  });
+
+  final RecoveryMetadata? metadata;
+  final List<int>? encryptedSampleBytes;
 }

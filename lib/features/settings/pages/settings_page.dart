@@ -489,6 +489,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         if (isConnected) ...<Widget>[
           const SizedBox(height: 8),
+          const SettingsInfoBanner(
+            icon: Icons.history_rounded,
+            message: 'Google Drive 會自動保留最新 10 份 .jbackup 備份。',
+          ),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(

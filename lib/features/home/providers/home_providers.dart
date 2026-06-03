@@ -48,47 +48,37 @@ final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref)
     return const <EntryIndexRecord>[];
   }
 
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  return entries
-      .where((EntryIndexRecord entry) => entry.date.value == date.value)
-      .toList()
-    ..sort(compareEntriesNewestFirst);
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <EntryIndexRecord>[];
+  }
+
+  final List<EntryIndexRecord> entries = await ref.read(vaultRepositoryProvider).listEntries(
+        date: date,
+      );
+  return entries..sort(compareEntriesNewestFirst);
 });
 
 /// 取得日曆目前月份中有日記的日期，用於月曆標記。
 final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((Ref ref) async {
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  final Set<String> seen = <String>{};
-  final List<DateOnly> dates = <DateOnly>[];
-  for (final EntryIndexRecord entry in entries) {
-    final DateTime date = entry.date.toDateTime();
-    if (date.year != month.year || date.month != month.month) {
-      continue;
-    }
-    if (seen.add(entry.date.value)) {
-      dates.add(entry.date);
-    }
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <DateOnly>[];
   }
-  dates.sort((DateOnly a, DateOnly b) => a.value.compareTo(b.value));
-  return dates;
+
+  return ref.read(vaultRepositoryProvider).monthEntryDates(month);
 });
 
 /// 取得日曆目前月份的全部日記，供月曆格子顯示標題。
 final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
-  return entries.where((EntryIndexRecord entry) {
-    final DateTime date = entry.date.toDateTime();
-    return date.year == month.year && date.month == month.month;
-  }).toList()
-    ..sort((EntryIndexRecord a, EntryIndexRecord b) {
-      final int dateOrder = a.date.value.compareTo(b.date.value);
-      if (dateOrder != 0) {
-        return dateOrder;
-      }
-      return b.updatedAt.compareTo(a.updatedAt);
-    });
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <EntryIndexRecord>[];
+  }
+
+  return ref.read(vaultRepositoryProvider).listEntriesForMonth(month);
 });
 
 /// 提供「回顧」模式可選的年份清單。
@@ -101,23 +91,27 @@ final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
 
 /// 根據回顧模式的範圍設定，回傳對應的日記集合。
 final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((Ref ref) async {
-  final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
   final MemoryScope scope = ref.watch(memoryScopeProvider);
   if (scope == MemoryScope.all) {
+    final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
     return List<EntryIndexRecord>.from(entries)..sort(compareEntriesNewestFirst);
   }
   if (scope == MemoryScope.year) {
+    final List<EntryIndexRecord> entries = await ref.watch(allEntryIndexRecordsProvider.future);
     final int focusedYear = ref.watch(memoryFocusedYearProvider);
     return entries.where((item) => item.date.year == focusedYear).toList()
       ..sort(compareEntriesNewestFirst);
   }
 
   final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
-  return entries.where((item) {
-    final DateTime date = item.date.toDateTime();
-    return date.year == focusedMonth.year && date.month == focusedMonth.month;
-  }).toList()
-    ..sort(compareEntriesNewestFirst);
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <EntryIndexRecord>[];
+  }
+
+  final List<EntryIndexRecord> entries =
+      await ref.read(vaultRepositoryProvider).listEntriesForMonth(focusedMonth);
+  return entries..sort(compareEntriesNewestFirst);
 });
 
 /// 統一刷新首頁依賴的索引快取，避免編輯後各區塊資料不同步。

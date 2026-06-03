@@ -47,6 +47,63 @@ void main() {
     });
   });
 
+  group('Drive backup retention', () {
+    test('sortDriveBackupsNewestFirst keeps null createdAt at the stale end', () {
+      final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(
+        <DriveBackupFile>[
+          DriveBackupFile(
+            id: 'unknown',
+            name: 'backup_unknown.jbackup',
+            createdAt: null,
+          ),
+          DriveBackupFile(
+            id: 'old',
+            name: 'backup_old.jbackup',
+            createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
+          ),
+          DriveBackupFile(
+            id: 'new',
+            name: 'backup_new.jbackup',
+            createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
+          ),
+        ],
+      );
+
+      expect(
+        sorted.map((DriveBackupFile file) => file.id),
+        <String>['new', 'old', 'unknown'],
+      );
+    });
+
+    test('driveBackupsToPrune returns backups after retained newest files', () {
+      final List<DriveBackupFile> backups = <DriveBackupFile>[
+        for (int day = 1; day <= 12; day++)
+          DriveBackupFile(
+            id: 'backup_$day',
+            name: 'backup_2026-05-${day.toString().padLeft(2, '0')}.jbackup',
+            createdAt: DateTime.utc(2026, 5, day),
+          ),
+      ];
+
+      final List<DriveBackupFile> stale = driveBackupsToPrune(
+        backups,
+        retainCount: 10,
+      );
+
+      expect(
+        stale.map((DriveBackupFile file) => file.id),
+        <String>['backup_2', 'backup_1'],
+      );
+    });
+
+    test('driveBackupsToPrune validates retain count', () {
+      expect(
+        () => driveBackupsToPrune(const <DriveBackupFile>[], retainCount: 0),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
   group('GoogleDriveBackupService connection state', () {
     test('getConnectionState returns connected account info after authorization exists', () async {
       final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(

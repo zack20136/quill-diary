@@ -40,6 +40,8 @@ class VaultTransferService {
   final VaultRepository _vaultRepository;
   final ExportSaveLocationStore _exportSaveLocationStore;
 
+  static const int driveBackupRetainCount = 10;
+
   Future<DriveConnectionState> getGoogleDriveConnectionState() {
     return _driveBackupService.getConnectionState();
   }
@@ -185,7 +187,9 @@ class VaultTransferService {
     final File tempBackup = await _createTempFile('${_backupTimestamp(DateTime.now())}.jbackup');
     try {
       await _archiveIo.writeBackupZip(tempBackup);
-      return await _driveBackupService.uploadBackup(tempBackup);
+      final String uploadedId = await _driveBackupService.uploadBackup(tempBackup);
+      await _driveBackupService.pruneBackups(retainCount: driveBackupRetainCount);
+      return uploadedId;
     } finally {
       await _deleteIfExists(tempBackup);
     }

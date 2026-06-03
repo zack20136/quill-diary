@@ -1,0 +1,73 @@
+import 'dart:io';
+
+import 'package:archive/archive.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
+import 'package:quill_lock_diary/domain/shared/value_objects.dart';
+import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+
+import '../helpers/vault_test_harness.dart';
+
+void main() {
+  late VaultTestHarness harness;
+  late VaultArchiveIo archiveIo;
+
+  setUp(() async {
+    harness = await VaultTestHarness.create();
+    archiveIo = VaultArchiveIo(
+      pathStrategy: harness.pathStrategy,
+      repository: harness.repository,
+      frontMatterCodec: const FrontMatterCodec(),
+      indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
+    );
+  });
+
+  tearDown(() async {
+    await harness.dispose();
+  });
+
+  test('writeBackupZip excludes derived local index files', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Index Exclusion',
+        date: const DateOnly('2026-06-01'),
+        createdAt: DateTime.parse('2026-06-01T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-06-01T08:00:00Z'),
+        markdownBody: 'backup should not include derived index',
+      ),
+    );
+    final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
+    File(p.join(vaultRoot.path, 'index', 'derived.sqlite'))
+      ..createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[9, 9, 9]);
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'no_index.jbackup'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    final Archive archive = ZipDecoder().decodeBytes(await backupFile.readAsBytes());
+    final List<String> names = archive.files.map((ArchiveFile file) => file.name).toList();
+
+    expect(names.any((String name) => name.startsWith('index/')), isFalse);
+    expect(names, contains('recovery.json'));
+  });
+
+  test('checkBackupHealth rejects unsafe archive paths', () async {
+    final File backupFile = File(p.join(harness.tempDir.path, 'unsafe.jbackup'));
+    final Archive archive = Archive()
+      ..addFile(ArchiveFile.string('recovery.json', '{}'))
+      ..addFile(ArchiveFile('../evil.md.enc', 1, const <int>[1]));
+    await backupFile.writeAsBytes(ZipEncoder().encode(archive));
+
+    final report = await archiveIo.checkBackupHealth(backupFile);
+
+    expect(report.ok, isFalse);
+  });
+}

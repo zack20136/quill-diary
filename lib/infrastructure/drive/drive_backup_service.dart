@@ -215,6 +215,10 @@ abstract class DriveBackupService {
 
   Future<List<DriveBackupFile>> listBackups();
 
+  Future<void> deleteBackup(String fileId);
+
+  Future<List<DriveBackupFile>> pruneBackups({required int retainCount});
+
   Future<File> downloadBackupById({
     required String fileId,
     required String fileName,
@@ -460,7 +464,7 @@ class GoogleDriveBackupService implements DriveBackupService {
 
   Future<DriveConnectionState?> _readAndroidConnectionSnapshot() async {
     if (_androidConnectionSnapshotOverride != null) {
-      return _androidConnectionSnapshotOverride!();
+      return _androidConnectionSnapshotOverride();
     }
     if (!Platform.isAndroid) {
       return null;
@@ -585,6 +589,31 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
+  Future<void> deleteBackup(String fileId) async {
+    final String trimmedFileId = fileId.trim();
+    if (trimmedFileId.isEmpty) {
+      throw StateError('Google Drive 備份檔案 ID 不可為空。');
+    }
+    final drive.DriveApi api = await _createAuthorizedDriveApi();
+    await api.files.delete(trimmedFileId);
+  }
+
+  @override
+  Future<List<DriveBackupFile>> pruneBackups({required int retainCount}) async {
+    if (retainCount < 1) {
+      throw ArgumentError.value(retainCount, 'retainCount', 'retainCount must be positive.');
+    }
+    final List<DriveBackupFile> staleBackups = driveBackupsToPrune(
+      await listBackups(),
+      retainCount: retainCount,
+    );
+    for (final DriveBackupFile backup in staleBackups) {
+      await deleteBackup(backup.id);
+    }
+    return staleBackups;
+  }
+
+  @override
   Future<File> downloadBackupById({
     required String fileId,
     required String fileName,
@@ -633,4 +662,43 @@ class GoogleDriveBackupService implements DriveBackupService {
       throw StateError('Google Drive 備份下載路徑無效。');
     }
   }
+}
+
+List<DriveBackupFile> sortDriveBackupsNewestFirst(
+  Iterable<DriveBackupFile> backups,
+) {
+  return List<DriveBackupFile>.from(backups)..sort(compareDriveBackupsNewestFirst);
+}
+
+List<DriveBackupFile> driveBackupsToPrune(
+  Iterable<DriveBackupFile> backups, {
+  required int retainCount,
+}) {
+  if (retainCount < 1) {
+    throw ArgumentError.value(retainCount, 'retainCount', 'retainCount must be positive.');
+  }
+  final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(backups);
+  if (sorted.length <= retainCount) {
+    return const <DriveBackupFile>[];
+  }
+  return sorted.skip(retainCount).toList();
+}
+
+int compareDriveBackupsNewestFirst(DriveBackupFile a, DriveBackupFile b) {
+  final DateTime? aCreated = a.createdAt;
+  final DateTime? bCreated = b.createdAt;
+  if (aCreated == null && bCreated == null) {
+    return b.name.compareTo(a.name);
+  }
+  if (aCreated == null) {
+    return 1;
+  }
+  if (bCreated == null) {
+    return -1;
+  }
+  final int createdOrder = bCreated.compareTo(aCreated);
+  if (createdOrder != 0) {
+    return createdOrder;
+  }
+  return b.name.compareTo(a.name);
 }

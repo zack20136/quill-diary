@@ -74,6 +74,13 @@ class _UnusedDriveBackupService implements DriveBackupService {
   Future<List<DriveBackupFile>> listBackups() => throw UnimplementedError();
 
   @override
+  Future<void> deleteBackup(String fileId) => throw UnimplementedError();
+
+  @override
+  Future<List<DriveBackupFile>> pruneBackups({required int retainCount}) =>
+      throw UnimplementedError();
+
+  @override
   Future<DriveConnectionState> reconnect() => throw UnimplementedError();
 
   @override
