@@ -24,6 +24,11 @@ class VaultPathStrategy {
     return Directory(p.join(root.path, 'index'));
   }
 
+  Future<Directory> localBackupsDirectory() async {
+    final Directory root = await appRootDirectory();
+    return Directory(p.join(root.path, 'backups'));
+  }
+
   Future<String> indexDatabasePath() async {
     final Directory indexRoot = await indexRootDirectory();
     return p.join(indexRoot.path, 'journal_index.sqlite');
@@ -90,6 +95,8 @@ class VaultPathStrategy {
     await Directory(p.join(vaultRoot.path, 'assets')).create(recursive: true);
     final Directory indexRoot = await indexRootDirectory();
     await indexRoot.create(recursive: true);
+    final Directory backupsRoot = await localBackupsDirectory();
+    await backupsRoot.create(recursive: true);
   }
 
   /// 舊版將索引放在 `vault/index/`；啟動時搬至 [indexRootDirectory]（須在首次開啟 IndexDatabase 之前呼叫）。

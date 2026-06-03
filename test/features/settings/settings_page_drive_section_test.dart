@@ -13,6 +13,13 @@ import 'package:quill_lock_diary/shared/providers/core_providers.dart';
 import '../../helpers/fake_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
 
+const String kCreateAppBackupLabel = '\u5efa\u7acb App \u5167\u5099\u4efd';
+const String kRestoreAppBackupLabel =
+    '\u5f9e App \u5167\u5099\u4efd\u9084\u539f';
+const String kExportBackupLabel =
+    '\u532f\u51fa\u5099\u4efd\u5230\u5916\u90e8\u4f4d\u7f6e';
+const String kImportBackupLabel = '\u532f\u5165\u5916\u90e8\u5099\u4efd';
+
 void main() {
   Future<void> ensureVisibleText(
     WidgetTester tester,
@@ -79,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('未解鎖時仍可連結 Google Drive', (WidgetTester tester) async {
+  testWidgets('disconnected state can connect Google Drive', (WidgetTester tester) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: const DriveConnectionState.disconnected(),
     );
@@ -99,7 +106,8 @@ void main() {
     expect(connectButton.onPressed, isNotNull);
   });
 
-  testWidgets('未解鎖時已連結帳號仍不可上傳或還原', (WidgetTester tester) async {
+  testWidgets('locked state disables connected Drive transfer actions',
+      (WidgetTester tester) async {
     final DriveConnectionState connectedState = const DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -129,7 +137,7 @@ void main() {
     expect(restoreButton.onPressed, isNull);
   });
 
-  testWidgets('已連結時會顯示 Google Drive 帳號資訊', (WidgetTester tester) async {
+  testWidgets('connected state shows Drive account label', (WidgetTester tester) async {
     final DriveConnectionState connectedState = const DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -152,5 +160,41 @@ void main() {
       find.text(connectedHint, skipOffstage: false),
       findsOneWidget,
     );
+  });
+
+  testWidgets('local backup section shows app-managed and external backup actions',
+      (WidgetTester tester) async {
+    await pumpSettingsPage(
+      tester,
+      connectionState: const DriveConnectionState.disconnected(),
+      sessionState: const AppSessionState(status: AppLockStatus.locked),
+      transferService: FakeVaultTransferService(
+        connectionState: const DriveConnectionState.disconnected(),
+      ),
+    );
+
+    await ensureVisibleText(tester, kCreateAppBackupLabel);
+    await ensureVisibleText(tester, kRestoreAppBackupLabel);
+    await ensureVisibleText(tester, kExportBackupLabel);
+    await ensureVisibleText(tester, kImportBackupLabel);
+
+    expect(find.text(kCreateAppBackupLabel, skipOffstage: false), findsOneWidget);
+    expect(find.text(kRestoreAppBackupLabel, skipOffstage: false), findsOneWidget);
+    expect(find.text(kExportBackupLabel, skipOffstage: false), findsOneWidget);
+    expect(find.text(kImportBackupLabel, skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('security overview removes duplicated unlock status card',
+      (WidgetTester tester) async {
+    await pumpSettingsPage(
+      tester,
+      connectionState: const DriveConnectionState.disconnected(),
+      sessionState: const AppSessionState(status: AppLockStatus.unlocked),
+      transferService: FakeVaultTransferService(
+        connectionState: const DriveConnectionState.disconnected(),
+      ),
+    );
+
+    expect(find.text(SettingsSecurityOverviewCopy.unlockStatusTitle), findsNothing);
   });
 }

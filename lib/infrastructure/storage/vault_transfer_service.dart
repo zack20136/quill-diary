@@ -12,6 +12,7 @@ import '../drive/drive_backup_service.dart';
 import 'export_save_location_store.dart';
 import 'restore_precheck.dart';
 import 'vault_archive_io.dart';
+import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
 class BackupCreationResult {
@@ -24,21 +25,38 @@ class BackupCreationResult {
   final BackupHealthReport healthReport;
 }
 
+class LocalBackupFile {
+  const LocalBackupFile({
+    required this.name,
+    required this.path,
+    required this.createdAt,
+    required this.sizeBytes,
+  });
+
+  final String name;
+  final String path;
+  final DateTime createdAt;
+  final int sizeBytes;
+}
+
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,
     required DriveBackupService driveBackupService,
     required VaultRepository vaultRepository,
     required ExportSaveLocationStore exportSaveLocationStore,
+    required VaultPathStrategy pathStrategy,
   })  : _archiveIo = archiveIo,
         _driveBackupService = driveBackupService,
         _vaultRepository = vaultRepository,
-        _exportSaveLocationStore = exportSaveLocationStore;
+        _exportSaveLocationStore = exportSaveLocationStore,
+        _pathStrategy = pathStrategy;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
   final VaultRepository _vaultRepository;
   final ExportSaveLocationStore _exportSaveLocationStore;
+  final VaultPathStrategy _pathStrategy;
 
   static const int driveBackupRetainCount = 10;
 
@@ -54,6 +72,70 @@ class VaultTransferService {
   }
 
   Future<BackupCreationResult?> createBackupWithPicker() async {
+    return exportBackupWithPicker();
+  }
+
+  Future<BackupCreationResult> createAppLocalBackup() async {
+    final String fileName = '${_backupTimestamp(DateTime.now())}.jbackup';
+    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+    await backupsDirectory.create(recursive: true);
+    final File target = File(p.join(backupsDirectory.path, fileName));
+    await _archiveIo.writeBackupZip(target);
+    return BackupCreationResult(
+      path: target.path,
+      healthReport: await checkBackupHealth(target),
+    );
+  }
+
+  Future<List<LocalBackupFile>> listAppLocalBackups() async {
+    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+    if (!backupsDirectory.existsSync()) {
+      return const <LocalBackupFile>[];
+    }
+    final List<LocalBackupFile> backups = <LocalBackupFile>[];
+    await for (final FileSystemEntity entity
+        in backupsDirectory.list(followLinks: false)) {
+      if (entity is! File || p.extension(entity.path).toLowerCase() != '.jbackup') {
+        continue;
+      }
+      backups.add(
+        LocalBackupFile(
+          name: p.basename(entity.path),
+          path: entity.path,
+          createdAt: await entity.lastModified(),
+          sizeBytes: await entity.length(),
+        ),
+      );
+    }
+    backups.sort((LocalBackupFile a, LocalBackupFile b) {
+      final int createdOrder = b.createdAt.compareTo(a.createdAt);
+      if (createdOrder != 0) {
+        return createdOrder;
+      }
+      return b.name.compareTo(a.name);
+    });
+    return backups;
+  }
+
+  Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
+    final File file = File(backup.path);
+    await _ensureFileInsideLocalBackupsDirectory(file);
+    await _deleteIfExists(file);
+  }
+
+  Future<void> restoreFromAppLocalBackup(
+    LocalBackupFile backup, {
+    bool preserveTrustedDeviceAccess = false,
+  }) async {
+    final File file = File(backup.path);
+    await _ensureFileInsideLocalBackupsDirectory(file);
+    await restoreFromBackupFile(
+      file,
+      preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+    );
+  }
+
+  Future<BackupCreationResult?> exportBackupWithPicker() async {
     final String fileName = '${_backupTimestamp(DateTime.now())}.jbackup';
     return _saveBackupWithPicker(fileName: fileName);
   }
@@ -209,6 +291,15 @@ class VaultTransferService {
 
   Future<void> restoreFromDownloadedBackupFile(File backupFile) async {
     await restoreFromBackupFile(backupFile);
+  }
+
+  Future<void> _ensureFileInsideLocalBackupsDirectory(File file) async {
+    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+    final String root = p.normalize(backupsDirectory.absolute.path);
+    final String target = p.normalize(file.absolute.path);
+    if (target == root || !p.isWithin(root, target)) {
+      throw StateError('本機備份路徑無效。');
+    }
   }
 
   Future<PortableImportResult?> _tryImportFromPickedFiles(

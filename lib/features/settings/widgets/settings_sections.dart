@@ -668,7 +668,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
   final VoidCallback? onRebuildIndex;
-  final Widget lockPanel;
+  final Widget? lockPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -677,36 +677,30 @@ class SettingsSecurityOverview extends StatelessWidget {
         icon: Icons.key_outlined,
         title: SettingsSecurityOverviewCopy.recoveryKeyTitle,
         message: hasRecoveryKey
-            ? SettingsSecurityOverviewCopy.recoveryKeyReady
-            : SettingsSecurityOverviewCopy.recoveryKeyMissing,
+            ? '復原金鑰已建立，請確認你已妥善保存。'
+            : '尚未建立復原金鑰，請先建立後再使用備份與還原。',
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
-      ),
-      _SecurityOverviewItem(
-        icon: Icons.lock_open_rounded,
-        title: SettingsSecurityOverviewCopy.unlockStatusTitle,
-        message: hasUnlockedSession
-            ? SettingsSecurityOverviewCopy.unlockStatusUnlocked
-            : SettingsSecurityOverviewCopy.unlockStatusLocked,
-        level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.phonelink_lock_outlined,
         title: SettingsSecurityOverviewCopy.unlockModeTitle,
-        message: unlockModeLabel,
+        message: hasRecoveryKey
+            ? '目前使用 $unlockModeLabel 保護本機受信任裝置。'
+            : '建立復原金鑰後即可設定裝置保護模式。',
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.verified_user_outlined,
         title: SettingsSecurityOverviewCopy.trustedDeviceTitle,
         message: hasTrustedDevice
-            ? SettingsSecurityOverviewCopy.trustedDeviceReady
-            : SettingsSecurityOverviewCopy.trustedDeviceMissing,
+            ? '此裝置可在通過驗證後解鎖日記庫。'
+            : '尚未建立此裝置的受信任解鎖資料。',
         level: hasTrustedDevice ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.storage_rounded,
         title: SettingsSecurityOverviewCopy.indexTitle,
-        message: indexMessage,
+        message: hasUnlockedSession ? indexMessage : '解鎖後可檢查或重建搜尋索引。',
         level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
     ];
@@ -743,8 +737,10 @@ class SettingsSecurityOverview extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        lockPanel,
+        if (lockPanel != null) ...<Widget>[
+          const SizedBox(height: 14),
+          lockPanel!,
+        ],
       ],
     );
   }

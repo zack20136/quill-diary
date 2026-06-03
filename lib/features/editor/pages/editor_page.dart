@@ -784,6 +784,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       initialDate: anchor,
       firstDate: DateTime(1970),
       lastDate: DateTime(2100, 12, 31),
+      locale: const Locale('zh', 'TW'),
     );
     if (!mounted || picked == null) {
       return;
@@ -811,9 +812,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       context: context,
       initialTime: initial,
       builder: (BuildContext context, Widget? child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child ?? const SizedBox.shrink(),
+        return Localizations.override(
+          context: context,
+          locale: const Locale('zh', 'TW'),
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

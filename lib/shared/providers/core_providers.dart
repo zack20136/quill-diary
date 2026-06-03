@@ -95,6 +95,7 @@ final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
     driveBackupService: ref.watch(driveBackupServiceProvider),
     vaultRepository: ref.watch(vaultRepositoryProvider),
     exportSaveLocationStore: ref.watch(exportSaveLocationStoreProvider),
+    pathStrategy: ref.watch(vaultPathStrategyProvider),
   );
 });
 

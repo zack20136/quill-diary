@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -57,6 +58,15 @@ class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
             brightness: Brightness.dark,
           ),
           themeMode: ThemeMode.system,
+          locale: const Locale('zh', 'TW'),
+          supportedLocales: const <Locale>[
+            Locale('zh', 'TW'),
+          ],
+          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           routerConfig: _router,
         );
       },

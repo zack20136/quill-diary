@@ -24,6 +24,7 @@ class FakeVaultTransferService extends VaultTransferService {
           driveBackupService: _UnusedDriveBackupService(),
           vaultRepository: FakeVaultRepository(),
           exportSaveLocationStore: ExportSaveLocationStore(DummyVaultPathStrategy()),
+          pathStrategy: DummyVaultPathStrategy(),
         ) {
     _connectionState = connectionState ?? const DriveConnectionState.disconnected();
   }
@@ -33,6 +34,27 @@ class FakeVaultTransferService extends VaultTransferService {
   int isConnectedCalls = 0;
   int connectCalls = 0;
   int reconnectCalls = 0;
+  int createAppLocalBackupCalls = 0;
+  int listAppLocalBackupsCalls = 0;
+  int exportBackupWithPickerCalls = 0;
+
+  @override
+  Future<BackupCreationResult> createAppLocalBackup() {
+    createAppLocalBackupCalls++;
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<LocalBackupFile>> listAppLocalBackups() async {
+    listAppLocalBackupsCalls++;
+    return const <LocalBackupFile>[];
+  }
+
+  @override
+  Future<BackupCreationResult?> exportBackupWithPicker() {
+    exportBackupWithPickerCalls++;
+    throw UnimplementedError();
+  }
 
   @override
   Future<DriveConnectionState> getGoogleDriveConnectionState() async {

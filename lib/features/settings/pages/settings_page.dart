@@ -84,42 +84,47 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     : null,
             onRebuildIndex:
                 hasUnlockedSession ? () => _runAction(_rebuildIndex) : null,
-            lockPanel: sessionAsync.when(
-              data: (AppSessionState sessionState) => SettingsStatusPanel(
-                sessionState: sessionState,
-                busy: _busy,
-                recoveryKeyInputController: _recoveryKeyInputController,
-                recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
-                bannerIcon: _sessionIcon(sessionState.status),
-                bannerMessage: _sessionSummary(sessionState),
-                bannerTone: _sessionTone(sessionState.status),
-                onUnlockWithRecovery: sessionState.status == AppLockStatus.recoveryRequired
-                    ? () => _runAction(() async {
-                          await ref.read(appSessionProvider.notifier).unlockWithRecovery(
-                                _recoveryKeyInputController.text.trim(),
-                              );
-                          await refreshEntryIndexCaches(ref);
-                        })
-                    : null,
-                onRetryTrustedUnlock:
-                    (sessionState.status == AppLockStatus.locked &&
-                            sessionState.resumeAction == null) ||
-                            sessionState.status == AppLockStatus.unlocking
-                        ? () => _runAction(_retryTrustedUnlock)
-                        : null,
-                onCancelUnlock: sessionState.status == AppLockStatus.unlocking
-                    ? () => _runAction(() async {
-                          await ref.read(appSessionProvider.notifier).lock();
-                        })
-                    : null,
-              ),
-              loading: () => const SettingsSectionLoading(),
-              error: (Object error, StackTrace _) => SettingsInfoBanner(
-                icon: Icons.error_outline_rounded,
-                message: userFacingErrorMessage(error),
-                tone: SettingsBannerTone.error,
-              ),
-            ),
+            lockPanel: sessionState?.status == AppLockStatus.unlocked
+                ? null
+                : sessionAsync.when(
+                    data: (AppSessionState sessionState) => SettingsStatusPanel(
+                      sessionState: sessionState,
+                      busy: _busy,
+                      recoveryKeyInputController: _recoveryKeyInputController,
+                      recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+                      bannerIcon: _sessionIcon(sessionState.status),
+                      bannerMessage: _sessionSummary(sessionState),
+                      bannerTone: _sessionTone(sessionState.status),
+                      onUnlockWithRecovery:
+                          sessionState.status == AppLockStatus.recoveryRequired
+                              ? () => _runAction(() async {
+                                    await ref
+                                        .read(appSessionProvider.notifier)
+                                        .unlockWithRecovery(
+                                          _recoveryKeyInputController.text.trim(),
+                                        );
+                                    await refreshEntryIndexCaches(ref);
+                                  })
+                              : null,
+                      onRetryTrustedUnlock:
+                          (sessionState.status == AppLockStatus.locked &&
+                                      sessionState.resumeAction == null) ||
+                                  sessionState.status == AppLockStatus.unlocking
+                              ? () => _runAction(_retryTrustedUnlock)
+                              : null,
+                      onCancelUnlock: sessionState.status == AppLockStatus.unlocking
+                          ? () => _runAction(() async {
+                                await ref.read(appSessionProvider.notifier).lock();
+                              })
+                          : null,
+                    ),
+                    loading: () => const SettingsSectionLoading(),
+                    error: (Object error, StackTrace _) => SettingsInfoBanner(
+                      icon: Icons.error_outline_rounded,
+                      message: userFacingErrorMessage(error),
+                      tone: SettingsBannerTone.error,
+                    ),
+                  ),
           ),
         );
       },
@@ -309,7 +314,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
-                          label: SettingsLocalBackupCopy.createButton,
+                          label: '建立 App 內備份',
                           icon: Icons.archive_outlined,
                           emphasized: true,
                           fullWidth: true,
@@ -318,8 +323,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               : () => _runAction(_createLocalBackup),
                         ),
                         SettingsActionButton(
-                          label: SettingsLocalBackupCopy.restoreButton,
+                          label: '從 App 內備份還原',
                           icon: Icons.restore_rounded,
+                          fullWidth: true,
+                          onPressed: _busy || !canSensitiveVaultTransfer
+                              ? null
+                              : () => _runRestoreFromAppLocalBackup(),
+                        ),
+                        SettingsActionButton(
+                          label: '匯出備份到外部位置',
+                          icon: Icons.file_upload_outlined,
+                          fullWidth: true,
+                          onPressed: _busy || !canSensitiveVaultTransfer
+                              ? null
+                              : () => _runAction(_exportLocalBackup),
+                        ),
+                        SettingsActionButton(
+                          label: '匯入外部備份',
+                          icon: Icons.file_download_outlined,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
@@ -391,7 +412,99 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         );
       },
+        );
+  }
+
+  Future<LocalBackupFile?> _pickAppLocalBackup(List<LocalBackupFile> backups) async {
+    if (backups.isEmpty) {
+      _showMessage('目前沒有 App 內本機備份。');
+      return null;
+    }
+    if (!mounted) {
+      return null;
+    }
+    final List<LocalBackupFile> visibleBackups = List<LocalBackupFile>.from(backups);
+    return showDialog<LocalBackupFile>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            return AlertDialog(
+              title: const Text('選擇 App 內本機備份'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: visibleBackups.isEmpty
+                    ? const Text('目前沒有 App 內本機備份。')
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: visibleBackups.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (BuildContext context, int index) {
+                          final LocalBackupFile backup = visibleBackups[index];
+                          return ListTile(
+                            leading: const Icon(Icons.archive_outlined),
+                            title: Text(backup.name),
+                            subtitle: Text(_formatLocalBackupSubtitle(backup)),
+                            onTap: () => Navigator.of(dialogContext).pop(backup),
+                            trailing: IconButton(
+                              tooltip: '刪除備份',
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              onPressed: _busy
+                                  ? null
+                                  : () async {
+                                      final bool confirmed =
+                                          await _confirmDeleteLocalBackup(backup);
+                                      if (!confirmed) {
+                                        return;
+                                      }
+                                      await ref
+                                          .read(vaultTransferServiceProvider)
+                                          .deleteAppLocalBackup(backup);
+                                      setDialogState(() {
+                                        visibleBackups.removeAt(index);
+                                      });
+                                      _showMessage('已刪除本機備份：${backup.name}');
+                                    },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(SettingsCopy.actionCancel),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  Future<bool> _confirmDeleteLocalBackup(LocalBackupFile backup) async {
+    if (!mounted) {
+      return false;
+    }
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('刪除本機備份？'),
+            content: Text('將刪除 ${backup.name}。此動作不會影響目前日記庫。'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(SettingsCopy.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('刪除'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Widget _buildDriveBackupSection({
@@ -557,19 +670,46 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _createLocalBackup() async {
+    final BackupCreationResult result = await ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((_) {
+      return ref.read(vaultTransferServiceProvider).createAppLocalBackup();
+    });
+    final String message = result.healthReport.ok
+        ? '已建立 App 內本機備份：${p.basename(result.path)}'
+        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n'
+            '檔案：${p.basename(result.path)}';
+    _showMessage(message);
+  }
+
+  Future<void> _exportLocalBackup() async {
     final BackupCreationResult? result = await ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).createBackupWithPicker();
+      return ref.read(vaultTransferServiceProvider).exportBackupWithPicker();
     });
     if (result == null) {
       return;
     }
     final String message = result.healthReport.ok
-        ? SettingsLocalBackupCopy.createSuccess(p.basename(result.path))
-        : '備份已建立，但檢查未通過。\n${result.healthReport.message}\n'
+        ? '已匯出備份：${p.basename(result.path)}'
+        : '備份已匯出，但檢查未通過。\n${result.healthReport.message}\n'
             '檔案：${p.basename(result.path)}';
     _showMessage(message);
+  }
+
+  Future<void> _runRestoreFromAppLocalBackup() async {
+    try {
+      final List<LocalBackupFile> backups =
+          await ref.read(vaultTransferServiceProvider).listAppLocalBackups();
+      final LocalBackupFile? backup = await _pickAppLocalBackup(backups);
+      if (backup == null) {
+        return;
+      }
+      await _restoreBackupFileWithFlow(File(backup.path));
+    } catch (error) {
+      _showMessage(userFacingErrorMessage(error));
+    }
   }
 
   Future<void> _rebuildIndex() async {
@@ -591,6 +731,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return SettingsDriveBackupCopy.unknownCreatedTime;
     }
     return value.toLocal().toString().replaceFirst('.000', '');
+  }
+
+  String _formatLocalBackupSubtitle(LocalBackupFile backup) {
+    return '${backup.createdAt.toLocal().toString().replaceFirst('.000', '')} · '
+        '${_formatBytes(backup.sizeBytes)}';
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+    final double kib = bytes / 1024;
+    if (kib < 1024) {
+      return '${kib.toStringAsFixed(1)} KB';
+    }
+    final double mib = kib / 1024;
+    return '${mib.toStringAsFixed(1)} MB';
   }
 
   Future<void> _runRestoreFromLocalBackup() async {
