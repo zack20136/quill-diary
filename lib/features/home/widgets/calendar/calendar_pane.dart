@@ -22,7 +22,12 @@ class _CalendarSectionShell extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+        padding: const EdgeInsets.fromLTRB(
+          kCalendarShellPaddingHorizontal,
+          kCalendarShellPaddingTop,
+          kCalendarShellPaddingHorizontal,
+          kCalendarShellPaddingBottom,
+        ),
         child: child,
       ),
     );
@@ -86,19 +91,23 @@ class _CalendarPane extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Flexible(
-              flex: 11,
+              flex: 12,
               fit: FlexFit.tight,
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints shellConstraints) {
-                  final double rowHeight =
-                      calendarRowHeightForShellHeight(shellConstraints.maxHeight);
-                  final double innerHeight = shellConstraints.maxHeight - kCalendarShellPadding;
+                  final double textScale = MediaQuery.textScalerOf(context).scale(1);
+                  final double viewportHeight =
+                      shellConstraints.maxHeight - kCalendarShellVerticalInset;
+                  final double rowHeight = calendarRowHeightForAvailableHeight(
+                    viewportHeight,
+                    textScale: textScale,
+                  );
+                  final double calendarHeight = calendarContentHeight(rowHeight);
 
                   return _CalendarSectionShell(
                     child: SizedBox(
-                      height: innerHeight,
-                      child: ClipRect(
-                        child: TableCalendar<Object>(
+                      height: calendarHeight,
+                      child: TableCalendar<Object>(
                           firstDay: DateTime(2020),
                           lastDay: DateTime(2100),
                           focusedDay: visibleMonth,
@@ -268,7 +277,6 @@ class _CalendarPane extends ConsumerWidget {
                             },
                           ),
                         ),
-                      ),
                     ),
                   );
                 },
@@ -276,7 +284,7 @@ class _CalendarPane extends ConsumerWidget {
             ),
             const SizedBox(height: kCalendarPaneSectionGap),
             Expanded(
-              flex: 9,
+              flex: 8,
               child: entriesAsync.when(
                     data: (List<EntryIndexRecord> entries) {
                       return _DiaryListSectionCard(

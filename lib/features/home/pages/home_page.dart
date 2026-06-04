@@ -230,7 +230,12 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  padding: EdgeInsets.fromLTRB(
+                    activeTab == HomeTab.calendar ? 12 : 16,
+                    4,
+                    activeTab == HomeTab.calendar ? 12 : 16,
+                    16,
+                  ),
                   child: _HomeContent(sessionState: sessionState),
                 ),
               ),

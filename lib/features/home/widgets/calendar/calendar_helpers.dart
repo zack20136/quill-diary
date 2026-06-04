@@ -16,12 +16,16 @@ const List<String> kCalendarWeekdayLabelsZh = <String>[
 const int kCalendarMaxEntriesPerCell = 2;
 const int kCalendarPreviewCharCount = 5;
 
-const double kCalendarShellPadding = 20;
-const double kCalendarHeaderHeight = 48;
+const double kCalendarShellPaddingHorizontal = 6;
+const double kCalendarShellPaddingTop = 8;
+const double kCalendarShellPaddingBottom = 6;
+const double kCalendarShellVerticalInset =
+    kCalendarShellPaddingTop + kCalendarShellPaddingBottom;
+const double kCalendarHeaderHeight = 50;
 const double kCalendarDaysOfWeekHeight = 22;
 const double kCalendarRowCount = 6;
 const double kCalendarPaneSectionGap = 12;
-const double kCalendarHeightSafetyBuffer = 4;
+const double kCalendarHeightSafetyBuffer = 10;
 
 bool calendarIsSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -51,17 +55,28 @@ String calendarEntryPreviewLabel(String text) {
   return trimmed.substring(0, kCalendarPreviewCharCount);
 }
 
-double calendarRowHeightForShellHeight(double shellOuterHeight) {
-  final double innerHeight = shellOuterHeight - kCalendarShellPadding;
-  if (innerHeight <= kCalendarHeaderHeight + kCalendarDaysOfWeekHeight + 1) {
+/// 依可用高度計算列高，預留標題列與字級縮放緩衝，避免底部被裁切。
+double calendarRowHeightForAvailableHeight(
+  double availableHeight, {
+  double textScale = 1,
+}) {
+  if (availableHeight <= kCalendarHeaderHeight + kCalendarDaysOfWeekHeight + 1) {
     return 40;
   }
 
-  final double availableForRows = innerHeight -
+  final double textScaleBuffer = textScale > 1 ? (textScale - 1) * 14 : 0;
+  final double availableForRows = availableHeight -
       kCalendarHeaderHeight -
       kCalendarDaysOfWeekHeight -
-      kCalendarHeightSafetyBuffer;
-  return (availableForRows / kCalendarRowCount).clamp(46.0, 72.0);
+      kCalendarHeightSafetyBuffer -
+      textScaleBuffer;
+  return (availableForRows / kCalendarRowCount).floorToDouble().clamp(46.0, 72.0);
+}
+
+double calendarContentHeight(double rowHeight) {
+  return kCalendarHeaderHeight +
+      kCalendarDaysOfWeekHeight +
+      kCalendarRowCount * rowHeight;
 }
 
 bool calendarShouldShowEntryTitles(double rowHeight) => rowHeight >= 46;
