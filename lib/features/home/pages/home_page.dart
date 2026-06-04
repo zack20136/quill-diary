@@ -1,6 +1,7 @@
 ﻿import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +40,7 @@ part '../widgets/calendar/calendar_pane.dart';
 part '../widgets/home_page_widgets.dart';
 
 const double _kPaneSectionGap = 18;
-const double _kHomeEntryListCacheExtent = 600;
+const ScrollCacheExtent _kHomeEntryListCacheExtent = ScrollCacheExtent.pixels(600);
 const int _kHtmlExportImageWarningThresholdBytes = 50 * 1024 * 1024;
 
 List<Widget> _overviewDiarySectionSlivers({

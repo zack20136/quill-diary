@@ -96,7 +96,7 @@ class _OverviewPane extends ConsumerWidget {
                 return false;
               },
               child: CustomScrollView(
-                cacheExtent: _kHomeEntryListCacheExtent,
+                scrollCacheExtent: _kHomeEntryListCacheExtent,
                 slivers: <Widget>[
                   SliverToBoxAdapter(
                     child: Column(
@@ -186,7 +186,7 @@ class _OverviewPane extends ConsumerWidget {
               return false;
             },
             child: CustomScrollView(
-              cacheExtent: _kHomeEntryListCacheExtent,
+              scrollCacheExtent: _kHomeEntryListCacheExtent,
               slivers: <Widget>[
                 SliverToBoxAdapter(
                   child: Column(
@@ -220,7 +220,7 @@ class _OverviewPane extends ConsumerWidget {
               return false;
             },
             child: CustomScrollView(
-              cacheExtent: _kHomeEntryListCacheExtent,
+              scrollCacheExtent: _kHomeEntryListCacheExtent,
               slivers: <Widget>[
                 SliverToBoxAdapter(
                   child: Column(
@@ -632,7 +632,7 @@ class _EntryList extends ConsumerWidget {
         color: pageBackground,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(0, 6, 0, 20),
-          cacheExtent: _kHomeEntryListCacheExtent,
+          scrollCacheExtent: _kHomeEntryListCacheExtent,
           itemCount: entries.length,
           separatorBuilder: (_, _) => const SizedBox(height: 14),
           itemBuilder: (BuildContext context, int index) {
