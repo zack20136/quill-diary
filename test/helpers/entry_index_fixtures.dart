@@ -1,5 +1,5 @@
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 EntryIndexRecord buildEntryIndexRecord({
   String id = 'jrn_TEST0001',

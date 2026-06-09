@@ -1,14 +1,6 @@
-// Application-level settings for the Runner target.
-//
-// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
-// future. If not, the values below would default to using the project name when this becomes a
-// 'flutter create' template.
+// Keep the product name aligned with the binary/app bundle name used by tests.
+PRODUCT_NAME = quill_diary
 
-// The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = quill_lock_diary
+PRODUCT_BUNDLE_IDENTIFIER = zack20136.com.quilldiary
 
-// The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.quillLockDiary
-
-// The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 zack20136. All rights reserved.

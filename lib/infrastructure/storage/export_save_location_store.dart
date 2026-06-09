@@ -70,7 +70,7 @@ class ExportSaveLocationStore {
     await rememberDirectory(directory);
   }
 
-  /// 優先使用上次儲存目錄，否則回到 Downloads/quill-lock-diary。
+  /// 優先使用上次儲存目錄，否則回到 Downloads/quill-diary。
   Future<String?> resolveInitialDirectory() async {
     final String? lastDirectory = await readLastDirectory();
     if (lastDirectory != null) {

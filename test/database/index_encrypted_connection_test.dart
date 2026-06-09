@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_connection_io.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_key_derivation.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
 import '../helpers/test_vault_path_strategy.dart';
 
 void main() {

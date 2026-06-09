@@ -4,11 +4,11 @@ import 'package:archive/archive.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_lock_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 
 import '../helpers/vault_test_harness.dart';
 
@@ -36,7 +36,7 @@ void main() {
   });
 
   test('mock Realm 通道可匯入日記與 Photos 附件', () async {
-    const MethodChannel channel = MethodChannel('quill_lock_diary/easy_diary_realm');
+    const MethodChannel channel = MethodChannel('quill_diary/easy_diary_realm');
     final Directory backupRoot = Directory(p.join(harness.tempDir.path, 'easy_backup'));
     final Directory databaseDir = Directory(p.join(backupRoot.path, 'Backup', 'Database'))
       ..createSync(recursive: true);
@@ -107,7 +107,7 @@ void main() {
   });
 
   test('可匯入無副檔名 UUID 相片並辨識為 JPEG', () async {
-    const MethodChannel channel = MethodChannel('quill_lock_diary/easy_diary_realm');
+    const MethodChannel channel = MethodChannel('quill_diary/easy_diary_realm');
     const String photoUuid = 'fe3121ef-e13e-41dd-a7c4-3f860786ff74';
     final Directory backupRoot = Directory(p.join(harness.tempDir.path, 'easy_uuid_photo'));
     final Directory databaseDir = Directory(p.join(backupRoot.path, 'Backup', 'Database'))
@@ -174,7 +174,7 @@ void main() {
   });
 
   test('zip 結構可觸發 Easy Diary 匯入分流', () async {
-    const MethodChannel channel = MethodChannel('quill_lock_diary/easy_diary_realm');
+    const MethodChannel channel = MethodChannel('quill_diary/easy_diary_realm');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall call) async {
       if (call.method == 'readDiaryBackup') {
@@ -234,7 +234,7 @@ void main() {
   });
 
   test('全部加密日記時略過且不匯入', () async {
-    const MethodChannel channel = MethodChannel('quill_lock_diary/easy_diary_realm');
+    const MethodChannel channel = MethodChannel('quill_diary/easy_diary_realm');
     final Directory backupRoot = Directory(p.join(harness.tempDir.path, 'encrypted_only'))
       ..createSync(recursive: true);
     final Directory databaseDir = Directory(p.join(backupRoot.path, 'Backup', 'Database'))

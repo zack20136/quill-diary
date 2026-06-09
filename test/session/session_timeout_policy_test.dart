@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/session/session_timeout_policy.dart';
+import 'package:quill_diary/features/session/session_timeout_policy.dart';
 
 void main() {
   test('未滿 5 分鐘不算 timeout', () {

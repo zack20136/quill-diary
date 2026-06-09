@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 
 void main() {
   group('isVisibleDriveBackupFileName', () {

@@ -17,6 +17,7 @@ import '../vault_repository.dart';
 import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
+/// Size estimate for a selected HTML export before embedding image data.
 class HtmlExportEstimate {
   const HtmlExportEstimate({
     required this.entryCount,
@@ -33,6 +34,10 @@ class HtmlExportEstimate {
   bool exceedsImageBytes(int thresholdBytes) => imageBytes >= thresholdBytes;
 }
 
+/// Writes user-portable Markdown, ZIP, and selected-entry HTML exports.
+///
+/// These formats are intentionally separate from encrypted `.jbackup` archives
+/// because users can inspect and re-import them as loose documents.
 class PortableExportIo {
   PortableExportIo({
     required VaultPathStrategy pathStrategy,
@@ -320,7 +325,7 @@ class PortableExportIo {
       body.writeln('<article class="entry">');
       body.writeln('<header class="entry-header">');
       body.writeln(
-        '<p class="entry-date">${_escapeHtml(formatQuillLockExportEntryDateTime(entry))}</p>',
+        '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
       body.writeln(
         '<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>',
@@ -357,7 +362,7 @@ class PortableExportIo {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QuillLockDiary 匯出</title>
+  <title>Quill Diary 匯出</title>
   <style>
     :root {
       color-scheme: light;

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 /// Device-key fake for crypto unit tests.
 class TestDeviceKeyManager implements DeviceKeyManager {

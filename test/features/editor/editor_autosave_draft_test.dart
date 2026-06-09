@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/features/editor/editor_draft.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/features/editor/editor_draft.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 void main() {
   group('editorDraftIsEmpty', () {

@@ -16,6 +16,7 @@ import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
+/// Result of creating a `.jbackup` file plus its immediate health check.
 class BackupCreationResult {
   const BackupCreationResult({
     required this.path,
@@ -26,6 +27,7 @@ class BackupCreationResult {
   final BackupHealthReport healthReport;
 }
 
+/// Metadata for app-managed local backups retained under application support.
 class LocalBackupFile {
   const LocalBackupFile({
     required this.name,
@@ -40,6 +42,10 @@ class LocalBackupFile {
   final int sizeBytes;
 }
 
+/// Coordinates user-facing backup, restore, import, export, and Drive actions.
+///
+/// It sits above archive I/O because it owns picker destinations, retention
+/// policy, Google Drive transfer, and post-restore session handling.
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,

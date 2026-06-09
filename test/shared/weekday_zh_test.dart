@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/shared/utils/weekday_zh.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/shared/utils/weekday_zh.dart';
 
 void main() {
   test('weekdayZhLong returns Monday through Sunday in Traditional Chinese', () {

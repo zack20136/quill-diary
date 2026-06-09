@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/settings/providers/settings_providers.dart';
-import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_lock_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/features/settings/providers/settings_providers.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_vault_transfer_service.dart';
 

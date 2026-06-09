@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 class TestVaultPathStrategy extends VaultPathStrategy {
   TestVaultPathStrategy(this.root);

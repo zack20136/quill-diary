@@ -3,14 +3,19 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 
+/// Computes every on-device path used by vault, index, and local backup storage.
+///
+/// Keeping path construction here makes namespace changes and legacy migrations
+/// easier to audit.
 class VaultPathStrategy {
   const VaultPathStrategy();
 
   Future<Directory> appRootDirectory() async {
     final Directory supportDirectory = await getApplicationSupportDirectory();
-    return Directory(p.join(supportDirectory.path, 'quill_lock_diary'));
+    return Directory(p.join(supportDirectory.path, AppIdentifiers.appStorageDirectory));
   }
 
   Future<Directory> vaultRootDirectory() async {

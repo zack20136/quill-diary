@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
-import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
-import 'package:quill_lock_diary/features/settings/pages/settings_page.dart';
-import 'package:quill_lock_diary/features/settings/providers/settings_providers.dart';
-import 'package:quill_lock_diary/features/settings/settings_copy.dart';
-import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_lock_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/features/settings/pages/settings_page.dart';
+import 'package:quill_diary/features/settings/providers/settings_providers.dart';
+import 'package:quill_diary/features/settings/settings_copy.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';

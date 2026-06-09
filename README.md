@@ -1,4 +1,4 @@
-# QuillLockDiary
+# Quill Diary
 
 離線優先的 Android 日記 App。日記、附件與索引都留在本機，以 `LDJ2` 加密格式與復原金鑰保護。
 

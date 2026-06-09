@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:quill_lock_diary/infrastructure/drive/google_drive_oauth_errors.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_oauth_errors.dart';
 
 void main() {
   group('looksLikeGoogleOAuthMisconfiguration', () {

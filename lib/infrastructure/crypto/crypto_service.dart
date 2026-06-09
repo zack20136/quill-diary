@@ -12,6 +12,10 @@ const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
 const int _schemaVersion = 1;
 
+/// A wrapped copy of the per-file content key.
+///
+/// Each encrypted file can include multiple slots, such as Recovery Key access
+/// and trusted-device access, without duplicating the ciphertext body.
 class EncryptionKeySlot {
   const EncryptionKeySlot({
     required this.slotId,
@@ -58,6 +62,9 @@ class EncryptionKeySlot {
   }
 }
 
+/// Authenticated LDJ2 header placed before ciphertext in every encrypted file.
+///
+/// Header bytes are AAD for AES-GCM, so metadata tampering fails decryption.
 class EncryptedDocumentHeader {
   const EncryptedDocumentHeader({
     required this.schemaVersion,
@@ -115,6 +122,7 @@ class EncryptedDocumentHeader {
   }
 }
 
+/// Raw LDJ2 file split into authenticated header bytes and ciphertext bytes.
 class ParsedEncryptedDocument {
   const ParsedEncryptedDocument({
     required this.header,
@@ -127,6 +135,7 @@ class ParsedEncryptedDocument {
   final Uint8List ciphertextBytes;
 }
 
+/// Encryption output that can be serialized with the LDJ2 magic and header size.
 class EncryptionResult {
   const EncryptionResult({
     required this.header,
@@ -154,6 +163,7 @@ class EncryptionResult {
   }
 }
 
+/// Credentials available for one decrypt operation.
 class DecryptionContext {
   const DecryptionContext({
     required this.vaultId,
@@ -177,6 +187,7 @@ class DecryptionContext {
   final String? deviceSlotId;
 }
 
+/// Encrypts/decrypts vault documents and derives Recovery Key wrapping keys.
 abstract class CryptoService {
   Future<EncryptionResult> encryptMarkdown({
     required String documentId,
@@ -219,6 +230,7 @@ abstract class CryptoService {
   });
 }
 
+/// Local LDJ2 implementation backed by AES-GCM and the Android device-key bridge.
 class LocalCryptoService implements CryptoService {
   LocalCryptoService({
     required DeviceKeyManager deviceKeyManager,

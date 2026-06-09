@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "zack20136.com.quill_lock_diary"
+    namespace = "zack20136.com.quill_diary"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "zack20136.com.quill_lock_diary"
+        applicationId = "zack20136.com.quill_diary"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 30

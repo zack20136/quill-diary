@@ -6,19 +6,20 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/app_identifiers.dart';
 import '../features/session/application/session_unlock_coordinator.dart';
 import '../features/session/providers/session_providers.dart';
 import 'router.dart';
 import 'theme.dart';
 
-class QuillLockDiaryApp extends ConsumerStatefulWidget {
-  const QuillLockDiaryApp({super.key});
+class QuillDiaryApp extends ConsumerStatefulWidget {
+  const QuillDiaryApp({super.key});
 
   @override
-  ConsumerState<QuillLockDiaryApp> createState() => _QuillLockDiaryAppState();
+  ConsumerState<QuillDiaryApp> createState() => _QuillDiaryAppState();
 }
 
-class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
+class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
     with WidgetsBindingObserver {
   late final GoRouter _router = AppRouter.createRouter();
   bool _unlockCoordinatorAttached = false;
@@ -51,7 +52,7 @@ class _QuillLockDiaryAppState extends ConsumerState<QuillLockDiaryApp>
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp.router(
-          title: 'Quill Diary',
+          title: AppIdentifiers.displayName,
           theme: buildAppTheme(dynamicScheme: lightDynamic),
           darkTheme: buildAppTheme(
             dynamicScheme: darkDynamic,

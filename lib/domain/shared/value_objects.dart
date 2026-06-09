@@ -7,6 +7,7 @@ typedef AssetId = String;
 typedef BackupId = String;
 typedef DeviceSlotId = String;
 
+/// Stable prefixed IDs keep exported files readable and avoid cross-type mixups.
 String generateVaultId() => 'vlt_${Ulid().toCanonical().toUpperCase()}';
 
 String generateEntryId() => 'jrn_${Ulid().toCanonical().toUpperCase()}';
@@ -44,6 +45,7 @@ String searchableTextFromMarkdown(String markdown) {
       .trim();
 }
 
+/// Calendar date stored as `yyyy-MM-dd` without timezone semantics.
 class DateOnly {
   const DateOnly(this.value);
 

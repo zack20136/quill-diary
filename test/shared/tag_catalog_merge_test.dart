@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
-import 'package:quill_lock_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_lock_diary/shared/utils/tag_catalog_merge.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
 
 import '../helpers/entry_index_fixtures.dart';
 

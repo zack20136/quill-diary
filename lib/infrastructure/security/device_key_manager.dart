@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 import 'keystore_unlock_policy.dart';
 
+/// Public metadata for a trusted-device key slot.
 class TrustedDeviceInfo {
   const TrustedDeviceInfo({
     required this.slotId,
@@ -16,6 +18,7 @@ class TrustedDeviceInfo {
   final String platform;
 }
 
+/// Ciphertext returned by native Android after wrapping bytes with a device key.
 class DeviceWrappedPayload {
   const DeviceWrappedPayload({
     required this.slotId,
@@ -30,6 +33,10 @@ class DeviceWrappedPayload {
   final String platform;
 }
 
+/// Persisted trusted-device copy of Recovery Key wrapping material.
+///
+/// Stored in secure storage and validated with [formatVersion] so unsupported
+/// legacy records can be discarded instead of misread.
 class WrappedRecoveryKeyRecord {
   const WrappedRecoveryKeyRecord({
     required this.slotId,
@@ -113,6 +120,7 @@ final class DeviceKeyLegacyStateException extends DeviceKeyException {
   ]);
 }
 
+/// Bridge between vault recovery logic and platform-protected device keys.
 abstract class DeviceKeyManager {
   Future<bool> hasTrustedKey(VaultId vaultId);
 
@@ -146,6 +154,7 @@ abstract class DeviceKeyManager {
   Future<void> clearTrustedKey(VaultId vaultId);
 }
 
+/// Android implementation backed by MethodChannel plus flutter_secure_storage.
 class AndroidDeviceKeyManager implements DeviceKeyManager {
   AndroidDeviceKeyManager({
     MethodChannel? channel,
@@ -154,11 +163,11 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
         _storage = storage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(
-                storageNamespace: 'quill_lock_diary_device',
+                storageNamespace: AppIdentifiers.secureStorageNamespace,
               ),
             );
 
-  static const String _channelName = 'quill_lock_diary/device_key_bridge';
+  static const String _channelName = AppIdentifiers.deviceKeyChannel;
   final MethodChannel _channel;
   final FlutterSecureStorage _storage;
 

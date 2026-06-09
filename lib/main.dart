@@ -5,5 +5,5 @@ import 'app/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: QuillLockDiaryApp()));
+  runApp(const ProviderScope(child: QuillDiaryApp()));
 }

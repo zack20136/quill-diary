@@ -1,6 +1,10 @@
 import 'kdf_descriptor.dart';
 import '../shared/value_objects.dart';
 
+/// Plaintext recovery descriptor stored at `vault/recovery.json`.
+///
+/// It intentionally contains no diary content and no unwrapped encryption key;
+/// it only describes how a user-entered Recovery Key derives wrapping material.
 class RecoveryMetadata {
   const RecoveryMetadata({
     required this.vaultId,

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
-import 'package:quill_lock_diary/shared/utils/entry_sorting.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/shared/utils/entry_sorting.dart';
 
 import '../helpers/entry_index_fixtures.dart';
 

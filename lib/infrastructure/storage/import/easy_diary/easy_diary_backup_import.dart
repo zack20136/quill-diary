@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../../../config/app_identifiers.dart';
 import '../../../../domain/diary/diary_entry.dart';
 import '../../../../domain/security/unlocked_vault_session.dart';
 import '../../../../domain/shared/value_objects.dart';
@@ -20,7 +21,7 @@ class EasyDiaryBackupImporter {
         _realmReaderEnabled = realmReaderEnabled ?? Platform.isAndroid;
 
   static const MethodChannel _defaultRealmChannel = MethodChannel(
-    'quill_lock_diary/easy_diary_realm',
+    AppIdentifiers.easyDiaryRealmChannel,
   );
 
   final MethodChannel _realmChannel;

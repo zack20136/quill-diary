@@ -1,5 +1,5 @@
-import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
-import 'package:quill_lock_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 
 class StubCryptoService implements CryptoService {
   @override

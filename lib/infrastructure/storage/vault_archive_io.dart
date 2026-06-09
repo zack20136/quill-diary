@@ -17,6 +17,10 @@ export 'portable/portable_export_io.dart' show HtmlExportEstimate;
 export 'portable/vault_backup_io.dart' show BackupHealthReport, BackupHealthStatusItem;
 export 'portable/portable_import_io.dart' show EasyDiaryBackupImporterFactory;
 
+/// Facade for backup, restore, portable export, and portable import I/O.
+///
+/// UI code depends on this class instead of the source-specific implementations
+/// so each format can evolve without widening feature-layer dependencies.
 class VaultArchiveIo {
   VaultArchiveIo({
     required VaultPathStrategy pathStrategy,

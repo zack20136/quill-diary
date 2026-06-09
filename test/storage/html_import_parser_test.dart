@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/infrastructure/storage/portable/html_import_parser.dart';
+import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
 
 void main() {
-  test('extractQuillLockDiaryMetaValue 可解析全形與半形冒號', () {
+  test('extractQuillDiaryMetaValue 可解析全形與半形冒號', () {
     const String metaHtml = '''
 <div class="entry-meta">
   <span>建立：2026-05-30 08:00</span>
@@ -11,12 +11,12 @@ void main() {
 </div>
 ''';
 
-    expect(extractQuillLockDiaryMetaValue(metaHtml, '建立'), '2026-05-30 08:00');
-    expect(extractQuillLockDiaryMetaValue(metaHtml, '更新'), '2026-05-31 09:15');
-    expect(extractQuillLockDiaryMetaValue(metaHtml, '心情'), '平靜');
+    expect(extractQuillDiaryMetaValue(metaHtml, '建立'), '2026-05-30 08:00');
+    expect(extractQuillDiaryMetaValue(metaHtml, '更新'), '2026-05-31 09:15');
+    expect(extractQuillDiaryMetaValue(metaHtml, '心情'), '平靜');
   });
 
-  test('extractQuillLockDiaryTags 可讀取標籤清單', () {
+  test('extractQuillDiaryTags 可讀取標籤清單', () {
     const String articleHtml = '''
 <ul class="tags">
   <li>工作</li>
@@ -24,6 +24,6 @@ void main() {
 </ul>
 ''';
 
-    expect(extractQuillLockDiaryTags(articleHtml), <String>['工作', '旅遊']);
+    expect(extractQuillDiaryTags(articleHtml), <String>['工作', '旅遊']);
   });
 }

@@ -1,4 +1,4 @@
-package zack20136.com.quill_lock_diary
+package zack20136.com.quill_diary
 
 import android.app.KeyguardManager
 import android.content.Intent
@@ -460,7 +460,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun aliasFor(vaultId: String, kind: AuthKind): String {
-        return "quill_lock_diary.device_wrap.${kind.wire}.$vaultId"
+        return "quill_diary.device_wrap.${kind.wire}.$vaultId"
     }
 
     private fun slotIdFor(vaultId: String, kind: AuthKind): String {
@@ -602,14 +602,14 @@ class MainActivity : FlutterFragmentActivity() {
     companion object {
         // 更新 keystore 後請同步 docs/Google-Drive-OAuth-設定.md 並執行 signingReport。
         // 與 lib/infrastructure/drive/google_drive_oauth_errors.dart 保持一致。
-        private const val ANDROID_PACKAGE_NAME = "zack20136.com.quill_lock_diary"
+        private const val ANDROID_PACKAGE_NAME = "zack20136.com.quill_diary"
         private const val DEBUG_SHA1_FINGERPRINT =
             "B0:B3:BC:E7:7C:68:8E:67:84:B4:B8:BB:FF:E5:A8:AE:24:6F:53:BB"
         private const val RELEASE_UPLOAD_SHA1_FINGERPRINT =
             "3D:40:C1:59:06:52:4E:C5:76:2D:29:51:30:92:77:7C:54:D5:42:1C"
 
-        private const val OAUTH_CHANNEL_NAME = "quill_lock_diary/oauth_config"
-        private const val DEVICE_KEY_CHANNEL_NAME = "quill_lock_diary/device_key_bridge"
+        private const val OAUTH_CHANNEL_NAME = "quill_diary/oauth_config"
+        private const val DEVICE_KEY_CHANNEL_NAME = "quill_diary/device_key_bridge"
         private const val GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE = 43021
         private const val GOOGLE_DRIVE_APPDATA_SCOPE =
             "https://www.googleapis.com/auth/drive.appdata"

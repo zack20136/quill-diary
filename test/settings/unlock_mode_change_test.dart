@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/fake_device_key_manager.dart';
 import '../helpers/vault_test_harness.dart';

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../config/app_identifiers.dart';
+
 /// Android OAuth 指紋。更新 keystore 後請同步 [GoogleDriveOAuthFingerprints.oauthSetupDocPath] 並執行 `signingReport`。
 abstract final class GoogleDriveOAuthFingerprints {
-  static const String androidPackageName = 'zack20136.com.quill_lock_diary';
+  static const String androidPackageName = AppIdentifiers.androidPackageName;
 
   static const String releaseUploadSha1 =
       '3D:40:C1:59:06:52:4E:C5:76:2D:29:51:30:92:77:7C:54:D5:42:1C';

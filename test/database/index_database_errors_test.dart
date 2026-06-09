@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/session/session_messages.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_errors.dart';
+import 'package:quill_diary/features/session/session_messages.dart';
+import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {

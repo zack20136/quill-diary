@@ -70,5 +70,5 @@
 
 ## 相關檔案
 
-- [AndroidManifest.xml](C:/Users/0219/Projects/00/quill-lock-diary/android/app/src/main/AndroidManifest.xml)
-- [editor_page.dart](C:/Users/0219/Projects/00/quill-lock-diary/lib/features/editor/pages/editor_page.dart)
+- [AndroidManifest.xml](C:/Users/0219/Projects/00/quill-diary/android/app/src/main/AndroidManifest.xml)
+- [editor_page.dart](C:/Users/0219/Projects/00/quill-diary/lib/features/editor/pages/editor_page.dart)

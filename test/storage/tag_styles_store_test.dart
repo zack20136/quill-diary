@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 
 import '../helpers/test_vault_path_strategy.dart';
 

@@ -1,5 +1,9 @@
 import '../shared/value_objects.dart';
 
+/// Canonical diary content model before encryption and after decryption.
+///
+/// Storage encodes this model as Markdown with front matter, then encrypts the
+/// resulting document. The search index is derived from these fields.
 class DiaryEntry {
   const DiaryEntry({
     required this.id,

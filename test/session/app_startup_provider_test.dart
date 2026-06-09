@@ -2,15 +2,15 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
-import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_lock_diary/features/session/providers/session_providers.dart';
-import 'package:quill_lock_diary/features/session/session_messages.dart';
-import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/session_messages.dart';
+import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
 import '../helpers/fake_vault_repository.dart';

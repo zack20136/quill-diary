@@ -6,9 +6,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
 
+import '../../config/app_identifiers.dart';
 import '../../config/oauth_config.dart';
 import 'google_drive_oauth_errors.dart';
 
+/// Current Google Drive connection snapshot shown by settings and backup flows.
 final class DriveConnectionState {
   const DriveConnectionState({
     required this.isConnected,
@@ -41,10 +43,12 @@ final class DriveConnectionState {
   }
 }
 
+/// Authorized Drive API factory decoupled from the concrete Google Sign-In SDK.
 abstract interface class GoogleDriveAuthorizationHandle {
   drive.DriveApi createDriveApi(List<String> scopes);
 }
 
+/// Signed-in Google account abstraction used to keep Drive code testable.
 abstract interface class GoogleDriveSignedInAccount {
   String get email;
 
@@ -59,6 +63,7 @@ abstract interface class GoogleDriveSignedInAccount {
   );
 }
 
+/// Minimal Google Sign-In surface required by Drive backup support.
 abstract interface class GoogleDriveSignInClient {
   Future<void> initialize({String? serverClientId});
 
@@ -204,6 +209,7 @@ final class DriveBackupFile {
   final DateTime? createdAt;
 }
 
+/// Remote backup service backed by Google Drive appDataFolder.
 abstract class DriveBackupService {
   Future<DriveConnectionState> getConnectionState();
 
@@ -226,6 +232,7 @@ abstract class DriveBackupService {
   });
 }
 
+/// Google Drive implementation with Android native-auth fallback handling.
 class GoogleDriveBackupService implements DriveBackupService {
   GoogleDriveBackupService({
     GoogleDriveSignInClient? signInClient,
@@ -237,7 +244,7 @@ class GoogleDriveBackupService implements DriveBackupService {
   final Future<DriveConnectionState?> Function()? _androidConnectionSnapshotOverride;
 
   static const MethodChannel _androidDriveAuthChannel = MethodChannel(
-    'quill_lock_diary/oauth_config',
+    AppIdentifiers.oauthChannel,
   );
   static const String _oauthSetupDocPath = GoogleDriveOAuthFingerprints.oauthSetupDocPath;
   static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];

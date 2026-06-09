@@ -56,7 +56,7 @@
 
 參考：
 
-- [key.properties.example](C:/Users/0219/Projects/00/quill-lock-diary/android/key.properties.example)
+- [key.properties.example](C:/Users/0219/Projects/00/quill-diary/android/key.properties.example)
 
 ## 送審格式
 

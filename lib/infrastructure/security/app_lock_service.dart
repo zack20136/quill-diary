@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../config/app_identifiers.dart';
 import 'app_unlock_mode.dart';
 import 'keystore_unlock_policy.dart';
 
+/// Persists the user's preferred trusted-device unlock policy outside the vault.
 abstract class AppLockService {
   Future<AppUnlockMode> getUnlockMode();
 
@@ -18,13 +20,14 @@ abstract class AppLockService {
   Future<bool> canUseDeviceCredential();
 }
 
+/// File-backed app-lock preferences plus native Android credential capability checks.
 class LocalAppLockService implements AppLockService {
   LocalAppLockService();
 
   static const String _unlockModeKey = 'app_lock.unlock_mode';
 
   static const MethodChannel _deviceKeyChannel =
-      MethodChannel('quill_lock_diary/device_key_bridge');
+      MethodChannel(AppIdentifiers.deviceKeyChannel);
 
   Map<String, String>? _cache;
 
@@ -102,7 +105,13 @@ class LocalAppLockService implements AppLockService {
 
   Future<File> _storageFile() async {
     final Directory supportDir = await getApplicationSupportDirectory();
-    return File(p.join(supportDir.path, 'quill_lock_diary', 'app_lock_store.json'));
+    return File(
+      p.join(
+        supportDir.path,
+        AppIdentifiers.appStorageDirectory,
+        'app_lock_store.json',
+      ),
+    );
   }
 }
 

@@ -1,11 +1,11 @@
 {
-    "name": "quill_lock_diary",
-    "short_name": "quill_lock_diary",
+    "name": "Quill Diary",
+    "short_name": "Quill Diary",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "An offline encrypted diary app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,6 +1,6 @@
-import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 class FakeAppLockService implements AppLockService {
   FakeAppLockService({

@@ -1,13 +1,13 @@
-// HTML 匯入解析：從 Quill Lock 匯出的單一或多篇 HTML 擷取內容並轉回 Markdown。
+// HTML 匯入解析：從 Quill Diary 匯出的單一或多篇 HTML 擷取內容並轉回 Markdown。
 
-bool isQuillLockExportHtml(String html) {
+bool isQuillDiaryExportHtml(String html) {
   return RegExp(
     r'<article\b[^>]*\bclass\s*=\s*"[^"]*\bentry\b',
     caseSensitive: false,
   ).hasMatch(html);
 }
 
-List<String> splitQuillLockDiaryArticles(String bodyHtml) {
+List<String> splitQuillDiaryArticles(String bodyHtml) {
   final RegExp pattern = RegExp(
     r'<article\b[^>]*\bclass\s*=\s*"[^"]*\bentry\b[^>]*>([\s\S]*?)</article>',
     caseSensitive: false,
@@ -47,7 +47,7 @@ String? extractBlockInnerHtml(
   return null;
 }
 
-String? extractQuillLockDiaryMetaValue(String entryMetaHtml, String label) {
+String? extractQuillDiaryMetaValue(String entryMetaHtml, String label) {
   final RegExp pattern = RegExp(
     r'<span\b[^>]*>\s*' +
         RegExp.escape(label) +
@@ -63,7 +63,7 @@ String? extractQuillLockDiaryMetaValue(String entryMetaHtml, String label) {
   return value.isEmpty ? null : value;
 }
 
-List<String> extractQuillLockDiaryTags(String articleHtml) {
+List<String> extractQuillDiaryTags(String articleHtml) {
   final String? tagsHtml = extractBlockInnerHtml(articleHtml, 'ul', 'tags');
   if (tagsHtml == null) {
     return const <String>[];

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 
 void main() {
   const FrontMatterCodec codec = FrontMatterCodec();

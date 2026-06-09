@@ -4,16 +4,16 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
-import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_lock_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
 
@@ -283,15 +283,15 @@ Imported from markdown.
     expect(html, contains('<h1>Heading</h1>'));
     expect(html, contains('&lt;script&gt;alert(1)&lt;/script&gt;'));
     expect(html, contains('data:image/png;base64,AQIDBAU='));
-    expect(html, isNot(contains('<h1>QuillLockDiary 匯出</h1>')));
+    expect(html, isNot(contains('<h1>Quill Diary 匯出</h1>')));
     expect(html, isNot(contains('<figcaption>cover.png</figcaption>')));
     expect(html, contains('note.pdf · application/pdf'));
     expect(html, isNot(contains('Not selected')));
   });
   });
 
-  group('匯入：QuillLockDiary HTML', () {
-  test('可匯入 QuillLockDiary 匯出的 HTML', () async {
+  group('匯入：Quill Diary HTML', () {
+  test('可匯入 Quill Diary 匯出的 HTML', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'roundtrip_source'))
       ..createSync(recursive: true);
@@ -360,7 +360,7 @@ Imported from markdown.
     expect(attachments.single.mimeType, 'image/png');
   });
 
-  test('可從 QuillLockDiary 匯出的單一 HTML 匯入多篇日記', () async {
+  test('可從 Quill Diary 匯出的單一 HTML 匯入多篇日記', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'multi_roundtrip_source'))
       ..createSync(recursive: true);

@@ -1,5 +1,9 @@
 import '../shared/value_objects.dart';
 
+/// In-memory proof that the current process can access one vault.
+///
+/// A session may be restored by trusted-device material or by a Recovery Key.
+/// Keep instances short-lived and avoid persisting [recoveryWrapKey].
 class UnlockedVaultSession {
   const UnlockedVaultSession({
     required this.vaultId,

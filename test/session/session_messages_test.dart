@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/session/session_messages.dart';
-import 'package:quill_lock_diary/features/session/state/app_session_state.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/features/session/session_messages.dart';
+import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 
 void main() {
   test('DeviceKeyAuthFailedException maps to retry verification message', () {

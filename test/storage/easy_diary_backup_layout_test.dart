@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_lock_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_layout.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_layout.dart';
 
 void main() {
   late Directory tempDir;

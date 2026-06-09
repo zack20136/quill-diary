@@ -1,5 +1,9 @@
 import '../shared/value_objects.dart';
 
+/// Metadata for an encrypted attachment stored beside a diary entry.
+///
+/// The actual bytes live under the vault `assets/` tree; this model is the
+/// index/front-matter view used by UI, backup, and restore flows.
 class AssetAttachment {
   const AssetAttachment({
     required this.id,

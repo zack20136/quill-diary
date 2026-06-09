@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../../config/app_identifiers.dart';
+
 Future<List<int>> deriveIndexDatabaseKey({
   required List<int> recoveryWrapKey,
   required String vaultId,
@@ -13,8 +15,7 @@ Future<List<int>> deriveIndexDatabaseKey({
   final SecretKey secretKey = await hkdf.deriveKey(
     secretKey: SecretKey(recoveryWrapKey),
     nonce: utf8.encode(vaultId),
-    info: utf8.encode('quill_lock_diary:index:v1'),
+    info: utf8.encode(AppIdentifiers.indexKeyDerivationInfo),
   );
   return secretKey.extractBytes();
 }
-

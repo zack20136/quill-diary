@@ -1,4 +1,4 @@
-package zack20136.com.quill_lock_diary
+package zack20136.com.quill_diary
 
 import io.realm.DynamicRealm
 import io.realm.DynamicRealmObject

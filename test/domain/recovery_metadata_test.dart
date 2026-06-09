@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/recovery/kdf_descriptor.dart';
-import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 
 void main() {
   final KdfDescriptor kdf = KdfDescriptor.argon2idRecovery(

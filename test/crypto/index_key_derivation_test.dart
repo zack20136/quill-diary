@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_key_derivation.dart';
+import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
 
 void main() {
   test('deriveIndexDatabaseKey 對相同輸入穩定', () async {
@@ -28,7 +28,7 @@ void main() {
     final SecretKey reference = await hkdf.deriveKey(
       secretKey: SecretKey(recoveryWrapKey),
       nonce: utf8.encode(vaultId),
-      info: utf8.encode('quill_lock_diary:index:v1'),
+      info: utf8.encode('quill_diary:index:v1'),
     );
     final List<int> derived = await deriveIndexDatabaseKey(
       recoveryWrapKey: recoveryWrapKey,

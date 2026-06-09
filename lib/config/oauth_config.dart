@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'app_identifiers.dart';
+
 /// Google Sign-In 在 Android 上須提供 [GoogleSignIn.initialize] 的 `serverClientId`
 ///（也就是網頁應用程式 OAuth Client ID）。
 ///
@@ -13,7 +15,7 @@ class OAuthConfig {
   OAuthConfig._();
 
   static const MethodChannel _androidOAuthChannel = MethodChannel(
-    'quill_lock_diary/oauth_config',
+    AppIdentifiers.oauthChannel,
   );
 
   static const String googleServerClientId = String.fromEnvironment(

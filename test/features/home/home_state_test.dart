@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/home/state/home_state.dart';
+import 'package:quill_diary/features/home/state/home_state.dart';
 
 void main() {
   test('memory scope defaults to month', () {

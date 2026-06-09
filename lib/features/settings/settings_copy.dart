@@ -373,7 +373,7 @@ abstract final class SettingsAboutCopy {
     '標籤目錄',
   ];
 
-  static const String overviewHeroTitle = 'QuillLockDiary';
+  static const String overviewHeroTitle = 'Quill Diary';
   static const String overviewHeroBody =
       '離線優先的 Android 加密日記。內容在本機加密存放，除非你主動備份或匯出，不會自動上傳明文。';
 

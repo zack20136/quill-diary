@@ -1,12 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const MethodChannel channel = MethodChannel('quill_lock_diary/device_key_bridge');
+  const MethodChannel channel = MethodChannel('quill_diary/device_key_bridge');
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

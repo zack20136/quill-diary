@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:quill_lock_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import 'fake_app_lock_service.dart';
 import 'fake_device_key_manager.dart';

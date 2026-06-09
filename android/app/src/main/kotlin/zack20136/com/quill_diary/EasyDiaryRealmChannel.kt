@@ -1,11 +1,11 @@
-package zack20136.com.quill_lock_diary
+package zack20136.com.quill_diary
 
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.realm.Realm
 
 object EasyDiaryRealmChannel {
-    const val CHANNEL_NAME = "quill_lock_diary/easy_diary_realm"
+    const val CHANNEL_NAME = "quill_diary/easy_diary_realm"
 
     fun register(flutterEngine: FlutterEngine, applicationContext: android.content.Context) {
         Realm.init(applicationContext)

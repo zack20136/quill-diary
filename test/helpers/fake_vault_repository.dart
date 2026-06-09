@@ -1,14 +1,14 @@
-import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_lock_service.dart';
-import 'package:quill_lock_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import 'stub_crypto_service.dart';
 import 'test_vault_path_strategy.dart';

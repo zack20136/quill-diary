@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 void main() {
   test('normalizeText trims lowercases and collapses whitespace', () {

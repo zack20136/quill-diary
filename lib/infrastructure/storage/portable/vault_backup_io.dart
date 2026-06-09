@@ -13,6 +13,10 @@ import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'portable_io_types.dart';
 
+/// Reads and writes encrypted `.jbackup` archives.
+///
+/// Backups copy the vault's authoritative encrypted files and recovery metadata;
+/// the search index is treated as derived data and rebuilt after restore.
 class VaultBackupIo {
   VaultBackupIo({
     required VaultPathStrategy pathStrategy,

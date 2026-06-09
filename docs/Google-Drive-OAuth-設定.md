@@ -40,7 +40,7 @@ Google Drive 備份功能在 Android 上依賴 Google Sign-In 與 Google Drive A
 
 Cloud Console 內的 Android OAuth client 必須與實際 APK / AAB 一致：
 
-- package name：`zack20136.com.quill_lock_diary`
+- package name：`zack20136.com.quill_diary`
 - SHA-1（依安裝方式擇一或多組登記）
 
 | 安裝方式 | SHA-1 |

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/features/settings/portable_import_result_messages.dart';
-import 'package:quill_lock_diary/features/settings/settings_copy.dart';
-import 'package:quill_lock_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/features/settings/portable_import_result_messages.dart';
+import 'package:quill_diary/features/settings/settings_copy.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
 
 void main() {
   test('messageWhenNoEntriesImported 全部略過時回報通用略過提示', () {

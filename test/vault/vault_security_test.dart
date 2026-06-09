@@ -1,11 +1,11 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_lock_diary/domain/diary/diary_entry.dart';
-import 'package:quill_lock_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_lock_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_lock_diary/domain/shared/value_objects.dart';
-import 'package:quill_lock_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
 

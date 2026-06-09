@@ -20,8 +20,13 @@ import 'html_import_parser.dart';
 import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
+/// Factory hook used by tests and platform-specific Easy Diary import wiring.
 typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
 
+/// Imports portable Markdown/HTML documents and delegated third-party backups.
+///
+/// The importer normalizes loose user documents into [DiaryEntry] models and
+/// lets [VaultRepository] handle encryption plus index synchronization.
 class PortableImportIo {
   PortableImportIo({
     required VaultPathStrategy pathStrategy,
@@ -56,7 +61,7 @@ class PortableImportIo {
     for (final File file in importFiles) {
       final String extension = p.extension(file.path).toLowerCase();
       if (extension == '.html' || extension == '.htm') {
-        final ImportFileTotals fileTotals = await _importQuillLockHtmlFile(
+        final ImportFileTotals fileTotals = await _importQuillDiaryHtmlFile(
           session: session,
           file: file,
           importRootDirectory: rootDirectory,
@@ -219,20 +224,20 @@ class PortableImportIo {
     return const <ParsedImportEntry>[];
   }
 
-  Future<ImportFileTotals> _importQuillLockHtmlFile({
+  Future<ImportFileTotals> _importQuillDiaryHtmlFile({
     required UnlockedVaultSession session,
     required File file,
     required Directory importRootDirectory,
   }) async {
     final String html = await file.readAsString();
-    if (!isQuillLockExportHtml(html)) {
+    if (!isQuillDiaryExportHtml(html)) {
       return const ImportFileTotals(
         importedEntries: 0,
         skippedFiles: 1,
         skippedAttachments: 0,
       );
     }
-    return _importQuillLockExportFile(
+    return _importQuillDiaryExportFile(
       session: session,
       file: file,
       html: html,
@@ -240,13 +245,13 @@ class PortableImportIo {
     );
   }
 
-  Future<ImportFileTotals> _importQuillLockExportFile({
+  Future<ImportFileTotals> _importQuillDiaryExportFile({
     required UnlockedVaultSession session,
     required File file,
     required String html,
     required Directory importRootDirectory,
   }) async {
-    final List<ParsedImportEntry> parsedEntries = await _parseQuillLockExportArticles(
+    final List<ParsedImportEntry> parsedEntries = await _parseQuillDiaryExportArticles(
       file: file,
       html: html,
       importRootDirectory: importRootDirectory,
@@ -317,19 +322,19 @@ class PortableImportIo {
     );
   }
 
-  Future<List<ParsedImportEntry>> _parseQuillLockExportArticles({
+  Future<List<ParsedImportEntry>> _parseQuillDiaryExportArticles({
     required File file,
     required String html,
     required Directory importRootDirectory,
   }) async {
     final FileStat stat = await file.stat();
     final String bodyHtml = extractHtmlBody(html);
-    final List<String> quillLockArticleSections = splitQuillLockDiaryArticles(bodyHtml);
+    final List<String> quillDiaryArticleSections = splitQuillDiaryArticles(bodyHtml);
     final List<ParsedImportEntry> parsedEntries = <ParsedImportEntry>[];
 
-    for (final String quillLockArticleHtml in quillLockArticleSections) {
-      final ParsedImportEntry? parsedEntry = await _parseQuillLockExportArticle(
-        quillLockArticleHtml: quillLockArticleHtml,
+    for (final String quillDiaryArticleHtml in quillDiaryArticleSections) {
+      final ParsedImportEntry? parsedEntry = await _parseQuillDiaryExportArticle(
+        quillDiaryArticleHtml: quillDiaryArticleHtml,
         file: file,
         stat: stat,
         importRootDirectory: importRootDirectory,
@@ -342,30 +347,30 @@ class PortableImportIo {
     return parsedEntries;
   }
 
-  Future<ParsedImportEntry?> _parseQuillLockExportArticle({
-    required String quillLockArticleHtml,
+  Future<ParsedImportEntry?> _parseQuillDiaryExportArticle({
+    required String quillDiaryArticleHtml,
     required File file,
     required FileStat stat,
     required Directory importRootDirectory,
   }) async {
-    final String? dateText = extractHtmlClassText(quillLockArticleHtml, 'entry-date');
-    final String? title = extractFirstHtmlTagText(quillLockArticleHtml, 'h2');
+    final String? dateText = extractHtmlClassText(quillDiaryArticleHtml, 'entry-date');
+    final String? title = extractFirstHtmlTagText(quillDiaryArticleHtml, 'h2');
     final String? entryBodyHtml =
-        extractBlockInnerHtml(quillLockArticleHtml, 'section', 'entry-body');
+        extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'entry-body');
     if (entryBodyHtml == null && title == null && dateText == null) {
       return null;
     }
 
     final String? entryMetaHtml =
-        extractBlockInnerHtml(quillLockArticleHtml, 'div', 'entry-meta');
+        extractBlockInnerHtml(quillDiaryArticleHtml, 'div', 'entry-meta');
     final String? mood = entryMetaHtml == null
         ? null
-        : extractQuillLockDiaryMetaValue(entryMetaHtml, '心情');
-    final List<String> tags = extractQuillLockDiaryTags(quillLockArticleHtml);
+        : extractQuillDiaryMetaValue(entryMetaHtml, '心情');
+    final List<String> tags = extractQuillDiaryTags(quillDiaryArticleHtml);
 
     final String attachmentSourceHtml =
-        '${extractBlockInnerHtml(quillLockArticleHtml, 'section', 'embedded-images') ?? ''}\n'
-        '${extractBlockInnerHtml(quillLockArticleHtml, 'section', 'attachment-list') ?? ''}';
+        '${extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'embedded-images') ?? ''}\n'
+        '${extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'attachment-list') ?? ''}';
     final ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
       references: extractHtmlAttachmentReferences(attachmentSourceHtml),
       baseDirectory: file.parent,
@@ -375,12 +380,12 @@ class PortableImportIo {
     final String markdownBody = exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
     final DateTime fallbackTimestamp = stat.modified;
     final ({DateOnly date, DateTime createdAt, DateTime updatedAt}) times =
-        resolveQuillLockImportEntryTimes(
+        resolveQuillDiaryImportEntryTimes(
       dateText: dateText,
       fallback: fallbackTimestamp,
     );
     final DateOnly entryDate = dateText == null
-        ? (parsePortableDateOnly(quillLockArticleHtml) ?? times.date)
+        ? (parsePortableDateOnly(quillDiaryArticleHtml) ?? times.date)
         : times.date;
 
     final DiaryEntry entry = DiaryEntry(

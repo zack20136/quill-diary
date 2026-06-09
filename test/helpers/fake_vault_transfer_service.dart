@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:quill_lock_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_lock_diary/infrastructure/storage/export_save_location_store.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_lock_diary/infrastructure/storage/vault_transfer_service.dart';
-import 'package:quill_lock_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_lock_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/storage/export_save_location_store.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 
 import 'fake_vault_repository.dart';
 import 'test_vault_path_strategy.dart';
