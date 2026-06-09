@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
-/// Up to 5 image attachment paths for list preview strip (GROUP_CONCAT in SELECT).
+/// 日記列表預覽用的圖片附件路徑（GROUP_CONCAT 串接）。
 const String _kPreviewImagePathsSelect = '''
   (
     SELECT GROUP_CONCAT(sfp.path, '<|>')
@@ -15,7 +15,6 @@ const String _kPreviewImagePathsSelect = '''
       WHERE a.entry_id = e.id
         AND a.mime_type LIKE 'image/%'
       ORDER BY a.created_at ASC
-      LIMIT 5
     ) AS sfp
   ) AS preview_image_paths_joined''';
 
