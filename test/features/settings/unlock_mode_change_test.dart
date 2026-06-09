@@ -4,8 +4,8 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-import '../helpers/fake_device_key_manager.dart';
-import '../helpers/vault_test_harness.dart';
+import '../../helpers/fake_device_key_manager.dart';
+import '../../helpers/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;

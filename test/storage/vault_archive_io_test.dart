@@ -44,7 +44,7 @@ void main() {
 
   group('匯出：Markdown', () {
   test('Markdown 匯出會把 index.md 與附件放在同一個資料夾', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'source'))
       ..createSync(recursive: true);
     final File sourceAttachment = File(p.join(sourceDirectory.path, 'photo.jpg'))
@@ -91,7 +91,7 @@ void main() {
   });
 
   test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'zip_source'))
       ..createSync(recursive: true);
     final File sourceAttachment = File(p.join(sourceDirectory.path, 'receipt.pdf'))
@@ -143,7 +143,7 @@ void main() {
 
   group('匯入：Markdown / zip', () {
   test('可匯入單篇 Markdown 與同資料夾附件', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_md'))
       ..createSync(recursive: true);
     final Directory entryDirectory = Directory(
@@ -186,8 +186,61 @@ Imported from markdown.
     expect(attachments.single.safeFilename, 'image.png');
   });
 
+  test('可從 zip 匯入 Markdown 與附件', () async {
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
+    final Archive archive = Archive()
+      ..addFile(
+        ArchiveFile.string(
+          'diary_export_123/2026-05-23/Zip Import/index.md',
+          '''---
+title: "Zip Import"
+date: "2026-05-23"
+attachments:
+  - "./photo.png"
+---
+
+# Zip Import
+
+Imported from zip.
+''',
+        ),
+      )
+      ..addFile(
+        ArchiveFile(
+          'diary_export_123/2026-05-23/Zip Import/photo.png',
+          3,
+          const <int>[6, 5, 4],
+        ),
+      );
+
+    await zipFile.writeAsBytes(ZipEncoder().encode(archive));
+
+    final PortableImportResult result = await archiveIo.importDocumentsFromZip(
+      session: setup.session,
+      zipFile: zipFile,
+    );
+
+    expect(result.importedEntries, 1);
+
+    final entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
+
+    final DiaryEntry? imported = await harness.repository.loadEntry(
+      setup.session,
+      entries.single.id,
+    );
+    final attachments = await harness.repository.loadAttachments(entries.single.id);
+
+    expect(imported?.title, 'Zip Import');
+    expect(imported?.date.value, '2026-05-23');
+    expect(imported?.markdownBody, contains('Imported from zip.'));
+    expect(attachments, hasLength(1));
+    expect(attachments.single.safeFilename, 'photo.png');
+  });
+
   test('非本 App 的 Easy Diary 匯出 HTML 會略過', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory importRoot = Directory(p.join(harness.tempDir.path, 'import_ed_html_skip'))
       ..createSync(recursive: true);
 
@@ -212,7 +265,7 @@ Imported from markdown.
 
   group('匯出：HTML', () {
   test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'html_source'))
       ..createSync(recursive: true);
     final File sourceImage = File(p.join(sourceDirectory.path, 'cover.png'))
@@ -292,7 +345,7 @@ Imported from markdown.
 
   group('匯入：Quill Diary HTML', () {
   test('可匯入 Quill Diary 匯出的 HTML', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'roundtrip_source'))
       ..createSync(recursive: true);
     final File sourceImage = File(p.join(sourceDirectory.path, 'cover.png'))
@@ -361,7 +414,7 @@ Imported from markdown.
   });
 
   test('可從 Quill Diary 匯出的單一 HTML 匯入多篇日記', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(p.join(harness.tempDir.path, 'multi_roundtrip_source'))
       ..createSync(recursive: true);
     final File sourceImage = File(p.join(sourceDirectory.path, 'snap.png'))
@@ -444,7 +497,7 @@ Imported from markdown.
   });
 
   test('HTML 匯出沒有可用日記時回報錯誤', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final File output = File(p.join(harness.tempDir.path, 'empty.html'));
 
     expect(
@@ -464,75 +517,14 @@ Imported from markdown.
   });
   });
 
-  group('匯入：Markdown / zip', () {
-  test('可從 zip 匯入 Markdown 與附件', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
-    final Archive archive = Archive()
-      ..addFile(
-        ArchiveFile.string(
-          'diary_export_123/2026-05-23/Zip Import/index.md',
-          '''---
-title: "Zip Import"
-date: "2026-05-23"
-attachments:
-  - "./photo.png"
----
-
-# Zip Import
-
-Imported from zip.
-''',
-        ),
-      )
-      ..addFile(
-        ArchiveFile(
-          'diary_export_123/2026-05-23/Zip Import/photo.png',
-          3,
-          const <int>[6, 5, 4],
-        ),
-      );
-
-    await zipFile.writeAsBytes(ZipEncoder().encode(archive));
-
-    final PortableImportResult result = await archiveIo.importDocumentsFromZip(
-      session: setup.session,
-      zipFile: zipFile,
-    );
-
-    expect(result.importedEntries, 1);
-
-    final entries = await harness.repository.listEntries();
-    expect(entries, hasLength(1));
-
-    final DiaryEntry? imported = await harness.repository.loadEntry(
-      setup.session,
-      entries.single.id,
-    );
-    final attachments = await harness.repository.loadAttachments(entries.single.id);
-
-    expect(imported?.title, 'Zip Import');
-    expect(imported?.date.value, '2026-05-23');
-    expect(imported?.markdownBody, contains('Imported from zip.'));
-    expect(attachments, hasLength(1));
-    expect(attachments.single.safeFilename, 'photo.png');
-  });
-  });
-
   group('備份與還原', () {
   test('peekBackupRecovery 可讀取備份內 recovery.json', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: generateEntryId(),
-        vaultId: setup.session.vaultId,
-        title: 'Backup Entry',
-        date: const DateOnly('2026-05-24'),
-        createdAt: DateTime.parse('2026-05-24T10:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-24T10:00:00Z'),
-        markdownBody: 'backup body',
-      ),
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Backup Entry',
+      date: '2026-05-24',
+      markdownBody: 'backup body',
     );
 
     final File backupFile = File(p.join(harness.tempDir.path, 'test.jbackup'));
@@ -545,18 +537,12 @@ Imported from zip.
   });
 
   test('checkBackupHealth accepts a readable vault backup', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: generateEntryId(),
-        vaultId: setup.session.vaultId,
-        title: 'Healthy Backup',
-        date: const DateOnly('2026-05-30'),
-        createdAt: DateTime.parse('2026-05-30T10:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-30T10:00:00Z'),
-        markdownBody: 'healthy backup body',
-      ),
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Healthy Backup',
+      date: '2026-05-30',
+      markdownBody: 'healthy backup body',
     );
 
     final File backupFile = File(p.join(harness.tempDir.path, 'healthy.jbackup'));
@@ -580,21 +566,15 @@ Imported from zip.
   });
 
   test('restoreBackupZip 會在覆寫前拒絕缺少加密資料的備份', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
     final RecoveryMetadata metadata =
         await harness.repository.readRecoveryMetadata() ??
             (throw StateError('測試前置失敗：缺少 recovery metadata。'));
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: generateEntryId(),
-        vaultId: setup.session.vaultId,
-        title: 'Keep Me',
-        date: const DateOnly('2026-05-31'),
-        createdAt: DateTime.parse('2026-05-31T08:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-31T08:00:00Z'),
-        markdownBody: 'keep',
-      ),
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Keep Me',
+      date: '2026-05-31',
+      markdownBody: 'keep',
     );
 
     final File incompleteBackup = File(p.join(harness.tempDir.path, 'incomplete.jbackup'));
@@ -623,19 +603,14 @@ Imported from zip.
   });
 
   test('restoreBackupZip 可還原日記並保留 recovery metadata', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    final String entryId = generateEntryId();
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: entryId,
-        vaultId: setup.session.vaultId,
-        title: 'Restore Me',
-        date: const DateOnly('2026-05-25'),
-        createdAt: DateTime.parse('2026-05-25T11:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-25T11:00:00Z'),
-        markdownBody: 'restore body',
-      ),
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    final String entryId = await harness.saveSimpleEntry(
+      setup,
+      title: 'Restore Me',
+      date: '2026-05-25',
+      markdownBody: 'restore body',
+      createdAt: DateTime.parse('2026-05-25T11:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-25T11:00:00Z'),
     );
 
     final File backupFile = File(p.join(harness.tempDir.path, 'restore.jbackup'));
@@ -670,18 +645,12 @@ Imported from zip.
   });
 
   test('損壞的備份 zip 不應清空現有 vault', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    await harness.repository.saveEntry(
-      setup.session,
-      DiaryEntry(
-        id: generateEntryId(),
-        vaultId: setup.session.vaultId,
-        title: 'Keep Me',
-        date: const DateOnly('2026-05-27'),
-        createdAt: DateTime.parse('2026-05-27T08:00:00Z'),
-        updatedAt: DateTime.parse('2026-05-27T08:00:00Z'),
-        markdownBody: 'keep',
-      ),
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Keep Me',
+      date: '2026-05-27',
+      markdownBody: 'keep',
     );
 
     final File badBackup = File(p.join(harness.tempDir.path, 'bad.jbackup'))

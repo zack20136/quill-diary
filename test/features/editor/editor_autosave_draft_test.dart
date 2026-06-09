@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -96,6 +98,103 @@ void main() {
         editorDraftIsDirty(current: current, saved: saved),
         isTrue,
       );
+    });
+
+    test('dateValue 變更標記 dirty', () {
+      final EditorDraftSnapshot current = saved.copyWithDateValue('2026-05-18');
+
+      expect(
+        editorDraftIsDirty(current: current, saved: saved),
+        isTrue,
+      );
+    });
+
+    test('entryHour/Minute 變更標記 dirty', () {
+      final EditorDraftSnapshot current = saved.copyWithTime(entryHour: 11, entryMinute: 0);
+
+      expect(
+        editorDraftIsDirty(current: current, saved: saved),
+        isTrue,
+      );
+    });
+
+    test('tags 變更標記 dirty', () {
+      final EditorDraftSnapshot current = saved.copyWithTags(<String>['other']);
+
+      expect(
+        editorDraftIsDirty(current: current, saved: saved),
+        isTrue,
+      );
+    });
+  });
+
+  group('parseEditorTagsCsv', () {
+    test('解析逗號分隔標籤並忽略空白', () {
+      expect(parseEditorTagsCsv('a, b ,, c'), <String>['a', 'b', 'c']);
+    });
+
+    test('空字串回傳空列表', () {
+      expect(parseEditorTagsCsv(''), isEmpty);
+    });
+  });
+
+  group('pendingAttachmentFingerprint', () {
+    test('bytes 附件使用長度指紋', () {
+      final PendingAttachment attachment = PendingAttachment(
+        bytes: Uint8List.fromList(<int>[1, 2, 3]),
+        mimeType: 'image/png',
+        originalFilename: 'a.png',
+      );
+
+      expect(
+        pendingAttachmentFingerprint(attachment),
+        'bytes:3|image/png|a.png',
+      );
+    });
+
+    test('sourcePath 附件使用路徑指紋', () {
+      final PendingAttachment attachment = PendingAttachment(
+        sourcePath: '/tmp/a.png',
+        mimeType: 'image/png',
+        originalFilename: 'a.png',
+      );
+
+      expect(
+        pendingAttachmentFingerprint(attachment),
+        '/tmp/a.png|image/png|a.png',
+      );
+    });
+  });
+
+  group('EditorDraftRecord JSON', () {
+    test('toJson/fromJson roundtrip', () {
+      final EditorDraftRecord original = EditorDraftRecord(
+        title: 'title',
+        dateValue: '2026-05-17',
+        entryHour: 9,
+        entryMinute: 15,
+        tags: <String>['a'],
+        markdownBody: 'body',
+        keptAttachmentIds: <AssetId>['asset-1'],
+        pendingAttachments: const <EditorDraftPendingAttachment>[
+          EditorDraftPendingAttachment(
+            relativePath: 'pending/x.png',
+            mimeType: 'image/png',
+            originalFilename: 'x.png',
+          ),
+        ],
+        provisionalEntryId: 'entry-1',
+        createdAt: DateTime(2026, 5, 17, 9, 0),
+        updatedAt: DateTime(2026, 5, 17, 9, 15),
+      );
+
+      final EditorDraftRecord restored = EditorDraftRecord.fromJson(original.toJson());
+
+      expect(restored.title, original.title);
+      expect(restored.dateValue, original.dateValue);
+      expect(restored.tags, original.tags);
+      expect(restored.pendingAttachments.single.relativePath, 'pending/x.png');
+      expect(restored.provisionalEntryId, 'entry-1');
     });
   });
 
@@ -218,6 +317,48 @@ extension _EditorDraftSnapshotTestHelpers on EditorDraftSnapshot {
       entryHour: entryHour,
       entryMinute: entryMinute,
       tags: tags,
+      markdownBody: markdownBody,
+      keptAttachmentIds: keptAttachmentIds,
+      pendingFingerprints: pendingFingerprints,
+    );
+  }
+
+  EditorDraftSnapshot copyWithDateValue(String value) {
+    return EditorDraftSnapshot(
+      title: title,
+      dateValue: value,
+      entryHour: entryHour,
+      entryMinute: entryMinute,
+      tags: tags,
+      markdownBody: markdownBody,
+      keptAttachmentIds: keptAttachmentIds,
+      pendingFingerprints: pendingFingerprints,
+    );
+  }
+
+  EditorDraftSnapshot copyWithTime({
+    required int entryHour,
+    required int entryMinute,
+  }) {
+    return EditorDraftSnapshot(
+      title: title,
+      dateValue: dateValue,
+      entryHour: entryHour,
+      entryMinute: entryMinute,
+      tags: tags,
+      markdownBody: markdownBody,
+      keptAttachmentIds: keptAttachmentIds,
+      pendingFingerprints: pendingFingerprints,
+    );
+  }
+
+  EditorDraftSnapshot copyWithTags(List<String> value) {
+    return EditorDraftSnapshot(
+      title: title,
+      dateValue: dateValue,
+      entryHour: entryHour,
+      entryMinute: entryMinute,
+      tags: value,
       markdownBody: markdownBody,
       keptAttachmentIds: keptAttachmentIds,
       pendingFingerprints: pendingFingerprints,

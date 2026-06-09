@@ -113,6 +113,26 @@ void main() {
       expect(bullets, contains(SettingsRestoreBulletCopy.recoveryKeyAfterRestore));
       expect(bullets, contains(SettingsCopy.recoveryKeyHintLine('WXYZ')));
     });
+
+    test('同 vault 且 trusted state 遺失時仍提示舊復原金鑰', () {
+      final RestorePrecheck precheck = RestorePrecheck(
+        preview: BackupRecoveryPreview(
+          hasRecovery: true,
+          metadata: backupMetadata,
+        ),
+        localVaultId: 'vlt_backup',
+        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+        localHasTrustedDevice: false,
+        willOverwriteLocalVault: true,
+      );
+
+      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+      expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
+      expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
+      expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
+      expect(bullets, contains(SettingsRestoreBulletCopy.rotatedBackup));
+      expect(bullets, contains(SettingsCopy.recoveryKeyHintLine('WXYZ')));
+    });
   });
 
   test('restoreRecoveryKeyDialogSubtitle 不同 vault 時', () {

@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/home/providers/home_providers.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
-import 'package:quill_diary/features/session/providers/session_providers.dart';
-import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/entry_index_fixtures.dart';
 import '../../helpers/fake_vault_repository.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/state/app_session_state.dart';
 
 void main() {
   const UnlockedVaultSession session = UnlockedVaultSession(

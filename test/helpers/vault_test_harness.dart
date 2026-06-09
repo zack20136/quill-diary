@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
@@ -37,6 +39,35 @@ class VaultTestHarness {
     );
     await harness.repository.initialize();
     return harness;
+  }
+
+  Future<RecoverySetupResult> setupRecoveryKey() => repository.setupRecoveryKey();
+
+  /// 建立一筆最簡日記並回傳 entry id。
+  Future<String> saveSimpleEntry(
+    RecoverySetupResult setup, {
+    String? id,
+    String title = 'Test Entry',
+    String date = '2026-05-24',
+    String markdownBody = 'body',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) async {
+    final String entryId = id ?? generateEntryId();
+    final DateTime timestamp = createdAt ?? DateTime.parse('${date}T10:00:00Z');
+    await repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: entryId,
+        vaultId: setup.session.vaultId,
+        title: title,
+        date: DateOnly(date),
+        createdAt: timestamp,
+        updatedAt: updatedAt ?? timestamp,
+        markdownBody: markdownBody,
+      ),
+    );
+    return entryId;
   }
 
   Future<void> dispose() async {
