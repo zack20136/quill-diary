@@ -17,7 +17,7 @@ void main() {
     const String markdown = '# Title\n\nBody **bold** and `code` with extra words';
     final String preview = previewTextFromMarkdown(markdown, maxLength: 20);
     expect(preview.length, lessThanOrEqualTo(23));
-    expect(preview, contains('...'));
+    expect(preview, contains('…'));
     expect(preview, isNot(contains('#')));
   });
 

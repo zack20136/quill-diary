@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'downloads_export_paths.dart';
 import 'vault_path_strategy.dart';
 
-/// 記住使用者上次選擇的匯出／備份儲存目錄。
+/// 記住使用者上次選擇的匯出 / 備份儲存目錄。
 class ExportSaveLocationStore {
   ExportSaveLocationStore(this._pathStrategy);
 

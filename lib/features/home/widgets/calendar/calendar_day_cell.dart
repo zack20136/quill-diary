@@ -214,9 +214,8 @@ class _CalendarEntryPreviewRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: fontSize,
                 height: 1.1,
-                color: cs.onSurface.withValues(alpha: 0.72),
+                color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
-                letterSpacing: -0.2,
               ),
             ),
           ),

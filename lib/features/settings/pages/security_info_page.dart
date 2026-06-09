@@ -941,7 +941,6 @@ class _InfoRow extends StatelessWidget {
               TextSpan(
                 text: '$label：',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurface,
                   fontWeight: FontWeight.w700,
                 ),
               ),

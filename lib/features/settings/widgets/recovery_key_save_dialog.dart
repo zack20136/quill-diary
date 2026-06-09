@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../shared/presentation/app_typography.dart';
 import '../settings_copy.dart';
 
 /// 建立或更新復原金鑰後，顯示金鑰並提供複製操作。
@@ -42,8 +43,9 @@ class RecoveryKeySaveDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle? keyStyle = theme.textTheme.titleMedium?.copyWith(
-      fontFamily: 'monospace',
+    final TextStyle keyStyle = AppTypography.mono(
+      theme.textTheme.titleMedium ?? const TextStyle(),
+    ).copyWith(
       fontWeight: FontWeight.w600,
       letterSpacing: 0.8,
       height: 1.5,

@@ -139,12 +139,12 @@ class VaultRepository {
 
     final WrappedRecoveryKeyRecord record =
         await _deviceKeyManager.readWrappedRecoveryKey(metadata.vaultId) ??
-            (throw StateError('找不到受信任裝置的 Recovery 金鑰資料。'));
+            (throw StateError('找不到可信裝置的 Recovery 金鑰資料。'));
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.readDeviceInfo(metadata.vaultId) ??
-        (throw StateError('找不到受信任裝置資訊。'));
+        (throw StateError('找不到可信裝置資訊。'));
     if (record.slotId != deviceInfo.slotId) {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
-      throw StateError('受信任裝置資料不一致，請使用復原金鑰重新建立。');
+      throw StateError('可信裝置資料不一致，請使用復原金鑰重新建立。');
     }
 
     final List<int> recoveryWrapKey;
@@ -161,7 +161,7 @@ class VaultRepository {
       await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
       Error.throwWithStackTrace(
         StateError(
-          '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
+          '可信裝置資料已失效，請重新使用復原金鑰解鎖。',
         ),
         stackTrace,
       );

@@ -7,6 +7,7 @@ import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../settings_copy.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/page_style.dart';
 
 /// 設定頁可重用的提示色系。
@@ -318,7 +319,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
   }
 }
 
-/// 解鎖方式：無／裝置螢幕鎖／生物驗證。
+/// 解鎖方式：無 / 裝置螢幕鎖 / 生物驗證。
 class UnlockMethodSectionBody extends StatelessWidget {
   const UnlockMethodSectionBody({
     required this.enabled,
@@ -382,7 +383,7 @@ class UnlockMethodSectionBody extends StatelessWidget {
   }
 }
 
-/// 解鎖方式分段列：無（窄）／螢幕鎖／生物驗證（寬）。
+/// 解鎖方式分段列：無（窄） / 螢幕鎖 / 生物驗證（寬）。
 class _UnlockModeChoiceBar extends StatelessWidget {
   const _UnlockModeChoiceBar({
     required this.selected,
@@ -690,22 +691,22 @@ class SettingsSecurityOverview extends StatelessWidget {
         icon: Icons.phonelink_lock_outlined,
         title: SettingsSecurityOverviewCopy.unlockModeTitle,
         message: hasRecoveryKey
-            ? '目前使用 $unlockModeLabel 保護本機受信任裝置。'
-            : '建立復原金鑰後即可設定裝置保護模式。',
+            ? SettingsSecurityOverviewCopy.unlockModeProtectedMessage(unlockModeLabel)
+            : SettingsSecurityOverviewCopy.unlockModeNeedsRecoveryKeyMessage,
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.verified_user_outlined,
         title: SettingsSecurityOverviewCopy.trustedDeviceTitle,
         message: hasTrustedDevice
-            ? '此裝置可在通過驗證後解鎖日記庫。'
-            : '尚未建立此裝置的受信任解鎖資料。',
+            ? SettingsSecurityOverviewCopy.trustedDeviceReadyOverview
+            : SettingsSecurityOverviewCopy.trustedDeviceMissing,
         level: hasTrustedDevice ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
         icon: Icons.storage_rounded,
         title: SettingsSecurityOverviewCopy.indexTitle,
-        message: hasUnlockedSession ? indexMessage : '解鎖後可檢查或重建搜尋索引。',
+        message: hasUnlockedSession ? indexMessage : SettingsIndexCopy.lockedOverviewMessage,
         level: hasUnlockedSession ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
     ];
@@ -852,9 +853,10 @@ class _SecurityOverviewTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         item.subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: AppTypography.mono(
+                          theme.textTheme.bodySmall ?? const TextStyle(),
+                        ).copyWith(
                           color: foreground,
-                          fontFamily: 'monospace',
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.6,
                           height: 1.35,

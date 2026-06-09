@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../home_copy.dart';
+import '../../../shared/copy/common_copy.dart';
 import '../../../shared/presentation/page_style.dart';
 
 const double kHomeSearchRowControlHeight = 46;
@@ -124,13 +126,15 @@ class HomeSelectionToolbar extends StatelessWidget {
           child: Row(
             children: <Widget>[
               _ToolbarPlainIconButton(
-                tooltip: '取消選取',
+                tooltip: HomeCopy.tooltipDeselectTag,
                 onPressed: onCancel,
                 icon: Icons.close_rounded,
               ),
               Expanded(
                 child: Text(
-                  selectedCount > 0 ? '已選 $selectedCount 項' : '選取日記',
+                  selectedCount > 0
+                      ? HomeCopy.selectionSelectedCount(selectedCount)
+                      : HomeCopy.selectionSelectDiary,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -140,7 +144,9 @@ class HomeSelectionToolbar extends StatelessWidget {
                 ),
               ),
               HomeCircleIconButton(
-                tooltip: allSelected ? '取消全選' : '全選',
+                tooltip: allSelected
+                    ? HomeCopy.selectionDeselectAll
+                    : HomeCopy.selectionSelectAll,
                 onPressed: onSelectAll,
                 icon: allSelected
                     ? Icons.check_box_outline_blank_rounded
@@ -272,7 +278,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     return HomeCircleIconButton(
-      tooltip: '選取日記',
+      tooltip: HomeCopy.selectionSelectDiary,
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: kHomeSearchRowControlHeight,
@@ -291,19 +297,19 @@ Future<bool?> confirmDeleteHomeEntries(BuildContext context, int count) {
   return showDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
-      title: const Text('確認刪除'),
-      content: Text('確定要刪除 $count 篇日記嗎？刪除後無法復原。'),
+      title: const Text(CommonCopy.confirmDeleteTitle),
+      content: Text(CommonCopy.confirmDeleteEntries(count)),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('取消'),
+          child: const Text(CommonCopy.actionCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text('刪除'),
+          child: const Text(CommonCopy.actionDelete),
         ),
       ],
     ),

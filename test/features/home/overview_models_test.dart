@@ -50,7 +50,7 @@ void main() {
     );
     expect(
       metrics.attachmentDetail(),
-      '\u7167\u7247 2 \u30fb \u6a94\u6848 3',
+      '照片 2 · 檔案 3',
     );
   });
 }

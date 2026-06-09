@@ -17,7 +17,7 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
 
-// 本檔驗證 VaultArchiveIo 的匯出、可攜式匯入與備份／還原。
+// 本檔驗證 VaultArchiveIo 的匯出、可攜式匯入與備份 / 還原。
 //
 // 匯入 fixture 與 production 辨識規則一致：
 // - 本 App Markdown：`.md` + YAML front matter

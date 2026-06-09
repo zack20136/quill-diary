@@ -5,11 +5,11 @@
 ## 核心能力
 
 - 加密日記與附件儲存
-- 本機受信任裝置解鎖
+- 可信裝置解鎖
 - 復原金鑰重建存取
 - 編輯器本地加密草稿（手動儲存前不寫入日記庫）
 - 首頁全文子字串搜尋
-- 本機備份／還原（App 內與外部 `.jbackup`，自動保留最新 5 份）
+- 本機備份 / 還原（App 內與外部 `.jbackup`，自動保留最新 5 份）
 - Google Drive 備份同步（雲端亦保留最新 5 份）
 
 ## 搜尋
@@ -27,7 +27,7 @@ flutter test
 
 - 目前只支援 Android
 - 測試分層於 `test/crypto`、`test/database`、`test/vault`、`test/session`、`test/storage`、`test/infrastructure`、`test/security`、`test/domain`、`test/features`、`test/codec`、`test/shared`；共用 fake 與 harness 在 `test/helpers/`
-- 修改 session、本機受信任裝置、復原金鑰或索引資料庫時，請同步更新 [docs](docs/文件目錄.md)
+- 修改 session、可信裝置、復原金鑰或索引資料庫時，請同步更新 [docs](docs/文件目錄.md)
 
 ## 文件
 

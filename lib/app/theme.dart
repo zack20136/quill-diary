@@ -1,6 +1,8 @@
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 
+import '../shared/presentation/app_typography.dart';
+
 ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Brightness.light}) {
   final ColorScheme scheme = dynamicScheme ??
       ColorScheme.fromSeed(
@@ -8,32 +10,62 @@ ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Bri
         brightness: brightness,
       );
 
-  return FlexThemeData.light(
-    colorScheme: scheme,
+  final TextTheme base = ThemeData(
     useMaterial3: true,
-    appBarElevation: 0,
-    subThemesData: const FlexSubThemesData(
-      interactionEffects: true,
-      defaultRadius: 18,
-      blendOnLevel: 12,
-      blendOnColors: false,
-      cardRadius: 20,
-      inputDecoratorRadius: 16,
-      elevatedButtonRadius: 16,
-      filledButtonRadius: 16,
-      outlinedButtonRadius: 16,
-    ),
-    textTheme: ThemeData(
-      useMaterial3: true,
-      brightness: brightness,
-      colorScheme: scheme,
-    ).textTheme,
-    fontFamily: null,
-  ).copyWith(
+    brightness: brightness,
+    colorScheme: scheme,
+  ).textTheme;
+  final TextTheme textTheme = AppTypography.textTheme(
+    base,
+    brightness: brightness,
+    scheme: scheme,
+  );
+  final Color foreground =
+      brightness == Brightness.light ? AppTypography.ink : scheme.onSurface;
+
+  final ThemeData flexTheme = brightness == Brightness.dark
+      ? FlexThemeData.dark(
+          colorScheme: scheme,
+          useMaterial3: true,
+          appBarElevation: 0,
+          subThemesData: const FlexSubThemesData(
+            interactionEffects: true,
+            defaultRadius: 18,
+            blendOnLevel: 12,
+            blendOnColors: false,
+            cardRadius: 20,
+            inputDecoratorRadius: 16,
+            elevatedButtonRadius: 16,
+            filledButtonRadius: 16,
+            outlinedButtonRadius: 16,
+          ),
+          textTheme: textTheme,
+          fontFamily: AppTypography.interFamily,
+        )
+      : FlexThemeData.light(
+          colorScheme: scheme,
+          useMaterial3: true,
+          appBarElevation: 0,
+          subThemesData: const FlexSubThemesData(
+            interactionEffects: true,
+            defaultRadius: 18,
+            blendOnLevel: 12,
+            blendOnColors: false,
+            cardRadius: 20,
+            inputDecoratorRadius: 16,
+            elevatedButtonRadius: 16,
+            filledButtonRadius: 16,
+            outlinedButtonRadius: 16,
+          ),
+          textTheme: textTheme,
+          fontFamily: AppTypography.interFamily,
+        );
+
+  return flexTheme.copyWith(
     scaffoldBackgroundColor: scheme.surface,
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
-      foregroundColor: scheme.onSurface,
+      foregroundColor: foreground,
       centerTitle: false,
     ),
     cardTheme: CardThemeData(
@@ -44,6 +76,10 @@ ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Bri
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainerLowest,
+      hintStyle: textTheme.bodyLarge?.copyWith(
+        color: AppTypography.muted(scheme),
+        fontStyle: FontStyle.italic,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,

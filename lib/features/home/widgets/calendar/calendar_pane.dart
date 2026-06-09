@@ -137,7 +137,6 @@ class _CalendarPane extends ConsumerWidget {
                             ),
                             titleTextStyle: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
                                 ) ??
                                 const TextStyle(fontWeight: FontWeight.w800),
                             titleTextFormatter: (DateTime date, _) => calendarMonthTitleZh(date),
@@ -287,13 +286,15 @@ class _CalendarPane extends ConsumerWidget {
               flex: 8,
               child: entriesAsync.when(
                     data: (List<EntryIndexRecord> entries) {
+                      final String dateLabel =
+                          DisplayFormat.formatDateOnlyZh(selectedDate);
                       return _DiaryListSectionCard(
-                        title: '日記 · ${selectedDate.value}',
+                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
                         stripeColor: cs.primary,
                         expandBody: true,
                         child: entries.isEmpty
                             ? _PaneEmptyHint(
-                                text: '「${selectedDate.value}」這一天目前沒有日記。',
+                                text: HomeCopy.emptyDayMessage(dateLabel),
                               )
                             : SingleChildScrollView(
                                 padding: const EdgeInsets.only(bottom: 16),
@@ -301,18 +302,26 @@ class _CalendarPane extends ConsumerWidget {
                               ),
                       );
                     },
-                    loading: () => _DiaryListSectionCard(
-                      title: '日記 · ${selectedDate.value}',
-                      stripeColor: cs.primary,
-                      expandBody: true,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    error: (Object error, StackTrace _) => _DiaryListSectionCard(
-                      title: '日記 · ${selectedDate.value}',
-                      stripeColor: cs.primary,
-                      expandBody: true,
-                      child: Text(userFacingErrorMessage(error)),
-                    ),
+                    loading: () {
+                      final String dateLabel =
+                          DisplayFormat.formatDateOnlyZh(selectedDate);
+                      return _DiaryListSectionCard(
+                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                        stripeColor: cs.primary,
+                        expandBody: true,
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    error: (Object error, StackTrace _) {
+                      final String dateLabel =
+                          DisplayFormat.formatDateOnlyZh(selectedDate);
+                      return _DiaryListSectionCard(
+                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                        stripeColor: cs.primary,
+                        expandBody: true,
+                        child: Text(userFacingErrorMessage(error)),
+                      );
+                    },
               ),
             ),
           ],
@@ -321,7 +330,7 @@ class _CalendarPane extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace _) => _StateCard(
         icon: Icons.error_outline,
-        title: '讀取失敗',
+        title: CommonCopy.readFailureTitle,
         message: userFacingErrorMessage(error),
       ),
     );

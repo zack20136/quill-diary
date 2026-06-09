@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:table_calendar/table_calendar.dart';
 
@@ -15,12 +14,14 @@ import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/tag_styles_store.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
+import '../../../shared/copy/common_copy.dart';
+import '../../../shared/copy/tag_copy.dart';
+import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
-import '../../../shared/utils/weekday_zh.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/presentation/session_status_copy.dart';
@@ -28,6 +29,7 @@ import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../editor/providers/editor_draft_providers.dart';
+import '../home_copy.dart';
 import '../models/overview_models.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
@@ -140,7 +142,7 @@ class _BlockedEntriesPane extends StatelessWidget {
     if (sessionState.status == AppLockStatus.unlocking) {
       return _StateCard(
         icon: Icons.sync_rounded,
-        title: '正在解鎖',
+        title: HomeCopy.unlockingTitle,
         message: sessionState.message ?? kTrustedUnlockInProgressMessage,
       );
     }
@@ -151,7 +153,7 @@ class _BlockedEntriesPane extends StatelessWidget {
         icon: Icons.lock_outline,
         title: blockedTitleForStatus(sessionState.status),
         message: blockedSubtitleForState(sessionState),
-        actionLabel: autoPending ? null : '重新驗證',
+        actionLabel: autoPending ? null : HomeCopy.retryVerification,
         onAction: autoPending
             ? null
             : () => unawaited(
@@ -167,7 +169,7 @@ class _BlockedEntriesPane extends StatelessWidget {
       icon: _blockedIcon(sessionState.status),
       title: blockedTitleForStatus(sessionState.status),
       message: blockedSubtitleForState(sessionState),
-      actionLabel: offerSettings ? '前往設定' : null,
+      actionLabel: offerSettings ? HomeCopy.goToSettings : null,
       onAction: offerSettings ? () => unawaited(context.push(AppRouter.settingsRoute)) : null,
     );
   }
@@ -243,7 +245,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             floatingActionButton: showFab
                 ? FloatingActionButton(
-                    tooltip: '新增日記',
+                    tooltip: HomeCopy.tooltipNewEntry,
                     backgroundColor: cs.secondaryContainer,
                     foregroundColor: cs.onSecondaryContainer,
                     onPressed: canCreate
@@ -303,7 +305,7 @@ class _HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: _HeaderTabButton(
-                        label: '首頁',
+                        label: HomeCopy.navHome,
                         icon: Icons.home_rounded,
                         active: activeTab == HomeTab.home,
                         onTap: () => _selectTab(ref, HomeTab.home),
@@ -313,7 +315,7 @@ class _HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: _HeaderTabButton(
-                        label: '日曆',
+                        label: HomeCopy.navCalendar,
                         icon: Icons.calendar_month_rounded,
                         active: activeTab == HomeTab.calendar,
                         onTap: () => _selectTab(ref, HomeTab.calendar),
@@ -323,7 +325,7 @@ class _HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: _HeaderTabButton(
-                        label: '標籤',
+                        label: HomeCopy.navTags,
                         icon: Icons.sell_rounded,
                         active: activeTab == HomeTab.tags,
                         onTap: () => _selectTab(ref, HomeTab.tags),
@@ -333,7 +335,7 @@ class _HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: _HeaderTabButton(
-                        label: '總覽',
+                        label: HomeCopy.navOverview,
                         icon: Icons.insights_rounded,
                         active: activeTab == HomeTab.overview,
                         onTap: () => _selectTab(ref, HomeTab.overview),
@@ -345,7 +347,7 @@ class _HomeHeader extends ConsumerWidget {
               const Spacer(),
               const SizedBox(width: 12),
               _HeaderIconButton(
-                tooltip: '設定與備份',
+                tooltip: HomeCopy.tooltipSettings,
                 icon: Icons.tune_rounded,
                 onPressed: () => unawaited(context.push(AppRouter.settingsRoute)),
               ),
@@ -472,7 +474,7 @@ class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
                       ),
                   actions: <HomeSelectionAction>[
                     HomeSelectionAction(
-                      tooltip: '匯出 HTML',
+                      tooltip: HomeCopy.tooltipExportHtml,
                       icon: Icons.html,
                       enabled: canActOnSelectedEntries,
                       onPressed: !canActOnSelectedEntries
@@ -487,7 +489,7 @@ class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
                               ),
                     ),
                     HomeSelectionAction(
-                      tooltip: '刪除',
+                      tooltip: HomeCopy.tooltipDelete,
                       icon: Icons.delete_outline_rounded,
                       destructive: true,
                       enabled: canActOnSelectedEntries,
@@ -514,7 +516,7 @@ class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
                         child: HomeSearchTextField(
                           controller: _searchController,
                           enabled: canReadEntries,
-                          hintText: '搜尋標題、內文或標籤',
+                          hintText: HomeCopy.searchHint,
                           onChanged: _handleSearchChanged,
                         ),
                       ),
@@ -536,8 +538,8 @@ class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
                     if (loadedEntries.isEmpty) {
                       return const _StateCard(
                         icon: Icons.auto_stories_outlined,
-                        title: '目前沒有日記',
-                        message: '建立第一篇日記後，就會在這裡看到你的首頁列表。',
+                        title: HomeCopy.emptyDiaryTitle,
+                        message: HomeCopy.emptyDiaryMessage,
                       );
                     }
                     return _EntryList(entries: loadedEntries);
@@ -545,7 +547,7 @@ class _HomeTimelinePaneState extends ConsumerState<_HomeTimelinePane> {
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (Object error, StackTrace _) => _StateCard(
                     icon: Icons.error_outline,
-                    title: '讀取失敗',
+                    title: CommonCopy.readFailureTitle,
                     message: userFacingErrorMessage(error),
                   ),
                 )
@@ -602,7 +604,7 @@ Future<void> _exportEntriesAsHtml(
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已匯出 HTML：${p.basename(savedPath)}')),
+      SnackBar(content: Text(HomeCopy.htmlExportSuccess(p.basename(savedPath)))),
     );
   } on StateError catch (error) {
     if (!context.mounted) {
@@ -623,9 +625,9 @@ Future<void> _exportEntriesAsHtml(
 
 String _overviewExportLabel(MemoryScope scope) {
   return switch (scope) {
-    MemoryScope.all => '匯出總回顧',
-    MemoryScope.year => '匯出年度回顧',
-    MemoryScope.month => '匯出月份回顧',
+    MemoryScope.all => HomeCopy.exportRecapAll,
+    MemoryScope.year => HomeCopy.exportRecapYear,
+    MemoryScope.month => HomeCopy.exportRecapMonth,
   };
 }
 
@@ -636,48 +638,39 @@ Future<bool> _confirmLargeHtmlExport(
   return await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text('HTML 檔案可能很大'),
+          title: const Text(HomeCopy.htmlExportLargeTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('選取 ${estimate.entryCount} 篇日記，包含 ${estimate.imageCount} 張圖片。'),
+              Text(HomeCopy.htmlExportSelectionSummary(
+                estimate.entryCount,
+                estimate.imageCount,
+              )),
               const SizedBox(height: 8),
-              Text('圖片原始大小：約 ${_formatHomeExportBytes(estimate.imageBytes)}'),
-              Text('HTML 估算大小：約 ${_formatHomeExportBytes(estimate.estimatedHtmlBytes)}'),
+              Text(HomeCopy.htmlExportImageSize(
+                DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
+              )),
+              Text(HomeCopy.htmlExportEstimatedSize(
+                DisplayFormat.formatBytesForDisplay(estimate.estimatedHtmlBytes),
+              )),
               const SizedBox(height: 12),
-              const Text('圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。'),
+              const Text(HomeCopy.htmlExportEmbeddedHint),
             ],
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
+              child: const Text(CommonCopy.actionCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('仍要匯出'),
+              child: const Text(HomeCopy.htmlExportProceed),
             ),
           ],
         ),
       ) ??
       false;
-}
-
-String _formatHomeExportBytes(int bytes) {
-  if (bytes < 1024) {
-    return '$bytes B';
-  }
-  final double kib = bytes / 1024;
-  if (kib < 1024) {
-    return '${kib.toStringAsFixed(kib >= 10 ? 0 : 1)} KB';
-  }
-  final double mib = kib / 1024;
-  if (mib < 1024) {
-    return '${mib.toStringAsFixed(mib >= 10 ? 0 : 1)} MB';
-  }
-  final double gib = mib / 1024;
-  return '${gib.toStringAsFixed(gib >= 10 ? 0 : 1)} GB';
 }
 
 Future<void> _deleteSelectedHomeEntries(
@@ -759,11 +752,11 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                titleText: existingLabel == null ? '新增標籤' : '編輯標籤',
+                titleText: existingLabel == null ? TagCopy.addTitle : TagCopy.editTitle,
                 initialDisplayLabel: existingLabel,
                 lockLabel: existingLabel != null,
                 initialAccentArgb: initialArgb,
-                primaryButtonLabel: '儲存',
+                primaryButtonLabel: TagCopy.saveButton,
                 onDelete: existingLabel == null || session == null
                     ? null
                     : () => _deleteTag(existingLabel, session: session),
@@ -782,19 +775,19 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     final bool? confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text('刪除標籤'),
-          content: Text('確定要從所有日記移除「$label」嗎？'),
+          title: const Text(HomeCopy.deleteTagTitle),
+          content: Text(HomeCopy.deleteTagConfirm(label)),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
+              child: const Text(CommonCopy.actionCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
-              child: const Text('刪除'),
+              child: const Text(CommonCopy.actionDelete),
             ),
           ],
         ),
@@ -824,8 +817,8 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
       SnackBar(
         content: Text(
           entryCount == 0
-              ? '「$label」已刪除'
-              : '已從 $entryCount 篇日記移除「$label」',
+              ? HomeCopy.tagDeleted(label)
+              : HomeCopy.tagRemovedFromEntries(entryCount, label),
         ),
       ),
     );
@@ -870,12 +863,12 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
               Icon(Icons.swipe_vertical_rounded, size: 40, color: cs.outline),
               const SizedBox(height: 12),
               Text(
-                '選取標籤以預覽日記',
+                HomeCopy.tagPreviewTitle,
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
               Text(
-                '請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。',
+                HomeCopy.tagListGuide,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -891,11 +884,11 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
     final List<EntryIndexRecord> matched = _entriesMatchingTag(records, _selectedTagLabel!);
 
     return _DiaryListSectionCard(
-      title: '日記 · 「$_selectedTagLabel」 · ${matched.length} 篇',
+      title: HomeCopy.tagFilteredDiaryTitle(_selectedTagLabel!, matched.length),
       stripeColor: cs.primary,
       expandBody: true,
       titleTrail: IconButton(
-        tooltip: '取消選取',
+        tooltip: HomeCopy.tooltipDeselectTag,
         visualDensity: VisualDensity.compact,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -904,7 +897,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
       ),
       child: matched.isEmpty
           ? _PaneEmptyHint(
-              text: '目前索引中找不到套用「$_selectedTagLabel」的項目。',
+              text: HomeCopy.tagIndexEmptyForTag(_selectedTagLabel!),
             )
           : _ScrollableCompactEntryList(entries: matched.take(40).toList()),
     );
@@ -937,12 +930,12 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
               Expanded(
                 child: HomeSearchTextField(
                   controller: _searchCtrl,
-                  hintText: '搜尋標籤…',
+                  hintText: HomeCopy.tagSearchHint,
                 ),
               ),
               const SizedBox(width: 8),
               HomeCircleIconButton(
-                tooltip: '新增標籤',
+                tooltip: HomeCopy.tooltipAddTag,
                 onPressed: () => _presentComposer(accentMap: accentMap),
                 icon: Icons.add_rounded,
                 size: kHomeSearchRowControlHeight,
@@ -970,8 +963,8 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
               if (mergedTags.isEmpty) {
                 return const _StateCard(
                   icon: Icons.label_outline_rounded,
-                  title: '尚未有標籤',
-                  message: '可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。',
+                  title: HomeCopy.noTagsTitle,
+                  message: HomeCopy.noTagsMessage,
                 );
               }
               final List<TagCatalogUsageItem> list = mergedTags
@@ -983,7 +976,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
               if (list.isEmpty) {
                 return Center(
                   child: Text(
-                    '沒有符合的標籤',
+                    CommonCopy.noTagSearchResults,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: cs.outline,
                       fontStyle: FontStyle.italic,
@@ -1049,7 +1042,10 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             subtitle: Text(
-                              '${e.count} 篇日記 · ${accentMap.containsKey(normalizeText(e.label)) ? '已設定顯示色' : '預設底色'} · 輕觸列預覽',
+                              HomeCopy.tagRowSummary(
+                                e.count,
+                                accentMap.containsKey(normalizeText(e.label)),
+                              ),
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
@@ -1057,7 +1053,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 HomeCircleIconButton(
-                                  tooltip: '編輯標籤',
+                                  tooltip: HomeCopy.tooltipEditTag,
                                   onPressed: () => _presentComposer(
                                     accentMap: accentMap,
                                     existingLabel: e.label,
@@ -1072,7 +1068,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
                                 ),
                                 const SizedBox(width: 6),
                                 HomeCircleIconButton(
-                                  tooltip: '刪除標籤',
+                                  tooltip: HomeCopy.tooltipDeleteTag,
                                   onPressed: session == null
                                       ? null
                                       : () => _deleteTag(e.label, session: session),
@@ -1147,7 +1143,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (Object err, StackTrace _) => _StateCard(
               icon: Icons.error_outline_rounded,
-              title: '讀取失敗',
+              title: CommonCopy.readFailureTitle,
               message: '$err',
             ),
           ),

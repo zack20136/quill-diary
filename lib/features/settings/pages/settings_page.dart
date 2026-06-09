@@ -16,6 +16,7 @@ import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/vault_transfer_service.dart';
+import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/utils/user_facing_error.dart';
@@ -173,7 +174,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: OutlinedButton.icon(
               onPressed: () => unawaited(context.push(AppRouter.securityInfoRoute)),
               icon: const Icon(Icons.info_outline_rounded, size: 18),
-              label: const Text('說明'),
+              label: const Text(SettingsAboutCopy.pageTitle),
             ),
           ),
           const SizedBox(width: 8),
@@ -182,7 +183,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: FilledButton.tonalIcon(
               onPressed: () => unawaited(context.push(AppRouter.supportRoute)),
               icon: const Icon(Icons.favorite_border_rounded, size: 18),
-              label: const Text('\u8d0a\u52a9'),
+              label: const Text(SettingsSupportCopy.navButtonLabel),
             ),
           ),
         ],
@@ -601,7 +602,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ? null
                     : () => _runAction(
                           () => _connectGoogleDrive(),
-                          progressMessage: '正在連結 Google Drive…',
+                          progressMessage: SettingsIndexCopy.connectDriveProgress,
                         ),
               ),
             if (isConnected)
@@ -643,7 +644,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ? null
                   : () => _runAction(
                         () => _connectGoogleDrive(reconnect: true),
-                        progressMessage: '正在重新連結 Google Drive…',
+                        progressMessage: SettingsIndexCopy.reconnectDriveProgress,
                       ),
               icon: const Icon(Icons.restart_alt_rounded, size: 18),
               label: const Text(SettingsDriveBackupCopy.reconnectButton),
@@ -666,9 +667,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _indexStatusMessage(bool hasUnlockedSession) {
     final IndexRebuildReport? report = _lastIndexRebuildReport;
     if (report != null) {
-      return '最近重建完成：${report.entryCount} 篇日記，${report.finishedAt.toLocal().toString().replaceFirst('.000', '')}。';
+      return SettingsIndexCopy.rebuildCompleted(
+        report.entryCount,
+        DisplayFormat.formatDateTimeZh(report.finishedAt),
+      );
     }
-    return hasUnlockedSession ? '可隨時從加密日記重建。' : '解鎖後可重建索引。';
+    return hasUnlockedSession
+        ? SettingsIndexCopy.readyMessage
+        : SettingsIndexCopy.lockedMessage;
   }
 
   Future<void> _createRecoveryKey() async {
@@ -748,31 +754,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (mounted) {
       setState(() => _lastIndexRebuildReport = report);
     }
-    _showMessage('索引已重建：${report.entryCount} 篇日記，耗時 ${report.duration.inMilliseconds} ms');
+    _showMessage(SettingsIndexCopy.rebuildSuccess(
+      report.entryCount,
+      DisplayFormat.formatDurationMs(report.duration.inMilliseconds),
+    ));
   }
 
   String _formatDriveBackupTime(DateTime? value) {
     if (value == null) {
       return SettingsDriveBackupCopy.unknownCreatedTime;
     }
-    return value.toLocal().toString().replaceFirst('.000', '');
+    return DisplayFormat.formatDateTimeZh(value);
   }
 
   String _formatLocalBackupTime(LocalBackupFile backup) {
-    return backup.createdAt.toLocal().toString().replaceFirst('.000', '');
+    return DisplayFormat.formatDateTimeZh(backup.createdAt);
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    }
-    final double kib = bytes / 1024;
-    if (kib < 1024) {
-      return '${kib.toStringAsFixed(1)} KB';
-    }
-    final double mib = kib / 1024;
-    return '${mib.toStringAsFixed(1)} MB';
-  }
+  String _formatBytes(int bytes) => DisplayFormat.formatBytesForDisplay(bytes);
 
   Future<void> _runRestoreFromLocalBackup() async {
     final File? backupFile =

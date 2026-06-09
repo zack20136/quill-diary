@@ -73,7 +73,7 @@ class WrappedRecoveryKeyRecord {
             kWrappedRecoveryKeyFormatVersion;
     if (formatVersion != kWrappedRecoveryKeyFormatVersion) {
       throw DeviceKeyLegacyStateException(
-        '不支援的受信任裝置金鑰格式版本：$formatVersion。',
+        '不支援的可信裝置金鑰格式版本：$formatVersion。',
       );
     }
     return WrappedRecoveryKeyRecord(
@@ -116,7 +116,7 @@ final class DeviceKeyInvalidatedException extends DeviceKeyException {
 
 final class DeviceKeyLegacyStateException extends DeviceKeyException {
   const DeviceKeyLegacyStateException([
-    super.message = '受信任裝置資料屬於舊版格式，請使用復原金鑰重新建立。',
+    super.message = '可信裝置資料屬於舊版格式，請使用復原金鑰重新建立。',
   ]);
 }
 

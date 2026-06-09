@@ -73,7 +73,7 @@ cd android
 
 - 已連結 Google Drive
 - 帳號資訊，例如 `姓名 (email)` 或 `email`
-- 可進一步執行上傳／列出／下載備份
+- 可進一步執行上傳 / 列出 / 下載備份
 
 如果只有登入痕跡、沒有 Drive scope，UI 仍會視為「尚未連結」。
 

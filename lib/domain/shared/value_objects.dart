@@ -35,7 +35,7 @@ String previewTextFromMarkdown(String markdown, {int maxLength = 80}) {
     return compact;
   }
 
-  return '${compact.substring(0, maxLength).trim()}...';
+  return '${compact.substring(0, maxLength).trim()}…';
 }
 
 String searchableTextFromMarkdown(String markdown) {

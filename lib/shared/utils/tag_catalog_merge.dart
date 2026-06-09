@@ -42,7 +42,7 @@ List<TagCatalogUsageItem> mergeTagCatalogWithUsage(
   return _sortTagUsageItems(merged.values);
 }
 
-/// 依日記索引計算熱門標籤（不含未出現在目錄／日記中的項目）。
+/// 依日記索引計算熱門標籤（不含未出現在目錄 / 日記中的項目）。
 List<TagCatalogUsageItem> rankedTagUsageFromEntries(
   List<EntryIndexRecord> entries, {
   int limit = 8,

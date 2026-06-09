@@ -49,9 +49,9 @@ void main() {
     expect(
       snackbarMessageForPostRestore(
         AppLockStatus.fatalError,
-        sessionMessage: '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
+        sessionMessage: '可信裝置資料已失效，請重新使用復原金鑰解鎖。',
       ),
-      '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
+      '可信裝置資料已失效，請重新使用復原金鑰解鎖。',
     );
   });
 }

@@ -122,7 +122,7 @@ void main() {
       expect(state.isConnected, isTrue);
       expect(state.email, 'writer@example.com');
       expect(state.displayName, 'Writer');
-      expect(state.accountLabel, 'Writer (writer@example.com)');
+      expect(state.accountLabel, 'Writer · writer@example.com');
     });
 
     test('getConnectionState 使用 Android 快照時不呼叫輕量登入', () async {

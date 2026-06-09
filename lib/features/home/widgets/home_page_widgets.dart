@@ -26,8 +26,8 @@ class _OverviewPane extends ConsumerWidget {
         if (allEntries.isEmpty) {
           return const _StateCard(
             icon: Icons.insights_outlined,
-            title: '尚無可分析內容',
-            message: '寫下一篇後，就可以在這裡看到統計、標籤與範圍內的日記。',
+            title: HomeCopy.noAnalysisTitle,
+            message: HomeCopy.noAnalysisMessage,
           );
         }
 
@@ -40,8 +40,8 @@ class _OverviewPane extends ConsumerWidget {
         final int focusedYear = ref.watch(memoryFocusedYearProvider);
         final String diarySectionTitle = _overviewScopedDiarySectionTitle(scope, selectedTag);
         final String diaryEmptyText = selectedTag == null
-            ? '此範圍內沒有符合的日記。'
-            : '此範圍內沒有套用「$selectedTag」的日記。';
+            ? HomeCopy.scopeEmptyDiary
+            : HomeCopy.scopeEmptyDiaryForTag(selectedTag);
 
         return scopedEntriesAsync.when(
           data: (List<EntryIndexRecord> raw) {
@@ -86,7 +86,7 @@ class _OverviewPane extends ConsumerWidget {
                         visualDensity: VisualDensity.compact,
                       ),
                       icon: const Icon(Icons.ios_share_rounded, size: 18),
-                      label: const Text('匯出回顧'),
+                      label: const Text(HomeCopy.exportRecapLabel),
                     ),
                   );
 
@@ -112,10 +112,10 @@ class _OverviewPane extends ConsumerWidget {
                         ),
                         const SizedBox(height: _kPaneSectionGap),
                         _SectionCard(
-                          title: '熱門標籤',
+                          title: HomeCopy.popularTagsTitle,
                           stripeColor: cs.tertiary,
                           child: scopedTopTags.isEmpty
-                              ? _PaneEmptyHint(text: '此範圍內沒有標籤。')
+                              ? _PaneEmptyHint(text: HomeCopy.scopeEmptyTags)
                               : Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
@@ -254,7 +254,7 @@ class _OverviewPane extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace _) => _StateCard(
         icon: Icons.error_outline,
-        title: '讀取失敗',
+        title: CommonCopy.readFailureTitle,
         message: userFacingErrorMessage(error),
       ),
     );
@@ -265,10 +265,9 @@ const double _kOverviewScopeControlHeight = 40;
 
 String _overviewMetricRangeCaption(MemoryScope scope, DateTime focusedMonth, int focusedYear) {
   return switch (scope) {
-    MemoryScope.all => '目前範圍 · 全部日記',
-    MemoryScope.year => '目前範圍 · $focusedYear 年',
-    MemoryScope.month =>
-      '目前範圍 · ${focusedMonth.year} 年 ${focusedMonth.month.toString().padLeft(2, '0')} 月',
+    MemoryScope.all => HomeCopy.overviewScopeAll,
+    MemoryScope.year => HomeCopy.overviewScopeYear(focusedYear),
+    MemoryScope.month => HomeCopy.overviewScopeMonth(focusedMonth.year, focusedMonth.month),
   };
 }
 
@@ -328,25 +327,28 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
           return Column(
             children: <Widget>[
               _OverviewNumericTile(
-                label: '撰寫天數',
-                value: '${metrics.activeDays}/$scopeTotalDays天',
+                label: HomeCopy.overviewWritingDaysLabel,
+                value: DisplayFormat.formatRatio(metrics.activeDays, scopeTotalDays, '天'),
                 toneIndex: 0,
                 detail: [
                   metrics.mostEntriesInSingleDayDetail(),
-                  '連續最長 ${metrics.longestWritingStreakDays} 天',
+                  HomeCopy.overviewLongestStreak(metrics.longestWritingStreakDays),
                 ].whereType<String>().join('\n'),
               ),
               const SizedBox(height: 13),
               _OverviewNumericTile(
-                label: '平均篇幅',
-                value: '${metrics.avgCharactersPerEntryRounded} 字／篇',
+                label: HomeCopy.overviewAvgLengthLabel,
+                value: '${metrics.avgCharactersPerEntryRounded} 字 / 篇',
                 toneIndex: 1,
-                detail: '共 ${metrics.totalEntries} 篇 · 累計 ${metrics.totalCharacters} 字',
+                detail: HomeCopy.overviewEntryStats(
+                  metrics.totalEntries,
+                  metrics.totalCharacters,
+                ),
               ),
               const SizedBox(height: 13),
               _OverviewNumericTile(
-                label: '附件總數',
-                value: '${metrics.totalAttachments} 個附件',
+                label: HomeCopy.overviewAttachmentsLabel,
+                value: HomeCopy.overviewAttachmentCount(metrics.totalAttachments),
                 toneIndex: 2,
                 detail: metrics.attachmentDetail(),
               ),
@@ -413,11 +415,13 @@ class _MemoryFocusedPeriodBar extends ConsumerWidget {
                         child: Center(
                           child: Text(
                             scope == MemoryScope.month
-                                ? '${focusedMonth.year} 年 ${focusedMonth.month.toString().padLeft(2, '0')} 月'
-                                : '$focusedYear 年',
+                                ? DisplayFormat.formatYearMonthZh(
+                                    focusedMonth.year,
+                                    focusedMonth.month,
+                                  )
+                                : DisplayFormat.formatYearZh(focusedYear),
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: cs.onSurface,
                             ),
                           ),
                         ),
@@ -460,7 +464,7 @@ class _OverviewScopePicker extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     return _SectionCard(
-      title: '範圍',
+      title: HomeCopy.scopeTitle,
       stripeColor: cs.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -495,15 +499,15 @@ class _OverviewScopePicker extends ConsumerWidget {
                     segments: const <ButtonSegment<MemoryScope>>[
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.all,
-                        label: Text('全部'),
+                        label: Text(HomeCopy.scopeAllLabel),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.year,
-                        label: Text('年'),
+                        label: Text(HomeCopy.scopeYearLabel),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.month,
-                        label: Text('月'),
+                        label: Text(HomeCopy.scopeMonthLabel),
                       ),
                     ],
                     selected: <MemoryScope>{scope},
@@ -902,7 +906,7 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
               children: <Widget>[
                 if (showUnsavedTag)
                   _EntryListTagChip(
-                    label: '未儲存',
+                    label: HomeCopy.unsavedDraftLabel,
                     background: Color.alphaBlend(
                       theme.colorScheme.error.withValues(alpha: 0.14),
                       theme.colorScheme.surface,
@@ -912,7 +916,7 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
                   ),
                 if (charCount > 0)
                   _EntryListTagChip(
-                    label: '$charCount字',
+                    label: DisplayFormat.formatCountUnit(charCount, '字'),
                     background: Color.alphaBlend(
                       theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
                       theme.colorScheme.surface,
@@ -973,7 +977,6 @@ class _EntryListTagChip extends StatelessWidget {
         style: (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)?.copyWith(
           color: foreground,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
         ),
       ),
     );
@@ -997,7 +1000,7 @@ class _EntryCardRightDateTime extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          '${entry.date.value} ${weekdayZhLongFromDateOnly(entry.date)}',
+          DisplayFormat.formatDateOnlyWithWeekdayZh(entry.date),
           style: muted,
           textAlign: TextAlign.right,
         ),
@@ -1177,11 +1180,9 @@ class _OverviewMetricShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        '資料概覽',
+                        HomeCopy.overviewDataTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                          color: cs.onSurface.withValues(alpha: 0.94),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1248,7 +1249,6 @@ class _OverviewNumericTile extends StatelessWidget {
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: onFill.withValues(alpha: 0.88),
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
                   height: 1.0,
                 ),
               ),
@@ -1287,7 +1287,6 @@ class _OverviewNumericTile extends StatelessWidget {
                             textAlign: TextAlign.right,
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
                               height: 1.0,
                               color: onFill,
                             ),
@@ -1485,12 +1484,12 @@ class _StateCard extends StatelessWidget {
 
 String _overviewScopedDiarySectionTitle(MemoryScope scope, String? selectedTag) {
   if (selectedTag != null && selectedTag.isNotEmpty) {
-    return '日記 · $selectedTag';
+    return HomeCopy.diarySectionTag(selectedTag);
   }
   return switch (scope) {
-    MemoryScope.all => '日記 · 全部',
-    MemoryScope.year => '日記 · 依年',
-    MemoryScope.month => '日記 · 依月',
+    MemoryScope.all => HomeCopy.diarySectionAll,
+    MemoryScope.year => HomeCopy.diarySectionByYear,
+    MemoryScope.month => HomeCopy.diarySectionByMonth,
   };
 }
 
@@ -1509,7 +1508,7 @@ String _firstNonemptyTag(List<String> tags) {
   return '';
 }
 
-String _entryListTimeLabel(DateTime at) => DateFormat('HH:mm').format(at);
+String _entryListTimeLabel(DateTime at) => DisplayFormat.formatTime24h(at);
 
 IconData _blockedIcon(AppLockStatus status) {
   return switch (status) {

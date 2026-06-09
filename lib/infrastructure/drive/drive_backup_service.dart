@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../../config/app_identifiers.dart';
 import '../../config/oauth_config.dart';
+import '../../shared/presentation/display_format.dart';
 import 'google_drive_oauth_errors.dart';
 
 /// Current Google Drive connection snapshot shown by settings and backup flows.
@@ -32,7 +33,7 @@ final class DriveConnectionState {
     final String? trimmedEmail = email?.trim();
     if (trimmedName != null && trimmedName.isNotEmpty) {
       if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
-        return '$trimmedName ($trimmedEmail)';
+        return DisplayFormat.formatGoogleAccountLabel(trimmedName, trimmedEmail);
       }
       return trimmedName;
     }

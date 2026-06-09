@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/copy/common_copy.dart';
+import '../../../shared/copy/tag_copy.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
@@ -13,9 +15,9 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
     this.initialDisplayLabel,
     this.initialAccentArgb,
     this.lockLabel = false,
-    this.titleText = '新增標籤',
+    this.titleText = TagCopy.addTitle,
     this.descriptionText,
-    this.primaryButtonLabel = '儲存',
+    this.primaryButtonLabel = TagCopy.saveButton,
     this.onDelete,
   });
 
@@ -69,7 +71,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('請輸入標籤名稱')),
+        const SnackBar(content: Text(TagCopy.nameRequiredMessage)),
       );
       return;
     }
@@ -85,7 +87,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('儲存標籤失敗：${userFacingErrorMessage(error)}')),
+          SnackBar(content: Text(TagCopy.saveFailure(userFacingErrorMessage(error)))),
         );
       }
     } finally {
@@ -108,7 +110,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('刪除標籤失敗：${userFacingErrorMessage(error)}')),
+          SnackBar(content: Text(TagCopy.deleteFailure(userFacingErrorMessage(error)))),
         );
       }
     } finally {
@@ -167,12 +169,11 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                         widget.titleText,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.35,
                         ),
                       ),
                     ),
                     IconButton(
-                      tooltip: '關閉',
+                      tooltip: CommonCopy.closeTooltip,
                       visualDensity: VisualDensity.compact,
                       onPressed: busy ? null : () => Navigator.of(context).pop(),
                       icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
@@ -218,7 +219,6 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                                 previewText.isEmpty ? '未命名標籤' : previewText,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
                                 ),
                               ),
                             ),
@@ -235,7 +235,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     textInputAction: TextInputAction.done,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: '標籤名稱',
+                      hintText: TagCopy.nameHint,
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       filled: true,
@@ -393,12 +393,12 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                                 ),
                               )
                             : Icon(Icons.delete_outline_rounded, color: cs.error),
-                        label: Text('刪除標籤', style: TextStyle(color: cs.error)),
+                        label: Text(TagCopy.deleteLabel, style: TextStyle(color: cs.error)),
                       )
                     else
                       TextButton(
                         onPressed: busy ? null : () => Navigator.of(context).pop(),
-                        child: Text('取消', style: TextStyle(color: cs.onSurfaceVariant)),
+                        child: Text(CommonCopy.actionCancel, style: TextStyle(color: cs.onSurfaceVariant)),
                       ),
                     const Spacer(),
                     FilledButton.icon(

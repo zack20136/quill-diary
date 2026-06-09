@@ -65,7 +65,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                primaryButtonLabel: '加入',
+                primaryButtonLabel: EditorCopy.tagsStudioAddButton,
               ),
             ),
           ),
@@ -186,21 +186,20 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '標籤',
+                      EditorCopy.tagsStudioTitle,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: '新增標籤',
+                    tooltip: EditorCopy.tagAddTooltip,
                     visualDensity: VisualDensity.compact,
                     onPressed: _openTagAccentComposer,
                     icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
                   ),
                   IconButton(
-                    tooltip: '關閉',
+                    tooltip: CommonCopy.closeTooltip,
                     visualDensity: VisualDensity.compact,
                     onPressed: widget.onDismiss,
                     icon: const Icon(Icons.close_rounded),
@@ -208,7 +207,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 ],
               ),
               Text(
-                '右上角可建立新標籤；下方為文庫標籤，輕觸加入。',
+                EditorCopy.tagsStudioGuide,
                 style: theme.textTheme.bodySmall?.copyWith(
                   height: 1.4,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -219,7 +218,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    '尚未套用任何標籤',
+                    EditorCopy.tagsStudioEmptyChosen,
                     style: theme.textTheme.labelLarge?.copyWith(
                       fontStyle: FontStyle.italic,
                       color: theme.colorScheme.outline,
@@ -244,7 +243,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               TextField(
                 controller: _filterCtrl,
                 decoration: InputDecoration(
-                  hintText: '搜尋標籤…',
+                  hintText: EditorCopy.tagSearchHint,
                   prefixIcon: const Icon(Icons.search_rounded, size: 22),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
@@ -255,7 +254,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                   suffixIcon: _filterCtrl.text.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: '清除搜尋',
+                          tooltip: CommonCopy.clearSearchTooltip,
                           visualDensity: VisualDensity.compact,
                           onPressed: () => _filterCtrl.clear(),
                           icon: const Icon(Icons.clear_rounded),
@@ -264,7 +263,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               ),
               const SizedBox(height: 10),
               Text(
-                '文庫裡的標籤 · 輕觸加入',
+                EditorCopy.tagLibraryHint,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -288,7 +287,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8, bottom: 8),
                             child: Text(
-                              qlow.isEmpty ? '文庫裡暫時沒有其他可用標籤，或已全部加入目前清單' : '沒有符合的標籤',
+                              qlow.isEmpty ? EditorCopy.tagPoolEmpty : CommonCopy.noTagSearchResults,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontStyle: FontStyle.italic,
                                 color: theme.colorScheme.outline,
@@ -305,11 +304,11 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               const SizedBox(height: 16),
               Row(
                 children: <Widget>[
-                  TextButton(onPressed: widget.onDismiss, child: const Text('取消')),
+                  TextButton(onPressed: widget.onDismiss, child: const Text(CommonCopy.actionCancel)),
                   const Spacer(),
                   FilledButton(
                     onPressed: () => widget.onApply(_chosen.join(',')),
-                    child: const Text('套用'),
+                    child: const Text(CommonCopy.actionApply),
                   ),
                 ],
               ),
@@ -663,7 +662,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
         if (bytes == null || bytes.isEmpty) {
           return Center(
             child: Text(
-              '無法預覽',
+              EditorCopy.previewUnavailable,
               style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
             ),
           );
@@ -701,10 +700,8 @@ InputDecoration _titleFieldDecoration(
     errorText: errorText,
     hintStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w700,
-          height: 1.28,
-          letterSpacing: -0.35,
           fontStyle: FontStyle.italic,
-          color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+          color: AppTypography.muted(cs),
         ),
     errorStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: cs.error,
@@ -725,14 +722,8 @@ InputDecoration _bodyFieldDecoration(
   BuildContext context, {
   required String hintText,
 }) {
-  final ColorScheme cs = Theme.of(context).colorScheme;
   return InputDecoration(
     hintText: hintText,
-    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          height: 1.72,
-          fontStyle: FontStyle.italic,
-          color: cs.onSurfaceVariant.withValues(alpha: 0.85),
-        ),
     filled: false,
     border: InputBorder.none,
     enabledBorder: InputBorder.none,
@@ -754,24 +745,26 @@ class _RestoreDraftDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final String titleText = record.title?.trim().isNotEmpty == true ? record.title!.trim() : '無標題';
-    final String updatedAtText = DateFormat('yyyy/MM/dd HH:mm').format(record.updatedAt);
+    final String titleText = record.title?.trim().isNotEmpty == true
+        ? record.title!.trim()
+        : EditorCopy.untitledDraft;
+    final String updatedAtText = DisplayFormat.formatDateTimeZh(record.updatedAt);
     return AlertDialog(
-      title: const Text('發現未完成的草稿'),
+      title: const Text(EditorCopy.restoreDraftTitle),
       content: Text(
         hasExistingEntry
-            ? '草稿：$titleText\n最後儲存：$updatedAtText\n\n還原後會覆蓋目前檢視中的內容。'
-            : '草稿：$titleText\n最後儲存：$updatedAtText\n\n是否要還原這份草稿？',
+            ? EditorCopy.restoreDraftOverwrite(titleText, updatedAtText)
+            : EditorCopy.restoreDraftPrompt(titleText, updatedAtText),
         style: theme.textTheme.bodyMedium,
       ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('不使用'),
+          child: const Text(EditorCopy.restoreDraftDecline),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('還原草稿'),
+          child: const Text(EditorCopy.restoreDraftAccept),
         ),
       ],
     );
@@ -784,16 +777,16 @@ class _DiscardDraftDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('捨棄草稿？'),
-      content: const Text('目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？'),
+      title: const Text(EditorCopy.discardDraftTitle),
+      content: const Text(EditorCopy.discardDraftBody),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('取消'),
+          child: const Text(CommonCopy.actionCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('捨棄'),
+          child: const Text(EditorCopy.discardDraftConfirm),
         ),
       ],
     );

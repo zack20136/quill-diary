@@ -15,14 +15,14 @@ const String kRecoveryUnlockSuccessMessage = '已使用復原金鑰解鎖。';
 const String kRecoverySetupSuccessMessage = '復原金鑰已建立，裝置保護已啟用。';
 const String kAppLockedMessage = '應用程式已鎖定。';
 
-const String kTrustedUnlockInProgressMessage = '正在以本機受信任裝置解鎖…';
+const String kTrustedUnlockInProgressMessage = '正在以可信裝置解鎖…';
 const String kLockedRetryVerificationMessage =
     '目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。';
 const String kUseDeviceLockToUnlockMessage = '請使用裝置螢幕鎖解鎖。';
 const String kBiometricNotEnrolledSwitchModeMessage =
     '裝置尚未登錄指紋或臉部。請先到系統設定完成生物辨識設定，或改用裝置螢幕鎖。';
 const String kUnlockModeNoneDescription =
-    '回到前景時不額外驗證，直接以本機受信任裝置解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。';
+    '回到前景時不額外驗證，直接以可信裝置解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。';
 const String kUnlockModeBiometricDescription =
     '回到前景時優先以指紋或臉部辨識解鎖，系統提示內可改用裝置螢幕鎖，不必輸入復原金鑰。';
 const String kUnlockModeDeviceLockDescription =
@@ -49,7 +49,7 @@ const String kRestoreStartupFailedMessage =
 const String kRecoveryKeyMismatchMessage =
     '復原金鑰與日記庫資料不相符。若為「更新復原金鑰」前的舊備份，請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。';
 const String kTrustedUnlockFailedAfterRestoreMessage =
-    '還原後無法以本機受信任裝置自動解鎖。請在下方輸入建立此備份時保存的復原金鑰。';
+    '還原後無法以可信裝置自動解鎖。請在下方輸入建立此備份時保存的復原金鑰。';
 const String kIndexDatabaseUnreadableMessage =
     '索引資料庫無法讀取（可能已損壞或與目前日記庫金鑰不相符）。請使用復原金鑰重新解鎖；若問題持續，可嘗試重新還原備份。';
 
@@ -60,7 +60,7 @@ bool _looksLikeUserFacingText(String message) {
   return trimmed.isNotEmpty && _userFacingTextPattern.hasMatch(trimmed);
 }
 
-/// 將技術性錯誤轉成設定頁／安全鎖狀態可讀訊息。
+/// 將技術性錯誤轉成設定頁 / 安全鎖狀態可讀訊息。
 String friendlySessionErrorMessage(
   Object error, {
   bool afterRestoreTrustedUnlock = false,

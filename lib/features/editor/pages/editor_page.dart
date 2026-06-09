@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../domain/attachment/asset_attachment.dart';
@@ -19,6 +18,9 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
+import '../../../shared/copy/common_copy.dart';
+import '../../../shared/presentation/app_typography.dart';
+import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../../shared/presentation/tag_visual.dart';
@@ -28,13 +30,13 @@ import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
-import '../../../shared/utils/weekday_zh.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../settings/providers/settings_providers.dart';
+import '../editor_copy.dart';
 import '../editor_draft.dart';
 import '../providers/editor_draft_providers.dart';
 import '../providers/editor_providers.dart';
@@ -68,11 +70,8 @@ class _MarkdownPreviewBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final TextStyle bodyStyle = theme.textTheme.bodyLarge?.copyWith(
-          height: 1.76,
-          fontWeight: FontWeight.w400,
-        ) ??
-        const TextStyle(height: 1.76);
+    final TextStyle bodyStyle =
+        theme.textTheme.bodyLarge?.copyWith(height: 1.76) ?? const TextStyle(height: 1.76);
     final List<String> lines = markdown.replaceAll('\r\n', '\n').split('\n');
     final List<Widget> children = <Widget>[];
     var inCodeBlock = false;
@@ -93,10 +92,9 @@ class _MarkdownPreviewBody extends StatelessWidget {
           ),
           child: SelectableText(
             codeBuffer.toString().trimRight(),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontFamily: 'monospace',
-              height: 1.45,
-            ),
+            style: AppTypography.mono(
+              theme.textTheme.bodyMedium ?? const TextStyle(),
+            ).copyWith(height: 1.45),
           ),
         ),
       );
@@ -119,7 +117,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
         continue;
       }
       if (line.trim().isEmpty) {
-        children.add(const SizedBox(height: 10));
+        children.add(const SizedBox(height: 8));
         continue;
       }
 
@@ -139,7 +137,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
             child: SelectableText.rich(
               _inlineMarkdownSpan(
                 text,
-                (headingStyle ?? bodyStyle).copyWith(
+                bodyStyle.merge(headingStyle).copyWith(
                   fontWeight: FontWeight.w800,
                   height: 1.25,
                 ),
@@ -253,8 +251,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
         spans.add(
           TextSpan(
             text: token.substring(1, token.length - 1),
-            style: TextStyle(
-              fontFamily: 'monospace',
+            style: AppTypography.mono(const TextStyle()).copyWith(
               backgroundColor: Colors.black.withValues(alpha: 0.06),
             ),
           ),
@@ -389,7 +386,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(() => _showTitleRequired = true);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('請輸入標題才能儲存')),
+      const SnackBar(content: Text(EditorCopy.saveNeedsTitleMessage)),
     );
   }
 
@@ -715,7 +712,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
     if (!isSupportedPlatform) {
       return Scaffold(
-        appBar: AppBar(title: const Text('編輯日記')),
+        appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
         body: const Center(child: Text(kAndroidOnlyMessage)),
       );
     }
@@ -725,7 +722,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         final UnlockedVaultSession? session = sessionState.session;
         if (!sessionState.isUnlocked || session == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('編輯日記')),
+            appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -737,7 +734,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                       sessionState.message ?? kTrustedUnlockInProgressMessage,
                     AppLockStatus.locked =>
                       sessionState.message ?? kLockedRetryVerificationMessage,
-                    _ => sessionState.message ?? '請先重新解鎖日記庫後再繼續。',
+                    _ => sessionState.message ?? EditorCopy.sessionLockedFallback,
                   },
                 ),
               ),
@@ -776,7 +773,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
-                        child: Text('請先建立復原金鑰，才能開始建立或編輯日記。'),
+                        child: Text(EditorCopy.needsRecoveryKeyMessage),
                       ),
                     );
                   }
@@ -899,14 +896,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           },
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (Object error, StackTrace _) => Scaffold(
-            appBar: AppBar(title: const Text('編輯日記')),
+            appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
             body: Center(child: Text(userFacingErrorMessage(error))),
           ),
         );
       },
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
-        appBar: AppBar(title: const Text('編輯日記')),
+        appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
         body: Center(child: Text(userFacingErrorMessage(error))),
       ),
     );
@@ -1009,20 +1006,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   String _formattedDisplayDate(BuildContext context) {
     try {
       final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
-      final DateTime d = parsed.toDateTime();
-      final String datePart = _formatEditorDatePartZh(d);
-      return '$datePart ${weekdayZhLong(d)}';
+      return DisplayFormat.formatDateOnlyWithWeekdayZh(parsed);
     } catch (_) {
       final String raw = _dateController.text.trim();
       return raw.isEmpty ? '—' : raw;
-    }
-  }
-
-  String _formatEditorDatePartZh(DateTime date) {
-    try {
-      return DateFormat('yyyy年M月d日', 'zh_Hant').format(date);
-    } catch (_) {
-      return DateFormat('yyyy年M月d日').format(date);
     }
   }
 
@@ -1085,11 +1072,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ),
       ),
       child: Text(
-        '$charCount字',
+        DisplayFormat.formatCountUnit(charCount, '字'),
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
           height: 1.15,
         ),
       ),
@@ -1111,11 +1097,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ),
       ),
       child: Text(
-        '未儲存',
+        EditorCopy.unsavedDraftLabel,
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
           height: 1.15,
         ),
       ),
@@ -1143,7 +1128,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.1,
           height: 1.15,
         ),
       ),
@@ -1156,7 +1140,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       color: theme.colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w500,
       height: 1.25,
-      letterSpacing: 0.15,
     );
 
     return Row(
@@ -1212,13 +1195,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
-            titleText.isEmpty ? '無標題' : titleText,
+            titleText.isEmpty ? EditorCopy.untitledDraft : titleText,
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
-              height: 1.28,
-              letterSpacing: -0.35,
-              color:
-                  titleText.isEmpty ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
+              color: titleText.isEmpty ? AppTypography.muted(theme.colorScheme) : null,
             ),
           ),
           if (showTagsRow) ...<Widget>[
@@ -1242,15 +1222,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         TextField(
           controller: _titleController,
           textInputAction: TextInputAction.next,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            height: 1.28,
-            letterSpacing: -0.35,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           decoration: _titleFieldDecoration(
             context,
-            hintText: '輸入標題',
-            errorText: _showTitleRequired && !_hasTitle ? '請輸入標題' : null,
+            hintText: EditorCopy.titleHint,
+            errorText: _showTitleRequired && !_hasTitle ? EditorCopy.titleRequiredError : null,
           ),
         ),
         if (showTagsRow) ...<Widget>[
@@ -1271,11 +1247,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ? SingleChildScrollView(
             child: _bodyController.text.isEmpty
                 ? SelectableText(
-                    '尚未輸入內容',
+                    EditorCopy.bodyEmptyPreview,
                     style: paneTheme.textTheme.bodyLarge?.copyWith(
                       fontStyle: FontStyle.italic,
-                      height: 1.72,
-                      color: paneTheme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+                      color: AppTypography.muted(paneTheme.colorScheme),
                     ),
                   )
                 : _MarkdownPreviewBody(markdown: _bodyController.text),
@@ -1286,14 +1261,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             maxLines: null,
             minLines: null,
             textAlignVertical: TextAlignVertical.top,
-            style: paneTheme.textTheme.bodyLarge?.copyWith(
-              height: 1.76,
-              fontWeight: FontWeight.w400,
-              letterSpacing: 0.2,
-            ),
+            style: paneTheme.textTheme.bodyLarge?.copyWith(height: 1.76),
             decoration: _bodyFieldDecoration(
               context,
-              hintText: '在這裡輸入內容…',
+              hintText: EditorCopy.bodyHint,
             ),
           );
 
@@ -1320,19 +1291,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       final bool? confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text('確認刪除'),
-          content: const Text('確定要刪除這篇日記嗎？刪除後無法復原。'),
+          title: const Text(EditorCopy.confirmDeleteTitle),
+          content: const Text(EditorCopy.confirmDeleteBody),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
+              child: const Text(CommonCopy.actionCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
-              child: const Text('刪除'),
+              child: const Text(CommonCopy.actionDelete),
             ),
           ],
         ),
@@ -1376,7 +1347,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             child: Row(
               children: <Widget>[
                 IconButton(
-                  tooltip: '取消',
+                  tooltip: EditorCopy.tooltipCancel,
                   onPressed: _saving ? null : () => unawaited(_requestClose()),
                   icon: const Icon(Icons.close_rounded),
                 ),
@@ -1388,27 +1359,27 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           IconButton(
-                            tooltip: '日期',
+                            tooltip: EditorCopy.tooltipDate,
                             onPressed: _saving ? null : _pickEntryDate,
                             icon: const Icon(Icons.calendar_today_outlined),
                           ),
                           IconButton(
-                            tooltip: '時間',
+                            tooltip: EditorCopy.tooltipTime,
                             onPressed: _saving ? null : _pickEntryTime,
                             icon: const Icon(Icons.schedule_outlined),
                           ),
                           IconButton(
-                            tooltip: '編輯標籤',
+                            tooltip: EditorCopy.tooltipEditTags,
                             onPressed: _saving ? null : _showTagsEditorDialog,
                             icon: const Icon(Icons.sell_outlined),
                           ),
                           IconButton(
-                            tooltip: '上傳圖片（可一次選多張）',
+                            tooltip: EditorCopy.tooltipUploadImages,
                             onPressed: _saving ? null : () => _pickImage(),
                             icon: const Icon(Icons.image_outlined),
                           ),
                           IconButton(
-                            tooltip: '新增附件',
+                            tooltip: EditorCopy.tooltipAddAttachment,
                             onPressed: _saving ? null : () => _pickFile(),
                             icon: const Icon(Icons.attach_file),
                           ),
@@ -1417,7 +1388,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: canSave ? '儲存' : '請先輸入標題',
+                    tooltip: canSave ? EditorCopy.tooltipSave : EditorCopy.tooltipSaveNeedsTitle,
                     onPressed: canSave
                         ? saveEntry
                         : () {
@@ -1434,7 +1405,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: '刪除',
+                      tooltip: EditorCopy.tooltipDelete,
                       onPressed: _saving ? null : deleteEntry,
                       style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),
@@ -1451,7 +1422,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                           style: barTheme.textTheme.titleSmall?.copyWith(
                             color: barTheme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -1459,7 +1429,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: '編輯',
+                    tooltip: EditorCopy.tooltipEdit,
                     onPressed: _saving
                         ? null
                         : () => setState(() {
@@ -1473,7 +1443,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: '刪除',
+                      tooltip: EditorCopy.tooltipDelete,
                       onPressed: _saving ? null : deleteEntry,
                       style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),
