@@ -111,6 +111,10 @@ abstract final class SettingsSecurityOverviewCopy {
   static const String createRecoveryKeyButton = '建立復原金鑰';
   static const String rotateRecoveryKeyButton = '更新復原金鑰';
   static const String rebuildIndexButton = '重建索引';
+
+  static const String healthLevelOk = '正常';
+  static const String healthLevelWarning = '需注意';
+  static const String healthLevelError = '錯誤';
 }
 
 extension AppUnlockModeSettingsCopy on AppUnlockMode {

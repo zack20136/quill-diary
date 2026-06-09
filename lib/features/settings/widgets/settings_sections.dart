@@ -796,9 +796,9 @@ class _SecurityOverviewTile extends StatelessWidget {
       SettingsHealthLevel.error => Icons.error_outline_rounded,
     };
     final String statusLabel = switch (item.level) {
-      SettingsHealthLevel.ok => '正常',
-      SettingsHealthLevel.warning => '需注意',
-      SettingsHealthLevel.error => '錯誤',
+      SettingsHealthLevel.ok => SettingsSecurityOverviewCopy.healthLevelOk,
+      SettingsHealthLevel.warning => SettingsSecurityOverviewCopy.healthLevelWarning,
+      SettingsHealthLevel.error => SettingsSecurityOverviewCopy.healthLevelError,
     };
 
     return ConstrainedBox(

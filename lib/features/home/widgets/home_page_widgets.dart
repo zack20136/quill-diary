@@ -338,7 +338,9 @@ class _OverviewScopedMetricPanel extends StatelessWidget {
               const SizedBox(height: 13),
               _OverviewNumericTile(
                 label: HomeCopy.overviewAvgLengthLabel,
-                value: '${metrics.avgCharactersPerEntryRounded} 字 / 篇',
+                value: HomeCopy.overviewAvgLengthValue(
+                  metrics.avgCharactersPerEntryRounded,
+                ),
                 toneIndex: 1,
                 detail: HomeCopy.overviewEntryStats(
                   metrics.totalEntries,

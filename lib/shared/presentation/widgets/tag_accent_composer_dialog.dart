@@ -216,7 +216,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                previewText.isEmpty ? '未命名標籤' : previewText,
+                                previewText.isEmpty ? TagCopy.unnamedPreview : previewText,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -250,7 +250,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                   const SizedBox(height: 20),
                 ],
                 Text(
-                  '預設色',
+                  TagCopy.defaultColorLabel,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -306,7 +306,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  '色相',
+                  TagCopy.hueLabel,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -348,7 +348,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     child: Row(
                       children: <Widget>[
                         Text(
-                          '預覽',
+                          TagCopy.previewLabel,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: cs.outline,
@@ -366,7 +366,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             ),
                           ),
                           child: Text(
-                            previewText.isEmpty ? '標籤名稱' : previewText,
+                            previewText.isEmpty ? TagCopy.nameHint : previewText,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: previewFg,

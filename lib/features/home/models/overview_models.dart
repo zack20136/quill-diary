@@ -1,5 +1,5 @@
-import '../../../shared/presentation/display_format.dart';
 import '../../../infrastructure/database/index_database.dart';
+import '../home_copy.dart';
 
 class OverviewScopeMetrics {
   const OverviewScopeMetrics({
@@ -96,14 +96,16 @@ class OverviewScopeMetrics {
     );
   }
 
-  String attachmentDetail() =>
-      '照片 $totalPhotoAttachments · 檔案 $totalFileAttachments';
+  String attachmentDetail() => HomeCopy.overviewAttachmentDetail(
+        totalPhotoAttachments,
+        totalFileAttachments,
+      );
 
   String? mostEntriesInSingleDayDetail() {
     if (maxEntriesOnSingleDay <= 0) {
       return null;
     }
-    return '單天最多 ${DisplayFormat.formatCountUnit(maxEntriesOnSingleDay, '篇')}';
+    return HomeCopy.overviewMostEntriesInSingleDay(maxEntriesOnSingleDay);
   }
 
   static int _longestWritingStreakDays(List<EntryIndexRecord> entries) {

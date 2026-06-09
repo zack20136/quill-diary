@@ -113,7 +113,7 @@ class _CalendarPane extends ConsumerWidget {
                           focusedDay: visibleMonth,
                           calendarFormat: CalendarFormat.month,
                           availableCalendarFormats: const <CalendarFormat, String>{
-                            CalendarFormat.month: '月',
+                            CalendarFormat.month: HomeCopy.calendarMonthFormatLabel,
                           },
                           startingDayOfWeek: StartingDayOfWeek.sunday,
                           sixWeekMonthsEnforced: true,

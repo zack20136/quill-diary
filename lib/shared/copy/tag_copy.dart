@@ -7,6 +7,11 @@ abstract final class TagCopy {
   static const String nameRequiredMessage = '請輸入標籤名稱';
   static const String deleteLabel = '刪除標籤';
 
+  static const String unnamedPreview = '未命名標籤';
+  static const String defaultColorLabel = '預設色';
+  static const String hueLabel = '色相';
+  static const String previewLabel = '預覽';
+
   static String saveFailure(String message) => '儲存標籤失敗：$message';
   static String deleteFailure(String message) => '刪除標籤失敗：$message';
 }

@@ -3,15 +3,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-const List<String> kCalendarWeekdayLabelsZh = <String>[
-  '日',
-  '一',
-  '二',
-  '三',
-  '四',
-  '五',
-  '六',
-];
+import '../../../../shared/presentation/display_format.dart';
+import '../../home_copy.dart';
 
 const int kCalendarMaxEntriesPerCell = 2;
 const int kCalendarPreviewCharCount = 5;
@@ -32,11 +25,11 @@ bool calendarIsSameDay(DateTime a, DateTime b) {
 }
 
 String calendarWeekdayLabel(DateTime day) {
-  return kCalendarWeekdayLabelsZh[day.weekday % 7];
+  return HomeCopy.calendarWeekdayLabels[day.weekday % 7];
 }
 
 String calendarMonthTitleZh(DateTime month) {
-  return '${month.year}年${month.month}月';
+  return DisplayFormat.formatYearMonthZh(month.year, month.month);
 }
 
 bool calendarIsSunday(DateTime day) => day.weekday == DateTime.sunday;

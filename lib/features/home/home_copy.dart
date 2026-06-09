@@ -107,4 +107,24 @@ abstract final class HomeCopy {
   static const String diarySectionAll = '日記 · 全部';
   static const String diarySectionByYear = '日記 · 依年';
   static const String diarySectionByMonth = '日記 · 依月';
+
+  static const List<String> calendarWeekdayLabels = <String>[
+    '日',
+    '一',
+    '二',
+    '三',
+    '四',
+    '五',
+    '六',
+  ];
+  static const String calendarMonthFormatLabel = '月';
+
+  static String overviewAvgLengthValue(int charactersPerEntry) =>
+      '$charactersPerEntry 字 / 篇';
+
+  static String overviewAttachmentDetail(int photos, int files) =>
+      '照片 $photos · 檔案 $files';
+
+  static String overviewMostEntriesInSingleDay(int count) =>
+      '單天最多 ${DisplayFormat.formatCountUnit(count, '篇')}';
 }
