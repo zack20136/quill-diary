@@ -36,6 +36,7 @@ const String kSensitiveVaultTransferNeedsRecoveryKeyMessage =
     SettingsSensitiveVaultCopy.needsRecoveryKeyMessage;
 const String kInvalidBackupFileMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 .jbackup。';
 const String kRestoreInProgressMessage = '正在還原備份，請勿關閉應用程式…';
+const String kPostRestoreStartupMessage = '正在啟動還原後的日記庫…';
 
 const String kRestoreSuccessUnlockedMessage = '已還原備份，可以正常使用。';
 const String kRestoreSuccessLockedMessage = '已還原備份。請完成生物驗證或裝置螢幕鎖驗證以繼續。';
@@ -94,13 +95,25 @@ String friendlySessionErrorMessage(
 }
 
 String snackbarMessageForPostRestore(AppLockStatus status, {String? sessionMessage}) {
+  if (status == AppLockStatus.fatalError) {
+    final String? message = sessionMessage?.trim();
+    if (message == kIndexDatabaseUnreadableMessage ||
+        message == kTrustedUnlockFailedAfterRestoreMessage ||
+        message == kRecoveryRequiredAfterRestoreMessage) {
+      return kRestoreSuccessRecoveryRequiredMessage;
+    }
+    if (message != null && _looksLikeUserFacingText(message)) {
+      return message;
+    }
+    return kRestoreStartupFailedMessage;
+  }
+
   return switch (status) {
     AppLockStatus.unlocked => sessionMessage == kStartupNeedsRecoveryKeyMessage
         ? kRestoreSuccessNeedsRecoveryKeySetupMessage
         : kRestoreSuccessUnlockedMessage,
     AppLockStatus.locked => kRestoreSuccessLockedMessage,
     AppLockStatus.recoveryRequired => kRestoreSuccessRecoveryRequiredMessage,
-    AppLockStatus.fatalError => kRestoreStartupFailedMessage,
     _ => kRestoreSuccessUnlockedMessage,
   };
 }

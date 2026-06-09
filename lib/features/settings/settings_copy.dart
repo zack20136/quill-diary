@@ -64,6 +64,9 @@ abstract final class SettingsRecoveryKeyCopy {
   static const String saveDialogTitle = '請保存復原金鑰';
   static const String saveNewDialogTitle = '請保存新的復原金鑰';
 
+  static const String copyButton = '複製';
+  static const String copiedMessage = '已複製到剪貼簿';
+
   static const String rotateDialogTitle = '更新復原金鑰？';
   static const String rotateDialogBody =
       '將產生全新的復原金鑰，請立即保存。\n\n'
@@ -76,7 +79,9 @@ abstract final class SettingsSecurityOverviewCopy {
 
   static const String recoveryKeyTitle = '復原金鑰';
   static const String recoveryKeyReady = '已建立，可用於還原與換機。';
+  static const String recoveryKeyReadySaved = '復原金鑰已建立，請確認你已妥善保存。';
   static const String recoveryKeyMissing = '尚未建立，資料還原能力不足。';
+  static const String recoveryKeyMissingOverview = '尚未建立復原金鑰，請先建立後再使用備份與還原。';
 
   static const String unlockStatusTitle = '解鎖狀態';
   static const String unlockStatusUnlocked = '日記庫目前已解鎖。';

@@ -16,6 +16,7 @@ import '../../../infrastructure/security/app_unlock_mode.dart';
 
 import '../../../infrastructure/security/device_key_manager.dart';
 
+import '../../../infrastructure/database/index_database_errors.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 
 import '../../../shared/providers/core_providers.dart';
@@ -184,6 +185,30 @@ class AppSessionController extends Notifier<AppSessionState> {
     _pendingResourceCleanup = false;
 
     state = const AppSessionState(status: AppLockStatus.uninitialized);
+
+    await ref.read(vaultRepositoryProvider).closeUnlockedResources();
+
+  }
+
+
+
+  /// 還原覆寫 vault 後進入啟動流程，避免與 [appStartupProvider] 並行解鎖。
+
+  Future<void> beginPostRestoreStartup() async {
+
+    _lastForegroundExitAt = null;
+
+    _activeSensitiveTasks = 0;
+
+    _pendingResourceCleanup = false;
+
+    state = const AppSessionState(
+
+      status: AppLockStatus.unlocking,
+
+      message: kPostRestoreStartupMessage,
+
+    );
 
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
 
@@ -419,7 +444,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         afterRestoreTrustedUnlock: afterRestore,
       );
 
-      if (error is SecretBoxAuthenticationError) {
+      if (error is SecretBoxAuthenticationError || isUnreadableEncryptedIndexError(error)) {
 
         await repository.clearTrustedDeviceAccess();
 
@@ -513,6 +538,16 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   AppSessionState get currentState => state;
 
+
+
+  /// 還原後以單一路徑啟動 session，避免與 [appStartupProvider] 並行解鎖。
+
+  Future<AppSessionState> bootstrapAfterRestore() {
+
+    return bootstrapAppSession(ref);
+
+  }
+
 }
 
 
@@ -525,9 +560,11 @@ final appSessionProvider = NotifierProvider<AppSessionController, AppSessionStat
 
 
 
-final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
+/// 冷啟動或還原後重新建立 app session（請在還原流程直接呼叫，避免與 provider 並行）。
 
-  if (!ref.watch(supportedPlatformProvider)) {
+Future<AppSessionState> bootstrapAppSession(Ref ref) async {
+
+  if (!ref.read(supportedPlatformProvider)) {
 
     return const AppSessionState(
 
@@ -599,7 +636,7 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
 
     final String message = friendlySessionErrorMessage(error);
 
-    if (error is SecretBoxAuthenticationError) {
+    if (error is SecretBoxAuthenticationError || isUnreadableEncryptedIndexError(error)) {
 
       await repository.clearTrustedDeviceAccess();
 
@@ -622,6 +659,14 @@ final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
     );
 
   }
+
+}
+
+
+
+final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
+
+  return bootstrapAppSession(ref);
 
 });
 

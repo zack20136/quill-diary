@@ -647,6 +647,7 @@ enum SettingsHealthLevel { ok, warning, error }
 class SettingsSecurityOverview extends StatelessWidget {
   const SettingsSecurityOverview({
     required this.hasRecoveryKey,
+    required this.recoveryKeyHint,
     required this.hasUnlockedSession,
     required this.hasTrustedDevice,
     required this.unlockModeLabel,
@@ -660,6 +661,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   });
 
   final bool hasRecoveryKey;
+  final String? recoveryKeyHint;
   final bool hasUnlockedSession;
   final bool hasTrustedDevice;
   final String unlockModeLabel;
@@ -677,8 +679,11 @@ class SettingsSecurityOverview extends StatelessWidget {
         icon: Icons.key_outlined,
         title: SettingsSecurityOverviewCopy.recoveryKeyTitle,
         message: hasRecoveryKey
-            ? '復原金鑰已建立，請確認你已妥善保存。'
-            : '尚未建立復原金鑰，請先建立後再使用備份與還原。',
+            ? SettingsSecurityOverviewCopy.recoveryKeyReadySaved
+            : SettingsSecurityOverviewCopy.recoveryKeyMissingOverview,
+        subtitle: hasRecoveryKey
+            ? SettingsCopy.recoveryKeyHintLine(recoveryKeyHint ?? '----')
+            : null,
         level: hasRecoveryKey ? SettingsHealthLevel.ok : SettingsHealthLevel.warning,
       ),
       _SecurityOverviewItem(
@@ -752,11 +757,13 @@ class _SecurityOverviewItem {
     required this.title,
     required this.message,
     required this.level,
+    this.subtitle,
   });
 
   final IconData icon;
   final String title;
   final String message;
+  final String? subtitle;
   final SettingsHealthLevel level;
 }
 
@@ -841,6 +848,19 @@ class _SecurityOverviewTile extends StatelessWidget {
                         height: 1.35,
                       ),
                     ),
+                    if (item.subtitle != null) ...<Widget>[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: foreground,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

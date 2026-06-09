@@ -30,6 +30,7 @@ import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
 import '../../restore/restore_backup_flow.dart';
+import '../widgets/recovery_key_save_dialog.dart';
 import '../widgets/settings_sections.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -71,6 +72,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           description: SettingsSecurityOverviewCopy.sectionDescription,
           child: SettingsSecurityOverview(
             hasRecoveryKey: recoveryMetadata != null,
+            recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
             hasUnlockedSession: hasUnlockedSession,
             hasTrustedDevice: hasTrustedDevice,
             unlockModeLabel: mode.fullLabel,
@@ -681,18 +683,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!mounted) {
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text(SettingsRecoveryKeyCopy.saveDialogTitle),
-        content: SelectableText(result.recoveryKey),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(SettingsCopy.actionClose),
-          ),
-        ],
-      ),
+    await showRecoveryKeySaveDialog(
+      context,
+      title: SettingsRecoveryKeyCopy.saveDialogTitle,
+      recoveryKey: result.recoveryKey,
     );
   }
 
@@ -910,29 +904,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     String? backupRecoveryKey,
     RestorePrecheck? precheck,
   }) async {
-    await _resetAppState();
+    await _resetRepositoriesAfterRestore();
 
     AppSessionState sessionState;
-    if (backupRecoveryKey != null && backupRecoveryKey.trim().isNotEmpty) {
-      sessionState = await _unlockRestoredVaultWithRecoveryKey(backupRecoveryKey.trim());
-      if (sessionState.status != AppLockStatus.unlocked) {
-        return;
+    try {
+      if (backupRecoveryKey != null && backupRecoveryKey.trim().isNotEmpty) {
+        sessionState = await _unlockRestoredVaultWithRecoveryKey(backupRecoveryKey.trim());
+        if (sessionState.status != AppLockStatus.unlocked) {
+          return;
+        }
+      } else if (precheck?.expectsTrustedUnlockAfterRestore == true) {
+        final UnlockOutcome outcome = await ref
+            .read(appSessionProvider.notifier)
+            .unlock(afterRestore: true);
+        sessionState = ref.read(appSessionProvider);
+        if (outcome == UnlockOutcome.success &&
+            sessionState.isUnlocked &&
+            sessionState.session != null) {
+          await refreshEntryIndexCaches(ref);
+        }
+      } else {
+        sessionState =
+            await ref.read(appSessionProvider.notifier).bootstrapAfterRestore();
+        if (sessionState.isUnlocked && sessionState.session != null) {
+          await refreshEntryIndexCaches(ref);
+        }
       }
-    } else if (precheck?.expectsTrustedUnlockAfterRestore == true) {
-      final UnlockOutcome outcome = await ref
-          .read(appSessionProvider.notifier)
-          .unlock(afterRestore: true);
-      sessionState = ref.read(appSessionProvider);
-      if (outcome == UnlockOutcome.success &&
-          sessionState.isUnlocked &&
-          sessionState.session != null) {
-        await refreshEntryIndexCaches(ref);
-      }
-    } else {
-      sessionState = await ref.read(appStartupProvider.future);
-      if (sessionState.isUnlocked && sessionState.session != null) {
-        await refreshEntryIndexCaches(ref);
-      }
+    } finally {
+      ref.invalidate(appStartupProvider);
+      ref.invalidate(effectiveAppSessionProvider);
     }
 
     if (mounted) {
@@ -963,14 +963,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _resetAppState() async {
-    await ref.read(appSessionProvider.notifier).reset();
+  Future<void> _resetRepositoriesAfterRestore() async {
+    await ref.read(appSessionProvider.notifier).beginPostRestoreStartup();
     ref.invalidate(vaultTransferServiceProvider);
     ref.invalidate(vaultArchiveIoProvider);
     ref.invalidate(vaultRepositoryProvider);
     ref.invalidate(indexDatabaseManagerProvider);
-    ref.invalidate(appStartupProvider);
-    ref.invalidate(effectiveAppSessionProvider);
     ref.invalidate(recoveryMetadataProvider);
     ref.invalidate(settingsDriveConnectionProvider);
     ref.invalidate(unlockModeProvider);
@@ -1030,18 +1028,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!mounted) {
         return;
       }
-      await showDialog<void>(
-        context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: const Text(SettingsRecoveryKeyCopy.saveNewDialogTitle),
-          content: SelectableText(result.recoveryKey),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('關閉'),
-            ),
-          ],
-        ),
+      await showRecoveryKeySaveDialog(
+        context,
+        title: SettingsRecoveryKeyCopy.saveNewDialogTitle,
+        recoveryKey: result.recoveryKey,
       );
     });
   }

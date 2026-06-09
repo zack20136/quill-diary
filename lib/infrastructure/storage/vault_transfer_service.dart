@@ -236,16 +236,15 @@ class VaultTransferService {
 
   /// Lets the user pick a `.jbackup` file and resolves it to a readable [File].
   Future<File?> pickLocalBackupFile() async {
-    final FilePickerResult? picked = await FilePicker.pickFiles(
+    final PlatformFile? picked = await FilePicker.pickFile(
       dialogTitle: '選擇本機備份檔',
       type: FileType.custom,
       allowedExtensions: const <String>['jbackup'],
-      withData: true,
     );
-    if (picked == null || picked.files.isEmpty) {
+    if (picked == null) {
       return null;
     }
-    return _resolvePickedBackupFile(picked.files.single);
+    return _resolvePickedBackupFile(picked);
   }
 
   Future<RestorePrecheck> precheckRestore(File backupFile) async {
@@ -287,8 +286,8 @@ class VaultTransferService {
         // 某些平台會回傳 content URI，無法直接用 dart:io 開啟。
       }
     }
-    final Uint8List? bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) {
+    final Uint8List? bytes = await _readPlatformFileBytes(file);
+    if (bytes == null) {
       return null;
     }
     final String baseName = file.name.isNotEmpty ? file.name : 'restore.jbackup';
@@ -341,8 +340,6 @@ class VaultTransferService {
       dialogTitle: '選擇 zip、Markdown 或 HTML，或取消後改選資料夾',
       type: FileType.custom,
       allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
-      withData: true,
-      allowMultiple: true,
     );
     if (picked == null || picked.files.isEmpty) {
       return null;
@@ -383,8 +380,8 @@ class VaultTransferService {
       }
     }
 
-    final Uint8List? bytes = zipFile.bytes;
-    if (bytes == null || bytes.isEmpty) {
+    final Uint8List? bytes = await _readPlatformFileBytes(zipFile);
+    if (bytes == null) {
       return null;
     }
 
@@ -433,8 +430,8 @@ class VaultTransferService {
           }
         }
 
-        final Uint8List? bytes = file.bytes;
-        if (bytes == null || bytes.isEmpty) {
+        final Uint8List? bytes = await _readPlatformFileBytes(file);
+        if (bytes == null) {
           continue;
         }
         await destination.writeAsBytes(bytes, flush: true);
@@ -453,6 +450,18 @@ class VaultTransferService {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
+    }
+  }
+
+  Future<Uint8List?> _readPlatformFileBytes(PlatformFile file) async {
+    try {
+      final Uint8List bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        return null;
+      }
+      return bytes;
+    } on Object {
+      return null;
     }
   }
 
@@ -506,46 +515,26 @@ class VaultTransferService {
     final String? initialDirectory =
         await _exportSaveLocationStore.resolveInitialDirectory();
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final File tempFile = await _createTempFile(fileName);
-      try {
-        await _archiveIo.writeBackupZip(tempFile);
-        final BackupHealthReport report = await checkBackupHealth(tempFile);
-        final String? path = await FilePicker.saveFile(
-          dialogTitle: '儲存本機備份',
-          fileName: fileName,
-          initialDirectory: initialDirectory,
-          type: FileType.custom,
-          allowedExtensions: const <String>['jbackup'],
-          bytes: await tempFile.readAsBytes(),
-        );
-        if (path == null) {
-          return null;
-        }
-        await _exportSaveLocationStore.rememberSavedFilePath(path);
-        return BackupCreationResult(path: path, healthReport: report);
-      } finally {
-        await _deleteIfExists(tempFile);
+    final File tempFile = await _createTempFile(fileName);
+    try {
+      await _archiveIo.writeBackupZip(tempFile);
+      final BackupHealthReport report = await checkBackupHealth(tempFile);
+      final String? path = await FilePicker.saveFile(
+        dialogTitle: '儲存本機備份',
+        fileName: fileName,
+        initialDirectory: initialDirectory,
+        type: FileType.custom,
+        allowedExtensions: const <String>['jbackup'],
+        bytes: await tempFile.readAsBytes(),
+      );
+      if (path == null) {
+        return null;
       }
+      await _exportSaveLocationStore.rememberSavedFilePath(path);
+      return BackupCreationResult(path: path, healthReport: report);
+    } finally {
+      await _deleteIfExists(tempFile);
     }
-
-    final String? targetPath = await FilePicker.saveFile(
-      dialogTitle: '儲存本機備份',
-      fileName: fileName,
-      initialDirectory: initialDirectory,
-      type: FileType.custom,
-      allowedExtensions: const <String>['jbackup'],
-    );
-    if (targetPath == null) {
-      return null;
-    }
-    final File target = File(targetPath);
-    await _archiveIo.writeBackupZip(target);
-    await _exportSaveLocationStore.rememberSavedFilePath(targetPath);
-    return BackupCreationResult(
-      path: targetPath,
-      healthReport: await checkBackupHealth(target),
-    );
   }
 
   Future<String?> _saveGeneratedFileWithPicker({
@@ -557,41 +546,25 @@ class VaultTransferService {
     final String? initialDirectory =
         await _exportSaveLocationStore.resolveInitialDirectory();
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final File tempFile = await _createTempFile(fileName);
-      try {
-        await writeTarget(tempFile);
-        final String? path = await FilePicker.saveFile(
-          dialogTitle: dialogTitle,
-          fileName: fileName,
-          initialDirectory: initialDirectory,
-          type: FileType.custom,
-          allowedExtensions: allowedExtensions,
-          bytes: await tempFile.readAsBytes(),
-        );
-        if (path == null) {
-          return null;
-        }
-        await _exportSaveLocationStore.rememberSavedFilePath(path);
-        return path;
-      } finally {
-        await _deleteIfExists(tempFile);
+    final File tempFile = await _createTempFile(fileName);
+    try {
+      await writeTarget(tempFile);
+      final String? path = await FilePicker.saveFile(
+        dialogTitle: dialogTitle,
+        fileName: fileName,
+        initialDirectory: initialDirectory,
+        type: FileType.custom,
+        allowedExtensions: allowedExtensions,
+        bytes: await tempFile.readAsBytes(),
+      );
+      if (path == null) {
+        return null;
       }
+      await _exportSaveLocationStore.rememberSavedFilePath(path);
+      return path;
+    } finally {
+      await _deleteIfExists(tempFile);
     }
-
-    final String? targetPath = await FilePicker.saveFile(
-      dialogTitle: dialogTitle,
-      fileName: fileName,
-      initialDirectory: initialDirectory,
-      type: FileType.custom,
-      allowedExtensions: allowedExtensions,
-    );
-    if (targetPath == null) {
-      return null;
-    }
-    await writeTarget(File(targetPath));
-    await _exportSaveLocationStore.rememberSavedFilePath(targetPath);
-    return targetPath;
   }
 
   Future<void> _deleteIfExists(File file) async {

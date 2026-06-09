@@ -34,4 +34,24 @@ void main() {
       kRestoreStartupFailedMessage,
     );
   });
+
+  test('fatal restore snackbar maps index unreadable to recovery guidance', () {
+    expect(
+      snackbarMessageForPostRestore(
+        AppLockStatus.fatalError,
+        sessionMessage: kIndexDatabaseUnreadableMessage,
+      ),
+      kRestoreSuccessRecoveryRequiredMessage,
+    );
+  });
+
+  test('fatal restore snackbar surfaces user-facing session message', () {
+    expect(
+      snackbarMessageForPostRestore(
+        AppLockStatus.fatalError,
+        sessionMessage: '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
+      ),
+      '受信任裝置資料已失效，請重新使用復原金鑰解鎖。',
+    );
+  });
 }

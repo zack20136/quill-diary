@@ -1871,8 +1871,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Future<void> _pickFile() async {
     final FilePickerResult? result = await FilePicker.pickFiles(
-      allowMultiple: true,
-      withData: false,
       type: FileType.any,
     );
     if (result == null) {
