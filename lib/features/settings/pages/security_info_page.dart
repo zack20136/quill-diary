@@ -37,6 +37,8 @@ class SecurityInfoPage extends StatelessWidget {
                 SizedBox(height: 16),
                 _AppFeaturesCard(),
                 SizedBox(height: 16),
+                _EditorDraftCard(),
+                SizedBox(height: 16),
                 _PlatformLimitCard(),
               ],
             ),
@@ -168,6 +170,45 @@ class _AppFeaturesCard extends StatelessWidget {
             icon: Icons.search_rounded,
             title: SettingsAboutCopy.featuresSearchTitle,
             body: SettingsAboutCopy.featuresSearchBody,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditorDraftCard extends StatelessWidget {
+  const _EditorDraftCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionShell(
+      title: SettingsAboutCopy.editorDraftSectionTitle,
+      subtitle: SettingsAboutCopy.editorDraftSectionSubtitle,
+      child: const Column(
+        children: <Widget>[
+          _BulletPanel(
+            icon: Icons.save_as_outlined,
+            title: SettingsAboutCopy.editorDraftAutoSaveTitle,
+            body: SettingsAboutCopy.editorDraftAutoSaveBody,
+          ),
+          SizedBox(height: 10),
+          _BulletPanel(
+            icon: Icons.save_outlined,
+            title: SettingsAboutCopy.editorDraftManualSaveTitle,
+            body: SettingsAboutCopy.editorDraftManualSaveBody,
+          ),
+          SizedBox(height: 10),
+          _BulletPanel(
+            icon: Icons.restore_page_outlined,
+            title: SettingsAboutCopy.editorDraftCancelRestoreTitle,
+            body: SettingsAboutCopy.editorDraftCancelRestoreBody,
+          ),
+          SizedBox(height: 10),
+          _BulletPanel(
+            icon: Icons.label_important_outline,
+            title: SettingsAboutCopy.editorDraftUnsavedTagTitle,
+            body: SettingsAboutCopy.editorDraftUnsavedTagBody,
           ),
         ],
       ),

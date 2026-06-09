@@ -386,10 +386,26 @@ abstract final class SettingsAboutCopy {
   static const String featuresSectionSubtitle = '解鎖日記庫後可使用。';
   static const String featuresHomeTitle = '首頁';
   static const String featuresHomeBody =
-      '時間軸、日曆、標籤管理與回顧總覽，快速找到過往日記。';
+      '時間軸、日曆、標籤管理與回顧總覽，快速找到過往日記；有未完成草稿時，列表會顯示未儲存標籤。';
   static const String featuresEditorTitle = '編輯器';
   static const String featuresEditorBody =
-      'Markdown 日記、附件、標籤與自訂顯示色；儲存後同步更新搜尋索引。';
+      'Markdown 日記、附件、標籤與自訂顯示色；編輯時自動存本地加密草稿，按儲存並輸入標題後才寫入日記庫。';
+
+  static const String editorDraftSectionTitle = '編輯器草稿';
+  static const String editorDraftSectionSubtitle =
+      '正式儲存前的內容保存在本機加密草稿，與日記庫分開。';
+  static const String editorDraftAutoSaveTitle = '自動存草稿';
+  static const String editorDraftAutoSaveBody =
+      '編輯時即時寫入本機加密草稿，不要求標題。';
+  static const String editorDraftManualSaveTitle = '手動儲存';
+  static const String editorDraftManualSaveBody =
+      '按儲存並輸入標題後，才正式寫入日記庫並刪除草稿。';
+  static const String editorDraftCancelRestoreTitle = '取消與還原';
+  static const String editorDraftCancelRestoreBody =
+      '取消可捨棄草稿；再次開啟同一篇時，可選擇還原草稿並繼續編輯。';
+  static const String editorDraftUnsavedTagTitle = '未儲存標籤';
+  static const String editorDraftUnsavedTagBody =
+      '首頁列表與日記檢視頁會提示該篇仍有未完成草稿。';
   static const String featuresSearchTitle = '全文搜尋';
   static const String featuresSearchBody =
       '解鎖期間，標題、標籤或內文只要包含關鍵字就能找到。';
@@ -410,7 +426,7 @@ abstract final class SettingsAboutCopy {
   static const String backupSectionSubtitle = '封裝整個加密日記庫，不是解密後的明文。';
   static const String backupLocalLabel = '本機備份';
   static const String backupLocalBody =
-      '匯出 .jbackup 壓縮檔，含加密日記、附件、復原設定與標籤目錄；不含搜尋索引（還原後重建）。';
+      '匯出 .jbackup 壓縮檔，含加密日記、附件、復原設定與標籤目錄；不含搜尋索引（還原後重建）與編輯草稿（drafts/）。';
   static const String backupDriveLabel = 'Google 雲端硬碟';
   static const String backupDriveBody = '上傳至應用程式專用資料夾；還原流程與本機 .jbackup 相同。';
   static const String backupRestoreAfterLabel = '還原後';
