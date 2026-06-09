@@ -720,6 +720,7 @@ class _EntryCard extends StatelessWidget {
                   ],
                   Expanded(
                     child: _EntryTitleAndTagsRow(
+                      entryId: entry.id,
                       titleText: _entryListHeadline(entry),
                       tags: entry.tags,
                       charCount: entry.charCount,
@@ -802,6 +803,7 @@ class _CompactEntryList extends StatelessWidget {
                               children: <Widget>[
                                 Expanded(
                                   child: _EntryTitleAndTagsRow(
+                                    entryId: entry.id,
                                     titleText: _entryListHeadline(entry),
                                     tags: entry.tags,
                                     charCount: entry.charCount,
@@ -850,6 +852,7 @@ class _CompactEntryList extends StatelessWidget {
 
 class _EntryTitleAndTagsRow extends ConsumerWidget {
   const _EntryTitleAndTagsRow({
+    required this.entryId,
     required this.titleText,
     required this.tags,
     required this.charCount,
@@ -857,6 +860,7 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
     this.compactTags = false,
   });
 
+  final EntryId entryId;
   final String titleText;
   final List<String> tags;
   final int charCount;
@@ -870,9 +874,13 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
           data: (Map<String, int> m) => m,
           orElse: () => const <String, int>{},
         );
+    final bool showUnsavedTag = ref.watch(editorDraftKeysProvider).maybeWhen(
+          data: (Set<String> draftKeys) => draftKeys.contains(entryId),
+          orElse: () => false,
+        );
     final List<String> trimmedTags =
         tags.map((String t) => t.trim()).where((String t) => t.isNotEmpty).toList();
-    final bool showTagRow = trimmedTags.isNotEmpty || charCount > 0;
+    final bool showTagRow = trimmedTags.isNotEmpty || charCount > 0 || showUnsavedTag;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -892,6 +900,16 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
               spacing: compactTags ? 5 : 6,
               runSpacing: 4,
               children: <Widget>[
+                if (showUnsavedTag)
+                  _EntryListTagChip(
+                    label: '未儲存',
+                    background: Color.alphaBlend(
+                      theme.colorScheme.error.withValues(alpha: 0.14),
+                      theme.colorScheme.surface,
+                    ),
+                    foreground: theme.colorScheme.error,
+                    compact: compactTags,
+                  ),
                 if (charCount > 0)
                   _EntryListTagChip(
                     label: '$charCount字',

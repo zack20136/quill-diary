@@ -693,10 +693,12 @@ class _EncryptedGalleryImage extends ConsumerWidget {
 InputDecoration _titleFieldDecoration(
   BuildContext context, {
   required String hintText,
+  String? errorText,
 }) {
   final ColorScheme cs = Theme.of(context).colorScheme;
   return InputDecoration(
     hintText: hintText,
+    errorText: errorText,
     hintStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w700,
           height: 1.28,
@@ -704,10 +706,16 @@ InputDecoration _titleFieldDecoration(
           fontStyle: FontStyle.italic,
           color: cs.onSurfaceVariant.withValues(alpha: 0.75),
         ),
+    errorStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: cs.error,
+          fontWeight: FontWeight.w600,
+        ),
     filled: false,
     border: InputBorder.none,
     enabledBorder: InputBorder.none,
     focusedBorder: InputBorder.none,
+    errorBorder: InputBorder.none,
+    focusedErrorBorder: InputBorder.none,
     contentPadding: EdgeInsets.zero,
     isDense: true,
   );
@@ -732,5 +740,63 @@ InputDecoration _bodyFieldDecoration(
     contentPadding: EdgeInsets.zero,
     isDense: true,
   );
+}
+
+class _RestoreDraftDialog extends StatelessWidget {
+  const _RestoreDraftDialog({
+    required this.record,
+    required this.hasExistingEntry,
+  });
+
+  final EditorDraftRecord record;
+  final bool hasExistingEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String titleText = record.title?.trim().isNotEmpty == true ? record.title!.trim() : '無標題';
+    final String updatedAtText = DateFormat('yyyy/MM/dd HH:mm').format(record.updatedAt);
+    return AlertDialog(
+      title: const Text('發現未完成的草稿'),
+      content: Text(
+        hasExistingEntry
+            ? '草稿：$titleText\n最後儲存：$updatedAtText\n\n還原後會覆蓋目前檢視中的內容。'
+            : '草稿：$titleText\n最後儲存：$updatedAtText\n\n是否要還原這份草稿？',
+        style: theme.textTheme.bodyMedium,
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('不使用'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('還原草稿'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DiscardDraftDialog extends StatelessWidget {
+  const _DiscardDraftDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('捨棄草稿？'),
+      content: const Text('目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？'),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('捨棄'),
+        ),
+      ],
+    );
+  }
 }
 

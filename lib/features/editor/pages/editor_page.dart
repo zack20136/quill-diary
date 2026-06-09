@@ -36,11 +36,10 @@ import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../editor_draft.dart';
+import '../providers/editor_draft_providers.dart';
 import '../providers/editor_providers.dart';
 
 part '../widgets/editor_dialogs.dart';
-
-enum _SaveStatus { idle, dirty, saving, saved }
 
 enum _PreviewGallerySourceKind { encrypted, local }
 
@@ -302,18 +301,30 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   TimeOfDay _entryTime = TimeOfDay.now();
   bool _didLoadExisting = false;
   bool _saving = false;
+  bool _showTitleRequired = false;
+  int? _draggingEditorImageIndex;
+  bool _didOfferDraftRestore = false;
+  bool _handlingDraftRestore = false;
+  bool _draftPersistInFlight = false;
+  bool _draftPersistQueued = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
   late final ProviderSubscription<AsyncValue<AppSessionState>> _sessionSubscription;
-  Timer? _autoSaveTimer;
-  Timer? _savedStatusTimer;
-  _SaveStatus _saveStatus = _SaveStatus.idle;
+  /// 相對 vault 已儲存內容的基準，用於取消時判斷是否 dirty。
   EditorDraftSnapshot? _lastSavedSnapshot;
+  /// 上次成功寫入本地草稿的快照，避免重複落盤。
+  EditorDraftSnapshot? _lastPersistedDraftSnapshot;
   UnlockedVaultSession? _activeSession;
   DiaryEntry? _activeEntry;
-  static const Duration _autoSaveDebounce = Duration(seconds: 5);
-  static const Duration _savedStatusVisible = Duration(seconds: 3);
+  EntryId? _provisionalEntryId;
+  DateTime? _draftCreatedAt;
+  static const double _editorImageThumbSize = 72;
+  static const double _editorImageStripGap = 10;
+  static const double _editorImageStripSlotWidth =
+      _editorImageThumbSize + _editorImageStripGap;
+  static const String _newDraftKey = '__new__';
   bool get _isEditing => !_previewMode;
+  String get _draftKey => widget.entryId ?? _newDraftKey;
 
   Map<String, int> _watchedTagAccentArgbMap() {
     return ref.watch(tagAccentArgbMapProvider).maybeWhen(
@@ -328,10 +339,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   Iterable<PendingAttachment> get _pendingNonImageAttachments =>
       _pendingAttachments.where((PendingAttachment a) => !a.mimeType.startsWith('image/'));
 
+  bool get _hasTitle => _titleController.text.trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
     _previewMode = widget.entryId != null && !widget.startInEditMode;
+    _provisionalEntryId = widget.entryId ?? generateEntryId();
+    _draftCreatedAt = DateTime.now();
     _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.addListener(_onTagsDraftChanged);
     _titleController.addListener(_onDraftFieldChanged);
@@ -361,8 +376,21 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (_previewMode || !mounted || _suppressDraftListener) {
       return;
     }
-    _updateDirtySaveStatus();
-    _scheduleAutoSave();
+    if (_showTitleRequired && _hasTitle) {
+      setState(() => _showTitleRequired = false);
+    }
+    _scheduleDraftPersist();
+  }
+
+  void _notifyTitleRequired() {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _showTitleRequired = true);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('請輸入標題才能儲存')),
+    );
   }
 
   EditorDraftSnapshot _currentDraftSnapshot() {
@@ -385,12 +413,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  bool _shouldSkipAutoSave() {
-    if (!_isEditing || _saving) {
+  bool _shouldSkipDraftPersist() {
+    if (!_isEditing || _saving || _handlingDraftRestore) {
       return true;
     }
     final EditorDraftSnapshot current = _currentDraftSnapshot();
-    if (!editorDraftIsDirty(current: current, saved: _lastSavedSnapshot)) {
+    if (_lastPersistedDraftSnapshot != null &&
+        !editorDraftIsDirty(current: current, saved: _lastPersistedDraftSnapshot)) {
       return true;
     }
     if (widget.entryId == null && editorDraftIsEmpty(current)) {
@@ -399,72 +428,81 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     return false;
   }
 
-  void _updateDirtySaveStatus() {
-    if (_saving || _saveStatus == _SaveStatus.saving) {
-      return;
-    }
-    final bool dirty = _isDraftDirty();
-    final _SaveStatus next = dirty ? _SaveStatus.dirty : _SaveStatus.idle;
-    if (next != _saveStatus && _saveStatus != _SaveStatus.saved) {
-      setState(() => _saveStatus = next);
-    } else if (next == _SaveStatus.dirty && _saveStatus != _SaveStatus.dirty) {
-      setState(() => _saveStatus = _SaveStatus.dirty);
-    }
-  }
-
-  void _scheduleAutoSave() {
+  /// 欄位變更後即時寫入本地草稿；進行中則排入佇列。
+  void _scheduleDraftPersist() {
     if (_previewMode) {
       return;
     }
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(_autoSaveDebounce, () {
-      unawaited(_performAutoSave());
-    });
+    if (_draftPersistInFlight) {
+      _draftPersistQueued = true;
+      return;
+    }
+    unawaited(_persistDraft());
   }
 
-  void _cancelAutoSaveTimer() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = null;
-  }
+  /// 將目前編輯內容加密寫入本地草稿目錄。
+  Future<void> _persistDraft() async {
+    if (_draftPersistInFlight || _shouldSkipDraftPersist()) {
+      return;
+    }
+    _draftPersistInFlight = true;
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null) {
+      _draftPersistInFlight = false;
+      return;
+    }
+    final EditorDraftSnapshot snapshot = _currentDraftSnapshot();
+    final DateTime now = DateTime.now();
+    final List<EditorDraftPendingAttachment> pendingAttachments =
+        <EditorDraftPendingAttachment>[];
+    final editorDraftStore = ref.read(editorDraftStoreProvider);
+    for (final PendingAttachment attachment in _pendingAttachments) {
+      final String sourcePath = attachment.sourcePath?.trim() ?? '';
+      if (sourcePath.isEmpty) {
+        continue;
+      }
+      pendingAttachments.add(
+        EditorDraftPendingAttachment(
+          relativePath: await editorDraftStore.pendingRelativePath(_draftKey, sourcePath),
+          mimeType: attachment.mimeType,
+          originalFilename: attachment.originalFilename,
+        ),
+      );
+    }
 
-  void _markSaved() {
-    _savedStatusTimer?.cancel();
-    setState(() => _saveStatus = _SaveStatus.saved);
-    _savedStatusTimer = Timer(_savedStatusVisible, () {
+    try {
+      final EditorDraftRecord record = EditorDraftRecord(
+        title: snapshot.title,
+        dateValue: snapshot.dateValue,
+        entryHour: snapshot.entryHour,
+        entryMinute: snapshot.entryMinute,
+        tags: parseEditorTagsCsv(_tagsController.text),
+        markdownBody: snapshot.markdownBody,
+        keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
+        pendingAttachments: pendingAttachments,
+        provisionalEntryId: _provisionalEntryId ??= widget.entryId ?? generateEntryId(),
+        createdAt: _draftCreatedAt ?? now,
+        updatedAt: now,
+      );
+      await editorDraftStore.write(_draftKey, record, session);
+      _draftCreatedAt = record.createdAt;
+      _lastPersistedDraftSnapshot = snapshot;
+      ref.invalidate(editorDraftKeysProvider);
       if (!mounted) {
         return;
       }
-      setState(() {
-        if (_saveStatus == _SaveStatus.saved) {
-          _saveStatus = _SaveStatus.idle;
+    } finally {
+      _draftPersistInFlight = false;
+      if (_draftPersistQueued) {
+        _draftPersistQueued = false;
+        if (!_previewMode) {
+          unawaited(_persistDraft());
         }
-      });
-    });
+      }
+    }
   }
 
-  Future<void> _performAutoSave() async {
-    if (_shouldSkipAutoSave()) {
-      return;
-    }
-    final UnlockedVaultSession? session = _activeSession;
-    if (session == null) {
-      return;
-    }
-    await _saveEntry(session, _activeEntry);
-  }
-
-  Future<void> _flushSaveIfNeeded() async {
-    _cancelAutoSaveTimer();
-    if (_shouldSkipAutoSave()) {
-      return;
-    }
-    final UnlockedVaultSession? session = _activeSession;
-    if (session == null) {
-      return;
-    }
-    await _saveEntry(session, _activeEntry);
-  }
-
+  /// 取消編輯：無變更則靜默捨棄草稿；有變更則確認後捨棄。
   Future<void> _requestClose() async {
     if (_saving) {
       return;
@@ -475,10 +513,35 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       }
       return;
     }
-    await _flushSaveIfNeeded();
-    if (mounted) {
-      context.pop();
+    if (!_isDraftDirty()) {
+      await _discardLocalDraft();
+      if (!mounted) {
+        return;
+      }
+      if (widget.entryId == null) {
+        context.pop();
+      } else {
+        setState(() => _previewMode = true);
+      }
+      return;
     }
+    final bool? discard = await _showDiscardDraftDialog();
+    if (discard != true) {
+      return;
+    }
+    await _discardLocalDraft();
+    if (!mounted) {
+      return;
+    }
+    if (widget.entryId == null) {
+      context.pop();
+      return;
+    }
+    final DiaryEntry? entry = _activeEntry;
+    if (entry != null) {
+      _applyEntryToControllers(entry);
+    }
+    setState(() => _previewMode = true);
   }
 
   void _clearSavedAssetEncryptedPathFutures() {
@@ -488,11 +551,122 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(_savedAssetPathFutures.clear);
   }
 
+  Future<void> _discardLocalDraft() async {
+    _draftPersistQueued = false;
+    await ref.read(editorDraftStoreProvider).delete(_draftKey);
+    _lastPersistedDraftSnapshot = null;
+    ref.invalidate(editorDraftKeysProvider);
+  }
+
+  void _applyEntryToControllers(DiaryEntry entry) {
+    _suppressDraftListener = true;
+    _suppressTagDraftListener = true;
+    _titleController.text = entry.title ?? '';
+    _dateController.text = entry.date.value;
+    _tagsController.text = entry.tags.join(', ');
+    _bodyController.text = entry.markdownBody;
+    _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
+    _pendingAttachments.clear();
+    _savedAssetPathFutures.clear();
+    _entryTime = TimeOfDay(hour: entry.createdAt.hour, minute: entry.createdAt.minute);
+    _provisionalEntryId = entry.id;
+    _draftCreatedAt = entry.createdAt;
+    _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
+    _suppressTagDraftListener = false;
+    _suppressDraftListener = false;
+    _showTitleRequired = false;
+  }
+
+  Future<void> _applyDraftRecord(EditorDraftRecord record) async {
+    final editorDraftStore = ref.read(editorDraftStoreProvider);
+    final Map<String, String> absolutePaths = <String, String>{};
+    for (final EditorDraftPendingAttachment attachment in record.pendingAttachments) {
+      absolutePaths[attachment.relativePath] = await editorDraftStore.pendingAbsolutePath(
+        _draftKey,
+        attachment.relativePath,
+      );
+    }
+    final List<PendingAttachment> pendingAttachments = pendingAttachmentsFromDraftRecord(
+      record,
+      absolutePathBuilder: (String relativePath) => absolutePaths[relativePath] ?? '',
+    );
+
+    _suppressDraftListener = true;
+    _suppressTagDraftListener = true;
+    _titleController.text = record.title ?? '';
+    _dateController.text = record.dateValue;
+    _tagsController.text = record.tags.join(', ');
+    _bodyController.text = record.markdownBody;
+    _keptExistingAttachmentIds = List<AssetId>.from(record.keptAttachmentIds);
+    _pendingAttachments
+      ..clear()
+      ..addAll(pendingAttachments);
+    _entryTime = TimeOfDay(hour: record.entryHour, minute: record.entryMinute);
+    _provisionalEntryId = record.provisionalEntryId;
+    _draftCreatedAt = record.createdAt;
+    _lastPersistedDraftSnapshot = buildEditorDraftSnapshot(
+      titleRaw: _titleController.text,
+      dateRaw: _dateController.text,
+      entryHour: _entryTime.hour,
+      entryMinute: _entryTime.minute,
+      tagsRaw: _tagsController.text,
+      bodyRaw: _bodyController.text,
+      keptAttachmentIds: _keptExistingAttachmentIds,
+      pendingAttachments: _pendingAttachments,
+    );
+    _suppressTagDraftListener = false;
+    _suppressDraftListener = false;
+    if (mounted) {
+      setState(() {
+        _previewMode = false;
+      });
+    }
+  }
+
+  /// 開啟編輯器時若有本地草稿，詢問是否還原並進入編輯模式。
+  Future<void> _offerDraftRestoreIfNeeded(
+    UnlockedVaultSession session,
+    DiaryEntry? entry,
+  ) async {
+    if (!mounted) {
+      return;
+    }
+    final EditorDraftRecord? record = await ref
+        .read(editorDraftStoreProvider)
+        .read(_draftKey, session);
+    if (!mounted || record == null) {
+      return;
+    }
+    final EditorDraftSnapshot recordSnapshot = editorDraftSnapshotFromRecord(record);
+    if (widget.entryId == null && editorDraftIsEmpty(recordSnapshot)) {
+      await _discardLocalDraft();
+      return;
+    }
+
+    _handlingDraftRestore = true;
+    final bool? restore = await _showRestoreDraftDialog(record, hasExistingEntry: entry != null);
+    _handlingDraftRestore = false;
+    if (!mounted) {
+      return;
+    }
+    if (restore == true) {
+      await _applyDraftRecord(record);
+      return;
+    }
+    await _discardLocalDraft();
+    if (!mounted) {
+      return;
+    }
+    if (entry != null) {
+      _applyEntryToControllers(entry);
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _sessionSubscription.close();
-    _cancelAutoSaveTimer();
-    _savedStatusTimer?.cancel();
+    _draftPersistQueued = false;
     _dateController.removeListener(_clearSavedAssetEncryptedPathFutures);
     _dateController.removeListener(_onDraftFieldChanged);
     _tagsController.removeListener(_onTagsDraftChanged);
@@ -514,13 +688,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _pendingAttachments.clear();
     _keptExistingAttachmentIds = <AssetId>[];
     _savedAssetPathFutures.clear();
-    _cancelAutoSaveTimer();
-    _savedStatusTimer?.cancel();
     _lastSavedSnapshot = null;
-    _saveStatus = _SaveStatus.idle;
+    _lastPersistedDraftSnapshot = null;
     _didLoadExisting = false;
+    _didOfferDraftRestore = false;
+    _handlingDraftRestore = false;
+    _draftPersistInFlight = false;
+    _draftPersistQueued = false;
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _entryTime = TimeOfDay.now();
+    _provisionalEntryId = widget.entryId ?? generateEntryId();
+    _draftCreatedAt = DateTime.now();
     if (mounted) {
       setState(() {});
     }
@@ -572,6 +750,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             _loadExistingEntryIfNeeded(entry);
             _activeSession = session;
             _activeEntry = entry;
+            if (!_didOfferDraftRestore) {
+              _didOfferDraftRestore = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                unawaited(_offerDraftRestoreIfNeeded(session, entry));
+              });
+            }
             final AsyncValue<List<AssetAttachment>> attachmentsAsync = widget.entryId == null
                 ? const AsyncValue<List<AssetAttachment>>.data(<AssetAttachment>[])
                 : ref.watch(entryAttachmentsProvider(widget.entryId!));
@@ -733,15 +917,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
     _didLoadExisting = true;
-    _suppressDraftListener = true;
-    _titleController.text = entry.title ?? '';
-    _dateController.text = entry.date.value;
-    _tagsController.text = entry.tags.join(', ');
-    _bodyController.text = entry.markdownBody;
-    _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
-    _entryTime = TimeOfDay(hour: entry.createdAt.hour, minute: entry.createdAt.minute);
-    _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
-    _suppressDraftListener = false;
+    _applyEntryToControllers(entry);
   }
 
   DateTime _composeEntryCreatedAt({required DateOnly date, required DiaryEntry? existing}) {
@@ -920,6 +1096,32 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
+  Widget _buildUnsavedTagPill(ThemeData theme) {
+    final ColorScheme cs = theme.colorScheme;
+    final Color bg = Color.alphaBlend(cs.error.withValues(alpha: 0.14), cs.surface);
+    final Color fg = cs.error;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: bg.withValues(alpha: 0.96),
+        border: Border.all(
+          color: fg.withValues(alpha: 0.28),
+          width: 0.9,
+        ),
+      ),
+      child: Text(
+        '未儲存',
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+          height: 1.15,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTagPill(String tag, ThemeData theme) {
     final (Color bg, Color fg) = tagResolvedAccentPair(
       tag,
@@ -966,10 +1168,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           style: metaStyle,
           maxLines: 1,
         ),
-        if (_isEditing && _saveStatus != _SaveStatus.idle) ...<Widget>[
-          Text(' · ', style: metaStyle),
-          _buildSaveStatusLabel(theme),
-        ],
       ],
     );
   }
@@ -977,16 +1175,18 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   Widget _buildTagsWrap(
     ThemeData theme, {
     bool showCharCount = false,
+    bool showUnsavedTag = false,
     required int bodyCharCount,
   }) {
     final List<String> tags = _editableTagListPreview();
-    if (tags.isEmpty && (!showCharCount || bodyCharCount <= 0)) {
+    if (tags.isEmpty && (!showCharCount || bodyCharCount <= 0) && !showUnsavedTag) {
       return const SizedBox.shrink();
     }
     return Wrap(
       spacing: 8,
       runSpacing: 6,
       children: <Widget>[
+        if (showUnsavedTag) _buildUnsavedTagPill(theme),
         if (showCharCount && bodyCharCount > 0) _buildCharCountTagPill(theme, bodyCharCount),
         ...tags
             .take(24)
@@ -998,8 +1198,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   Widget _buildTitleHeader(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final int bodyCharCount = _bodyMarkdownCharCount();
+    final bool showUnsavedTag = widget.entryId != null &&
+        ref.watch(editorDraftKeysProvider).maybeWhen(
+              data: (Set<String> draftKeys) => draftKeys.contains(widget.entryId),
+              orElse: () => false,
+            );
     final bool showTagsRow =
-        _editableTagListPreview().isNotEmpty || bodyCharCount > 0;
+        _editableTagListPreview().isNotEmpty || bodyCharCount > 0 || (_previewMode && showUnsavedTag);
     if (_previewMode) {
       final String titleText = _titleController.text.trim();
       return Column(
@@ -1021,6 +1226,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             _buildTagsWrap(
               theme,
               showCharCount: true,
+              showUnsavedTag: showUnsavedTag,
               bodyCharCount: bodyCharCount,
             ),
           ],
@@ -1044,6 +1250,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           decoration: _titleFieldDecoration(
             context,
             hintText: '輸入標題',
+            errorText: _showTitleRequired && !_hasTitle ? '請輸入標題' : null,
           ),
         ),
         if (showTagsRow) ...<Widget>[
@@ -1145,12 +1352,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     Future<void> saveEntry() async {
-      _cancelAutoSaveTimer();
+      if (!_hasTitle) {
+        _notifyTitleRequired();
+        return;
+      }
+      _draftPersistQueued = false;
       await _saveEntry(session, entry, switchToPreview: true);
     }
 
     final ThemeData barTheme = Theme.of(context);
     final Color saveButtonColor = barTheme.colorScheme.primary;
+    final bool canSave = !_saving && _hasTitle;
     final Color deleteButtonColor = barTheme.colorScheme.error;
 
     return Column(
@@ -1205,9 +1417,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: '儲存',
-                    onPressed: _saving ? null : saveEntry,
-                    style: IconButton.styleFrom(foregroundColor: saveButtonColor),
+                    tooltip: canSave ? '儲存' : '請先輸入標題',
+                    onPressed: canSave
+                        ? saveEntry
+                        : () {
+                            if (!_hasTitle) {
+                              _notifyTitleRequired();
+                            }
+                          },
+                    style: IconButton.styleFrom(
+                      foregroundColor: canSave
+                          ? saveButtonColor
+                          : barTheme.colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                    ),
                     icon: const Icon(Icons.save_outlined),
                   ),
                   if (widget.entryId != null)
@@ -1270,61 +1492,28 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _buildSaveStatusLabel(ThemeData theme) {
-    final String label;
-    final Color color;
-    switch (_saveStatus) {
-      case _SaveStatus.dirty:
-        label = '有未儲存變更';
-        color = theme.colorScheme.onSurfaceVariant;
-      case _SaveStatus.saving:
-        label = '儲存中…';
-        color = theme.colorScheme.primary;
-      case _SaveStatus.saved:
-        label = '已儲存';
-        color = theme.colorScheme.primary;
-      case _SaveStatus.idle:
-        label = '';
-        color = theme.colorScheme.onSurfaceVariant;
-    }
-    if (label.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: <Widget>[
-        if (_saveStatus == _SaveStatus.saving)
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-        if (_saveStatus == _SaveStatus.saved)
-          Padding(
-            padding: const EdgeInsets.only(right: 3),
-            child: Icon(
-              Icons.check_circle_outline,
-              size: 14,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
-            height: 1.25,
-          ),
-        ),
-      ],
+  Future<bool?> _showRestoreDraftDialog(
+    EditorDraftRecord record, {
+    required bool hasExistingEntry,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return _RestoreDraftDialog(
+          record: record,
+          hasExistingEntry: hasExistingEntry,
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showDiscardDraftDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return const _DiscardDraftDialog();
+      },
     );
   }
 
@@ -1336,16 +1525,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (_saving) {
       return;
     }
-    _cancelAutoSaveTimer();
+    if (!_hasTitle) {
+      _notifyTitleRequired();
+      return;
+    }
+    _draftPersistQueued = false;
     setState(() {
       _saving = true;
-      _saveStatus = _SaveStatus.saving;
     });
     try {
       final DateTime now = DateTime.now();
       final DateOnly parsedDate = DateOnly.parse(_dateController.text.trim());
       final DiaryEntry draft = DiaryEntry(
-        id: existing?.id ?? generateEntryId(),
+        id: existing?.id ?? (_provisionalEntryId ??= generateEntryId()),
         vaultId: existing?.vaultId ?? session.vaultId,
         title: _titleController.text.trim().isEmpty ? null : _titleController.text.trim(),
         date: parsedDate,
@@ -1370,14 +1562,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         _pendingAttachments.clear();
         _entryTime = TimeOfDay(hour: saved.createdAt.hour, minute: saved.createdAt.minute);
         _lastSavedSnapshot = editorDraftSnapshotFromEntry(saved);
+        _lastPersistedDraftSnapshot = null;
+        _provisionalEntryId = saved.id;
+        _draftCreatedAt = saved.createdAt;
         _activeEntry = saved;
         if (switchToPreview) {
           _previewMode = true;
-          _saveStatus = _SaveStatus.idle;
         }
       });
-      if (!switchToPreview) {
-        _markSaved();
+      await _discardLocalDraft();
+      if (!mounted) {
+        return;
       }
       if (widget.entryId == null && mounted) {
         // 保留首頁在堆疊底層，關閉編輯器時才能 pop 回首頁（go 會整段取代路由）。
@@ -1400,13 +1595,137 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _onDraftFieldChanged();
   }
 
-  Widget _pendingImageThumbnailTile(PendingAttachment attachment, {required bool editable}) {
+  /// 固定槽寬並置中縮圖，讓項目間距與拖曳框左右對稱。
+  Widget _editorImageStripSlot({required Widget child}) {
+    return SizedBox(
+      width: _editorImageStripSlotWidth,
+      height: _editorImageThumbSize,
+      child: Center(child: child),
+    );
+  }
+
+  Widget _editorImageDragPlaceholder({required ThemeData theme}) {
+    final ColorScheme cs = theme.colorScheme;
+    return SizedBox(
+      width: _editorImageThumbSize,
+      height: _editorImageThumbSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
+          border: Border.all(
+            color: cs.primary.withValues(alpha: 0.34),
+            width: 1.5,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.drag_indicator_rounded,
+            size: 22,
+            color: cs.primary.withValues(alpha: 0.42),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _decorateEditorImageDragProxy(
+    Widget child,
+    Animation<double> animation,
+  ) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: _editorImageThumbSize,
+      height: _editorImageThumbSize,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (BuildContext context, Widget? animatedChild) {
+          final double t = Curves.easeOutCubic.transform(animation.value);
+          final double scale = Tween<double>(begin: 1, end: 1.08).transform(t);
+          final double lift = Tween<double>(begin: 0, end: -4).transform(t);
+          return Transform.translate(
+            offset: Offset(0, lift),
+            child: Transform.scale(
+              scale: scale,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.28 * t),
+                      blurRadius: 20 * t,
+                      spreadRadius: 1 * t,
+                      offset: Offset(0, 8 * t),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.16 * t),
+                      blurRadius: 12 * t,
+                      offset: Offset(0, 4 * t),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: cs.primary.withValues(alpha: 0.52 * t),
+                    width: 2,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                  child: SizedBox(
+                    width: _editorImageThumbSize,
+                    height: _editorImageThumbSize,
+                    child: animatedChild,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: child,
+      ),
+    );
+  }
+
+  Widget _editorImageDeleteBadge({
+    required ThemeData theme,
+    required VoidCallback onTap,
+  }) {
+    return Positioned(
+      right: 0,
+      top: 0,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            Icons.cancel_rounded,
+            size: 20,
+            color: theme.colorScheme.error.withValues(alpha: 0.9),
+            shadows: const <Shadow>[
+              Shadow(blurRadius: 4, color: Color(0x66000000)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pendingImageThumbnailTile(
+    PendingAttachment attachment, {
+    required bool editable,
+    bool draggable = false,
+    bool isDragPlaceholder = false,
+  }) {
     final ThemeData theme = Theme.of(context);
-    final Widget image = SizedBox(
-      width: 72,
-      height: 72,
+    if (isDragPlaceholder) {
+      return _editorImageDragPlaceholder(theme: theme);
+    }
+    return SizedBox(
+      width: _editorImageThumbSize,
+      height: _editorImageThumbSize,
       child: Stack(
         alignment: Alignment.center,
+        clipBehavior: Clip.none,
         children: <Widget>[
           localFileThumbnail(
             attachment.sourcePath,
@@ -1414,30 +1733,26 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
           ),
           if (editable)
+            _editorImageDeleteBadge(
+              theme: theme,
+              onTap: () => _removePendingAttachment(attachment),
+            ),
+          if (draggable)
             Positioned(
-              right: 4,
-              top: 4,
-              child: Icon(
-                Icons.cancel_rounded,
-                size: 20,
-                color: theme.colorScheme.error.withValues(alpha: 0.9),
-                shadows: const <Shadow>[
-                  Shadow(blurRadius: 4, color: Color(0x66000000)),
-                ],
+              left: 4,
+              bottom: 4,
+              child: IgnorePointer(
+                child: Icon(
+                  Icons.drag_indicator_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  shadows: const <Shadow>[
+                    Shadow(blurRadius: 4, color: Color(0x66000000)),
+                  ],
+                ),
               ),
             ),
         ],
-      ),
-    );
-    if (!editable) {
-      return image;
-    }
-    return Tooltip(
-      message: '點一下從待上傳清單移除（須按儲存才會寫入日記）',
-      child: InkWell(
-        onTap: () => _removePendingAttachment(attachment),
-        borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
-        child: image,
       ),
     );
   }
@@ -1450,6 +1765,78 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       ),
       onDeleted: editable ? () => _removePendingAttachment(attachment) : null,
     );
+  }
+
+  List<AssetAttachment> _orderedSavedImages(List<AssetAttachment> all) {
+    if (all.isEmpty || _keptExistingAttachmentIds.isEmpty) {
+      return <AssetAttachment>[];
+    }
+    final Map<AssetId, AssetAttachment> byId = <AssetId, AssetAttachment>{
+      for (final AssetAttachment attachment in all) attachment.id: attachment,
+    };
+    final List<AssetAttachment> ordered = <AssetAttachment>[];
+    for (final AssetId id in _keptExistingAttachmentIds) {
+      final AssetAttachment? attachment = byId[id];
+      if (attachment != null && attachment.mimeType.startsWith('image/')) {
+        ordered.add(attachment);
+      }
+    }
+    return ordered;
+  }
+
+  void _reorderEditorImages({
+    required List<AssetAttachment> allSaved,
+    required int oldIndex,
+    required int newIndex,
+  }) {
+    final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
+    final List<PendingAttachment> pendingImages = _pendingImageAttachments.toList();
+    final List<Object> slots = <Object>[
+      ...savedImages.map((AssetAttachment attachment) => attachment.id),
+      ...pendingImages,
+    ];
+    if (oldIndex < 0 || oldIndex >= slots.length || newIndex < 0 || newIndex > slots.length) {
+      return;
+    }
+
+    final Object moved = slots.removeAt(oldIndex);
+    slots.insert(newIndex, moved);
+
+    final List<AssetId> newImageKeptIds = <AssetId>[];
+    final List<PendingAttachment> newImagePending = <PendingAttachment>[];
+    for (final Object slot in slots) {
+      if (slot is PendingAttachment) {
+        newImagePending.add(slot);
+      } else if (slot is String) {
+        newImageKeptIds.add(slot);
+      }
+    }
+
+    final Map<AssetId, AssetAttachment> byId = <AssetId, AssetAttachment>{
+      for (final AssetAttachment attachment in allSaved) attachment.id: attachment,
+    };
+    final List<AssetId> nonImageKeptIds = _keptExistingAttachmentIds
+        .where((AssetId id) {
+          final AssetAttachment? attachment = byId[id];
+          return attachment != null && !attachment.mimeType.startsWith('image/');
+        })
+        .toList();
+    final List<PendingAttachment> nonImagePending = _pendingNonImageAttachments.toList();
+
+    setState(() {
+      _draggingEditorImageIndex = null;
+      _keptExistingAttachmentIds = <AssetId>[
+        ...newImageKeptIds,
+        ...nonImageKeptIds,
+      ];
+      _pendingAttachments
+        ..clear()
+        ..addAll(<PendingAttachment>[
+          ...newImagePending,
+          ...nonImagePending,
+        ]);
+    });
+    _onDraftFieldChanged();
   }
 
   List<AssetAttachment> _savedNonImageAttachments(
@@ -1471,43 +1858,104 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     AsyncValue<List<AssetAttachment>> savedAsync, {
     required bool editable,
   }) {
-    final List<AssetAttachment> savedImages = savedAsync.maybeWhen(
-      data: (List<AssetAttachment> list) => list
-          .where(
-            (AssetAttachment a) =>
-                a.mimeType.startsWith('image/') &&
-                _keptExistingAttachmentIds.contains(a.id),
-          )
-          .toList(),
+    final List<AssetAttachment> allSaved = savedAsync.maybeWhen(
+      data: (List<AssetAttachment> list) => list,
       orElse: () => <AssetAttachment>[],
     );
+    final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
     final List<PendingAttachment> pending = _pendingImageAttachments.toList();
-    if (savedImages.isEmpty && pending.isEmpty) {
+    final int itemCount = savedImages.length + pending.length;
+    if (itemCount == 0) {
       return const SizedBox.shrink();
     }
+
+    Widget buildThumbContent(int index) {
+      final bool isDragPlaceholder = _draggingEditorImageIndex == index;
+      if (index < savedImages.length) {
+        return _savedImageThumbnailTile(
+          savedImages[index],
+          editable: editable,
+          draggable: editable && itemCount > 1,
+          isDragPlaceholder: isDragPlaceholder,
+        );
+      }
+      final PendingAttachment attachment = pending[index - savedImages.length];
+      return _pendingImageThumbnailTile(
+        attachment,
+        editable: editable,
+        draggable: editable && itemCount > 1,
+        isDragPlaceholder: isDragPlaceholder,
+      );
+    }
+
+    Widget buildStripItem(int index) {
+      return _editorImageStripSlot(
+        child: buildThumbContent(index),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const SizedBox(height: 4),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ...savedImages.map(
-                (AssetAttachment a) => Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _savedImageThumbnailTile(a, editable: editable),
+        SizedBox(
+          height: 76,
+          child: editable && itemCount > 1
+              ? ReorderableListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  buildDefaultDragHandles: false,
+                  clipBehavior: Clip.none,
+                  proxyDecorator: (
+                    Widget child,
+                    int index,
+                    Animation<double> animation,
+                  ) {
+                    return _decorateEditorImageDragProxy(child, animation);
+                  },
+                  onReorderStart: (int index) {
+                    setState(() => _draggingEditorImageIndex = index);
+                  },
+                  onReorderEnd: (int index) {
+                    if (_draggingEditorImageIndex != null) {
+                      setState(() => _draggingEditorImageIndex = null);
+                    }
+                  },
+                  onReorderItem: (int oldIndex, int newIndex) => _reorderEditorImages(
+                    allSaved: allSaved,
+                    oldIndex: oldIndex,
+                    newIndex: newIndex,
+                  ),
+                  itemCount: itemCount,
+                  itemBuilder: (BuildContext context, int index) {
+                    final Key itemKey;
+                    if (index < savedImages.length) {
+                      itemKey = ValueKey<String>('saved-image-${savedImages[index].id}');
+                    } else {
+                      final PendingAttachment attachment =
+                          pending[index - savedImages.length];
+                      itemKey = ValueKey<String>(
+                        'pending-image-${pendingAttachmentFingerprint(attachment)}',
+                      );
+                    }
+                    return KeyedSubtree(
+                      key: itemKey,
+                      child: _editorImageStripSlot(
+                        child: ReorderableDelayedDragStartListener(
+                          index: index,
+                          child: buildThumbContent(index),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List<Widget>.generate(itemCount, buildStripItem),
+                  ),
                 ),
-              ),
-              ...pending.map(
-                (PendingAttachment a) => Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _pendingImageThumbnailTile(a, editable: editable),
-                ),
-              ),
-            ],
-          ),
         ),
         const SizedBox(height: 6),
       ],
@@ -1568,16 +2016,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   }
 
   Widget _buildPreviewImageGallery(AsyncValue<List<AssetAttachment>> savedAsync) {
-    final List<AssetAttachment> savedImages = savedAsync.maybeWhen(
-      data: (List<AssetAttachment> list) => list
-          .where(
-            (AssetAttachment a) =>
-                a.mimeType.startsWith('image/') &&
-                _keptExistingAttachmentIds.contains(a.id),
-          )
-          .toList(),
+    final List<AssetAttachment> allSaved = savedAsync.maybeWhen(
+      data: (List<AssetAttachment> list) => list,
       orElse: () => <AssetAttachment>[],
     );
+    final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
     final List<PendingAttachment> pending = _pendingImageAttachments.toList();
     final int total = savedImages.length + pending.length;
     if (total == 0) {
@@ -1715,14 +2158,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _savedImageThumbnailTile(AssetAttachment attachment, {required bool editable}) {
+  Widget _savedImageThumbnailTile(
+    AssetAttachment attachment, {
+    required bool editable,
+    bool draggable = false,
+    bool isDragPlaceholder = false,
+  }) {
     final ThemeData theme = Theme.of(context);
+    if (isDragPlaceholder) {
+      return _editorImageDragPlaceholder(theme: theme);
+    }
     Widget thumb(String path) {
-      final Widget image = SizedBox(
-        width: 72,
-        height: 72,
+      return SizedBox(
+        width: _editorImageThumbSize,
+        height: _editorImageThumbSize,
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: <Widget>[
             EntryCoverThumbnail(
               encryptedFilePath: path.isEmpty ? null : path,
@@ -1730,30 +2182,26 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
             ),
             if (editable)
+              _editorImageDeleteBadge(
+                theme: theme,
+                onTap: () => _removeSavedAttachment(attachment),
+              ),
+            if (draggable)
               Positioned(
-                right: 4,
-                top: 4,
-                child: Icon(
-                  Icons.cancel_rounded,
-                  size: 20,
-                  color: theme.colorScheme.error.withValues(alpha: 0.9),
-                  shadows: const <Shadow>[
-                    Shadow(blurRadius: 4, color: Color(0x66000000)),
-                  ],
+                left: 4,
+                bottom: 4,
+                child: IgnorePointer(
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                    shadows: const <Shadow>[
+                      Shadow(blurRadius: 4, color: Color(0x66000000)),
+                    ],
+                  ),
                 ),
               ),
           ],
-        ),
-      );
-      if (!editable) {
-        return image;
-      }
-      return Tooltip(
-        message: '點一下移除此圖（須按儲存才會從日記移除）',
-        child: InkWell(
-          onTap: () => _removeSavedAttachment(attachment),
-          borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
-          child: image,
         ),
       );
     }
@@ -1821,6 +2269,25 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
+  /// 將選取的檔案複製到草稿 pending 目錄並建立 PendingAttachment。
+  Future<PendingAttachment?> _stagePickedFile({
+    required String path,
+    required String displayName,
+  }) async {
+    final String trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final editorDraftStore = ref.read(editorDraftStoreProvider);
+    final String relativePath = await editorDraftStore.stagePendingFile(_draftKey, trimmed);
+    final String stagedPath = await editorDraftStore.pendingAbsolutePath(_draftKey, relativePath);
+    return PendingAttachment(
+      sourcePath: stagedPath,
+      mimeType: _mimeTypeFromPath(trimmed),
+      originalFilename: displayName,
+    );
+  }
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final LostDataResponse lostData = await picker.retrieveLostData();
@@ -1851,13 +2318,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       if (path.isEmpty || !seenPaths.add(path)) {
         continue;
       }
-      next.add(
-        PendingAttachment(
-          sourcePath: path,
-          mimeType: _mimeTypeFromPath(path),
-          originalFilename: p.basename(path),
-        ),
+      final PendingAttachment? staged = await _stagePickedFile(
+        path: path,
+        displayName: p.basename(path),
       );
+      if (staged != null) {
+        next.add(staged);
+      }
     }
     if (next.isEmpty) {
       return;
@@ -1877,19 +2344,24 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
 
-    setState(() {
-      for (final PlatformFile file in result.files) {
-        if (file.path == null) {
-          continue;
-        }
-        _pendingAttachments.add(
-          PendingAttachment(
-            sourcePath: file.path!,
-            mimeType: _mimeTypeFromPath(file.path!),
-            originalFilename: file.name,
-          ),
-        );
+    final List<PendingAttachment> next = <PendingAttachment>[];
+    for (final PlatformFile file in result.files) {
+      if (file.path == null || file.path!.trim().isEmpty) {
+        continue;
       }
+      final PendingAttachment? staged = await _stagePickedFile(
+        path: file.path!,
+        displayName: file.name,
+      );
+      if (staged != null) {
+        next.add(staged);
+      }
+    }
+    if (next.isEmpty) {
+      return;
+    }
+    setState(() {
+      _pendingAttachments.addAll(next);
     });
     _onDraftFieldChanged();
   }

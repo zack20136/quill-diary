@@ -34,6 +34,11 @@ class VaultPathStrategy {
     return Directory(p.join(root.path, 'backups'));
   }
 
+  Future<Directory> editorDraftsRootDirectory() async {
+    final Directory root = await appRootDirectory();
+    return Directory(p.join(root.path, 'drafts'));
+  }
+
   Future<String> indexDatabasePath() async {
     final Directory indexRoot = await indexRootDirectory();
     return p.join(indexRoot.path, 'journal_index.sqlite');
@@ -52,6 +57,21 @@ class VaultPathStrategy {
   Future<String> manifestPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
     return p.join(vaultRoot.path, 'manifest.json.enc');
+  }
+
+  Future<Directory> editorDraftDirectory(String draftKey) async {
+    final Directory draftsRoot = await editorDraftsRootDirectory();
+    return Directory(p.join(draftsRoot.path, draftKey));
+  }
+
+  Future<String> editorDraftFilePath(String draftKey) async {
+    final Directory draftDir = await editorDraftDirectory(draftKey);
+    return p.join(draftDir.path, 'draft.json.enc');
+  }
+
+  Future<Directory> editorDraftPendingDirectory(String draftKey) async {
+    final Directory draftDir = await editorDraftDirectory(draftKey);
+    return Directory(p.join(draftDir.path, 'pending'));
   }
 
   String entryRelativePath({
@@ -102,6 +122,8 @@ class VaultPathStrategy {
     await indexRoot.create(recursive: true);
     final Directory backupsRoot = await localBackupsDirectory();
     await backupsRoot.create(recursive: true);
+    final Directory draftsRoot = await editorDraftsRootDirectory();
+    await draftsRoot.create(recursive: true);
   }
 
   /// 舊版將索引放在 `vault/index/`；啟動時搬至 [indexRootDirectory]（須在首次開啟 IndexDatabase 之前呼叫）。

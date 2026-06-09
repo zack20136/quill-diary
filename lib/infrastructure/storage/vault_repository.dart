@@ -611,9 +611,20 @@ class VaultRepository {
     final DateOnly previousDate = previousRecord?.date ?? draft.date;
     final List<AssetAttachment> existingFromDb = await indexDb.attachmentsForEntry(draft.id);
     final Set<AssetId> keepExistingIds = draft.attachmentIds.toSet();
-    final List<AssetAttachment> existingKept = existingFromDb
-        .where((AssetAttachment a) => keepExistingIds.contains(a.id))
-        .toList();
+    final Map<AssetId, AssetAttachment> existingById = <AssetId, AssetAttachment>{
+      for (final AssetAttachment attachment in existingFromDb) attachment.id: attachment,
+    };
+    final Set<AssetId> seenKeptIds = <AssetId>{};
+    final List<AssetAttachment> existingKept = <AssetAttachment>[];
+    for (final AssetId id in draft.attachmentIds) {
+      if (!seenKeptIds.add(id)) {
+        continue;
+      }
+      final AssetAttachment? attachment = existingById[id];
+      if (attachment != null) {
+        existingKept.add(attachment);
+      }
+    }
     final List<AssetAttachment> removedAttachments = existingFromDb
         .where((AssetAttachment a) => !keepExistingIds.contains(a.id))
         .toList(growable: false);
@@ -631,9 +642,16 @@ class VaultRepository {
       ...existingKept,
       ...newAttachments,
     ];
+    final DateTime attachmentOrderBase = draft.createdAt;
+    final List<AssetAttachment> orderedAttachments = <AssetAttachment>[
+      for (int i = 0; i < allAttachments.length; i++)
+        allAttachments[i].copyWith(
+          createdAt: attachmentOrderBase.add(Duration(milliseconds: i)),
+        ),
+    ];
     final DiaryEntry normalized = draft.copyWith(
       vaultId: metadata.vaultId,
-      attachmentIds: allAttachments.map((AssetAttachment asset) => asset.id).toList(),
+      attachmentIds: orderedAttachments.map((AssetAttachment asset) => asset.id).toList(),
       updatedAt: DateTime.now(),
     );
 
@@ -660,7 +678,7 @@ class VaultRepository {
 
     final String markdown = _frontMatterCodec.encode(
       normalized,
-      attachments: allAttachments,
+      attachments: orderedAttachments,
     );
     final EncryptionResult encryption = await _cryptoService.encryptMarkdown(
       documentId: normalized.id,
@@ -696,9 +714,9 @@ class VaultRepository {
     );
     await indexDb.replaceAttachments(
       normalized.id,
-      allAttachments,
+      orderedAttachments,
       <AssetId, String>{
-        for (final AssetAttachment attachment in allAttachments)
+        for (final AssetAttachment attachment in orderedAttachments)
           attachment.id: await _assetAbsolutePathFor(
             date: normalized.date,
             attachment: attachment,

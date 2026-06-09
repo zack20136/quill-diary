@@ -27,6 +27,7 @@ import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import '../../editor/providers/editor_draft_providers.dart';
 import '../models/overview_models.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';

@@ -125,6 +125,36 @@ void main() {
     });
   });
 
+  group('editorDraftSnapshotFromRecord', () {
+    test('從 EditorDraftRecord 建立 snapshot', () {
+      final EditorDraftRecord record = EditorDraftRecord(
+        title: 'draft title',
+        dateValue: '2026-05-17',
+        entryHour: 9,
+        entryMinute: 15,
+        tags: <String>['a'],
+        markdownBody: '  body  ',
+        keptAttachmentIds: <AssetId>['asset-1'],
+        pendingAttachments: const <EditorDraftPendingAttachment>[
+          EditorDraftPendingAttachment(
+            relativePath: 'pending/x.png',
+            mimeType: 'image/png',
+            originalFilename: 'x.png',
+          ),
+        ],
+        provisionalEntryId: 'entry-1',
+        createdAt: DateTime(2026, 5, 17, 9, 0),
+        updatedAt: DateTime(2026, 5, 17, 9, 15),
+      );
+
+      final EditorDraftSnapshot snapshot = editorDraftSnapshotFromRecord(record);
+
+      expect(snapshot.title, 'draft title');
+      expect(snapshot.markdownBody, 'body');
+      expect(snapshot.pendingFingerprints, <String>['pending/x.png|image/png|x.png']);
+    });
+  });
+
   group('editorDraftSnapshotFromEntry', () {
     test('從 DiaryEntry 建立 snapshot', () {
       final DiaryEntry entry = DiaryEntry(
