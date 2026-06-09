@@ -613,7 +613,7 @@ class _TimelineEntryShell extends StatelessWidget {
                 ? BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))
                 : BorderSide.none,
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.none,
       child: child,
     );
   }
@@ -725,19 +725,28 @@ class _EntryCard extends StatelessWidget {
                     const SizedBox(width: 12),
                   ],
                   Expanded(
-                    child: _EntryTitleAndTagsRow(
-                      entryId: entry.id,
-                      titleText: _entryListHeadline(entry),
-                      tags: entry.tags,
-                      charCount: entry.charCount,
-                      titleStyle: theme.textTheme.titleMedium?.copyWith(
+                    child: Text(
+                      _entryListHeadline(entry),
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.start,
                     ),
                   ),
                   const SizedBox(width: 10),
                   _EntryCardRightDateTime(entry: entry),
                 ],
+              ),
+              _EntryListTagsWrap(
+                entryId: entry.id,
+                tags: entry.tags,
+                charCount: entry.charCount,
+                padding: EdgeInsets.only(
+                  left: selectionLeadingWidth,
+                  top: 5,
+                ),
               ),
               if (showPreview) ...<Widget>[
                 const SizedBox(height: 8),
@@ -808,20 +817,26 @@ class _CompactEntryList extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Expanded(
-                                  child: _EntryTitleAndTagsRow(
-                                    entryId: entry.id,
-                                    titleText: _entryListHeadline(entry),
-                                    tags: entry.tags,
-                                    charCount: entry.charCount,
-                                    titleStyle: theme.textTheme.titleMedium?.copyWith(
+                                  child: Text(
+                                    _entryListHeadline(entry),
+                                    style: theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
-                                    compactTags: true,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.start,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 _EntryCardRightDateTime(entry: entry, compact: true),
                               ],
+                            ),
+                            _EntryListTagsWrap(
+                              entryId: entry.id,
+                              tags: entry.tags,
+                              charCount: entry.charCount,
+                              compactTags: true,
+                              padding: const EdgeInsets.only(top: 4),
                             ),
                             if (showPreview) ...<Widget>[
                               const SizedBox(height: 6),
@@ -856,22 +871,20 @@ class _CompactEntryList extends StatelessWidget {
   }
 }
 
-class _EntryTitleAndTagsRow extends ConsumerWidget {
-  const _EntryTitleAndTagsRow({
+class _EntryListTagsWrap extends ConsumerWidget {
+  const _EntryListTagsWrap({
     required this.entryId,
-    required this.titleText,
     required this.tags,
     required this.charCount,
-    required this.titleStyle,
     this.compactTags = false,
+    this.padding,
   });
 
   final EntryId entryId;
-  final String titleText;
   final List<String> tags;
   final int charCount;
-  final TextStyle? titleStyle;
   final bool compactTags;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -888,58 +901,51 @@ class _EntryTitleAndTagsRow extends ConsumerWidget {
         tags.map((String t) => t.trim()).where((String t) => t.isNotEmpty).toList();
     final bool showTagRow = trimmedTags.isNotEmpty || charCount > 0 || showUnsavedTag;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Text(
-          titleText,
-          style: titleStyle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.start,
+    if (!showTagRow) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: padding ?? EdgeInsets.zero,
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          spacing: compactTags ? 5 : 6,
+          runSpacing: 4,
+          children: <Widget>[
+            if (showUnsavedTag)
+              _EntryListTagChip(
+                label: HomeCopy.unsavedDraftLabel,
+                background: Color.alphaBlend(
+                  theme.colorScheme.error.withValues(alpha: 0.14),
+                  theme.colorScheme.surface,
+                ),
+                foreground: theme.colorScheme.error,
+                compact: compactTags,
+              ),
+            if (charCount > 0)
+              _EntryListTagChip(
+                label: DisplayFormat.formatCountUnit(charCount, '字'),
+                background: Color.alphaBlend(
+                  theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
+                  theme.colorScheme.surface,
+                ),
+                foreground: theme.colorScheme.onSurfaceVariant,
+                compact: compactTags,
+              ),
+            ...trimmedTags.map((String tag) {
+              final (Color bg, Color fg) =
+                  tagResolvedAccentPair(tag, theme.colorScheme, accents);
+              return _EntryListTagChip(
+                label: tag,
+                background: bg,
+                foreground: fg,
+                compact: compactTags,
+              );
+            }),
+          ],
         ),
-        if (showTagRow)
-          Padding(
-            padding: EdgeInsets.only(top: compactTags ? 4 : 5),
-            child: Wrap(
-              spacing: compactTags ? 5 : 6,
-              runSpacing: 4,
-              children: <Widget>[
-                if (showUnsavedTag)
-                  _EntryListTagChip(
-                    label: HomeCopy.unsavedDraftLabel,
-                    background: Color.alphaBlend(
-                      theme.colorScheme.error.withValues(alpha: 0.14),
-                      theme.colorScheme.surface,
-                    ),
-                    foreground: theme.colorScheme.error,
-                    compact: compactTags,
-                  ),
-                if (charCount > 0)
-                  _EntryListTagChip(
-                    label: DisplayFormat.formatCountUnit(charCount, '字'),
-                    background: Color.alphaBlend(
-                      theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
-                      theme.colorScheme.surface,
-                    ),
-                    foreground: theme.colorScheme.onSurfaceVariant,
-                    compact: compactTags,
-                  ),
-                ...trimmedTags.take(4).map((String tag) {
-                  final (Color bg, Color fg) =
-                      tagResolvedAccentPair(tag, theme.colorScheme, accents);
-                  return _EntryListTagChip(
-                    label: tag,
-                    background: bg,
-                    foreground: fg,
-                    compact: compactTags,
-                  );
-                }),
-              ],
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -1002,12 +1008,12 @@ class _EntryCardRightDateTime extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text(
-          DisplayFormat.formatDateOnlyWithWeekdayZh(entry.date),
+          DisplayFormat.formatDateOnlyZh(entry.date),
           style: muted,
           textAlign: TextAlign.right,
         ),
         Text(
-          _entryListTimeLabel(entry.createdAt),
+          '${weekdayZhLongFromDateOnly(entry.date)} ${_entryListTimeLabel(entry.createdAt)}',
           style: muted,
           textAlign: TextAlign.right,
         ),

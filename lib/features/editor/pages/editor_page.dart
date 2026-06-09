@@ -1165,16 +1165,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (tags.isEmpty && (!showCharCount || bodyCharCount <= 0) && !showUnsavedTag) {
       return const SizedBox.shrink();
     }
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: <Widget>[
-        if (showUnsavedTag) _buildUnsavedTagPill(theme),
-        if (showCharCount && bodyCharCount > 0) _buildCharCountTagPill(theme, bodyCharCount),
-        ...tags
-            .take(24)
-            .map((String tag) => _buildTagPill(tag, theme)),
-      ],
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: <Widget>[
+          if (showUnsavedTag) _buildUnsavedTagPill(theme),
+          if (showCharCount && bodyCharCount > 0) _buildCharCountTagPill(theme, bodyCharCount),
+          ...tags.map((String tag) => _buildTagPill(tag, theme)),
+        ],
+      ),
     );
   }
 

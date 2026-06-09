@@ -17,6 +17,7 @@ import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/copy/common_copy.dart';
 import '../../../shared/copy/tag_copy.dart';
 import '../../../shared/presentation/display_format.dart';
+import '../../../shared/utils/weekday_zh.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
