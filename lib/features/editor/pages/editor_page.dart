@@ -365,7 +365,6 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (_suppressTagDraftListener || _previewMode || !mounted) {
       return;
     }
-    setState(() {});
     _onDraftFieldChanged();
   }
 
@@ -1387,13 +1386,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   IconButton(
                     tooltip: canSave ? EditorCopy.tooltipSave : EditorCopy.tooltipSaveNeedsTitle,
-                    onPressed: canSave
-                        ? saveEntry
-                        : () {
-                            if (!_hasTitle) {
-                              _notifyTitleRequired();
-                            }
-                          },
+                    onPressed: _saving ? null : saveEntry,
                     style: IconButton.styleFrom(
                       foregroundColor: canSave
                           ? saveButtonColor
