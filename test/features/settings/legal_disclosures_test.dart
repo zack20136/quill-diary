@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/config/app_identifiers.dart';
 import 'package:quill_diary/features/settings/legal_disclosures.dart';
 
-const String _privacyPolicyPath = 'docs/public/privacy-policy.md';
+const String _privacyPolicyPath = 'docs/privacy-policy.md';
 
 void main() {
-  test('privacyEffectiveDateLabel 與 docs/public/privacy-policy.md 一致', () {
+  test('privacyEffectiveDateLabel 與 docs/privacy-policy.md 一致', () {
     final String markdown = File(_privacyPolicyPath).readAsStringSync();
     expect(markdown, contains('2026 年 6 月 6 日'));
     expect(LegalDisclosures.privacyEffectiveDateLabel, contains('2026 年 6 月 6 日'));

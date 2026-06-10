@@ -5,7 +5,7 @@
 ## 本 App 原始碼
 
 - **授權**：GNU Affero General Public License v3.0（AGPL-3.0）
-- **完整條款**：[LICENSE](../../LICENSE)
+- **完整條款**：[LICENSE](../LICENSE)
 - **原始碼**：<https://github.com/zack20136/quill-diary>
 
 若你修改並發布本程式（含 App 發行），須以相同授權公開對應的完整原始碼。

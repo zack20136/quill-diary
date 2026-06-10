@@ -1,4 +1,4 @@
-/// 法律短句與設定頁「法律與隱私」文案（完整條款見 docs/public/）。
+/// 法律短句與設定頁「法律與隱私」文案（完整條款見 docs/privacy-policy.md）。
 abstract final class LegalDisclosures {
   static const String privacyEffectiveDateLabel = '生效日期：2026 年 6 月 6 日';
 

@@ -31,19 +31,19 @@ Quill Diary 是一款為 Android 設計的離線加密日記 App。
 
 ## 文件入口
 
-想了解架構、解鎖流程、加密格式、索引、備份與編輯器行為，請從 [docs/文件目錄.md](docs/文件目錄.md) 進入。
+想了解架構、解鎖流程、加密格式、索引、備份與編輯器行為，請從 [docs/介紹/文件目錄.md](docs/介紹/文件目錄.md) 進入。
 
 文件與程式碼不一致時，以 `lib/` 內實作為準。
 
 ## 授權與贊助
 
 - 原始碼以 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）發布。若你修改並發布本程式（含 App 發行），須以相同授權公開對應的完整原始碼。
-- 第三方字體與依賴套件聲明：[docs/public/third-party-notices.md](docs/public/third-party-notices.md)
+- 第三方字體與依賴套件聲明：[docs/third-party-notices.md](docs/third-party-notices.md)
 - **Quill Diary** 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。
 - App 內「支持開發者」為自願贊助，不解鎖任何額外功能。若需閉源商用授權，請透過 [GitHub Issues](https://github.com/zack20136/quill-diary/issues) 聯絡作者。
 
 ## 隱私權政策
 
-- 完整文字：[docs/public/privacy-policy.md](docs/public/privacy-policy.md)
+- 完整文字：[docs/privacy-policy.md](docs/privacy-policy.md)
 - 公開網頁（Google Play 送審用）：<https://zack20136.github.io/quill-diary/privacy-policy>
 - App 內亦可從設定頁進入「隱私權政策」

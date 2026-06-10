@@ -72,7 +72,7 @@ Android release 目前需要正式簽章。
 
 參考檔案：
 
-- [`android/key.properties.example`](../../android/key.properties.example)
+- [`android/key.properties.example`](../../../android/key.properties.example)
 
 ## 該如何做
 
@@ -91,9 +91,9 @@ Play Console「Privacy policy」欄位請填入：
 
 `https://zack20136.github.io/quill-diary/privacy-policy`
 
-來源文件：[docs/public/privacy-policy.md](../../public/privacy-policy.md)
+來源文件：[docs/privacy-policy.md](../../../privacy-policy.md)
 
-**維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` 為準；頁面原始檔在 `docs/public/`。
+**維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` 為準；頁面原始檔在 `docs/` 根目錄。開發文件在 `docs/介紹/`（Jekyll 已 exclude，不會發布）。
 
 ### 啟用 GitHub Pages
 
