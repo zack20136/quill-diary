@@ -1,5 +1,6 @@
 name: quill_diary
 description: "Offline diary app with local LDJ2-encrypted Markdown vault and Recovery Key."
+license: AGPL-3.0-or-later
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -44,6 +45,7 @@ dependencies:
   googleapis: ^16.0.0
   intl: ^0.20.2
   visibility_detector: ^0.4.0+2
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

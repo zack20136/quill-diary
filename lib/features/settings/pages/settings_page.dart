@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../config/app_identifiers.dart';
 import '../../../config/oauth_config.dart';
 import '../../../app/router.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
@@ -18,6 +19,7 @@ import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/external_url.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../editor/providers/editor_providers.dart';
 import '../../home/providers/home_providers.dart';
@@ -27,6 +29,9 @@ import '../../session/state/app_session_state.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
 import '../about_copy.dart';
+import '../legal_copy.dart';
+import '../legal_disclosures.dart';
+import '../privacy_copy.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
@@ -51,6 +56,54 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _recoveryKeyInputController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openLegalLink(String url) async {
+    final bool opened = await launchExternalUrl(url);
+    if (!mounted || opened) {
+      return;
+    }
+    _showMessage(LegalDisclosures.externalLinkUnavailableMessage);
+  }
+
+  Widget _buildLegalSection(ColorScheme cs) {
+    return SettingsSectionCard(
+      icon: Icons.gavel_outlined,
+      title: SettingsLegalCopy.sectionTitle,
+      description: SettingsLegalCopy.sectionDescription,
+      child: Column(
+        children: <Widget>[
+          _SettingsLegalRow(
+            title: SettingsPrivacyCopy.pageTitle,
+            onTap: () => unawaited(context.push(AppRouter.privacyRoute)),
+            colorScheme: cs,
+          ),
+          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          _SettingsLegalRow(
+            title: SettingsLegalCopy.sourceCodeTitle,
+            subtitle: SettingsLegalCopy.sourceCodeSubtitle,
+            onTap: () => unawaited(
+              _openLegalLink(AppIdentifiers.sourceRepositoryUrl),
+            ),
+            colorScheme: cs,
+          ),
+          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          _SettingsLegalRow(
+            title: SettingsLegalCopy.dependencyLicensesTitle,
+            onTap: () => showLicensePage(context: context),
+            colorScheme: cs,
+          ),
+          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          _SettingsLegalRow(
+            title: SettingsLegalCopy.thirdPartyNoticesTitle,
+            onTap: () => unawaited(
+              _openLegalLink(AppIdentifiers.thirdPartyNoticesUrl),
+            ),
+            colorScheme: cs,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSecurityStatusSection({
@@ -203,6 +256,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: <Widget>[
+                _buildLegalSection(cs),
+                const SizedBox(height: 16),
                 if (!isSupportedPlatform)
                   const SettingsSectionCard(
                     title: SettingsPlatformCopy.sectionTitle,
@@ -1096,6 +1151,67 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _SettingsLegalRow extends StatelessWidget {
+  const _SettingsLegalRow({
+    required this.title,
+    required this.onTap,
+    required this.colorScheme,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle != null) ...<Widget>[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

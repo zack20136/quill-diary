@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/presentation/page_style.dart';
 import '../about_copy.dart';
+import '../widgets/settings_info_cards.dart';
 
 class SettingsAboutPage extends StatelessWidget {
   const SettingsAboutPage({super.key});
@@ -50,7 +51,13 @@ class _AboutTabBody extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: <Widget>[
-          _HeroCard(tab: tab),
+          SettingsGradientHeroCard(
+            icon: tab.heroIcon,
+            title: tab.heroTitle,
+            body: tab.heroBody,
+            chips: tab.chips,
+            startAlpha: 0.16,
+          ),
           const SizedBox(height: 16),
           ...List<Widget>.generate(tab.sections.length, (int index) {
             final AboutSectionCopy section = tab.sections[index];
@@ -60,65 +67,6 @@ class _AboutTabBody extends StatelessWidget {
             );
           }),
         ],
-      ),
-    );
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.tab});
-
-  final AboutTabCopy tab;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color.alphaBlend(cs.primary.withValues(alpha: 0.16), cs.surface),
-            Color.alphaBlend(cs.tertiary.withValues(alpha: 0.10), cs.surfaceContainerLow),
-          ],
-        ),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(tab.heroIcon, color: cs.primary, size: 28),
-            const SizedBox(height: 14),
-            Text(
-              tab.heroTitle,
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              tab.heroBody,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.6,
-              ),
-            ),
-            if (tab.chips.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: tab.chips
-                    .map((String label) => _FactChip(label: label))
-                    .toList(growable: false),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -223,33 +171,6 @@ class _ItemPanel extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FactChip extends StatelessWidget {
-  const _FactChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.24)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );

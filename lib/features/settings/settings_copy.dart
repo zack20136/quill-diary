@@ -3,6 +3,7 @@ import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
 import '../../shared/copy/common_copy.dart';
+import 'legal_disclosures.dart';
 
 /// 設定頁與相關對話框的繁體中文文案（單一來源）。
 ///
@@ -414,9 +415,7 @@ abstract final class SettingsSupportCopy {
       '這頁先占位，避免讓人誤以為付費能換取功能。';
 
   static const String complianceCardTitle = '付款與隱私';
-  static const String complianceCardBody =
-      '開放後僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員。'
-      '本頁不讀取 vault，也不影響日記內容。';
+  static const String complianceCardBody = LegalDisclosures.billingSupportPageBody;
 
   static const String purchaseButtonLabel = '尚未開放';
   static const String purchaseHint =

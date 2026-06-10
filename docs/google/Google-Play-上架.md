@@ -85,6 +85,28 @@ Android release 目前需要正式簽章。
 7. 若是新個人帳號，先完成封閉測試門檻
 8. 最後再送審
 
+## 隱私權政策 URL
+
+Play Console「Privacy policy」欄位請填入：
+
+`https://zack20136.github.io/quill-diary/privacy-policy`
+
+來源文件：[docs/privacy-policy.md](../../privacy-policy.md)
+
+**維護注意**：正式 URL 以 `lib/config/app_identifiers.dart` 的 `AppIdentifiers.privacyPolicyUrl` 為準；修改 URL 時請同步更新該常數、本文件與 README。`docs/_config.yml` 已設 `permalink: pretty`，部署後應可從 `/privacy-policy/` 存取（無 `.html` 後綴）。
+
+### 啟用 GitHub Pages
+
+1. 確認 GitHub repo 為 **public**（Pages 網址須與 `AppIdentifiers` 中的 repo 名稱一致，目前為 `quill-diary`）
+2. 進入 repo **Settings → Pages**
+3. Source 選 **Deploy from a branch**
+4. Branch 選 `main`，資料夾選 **`/docs`**
+5. 儲存後等待數分鐘，用瀏覽器確認下列 URL 可開啟：
+   - `https://zack20136.github.io/quill-diary/`
+   - `https://zack20136.github.io/quill-diary/privacy-policy`
+   - `https://zack20136.github.io/quill-diary/third-party-notices`
+6. App 內亦可從設定頁進入「隱私權政策」
+
 ## 最小檢查清單
 
 - `package name` 已定案
@@ -92,7 +114,7 @@ Android release 目前需要正式簽章。
 - release 簽章可正常產出
 - `AAB` 可成功建置
 - 商店頁文案完成
-- 隱私權政策可公開訪問
+- 隱私權政策可公開訪問（`https://zack20136.github.io/quill-diary/privacy-policy`）
 - Data safety 已填
 - Content rating 已填
 - App access 已填

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/shared/vault_backup_policy.dart';
+import 'legal_disclosures.dart';
 
 class AboutTabCopy {
   const AboutTabCopy({
@@ -123,6 +124,22 @@ abstract final class SettingsAboutCopy {
               icon: Icons.phonelink_lock_outlined,
               title: '安全與日常平衡',
               body: '可信裝置讓日常重新進入不必每次都走最重的流程，但最終仍以復原金鑰作為底線。',
+            ),
+          ],
+        ),
+        AboutSectionCopy(
+          title: '開源與品牌',
+          subtitle: '原始碼公開建立信任；品牌名稱另受保護。',
+          items: <AboutItemCopy>[
+            AboutItemCopy(
+              icon: Icons.code_rounded,
+              title: 'AGPL-3.0 開源',
+              body: '原始碼以 GNU Affero General Public License v3.0 發布。若修改並發布，須以相同授權公開對應的完整原始碼。',
+            ),
+            AboutItemCopy(
+              icon: Icons.verified_outlined,
+              title: 'Quill Diary 品牌',
+              body: LegalDisclosures.brandDisclaimer,
             ),
           ],
         ),

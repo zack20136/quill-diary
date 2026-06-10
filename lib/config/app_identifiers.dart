@@ -16,4 +16,15 @@ abstract final class AppIdentifiers {
   static const String easyDiaryRealmChannel = 'quill_diary/easy_diary_realm';
 
   static const String indexKeyDerivationInfo = 'quill_diary:index:v1';
+
+  static const String sourceRepositoryUrl =
+      'https://github.com/zack20136/quill-diary';
+  static const String issuesUrl = '$sourceRepositoryUrl/issues';
+
+  /// Public privacy policy for Google Play and in-app browser link.
+  static const String privacyPolicyUrl =
+      'https://zack20136.github.io/quill-diary/privacy-policy';
+
+  static const String thirdPartyNoticesUrl =
+      'https://zack20136.github.io/quill-diary/third-party-notices';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/presentation/page_style.dart';
 import '../settings_copy.dart';
+import '../widgets/settings_info_cards.dart';
 
 class SupportPage extends StatelessWidget {
   const SupportPage({super.key});
@@ -25,7 +26,13 @@ class SupportPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: <Widget>[
-            const _SupportHero(),
+            SettingsGradientHeroCard(
+              icon: Icons.favorite_rounded,
+              title: SettingsSupportCopy.heroTitle,
+              body: SettingsSupportCopy.heroBody,
+              accentColor: cs.secondary,
+              startAlpha: 0.18,
+            ),
             const SizedBox(height: 16),
             const _SupportCard(
               icon: Icons.construction_outlined,
@@ -62,53 +69,6 @@ class SupportPage extends StatelessWidget {
               style: theme.textTheme.labelMedium?.copyWith(
                 color: cs.outline,
                 height: 1.4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SupportHero extends StatelessWidget {
-  const _SupportHero();
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color.alphaBlend(cs.secondary.withValues(alpha: 0.18), cs.surface),
-            Color.alphaBlend(cs.primary.withValues(alpha: 0.10), cs.surfaceContainerLow),
-          ],
-        ),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(Icons.favorite_rounded, color: cs.secondary, size: 30),
-            const SizedBox(height: 14),
-            Text(
-              SettingsSupportCopy.heroTitle,
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              SettingsSupportCopy.heroBody,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
               ),
             ),
           ],
