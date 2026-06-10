@@ -29,7 +29,6 @@ import '../../session/state/app_session_state.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
 import '../about_copy.dart';
-import '../legal_copy.dart';
 import '../legal_disclosures.dart';
 import '../privacy_copy.dart';
 import '../portable_import_result_messages.dart';

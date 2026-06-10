@@ -1,4 +1,4 @@
-/// 設定頁與子頁共用的法律短句（非完整條款；完整文字見 docs/）。
+/// 法律短句與設定頁「法律與隱私」文案（完整條款見 docs/public/）。
 abstract final class LegalDisclosures {
   static const String privacyEffectiveDateLabel = '生效日期：2026 年 6 月 6 日';
 
@@ -26,4 +26,17 @@ abstract final class LegalDisclosures {
 
   static const String externalLinkUnavailableMessage =
       '無法開啟連結，請稍後再試。';
+}
+
+/// 設定頁「法律與隱私」區塊列標題。
+abstract final class SettingsLegalCopy {
+  static const String sectionTitle = '法律與隱私';
+  static const String sectionDescription =
+      '隱私、開源授權、依存套件與第三方聲明。';
+
+  static const String sourceCodeTitle = '原始碼';
+  static const String sourceCodeSubtitle =
+      LegalDisclosures.agplSourceCodeSubtitle;
+  static const String dependencyLicensesTitle = '依存套件授權';
+  static const String thirdPartyNoticesTitle = '第三方聲明';
 }

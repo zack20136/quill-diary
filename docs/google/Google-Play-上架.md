@@ -91,9 +91,9 @@ Play Console「Privacy policy」欄位請填入：
 
 `https://zack20136.github.io/quill-diary/privacy-policy`
 
-來源文件：[docs/privacy-policy.md](../../privacy-policy.md)
+來源文件：[docs/public/privacy-policy.md](../../public/privacy-policy.md)
 
-**維護注意**：正式 URL 以 `lib/config/app_identifiers.dart` 的 `AppIdentifiers.privacyPolicyUrl` 為準；修改 URL 時請同步更新該常數、本文件與 README。`docs/_config.yml` 已設 `permalink: pretty`，部署後應可從 `/privacy-policy/` 存取（無 `.html` 後綴）。
+**維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` 為準；頁面原始檔在 `docs/public/`。
 
 ### 啟用 GitHub Pages
 

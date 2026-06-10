@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/settings/legal_copy.dart';
+import 'package:quill_diary/features/settings/legal_disclosures.dart';
 import 'package:quill_diary/features/settings/pages/privacy_page.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/privacy_copy.dart';

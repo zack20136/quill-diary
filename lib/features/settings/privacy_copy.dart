@@ -11,7 +11,7 @@ class PrivacySectionCopy {
   final String body;
 }
 
-/// 設定「隱私權政策」子頁文案（摘要語意對齊 docs/privacy-policy.md；不一致以公開網頁為準）。
+/// 設定「隱私權政策」子頁文案（摘要語意對齊 docs/public/privacy-policy.md；不一致以公開網頁為準）。
 abstract final class SettingsPrivacyCopy {
   static const String pageTitle = '隱私權政策';
   static const String heroTitle = '你的日記留在你的裝置上';
