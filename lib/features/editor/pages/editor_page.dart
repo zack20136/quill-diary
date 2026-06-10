@@ -373,9 +373,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (_previewMode || !mounted || _suppressDraftListener) {
       return;
     }
-    if (_showTitleRequired && _hasTitle) {
-      setState(() => _showTitleRequired = false);
-    }
+    setState(() {
+      if (_showTitleRequired && _hasTitle) {
+        _showTitleRequired = false;
+      }
+    });
     _scheduleDraftPersist();
   }
 
