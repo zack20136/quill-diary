@@ -5,7 +5,7 @@ void main() {
   test('公開 URL 使用 quill-diary repo 名稱', () {
     expect(
       AppIdentifiers.privacyPolicyUrl,
-      'https://zack20136.github.io/quill-diary/privacy-policy',
+      'https://github.com/zack20136/quill-diary/blob/main/docs/privacy-policy.md',
     );
     expect(
       AppIdentifiers.sourceRepositoryUrl,
@@ -13,7 +13,7 @@ void main() {
     );
     expect(
       AppIdentifiers.thirdPartyNoticesUrl,
-      'https://zack20136.github.io/quill-diary/third-party-notices',
+      'https://github.com/zack20136/quill-diary/blob/main/docs/third-party-notices.md',
     );
     expect(
       AppIdentifiers.issuesUrl,

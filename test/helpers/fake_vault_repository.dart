@@ -18,6 +18,7 @@ class FakeVaultRepository extends VaultRepository {
     this.metadata,
     this.hasTrustedDevice = false,
     this.openTrustedSessionResult,
+    this.resumeUnlockedSessionAfterRestoreResult,
     this.initializeError,
     this.unlockWithRecoveryKeyResult,
     this.entryIndexRecords = const <EntryIndexRecord>[],
@@ -34,6 +35,7 @@ class FakeVaultRepository extends VaultRepository {
   final RecoveryMetadata? metadata;
   final bool hasTrustedDevice;
   final Object? openTrustedSessionResult;
+  final Object? resumeUnlockedSessionAfterRestoreResult;
   final Object? initializeError;
   final Object? unlockWithRecoveryKeyResult;
   final List<EntryIndexRecord> entryIndexRecords;
@@ -75,6 +77,23 @@ class FakeVaultRepository extends VaultRepository {
       return result;
     }
     throw result;
+  }
+
+  int resumeUnlockedSessionAfterRestoreCalls = 0;
+
+  @override
+  Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
+    UnlockedVaultSession priorSession,
+  ) async {
+    resumeUnlockedSessionAfterRestoreCalls++;
+    final Object? configured = resumeUnlockedSessionAfterRestoreResult;
+    if (configured != null) {
+      if (configured is UnlockedVaultSession) {
+        return configured;
+      }
+      throw configured;
+    }
+    return priorSession;
   }
 
   @override

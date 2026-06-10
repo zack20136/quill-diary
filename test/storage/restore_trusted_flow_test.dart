@@ -80,6 +80,39 @@ void main() {
     expect(entries.single.title, 'Trusted Restore');
   });
 
+  test('resumeUnlockedSessionAfterRestore 沿用 prior wrap key 且不經 keystore 解包', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Resume Restore',
+        date: const DateOnly('2026-05-28'),
+        createdAt: DateTime.parse('2026-05-28T09:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-28T09:00:00Z'),
+        markdownBody: 'resume restore body',
+      ),
+    );
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'resume.zip'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.closeUnlockedResources();
+    await archiveIo.restoreBackupZip(
+      backupFile,
+      preserveTrustedDeviceAccess: true,
+    );
+
+    final UnlockedVaultSession session =
+        await harness.repository.resumeUnlockedSessionAfterRestore(setup.session);
+    expect(session.vaultId, setup.session.vaultId);
+    await harness.repository.rebuildIndex(session);
+    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
+    expect(entries.single.title, 'Resume Restore');
+  });
+
   test('restoreBackupZip 預設會清除受信任裝置', () async {
     await harness.repository.setupRecoveryKey();
     final File backupFile = File(p.join(harness.tempDir.path, 'clear_trusted.zip'));

@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/legal_disclosures.dart';
-import 'package:quill_diary/features/settings/pages/privacy_page.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
-import 'package:quill_diary/features/settings/privacy_copy.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -17,7 +13,7 @@ import '../../helpers/fake_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
 
 void main() {
-  testWidgets('設定頁法律與隱私區塊顯示開源入口', (WidgetTester tester) async {
+  testWidgets('設定頁法律與隱私區塊依序顯示四個 GitHub 入口', (WidgetTester tester) async {
     await tester.pumpWidget(
       _settingsScope(
         const MaterialApp(home: SettingsPage()),
@@ -25,39 +21,46 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text(SettingsLegalCopy.sectionTitle),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text(SettingsLegalCopy.sectionTitle), findsOneWidget);
-    expect(find.text(SettingsPrivacyCopy.pageTitle), findsOneWidget);
+    expect(find.textContaining(SettingsLegalCopy.sectionDescription), findsOneWidget);
     expect(find.text(SettingsLegalCopy.sourceCodeTitle), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.sourceCodeSubtitle), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.dependencyLicensesTitle), findsOneWidget);
+    expect(find.text(SettingsLegalCopy.privacyPolicyTitle), findsOneWidget);
     expect(find.text(SettingsLegalCopy.thirdPartyNoticesTitle), findsOneWidget);
-  });
+    expect(find.text(SettingsLegalCopy.contactAuthorTitle), findsOneWidget);
 
-  testWidgets('點隱私權政策進入 PrivacyPage', (WidgetTester tester) async {
-    final GoRouter router = GoRouter(
-      initialLocation: AppRouter.settingsRoute,
-      routes: <RouteBase>[
-        GoRoute(
-          path: AppRouter.settingsRoute,
-          builder: (_, _) => _settingsScope(const SettingsPage()),
-        ),
-        GoRoute(
-          path: AppRouter.privacyRoute,
-          builder: (_, _) => const PrivacyPage(),
-        ),
-      ],
-    );
+    final List<String> titles = tester
+        .widgetList<Text>(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(SettingsLegalCopy.sectionTitle),
+              matching: find.byType(Column),
+            ),
+            matching: find.byType(Text),
+          ),
+        )
+        .map((Text text) => text.data!)
+        .where(
+          (String title) =>
+              title == SettingsLegalCopy.sourceCodeTitle ||
+              title == SettingsLegalCopy.privacyPolicyTitle ||
+              title == SettingsLegalCopy.thirdPartyNoticesTitle ||
+              title == SettingsLegalCopy.contactAuthorTitle,
+        )
+        .toList();
 
-    await tester.pumpWidget(
-      MaterialApp.router(routerConfig: router),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text(SettingsPrivacyCopy.pageTitle));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(PrivacyPage), findsOneWidget);
-    expect(find.text(SettingsPrivacyCopy.heroTitle), findsOneWidget);
+    expect(titles, <String>[
+      SettingsLegalCopy.sourceCodeTitle,
+      SettingsLegalCopy.privacyPolicyTitle,
+      SettingsLegalCopy.thirdPartyNoticesTitle,
+      SettingsLegalCopy.contactAuthorTitle,
+    ]);
   });
 }
 

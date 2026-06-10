@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/session_messages.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -225,5 +226,34 @@ void main() {
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.fatalError);
     expect(state.message, kUnlockFailedMessage);
+  });
+
+  test('effectiveAppSessionProvider 已解鎖時 invalidate 不重跑 openTrustedSession', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      metadata: metadata,
+      hasTrustedDevice: true,
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(
+      supportedPlatform: true,
+      repository: repository,
+    );
+
+    await container.read(appStartupProvider.future);
+    expect(repository.openTrustedSessionCalls, 1);
+
+    container.read(appSessionProvider.notifier).activateSession(sampleSession);
+
+    final AppSessionState effective =
+        await container.read(effectiveAppSessionProvider.future);
+    expect(effective.status, AppLockStatus.unlocked);
+    expect(repository.openTrustedSessionCalls, 1);
+
+    container.invalidate(effectiveAppSessionProvider);
+    container.invalidate(appStartupProvider);
+    container.invalidate(recoveryMetadataProvider);
+
+    await container.read(effectiveAppSessionProvider.future);
+    expect(repository.openTrustedSessionCalls, 1);
   });
 }

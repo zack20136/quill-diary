@@ -2,14 +2,8 @@
 abstract final class LegalDisclosures {
   static const String privacyEffectiveDateLabel = '生效日期：2026 年 6 月 6 日';
 
-  static const String privacyAuthoritativeNotice =
-      '若摘要與公開網頁版不一致，以公開網頁版為準。';
-
   static const String childrenPrivacyOneLiner =
-      '本 App 並非專為 13 歲以下兒童設計，也不故意收集兒童個人資料。';
-
-  static const String agplSourceCodeSubtitle =
-      'AGPL-3.0；完整源碼可於 GitHub 取得';
+      '本應用程式並非專為十三歲（含）以下兒童而設計，亦不故意蒐集兒童之個人資料。';
 
   static const String brandDisclaimer =
       'Quill Diary 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。';
@@ -17,7 +11,7 @@ abstract final class LegalDisclosures {
   static const String billingVaultPrivacyNote = '支持流程不讀取 vault 內容。';
 
   static const String billingPrivacyOneLiner =
-      '付款由 Google Play 處理，為自願一次性支持，不解鎖任何額外功能；'
+      '支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；'
       '$billingVaultPrivacyNote';
 
   static const String billingSupportPageBody =
@@ -25,18 +19,18 @@ abstract final class LegalDisclosures {
       '$billingVaultPrivacyNote';
 
   static const String externalLinkUnavailableMessage =
-      '無法開啟連結，請稍後再試。';
+      '無法開啟瀏覽器，請稍後再試。';
 }
 
 /// 設定頁「法律與隱私」區塊列標題。
 abstract final class SettingsLegalCopy {
   static const String sectionTitle = '法律與隱私';
   static const String sectionDescription =
-      '隱私、開源授權、依存套件與第三方聲明。';
+      '原始碼、隱私政策與第三方聲明均託管於 GitHub；'
+      '如有問題或建議，歡迎透過 Issues 聯絡作者。';
 
-  static const String sourceCodeTitle = '原始碼';
-  static const String sourceCodeSubtitle =
-      LegalDisclosures.agplSourceCodeSubtitle;
-  static const String dependencyLicensesTitle = '依存套件授權';
+  static const String sourceCodeTitle = 'GitHub 原始碼';
+  static const String privacyPolicyTitle = '隱私權政策';
   static const String thirdPartyNoticesTitle = '第三方聲明';
+  static const String contactAuthorTitle = '聯絡作者';
 }

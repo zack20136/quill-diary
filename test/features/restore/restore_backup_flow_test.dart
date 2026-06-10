@@ -74,8 +74,11 @@ void main() {
   Future<void> pumpFlowHost(
     WidgetTester tester, {
     required Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName}) confirm,
-    required Future<void> Function({String? backupRecoveryKey, required RestorePrecheck precheck})
-        onComplete,
+    required Future<void> Function({
+      String? backupRecoveryKey,
+      required RestorePrecheck precheck,
+      UnlockedVaultSession? priorSession,
+    }) onComplete,
     bool activateSession = true,
   }) async {
     await tester.pumpWidget(
@@ -110,7 +113,11 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => false,
-      onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) async {
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
         completed = true;
       },
     );
@@ -126,12 +133,18 @@ void main() {
   testWidgets('trusted 還原跳過金鑰收集並保留 trusted', (WidgetTester tester) async {
     transferService.nextPrecheck = trustedPrecheck();
     RestorePrecheck? completedPrecheck;
+    UnlockedVaultSession? completedPriorSession;
 
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) async {
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
         completedPrecheck = precheck;
+        completedPriorSession = priorSession;
       },
     );
 
@@ -142,6 +155,8 @@ void main() {
     expect(transferService.restoreCalls, 1);
     expect(transferService.lastPreserveTrusted, isTrue);
     expect(completedPrecheck?.expectsTrustedUnlockAfterRestore, isTrue);
+    expect(completedPrecheck?.canResumeTrustedSession(completedPriorSession), isTrue);
+    expect(completedPriorSession, sampleSession);
   });
 
   testWidgets('需要金鑰時取消對話框不還原', (WidgetTester tester) async {
@@ -151,7 +166,11 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) async {
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
         completed = true;
       },
     );
@@ -175,7 +194,11 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) async {
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
         completedKey = backupRecoveryKey;
       },
     );
@@ -214,6 +237,7 @@ class _RestoreFlowHost extends ConsumerWidget {
   final Future<void> Function({
     String? backupRecoveryKey,
     required RestorePrecheck precheck,
+    UnlockedVaultSession? priorSession,
   }) onComplete;
 
   @override

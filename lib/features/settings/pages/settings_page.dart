@@ -30,10 +30,10 @@ import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
 import '../about_copy.dart';
 import '../legal_disclosures.dart';
-import '../privacy_copy.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
+import '../../restore/post_restore_session.dart';
 import '../../restore/restore_backup_flow.dart';
 import '../widgets/recovery_key_save_dialog.dart';
 import '../widgets/settings_sections.dart';
@@ -73,14 +73,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Column(
         children: <Widget>[
           _SettingsLegalRow(
-            title: SettingsPrivacyCopy.pageTitle,
-            onTap: () => unawaited(context.push(AppRouter.privacyRoute)),
-            colorScheme: cs,
-          ),
-          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
-          _SettingsLegalRow(
             title: SettingsLegalCopy.sourceCodeTitle,
-            subtitle: SettingsLegalCopy.sourceCodeSubtitle,
             onTap: () => unawaited(
               _openLegalLink(AppIdentifiers.sourceRepositoryUrl),
             ),
@@ -88,8 +81,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           Divider(height: 1, color: PageStyle.outlineSide(cs).color),
           _SettingsLegalRow(
-            title: SettingsLegalCopy.dependencyLicensesTitle,
-            onTap: () => showLicensePage(context: context),
+            title: SettingsLegalCopy.privacyPolicyTitle,
+            onTap: () => unawaited(
+              _openLegalLink(AppIdentifiers.privacyPolicyUrl),
+            ),
             colorScheme: cs,
           ),
           Divider(height: 1, color: PageStyle.outlineSide(cs).color),
@@ -97,6 +92,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: SettingsLegalCopy.thirdPartyNoticesTitle,
             onTap: () => unawaited(
               _openLegalLink(AppIdentifiers.thirdPartyNoticesUrl),
+            ),
+            colorScheme: cs,
+          ),
+          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          _SettingsLegalRow(
+            title: SettingsLegalCopy.contactAuthorTitle,
+            onTap: () => unawaited(
+              _openLegalLink(AppIdentifiers.issuesUrl),
             ),
             colorScheme: cs,
           ),
@@ -255,8 +258,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: <Widget>[
-                _buildLegalSection(cs),
-                const SizedBox(height: 16),
                 if (!isSupportedPlatform)
                   const SettingsSectionCard(
                     title: SettingsPlatformCopy.sectionTitle,
@@ -417,6 +418,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         disabledSensitiveVaultTransferReason,
                   ),
                 ],
+                const SizedBox(height: 16),
+                _buildLegalSection(cs),
                     ],
                   ),
                 ),
@@ -897,11 +900,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           precheck: precheck,
           driveBackupName: driveBackupName,
           confirm: _confirmRestore,
-          onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) =>
-              _finishRestoreAfterSuccess(
-            backupRecoveryKey: backupRecoveryKey,
-            precheck: precheck,
-          ),
+          onComplete: _finishRestoreAfterSuccess,
         ),
         progressMessage: kRestoreInProgressMessage,
       );
@@ -965,77 +964,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _finishRestoreAfterSuccess({
     String? backupRecoveryKey,
-    RestorePrecheck? precheck,
+    required RestorePrecheck precheck,
+    UnlockedVaultSession? priorSession,
   }) async {
-    await _resetRepositoriesAfterRestore();
+    final AppSessionState sessionState = await finishRestoreSession(
+      ref,
+      precheck: precheck,
+      backupRecoveryKey: backupRecoveryKey,
+      priorSession: priorSession,
+    );
 
-    AppSessionState sessionState;
-    try {
-      if (backupRecoveryKey != null && backupRecoveryKey.trim().isNotEmpty) {
-        sessionState = await _unlockRestoredVaultWithRecoveryKey(backupRecoveryKey.trim());
-        if (sessionState.status != AppLockStatus.unlocked) {
-          return;
-        }
-      } else if (precheck?.expectsTrustedUnlockAfterRestore == true) {
-        final UnlockOutcome outcome = await ref
-            .read(appSessionProvider.notifier)
-            .unlock(afterRestore: true);
-        sessionState = ref.read(appSessionProvider);
-        if (outcome == UnlockOutcome.success &&
-            sessionState.isUnlocked &&
-            sessionState.session != null) {
-          await refreshEntryIndexCaches(ref);
-        }
-      } else {
-        sessionState =
-            await ref.read(appSessionProvider.notifier).bootstrapAfterRestore();
-        if (sessionState.isUnlocked && sessionState.session != null) {
-          await refreshEntryIndexCaches(ref);
-        }
-      }
-    } finally {
-      ref.invalidate(appStartupProvider);
-      ref.invalidate(effectiveAppSessionProvider);
+    if (!mounted) {
+      return;
     }
 
-    if (mounted) {
-      context.go(AppRouter.homeRoute);
-      _showMessage(
-        snackbarMessageForPostRestore(
-          sessionState.status,
-          sessionMessage: sessionState.message,
-        ),
-      );
+    final String? trimmedKey = backupRecoveryKey?.trim();
+    if (trimmedKey != null &&
+        trimmedKey.isNotEmpty &&
+        sessionState.status != AppLockStatus.unlocked) {
+      return;
     }
-  }
 
-  Future<AppSessionState> _unlockRestoredVaultWithRecoveryKey(String recoveryKey) async {
-    try {
-      await ref.read(appSessionProvider.notifier).unlockWithRecovery(recoveryKey);
-      final AppSessionState sessionState = ref.read(appSessionProvider);
-      if (sessionState.isUnlocked && sessionState.session != null) {
-        await refreshEntryIndexCaches(ref);
-      }
-      return sessionState;
-    } catch (error) {
-      if (mounted) {
-        final String text = userFacingErrorMessage(error);
-        _showMessage(text);
-      }
-      return ref.read(appSessionProvider);
-    }
-  }
-
-  Future<void> _resetRepositoriesAfterRestore() async {
-    await ref.read(appSessionProvider.notifier).beginPostRestoreStartup();
-    ref.invalidate(vaultTransferServiceProvider);
-    ref.invalidate(vaultArchiveIoProvider);
-    ref.invalidate(vaultRepositoryProvider);
-    ref.invalidate(indexDatabaseManagerProvider);
-    ref.invalidate(recoveryMetadataProvider);
-    ref.invalidate(settingsDriveConnectionProvider);
-    ref.invalidate(unlockModeProvider);
-    ref.read(entryIndexRevisionProvider.notifier).bump();
+    context.go(AppRouter.homeRoute);
+    _showMessage(
+      snackbarMessageForPostRestore(
+        sessionState.status,
+        sessionMessage: sessionState.message,
+      ),
+    );
   }
 
   Future<void> _retryTrustedUnlock() async {
@@ -1158,11 +1114,9 @@ class _SettingsLegalRow extends StatelessWidget {
     required this.title,
     required this.onTap,
     required this.colorScheme,
-    this.subtitle,
   });
 
   final String title;
-  final String? subtitle;
   final VoidCallback onTap;
   final ColorScheme colorScheme;
 
@@ -1180,26 +1134,11 @@ class _SettingsLegalRow extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (subtitle != null) ...<Widget>[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Icon(

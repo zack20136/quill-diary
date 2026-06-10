@@ -332,9 +332,9 @@ abstract final class SettingsRestoreBulletCopy {
       '此備份尚未建立復原金鑰；還原後請重新建立。';
   static const String rotatedBackup =
       '此備份在「更新復原金鑰」之前建立；還原後請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。';
-  static const String trustedAutoUnlock = '還原後會先嘗試以可信裝置自動解鎖。';
+  static const String trustedAutoUnlock = '同 vault 且復原金鑰相同時，還原後無需再次驗證。';
   static const String trustedAutoUnlockFallback =
-      '若驗證失敗，再輸入建立此備份時保存的復原金鑰。';
+      '若無法接續解鎖，再輸入建立此備份時保存的復原金鑰。';
   static const String recoveryKeyAfterRestore =
       '還原後需輸入建立此備份時保存的復原金鑰（非本機後來新建的另一把）。';
   static const String rewrapNote = '首次解鎖可能需重新包裝加密檔，請保持 App 開啟。';

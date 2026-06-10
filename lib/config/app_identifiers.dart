@@ -21,10 +21,10 @@ abstract final class AppIdentifiers {
       'https://github.com/zack20136/quill-diary';
   static const String issuesUrl = '$sourceRepositoryUrl/issues';
 
-  /// Public privacy policy for Google Play and in-app browser link.
+  /// GitHub-rendered legal docs (also valid for Google Play Console).
   static const String privacyPolicyUrl =
-      'https://zack20136.github.io/quill-diary/privacy-policy';
+      '$sourceRepositoryUrl/blob/main/docs/privacy-policy.md';
 
   static const String thirdPartyNoticesUrl =
-      'https://zack20136.github.io/quill-diary/third-party-notices';
+      '$sourceRepositoryUrl/blob/main/docs/third-party-notices.md';
 }

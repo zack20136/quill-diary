@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 
 void main() {
@@ -122,6 +123,32 @@ void main() {
     );
     expect(
       buildPrecheck(hasRecovery: false).expectsTrustedUnlockAfterRestore,
+      isFalse,
+    );
+  });
+
+  test('canResumeTrustedSession 需 expectsTrustedUnlock 且 prior session 有效', () {
+    final UnlockedVaultSession priorSession = UnlockedVaultSession(
+      vaultId: backupMetadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: List<int>.filled(32, 1),
+    );
+    expect(buildPrecheck().canResumeTrustedSession(priorSession), isTrue);
+    expect(
+      buildPrecheck(localHasTrustedDevice: false).canResumeTrustedSession(priorSession),
+      isFalse,
+    );
+    expect(buildPrecheck().canResumeTrustedSession(null), isFalse);
+    expect(
+      buildPrecheck().canResumeTrustedSession(
+        UnlockedVaultSession(vaultId: backupMetadata.vaultId, trustedDevice: true),
+      ),
+      isFalse,
+    );
+    expect(
+      buildPrecheck().canResumeTrustedSession(
+        priorSession.copyWith(vaultId: 'vlt_other'),
+      ),
       isFalse,
     );
   });

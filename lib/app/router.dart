@@ -4,7 +4,6 @@ import '../features/editor/pages/editor_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/settings/pages/about_page.dart';
 import '../features/settings/pages/settings_page.dart';
-import '../features/settings/pages/privacy_page.dart';
 import '../features/settings/pages/support_page.dart';
 
 /// Central application routes.
@@ -18,8 +17,6 @@ class AppRouter {
   static const String settingsRoute = '/settings';
   static const String aboutRoute = '/settings/about';
   static const String supportRoute = '/settings/support';
-  static const String privacyRoute = '/settings/privacy';
-
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: homeRoute,
@@ -50,10 +47,6 @@ class AppRouter {
         GoRoute(
           path: supportRoute,
           builder: (_, _) => const SupportPage(),
-        ),
-        GoRoute(
-          path: privacyRoute,
-          builder: (_, _) => const PrivacyPage(),
         ),
       ],
     );

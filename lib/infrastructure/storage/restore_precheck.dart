@@ -1,4 +1,5 @@
 import '../../domain/recovery/recovery_metadata.dart';
+import '../../domain/security/unlocked_vault_session.dart';
 
 const String kInvalidBackupArchiveMessage =
     '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
@@ -68,4 +69,10 @@ class RestorePrecheck {
 
   bool get expectsRecoveryKeyAfterRestore =>
       backupHasRecovery && !expectsTrustedUnlockAfterRestore;
+
+  /// 同 vault 還原後能否沿用還原前已解鎖 session（免再次裝置驗證）。
+  bool canResumeTrustedSession(UnlockedVaultSession? priorSession) =>
+      expectsTrustedUnlockAfterRestore &&
+      priorSession?.canUseRecovery == true &&
+      priorSession!.vaultId == backupVaultId;
 }

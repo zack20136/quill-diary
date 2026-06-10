@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
@@ -54,6 +55,7 @@ class RestoreBackupFlow {
     required Future<void> Function({
       String? backupRecoveryKey,
       required RestorePrecheck precheck,
+      UnlockedVaultSession? priorSession,
     }) onComplete,
     String? driveBackupName,
   }) async {
@@ -83,6 +85,8 @@ class RestoreBackupFlow {
       }
     }
 
+    final UnlockedVaultSession? priorSession = ref.read(appSessionProvider).session;
+
     await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
       await transferService.restoreFromBackupFile(
         backupFile,
@@ -90,6 +94,10 @@ class RestoreBackupFlow {
       );
     });
 
-    await onComplete(backupRecoveryKey: backupRecoveryKey, precheck: precheck);
+    await onComplete(
+      backupRecoveryKey: backupRecoveryKey,
+      precheck: precheck,
+      priorSession: priorSession,
+    );
   }
 }

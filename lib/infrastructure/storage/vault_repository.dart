@@ -169,11 +169,46 @@ class VaultRepository {
 
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
 
+    return _openVerifiedTrustedSession(
+      metadata: metadata,
+      recoveryWrapKey: recoveryWrapKey,
+      trustedDevice: true,
+      deviceSlotId: deviceInfo.slotId,
+    );
+  }
+
+  /// 還原同 vault 後沿用還原前 session 的 wrap key，不再觸發裝置驗證。
+  Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
+    UnlockedVaultSession priorSession,
+  ) async {
+    final RecoveryMetadata metadata =
+        await readRecoveryMetadata() ?? (throw StateError('尚未建立復原金鑰。'));
+    if (priorSession.vaultId != metadata.vaultId) {
+      throw StateError('還原後的日記庫與解鎖 session 不一致，請使用復原金鑰解鎖。');
+    }
+
+    final List<int> recoveryWrapKey = _requireRecoveryWrapKey(priorSession);
+    await _verifyRecoveryKey(metadata, recoveryWrapKey);
+
+    return _openVerifiedTrustedSession(
+      metadata: metadata,
+      recoveryWrapKey: recoveryWrapKey,
+      trustedDevice: priorSession.trustedDevice,
+      deviceSlotId: priorSession.deviceSlotId,
+    );
+  }
+
+  Future<UnlockedVaultSession> _openVerifiedTrustedSession({
+    required RecoveryMetadata metadata,
+    required List<int> recoveryWrapKey,
+    required bool trustedDevice,
+    DeviceSlotId? deviceSlotId,
+  }) async {
     final UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
-      trustedDevice: true,
+      trustedDevice: trustedDevice,
       recoveryWrapKey: recoveryWrapKey,
-      deviceSlotId: deviceInfo.slotId,
+      deviceSlotId: deviceSlotId,
     );
     await _openIndexForSession(session);
     try {

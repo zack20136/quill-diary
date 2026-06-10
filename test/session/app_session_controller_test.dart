@@ -68,6 +68,22 @@ void main() {
     expect(repository.ensureIndexReadyCalls, 1);
   });
 
+  test('resumeSessionAfterRestore 沿用 prior session 且不觸發 openTrustedSession', () async {
+    final FakeVaultRepository repository = FakeVaultRepository(
+      resumeUnlockedSessionAfterRestoreResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    final AppSessionState state = await controller.resumeSessionAfterRestore(sampleSession);
+
+    expect(state.status, AppLockStatus.unlocked);
+    expect(state.session, sampleSession);
+    expect(repository.resumeUnlockedSessionAfterRestoreCalls, 1);
+    expect(repository.openTrustedSessionCalls, 0);
+    expect(repository.ensureIndexReadyCalls, 1);
+  });
+
   test('unlock 失敗時維持 locked', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
