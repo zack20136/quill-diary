@@ -36,7 +36,7 @@ class HtmlExportEstimate {
 
 /// Writes user-portable Markdown, ZIP, and selected-entry HTML exports.
 ///
-/// These formats are intentionally separate from encrypted `.jbackup` archives
+/// These formats are intentionally separate from encrypted full-vault backup zips
 /// because users can inspect and re-import them as loose documents.
 class PortableExportIo {
   PortableExportIo({
@@ -59,12 +59,7 @@ class PortableExportIo {
   }) async {
     final List<EntryIndexRecord> entries = await _repository.listEntries();
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory exportRoot = Directory(
-      p.join(
-        parentDirectory.path,
-        'diary_export_${DateTime.now().millisecondsSinceEpoch}',
-      ),
-    );
+    final Directory exportRoot = parentDirectory;
     await exportRoot.create(recursive: true);
 
     final Set<String> usedEntryDirectories = <String>{};
@@ -115,20 +110,20 @@ class PortableExportIo {
     return exportRoot;
   }
 
-  Future<File> writePortableExportZip({
+  Future<File> writeMarkdownZip({
     required UnlockedVaultSession session,
     required File target,
   }) async {
     final Directory tempRoot = await createWorkingDirectory(_pathStrategy, 'portable_export');
     try {
-      final Directory exportRoot = await exportMarkdown(
+      await exportMarkdown(
         session: session,
         parentDirectory: tempRoot,
       );
       await target.parent.create(recursive: true);
       final ZipFileEncoder encoder = ZipFileEncoder();
       encoder.create(target.path);
-      await encoder.addDirectory(exportRoot, includeDirName: true);
+      await encoder.addDirectory(tempRoot, includeDirName: false);
       await encoder.close();
       return target;
     } finally {

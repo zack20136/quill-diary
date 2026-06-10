@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../domain/diary/diary_entry.dart';
@@ -103,15 +102,13 @@ class PortableImportIo {
     required File zipFile,
   }) async {
     final Directory tempRoot = await createWorkingDirectory(_pathStrategy, 'import_zip');
+    final OpenedZipArchive zip = await openZipArchive(zipFile);
     try {
-      final Archive archive = ZipDecoder().decodeBytes(
-        await zipFile.readAsBytes(),
-        verify: true,
-      );
-      await extractArchiveToDirectory(
-        archive: archive,
-        targetDirectory: tempRoot,
-      );
+      try {
+        await extractArchiveToDirectory(zip: zip, targetDirectory: tempRoot);
+      } finally {
+        await zip.close();
+      }
 
       final EasyDiaryBackupImporter easyDiaryImporter = _easyDiaryBackupImporterFactory();
       final PortableImportResult? easyDiaryResult =

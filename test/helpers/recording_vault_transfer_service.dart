@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 
 import 'fake_vault_transfer_service.dart';
 

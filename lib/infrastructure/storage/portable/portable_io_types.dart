@@ -3,24 +3,6 @@ import '../../../domain/diary/diary_entry.dart';
 import '../../database/index_database.dart';
 import '../vault_repository.dart';
 
-class BackupArchiveInspection {
-  const BackupArchiveInspection({
-    required this.safePaths,
-    required this.hasRecovery,
-    required this.hasManifest,
-    required this.entrySampleFound,
-    required this.hasVaultPayload,
-  });
-
-  final bool safePaths;
-  final bool hasRecovery;
-  final bool hasManifest;
-  final bool entrySampleFound;
-  final bool hasVaultPayload;
-
-  bool get isRestorable => safePaths && hasRecovery && (hasManifest || entrySampleFound);
-}
-
 typedef ResolvedImportAttachments = ({
   List<PendingAttachment> attachments,
   int skippedAttachments,

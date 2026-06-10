@@ -8,7 +8,6 @@ import 'package:quill_diary/features/session/application/session_unlock_coordina
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/session/state/resume_unlock_action.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';

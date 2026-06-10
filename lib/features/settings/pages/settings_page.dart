@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../config/oauth_config.dart';
 import '../../../app/router.dart';
@@ -27,6 +26,7 @@ import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
+import '../about_copy.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
@@ -172,7 +172,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: OutlinedButton.icon(
-              onPressed: () => unawaited(context.push(AppRouter.securityInfoRoute)),
+              onPressed: () => unawaited(context.push(AppRouter.aboutRoute)),
               icon: const Icon(Icons.info_outline_rounded, size: 18),
               label: const Text(SettingsAboutCopy.pageTitle),
             ),
@@ -290,14 +290,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                         .runSensitiveTask((UnlockedVaultSession session) {
                                       return ref
                                           .read(vaultTransferServiceProvider)
-                                          .exportMarkdownWithPicker(session);
+                                          .exportMarkdownToDirectory(session);
                                     });
                                     if (exportPath == null) {
                                       return;
                                     }
                                     _showMessage(
                                       SettingsImportExportCopy.exportSuccess(
-                                        p.basename(exportPath),
+                                        DisplayFormat.formatSavedFileNameForDisplay(
+                                          exportPath,
+                                        ),
                                       ),
                                     );
                                   },
@@ -614,10 +616,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onPressed: _busy || !canSensitiveVaultTransfer
                     ? null
                     : () => _runAction(() async {
-                          await ref.read(appSessionProvider.notifier).runSensitiveTask((_) {
+                          final BackupPersistResult result = await ref
+                              .read(appSessionProvider.notifier)
+                              .runSensitiveTask((_) {
                             return ref.read(vaultTransferServiceProvider).uploadBackupToDrive();
                           });
-                          _showMessage(SettingsDriveBackupCopy.uploadSuccess);
+                          _showBackupPersistResult(
+                            result,
+                            onSuccess: (_) => SettingsDriveBackupCopy.uploadSuccess,
+                          );
                         }),
               ),
             if (isConnected)
@@ -697,36 +704,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _createLocalBackup() async {
-    final BackupCreationResult result = await ref
+    final BackupPersistResult result = await ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).createAppLocalBackup();
+      return ref.read(vaultTransferServiceProvider).saveBackupToAppLocal();
     });
-    final String message = result.healthReport.ok
-        ? SettingsLocalBackupCopy.createSuccessInApp(p.basename(result.path))
-        : SettingsLocalBackupCopy.createHealthCheckFailed(
-            result.healthReport.message,
-            p.basename(result.path),
-          );
-    _showMessage(message);
+    _showBackupPersistResult(
+      result,
+      onSuccess: SettingsLocalBackupCopy.backupSuccessInApp,
+    );
   }
 
   Future<void> _exportLocalBackup() async {
-    final BackupCreationResult? result = await ref
+    final BackupPersistResult result = await ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).exportBackupWithPicker();
+      return ref.read(vaultTransferServiceProvider).saveBackupToExternalDirectory();
     });
-    if (result == null) {
-      return;
-    }
-    final String message = result.healthReport.ok
-        ? SettingsLocalBackupCopy.exportSuccess(p.basename(result.path))
-        : SettingsLocalBackupCopy.exportHealthCheckFailed(
-            result.healthReport.message,
-            p.basename(result.path),
-          );
-    _showMessage(message);
+    _showBackupPersistResult(
+      result,
+      onSuccess: SettingsLocalBackupCopy.backupExportSuccess,
+    );
   }
 
   Future<void> _runRestoreFromAppLocalBackup() async {
@@ -783,29 +781,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _runRestoreFromGoogleDrive() async {
-    await _runAction(() async {
-      final List<DriveBackupFile> backups = await ref
-          .read(appSessionProvider.notifier)
-          .runSensitiveTask((_) {
-        return ref.read(vaultTransferServiceProvider).listDriveBackups();
-      });
-      final DriveBackupFile? backup = await _pickDriveBackup(backups);
-      if (backup == null) {
+    File? tempBackup;
+    String? driveBackupName;
+    try {
+      await _runAction(() async {
+        final List<DriveBackupFile> backups = await ref
+            .read(appSessionProvider.notifier)
+            .runSensitiveTask((_) {
+          return ref.read(vaultTransferServiceProvider).listDriveBackups();
+        });
+        final DriveBackupFile? backup = await _pickDriveBackup(backups);
+        if (backup == null) {
+          return;
+        }
+        driveBackupName = backup.name;
+        tempBackup = await ref
+            .read(appSessionProvider.notifier)
+            .runSensitiveTask((_) {
+          return ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(backup);
+        });
+      }, progressMessage: SettingsDriveBackupCopy.downloadProgress);
+      if (tempBackup == null) {
         return;
       }
-      final File tempBackup = await ref
-          .read(appSessionProvider.notifier)
-          .runSensitiveTask((_) {
-        return ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(backup);
-      });
-      try {
-        await _restoreBackupFileWithFlow(tempBackup, driveBackupName: backup.name);
-      } finally {
-        if (tempBackup.existsSync()) {
-          await tempBackup.delete();
-        }
+      await _restoreBackupFileWithFlow(
+        tempBackup!,
+        driveBackupName: driveBackupName,
+      );
+    } finally {
+      if (tempBackup != null && tempBackup!.existsSync()) {
+        await tempBackup!.delete();
       }
-    });
+    }
   }
 
   Future<void> _connectGoogleDrive({bool reconnect = false}) async {
@@ -827,10 +834,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     String? driveBackupName,
   }) async {
     try {
+      final RestorePrecheck precheck =
+          await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
       await _runAction(
         () => RestoreBackupFlow(ref).run(
           context: context,
           backupFile: backupFile,
+          precheck: precheck,
           driveBackupName: driveBackupName,
           confirm: _confirmRestore,
           onComplete: ({String? backupRecoveryKey, required RestorePrecheck precheck}) =>
@@ -1055,6 +1065,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _busyMessage = null;
         });
       }
+    }
+  }
+
+  void _showBackupPersistResult(
+    BackupPersistResult result, {
+    required String Function(String savedPath) onSuccess,
+  }) {
+    switch (result.status) {
+      case BackupPersistStatus.success:
+        final String? savedPath = result.savedPath;
+        if (savedPath != null) {
+          _showMessage(
+            onSuccess(DisplayFormat.formatSavedFileNameForDisplay(savedPath)),
+          );
+        }
+        return;
+      case BackupPersistStatus.inspectFailed:
+        _showMessage(SettingsLocalBackupCopy.backupInspectFailed(result.message));
+        return;
+      case BackupPersistStatus.cancelled:
+        return;
     }
   }
 

@@ -1,8 +1,10 @@
 # Google Play Billing
 
-最後更新：2026-05-27
+這份文件是 Quill Diary 的 Billing 規劃文件，不是已完成串接的實作文件。
 
-## 本專案決策
+目前 `SupportPage` 仍是「尚未開放」狀態，以下內容主要用來保留產品決策、文案方向與未來接入步驟。
+
+## 目前決策
 
 - 帳號類型：`Personal`
 - 收款方式：`Google Play Billing`
@@ -12,13 +14,13 @@
 - 商品模式：可重複支持
 - 商品回饋：不解鎖任何額外功能
 
-## 為什麼這樣做
+## 為什麼這樣設計
 
-這個方案的目標是：
+目標是：
 
 - 避免外部 donate 的政策灰區
-- 讓使用者直接在 app 內支持開發者
-- 不把支持行為包裝成 Premium 或會員
+- 讓使用者在 app 內直接支持開發者
+- 不把支持行為包裝成 Premium 或會員制
 
 ## 文案原則
 
@@ -35,67 +37,39 @@
 - `支持者專屬`
 - `解鎖更多功能`
 
-## 個人帳號收款的最佳做法
+## Play Console 端要準備什麼
 
-個人帳號可以收款，但要接受：
-
-- 若 app 營利，Google Play 會顯示完整地址
-- 開發者 email 會公開
-
-為了降低被騷擾的機率，建議：
-
-- `Developer name` 用品牌名，不用本名
-- `developer email` 用專用信箱，不用私人主信箱
-- 準備支援網站或 FAQ 頁
-- 用清楚文案減少購買糾紛
-
-## Play Console 要做什麼
-
-### 1. 建立商品
-
-建立一個 `One-time product`：
-
+- 建立一個 `One-time product`
 - Product ID：`support_developer_repeat`
 - Title：`支持開發者`
 - Description：`一次性支持開發者，不解鎖任何額外功能。`
+- 建立後記得 `Activate`
+- 設定至少一個 `License tester`
 
-### 2. 啟用商品
+## 該如何做
 
-建立後要：
+如果未來真的要接 Billing，建議按這個順序做：
 
-- 儲存
-- `Activate`
-
-### 3. 設定測試帳號
-
-- 設定 `License testers`
-- 至少準備一個實際測試用 Google 帳號
-
-## App 端實作流程
-
-1. 初始化 Billing client
-2. 連線 Google Play
-3. 查詢 `ProductDetails`
-4. 顯示商品價格與說明
-5. 發起購買
-6. 接收 purchase callback
-7. 驗證購買結果
-8. **consume**
-9. 顯示成功訊息
+1. 先在 Play Console 建立並啟用商品
+2. 準備測試帳號
+3. 在 app 端接上 Billing client
+4. 查詢 `ProductDetails`
+5. 顯示商品價格與說明
+6. 發起購買
+7. 接收 purchase callback
+8. 驗證購買結果
+9. `consume` 購買
+10. 顯示成功訊息
 
 ## 為什麼一定要 consume
 
-這個商品的決策是 **可重複支持**。
+這個商品的決策是可重複支持。
 
-所以每次成功購買後，都要：
+因此每次成功購買後，都要 `consume` 該筆購買，否則通常無法再次購買同一商品。
 
-- consume 該筆購買
+## 建議實作順序
 
-否則使用者之後通常無法再買同一個商品。
-
-## 第一版建議
-
-第一版可以先做：
+初期可先做：
 
 - app 端完整購買流程
 - app 端 consume
@@ -119,6 +93,7 @@
 
 ## 上線前檢查
 
+- Support 頁不再顯示「尚未開放」
 - 商品已建立並啟用
 - 價格從 Play 回傳，不寫死
 - 購買後不解鎖任何功能
@@ -135,3 +110,7 @@
 - [Create an in-app product](https://support.google.com/googleplay/android-developer/answer/1153481?hl=en)
 - [Payments](https://support.google.com/googleplay/android-developer/answer/9858738?hl=en)
 - [Understanding Google Play’s Payments policy](https://support.google.com/googleplay/android-developer/answer/10281818?hl=en)
+
+---
+
+[← 返回 Google 文件](./README.md)

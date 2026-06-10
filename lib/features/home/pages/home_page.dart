@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../app/router.dart';
@@ -599,13 +598,19 @@ Future<void> _exportEntriesAsHtml(
     final String? savedPath = await ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession activeSession) {
-      return transferService.exportSelectedHtmlWithPicker(activeSession, exportIds);
+      return transferService.exportHtmlToDirectory(activeSession, exportIds);
     });
     if (savedPath == null || !context.mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(HomeCopy.htmlExportSuccess(p.basename(savedPath)))),
+      SnackBar(
+        content: Text(
+          HomeCopy.htmlExportSuccess(
+            DisplayFormat.formatSavedFileNameForDisplay(savedPath),
+          ),
+        ),
+      ),
     );
   } on StateError catch (error) {
     if (!context.mounted) {

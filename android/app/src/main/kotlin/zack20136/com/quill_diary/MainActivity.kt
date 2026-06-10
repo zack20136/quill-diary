@@ -2,7 +2,9 @@ package zack20136.com.quill_diary
 
 import android.app.KeyguardManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -19,6 +21,8 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.IOException
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -27,6 +31,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterFragmentActivity() {
     private var pendingGoogleDriveAuthResult: MethodChannel.Result? = null
+    private var pendingDirectoryPickerResult: MethodChannel.Result? = null
     private var googleDriveSignInClient: GoogleSignInClient? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -74,6 +79,42 @@ class MainActivity : FlutterFragmentActivity() {
                 )
             }
         }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SAF_FILE_COPY_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "copyFileToTree" -> copyFileToSafTree(call, result)
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "saf_file_copy_error",
+                    error.message ?: "Unknown SAF file copy error.",
+                    null,
+                )
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DIRECTORY_PICKER_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "pickWritableDirectoryTree" -> pickWritableDirectoryTree(call, result)
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "directory_picker_error",
+                    error.message ?: "Unknown directory picker error.",
+                    null,
+                )
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -81,7 +122,54 @@ class MainActivity : FlutterFragmentActivity() {
             handleGoogleDriveSignInResult(data)
             return
         }
+        if (requestCode == DIRECTORY_PICK_REQUEST_CODE) {
+            handleDirectoryPickerResult(resultCode, data)
+            return
+        }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun pickWritableDirectoryTree(call: MethodCall, result: MethodChannel.Result) {
+        if (pendingDirectoryPickerResult != null) {
+            result.error(
+                "directory_picker_in_progress",
+                "資料夾選擇進行中，請稍候。",
+                null,
+            )
+            return
+        }
+
+        val prompt = call.argument<String>("prompt")?.trim().orEmpty()
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            if (prompt.isNotEmpty()) {
+                putExtra(DocumentsContract.EXTRA_PROMPT, prompt)
+            }
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            result.error("directory_picker_unavailable", "此裝置無法開啟資料夾選擇器。", null)
+            return
+        }
+
+        pendingDirectoryPickerResult = result
+        startActivityForResult(intent, DIRECTORY_PICK_REQUEST_CODE)
+    }
+
+    private fun handleDirectoryPickerResult(resultCode: Int, data: Intent?) {
+        val pending = pendingDirectoryPickerResult
+        pendingDirectoryPickerResult = null
+        if (pending == null) {
+            return
+        }
+
+        if (resultCode != RESULT_OK || data?.data == null) {
+            pending.success(null)
+            return
+        }
+
+        // OPEN_DOCUMENT_TREE 回傳的 URI 已含本次工作階段的讀寫授權，無需 takePersistableUriPermission。
+        pending.success(data.data!!.toString())
     }
 
     private fun getGoogleDriveConnectionSnapshot(result: MethodChannel.Result) {
@@ -585,6 +673,67 @@ class MainActivity : FlutterFragmentActivity() {
         )
     }
 
+    private fun copyFileToSafTree(call: MethodCall, result: MethodChannel.Result) {
+        val treeUriString = call.argument<String>("treeUri")?.trim().orEmpty()
+        val sourcePath = call.argument<String>("sourcePath")?.trim().orEmpty()
+        val fileName = call.argument<String>("fileName")?.trim().orEmpty()
+        val mimeType = call.argument<String>("mimeType")?.trim().orEmpty()
+            .ifEmpty { "application/octet-stream" }
+
+        if (treeUriString.isEmpty() || sourcePath.isEmpty() || fileName.isEmpty()) {
+            result.error("invalid_args", "缺少 treeUri、sourcePath 或 fileName。", null)
+            return
+        }
+
+        val sourceFile = File(sourcePath)
+        if (!sourceFile.isFile) {
+            result.error("source_missing", "找不到要複製的來源檔案。", null)
+            return
+        }
+
+        val treeUri = Uri.parse(treeUriString)
+        val parentDocumentUri =
+            if (DocumentsContract.isTreeUri(treeUri)) {
+                DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri,
+                    DocumentsContract.getTreeDocumentId(treeUri),
+                )
+            } else {
+                treeUri
+            }
+        val createdUri =
+            try {
+                DocumentsContract.createDocument(contentResolver, parentDocumentUri, mimeType, fileName)
+            } catch (error: SecurityException) {
+                result.error(
+                    "create_document_failed",
+                    "沒有寫入此資料夾的權限，請重新選擇資料夾並允許存取。",
+                    null,
+                )
+                return
+            }
+        if (createdUri == null) {
+            result.error("create_document_failed", "無法在選擇的資料夾建立檔案。", null)
+            return
+        }
+
+        try {
+            contentResolver.openOutputStream(createdUri, "w")?.use { output ->
+                sourceFile.inputStream().use { input ->
+                    input.copyTo(output)
+                }
+            } ?: throw IOException("無法開啟輸出串流。")
+            result.success(createdUri.toString())
+        } catch (error: Exception) {
+            try {
+                DocumentsContract.deleteDocument(contentResolver, createdUri)
+            } catch (_: Exception) {
+                // 刪除半成品失敗時仍回報原始錯誤。
+            }
+            result.error("copy_failed", error.message ?: "複製檔案失敗。", null)
+        }
+    }
+
     private enum class AuthKind(val wire: String) {
         PLAIN("plain"),
         DEVICE_CREDENTIAL("deviceCredential"),
@@ -610,7 +759,10 @@ class MainActivity : FlutterFragmentActivity() {
 
         private const val OAUTH_CHANNEL_NAME = "quill_diary/oauth_config"
         private const val DEVICE_KEY_CHANNEL_NAME = "quill_diary/device_key_bridge"
+        private const val SAF_FILE_COPY_CHANNEL_NAME = "quill_diary/saf_file_copy"
+        private const val DIRECTORY_PICKER_CHANNEL_NAME = "quill_diary/directory_picker"
         private const val GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE = 43021
+        private const val DIRECTORY_PICK_REQUEST_CODE = 43022
         private const val GOOGLE_DRIVE_APPDATA_SCOPE =
             "https://www.googleapis.com/auth/drive.appdata"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

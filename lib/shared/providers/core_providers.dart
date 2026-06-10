@@ -8,7 +8,7 @@ import '../../infrastructure/markdown/front_matter_codec.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/security/device_key_manager.dart';
 import '../../infrastructure/storage/editor_draft_store.dart';
-import '../../infrastructure/storage/export_save_location_store.dart';
+import '../../infrastructure/storage/external_directory_store.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
@@ -84,9 +84,9 @@ final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
   );
 });
 
-/// Persists the last directory chosen for export/backup save dialogs.
-final exportSaveLocationStoreProvider = Provider<ExportSaveLocationStore>((Ref ref) {
-  return ExportSaveLocationStore(ref.watch(vaultPathStrategyProvider));
+/// 記住上次選擇的外部資料夾（備份交付與可攜式匯入／匯出共用）。
+final externalDirectoryStoreProvider = Provider<ExternalDirectoryStore>((Ref ref) {
+  return ExternalDirectoryStore(ref.watch(vaultPathStrategyProvider));
 });
 
 /// Persists encrypted local editor drafts outside the vault index.
@@ -103,7 +103,7 @@ final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
     archiveIo: ref.watch(vaultArchiveIoProvider),
     driveBackupService: ref.watch(driveBackupServiceProvider),
     vaultRepository: ref.watch(vaultRepositoryProvider),
-    exportSaveLocationStore: ref.watch(exportSaveLocationStoreProvider),
+    externalDirectoryStore: ref.watch(externalDirectoryStoreProvider),
     pathStrategy: ref.watch(vaultPathStrategyProvider),
   );
 });

@@ -34,7 +34,7 @@ const String kRecoveryRequiredAfterRestoreMessage =
 const String kRestoreNeedsUnlockMessage = SettingsSensitiveVaultCopy.needsUnlockMessage;
 const String kSensitiveVaultTransferNeedsRecoveryKeyMessage =
     SettingsSensitiveVaultCopy.needsRecoveryKeyMessage;
-const String kInvalidBackupFileMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 .jbackup。';
+const String kInvalidBackupFileMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
 const String kRestoreInProgressMessage = '正在還原備份，請勿關閉應用程式…';
 const String kPostRestoreStartupMessage = '正在啟動還原後的日記庫…';
 

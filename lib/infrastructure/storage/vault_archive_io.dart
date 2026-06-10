@@ -14,7 +14,8 @@ import 'vault_repository.dart';
 
 export 'shared/portable_import_result.dart';
 export 'portable/portable_export_io.dart' show HtmlExportEstimate;
-export 'portable/vault_backup_io.dart' show BackupHealthReport, BackupHealthStatusItem;
+export 'portable/vault_backup_io.dart' show BackupInspectResult;
+export 'portable/backup_archive_inspection.dart' show VaultBackupLayout;
 export 'portable/portable_import_io.dart' show EasyDiaryBackupImporterFactory;
 
 /// Facade for backup, restore, portable export, and portable import I/O.
@@ -51,8 +52,11 @@ class VaultArchiveIo {
 
   Future<File> writeBackupZip(File target) => _backup.writeBackupZip(target);
 
-  Future<BackupHealthReport> checkBackupHealth(File backupFile) =>
-      _backup.checkBackupHealth(backupFile);
+  Future<BackupInspectResult> inspectBackup(File backupFile) =>
+      _backup.inspectBackup(backupFile);
+
+  Future<BackupRecoveryPreview> prepareRestorePreview(File backupFile) =>
+      _backup.prepareRestorePreview(backupFile);
 
   Future<Directory> exportMarkdown({
     required UnlockedVaultSession session,
@@ -63,11 +67,11 @@ class VaultArchiveIo {
         parentDirectory: parentDirectory,
       );
 
-  Future<File> writePortableExportZip({
+  Future<File> writeMarkdownZip({
     required UnlockedVaultSession session,
     required File target,
   }) =>
-      _export.writePortableExportZip(
+      _export.writeMarkdownZip(
         session: session,
         target: target,
       );

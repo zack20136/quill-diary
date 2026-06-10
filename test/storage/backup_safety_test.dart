@@ -49,7 +49,7 @@ void main() {
       ..createSync(recursive: true)
       ..writeAsBytesSync(const <int>[9, 9, 9]);
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'no_index.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'no_index.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     final Archive archive = ZipDecoder().decodeBytes(await backupFile.readAsBytes());
@@ -59,15 +59,16 @@ void main() {
     expect(names, contains('recovery.json'));
   });
 
-  test('checkBackupHealth rejects unsafe archive paths', () async {
-    final File backupFile = File(p.join(harness.tempDir.path, 'unsafe.jbackup'));
+  test('inspectBackup rejects unsafe archive paths', () async {
+    final File backupFile = File(p.join(harness.tempDir.path, 'unsafe.zip'));
     final Archive archive = Archive()
       ..addFile(ArchiveFile.string('recovery.json', '{}'))
       ..addFile(ArchiveFile('../evil.md.enc', 1, const <int>[1]));
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
-    final report = await archiveIo.checkBackupHealth(backupFile);
+    final report = await archiveIo.inspectBackup(backupFile);
 
     expect(report.ok, isFalse);
+    expect(report.message, contains('不安全路徑'));
   });
 }

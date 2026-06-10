@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
@@ -11,9 +11,9 @@ import '../shared/archive_extract.dart';
 import '../tag_styles_store.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
-import 'portable_io_types.dart';
+import 'backup_archive_inspection.dart';
 
-/// Reads and writes encrypted `.jbackup` archives.
+/// Reads and writes encrypted full-vault backup zip archives.
 ///
 /// Backups copy the vault's authoritative encrypted files and recovery metadata;
 /// the search index is treated as derived data and rebuilt after restore.
@@ -54,153 +54,125 @@ class VaultBackupIo {
     return target;
   }
 
-  Future<BackupHealthReport> checkBackupHealth(File backupFile) async {
-    final List<BackupHealthStatusItem> items = <BackupHealthStatusItem>[];
+  /// 備份檢查（`inspectBackup`）：驗證 zip 結構與 recovery.json。
+  Future<BackupInspectResult> inspectBackup(File backupFile) async {
     if (!backupFile.existsSync()) {
-      return const BackupHealthReport(
+      return const BackupInspectResult(
         ok: false,
-        statusItems: <BackupHealthStatusItem>[
-          BackupHealthStatusItem(
-            label: '檔案狀態',
-            ok: false,
-            message: '找不到剛建立的備份檔案',
-          ),
-        ],
-        entrySampleFound: false,
-        hasRecoveryMetadata: false,
-        hasManifest: false,
-        message: '找不到備份檔案，請重新建立一次備份。',
+        message: VaultBackupLayout.missingFileMessage,
+        layout: VaultBackupLayout.empty,
       );
     }
 
-    late final Archive archive;
     try {
-      archive = await decodeBackupArchive(backupFile);
-      items.add(
-        const BackupHealthStatusItem(
-          label: 'ZIP',
-          ok: true,
-          message: '備份壓縮檔可以讀取',
-        ),
-      );
+      final OpenedZipArchive zip = await openZipArchive(backupFile);
+      try {
+        return _inspectOpenedZip(zip);
+      } finally {
+        await zip.close();
+      }
     } on Object {
-      return const BackupHealthReport(
+      return const BackupInspectResult(
         ok: false,
-        statusItems: <BackupHealthStatusItem>[
-          BackupHealthStatusItem(
-            label: 'ZIP',
-            ok: false,
-            message: '備份壓縮檔無法讀取',
-          ),
-        ],
-        entrySampleFound: false,
-        hasRecoveryMetadata: false,
-        hasManifest: false,
-        message: '備份檔不是有效的 .jbackup，請重新建立備份。',
+        message: VaultBackupLayout.invalidZipMessage,
+        layout: VaultBackupLayout.empty,
+      );
+    }
+  }
+
+  BackupInspectResult _inspectOpenedZip(OpenedZipArchive zip) {
+    if (zip.archive.files.isEmpty) {
+      return const BackupInspectResult(
+        ok: false,
+        message: VaultBackupLayout.invalidZipMessage,
+        layout: VaultBackupLayout.empty,
       );
     }
 
-    if (archive.files.isEmpty) {
-      return const BackupHealthReport(
-        ok: false,
-        statusItems: <BackupHealthStatusItem>[
-          BackupHealthStatusItem(
-            label: 'ZIP',
-            ok: false,
-            message: '備份壓縮檔沒有內容',
-          ),
-        ],
-        entrySampleFound: false,
-        hasRecoveryMetadata: false,
-        hasManifest: false,
-        message: '備份檔不是有效的 .jbackup，請重新建立備份。',
-      );
-    }
-
-    final BackupArchiveInspection inspection = _inspectArchive(archive);
-
-    items
-      ..add(
-        BackupHealthStatusItem(
-          label: '檔案路徑',
-          ok: inspection.safePaths,
-          message: inspection.safePaths ? '備份內部路徑正常' : '備份內含不安全路徑',
-        ),
-      )
-      ..add(
-        BackupHealthStatusItem(
-          label: '復原金鑰',
-          ok: inspection.hasRecovery,
-          message: inspection.hasRecovery ? '包含復原金鑰資訊' : '缺少復原金鑰資訊',
-        ),
-      )
-      ..add(
-        BackupHealthStatusItem(
-          label: '日記庫資料',
-          ok: inspection.hasVaultPayload || inspection.hasManifest,
-          message: inspection.hasVaultPayload || inspection.hasManifest
-              ? '包含日記庫資料結構'
-              : '找不到日記或附件資料',
-        ),
-      )
-      ..add(
-        BackupHealthStatusItem(
-          label: '加密檢查',
-          ok: inspection.hasManifest || inspection.entrySampleFound,
-          message: inspection.hasManifest
-              ? '包含加密 manifest'
-              : inspection.entrySampleFound
-                  ? '包含至少一篇加密日記'
-                  : '缺少可檢查的加密資料',
-        ),
-      );
-
-    final bool ok = inspection.isRestorable;
-    return BackupHealthReport(
-      ok: ok,
-      statusItems: List<BackupHealthStatusItem>.unmodifiable(items),
-      entrySampleFound: inspection.entrySampleFound,
-      hasRecoveryMetadata: inspection.hasRecovery,
-      hasManifest: inspection.hasManifest,
-      message: ok ? '備份檔案檢查通過。' : '備份檢查未通過，檔案可能無法還原。',
+    final VaultBackupLayout layout = inspectZipEntryNames(
+      zip.archive.files.map((ArchiveFile file) => file.name),
     );
+    var ok = layout.isRestorable;
+    var message = ok ? '備份檔案檢查通過。' : layout.failureMessage;
+
+    if (ok && layout.hasRecovery) {
+      final Uint8List? recoveryBytes =
+          readZipEntry(zip.archive, pathSuffix: 'recovery.json');
+      if (recoveryBytes == null || parseRecoveryMetadataBytes(recoveryBytes) == null) {
+        ok = false;
+        message = VaultBackupLayout.invalidRecoveryJsonMessage;
+      }
+    }
+
+    return BackupInspectResult(ok: ok, message: message, layout: layout);
+  }
+
+  /// 還原前驗證 zip 結構並讀取 recovery 預覽；不合格拋 [StateError]。
+  Future<BackupRecoveryPreview> prepareRestorePreview(File backupFile) async {
+    try {
+      final OpenedZipArchive zip = await openZipArchive(backupFile);
+      try {
+        if (zip.archive.files.isEmpty) {
+          throw StateError(kInvalidBackupArchiveMessage);
+        }
+        final VaultBackupLayout layout = inspectZipEntryNames(
+          zip.archive.files.map((ArchiveFile file) => file.name),
+        );
+        if (!layout.isRestorable) {
+          throw StateError(layout.failureMessage);
+        }
+        final Uint8List? recoveryBytes =
+            readZipEntry(zip.archive, pathSuffix: 'recovery.json');
+        final RecoveryMetadata? metadata = recoveryBytes == null
+            ? null
+            : parseRecoveryMetadataBytes(recoveryBytes);
+        if (metadata == null) {
+          throw StateError(VaultBackupLayout.invalidRecoveryJsonMessage);
+        }
+        return BackupRecoveryPreview(
+          hasRecovery: true,
+          metadata: metadata,
+        );
+      } finally {
+        await zip.close();
+      }
+    } on StateError {
+      rethrow;
+    } on Object {
+      throw StateError(kInvalidBackupArchiveMessage);
+    }
+  }
+
+  Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) {
+    return prepareRestorePreview(backupFile);
   }
 
   Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
-    final _BackupRecoveryVerificationData verificationData =
-        await _readRecoveryVerificationDataFromBackup(backupFile);
-    final RecoveryMetadata? metadata = verificationData.metadata;
-    if (metadata == null) {
-      throw StateError('此備份沒有復原金鑰資訊，無法驗證。');
-    }
-    final List<int>? sampleBytes = verificationData.encryptedSampleBytes;
-    if (sampleBytes == null) {
-      throw StateError(kBackupNoEncryptedSampleMessage);
-    }
-    await _repository.verifyRecoveryKeyAgainstBackupBytes(
-      metadata: metadata,
-      recoveryKey: recoveryKey,
-      encryptedDocumentBytes: sampleBytes,
-    );
-  }
-
-  Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) async {
     try {
-      final Archive archive = await decodeBackupArchive(backupFile);
-      final ArchiveFile? recoveryEntry = _findRecoveryJsonEntry(archive);
-      if (recoveryEntry == null || !recoveryEntry.isFile) {
-        return const BackupRecoveryPreview(hasRecovery: false);
+      final OpenedZipArchive zip = await openZipArchive(backupFile);
+      try {
+        final Uint8List? recoveryBytes =
+            readZipEntry(zip.archive, pathSuffix: 'recovery.json');
+        final RecoveryMetadata? metadata = recoveryBytes == null
+            ? null
+            : parseRecoveryMetadataBytes(recoveryBytes);
+        if (metadata == null) {
+          throw StateError('此備份沒有復原金鑰資訊，無法驗證。');
+        }
+        final Uint8List? sampleBytes = readEncryptedSampleBytes(zip.archive);
+        if (sampleBytes == null) {
+          throw StateError(kBackupNoEncryptedSampleMessage);
+        }
+        await _repository.verifyRecoveryKeyAgainstBackupBytes(
+          metadata: metadata,
+          recoveryKey: recoveryKey,
+          encryptedDocumentBytes: sampleBytes,
+        );
+      } finally {
+        await zip.close();
       }
-      final Object? decoded = jsonDecode(
-        utf8.decode(recoveryEntry.content as List<int>),
-      );
-      if (decoded is! Map<String, Object?>) {
-        return const BackupRecoveryPreview(hasRecovery: false);
-      }
-      return BackupRecoveryPreview(
-        hasRecovery: true,
-        metadata: RecoveryMetadata.fromJson(decoded),
-      );
+    } on StateError {
+      rethrow;
     } on Object {
       throw StateError(kInvalidBackupArchiveMessage);
     }
@@ -218,12 +190,13 @@ class VaultBackupIo {
     await tempRoot.create(recursive: true);
 
     try {
-      final Archive archive = await decodeBackupArchive(backupFile);
-      _ensureArchiveRestorable(archive);
-      await extractArchiveToDirectory(
-        archive: archive,
-        targetDirectory: tempRoot,
-      );
+      final OpenedZipArchive zip = await openZipArchive(backupFile);
+      try {
+        _ensureZipRestorable(zip);
+        await extractArchiveToDirectory(zip: zip, targetDirectory: tempRoot);
+      } finally {
+        await zip.close();
+      }
     } on StateError {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
@@ -300,135 +273,16 @@ class VaultBackupIo {
     }
   }
 
-  Future<_BackupRecoveryVerificationData> _readRecoveryVerificationDataFromBackup(
-    File backupFile,
-  ) async {
-    try {
-      final Archive archive = await decodeBackupArchive(backupFile);
-      RecoveryMetadata? metadata;
-      final ArchiveFile? recoveryEntry = _findRecoveryJsonEntry(archive);
-      if (recoveryEntry != null && recoveryEntry.isFile) {
-        final Object? decoded = jsonDecode(
-          utf8.decode(recoveryEntry.content as List<int>),
-        );
-        if (decoded is Map<String, Object?>) {
-          metadata = RecoveryMetadata.fromJson(decoded);
-        }
-      }
-      return _BackupRecoveryVerificationData(
-        metadata: metadata,
-        encryptedSampleBytes: _findEncryptedSampleBytes(archive),
-      );
-    } on Object {
+  void _ensureZipRestorable(OpenedZipArchive zip) {
+    final VaultBackupLayout layout = inspectZipEntryNames(
+      zip.archive.files.map((ArchiveFile file) => file.name),
+    );
+    if (!layout.safePaths) {
       throw StateError(kInvalidBackupArchiveMessage);
     }
-  }
-
-  List<int>? _findEncryptedSampleBytes(Archive archive) {
-    final ArchiveFile? manifest = _findEncryptedEntry(
-      archive,
-      endsWith: 'manifest.json.enc',
-    );
-    if (manifest != null && manifest.isFile) {
-      return manifest.content as List<int>;
+    if (!layout.isRestorable) {
+      throw StateError(layout.failureMessage);
     }
-    ArchiveFile? firstEntryEnc;
-    for (final ArchiveFile file in archive.files) {
-      if (!file.isFile) {
-        continue;
-      }
-      final String normalized = p.posix.normalize(file.name).toLowerCase();
-      if (normalized.endsWith('.md.enc')) {
-        firstEntryEnc = file;
-        break;
-      }
-    }
-    if (firstEntryEnc != null) {
-      return firstEntryEnc.content as List<int>;
-    }
-    return null;
-  }
-
-  ArchiveFile? _findEncryptedEntry(
-    Archive archive, {
-    required String endsWith,
-  }) {
-    for (final ArchiveFile file in archive.files) {
-      if (!file.isFile) {
-        continue;
-      }
-      final String normalized = p.posix.normalize(file.name).toLowerCase();
-      if (normalized == endsWith || normalized.endsWith('/$endsWith')) {
-        return file;
-      }
-    }
-    return null;
-  }
-
-  ArchiveFile? _findRecoveryJsonEntry(Archive archive) {
-    for (final ArchiveFile file in archive.files) {
-      if (!file.isFile) {
-        continue;
-      }
-      final String normalized = p.posix.normalize(file.name);
-      if (normalized == 'recovery.json' || normalized.endsWith('/recovery.json')) {
-        return file;
-      }
-    }
-    return null;
-  }
-
-  void _ensureArchiveRestorable(Archive archive) {
-    final BackupArchiveInspection inspection = _inspectArchive(archive);
-    if (!inspection.safePaths) {
-      throw StateError(kInvalidBackupArchiveMessage);
-    }
-    if (!inspection.isRestorable) {
-      throw StateError('備份檔內容不完整，缺少必要的加密資料。');
-    }
-  }
-
-  BackupArchiveInspection _inspectArchive(Archive archive) {
-    var safePaths = true;
-    var hasRecovery = false;
-    var hasManifest = false;
-    var entrySampleFound = false;
-    var hasVaultPayload = false;
-
-    for (final ArchiveFile file in archive.files) {
-      final String rawName = file.name.replaceAll('\\', '/');
-      final String normalized = p.posix.normalize(rawName);
-      try {
-        ensureSafeArchivePath(rawName);
-      } on FormatException {
-        safePaths = false;
-      }
-      if (file.isFile &&
-          (normalized == 'recovery.json' || normalized.endsWith('/recovery.json'))) {
-        hasRecovery = true;
-      }
-      if (file.isFile &&
-          (normalized == 'manifest.json.enc' ||
-              normalized.endsWith('/manifest.json.enc'))) {
-        hasManifest = true;
-      }
-      if (file.isFile &&
-          normalized.startsWith('entries/') &&
-          normalized.endsWith('.md.enc')) {
-        entrySampleFound = true;
-      }
-      if (normalized.startsWith('entries/') || normalized.startsWith('assets/')) {
-        hasVaultPayload = true;
-      }
-    }
-
-    return BackupArchiveInspection(
-      safePaths: safePaths,
-      hasRecovery: hasRecovery,
-      hasManifest: hasManifest,
-      entrySampleFound: entrySampleFound,
-      hasVaultPayload: hasVaultPayload,
-    );
   }
 
   void _validateRestoredVaultPayload(Directory root) {
@@ -455,42 +309,15 @@ class VaultBackupIo {
   }
 }
 
-class BackupHealthStatusItem {
-  const BackupHealthStatusItem({
-    required this.label,
+/// 完整備份 zip 備份檢查結果（`inspectBackup`）。
+final class BackupInspectResult {
+  const BackupInspectResult({
     required this.ok,
     required this.message,
-  });
-
-  final String label;
-  final bool ok;
-  final String message;
-}
-
-class BackupHealthReport {
-  const BackupHealthReport({
-    required this.ok,
-    required this.statusItems,
-    required this.entrySampleFound,
-    required this.hasRecoveryMetadata,
-    required this.hasManifest,
-    required this.message,
+    required this.layout,
   });
 
   final bool ok;
-  final List<BackupHealthStatusItem> statusItems;
-  final bool entrySampleFound;
-  final bool hasRecoveryMetadata;
-  final bool hasManifest;
   final String message;
-}
-
-class _BackupRecoveryVerificationData {
-  const _BackupRecoveryVerificationData({
-    required this.metadata,
-    required this.encryptedSampleBytes,
-  });
-
-  final RecoveryMetadata? metadata;
-  final List<int>? encryptedSampleBytes;
+  final VaultBackupLayout layout;
 }

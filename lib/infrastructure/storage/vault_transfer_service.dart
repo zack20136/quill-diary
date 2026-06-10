@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -10,21 +10,30 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../domain/shared/value_objects.dart';
 import '../drive/drive_backup_service.dart';
-import 'export_save_location_store.dart';
+import 'external_directory_store.dart';
 import 'restore_precheck.dart';
+import 'shared/archive_extract.dart';
+import 'shared/external_directory_picker.dart';
+import 'shared/external_file_delivery.dart';
 import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
-/// Result of creating a `.jbackup` file plus its immediate health check.
-class BackupCreationResult {
-  const BackupCreationResult({
-    required this.path,
-    required this.healthReport,
+/// 完整備份建立並交付後的結果。
+enum BackupPersistStatus { success, inspectFailed, cancelled }
+
+final class BackupPersistResult {
+  const BackupPersistResult({
+    required this.status,
+    this.savedPath,
+    this.message = '',
   });
 
-  final String path;
-  final BackupHealthReport healthReport;
+  final BackupPersistStatus status;
+
+  /// 本機/外部路徑，或 Drive fileId。
+  final String? savedPath;
+  final String message;
 }
 
 /// Metadata for app-managed local backups retained under application support.
@@ -42,27 +51,24 @@ class LocalBackupFile {
   final int sizeBytes;
 }
 
-/// Coordinates user-facing backup, restore, import, export, and Drive actions.
-///
-/// It sits above archive I/O because it owns picker destinations, retention
-/// policy, Google Drive transfer, and post-restore session handling.
+/// 協調備份、還原、可攜式匯入／匯出與 Google Drive 的使用者流程。
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,
     required DriveBackupService driveBackupService,
     required VaultRepository vaultRepository,
-    required ExportSaveLocationStore exportSaveLocationStore,
+    required ExternalDirectoryStore externalDirectoryStore,
     required VaultPathStrategy pathStrategy,
   })  : _archiveIo = archiveIo,
         _driveBackupService = driveBackupService,
         _vaultRepository = vaultRepository,
-        _exportSaveLocationStore = exportSaveLocationStore,
+        _externalDirectoryStore = externalDirectoryStore,
         _pathStrategy = pathStrategy;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
   final VaultRepository _vaultRepository;
-  final ExportSaveLocationStore _exportSaveLocationStore;
+  final ExternalDirectoryStore _externalDirectoryStore;
   final VaultPathStrategy _pathStrategy;
 
   static const int backupRetainCount = VaultBackupPolicy.retainCount;
@@ -78,23 +84,37 @@ class VaultTransferService {
     return _driveBackupService.connect();
   }
 
-  Future<BackupCreationResult?> createBackupWithPicker() async {
-    return exportBackupWithPicker();
+  /// 建立備份並寫入 App 內本機目錄。
+  Future<BackupPersistResult> saveBackupToAppLocal() {
+    return _runInspectedBackupPipeline(
+      deliver: (File stagingZip, String fileName) async {
+        final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+        await backupsDirectory.create(recursive: true);
+        final String destinationPath = p.join(backupsDirectory.path, fileName);
+        await copyFileToPath(stagingZip, destinationPath);
+        final List<LocalBackupFile> backups = await _loadAppLocalBackups();
+        await _pruneExcessAppLocalBackupsFromSorted(backups);
+        return destinationPath;
+      },
+    );
   }
 
-  Future<BackupCreationResult> createAppLocalBackup() async {
-    final String fileName = '${_backupTimestamp(DateTime.now())}.jbackup';
-    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
-    await backupsDirectory.create(recursive: true);
-    final File target = File(p.join(backupsDirectory.path, fileName));
-    await _archiveIo.writeBackupZip(target);
-    final BackupCreationResult result = BackupCreationResult(
-      path: target.path,
-      healthReport: await checkBackupHealth(target),
+  /// 建立備份並複製到使用者選擇的外部資料夾。
+  Future<BackupPersistResult> saveBackupToExternalDirectory() {
+    return _runInspectedBackupPipeline(
+      deliver: _deliverBackupToExternalDirectory,
     );
-    final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-    await _pruneExcessAppLocalBackupsFromSorted(backups);
-    return result;
+  }
+
+  /// 建立備份並上傳至 Google Drive。
+  Future<BackupPersistResult> uploadBackupToDrive() {
+    return _runInspectedBackupPipeline(
+      deliver: (File stagingZip, String fileName) async {
+        final String uploadedId = await _driveBackupService.uploadBackup(stagingZip);
+        await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
+        return uploadedId;
+      },
+    );
   }
 
   Future<List<LocalBackupFile>> listAppLocalBackups() async {
@@ -111,7 +131,7 @@ class VaultTransferService {
     final List<LocalBackupFile> backups = <LocalBackupFile>[];
     await for (final FileSystemEntity entity
         in backupsDirectory.list(followLinks: false)) {
-      if (entity is! File || p.extension(entity.path).toLowerCase() != '.jbackup') {
+      if (entity is! File || !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
         continue;
       }
       backups.add(
@@ -167,22 +187,16 @@ class VaultTransferService {
     );
   }
 
-  Future<BackupCreationResult?> exportBackupWithPicker() async {
-    final String fileName = '${_backupTimestamp(DateTime.now())}.jbackup';
-    return _saveBackupWithPicker(fileName: fileName);
+  Future<BackupInspectResult> inspectBackup(File backupFile) {
+    return _archiveIo.inspectBackup(backupFile);
   }
 
-  Future<BackupHealthReport> checkBackupHealth(File backupFile) {
-    return _archiveIo.checkBackupHealth(backupFile);
-  }
-
-  Future<String?> exportMarkdownWithPicker(UnlockedVaultSession session) async {
-    final String fileName = 'markdown_export_${DateTime.now().millisecondsSinceEpoch}.zip';
-    return _saveGeneratedFileWithPicker(
-      dialogTitle: '儲存 Markdown 匯出 zip',
+  Future<String?> exportMarkdownToDirectory(UnlockedVaultSession session) async {
+    final String fileName = VaultBackupPolicy.markdownPortableFileName(DateTime.now());
+    return _writeTempAndDeliver(
+      dialogTitle: VaultBackupPolicy.pickMarkdownDirectoryTitle,
       fileName: fileName,
-      allowedExtensions: const <String>['zip'],
-      writeTarget: (File target) => _archiveIo.writePortableExportZip(
+      writeTarget: (File target) => _archiveIo.writeMarkdownZip(
         session: session,
         target: target,
       ),
@@ -193,15 +207,14 @@ class VaultTransferService {
     return _archiveIo.estimateSelectedHtmlExport(entryIds: entryIds);
   }
 
-  Future<String?> exportSelectedHtmlWithPicker(
+  Future<String?> exportHtmlToDirectory(
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
   ) async {
-    final String fileName = 'diary_export_${DateTime.now().millisecondsSinceEpoch}.html';
-    return _saveGeneratedFileWithPicker(
-      dialogTitle: '儲存 HTML 匯出',
+    final String fileName = VaultBackupPolicy.htmlPortableFileName(DateTime.now());
+    return _writeTempAndDeliver(
+      dialogTitle: VaultBackupPolicy.pickHtmlDirectoryTitle,
       fileName: fileName,
-      allowedExtensions: const <String>['html'],
       writeTarget: (File target) => _archiveIo.writeSelectedHtmlExport(
         session: session,
         entryIds: entryIds,
@@ -218,15 +231,15 @@ class VaultTransferService {
       return pickedResult;
     }
 
-    final String? sourceDirectory = await FilePicker.getDirectoryPath(
-      dialogTitle: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
-      initialDirectory: await _exportSaveLocationStore.resolveInitialDirectory(),
+    final String? sourceDirectory = await ExternalDirectoryPicker.pickExternalDirectory(
+      prompt: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
+      initialDirectory: await _externalDirectoryStore.resolveInitialDirectory(),
     );
     if (sourceDirectory == null) {
       return null;
     }
 
-    await _exportSaveLocationStore.rememberDirectory(sourceDirectory);
+    await _externalDirectoryStore.rememberDirectory(sourceDirectory);
 
     return _archiveIo.importDocuments(
       session: session,
@@ -234,12 +247,12 @@ class VaultTransferService {
     );
   }
 
-  /// Lets the user pick a `.jbackup` file and resolves it to a readable [File].
+  /// Lets the user pick a full-vault backup zip and resolves it to a readable [File].
   Future<File?> pickLocalBackupFile() async {
     final PlatformFile? picked = await FilePicker.pickFile(
-      dialogTitle: '選擇本機備份檔',
+      dialogTitle: VaultBackupPolicy.pickBackupFileDialogTitle,
       type: FileType.custom,
-      allowedExtensions: const <String>['jbackup'],
+      allowedExtensions: const <String>[VaultBackupPolicy.fileExtension],
     );
     if (picked == null) {
       return null;
@@ -248,7 +261,8 @@ class VaultTransferService {
   }
 
   Future<RestorePrecheck> precheckRestore(File backupFile) async {
-    final BackupRecoveryPreview preview = await _archiveIo.peekBackupRecovery(backupFile);
+    final BackupRecoveryPreview preview =
+        await _archiveIo.prepareRestorePreview(backupFile);
     final RecoveryMetadata? localMetadata = await _vaultRepository.readRecoveryMetadata();
     final bool localHasTrusted = localMetadata != null &&
         await _vaultRepository.hasTrustedDeviceAccess();
@@ -290,22 +304,11 @@ class VaultTransferService {
     if (bytes == null) {
       return null;
     }
-    final String baseName = file.name.isNotEmpty ? file.name : 'restore.jbackup';
+    final String baseName =
+        file.name.isNotEmpty ? file.name : 'restore.${VaultBackupPolicy.fileExtension}';
     final File tempBackup = await _createTempFile(baseName);
     await tempBackup.writeAsBytes(bytes, flush: true);
     return tempBackup;
-  }
-
-  Future<String> uploadBackupToDrive() async {
-    final File tempBackup = await _createTempFile('${_backupTimestamp(DateTime.now())}.jbackup');
-    try {
-      await _archiveIo.writeBackupZip(tempBackup);
-      final String uploadedId = await _driveBackupService.uploadBackup(tempBackup);
-      await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
-      return uploadedId;
-    } finally {
-      await _deleteIfExists(tempBackup);
-    }
   }
 
   Future<List<DriveBackupFile>> listDriveBackups() async {
@@ -503,65 +506,70 @@ class VaultTransferService {
     );
   }
 
-  String _backupTimestamp(DateTime value) {
-    String two(int number) => number.toString().padLeft(2, '0');
-    return 'backup_${value.year}-${two(value.month)}-${two(value.day)}_'
-        '${two(value.hour)}-${two(value.minute)}-${two(value.second)}';
-  }
-
-  Future<BackupCreationResult?> _saveBackupWithPicker({
-    required String fileName,
+  Future<BackupPersistResult> _runInspectedBackupPipeline({
+    required Future<String?> Function(File stagingZip, String fileName) deliver,
   }) async {
-    final String? initialDirectory =
-        await _exportSaveLocationStore.resolveInitialDirectory();
-
-    final File tempFile = await _createTempFile(fileName);
+    final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
+    final File staging = await _createTempFile(fileName);
     try {
-      await _archiveIo.writeBackupZip(tempFile);
-      final BackupHealthReport report = await checkBackupHealth(tempFile);
-      final String? path = await FilePicker.saveFile(
-        dialogTitle: '儲存本機備份',
-        fileName: fileName,
-        initialDirectory: initialDirectory,
-        type: FileType.custom,
-        allowedExtensions: const <String>['jbackup'],
-        bytes: await tempFile.readAsBytes(),
-      );
-      if (path == null) {
-        return null;
+      await _archiveIo.writeBackupZip(staging);
+      final BackupInspectResult inspect = await inspectBackup(staging);
+      if (!inspect.ok) {
+        return BackupPersistResult(
+          status: BackupPersistStatus.inspectFailed,
+          message: inspect.message,
+        );
       }
-      await _exportSaveLocationStore.rememberSavedFilePath(path);
-      return BackupCreationResult(path: path, healthReport: report);
+      final String? saved = await deliver(staging, fileName);
+      if (saved == null) {
+        return const BackupPersistResult(status: BackupPersistStatus.cancelled);
+      }
+      return BackupPersistResult(
+        status: BackupPersistStatus.success,
+        savedPath: saved,
+        message: inspect.message,
+      );
     } finally {
-      await _deleteIfExists(tempFile);
+      await _deleteIfExists(staging);
     }
   }
 
-  Future<String?> _saveGeneratedFileWithPicker({
+  @visibleForTesting
+  Future<BackupPersistResult> runInspectedBackupPipelineForTesting({
+    required Future<String?> Function(File stagingZip, String fileName) deliver,
+  }) {
+    return _runInspectedBackupPipeline(deliver: deliver);
+  }
+
+  Future<String?> _deliverBackupToExternalDirectory(
+    File stagingZip,
+    String fileName,
+  ) {
+    return deliverToExternalDirectory(
+      dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
+      fileName: fileName,
+      sourceFile: stagingZip,
+      resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
+      rememberDirectory: _externalDirectoryStore.rememberDirectory,
+    );
+  }
+
+  /// 在暫存檔寫入內容後，交付至使用者選擇的外部資料夾。
+  Future<String?> _writeTempAndDeliver({
     required String dialogTitle,
     required String fileName,
-    required List<String> allowedExtensions,
     required Future<void> Function(File target) writeTarget,
   }) async {
-    final String? initialDirectory =
-        await _exportSaveLocationStore.resolveInitialDirectory();
-
     final File tempFile = await _createTempFile(fileName);
     try {
       await writeTarget(tempFile);
-      final String? path = await FilePicker.saveFile(
+      return await deliverToExternalDirectory(
         dialogTitle: dialogTitle,
         fileName: fileName,
-        initialDirectory: initialDirectory,
-        type: FileType.custom,
-        allowedExtensions: allowedExtensions,
-        bytes: await tempFile.readAsBytes(),
+        sourceFile: tempFile,
+        resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
+        rememberDirectory: _externalDirectoryStore.rememberDirectory,
       );
-      if (path == null) {
-        return null;
-      }
-      await _exportSaveLocationStore.rememberSavedFilePath(path);
-      return path;
     } finally {
       await _deleteIfExists(tempFile);
     }

@@ -5,22 +5,26 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_diary/infrastructure/storage/export_save_location_store.dart';
+import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 
+import '../helpers/path_provider_test_binding.dart';
 import '../helpers/vault_test_harness.dart';
+import '../helpers/vault_transfer_service_test_helpers.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late VaultTestHarness harness;
   late VaultTransferService transferService;
 
   setUp(() async {
     harness = await VaultTestHarness.create();
+    installPathProviderTestBinding(harness.tempDir);
     final archiveIo = VaultArchiveIo(
       pathStrategy: harness.pathStrategy,
       repository: harness.repository,
@@ -29,18 +33,19 @@ void main() {
     );
     transferService = VaultTransferService(
       archiveIo: archiveIo,
-      driveBackupService: const _UnusedDriveBackupService(),
+      driveBackupService: const UnusedDriveBackupService(),
       vaultRepository: harness.repository,
-      exportSaveLocationStore: ExportSaveLocationStore(harness.pathStrategy),
+      externalDirectoryStore: ExternalDirectoryStore(harness.pathStrategy),
       pathStrategy: harness.pathStrategy,
     );
   });
 
   tearDown(() async {
+    clearPathProviderTestBinding();
     await harness.dispose();
   });
 
-  test('createAppLocalBackup writes a healthy backup under app backups directory', () async {
+  test('saveBackupToAppLocal writes a healthy backup under app backups directory', () async {
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     await harness.repository.saveEntry(
       setup.session,
@@ -55,20 +60,60 @@ void main() {
       ),
     );
 
-    final BackupCreationResult result = await transferService.createAppLocalBackup();
+    final BackupPersistResult result = await transferService.saveBackupToAppLocal();
     final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
 
-    expect(result.healthReport.ok, isTrue);
-    expect(p.isWithin(backupsDirectory.path, result.path), isTrue);
-    expect(File(result.path).existsSync(), isTrue);
+    expect(result.status, BackupPersistStatus.success);
+    expect(result.savedPath, isNotNull);
+    expect(p.isWithin(backupsDirectory.path, result.savedPath!), isTrue);
+    expect(File(result.savedPath!).existsSync(), isTrue);
+  });
+
+  test('saveBackupToAppLocal does not persist when inspect fails', () async {
+    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Inspect Fail Backup',
+        date: const DateOnly('2026-06-03'),
+        createdAt: DateTime.parse('2026-06-03T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-06-03T08:00:00Z'),
+        markdownBody: 'inspect fail body',
+      ),
+    );
+
+    final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
+    await backupsDirectory.create(recursive: true);
+    final int beforeCount = backupsDirectory.listSync().whereType<File>().length;
+
+    final InspectFailingTransferService failingService = InspectFailingTransferService(
+      archiveIo: VaultArchiveIo(
+        pathStrategy: harness.pathStrategy,
+        repository: harness.repository,
+        frontMatterCodec: const FrontMatterCodec(),
+        indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
+      ),
+      vaultRepository: harness.repository,
+      externalDirectoryStore: ExternalDirectoryStore(harness.pathStrategy),
+      pathStrategy: harness.pathStrategy,
+    );
+
+    final BackupPersistResult result = await failingService.saveBackupToAppLocal();
+    final int afterCount = backupsDirectory.listSync().whereType<File>().length;
+
+    expect(result.status, BackupPersistStatus.inspectFailed);
+    expect(result.savedPath, isNull);
+    expect(afterCount, beforeCount);
   });
 
   test('listAppLocalBackups sorts newest first and deleteAppLocalBackup removes the file', () async {
     final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
     await backupsDirectory.create(recursive: true);
-    final File older = File(p.join(backupsDirectory.path, 'backup_older.jbackup'))
+    final File older = File(p.join(backupsDirectory.path, 'backup_older.zip'))
       ..writeAsBytesSync(const <int>[1]);
-    final File newer = File(p.join(backupsDirectory.path, 'backup_newer.jbackup'))
+    final File newer = File(p.join(backupsDirectory.path, 'backup_newer.zip'))
       ..writeAsBytesSync(const <int>[2]);
     await older.setLastModified(DateTime.parse('2026-06-01T00:00:00Z'));
     await newer.setLastModified(DateTime.parse('2026-06-02T00:00:00Z'));
@@ -76,8 +121,8 @@ void main() {
     final List<LocalBackupFile> backups = await transferService.listAppLocalBackups();
 
     expect(backups.map((LocalBackupFile backup) => backup.name), <String>[
-      'backup_newer.jbackup',
-      'backup_older.jbackup',
+      'backup_newer.zip',
+      'backup_older.zip',
     ]);
 
     await transferService.deleteAppLocalBackup(backups.first);
@@ -86,11 +131,25 @@ void main() {
     expect(older.existsSync(), isTrue);
   });
 
+  test('listAppLocalBackups includes zip files without backup_ prefix', () async {
+    final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
+    await backupsDirectory.create(recursive: true);
+    File(p.join(backupsDirectory.path, 'my_diary_backup.zip'))
+        .writeAsBytesSync(const <int>[1]);
+
+    final List<LocalBackupFile> backups = await transferService.listAppLocalBackups();
+
+    expect(
+      backups.map((LocalBackupFile backup) => backup.name),
+      contains('my_diary_backup.zip'),
+    );
+  });
+
   test('listAppLocalBackups keeps only the newest five backups', () async {
     final Directory backupsDirectory = await harness.pathStrategy.localBackupsDirectory();
     await backupsDirectory.create(recursive: true);
     for (int index = 0; index < 6; index++) {
-      final File backup = File(p.join(backupsDirectory.path, 'backup_$index.jbackup'))
+      final File backup = File(p.join(backupsDirectory.path, 'backup_$index.zip'))
         ..writeAsBytesSync(<int>[index]);
       await backup.setLastModified(
         DateTime.parse('2026-06-0${index + 1}T00:00:00Z'),
@@ -103,47 +162,13 @@ void main() {
     expect(
       backups.map((LocalBackupFile backup) => backup.name),
       <String>[
-        'backup_5.jbackup',
-        'backup_4.jbackup',
-        'backup_3.jbackup',
-        'backup_2.jbackup',
-        'backup_1.jbackup',
+        'backup_5.zip',
+        'backup_4.zip',
+        'backup_3.zip',
+        'backup_2.zip',
+        'backup_1.zip',
       ],
     );
-    expect(File(p.join(backupsDirectory.path, 'backup_0.jbackup')).existsSync(), isFalse);
+    expect(File(p.join(backupsDirectory.path, 'backup_0.zip')).existsSync(), isFalse);
   });
-}
-
-class _UnusedDriveBackupService implements DriveBackupService {
-  const _UnusedDriveBackupService();
-
-  @override
-  Future<DriveConnectionState> connect() => throw UnimplementedError();
-
-  @override
-  Future<void> deleteBackup(String fileId) => throw UnimplementedError();
-
-  @override
-  Future<File> downloadBackupById({
-    required String fileId,
-    required String fileName,
-    required Directory destinationDirectory,
-  }) =>
-      throw UnimplementedError();
-
-  @override
-  Future<DriveConnectionState> getConnectionState() => throw UnimplementedError();
-
-  @override
-  Future<List<DriveBackupFile>> listBackups() => throw UnimplementedError();
-
-  @override
-  Future<List<DriveBackupFile>> pruneBackups({required int retainCount}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<DriveConnectionState> reconnect() => throw UnimplementedError();
-
-  @override
-  Future<String> uploadBackup(File backupFile) => throw UnimplementedError();
 }

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/storage/export_save_location_store.dart';
+import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -23,7 +23,7 @@ class FakeVaultTransferService extends VaultTransferService {
           ),
           driveBackupService: _UnusedDriveBackupService(),
           vaultRepository: FakeVaultRepository(),
-          exportSaveLocationStore: ExportSaveLocationStore(DummyVaultPathStrategy()),
+          externalDirectoryStore: ExternalDirectoryStore(DummyVaultPathStrategy()),
           pathStrategy: DummyVaultPathStrategy(),
         ) {
     _connectionState = connectionState ?? const DriveConnectionState.disconnected();
@@ -34,13 +34,14 @@ class FakeVaultTransferService extends VaultTransferService {
   int isConnectedCalls = 0;
   int connectCalls = 0;
   int reconnectCalls = 0;
-  int createAppLocalBackupCalls = 0;
+  int saveBackupToAppLocalCalls = 0;
   int listAppLocalBackupsCalls = 0;
-  int exportBackupWithPickerCalls = 0;
+  int saveBackupToExternalDirectoryCalls = 0;
+  int uploadBackupToDriveCalls = 0;
 
   @override
-  Future<BackupCreationResult> createAppLocalBackup() {
-    createAppLocalBackupCalls++;
+  Future<BackupPersistResult> saveBackupToAppLocal() {
+    saveBackupToAppLocalCalls++;
     throw UnimplementedError();
   }
 
@@ -51,8 +52,14 @@ class FakeVaultTransferService extends VaultTransferService {
   }
 
   @override
-  Future<BackupCreationResult?> exportBackupWithPicker() {
-    exportBackupWithPickerCalls++;
+  Future<BackupPersistResult> saveBackupToExternalDirectory() {
+    saveBackupToExternalDirectoryCalls++;
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<BackupPersistResult> uploadBackupToDrive() {
+    uploadBackupToDriveCalls++;
     throw UnimplementedError();
   }
 

@@ -118,7 +118,7 @@ void main() {
     );
 
     final File zipFile = File(p.join(harness.tempDir.path, 'portable_export.zip'));
-    await archiveIo.writePortableExportZip(
+    await archiveIo.writeMarkdownZip(
       session: setup.session,
       target: zipFile,
     );
@@ -192,7 +192,7 @@ Imported from markdown.
     final Archive archive = Archive()
       ..addFile(
         ArchiveFile.string(
-          'diary_export_123/2026-05-23/Zip Import/index.md',
+          '2026-05-23/Zip Import/index.md',
           '''---
 title: "Zip Import"
 date: "2026-05-23"
@@ -208,7 +208,7 @@ Imported from zip.
       )
       ..addFile(
         ArchiveFile(
-          'diary_export_123/2026-05-23/Zip Import/photo.png',
+          '2026-05-23/Zip Import/photo.png',
           3,
           const <int>[6, 5, 4],
         ),
@@ -527,7 +527,7 @@ Imported from zip.
       markdownBody: 'backup body',
     );
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'test.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'test.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(backupFile);
@@ -536,7 +536,7 @@ Imported from zip.
     expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
   });
 
-  test('checkBackupHealth accepts a readable vault backup', () async {
+  test('inspectBackup accepts a readable vault backup', () async {
     final RecoverySetupResult setup = await harness.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
@@ -545,24 +545,59 @@ Imported from zip.
       markdownBody: 'healthy backup body',
     );
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'healthy.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'healthy.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
-    final BackupHealthReport report = await archiveIo.checkBackupHealth(backupFile);
+    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
 
     expect(report.ok, isTrue);
-    expect(report.hasRecoveryMetadata, isTrue);
-    expect(report.hasManifest || report.entrySampleFound, isTrue);
+    expect(report.layout.hasRecovery, isTrue);
+    expect(report.layout.hasManifest || report.layout.entrySampleFound, isTrue);
   });
 
-  test('checkBackupHealth rejects an invalid zip', () async {
-    final File backupFile = File(p.join(harness.tempDir.path, 'invalid.jbackup'))
+  test('inspectBackup rejects an invalid zip', () async {
+    final File backupFile = File(p.join(harness.tempDir.path, 'invalid.zip'))
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
-    final BackupHealthReport report = await archiveIo.checkBackupHealth(backupFile);
+    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
 
     expect(report.ok, isFalse);
-    expect(report.message, contains('.jbackup'));
+    expect(report.message, contains('zip 備份'));
+  });
+
+  test('inspectBackup rejects portable markdown export zip', () async {
+    final RecoverySetupResult setup = await harness.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Export Entry',
+      date: '2026-06-01',
+      markdownBody: 'export body',
+    );
+
+    final File exportZip = File(p.join(harness.tempDir.path, 'markdown_2026-05-26_14-03-07.zip'));
+    await archiveIo.writeMarkdownZip(
+      session: setup.session,
+      target: exportZip,
+    );
+
+    final BackupInspectResult report = await archiveIo.inspectBackup(exportZip);
+
+    expect(report.ok, isFalse);
+    expect(report.message, contains('日記匯出檔'));
+  });
+
+  test('inspectBackup rejects corrupted recovery.json', () async {
+    final File backupFile = File(p.join(harness.tempDir.path, 'bad_recovery.zip'));
+    final Archive archive = Archive()
+      ..addFile(ArchiveFile.string('recovery.json', 'not-json'))
+      ..addFile(ArchiveFile.string('manifest.json.enc', 'enc'))
+      ..addFile(ArchiveFile.string('entries/a.md.enc', 'body'));
+    await backupFile.writeAsBytes(ZipEncoder().encode(archive));
+
+    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
+
+    expect(report.ok, isFalse);
+    expect(report.message, contains('recovery.json'));
   });
 
   test('restoreBackupZip 會在覆寫前拒絕缺少加密資料的備份', () async {
@@ -577,7 +612,7 @@ Imported from zip.
       markdownBody: 'keep',
     );
 
-    final File incompleteBackup = File(p.join(harness.tempDir.path, 'incomplete.jbackup'));
+    final File incompleteBackup = File(p.join(harness.tempDir.path, 'incomplete.zip'));
     final Archive archive = Archive()
       ..addFile(
         ArchiveFile.string(
@@ -593,7 +628,7 @@ Imported from zip.
         isA<StateError>().having(
           (StateError error) => error.message,
           'message',
-          contains('缺少必要的加密資料'),
+          contains('缺少加密資料'),
         ),
       ),
     );
@@ -613,7 +648,7 @@ Imported from zip.
       updatedAt: DateTime.parse('2026-05-25T11:00:00Z'),
     );
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'restore.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'restore.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await harness.repository.saveEntry(
@@ -653,7 +688,7 @@ Imported from zip.
       markdownBody: 'keep',
     );
 
-    final File badBackup = File(p.join(harness.tempDir.path, 'bad.jbackup'))
+    final File badBackup = File(p.join(harness.tempDir.path, 'bad.zip'))
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
     expect(
@@ -662,7 +697,12 @@ Imported from zip.
         isA<StateError>().having(
           (StateError error) => error.message,
           'message',
-          anyOf(contains('無法讀取備份檔'), contains('備份檔內容不完整')),
+          anyOf(
+            contains('無法讀取備份檔'),
+            contains('備份檔內容不完整'),
+            contains('缺少復原金鑰資訊'),
+            contains('缺少加密資料'),
+          ),
         ),
       ),
     );

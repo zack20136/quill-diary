@@ -5,43 +5,47 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 void main() {
   group('isVisibleDriveBackupFileName', () {
     test('accepts visible backup names', () {
-      expect(isVisibleDriveBackupFileName('backup_2026-05-26.jbackup'), isTrue);
+      expect(isVisibleDriveBackupFileName('backup_2026-05-26.zip'), isTrue);
     });
 
     test('rejects names that download step would block', () {
       expect(isVisibleDriveBackupFileName(null), isFalse);
-      expect(isVisibleDriveBackupFileName('backup.jbackup.tmp'), isFalse);
-      expect(isVisibleDriveBackupFileName('../backup.jbackup'), isFalse);
-      expect(isVisibleDriveBackupFileName(r'C:\temp\backup.jbackup'), isFalse);
+      expect(isVisibleDriveBackupFileName('backup.zip.tmp'), isFalse);
+      expect(isVisibleDriveBackupFileName('../backup.zip'), isFalse);
+      expect(isVisibleDriveBackupFileName(r'C:\temp\backup.zip'), isFalse);
     });
   });
 
   group('sanitizeDriveBackupFileName', () {
-    test('accepts safe jbackup file names', () {
+    test('accepts safe zip backup file names', () {
       expect(
-        sanitizeDriveBackupFileName('backup_2026-05-26.jbackup'),
-        'backup_2026-05-26.jbackup',
+        sanitizeDriveBackupFileName('backup_2026-05-26.zip'),
+        'backup_2026-05-26.zip',
+      );
+      expect(
+        sanitizeDriveBackupFileName('my_diary_backup.zip'),
+        'my_diary_backup.zip',
       );
     });
 
     test('rejects path traversal and absolute-looking names', () {
       expect(
-        () => sanitizeDriveBackupFileName('../backup.jbackup'),
+        () => sanitizeDriveBackupFileName('../backup.zip'),
         throwsA(isA<StateError>()),
       );
       expect(
-        () => sanitizeDriveBackupFileName(r'C:\temp\backup.jbackup'),
+        () => sanitizeDriveBackupFileName(r'C:\temp\backup.zip'),
         throwsA(isA<StateError>()),
       );
       expect(
-        () => sanitizeDriveBackupFileName('/tmp/backup.jbackup'),
+        () => sanitizeDriveBackupFileName('/tmp/backup.zip'),
         throwsA(isA<StateError>()),
       );
     });
 
-    test('rejects non backup extensions', () {
+    test('rejects non zip extensions', () {
       expect(
-        () => sanitizeDriveBackupFileName('backup.zip'),
+        () => sanitizeDriveBackupFileName('backup_2026-05-26.txt'),
         throwsA(isA<StateError>()),
       );
     });
@@ -53,17 +57,17 @@ void main() {
         <DriveBackupFile>[
           DriveBackupFile(
             id: 'unknown',
-            name: 'backup_unknown.jbackup',
+            name: 'backup_unknown.zip',
             createdAt: null,
           ),
           DriveBackupFile(
             id: 'old',
-            name: 'backup_old.jbackup',
+            name: 'backup_old.zip',
             createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
           ),
           DriveBackupFile(
             id: 'new',
-            name: 'backup_new.jbackup',
+            name: 'backup_new.zip',
             createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
           ),
         ],
@@ -80,7 +84,7 @@ void main() {
         for (int day = 1; day <= 12; day++)
           DriveBackupFile(
             id: 'backup_$day',
-            name: 'backup_2026-05-${day.toString().padLeft(2, '0')}.jbackup',
+            name: 'backup_2026-05-${day.toString().padLeft(2, '0')}.zip',
             createdAt: DateTime.utc(2026, 5, day),
           ),
       ];

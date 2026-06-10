@@ -40,7 +40,7 @@ void main() {
 
   setUp(() async {
     final Directory tempDir = await Directory.systemTemp.createTemp('restore_flow_test_');
-    backupFile = File('${tempDir.path}/backup.jbackup')..writeAsStringSync('backup');
+    backupFile = File('${tempDir.path}/backup.zip')..writeAsStringSync('backup');
     transferService = RecordingVaultTransferService();
     repository = FakeVaultRepository();
   });
@@ -220,12 +220,20 @@ class _RestoreFlowHost extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: ElevatedButton(
-        onPressed: () => RestoreBackupFlow(ref).run(
-          context: context,
-          backupFile: backupFile,
-          confirm: confirm,
-          onComplete: onComplete,
-        ),
+        onPressed: () async {
+          final RestorePrecheck precheck =
+              await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
+          if (!context.mounted) {
+            return;
+          }
+          await RestoreBackupFlow(ref).run(
+            context: context,
+            backupFile: backupFile,
+            precheck: precheck,
+            confirm: confirm,
+            onComplete: onComplete,
+          );
+        },
         child: const Text('run'),
       ),
     );

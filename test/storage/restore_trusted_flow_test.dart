@@ -48,7 +48,7 @@ void main() {
 
     expect(await harness.repository.hasTrustedDeviceAccess(), isTrue);
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'trusted.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'trusted.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await harness.repository.saveEntry(
@@ -82,7 +82,7 @@ void main() {
 
   test('restoreBackupZip 預設會清除受信任裝置', () async {
     await harness.repository.setupRecoveryKey();
-    final File backupFile = File(p.join(harness.tempDir.path, 'clear_trusted.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'clear_trusted.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await harness.repository.closeUnlockedResources();

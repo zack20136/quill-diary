@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 
 import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
@@ -79,6 +80,33 @@ abstract final class DisplayFormat {
   /// Downloads 匯出路徑：`Downloads / quill-diary / file.html`。
   static String formatDownloadsDisplayPath(String fileName) {
     return 'Downloads / ${AppIdentifiers.downloadsExportDirectory} / $fileName';
+  }
+
+  /// 從本機路徑或 Android SAF content URI 取出可讀檔名。
+  static String formatSavedFileNameForDisplay(String savedPathOrUri) {
+    final String trimmed = savedPathOrUri.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('content://')) {
+      try {
+        final Uri uri = Uri.parse(trimmed);
+        if (uri.pathSegments.isNotEmpty) {
+          final String documentId = Uri.decodeComponent(uri.pathSegments.last);
+          final int colonIndex = documentId.indexOf(':');
+          final String pathPart = colonIndex >= 0
+              ? documentId.substring(colonIndex + 1)
+              : documentId;
+          final String fileName = p.basename(pathPart);
+          if (fileName.isNotEmpty) {
+            return fileName;
+          }
+        }
+      } on Object {
+        // 解析失敗時改走一般路徑 fallback。
+      }
+    }
+    return p.basename(trimmed);
   }
 
   /// Google 帳號顯示：`名稱 · email@example.com`。

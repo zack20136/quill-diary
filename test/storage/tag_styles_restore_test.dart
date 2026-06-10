@@ -50,7 +50,7 @@ void main() {
       ),
     );
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'tag_color.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'tag_color.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await harness.repository.upsertTagAccentArgb('Noise', 0xFFFF0000);

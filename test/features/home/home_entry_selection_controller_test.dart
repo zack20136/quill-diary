@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/features/home/providers/home_providers.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
 
 void main() {

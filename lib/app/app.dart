@@ -59,7 +59,6 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
             brightness: Brightness.dark,
           ),
           themeMode: ThemeMode.system,
-          locale: const Locale('zh', 'TW'),
           supportedLocales: const <Locale>[
             Locale('zh', 'TW'),
           ],

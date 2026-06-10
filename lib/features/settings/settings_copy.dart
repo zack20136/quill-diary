@@ -176,7 +176,8 @@ abstract final class SettingsImportExportCopy {
   static const String sectionTitle = '匯入與匯出';
   static const String sectionDescriptionEnabled =
       '可匯入 Markdown、HTML、Easy Diary 備份 zip。'
-      '匯出日記為 Markdown 壓縮檔。';
+      '匯出日記請選擇資料夾，會寫入 markdown_*.zip；'
+      '首頁匯出 HTML 會寫入 html_*.html。';
 
   static const String importNoEntriesMessage =
       '找不到可匯入的日記，請確認檔案格式。';
@@ -238,33 +239,34 @@ abstract final class SettingsImportExportCopy {
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
   static String get sectionDescriptionEnabled =>
-      '可建立完整日記庫 .jbackup 備份並從本機還原；還原會覆寫目前日記庫。'
+      '可建立完整日記庫 zip 備份（backup_*.zip）並從本機還原；還原會覆寫目前日記庫。'
+      '建立與匯出前會做備份檢查，通過才寫入。'
       '本機最多保留 ${VaultBackupPolicy.retainCount} 份，超出時自動刪除最舊備份。';
 
   static const String createButton = '建立本機備份';
   static const String restoreButton = '從本機備份還原';
-  static const String exportToExternalButton = '匯出備份到外部';
+  static const String exportToExternalButton = '匯出備份到資料夾';
   static const String importFromExternalButton = '匯入外部備份';
   static const String pickDialogTitle = '選擇本機備份';
+  static const String pickExternalBackupDialogTitle =
+      VaultBackupPolicy.pickBackupFileDialogTitle;
   static const String noBackups = '目前沒有本機備份。';
   static const String deleteBackupTooltip = '刪除備份';
   static const String deleteConfirmTitle = '刪除本機備份？';
 
-  static String createSuccessInApp(String fileName) => '已建立本機備份：$fileName';
+  static String backupSuccessInApp(String fileName) => '已建立本機備份：$fileName';
+  static String backupExportSuccess(String fileName) => '已匯出備份：$fileName';
+  static String backupInspectFailed(String message) => '備份檢查未通過。\n$message';
   static String deleteBackupSuccess(String fileName) => '已刪除本機備份：$fileName';
   static String deleteConfirmBody(String fileName) =>
       '將刪除 $fileName。此動作不會影響目前日記庫。';
-  static String createHealthCheckFailed(String message, String fileName) =>
-      '備份已建立，但檢查未通過。\n$message\n檔案：$fileName';
-  static String exportSuccess(String fileName) => '已匯出備份：$fileName';
-  static String exportHealthCheckFailed(String message, String fileName) =>
-      '備份已匯出，但檢查未通過。\n$message\n檔案：$fileName';
 }
 
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
-      '連結 Google Drive 後，可上傳 .jbackup 到雲端，或從雲端挑選備份還原。';
+      '連結 Google Drive 後，可上傳 zip 備份到雲端，或從雲端挑選備份還原。'
+      '上傳前會做備份檢查，通過才上傳。';
   static const String sectionDescriptionOAuthNotConfigured =
       '尚未完成 Google 登入設定（OAuth）。';
 
@@ -272,8 +274,9 @@ abstract final class SettingsDriveBackupCopy {
   static const String reconnectButton = '重新連結 Google Drive';
   static const String uploadButton = '上傳備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 備份還原';
+  static const String downloadProgress = '正在從 Google Drive 下載備份…';
   static String get retainHint =>
-      'Google Drive 會自動保留最新 ${VaultBackupPolicy.retainCount} 份 .jbackup 備份。';
+      'Google Drive 會自動保留最新 ${VaultBackupPolicy.retainCount} 份 zip 備份。';
 
   static String connectedHint(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {
@@ -298,7 +301,7 @@ abstract final class SettingsDriveBackupCopy {
     return '已重新連結 Google Drive：$accountLabel';
   }
   static const String uploadSuccess = '備份已上傳到 Google Drive。';
-  static const String noBackups = 'Google Drive 中找不到 .jbackup 備份檔。';
+  static const String noBackups = 'Google Drive 中找不到 zip 備份檔。';
   static const String pickDialogTitle = '選擇 Google Drive 備份';
   static const String unknownCreatedTime = '無建立時間';
 }
@@ -378,168 +381,6 @@ String restoreRecoveryKeyDialogSubtitle(RestorePrecheck precheck) {
     return SettingsRestoreDialogCopy.subtitleSameVaultManual;
   }
   return SettingsRestoreDialogCopy.subtitleOtherVault;
-}
-
-/// 設定「說明」子頁文案。
-abstract final class SettingsAboutCopy {
-  static const String pageTitle = '說明';
-
-  static const String tabOverview = '概覽';
-  static const String tabData = '資料與備份';
-  static const String tabSecurity = '安全';
-
-  static const List<String> overviewChips = <String>[
-    '僅 Android',
-    'LDJ2',
-    '全文搜尋',
-    '標籤目錄',
-  ];
-
-  static const String overviewHeroTitle = 'Quill Diary';
-  static const String overviewHeroBody =
-      '離線優先的 Android 加密日記。內容在本機加密存放，除非你主動備份或匯出，不會自動上傳明文。';
-
-  static const String featuresSectionTitle = '主要功能';
-  static const String featuresSectionSubtitle = '解鎖日記庫後可使用。';
-  static const String featuresHomeTitle = '首頁';
-  static const String featuresHomeBody =
-      '時間軸、日曆、標籤管理與回顧總覽，快速找到過往日記；有未完成草稿時，列表會顯示未儲存標籤。';
-  static const String featuresEditorTitle = '編輯器';
-  static const String featuresEditorBody =
-      'Markdown 日記、附件、標籤與自訂顯示色；編輯時自動存本地加密草稿，按儲存並輸入標題後才寫入日記庫。';
-
-  static const String editorDraftSectionTitle = '編輯器草稿';
-  static const String editorDraftSectionSubtitle =
-      '正式儲存前的內容保存在本機加密草稿，與日記庫分開。';
-  static const String editorDraftAutoSaveTitle = '自動存草稿';
-  static const String editorDraftAutoSaveBody =
-      '編輯時即時寫入本機加密草稿，不要求標題。';
-  static const String editorDraftManualSaveTitle = '手動儲存';
-  static const String editorDraftManualSaveBody =
-      '按儲存並輸入標題後，才正式寫入日記庫並刪除草稿。';
-  static const String editorDraftCancelRestoreTitle = '取消與還原';
-  static const String editorDraftCancelRestoreBody =
-      '取消可捨棄草稿；再次開啟同一篇時，可選擇還原草稿並繼續編輯。';
-  static const String editorDraftUnsavedTagTitle = '未儲存標籤';
-  static const String editorDraftUnsavedTagBody =
-      '首頁列表與日記檢視頁會提示該篇仍有未完成草稿。';
-  static const String featuresSearchTitle = '全文搜尋';
-  static const String featuresSearchBody =
-      '解鎖期間，標題、標籤或內文只要包含關鍵字就能找到。';
-
-  static const String platformSectionTitle = '平台限制';
-  static const String platformSectionBody = '目前僅支援 Android，無法在其他平台建立或使用加密日記庫。';
-
-  static const String tagCatalogSectionTitle = '標籤目錄';
-  static const String tagCatalogSectionSubtitle = '名稱與自訂顯示色保存在日記庫內，含尚未套用的標籤。';
-  static const String tagCatalogFileLabel = '保存位置';
-  static const String tagCatalogFileBody =
-      '日記庫內的 tag_styles.json，含預設標籤與未使用標籤。';
-  static const String tagCatalogSyncLabel = '更新時機';
-  static const String tagCatalogSyncBody =
-      '編輯儲存、匯入日記、標籤管理與備份還原時更新；搜尋索引僅快取自訂顯示色。';
-
-  static const String backupSectionTitle = '完整備份';
-  static const String backupSectionSubtitle = '封裝整個加密日記庫，不是解密後的明文。';
-  static const String backupLocalLabel = '本機備份';
-  static const String backupLocalBody =
-      '匯出 .jbackup 壓縮檔，含加密日記、附件、復原設定與標籤目錄；不含搜尋索引（還原後重建）與編輯草稿（drafts/）。';
-  static const String backupDriveLabel = 'Google 雲端硬碟';
-  static const String backupDriveBody = '上傳至應用程式專用資料夾；還原流程與本機 .jbackup 相同。';
-  static const String backupRestoreAfterLabel = '還原後';
-  static const String backupRestoreAfterBody =
-      '搜尋索引清除並重建，本應用程式重新啟動與解鎖；標籤目錄自 tag_styles.json 載入。';
-
-  static const String portableSectionTitle = '可攜式匯入 / 匯出';
-  static const String portableSectionSubtitle =
-      '設定頁的 Markdown / HTML 流程；逐篇寫入加密日記庫，不走 .jbackup 還原。';
-  static const String portableExportLabel = '匯出';
-  static const String portableExportBody =
-      'Markdown 壓縮檔（解密後 .md 與附件），或本應用程式 HTML（可再次匯入）。';
-  static const String portableImportLabel = '匯入';
-  static const String portableImportBody =
-      '支援本應用程式 Markdown / HTML、Easy Diary 完整備份（僅 Android；加密日記略過）。';
-
-  static const List<String> securityChips = <String>[
-    'LDJ2',
-    'AES-256-GCM',
-    'Argon2id',
-    '本機儲存',
-    '可信裝置',
-    '復原金鑰',
-  ];
-
-  static const String securityHeroTitle = '本機加密，預設離線';
-  static const String securityHeroBody =
-      '日記、附件與設定在本機加密後寫入日記庫；除非你主動備份或匯出，不會自動傳到外部。';
-
-  static const String securityFlowSectionTitle = '加密與解密流程';
-  static const String securityFlowSectionSubtitle = '五個步驟理解資料如何被保護。';
-  static const String securityFlowStep1Title = '1. 寫下內容';
-  static const String securityFlowStep1Body = '日記或附件先在裝置上處理，尚未寫成可讀明文。';
-  static const String securityFlowStep2Title = '2. 產生檔案金鑰';
-  static const String securityFlowStep2Body = '每個加密檔各有一組隨機金鑰，互不共用。';
-  static const String securityFlowStep3Title = '3. AES-256-GCM 加密';
-  static const String securityFlowStep3Body =
-      '內容加密為 LDJ2 格式，並附完整性驗證，避免被悄悄竄改。';
-  static const String securityFlowStep4Title = '4. 寫入日記庫';
-  static const String securityFlowStep4Body =
-      '本機保存加密檔、復原設定與搜尋索引，不是可讀的日記明文。';
-  static const String securityFlowStep5Title = '5. 解密前先取回檔案金鑰';
-  static const String securityFlowStep5Body = '須先取得檔案金鑰才能解開內容，通常走下列其中一條路徑。';
-  static const String securityFlowTrustedTitle = '可信裝置';
-  static const String securityFlowTrustedBadge = '優先';
-  static const String securityFlowTrustedBody = '若本機仍保有可信狀態，會優先嘗試此路徑。';
-  static const String securityFlowRecoveryTitle = '復原金鑰';
-  static const String securityFlowRecoveryBadge = '備援';
-  static const String securityFlowRecoveryBody =
-      '若可信裝置不可用，改以復原金鑰推導包裝金鑰後解開。';
-
-  static const String securityHighlightsSectionTitle = '安全性重點';
-  static const String securityHighlightsSectionSubtitle = '加密方式、保護範圍與適用邊界。';
-  static const String securityHighlightEncryptTitle = '加密方式';
-  static const String securityHighlightEncryptBody =
-      '每筆日記或附件先產生檔案金鑰，再以 AES-256-GCM 加密為 LDJ2 格式。';
-  static const String securityHighlightScopeTitle = '保護範圍';
-  static const String securityHighlightScopeBody =
-      '資料預設只在裝置上；取得加密檔也無法直接讀出，除非有金鑰。';
-  static const String securityHighlightLimitTitle = '風險邊界';
-  static const String securityHighlightLimitBody =
-      '若裝置已取得 root 權限、遭惡意程式控制，或記憶體被讀取，保護會受限；復原金鑰須另行妥善保存。';
-
-  static const String securityBackupSectionTitle = '備份與解鎖';
-  static const String securityBackupSectionSubtitle = '備份仍是加密資料；還原後須能驗證身分才能解鎖。';
-  static const String securityBackupEncryptedLabel = '備份性質';
-  static const String securityBackupEncryptedBody =
-      '本機 .jbackup 與 Google 雲端硬碟備份都是加密日記庫，不是明文日記。';
-  static const String securityBackupUnlockLabel = '可沿用本機解鎖';
-  static const String securityBackupUnlockBody =
-      '同裝置、同日記庫、同一代復原金鑰，且本機仍有可信狀態時，才可能免輸入金鑰。';
-  static const String securityBackupOtherLabel = '其他情況';
-  static const String securityBackupOtherBody =
-      '條件不符時，須輸入建立該備份時保存的復原金鑰，才能完成還原後解鎖。';
-
-  static const String securityRecoverySectionTitle = '復原金鑰';
-  static const String securityRecoverySectionSubtitle = '最終備援，不能省略。';
-  static const String securityRecoveryRoleTitle = '用途';
-  static const String securityRecoveryRoleBody =
-      '不直接加密日記，而是透過 Argon2id 推導包裝金鑰，用來保護檔案金鑰。';
-  static const String securityRecoveryDeviceTitle = '與可信裝置的關係';
-  static const String securityRecoveryDeviceBody =
-      '可信裝置只是方便日常解鎖，不能取代復原金鑰。';
-  static const String securityRecoveryRotateTitle = '更新金鑰後';
-  static const String securityRecoveryRotateBody =
-      '若曾更新復原金鑰，較早的備份可能仍須當時那把舊金鑰才能還原。';
-
-  static const String securityLimitsSectionTitle = '使用提醒';
-  static const String securityLimitsSectionSubtitle = '實務上最容易誤解的地方。';
-  static const String securityLimitBackupLabel = '備份';
-  static const String securityLimitBackupBody = '有備份仍需要復原金鑰；還原時可能須驗證金鑰。';
-  static const String securityLimitKeyLabel = '金鑰保存';
-  static const String securityLimitKeyBody = '復原金鑰建議離線保存，勿與手機或備份檔放在同一處。';
-  static const String securityLimitVerifyLabel = '生物 / 螢幕鎖驗證';
-  static const String securityLimitVerifyBody =
-      '僅影響可信裝置的解鎖體驗，不能取代復原金鑰。';
 }
 
 /// 索引重建與 Google Drive 連線進度文案。

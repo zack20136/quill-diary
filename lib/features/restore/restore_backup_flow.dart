@@ -8,7 +8,7 @@ import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import 'widgets/restore_recovery_key_dialog.dart';
 
-/// 還原備份：precheck → 確認 → 驗證金鑰 → 寫入。
+/// 還原備份：確認 → 驗證金鑰 → 寫入（結構驗證由呼叫端 precheck 負責）。
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
@@ -48,6 +48,7 @@ class RestoreBackupFlow {
   Future<void> run({
     required BuildContext context,
     required File backupFile,
+    required RestorePrecheck precheck,
     required Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName})
         confirm,
     required Future<void> Function({
@@ -57,7 +58,6 @@ class RestoreBackupFlow {
     String? driveBackupName,
   }) async {
     final transferService = ref.read(vaultTransferServiceProvider);
-    final RestorePrecheck precheck = await transferService.precheckRestore(backupFile);
 
     if (!context.mounted) {
       return;

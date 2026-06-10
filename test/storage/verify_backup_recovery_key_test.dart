@@ -34,7 +34,7 @@ void main() {
   test('正確復原金鑰可通過驗證', () async {
     final RecoverySetupResult setup = await harness.setupRecoveryKey();
     await harness.saveSimpleEntry(setup, title: 'Verify Entry');
-    final File backupFile = File(p.join(harness.tempDir.path, 'valid.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'valid.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await expectLater(
@@ -46,7 +46,7 @@ void main() {
   test('錯誤復原金鑰拋出 mismatch', () async {
     final RecoverySetupResult setup = await harness.setupRecoveryKey();
     await harness.saveSimpleEntry(setup, title: 'Verify Entry');
-    final File backupFile = File(p.join(harness.tempDir.path, 'valid.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'valid.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
     await expectLater(
@@ -62,7 +62,7 @@ void main() {
   });
 
   test('無 recovery metadata 的備份無法驗證', () async {
-    final File backupFile = File(p.join(harness.tempDir.path, 'no_recovery.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'no_recovery.zip'));
     final Archive archive = Archive()
       ..addFile(ArchiveFile('manifest.json.enc', 4, const <int>[1, 2, 3, 4]));
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
@@ -81,7 +81,7 @@ void main() {
 
   test('無加密樣本的備份無法驗證復原金鑰', () async {
     final RecoverySetupResult setup = await harness.setupRecoveryKey();
-    final File backupFile = File(p.join(harness.tempDir.path, 'no_sample.jbackup'));
+    final File backupFile = File(p.join(harness.tempDir.path, 'no_sample.zip'));
     final RecoveryMetadata metadata =
         await harness.repository.readRecoveryMetadata() ??
             (throw StateError('測試前置失敗：缺少 recovery metadata。'));

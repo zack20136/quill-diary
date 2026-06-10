@@ -53,6 +53,43 @@ void main() {
       );
     });
 
+    test('formatSavedFileNameForDisplay 從 Android SAF content URI 取出檔名', () {
+      expect(
+        DisplayFormat.formatSavedFileNameForDisplay(
+          'content://com.android.externalstorage.documents/document/'
+          'primary%3ADownload%2Fquill%2Fbackup_2026-06-10_03-16-01.zip',
+        ),
+        'backup_2026-06-10_03-16-01.zip',
+      );
+    });
+
+    test('formatSavedFileNameForDisplay 從一般路徑取出檔名', () {
+      expect(
+        DisplayFormat.formatSavedFileNameForDisplay(
+          r'C:\Users\me\Downloads\backup_2026-06-10_03-16-01.zip',
+        ),
+        'backup_2026-06-10_03-16-01.zip',
+      );
+      expect(
+        DisplayFormat.formatSavedFileNameForDisplay(
+          '/home/me/Downloads/markdown_2026-06-10_03-16-01.zip',
+        ),
+        'markdown_2026-06-10_03-16-01.zip',
+      );
+    });
+
+    test('formatSavedFileNameForDisplay 邊界情況', () {
+      expect(DisplayFormat.formatSavedFileNameForDisplay(''), '');
+      expect(
+        DisplayFormat.formatSavedFileNameForDisplay('backup.zip'),
+        'backup.zip',
+      );
+      expect(
+        DisplayFormat.formatSavedFileNameForDisplay('content://invalid'),
+        'invalid',
+      );
+    });
+
     test('formatGoogleAccountLabel', () {
       expect(
         DisplayFormat.formatGoogleAccountLabel('Alice', 'a@example.com'),

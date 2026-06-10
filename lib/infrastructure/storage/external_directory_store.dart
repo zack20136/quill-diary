@@ -7,9 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'downloads_export_paths.dart';
 import 'vault_path_strategy.dart';
 
-/// 記住使用者上次選擇的匯出 / 備份儲存目錄。
-class ExportSaveLocationStore {
-  ExportSaveLocationStore(this._pathStrategy);
+/// 記住使用者上次選擇的外部資料夾（備份交付、可攜式匯入／匯出共用）。
+class ExternalDirectoryStore {
+  ExternalDirectoryStore(this._pathStrategy);
 
   final VaultPathStrategy _pathStrategy;
 
@@ -17,7 +17,7 @@ class ExportSaveLocationStore {
 
   Future<String> _filePath() async {
     final Directory root = await _pathStrategy.appRootDirectory();
-    return p.join(root.path, 'export_save_location.json');
+    return p.join(root.path, 'external_directory.json');
   }
 
   Future<String?> readLastDirectory() async {
@@ -35,6 +35,9 @@ class ExportSaveLocationStore {
       if (directory == null || directory.isEmpty) {
         return null;
       }
+      if (directory.startsWith('content://')) {
+        return directory;
+      }
       return Directory(directory).existsSync() ? directory : null;
     } on Object {
       return null;
@@ -43,7 +46,10 @@ class ExportSaveLocationStore {
 
   Future<void> rememberDirectory(String directory) async {
     final String trimmed = directory.trim();
-    if (trimmed.isEmpty || !Directory(trimmed).existsSync()) {
+    if (trimmed.isEmpty) {
+      return;
+    }
+    if (!trimmed.startsWith('content://') && !Directory(trimmed).existsSync()) {
       return;
     }
 
@@ -70,7 +76,7 @@ class ExportSaveLocationStore {
     await rememberDirectory(directory);
   }
 
-  /// 優先使用上次儲存目錄，否則回到 Downloads/quill-diary。
+  /// 優先使用上次目錄，否則回到 Downloads/quill-diary。
   Future<String?> resolveInitialDirectory() async {
     final String? lastDirectory = await readLastDirectory();
     if (lastDirectory != null) {

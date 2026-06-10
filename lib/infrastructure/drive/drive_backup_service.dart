@@ -7,6 +7,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
 
 import '../../config/app_identifiers.dart';
+import '../../domain/shared/vault_backup_policy.dart';
 import '../../config/oauth_config.dart';
 import '../../shared/presentation/display_format.dart';
 import 'google_drive_oauth_errors.dart';
@@ -180,8 +181,8 @@ String sanitizeDriveBackupFileName(String fileName) {
       basename.endsWith(' ')) {
     throw StateError('Google Drive 備份檔名無效，請重新建立備份。');
   }
-  if (p.extension(basename).toLowerCase() != '.jbackup') {
-    throw StateError('Google Drive 備份檔必須是 .jbackup 格式。');
+  if (p.extension(basename).toLowerCase() != '.${VaultBackupPolicy.fileExtension}') {
+    throw StateError('Google Drive 備份檔必須是 zip 格式。');
   }
   return basename;
 }
@@ -575,7 +576,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     final drive.DriveApi api = await _createAuthorizedDriveApi();
     final drive.FileList list = await api.files.list(
       spaces: 'appDataFolder',
-      q: "name contains '.jbackup' and trashed = false",
+      q: "name contains '.zip' and trashed = false",
       orderBy: 'createdTime desc',
       $fields: 'files(id,name,createdTime)',
     );
