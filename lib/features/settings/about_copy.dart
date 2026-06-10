@@ -54,7 +54,7 @@ abstract final class SettingsAboutCopy {
       heroIcon: Icons.menu_book_rounded,
       heroTitle: 'Quill Diary',
       heroBody:
-          '為私人書寫而設計的離線加密日記。這不是把加密黏在筆記工具外面的附加功能，而是從建立、解鎖、搜尋、編輯到備份，都圍繞同一套本機保護邏輯設計。',
+          '為私人日記而設計的離線加密日記。這不是把加密黏在筆記工具外面的附加功能，而是從建立、解鎖、搜尋、編輯到備份，都圍繞同一套本機保護邏輯設計。',
       chips: <String>[
         '僅 Android',
         '離線優先',
@@ -112,7 +112,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.auto_stories_outlined,
               title: '私人日記工具',
-              body: '它優先考慮的是個人書寫、回顧與保護，而不是團隊協作或公開分享。',
+              body: '它優先考慮的是個人日記、回顧與保護，而不是團隊協作或公開分享。',
             ),
             AboutItemCopy(
               icon: Icons.storage_rounded,
@@ -142,9 +142,14 @@ abstract final class SettingsAboutCopy {
       ],
       sections: <AboutSectionCopy>[
         AboutSectionCopy(
-          title: '兩種可信裝置模式',
+          title: '三種解鎖模式',
           subtitle: '解鎖模式決定回到前景時，系統要用哪種方式重新驗證。',
           items: <AboutItemCopy>[
+            AboutItemCopy(
+              icon: Icons.no_encryption_gmailerrorred_outlined,
+              title: '無驗證',
+              body: '回前景時不額外驗證，逾時後走 `autoTrusted` 直接恢復可信 session。適合尚未設定螢幕鎖的裝置，但安全性較低。',
+            ),
             AboutItemCopy(
               icon: Icons.lock_outline,
               title: '裝置螢幕鎖',
@@ -158,7 +163,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.info_outline_rounded,
               title: '共同前提',
-              body: '兩種模式都要求裝置本身已設定螢幕鎖；生物驗證模式另外要求至少有一種生物辨識已登錄。',
+              body: '螢幕鎖與生物驗證模式都要求裝置本身已設定螢幕鎖；生物驗證模式 ideally 還要求至少有一種生物辨識已登錄。',
             ),
           ],
         ),
@@ -179,7 +184,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.sync_rounded,
               title: 'Resume 行為',
-              body: '回前景時若需要進一步驗證，`ResumeUnlockAction` 會要求 UI 重新觸發 `unlock()`，跳出系統驗證對話框。',
+              body: '逾時後依模式分支：`none` 走 `autoTrusted` 直接恢復；`deviceLock` / `biometric` 則走 `keystoreUnlock`，要求 UI 重新觸發 `unlock()` 並跳出系統驗證對話框。',
             ),
           ],
         ),
@@ -216,7 +221,7 @@ abstract final class SettingsAboutCopy {
         'LDJ2',
         'AES-256-GCM',
         'Argon2id',
-        'Key Slot',
+        'Vault 金鑰',
       ],
       sections: <AboutSectionCopy>[
         AboutSectionCopy(
@@ -235,29 +240,29 @@ abstract final class SettingsAboutCopy {
             ),
             AboutItemCopy(
               icon: Icons.layers_outlined,
-              title: '同一把金鑰可有多條打開路徑',
-              body: '同一把 `fileKey` 會包進不同 key slot，讓可信裝置與復原金鑰都能對應到同一份加密內容。',
+              title: '兩層金鑰架構',
+              body: '檔案層的 `fileKey` 以 recovery slot 包在 header；可信裝置與復原金鑰則都透過 vault 層的 `recoveryWrapKey` 進入日記庫。',
             ),
           ],
         ),
         AboutSectionCopy(
           title: '解密路徑',
-          subtitle: '打開內容之前，先決定要從哪一條路徑取回檔案金鑰。',
+          subtitle: '打開內容分兩段：先進入 vault，再解開各檔。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.phonelink_lock_outlined,
-              title: 'Device Slot',
-              body: '可信裝置 session 會優先使用 `device` slot，透過 Android Keystore unwrap `fileKey`。',
+              title: '可信裝置（Vault 層）',
+              body: '可信裝置 session 會透過 Android Keystore unwrap vault 層 wrapped recovery key，取得 `recoveryWrapKey` 後才能讀寫日記庫。',
             ),
             AboutItemCopy(
               icon: Icons.key_outlined,
-              title: 'Recovery Slot',
-              body: '若目前沒有可信裝置條件，但持有 `recoveryWrapKey`，則改走 `recovery` slot 解開內容。',
+              title: 'Recovery Slot（檔案層）',
+              body: '不論從可信裝置或復原金鑰進入，都用 `recoveryWrapKey` 從各檔 header 的 recovery slot 解出 `fileKey`，再解密正文。',
             ),
             AboutItemCopy(
               icon: Icons.error_outline_rounded,
               title: '失敗就整體失敗',
-              body: '若 slot 找不到、unwrap 失敗，或 header / 正文被破壞，整個解密都應該失敗，不會默默回傳可疑內容。',
+              body: '若 vault 金鑰錯誤、slot unwrap 失敗，或 header / 正文被破壞，整個解密都應該失敗，不會默默回傳可疑內容。',
             ),
           ],
         ),
@@ -277,8 +282,8 @@ abstract final class SettingsAboutCopy {
             ),
             AboutItemCopy(
               icon: Icons.verified_user_outlined,
-              title: '不只拿來解日記',
-              body: 'recovery wrapping key 除了能解開 recovery slot，也會參與可信裝置資料包裝與搜尋索引金鑰衍生。',
+              title: 'Vault 進入點',
+              body: 'recovery wrapping key 是進入整個日記庫的關鍵：解開各檔 recovery slot、包裝可信裝置資料，並衍生搜尋索引金鑰。',
             ),
           ],
         ),
