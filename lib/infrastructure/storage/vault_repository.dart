@@ -20,6 +20,7 @@ import '../security/app_lock_service.dart';
 import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
+import '../security/unlock_mode_policy.dart';
 import 'restore_precheck.dart';
 import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
@@ -408,7 +409,15 @@ class VaultRepository {
     );
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
 
-    final KeystoreAuthKind authKind = await _requireCurrentKeystoreAuthKind();
+    final AppUnlockMode unlockMode = await _appLockService.getUnlockMode();
+    final UnlockModeCapabilityFailure? wrapFailure = await precheckUnlockModeChange(
+      appLock: _appLockService,
+      mode: unlockMode,
+    );
+    if (wrapFailure != null) {
+      throw StateError(wrapFailure.message);
+    }
+    final KeystoreAuthKind authKind = keystoreAuthFor(unlockMode);
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager.ensureDeviceKey(
       metadata.vaultId,
       authKind: authKind,
@@ -1262,7 +1271,7 @@ class VaultRepository {
     return files;
   }
 
-  Future<void> _storeWrappedRecoveryKey({
+  Future<DeviceWrappedPayload> _storeWrappedRecoveryKey({
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
     required KeystoreAuthKind authKind,
@@ -1283,17 +1292,16 @@ class VaultRepository {
         platform: payload.platform,
       ),
     );
+    await _deviceKeyManager.purgeInactiveDeviceKeys(
+      vaultId,
+      activeAuthKind: authKind,
+    );
+    return payload;
   }
 
   Future<KeystoreAuthKind> _requireCurrentKeystoreAuthKind() async {
     final AppUnlockMode mode = await _appLockService.getUnlockMode();
-    if (mode == AppUnlockMode.none) {
-      return KeystoreAuthKind.plain;
-    }
-    if (!await _appLockService.canUseDeviceCredential()) {
-      throw StateError('請先在系統設定中建立裝置螢幕鎖，才能使用此解鎖方式。');
-    }
-    return _appLockService.keystoreAuthKindForCurrentMode();
+    return requireKeystoreAuthKindForMode(appLock: _appLockService, mode: mode);
   }
 
   Future<void> _resumeRewrapIfNeeded(
@@ -1399,31 +1407,63 @@ class VaultRepository {
     return _indexDatabaseManager.deleteDatabaseFiles();
   }
 
+  /// 目前 session 的 Keystore 保護是否與解鎖模式偏好一致。
+  Future<bool> needsKeystoreMigration(UnlockedVaultSession session) async {
+    final KeystoreAuthKind expected = await _requireCurrentKeystoreAuthKind();
+    final WrappedRecoveryKeyRecord? wrappedRecord =
+        await _deviceKeyManager.readWrappedRecoveryKey(session.vaultId);
+    String? syncedSuffix;
+    try {
+      syncedSuffix = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
+    } on StateError {
+      return true;
+    }
+    return !trustedProtectionMatches(
+      session: session,
+      expected: expected,
+      syncedSuffix: syncedSuffix,
+      wrappedRecord: wrappedRecord,
+    );
+  }
+
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
     UnlockedVaultSession session, {
     AppUnlockMode? targetMode,
   }) async {
+    if (targetMode != null) {
+      final UnlockModeCapabilityFailure? failure = await precheckUnlockModeChange(
+        appLock: _appLockService,
+        mode: targetMode,
+      );
+      if (failure != null) {
+        throw StateError(failure.message);
+      }
+    }
     final KeystoreAuthKind expected = targetMode != null
         ? keystoreAuthFor(targetMode)
         : await _requireCurrentKeystoreAuthKind();
-    final String expectedSuffix = expected.storageSuffix;
+    final WrappedRecoveryKeyRecord? wrappedRecord =
+        await _deviceKeyManager.readWrappedRecoveryKey(session.vaultId);
+    String? syncedSuffix;
     try {
-      final String? synced = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
-      if (synced == expectedSuffix) {
-        return session;
-      }
+      syncedSuffix = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
     } on StateError {
       await _openIndexForSession(session);
-      final String? synced = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
-      if (synced == expectedSuffix) {
-        return session;
-      }
+      syncedSuffix = await _requireOpenIndex().getAppValue(kKeystoreWrapModeKey);
+    }
+    if (trustedProtectionMatches(
+      session: session,
+      expected: expected,
+      syncedSuffix: syncedSuffix,
+      wrappedRecord: wrappedRecord,
+    )) {
+      return session;
     }
     final UnlockedVaultSession refreshed = await refreshTrustedSessionProtection(
       session,
       authKind: expected,
     );
-    await _requireOpenIndex().setAppValue(kKeystoreWrapModeKey, expectedSuffix);
+    await _requireOpenIndex().setAppValue(kKeystoreWrapModeKey, expected.storageSuffix);
     return refreshed;
   }
 
@@ -1436,21 +1476,10 @@ class VaultRepository {
       metadata.vaultId,
       authKind: authKind,
     );
-    final DeviceWrappedPayload payload = await _deviceKeyManager.wrapWithDeviceKey(
+    await _storeWrappedRecoveryKey(
       vaultId: metadata.vaultId,
-      plaintextBytes: _requireRecoveryWrapKey(session),
+      recoveryWrapKey: _requireRecoveryWrapKey(session),
       authKind: authKind,
-    );
-    await _deviceKeyManager.storeWrappedRecoveryKey(
-      vaultId: metadata.vaultId,
-      record: WrappedRecoveryKeyRecord(
-        slotId: payload.slotId,
-        nonceBase64: payload.nonceBase64,
-        ciphertextBase64: payload.ciphertextBase64,
-        wrappedAt: DateTime.now(),
-        formatVersion: WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion,
-        platform: deviceInfo.platform,
-      ),
     );
     return session.copyWith(deviceSlotId: deviceInfo.slotId);
   }

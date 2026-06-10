@@ -22,6 +22,7 @@ import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/diary_presence_tag_counts.dart';
+import '../../../shared/utils/entry_sorting.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/presentation/session_status_copy.dart';
@@ -838,13 +839,7 @@ class _TagsManagePaneState extends ConsumerState<_TagsManagePane> {
               e.tags.any((String t) => normalizeText(t) == norm),
         )
         .toList();
-    out.sort((EntryIndexRecord a, EntryIndexRecord b) {
-      final int byDate = b.date.value.compareTo(a.date.value);
-      if (byDate != 0) {
-        return byDate;
-      }
-      return b.updatedAt.compareTo(a.updatedAt);
-    });
+    out.sort(compareEntriesNewestFirst);
     return out;
   }
 

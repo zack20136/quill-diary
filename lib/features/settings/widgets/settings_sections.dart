@@ -323,6 +323,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
 class UnlockMethodSectionBody extends StatelessWidget {
   const UnlockMethodSectionBody({
     required this.enabled,
+    required this.changeAllowed,
     required this.busy,
     required this.unlockMode,
     required this.onModeSelected,
@@ -330,6 +331,7 @@ class UnlockMethodSectionBody extends StatelessWidget {
   });
 
   final bool enabled;
+  final bool changeAllowed;
   final bool busy;
   final AppUnlockMode unlockMode;
   final Future<void> Function(AppUnlockMode mode) onModeSelected;
@@ -359,9 +361,17 @@ class UnlockMethodSectionBody extends StatelessWidget {
       children: <Widget>[
         _UnlockModeChoiceBar(
           selected: unlockMode,
-          busy: busy,
+          busy: busy || !changeAllowed,
           onSelected: onModeSelected,
         ),
+        if (!changeAllowed) ...<Widget>[
+          const SizedBox(height: 10),
+          const SettingsInfoBanner(
+            icon: Icons.info_outline_rounded,
+            message: kUnlockModeChangeNeedsUnlockMessage,
+            tone: SettingsBannerTone.neutral,
+          ),
+        ],
         const SizedBox(height: 12),
         Text(
           descriptionForMode(unlockMode),

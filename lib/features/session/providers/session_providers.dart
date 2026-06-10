@@ -7,6 +7,7 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../infrastructure/database/index_database_errors.dart';
 import '../../../infrastructure/security/app_lock_service.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../../../infrastructure/security/unlock_mode_policy.dart';
 import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -136,24 +137,17 @@ class AppSessionController extends Notifier<AppSessionState> {
         await _expireCurrentSession();
         final AppLockService appLock = ref.read(appLockServiceProvider);
         final AppUnlockMode mode = await appLock.getUnlockMode();
-        switch (mode) {
-          case AppUnlockMode.none:
-            state = state.copyWith(
-              resumeAction: ResumeUnlockAction.autoTrusted,
-            );
-          case AppUnlockMode.deviceLock:
-            state = const AppSessionState(
-              status: AppLockStatus.locked,
-              message: kUseDeviceLockToUnlockMessage,
-              resumeAction: ResumeUnlockAction.keystoreUnlock,
-            );
-          case AppUnlockMode.biometric:
-            state = const AppSessionState(
-              status: AppLockStatus.locked,
-              message: kStartupNeedsBiometricMessage,
-              resumeAction: ResumeUnlockAction.keystoreUnlock,
-            );
+        if (mode == AppUnlockMode.none) {
+          state = state.copyWith(
+            resumeAction: ResumeUnlockAction.autoTrusted,
+          );
+          break;
         }
+        state = AppSessionState(
+          status: AppLockStatus.locked,
+          message: lockedResumeMessageFor(mode),
+          resumeAction: ResumeUnlockAction.keystoreUnlock,
+        );
         break;
       case AppLifecycleState.detached:
         break;
@@ -185,12 +179,29 @@ class AppSessionController extends Notifier<AppSessionState> {
     beginTrustedUnlock();
     try {
       UnlockedVaultSession session = await repository.openTrustedSession();
+      if (await repository.needsKeystoreMigration(session)) {
+        state = state.copyWith(message: kKeystoreMigrationInProgressMessage);
+      }
       session = await repository.ensureKeystoreMatchesUnlockMode(session);
       await repository.ensureIndexReady(session);
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
       return UnlockOutcome.success;
     } on DeviceKeyUserCancelledException {
       return _handleTrustedDeviceFailure();
+    } on DeviceKeyAuthTimeoutException {
+      return _handleTrustedDeviceFailure();
+    } on DeviceKeyAuthLockoutException catch (error) {
+      state = AppSessionState(
+        status: AppLockStatus.locked,
+        message: error.message,
+      );
+      return UnlockOutcome.failed;
+    } on DeviceKeyNoDeviceCredentialException catch (error) {
+      state = AppSessionState(
+        status: AppLockStatus.locked,
+        message: error.message,
+      );
+      return UnlockOutcome.failed;
     } on DeviceKeyAuthFailedException {
       return _handleTrustedDeviceFailure();
     } on DeviceKeyBiometricNotEnrolledException {

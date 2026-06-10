@@ -281,6 +281,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: unlockModeAsync.when(
                       data: (AppUnlockMode unlockMode) => UnlockMethodSectionBody(
                         enabled: recoveryMetadataAsync.asData?.value != null,
+                        changeAllowed: hasUnlockedSession,
                         busy: _busy,
                         unlockMode: unlockMode,
                         onModeSelected: (AppUnlockMode selected) => _runAction(

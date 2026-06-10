@@ -379,7 +379,7 @@ class IndexDatabase extends GeneratedDatabase {
       LEFT JOIN entry_tags t ON t.entry_id = e.id
       ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
       GROUP BY e.id
-      ORDER BY e.date DESC, e.updated_at DESC;
+      ORDER BY e.date DESC, e.created_at DESC, e.updated_at DESC;
     ''';
     final List<QueryRow> rows = await customSelect(
       sql,
@@ -420,7 +420,7 @@ class IndexDatabase extends GeneratedDatabase {
           )
         )
         GROUP BY e.id
-        ORDER BY e.date DESC, e.updated_at DESC;
+        ORDER BY e.date DESC, e.created_at DESC, e.updated_at DESC;
       ''',
       variables: <Variable<Object>>[
         Variable.withString(likeQuery),
@@ -469,7 +469,7 @@ class IndexDatabase extends GeneratedDatabase {
         LEFT JOIN entry_tags t ON t.entry_id = e.id
         WHERE e.date LIKE ?
         GROUP BY e.id
-        ORDER BY e.date ASC, e.updated_at DESC;
+        ORDER BY e.date ASC, e.created_at DESC, e.updated_at DESC;
       ''',
       variables: <Variable<Object>>[Variable.withString('$prefix%')],
     ).get();

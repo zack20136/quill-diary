@@ -62,6 +62,12 @@ class MainActivity : FlutterFragmentActivity() {
                     "ensureKey" -> result.success(ensureKey(call))
                     "hasKey" -> result.success(hasKey(call))
                     "canUseDeviceCredential" -> result.success(canUseDeviceCredential())
+                    "canUseBiometric" -> result.success(canUseBiometric())
+                    "getDeviceAuthCapabilities" -> result.success(getDeviceAuthCapabilities())
+                    "purgeInactiveDeviceKeys" -> {
+                        purgeInactiveDeviceKeys(call)
+                        result.success(null)
+                    }
                     "wrapWithDeviceKey" -> wrapWithDeviceKey(call, result)
                     "unwrapWithDeviceKey" -> unwrapWithDeviceKey(call, result)
                     "deleteKey" -> {
@@ -72,11 +78,7 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             } catch (error: Throwable) {
-                result.error(
-                    "device_key_error",
-                    error.message ?: "Unknown device key error.",
-                    null,
-                )
+                completeDeviceKeyError(result, error)
             }
         }
 
@@ -359,6 +361,34 @@ class MainActivity : FlutterFragmentActivity() {
         return keyguard.isDeviceSecure
     }
 
+    private fun canUseBiometric(): Boolean {
+        val biometricManager = BiometricManager.from(this)
+        return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+    }
+
+    private fun getDeviceAuthCapabilities(): Map<String, Boolean> {
+        return mapOf(
+            "deviceCredential" to canUseDeviceCredential(),
+            "biometricStrong" to canUseBiometric(),
+        )
+    }
+
+    private fun purgeInactiveDeviceKeys(call: MethodCall) {
+        val vaultId = requireVaultId(call)
+        val keepKind = requireAuthKind(call)
+        val keyStore = loadKeyStore()
+        for (kind in AuthKind.entries) {
+            if (kind == keepKind) {
+                continue
+            }
+            val alias = aliasFor(vaultId, kind)
+            if (keyStore.containsAlias(alias)) {
+                keyStore.deleteEntry(alias)
+            }
+        }
+    }
+
     private fun ensureKey(call: MethodCall): Map<String, Any> {
         val vaultId = requireVaultId(call)
         val kind = requireAuthKind(call)
@@ -418,11 +448,7 @@ class MainActivity : FlutterFragmentActivity() {
                 onSuccess = onSuccess,
             )
         } catch (error: Throwable) {
-            result.error(
-                "device_key_invalidated",
-                error.message ?: "Unable to wrap data with device key.",
-                null,
-            )
+            completeDeviceKeyError(result, error)
         }
     }
 
@@ -464,11 +490,7 @@ class MainActivity : FlutterFragmentActivity() {
                 onSuccess = onSuccess,
             )
         } catch (error: Throwable) {
-            result.error(
-                "device_key_invalidated",
-                error.message ?: "Unable to unwrap data with device key.",
-                null,
-            )
+            completeDeviceKeyError(result, error)
         }
     }
 
@@ -608,6 +630,9 @@ class MainActivity : FlutterFragmentActivity() {
         result: MethodChannel.Result,
         onSuccess: (Cipher) -> Unit,
     ) {
+        if (rejectIfDeviceCredentialUnavailable(kind, result)) {
+            return
+        }
         val authenticators =
             when (kind) {
                 AuthKind.PLAIN ->
@@ -649,16 +674,8 @@ class MainActivity : FlutterFragmentActivity() {
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        val code =
-                            when (errorCode) {
-                                BiometricPrompt.ERROR_NEGATIVE_BUTTON,
-                                BiometricPrompt.ERROR_USER_CANCELED,
-                                BiometricPrompt.ERROR_CANCELED,
-                                BiometricPrompt.ERROR_TIMEOUT,
-                                BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL -> "device_key_auth_cancelled"
-                                else -> "device_key_auth_failed"
-                            }
-                        result.error(code, errString.toString(), null)
+                        val (code, message) = mapAuthenticationError(errorCode, errString)
+                        result.error(code, message, null)
                     }
                 },
             )
@@ -671,6 +688,65 @@ class MainActivity : FlutterFragmentActivity() {
             promptBuilder.build(),
             BiometricPrompt.CryptoObject(cipher),
         )
+    }
+
+    private fun rejectIfDeviceCredentialUnavailable(
+        kind: AuthKind,
+        result: MethodChannel.Result,
+    ): Boolean {
+        if (kind == AuthKind.PLAIN) {
+            return false
+        }
+        if (canUseDeviceCredential()) {
+            return false
+        }
+        result.error(
+            "device_key_no_device_credential",
+            DEVICE_CREDENTIAL_REQUIRED_MESSAGE,
+            null,
+        )
+        return true
+    }
+
+    private fun mapAuthenticationError(
+        errorCode: Int,
+        errString: CharSequence,
+    ): Pair<String, String> {
+        val detail = errString.toString().trim()
+        return when (errorCode) {
+            BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+            BiometricPrompt.ERROR_USER_CANCELED,
+            BiometricPrompt.ERROR_CANCELED,
+            -> "device_key_auth_cancelled" to detail.ifEmpty { "使用者已取消裝置驗證。" }
+            BiometricPrompt.ERROR_TIMEOUT ->
+                "device_key_auth_timeout" to detail.ifEmpty { "驗證逾時，請再試一次。" }
+            BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL ->
+                "device_key_no_device_credential" to DEVICE_CREDENTIAL_REQUIRED_MESSAGE
+            BiometricPrompt.ERROR_NO_BIOMETRICS ->
+                "device_key_biometric_not_enrolled" to BIOMETRIC_ENROLLMENT_REQUIRED_MESSAGE
+            BiometricPrompt.ERROR_LOCKOUT,
+            BiometricPrompt.ERROR_LOCKOUT_PERMANENT,
+            ->
+                "device_key_auth_lockout" to detail.ifEmpty { "驗證失敗次數過多，請稍後再試。" }
+            else -> "device_key_auth_failed" to detail.ifEmpty { "裝置驗證失敗。" }
+        }
+    }
+
+    private fun completeDeviceKeyError(result: MethodChannel.Result, error: Throwable) {
+        val (code, message) = mapDeviceKeyError(error)
+        result.error(code, message, null)
+    }
+
+    private fun mapDeviceKeyError(error: Throwable): Pair<String, String> {
+        val detail = error.message?.trim().orEmpty()
+        val lowerDetail = detail.lowercase()
+        if (lowerDetail.contains("at least one biometric must be enrolled")) {
+            return "device_key_biometric_not_enrolled" to BIOMETRIC_ENROLLMENT_REQUIRED_MESSAGE
+        }
+        if (lowerDetail.contains("no_device_credential")) {
+            return "device_key_no_device_credential" to DEVICE_CREDENTIAL_REQUIRED_MESSAGE
+        }
+        return "device_key_invalidated" to detail.ifEmpty { "Device key operation failed." }
     }
 
     private fun copyFileToSafTree(call: MethodCall, result: MethodChannel.Result) {
@@ -770,5 +846,9 @@ class MainActivity : FlutterFragmentActivity() {
         private const val GCM_TAG_BITS = 128
         private const val WRAP_PROMPT_REASON = "請驗證裝置身分以保護恢復金鑰"
         private const val UNWRAP_PROMPT_REASON = "請驗證裝置身分以解鎖恢復金鑰"
+        private const val DEVICE_CREDENTIAL_REQUIRED_MESSAGE =
+            "請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。"
+        private const val BIOMETRIC_ENROLLMENT_REQUIRED_MESSAGE =
+            "啟用生物驗證前，請先到裝置設定新增至少一種生物辨識。"
     }
 }

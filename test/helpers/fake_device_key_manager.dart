@@ -90,6 +90,12 @@ class TestDeviceKeyManager implements DeviceKeyManager {
       platform: 'android_keystore_test',
     );
   }
+
+  @override
+  Future<void> purgeInactiveDeviceKeys(
+    String vaultId, {
+    required KeystoreAuthKind activeAuthKind,
+  }) async {}
 }
 
 /// Records keystore auth kind usage for vault integration tests.
@@ -106,6 +112,8 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
 
   KeystoreAuthKind? lastEnsureAuthKind;
   KeystoreAuthKind? lastWrapAuthKind;
+  KeystoreAuthKind? lastPurgeAuthKind;
+  int purgeInactiveDeviceKeysCalls = 0;
 
   /// 測試用：直接寫入受信任裝置資料。
   void seedTrustedDevice({
@@ -204,6 +212,15 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
 
   List<int> _secretKeyBytes(String slotId) {
     return _secureKey;
+  }
+
+  @override
+  Future<void> purgeInactiveDeviceKeys(
+    String vaultId, {
+    required KeystoreAuthKind activeAuthKind,
+  }) async {
+    purgeInactiveDeviceKeysCalls++;
+    lastPurgeAuthKind = activeAuthKind;
   }
 }
 

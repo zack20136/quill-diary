@@ -110,6 +110,24 @@ final class DeviceKeyBiometricNotEnrolledException extends DeviceKeyException {
       : super('啟用生物驗證前，請先到裝置設定新增至少一種生物辨識。');
 }
 
+final class DeviceKeyNoDeviceCredentialException extends DeviceKeyException {
+  const DeviceKeyNoDeviceCredentialException([
+    super.message = '請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。',
+  ]);
+}
+
+final class DeviceKeyAuthLockoutException extends DeviceKeyException {
+  const DeviceKeyAuthLockoutException([
+    super.message = '驗證失敗次數過多，請稍後再試。',
+  ]);
+}
+
+final class DeviceKeyAuthTimeoutException extends DeviceKeyException {
+  const DeviceKeyAuthTimeoutException([
+    super.message = '驗證逾時，請再試一次。',
+  ]);
+}
+
 final class DeviceKeyInvalidatedException extends DeviceKeyException {
   const DeviceKeyInvalidatedException([super.message = '裝置金鑰已失效。']);
 }
@@ -152,6 +170,11 @@ abstract class DeviceKeyManager {
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(VaultId vaultId);
 
   Future<void> clearTrustedKey(VaultId vaultId);
+
+  Future<void> purgeInactiveDeviceKeys(
+    VaultId vaultId, {
+    required KeystoreAuthKind activeAuthKind,
+  });
 }
 
 /// Android implementation backed by MethodChannel plus flutter_secure_storage.
@@ -178,6 +201,21 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     });
     await _storage.delete(key: _deviceInfoStorageKey(vaultId));
     await _storage.delete(key: _wrappedRecoveryKeyStorageKey(vaultId));
+  }
+
+  @override
+  Future<void> purgeInactiveDeviceKeys(
+    VaultId vaultId, {
+    required KeystoreAuthKind activeAuthKind,
+  }) async {
+    try {
+      await _channel.invokeMethod<void>('purgeInactiveDeviceKeys', <String, Object?>{
+        'vaultId': vaultId,
+        'keystoreAuthKind': activeAuthKind.wireValue,
+      });
+    } on PlatformException catch (error) {
+      throw _mapPlatformException(error);
+    }
   }
 
   @override
@@ -333,6 +371,14 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     switch (error.code) {
       case 'device_key_auth_cancelled':
         return const DeviceKeyUserCancelledException();
+      case 'device_key_auth_timeout':
+        return DeviceKeyAuthTimeoutException(error.message ?? '驗證逾時，請再試一次。');
+      case 'device_key_auth_lockout':
+        return DeviceKeyAuthLockoutException(error.message ?? '驗證失敗次數過多，請稍後再試。');
+      case 'device_key_no_device_credential':
+        return DeviceKeyNoDeviceCredentialException(
+          error.message ?? '請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。',
+        );
       case 'device_key_auth_failed':
         return DeviceKeyAuthFailedException(error.message ?? '裝置驗證失敗。');
       case 'device_key_invalidated':
@@ -394,5 +440,11 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
     required VaultId vaultId,
     required List<int> plaintextBytes,
     required KeystoreAuthKind authKind,
+  }) async => throw _error;
+
+  @override
+  Future<void> purgeInactiveDeviceKeys(
+    VaultId vaultId, {
+    required KeystoreAuthKind activeAuthKind,
   }) async => throw _error;
 }

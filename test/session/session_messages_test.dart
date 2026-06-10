@@ -18,6 +18,22 @@ void main() {
     );
   });
 
+  test('DeviceKeyAuthTimeoutException maps to retry verification message', () {
+    expect(
+      friendlySessionErrorMessage(const DeviceKeyAuthTimeoutException()),
+      kLockedRetryVerificationMessage,
+    );
+  });
+
+  test('DeviceKeyNoDeviceCredentialException surfaces its message', () {
+    const DeviceKeyNoDeviceCredentialException exception =
+        DeviceKeyNoDeviceCredentialException();
+    expect(
+      friendlySessionErrorMessage(exception),
+      exception.message,
+    );
+  });
+
   test('technical StateError falls back to generic unlock failure message', () {
     expect(
       friendlySessionErrorMessage(StateError('java.lang.IllegalStateException')),

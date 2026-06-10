@@ -6,10 +6,17 @@ import '../../shared/utils/user_facing_error.dart';
 import '../settings/settings_copy.dart';
 import 'state/app_session_state.dart';
 
+export '../../infrastructure/security/unlock_mode_policy.dart'
+    show
+        kBiometricNotEnrolledSwitchModeMessage,
+        kStartupNeedsBiometricMessage,
+        kUnlockModeChangeNeedsUnlockMessage,
+        kUnlockModeNeedsDeviceLockMessage,
+        kUseDeviceLockToUnlockMessage;
+
 const String kAndroidOnlyMessage = '此應用程式目前僅支援 Android。';
 const String kStartupNeedsRecoveryKeyMessage = '尚未建立復原金鑰。';
 const String kStartupNeedsTrustedDeviceMessage = '這台裝置尚未授權，請使用復原金鑰解鎖。';
-const String kStartupNeedsBiometricMessage = '請先完成生物驗證。';
 const String kUnlockFailedMessage = '解鎖失敗，請再試一次。';
 const String kRecoveryUnlockSuccessMessage = '已使用復原金鑰解鎖。';
 const String kRecoverySetupSuccessMessage = '復原金鑰已建立，裝置保護已啟用。';
@@ -18,16 +25,12 @@ const String kAppLockedMessage = '應用程式已鎖定。';
 const String kTrustedUnlockInProgressMessage = '正在以可信裝置解鎖…';
 const String kLockedRetryVerificationMessage =
     '目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。';
-const String kUseDeviceLockToUnlockMessage = '請使用裝置螢幕鎖解鎖。';
-const String kBiometricNotEnrolledSwitchModeMessage =
-    '裝置尚未登錄指紋或臉部。請先到系統設定完成生物辨識設定，或改用裝置螢幕鎖。';
 const String kUnlockModeNoneDescription =
     '回到前景時不額外驗證，直接以可信裝置解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。';
 const String kUnlockModeBiometricDescription =
     '回到前景時優先以指紋或臉部辨識解鎖，系統提示內可改用裝置螢幕鎖，不必輸入復原金鑰。';
 const String kUnlockModeDeviceLockDescription =
     '回到前景時一律以裝置螢幕鎖（PIN、圖案或密碼）解鎖。請先在裝置設定中建立螢幕鎖。';
-const String kUnlockModeNeedsDeviceLockMessage = '請先在裝置設定中建立螢幕鎖，才能使用此模式。';
 const String kRecoveryKeyRotatedMessage = '復原金鑰已更新，請立即保存新金鑰。';
 const String kRecoveryRequiredAfterRestoreMessage =
     '還原後需輸入建立此備份時保存的復原金鑰。';
@@ -74,7 +77,8 @@ String friendlySessionErrorMessage(
     return kIndexDatabaseUnreadableMessage;
   }
   if (error is DeviceKeyUserCancelledException ||
-      error is DeviceKeyAuthFailedException) {
+      error is DeviceKeyAuthFailedException ||
+      error is DeviceKeyAuthTimeoutException) {
     return kLockedRetryVerificationMessage;
   }
   if (error is DeviceKeyException) {

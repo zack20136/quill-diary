@@ -153,6 +153,10 @@ class FakeVaultRepository extends VaultRepository {
         if (dateOrder != 0) {
           return dateOrder;
         }
+        final int byCreated = b.createdAt.compareTo(a.createdAt);
+        if (byCreated != 0) {
+          return byCreated;
+        }
         return b.updatedAt.compareTo(a.updatedAt);
       });
   }

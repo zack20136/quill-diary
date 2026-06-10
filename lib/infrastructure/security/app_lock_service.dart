@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../config/app_identifiers.dart';
 import 'app_unlock_mode.dart';
 import 'keystore_unlock_policy.dart';
+import 'unlock_mode_policy.dart';
 
 /// Persists the user's preferred trusted-device unlock policy outside the vault.
 abstract class AppLockService {
@@ -18,6 +19,10 @@ abstract class AppLockService {
   Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode();
 
   Future<bool> canUseDeviceCredential();
+
+  Future<bool> canUseBiometric();
+
+  Future<DeviceAuthCapabilities> getDeviceAuthCapabilities();
 }
 
 /// File-backed app-lock preferences plus native Android credential capability checks.
@@ -44,19 +49,46 @@ class LocalAppLockService implements AppLockService {
 
   @override
   Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async {
-    return keystoreAuthFor(await getUnlockMode());
+    return requireKeystoreAuthKindForMode(
+      appLock: this,
+      mode: await getUnlockMode(),
+    );
   }
 
   @override
   Future<bool> canUseDeviceCredential() async {
+    final DeviceAuthCapabilities capabilities = await getDeviceAuthCapabilities();
+    return capabilities.deviceCredentialAvailable;
+  }
+
+  @override
+  Future<bool> canUseBiometric() async {
+    final DeviceAuthCapabilities capabilities = await getDeviceAuthCapabilities();
+    return capabilities.biometricStrongAvailable;
+  }
+
+  @override
+  Future<DeviceAuthCapabilities> getDeviceAuthCapabilities() async {
     if (!Platform.isAndroid) {
-      return false;
+      return const DeviceAuthCapabilities(
+        deviceCredentialAvailable: false,
+        biometricStrongAvailable: false,
+      );
     }
     try {
-      final bool? ok = await _deviceKeyChannel.invokeMethod<bool>('canUseDeviceCredential');
-      return ok ?? false;
+      final Map<Object?, Object?>? result =
+          await _deviceKeyChannel.invokeMapMethod<Object?, Object?>(
+        'getDeviceAuthCapabilities',
+      );
+      return DeviceAuthCapabilities(
+        deviceCredentialAvailable: result?['deviceCredential'] == true,
+        biometricStrongAvailable: result?['biometricStrong'] == true,
+      );
     } on PlatformException {
-      return false;
+      return const DeviceAuthCapabilities(
+        deviceCredentialAvailable: false,
+        biometricStrongAvailable: false,
+      );
     }
   }
 
@@ -125,9 +157,21 @@ class UnsupportedAppLockService implements AppLockService {
   Future<void> setUnlockMode(AppUnlockMode mode) async {}
 
   @override
-  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async =>
-      KeystoreAuthKind.deviceCredential;
+  Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async {
+    return KeystoreAuthKind.plain;
+  }
 
   @override
   Future<bool> canUseDeviceCredential() async => false;
+
+  @override
+  Future<bool> canUseBiometric() async => false;
+
+  @override
+  Future<DeviceAuthCapabilities> getDeviceAuthCapabilities() async {
+    return const DeviceAuthCapabilities(
+      deviceCredentialAvailable: false,
+      biometricStrongAvailable: false,
+    );
+  }
 }

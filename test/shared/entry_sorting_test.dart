@@ -22,14 +22,16 @@ void main() {
     expect(sorted.last.id, 'jrn_old');
   });
 
-  test('同日期以 updatedAt 新到舊排序', () {
+  test('同日期以 createdAt 新到舊排序', () {
     final EntryIndexRecord earlier = buildEntryIndexRecord(
       id: 'jrn_a',
-      updatedAt: DateTime.parse('2026-05-13T10:00:00Z'),
+      createdAt: DateTime.parse('2026-05-13T10:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-13T22:00:00Z'),
     );
     final EntryIndexRecord later = buildEntryIndexRecord(
       id: 'jrn_b',
-      updatedAt: DateTime.parse('2026-05-13T18:00:00Z'),
+      createdAt: DateTime.parse('2026-05-13T18:00:00Z'),
+      updatedAt: DateTime.parse('2026-05-13T11:00:00Z'),
     );
 
     final List<EntryIndexRecord> sorted = <EntryIndexRecord>[earlier, later]

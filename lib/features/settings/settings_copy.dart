@@ -1,5 +1,6 @@
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
+import '../../infrastructure/security/unlock_mode_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
 import '../../shared/copy/common_copy.dart';
@@ -147,9 +148,9 @@ abstract final class SettingsUnlockMethodCopy {
   static const String biometricNeedsDeviceLockHint =
       '須已登錄至少一種生物辨識，並設定裝置螢幕鎖；驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
 
-  static const String unlockModeChangeCancelled = '已取消變更，解鎖方式維持不變。';
+  static const String unlockModeChangeCancelled = kUnlockModeChangeCancelledMessage;
 
-  static const String unlockModeChangeAuthFailed = '驗證失敗，解鎖方式維持不變。';
+  static const String unlockModeChangeAuthFailed = kUnlockModeChangeAuthFailedMessage;
 }
 
 /// 備份 / 還原 / 匯入 / 匯出在設定頁不可用時的說明（空字串表示可用）。

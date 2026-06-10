@@ -5,5 +5,9 @@ int compareEntriesNewestFirst(EntryIndexRecord a, EntryIndexRecord b) {
   if (byDate != 0) {
     return byDate;
   }
+  final int byCreated = b.createdAt.compareTo(a.createdAt);
+  if (byCreated != 0) {
+    return byCreated;
+  }
   return b.updatedAt.compareTo(a.updatedAt);
 }

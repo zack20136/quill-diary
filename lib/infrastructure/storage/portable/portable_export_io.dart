@@ -11,6 +11,7 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../database/index_database.dart';
 import '../../markdown/front_matter_codec.dart';
+import '../../../shared/utils/entry_sorting.dart';
 import '../shared/vault_file_ops.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
@@ -251,13 +252,7 @@ class PortableExportIo {
     final List<EntryIndexRecord> records = (await _repository.listEntries())
         .where((EntryIndexRecord record) => selected.contains(record.id))
         .toList()
-      ..sort((EntryIndexRecord a, EntryIndexRecord b) {
-        final int byDate = b.date.value.compareTo(a.date.value);
-        if (byDate != 0) {
-          return byDate;
-        }
-        return b.updatedAt.compareTo(a.updatedAt);
-      });
+      ..sort(compareEntriesNewestFirst);
 
     final UnlockedVaultSession? exportSession = loadEntries
         ? session ?? (throw StateError('缺少匯出 HTML 所需的解鎖 session。'))
