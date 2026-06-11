@@ -17,6 +17,7 @@ EntryIndexRecord buildEntryIndexRecord({
   int attachmentCount = 0,
   int imageAttachmentCount = 0,
   int fileAttachmentCount = 0,
+  List<String> previewImagePaths = const <String>[],
 }) {
   final DateTime created = createdAt ?? DateTime.parse('2026-05-13T20:30:12Z');
   return EntryIndexRecord(
@@ -35,5 +36,6 @@ EntryIndexRecord buildEntryIndexRecord({
     attachmentCount: attachmentCount,
     imageAttachmentCount: imageAttachmentCount,
     fileAttachmentCount: fileAttachmentCount,
+    previewImagePaths: previewImagePaths,
   );
 }

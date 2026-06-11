@@ -1,7 +1,26 @@
-part of '../../pages/home_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:table_calendar/table_calendar.dart';
 
-class _CalendarSectionShell extends StatelessWidget {
-  const _CalendarSectionShell({required this.child});
+import '../../../../domain/shared/value_objects.dart';
+import '../../../../infrastructure/database/index_database.dart';
+import '../../../../shared/copy/common_copy.dart';
+import '../../../../shared/presentation/display_format.dart';
+import '../../../../shared/presentation/page_style.dart';
+import '../../../../shared/providers/tag_providers.dart';
+import '../../../../shared/utils/user_facing_error.dart';
+import '../../home_copy.dart';
+import '../../home_layout.dart';
+import '../../providers/home_providers.dart';
+import '../../../session/state/app_session_state.dart';
+import '../../state/home_state.dart';
+import '../entry_widgets.dart';
+import '../home_shared_widgets.dart';
+import 'calendar_day_cell.dart';
+import 'calendar_helpers.dart';
+
+class CalendarSectionShell extends StatelessWidget {
+  const CalendarSectionShell({required this.child, super.key});
 
   final Widget child;
 
@@ -34,11 +53,8 @@ class _CalendarSectionShell extends StatelessWidget {
   }
 }
 
-class _CalendarPane extends ConsumerWidget {
-  const _CalendarPane({
-    required this.sessionState,
-    super.key,
-  });
+class CalendarPane extends ConsumerWidget {
+  const CalendarPane({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
 
@@ -51,14 +67,16 @@ class _CalendarPane extends ConsumerWidget {
     required bool isToday,
     required bool isOutside,
     required double rowHeight,
+    required Map<String, int> tagAccents,
   }) {
-    return _CalendarDayCell(
+    return CalendarDayCell(
       day: day,
       entries: entriesByDate[DateOnly.fromDateTime(day).value] ?? const <EntryIndexRecord>[],
       isSelected: isSelected,
       isToday: isToday,
       isOutside: isOutside,
       rowHeight: rowHeight,
+      tagAccents: tagAccents,
     );
   }
 
@@ -74,40 +92,64 @@ class _CalendarPane extends ConsumerWidget {
         selectedDateRaw ?? DateOnly.fromDateTime(DateTime.now());
     final ColorScheme cs = Theme.of(context).colorScheme;
     final ThemeData theme = Theme.of(context);
+    final Map<String, int> tagAccents = ref.watch(tagAccentArgbMapProvider).maybeWhen(
+          data: (Map<String, int> m) => m,
+          orElse: () => const <String, int>{},
+        );
+    final DateTime today = DateTime.now();
 
     if (!canReadEntries) {
-      return _BlockedEntriesPane(sessionState: sessionState);
+      return HomeBlockedEntriesPane(sessionState: sessionState);
     }
 
-    return monthEntriesAsync.when(
-      data: (List<EntryIndexRecord> monthEntries) {
-        final Map<String, List<EntryIndexRecord>> entriesByDate =
-            <String, List<EntryIndexRecord>>{};
-        for (final EntryIndexRecord entry in monthEntries) {
-          entriesByDate.putIfAbsent(entry.date.value, () => <EntryIndexRecord>[]).add(entry);
-        }
+    if (monthEntriesAsync.hasError && !monthEntriesAsync.hasValue) {
+      return HomeStateCard(
+        icon: Icons.error_outline,
+        title: CommonCopy.readFailureTitle,
+        message: userFacingErrorMessage(monthEntriesAsync.error!),
+      );
+    }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Flexible(
-              flex: 12,
-              fit: FlexFit.tight,
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints shellConstraints) {
-                  final double textScale = MediaQuery.textScalerOf(context).scale(1);
-                  final double viewportHeight =
-                      shellConstraints.maxHeight - kCalendarShellVerticalInset;
-                  final double rowHeight = calendarRowHeightForAvailableHeight(
-                    viewportHeight,
-                    textScale: textScale,
-                  );
-                  final double calendarHeight = calendarContentHeight(rowHeight);
+    // 換月重載時保留版面，僅月曆表格區顯示載入狀態，避免整頁閃爍。
+    final bool monthGridLoading = monthEntriesAsync.isLoading;
+    final List<EntryIndexRecord> monthEntries = monthGridLoading
+        ? const <EntryIndexRecord>[]
+        : (monthEntriesAsync.value ?? const <EntryIndexRecord>[]);
+    final Map<String, List<EntryIndexRecord>> entriesByDate =
+        <String, List<EntryIndexRecord>>{};
+    for (final EntryIndexRecord entry in monthEntries) {
+      entriesByDate.putIfAbsent(entry.date.value, () => <EntryIndexRecord>[]).add(entry);
+    }
 
-                  return _CalendarSectionShell(
-                    child: SizedBox(
-                      height: calendarHeight,
-                      child: TableCalendar<Object>(
+    return NotificationListener<OverscrollIndicatorNotification>(
+      onNotification: (OverscrollIndicatorNotification notification) {
+        notification.disallowIndicator();
+        return false;
+      },
+      child: CustomScrollView(
+        scrollCacheExtent: HomeLayout.entryListCacheExtent,
+        slivers: <Widget>[
+          SliverToBoxAdapter(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints _) {
+                final double textScale = MediaQuery.textScalerOf(context).scale(1);
+                final double viewportHeight = MediaQuery.sizeOf(context).height * 0.52;
+                final double rowHeight = calendarRowHeightForAvailableHeight(
+                  viewportHeight - kCalendarShellVerticalInset,
+                  textScale: textScale,
+                );
+                final double calendarHeight = calendarContentHeight(rowHeight);
+
+                return CalendarSectionShell(
+                  child: Stack(
+                    children: <Widget>[
+                      SizedBox(
+                        height: calendarHeight,
+                        child: IgnorePointer(
+                          ignoring: monthGridLoading,
+                          child: Opacity(
+                            opacity: monthGridLoading ? 0.45 : 1,
+                            child: TableCalendar<Object>(
                           firstDay: DateTime(2020),
                           lastDay: DateTime(2100),
                           focusedDay: visibleMonth,
@@ -233,9 +275,10 @@ class _CalendarPane extends ConsumerWidget {
                                 entriesByDate: entriesByDate,
                                 selectedDate: selectedDate,
                                 isSelected: false,
-                                isToday: calendarIsSameDay(day, DateTime.now()),
+                                isToday: calendarIsSameDay(day, today),
                                 isOutside: day.month != focusedDay.month,
                                 rowHeight: rowHeight,
+                                tagAccents: tagAccents,
                               );
                             },
                             selectedBuilder: (BuildContext context, DateTime day, DateTime focusedDay) {
@@ -245,9 +288,10 @@ class _CalendarPane extends ConsumerWidget {
                                 entriesByDate: entriesByDate,
                                 selectedDate: selectedDate,
                                 isSelected: true,
-                                isToday: calendarIsSameDay(day, DateTime.now()),
+                                isToday: calendarIsSameDay(day, today),
                                 isOutside: day.month != focusedDay.month,
                                 rowHeight: rowHeight,
+                                tagAccents: tagAccents,
                               );
                             },
                             todayBuilder: (BuildContext context, DateTime day, DateTime focusedDay) {
@@ -260,6 +304,7 @@ class _CalendarPane extends ConsumerWidget {
                                 isToday: true,
                                 isOutside: day.month != focusedDay.month,
                                 rowHeight: rowHeight,
+                                tagAccents: tagAccents,
                               );
                             },
                             outsideBuilder: (BuildContext context, DateTime day, DateTime focusedDay) {
@@ -269,69 +314,71 @@ class _CalendarPane extends ConsumerWidget {
                                 entriesByDate: entriesByDate,
                                 selectedDate: selectedDate,
                                 isSelected: selectedDate.value == DateOnly.fromDateTime(day).value,
-                                isToday: calendarIsSameDay(day, DateTime.now()),
+                                isToday: calendarIsSameDay(day, today),
                                 isOutside: true,
                                 rowHeight: rowHeight,
+                                tagAccents: tagAccents,
                               );
                             },
                           ),
+                            ),
+                          ),
                         ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: kCalendarPaneSectionGap),
-            Expanded(
-              flex: 8,
-              child: entriesAsync.when(
-                    data: (List<EntryIndexRecord> entries) {
-                      final String dateLabel =
-                          DisplayFormat.formatDateOnlyZh(selectedDate);
-                      return _DiaryListSectionCard(
-                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
-                        stripeColor: cs.primary,
-                        expandBody: true,
-                        child: entries.isEmpty
-                            ? _PaneEmptyHint(
-                                text: HomeCopy.emptyDayMessage(dateLabel),
-                              )
-                            : SingleChildScrollView(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _CompactEntryList(entries: entries),
+                      ),
+                      if (monthGridLoading)
+                        SizedBox(
+                          height: calendarHeight,
+                          child: Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: cs.primary,
                               ),
-                      );
-                    },
-                    loading: () {
-                      final String dateLabel =
-                          DisplayFormat.formatDateOnlyZh(selectedDate);
-                      return _DiaryListSectionCard(
-                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
-                        stripeColor: cs.primary,
-                        expandBody: true,
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                    error: (Object error, StackTrace _) {
-                      final String dateLabel =
-                          DisplayFormat.formatDateOnlyZh(selectedDate);
-                      return _DiaryListSectionCard(
-                        title: HomeCopy.diarySectionTitleForDate(dateLabel),
-                        stripeColor: cs.primary,
-                        expandBody: true,
-                        child: Text(userFacingErrorMessage(error)),
-                      );
-                    },
-              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace _) => _StateCard(
-        icon: Icons.error_outline,
-        title: CommonCopy.readFailureTitle,
-        message: userFacingErrorMessage(error),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
+          SliverToBoxAdapter(
+            child: entriesAsync.when(
+              skipLoadingOnReload: true,
+              data: (List<EntryIndexRecord> entries) {
+                final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
+                return HomeDiaryListSectionCard(
+                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  stripeColor: cs.primary,
+                  child: entries.isEmpty
+                      ? HomePaneEmptyHint(text: HomeCopy.emptyDayMessage(dateLabel))
+                      : HomeCompactEntryList(entries: entries),
+                );
+              },
+              loading: () {
+                final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
+                return HomeDiaryListSectionCard(
+                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  stripeColor: cs.primary,
+                  child: const Center(child: CircularProgressIndicator()),
+                );
+              },
+              error: (Object error, StackTrace _) {
+                final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
+                return HomeDiaryListSectionCard(
+                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  stripeColor: cs.primary,
+                  child: Text(userFacingErrorMessage(error)),
+                );
+              },
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
       ),
     );
   }

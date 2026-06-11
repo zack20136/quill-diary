@@ -1,13 +1,20 @@
-part of '../../pages/home_page.dart';
+import 'package:flutter/material.dart';
 
-class _CalendarDayCell extends ConsumerWidget {
-  const _CalendarDayCell({
+import '../../../../infrastructure/database/index_database.dart';
+import '../../../../shared/presentation/tag_visual.dart';
+import '../../home_entry_helpers.dart';
+import 'calendar_helpers.dart';
+
+class CalendarDayCell extends StatelessWidget {
+  const CalendarDayCell({
     required this.day,
     required this.entries,
     required this.isSelected,
     required this.isToday,
     required this.isOutside,
     required this.rowHeight,
+    required this.tagAccents,
+    super.key,
   });
 
   final DateTime day;
@@ -16,26 +23,22 @@ class _CalendarDayCell extends ConsumerWidget {
   final bool isToday;
   final bool isOutside;
   final double rowHeight;
+  final Map<String, int> tagAccents;
 
   Color _entryTintBackground(
     ColorScheme cs,
     EntryIndexRecord entry,
-    Map<String, int> accents,
   ) {
-    final String tagLabel = _firstNonemptyTag(entry.tags);
+    final String tagLabel = firstNonemptyTag(entry.tags);
     final (Color bg, _) = tagLabel.isEmpty
         ? tagNeutralAccentPair(cs)
-        : tagResolvedAccentPair(tagLabel, cs, accents);
+        : tagResolvedAccentPair(tagLabel, cs, tagAccents);
     return Color.alphaBlend(bg.withValues(alpha: 0.22), cs.surface);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final Map<String, int> accents = ref.watch(tagAccentArgbMapProvider).maybeWhen(
-          data: (Map<String, int> m) => m,
-          orElse: () => const <String, int>{},
-        );
     final double contentOpacity = isOutside ? 0.4 : 1.0;
     final bool showTitles = calendarShouldShowEntryTitles(rowHeight);
     final List<EntryIndexRecord> visibleEntries = showTitles
@@ -45,7 +48,7 @@ class _CalendarDayCell extends ConsumerWidget {
 
     Color cellColor = cs.surface;
     if (visibleEntries.isNotEmpty) {
-      cellColor = _entryTintBackground(cs, visibleEntries.first, accents);
+      cellColor = _entryTintBackground(cs, visibleEntries.first);
     }
     if (isSelected) {
       cellColor = Color.alphaBlend(
@@ -71,7 +74,7 @@ class _CalendarDayCell extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _CalendarDayNumberBadge(
+                CalendarDayNumberBadge(
                   day: day.day,
                   date: day,
                   isSelected: isSelected,
@@ -80,10 +83,10 @@ class _CalendarDayCell extends ConsumerWidget {
                 if (visibleEntries.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 2),
                   for (final EntryIndexRecord entry in visibleEntries)
-                    _CalendarEntryPreviewRow(
-                      label: calendarEntryPreviewLabel(_entryListHeadline(entry)),
-                      tagLabel: _firstNonemptyTag(entry.tags),
-                      accents: accents,
+                    CalendarEntryPreviewRow(
+                      label: calendarEntryPreviewLabel(entryListHeadline(entry)),
+                      tagLabel: firstNonemptyTag(entry.tags),
+                      accents: tagAccents,
                       fontSize: entryFontSize,
                     ),
                   if (entries.length > kCalendarMaxEntriesPerCell)
@@ -107,12 +110,13 @@ class _CalendarDayCell extends ConsumerWidget {
   }
 }
 
-class _CalendarDayNumberBadge extends StatelessWidget {
-  const _CalendarDayNumberBadge({
+class CalendarDayNumberBadge extends StatelessWidget {
+  const CalendarDayNumberBadge({
     required this.day,
     required this.date,
     required this.isSelected,
     required this.isToday,
+    super.key,
   });
 
   final int day;
@@ -173,12 +177,13 @@ class _CalendarDayNumberBadge extends StatelessWidget {
   }
 }
 
-class _CalendarEntryPreviewRow extends StatelessWidget {
-  const _CalendarEntryPreviewRow({
+class CalendarEntryPreviewRow extends StatelessWidget {
+  const CalendarEntryPreviewRow({
     required this.label,
     required this.tagLabel,
     required this.accents,
     required this.fontSize,
+    super.key,
   });
 
   final String label;

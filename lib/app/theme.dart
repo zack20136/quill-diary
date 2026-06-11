@@ -2,6 +2,7 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 
 import '../shared/presentation/app_typography.dart';
+import '../shared/presentation/page_style.dart';
 
 ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Brightness.light}) {
   final ColorScheme scheme = dynamicScheme ??
@@ -61,10 +62,12 @@ ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Bri
           fontFamily: AppTypography.interFamily,
         );
 
+  final Color pageBackground = PageStyle.scaffoldWash(scheme);
+
   return flexTheme.copyWith(
-    scaffoldBackgroundColor: scheme.surface,
+    scaffoldBackgroundColor: pageBackground,
     appBarTheme: AppBarTheme(
-      backgroundColor: scheme.surface,
+      backgroundColor: pageBackground,
       foregroundColor: foreground,
       centerTitle: false,
     ),

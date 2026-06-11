@@ -17,7 +17,6 @@ const double kCalendarShellVerticalInset =
 const double kCalendarHeaderHeight = 50;
 const double kCalendarDaysOfWeekHeight = 22;
 const double kCalendarRowCount = 6;
-const double kCalendarPaneSectionGap = 12;
 const double kCalendarHeightSafetyBuffer = 10;
 
 bool calendarIsSameDay(DateTime a, DateTime b) {

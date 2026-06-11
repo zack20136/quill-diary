@@ -76,12 +76,12 @@ abstract final class HomeCopy {
       '已從 ${DisplayFormat.formatCountUnit(entryCount, '篇')}日記移除「$label」';
   static String tagIndexEmptyForTag(String tag) => '目前索引中找不到套用「$tag」的項目。';
 
-  static String tagFilteredDiaryTitle(String tagLabel, int count) =>
-      '日記 · 「$tagLabel」 · ${DisplayFormat.formatCountUnit(count, '篇')}';
+  static String tagFilteredDiaryTitle(String tagLabel) => diarySectionTag(tagLabel);
 
-  static String tagRowSummary(int count, bool hasCustomAccent) =>
-      '${DisplayFormat.formatCountUnit(count, '篇')}日記 · '
-      '${hasCustomAccent ? '已設定顯示色' : '預設底色'} · 輕觸列預覽';
+  static String tagRowEntryCount(int count) =>
+      '${DisplayFormat.formatCountUnit(count, '篇')}日記';
+
+  static const String tagRowTapHint = '輕觸列預覽';
 
   static String diarySectionTitleForDate(String dateLabel) => '日記 · $dateLabel';
   static String emptyDayMessage(String dateLabel) => '「$dateLabel」這一天目前沒有日記。';
@@ -100,13 +100,14 @@ abstract final class HomeCopy {
   static String overviewLongestStreak(int days) =>
       '連續最長 ${DisplayFormat.formatCountUnit(days, '天')}';
   static String overviewEntryStats(int entries, int characters) =>
-      '共 ${DisplayFormat.formatCountUnit(entries, '篇')} · '
+      '共 ${DisplayFormat.formatCountUnit(entries, '篇')}\n'
       '累計 ${DisplayFormat.formatCountUnit(characters, '字')}';
 
   static String diarySectionTag(String tag) => '日記 · $tag';
   static const String diarySectionAll = '日記 · 全部';
   static const String diarySectionByYear = '日記 · 依年';
   static const String diarySectionByMonth = '日記 · 依月';
+  static String diarySectionWithTag(String baseTitle, String tag) => '$baseTitle · $tag';
 
   static const List<String> calendarWeekdayLabels = <String>[
     '日',
