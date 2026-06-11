@@ -11,30 +11,6 @@ void main() {
     expect(SettingsCopy.recoveryKeyHintLine('WXYZ'), '末四碼：WXYZ');
   });
 
-  test('sensitiveVaultTransferDisabledReason 依狀態回傳說明', () {
-    expect(
-      sensitiveVaultTransferDisabledReason(
-        hasUnlockedSession: false,
-        hasRecoveryKey: false,
-      ),
-      SettingsSensitiveVaultCopy.needsUnlockMessage,
-    );
-    expect(
-      sensitiveVaultTransferDisabledReason(
-        hasUnlockedSession: true,
-        hasRecoveryKey: false,
-      ),
-      SettingsSensitiveVaultCopy.needsRecoveryKeyMessage,
-    );
-    expect(
-      sensitiveVaultTransferDisabledReason(
-        hasUnlockedSession: true,
-        hasRecoveryKey: true,
-      ),
-      '',
-    );
-  });
-
   group('buildRestoreConfirmBulletPoints', () {
     final RecoveryMetadata backupMetadata = RecoveryMetadata(
       vaultId: 'vlt_backup',

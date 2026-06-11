@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -222,6 +223,67 @@ void main() {
     expect(transferService.restoreCalls, 1);
     expect(transferService.lastPreserveTrusted, isFalse);
     expect(completedKey, 'GOOD-KEY');
+  });
+
+  testWidgets('無解鎖 session 且無本機復原金鑰時仍可還原', (WidgetTester tester) async {
+    transferService.nextPrecheck = trustedPrecheck();
+    bool completed = false;
+
+    await pumpFlowHost(
+      tester,
+      activateSession: false,
+      confirm: (_, {String? driveBackupName}) async => true,
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
+        completed = true;
+      },
+    );
+
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+
+    expect(transferService.restoreCalls, 1);
+    expect(completed, isTrue);
+  });
+
+  testWidgets('locked 且已有本機復原金鑰時拒絕還原', (WidgetTester tester) async {
+    repository = FakeVaultRepository(metadata: backupMetadata);
+    transferService.nextPrecheck = trustedPrecheck();
+    bool completed = false;
+
+    await pumpFlowHost(
+      tester,
+      activateSession: false,
+      confirm: (_, {String? driveBackupName}) async => true,
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
+        completed = true;
+      },
+    );
+
+    final ProviderContainer container = ProviderScope.containerOf(
+      tester.element(find.byType(_RestoreFlowHost)),
+    );
+    await container.read(appSessionProvider.notifier).lock();
+    await tester.pump();
+
+    Object? caughtError;
+    await runZonedGuarded(() async {
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+    }, (Object error, StackTrace stackTrace) {
+      caughtError = error;
+    });
+
+    expect(caughtError, isA<StateError>());
+    expect(transferService.restoreCalls, 0);
+    expect(completed, isFalse);
   });
 }
 

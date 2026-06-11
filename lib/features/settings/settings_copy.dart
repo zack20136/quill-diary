@@ -91,7 +91,7 @@ abstract final class SettingsSecurityOverviewCopy {
   static const String recoveryKeyTitle = '復原金鑰';
   static const String recoveryKeyReady = '已建立，可用於換機與還原。';
   static const String recoveryKeyReadySaved = recoveryKeyReady;
-  static const String recoveryKeyMissing = '尚未建立，請先建立後再備份或還原。';
+  static const String recoveryKeyMissing = '尚未建立，請先建立後再備份或匯出。';
   static const String recoveryKeyMissingOverview = recoveryKeyMissing;
 
   static const String unlockStatusTitle = '解鎖狀態';
@@ -166,27 +166,6 @@ abstract final class SettingsUnlockMethodCopy {
         AppUnlockMode.biometric =>
           '鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。',
       };
-}
-
-/// 備份 / 還原 / 匯入 / 匯出在設定頁不可用時的說明（空字串表示可用）。
-String sensitiveVaultTransferDisabledReason({
-  required bool hasUnlockedSession,
-  required bool hasRecoveryKey,
-}) {
-  if (!hasUnlockedSession) {
-    return SettingsSensitiveVaultCopy.needsUnlockMessage;
-  }
-  if (!hasRecoveryKey) {
-    return SettingsSensitiveVaultCopy.needsRecoveryKeyMessage;
-  }
-  return '';
-}
-
-abstract final class SettingsSensitiveVaultCopy {
-  static const String needsUnlockMessage =
-      '請先解鎖日記庫，才能備份、還原或匯入 / 匯出。';
-  static const String needsRecoveryKeyMessage =
-      '請先建立復原金鑰，才能備份、還原或匯入 / 匯出。';
 }
 
 abstract final class SettingsImportExportCopy {
@@ -281,6 +260,7 @@ abstract final class SettingsDriveBackupCopy {
   static String get sectionDescriptionEnabled =>
       '連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。'
       '（雲端最多保留 ${VaultBackupPolicy.retainCount} 份）';
+
   static const String sectionDescriptionOAuthNotConfigured =
       '此版本尚未設定 Google 登入，暫無法使用雲端備份。';
 
@@ -293,8 +273,6 @@ abstract final class SettingsDriveBackupCopy {
 
   static const String disconnectedLabel = '尚未連結 Google 帳號';
   static const String fallbackAccountLabel = 'Google 帳號';
-  static const String actionsLockedHint = '請先解鎖日記庫並建立復原金鑰。';
-
   static String linkSuccess(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {
       return 'Google 帳號已連結，可以開始備份或還原。';

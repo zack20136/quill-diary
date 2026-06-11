@@ -5,6 +5,7 @@ import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/device_key_manager.dart';
 import '../../shared/utils/user_facing_error.dart';
 import '../settings/settings_copy.dart';
+import '../settings/vault_transfer_access.dart';
 import 'state/app_session_state.dart';
 
 export '../../infrastructure/security/unlock_mode_policy.dart'
@@ -35,9 +36,9 @@ String get kUnlockModeDeviceLockDescription =>
 const String kRecoveryKeyRotatedMessage = '復原金鑰已更新，請立即保存新金鑰。';
 const String kRecoveryRequiredAfterRestoreMessage =
     '還原後需輸入建立此備份時保存的復原金鑰。';
-const String kRestoreNeedsUnlockMessage = SettingsSensitiveVaultCopy.needsUnlockMessage;
+const String kRestoreNeedsUnlockMessage = VaultTransferCopy.needsUnlockForRestore;
 const String kSensitiveVaultTransferNeedsRecoveryKeyMessage =
-    SettingsSensitiveVaultCopy.needsRecoveryKeyMessage;
+    VaultTransferCopy.needsRecoveryKeyForBackup;
 const String kInvalidBackupFileMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
 const String kRestoreInProgressMessage = '正在還原備份，請勿關閉應用程式…';
 const String kPostRestoreStartupMessage = '正在啟動還原後的日記庫…';

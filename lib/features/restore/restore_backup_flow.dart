@@ -7,6 +7,8 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
+import '../session/state/app_session_state.dart';
+import '../settings/vault_transfer_access.dart';
 import 'widgets/restore_recovery_key_dialog.dart';
 
 /// 還原備份：確認 → 驗證金鑰 → 寫入（結構驗證由呼叫端 precheck 負責）。
@@ -14,6 +16,19 @@ class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
   final WidgetRef ref;
+
+  Future<VaultTransferAccess> _loadTransferAccess() async {
+    final AppSessionState sessionState = ref.read(appSessionProvider);
+    final bool hasUnlockedSession =
+        sessionState.isUnlocked && sessionState.session != null;
+    final bool hasRecoveryKey =
+        await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
+    return VaultTransferAccess.fromContext(
+      hasUnlockedSession: hasUnlockedSession,
+      hasRecoveryKey: hasRecoveryKey,
+      lockStatus: sessionState.status,
+    );
+  }
 
   Future<String?> collectValidatedRecoveryKey(
     BuildContext context,
@@ -60,6 +75,8 @@ class RestoreBackupFlow {
     String? driveBackupName,
   }) async {
     final transferService = ref.read(vaultTransferServiceProvider);
+    final VaultTransferAccess access = await _loadTransferAccess();
+    access.ensureCanRestore();
 
     if (!context.mounted) {
       return;
@@ -85,14 +102,28 @@ class RestoreBackupFlow {
       }
     }
 
-    final UnlockedVaultSession? priorSession = ref.read(appSessionProvider).session;
+    final AppSessionController sessionController =
+        ref.read(appSessionProvider.notifier);
+    final UnlockedVaultSession? priorSession =
+        ref.read(appSessionProvider).session;
+    final bool hasActiveSession =
+        priorSession != null && ref.read(appSessionProvider).isUnlocked;
 
-    await ref.read(appSessionProvider.notifier).runSensitiveTask((_) async {
+    Future<void> restoreBackup() async {
       await transferService.restoreFromBackupFile(
         backupFile,
         preserveTrustedDeviceAccess: precheck.expectsTrustedUnlockAfterRestore,
       );
-    });
+    }
+
+    if (hasActiveSession) {
+      await sessionController.runSensitiveTask((_) => restoreBackup());
+    } else {
+      await sessionController.runBackgroundSafeTask(() async {
+        await ref.read(vaultRepositoryProvider).closeUnlockedResources();
+        await restoreBackup();
+      });
+    }
 
     await onComplete(
       backupRecoveryKey: backupRecoveryKey,

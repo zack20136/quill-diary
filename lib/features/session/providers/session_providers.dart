@@ -162,9 +162,18 @@ class AppSessionController extends Notifier<AppSessionState> {
       throw StateError('目前沒有可用的解鎖 session。');
     }
 
+    return _runWithSensitiveTaskGuard(() => action(session));
+  }
+
+  /// 無解鎖 session 的長時間任務（例如還原），避免背景逾時鎖定。
+  Future<T> runBackgroundSafeTask<T>(Future<T> Function() action) {
+    return _runWithSensitiveTaskGuard(action);
+  }
+
+  Future<T> _runWithSensitiveTaskGuard<T>(Future<T> Function() action) async {
     _activeSensitiveTasks++;
     try {
-      return await action(session);
+      return await action();
     } finally {
       _activeSensitiveTasks--;
       await _cleanupUnlockedResourcesIfPossible();

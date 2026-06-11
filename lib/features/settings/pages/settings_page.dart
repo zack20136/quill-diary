@@ -33,6 +33,7 @@ import '../legal_disclosures.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
+import '../vault_transfer_access.dart';
 import '../../restore/post_restore_session.dart';
 import '../../restore/restore_backup_flow.dart';
 import '../backup/backup_pick_dialog.dart';
@@ -115,7 +116,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildSecurityStatusSection({
     required AsyncValue<AppSessionState> sessionAsync,
     required RecoveryMetadata? recoveryMetadata,
-    required bool canSensitiveVaultTransfer,
+    required bool canVaultBackup,
     required AsyncValue<AppUnlockMode> unlockModeAsync,
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
@@ -141,7 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onCreateRecoveryKey:
                 recoveryMetadata == null ? () => _runAction(_createRecoveryKey) : null,
             onRotateRecoveryKey:
-                recoveryMetadata != null && canSensitiveVaultTransfer
+                recoveryMetadata != null && canVaultBackup
                     ? () => _runAction(_rotateRecoveryKey)
                     : null,
             onRebuildIndex:
@@ -204,14 +205,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool hasUnlockedSession =
         sessionState?.isUnlocked == true && sessionState?.session != null;
     final bool hasRecoveryKey = recoveryMetadata != null;
-    final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
+    final VaultTransferAccess transferAccess = VaultTransferAccess.fromContext(
+      hasUnlockedSession: hasUnlockedSession,
+      hasRecoveryKey: hasRecoveryKey,
+      lockStatus: sessionState?.status ?? AppLockStatus.uninitialized,
+    );
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
-    final String disabledSensitiveVaultTransferReason =
-        sensitiveVaultTransferDisabledReason(
-          hasUnlockedSession: hasUnlockedSession,
-          hasRecoveryKey: hasRecoveryKey,
-        );
 
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
@@ -260,7 +260,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _buildSecurityStatusSection(
                     sessionAsync: sessionAsync,
                     recoveryMetadata: recoveryMetadata,
-                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                    canVaultBackup: transferAccess.canBackup,
                     unlockModeAsync: unlockModeAsync,
                   ),
                   const SizedBox(height: 16),
@@ -290,9 +290,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.swap_horiz_rounded,
                     title: SettingsImportExportCopy.sectionTitle,
-                    description: canSensitiveVaultTransfer
+                    description: transferAccess.canBackup
                         ? SettingsImportExportCopy.sectionDescriptionEnabled
-                        : disabledSensitiveVaultTransferReason,
+                        : transferAccess.backupDisabledReason ??
+                            VaultTransferCopy.needsUnlockForBackup,
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
@@ -300,7 +301,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.file_download_outlined,
                           appearance: SettingsActionButtonAppearance.filled,
                           fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
+                          onPressed: _busy || !transferAccess.canBackup
                               ? null
                               : () => _runAction(() async {
                                     final PortableImportResult? result = await ref
@@ -328,7 +329,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.file_upload_outlined,
                           appearance: SettingsActionButtonAppearance.tonal,
                           fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
+                          onPressed: _busy || !transferAccess.canBackup
                               ? null
                               : () => _runAction(
                                     () async {
@@ -358,9 +359,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   LocalBackupSection(
+                    access: transferAccess,
                     busy: _busy,
-                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                    disabledReason: disabledSensitiveVaultTransferReason,
                     onCreate: () => _runAction(_createLocalBackup),
                     onRestore: _runRestoreFromAppLocalBackup,
                     onExport: () => _runAction(_exportLocalBackup),
@@ -368,11 +368,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   DriveBackupSection(
+                    access: transferAccess,
                     isGoogleDriveConfigured: isGoogleDriveConfigured,
                     busy: _busy,
-                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                    disabledSensitiveVaultTransferReason:
-                        disabledSensitiveVaultTransferReason,
                     onLink: () => _runAction(
                       _linkGoogleDrive,
                       progressMessage: SettingsIndexCopy.linkDriveProgress,
@@ -638,20 +636,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     File? tempBackup;
     String? driveBackupName;
     try {
-      final List<DriveBackupFile> backups = await ref
-          .read(appSessionProvider.notifier)
-          .runSensitiveTask((_) {
-        return ref.read(vaultTransferServiceProvider).listDriveBackups();
-      });
+      final List<DriveBackupFile> backups =
+          await ref.read(vaultTransferServiceProvider).listDriveBackups();
       final DriveBackupFile? backup = await _pickDriveBackup(backups);
       if (backup == null) {
         return;
       }
       driveBackupName = backup.name;
       await _runAction(() async {
-        tempBackup = await ref.read(appSessionProvider.notifier).runSensitiveTask((_) {
-          return ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(backup);
-        });
+        tempBackup = await ref
+            .read(vaultTransferServiceProvider)
+            .downloadDriveBackupToTempFile(backup);
       }, progressMessage: SettingsDriveBackupCopy.downloadProgress);
       if (tempBackup == null) {
         return;
@@ -828,6 +823,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (trimmedKey != null &&
         trimmedKey.isNotEmpty &&
         sessionState.status != AppLockStatus.unlocked) {
+      _showError(
+        sessionState.message ?? VaultTransferCopy.restoreUnlockFailed,
+      );
       return;
     }
 

@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../providers/settings_providers.dart';
 import '../settings_copy.dart';
+import '../vault_transfer_access.dart';
 import 'drive_account_status.dart';
 import 'settings_sections.dart';
 
 /// 設定頁的 Google Drive 備份與還原區塊。
 class DriveBackupSection extends ConsumerWidget {
   const DriveBackupSection({
+    required this.access,
     required this.isGoogleDriveConfigured,
     required this.busy,
-    required this.canSensitiveVaultTransfer,
-    required this.disabledSensitiveVaultTransferReason,
     required this.onLink,
     required this.onSwitchAccount,
     required this.onDisconnect,
@@ -22,10 +22,9 @@ class DriveBackupSection extends ConsumerWidget {
     super.key,
   });
 
+  final VaultTransferAccess access;
   final bool isGoogleDriveConfigured;
   final bool busy;
-  final bool canSensitiveVaultTransfer;
-  final String disabledSensitiveVaultTransferReason;
   final VoidCallback onLink;
   final VoidCallback onSwitchAccount;
   final VoidCallback onDisconnect;
@@ -35,7 +34,9 @@ class DriveBackupSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String description = isGoogleDriveConfigured
-        ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+        ? (access.canBackup
+            ? SettingsDriveBackupCopy.sectionDescriptionEnabled
+            : VaultTransferCopy.driveSectionDescriptionBackupLocked)
         : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
 
     return SettingsSectionCard(
@@ -51,10 +52,8 @@ class DriveBackupSection extends ConsumerWidget {
                 loading: () => const SettingsSectionLoading(),
                 error: (_, _) => _DriveBackupContent(
                   connectionState: const DriveConnectionState.disconnected(),
+                  access: access,
                   busy: busy,
-                  canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                  disabledSensitiveVaultTransferReason:
-                      disabledSensitiveVaultTransferReason,
                   onLink: onLink,
                   onSwitchAccount: onSwitchAccount,
                   onDisconnect: onDisconnect,
@@ -63,10 +62,8 @@ class DriveBackupSection extends ConsumerWidget {
                 ),
                 data: (DriveConnectionState connectionState) => _DriveBackupContent(
                   connectionState: connectionState,
+                  access: access,
                   busy: busy,
-                  canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                  disabledSensitiveVaultTransferReason:
-                      disabledSensitiveVaultTransferReason,
                   onLink: onLink,
                   onSwitchAccount: onSwitchAccount,
                   onDisconnect: onDisconnect,
@@ -81,9 +78,8 @@ class DriveBackupSection extends ConsumerWidget {
 class _DriveBackupContent extends StatelessWidget {
   const _DriveBackupContent({
     required this.connectionState,
+    required this.access,
     required this.busy,
-    required this.canSensitiveVaultTransfer,
-    required this.disabledSensitiveVaultTransferReason,
     required this.onLink,
     required this.onSwitchAccount,
     required this.onDisconnect,
@@ -92,9 +88,8 @@ class _DriveBackupContent extends StatelessWidget {
   });
 
   final DriveConnectionState connectionState;
+  final VaultTransferAccess access;
   final bool busy;
-  final bool canSensitiveVaultTransfer;
-  final String disabledSensitiveVaultTransferReason;
   final VoidCallback onLink;
   final VoidCallback onSwitchAccount;
   final VoidCallback onDisconnect;
@@ -129,14 +124,14 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.cloud_upload_outlined,
                 appearance: SettingsActionButtonAppearance.filled,
                 fullWidth: true,
-                onPressed: busy || !canSensitiveVaultTransfer ? null : onUpload,
+                onPressed: busy || !access.canBackup ? null : onUpload,
               ),
               SettingsActionButton(
                 label: SettingsDriveBackupCopy.restoreButton,
                 icon: Icons.cloud_download_outlined,
                 appearance: SettingsActionButtonAppearance.tonal,
                 fullWidth: true,
-                onPressed: busy || !canSensitiveVaultTransfer ? null : onRestore,
+                onPressed: busy || !access.canRestore ? null : onRestore,
               ),
               SettingsActionButton(
                 label: SettingsDriveBackupCopy.switchAccountButton,
@@ -155,16 +150,28 @@ class _DriveBackupContent extends StatelessWidget {
             ],
           ],
         ),
-        if (!canSensitiveVaultTransfer && isConnected) ...<Widget>[
+        if (isConnected && _lockedBannerMessage != null) ...<Widget>[
           const SizedBox(height: 12),
           SettingsInfoBanner(
             icon: Icons.lock_outline_rounded,
-            message: disabledSensitiveVaultTransferReason.isEmpty
-                ? SettingsDriveBackupCopy.actionsLockedHint
-                : disabledSensitiveVaultTransferReason,
+            message: _lockedBannerMessage!,
           ),
         ],
       ],
     );
+  }
+
+  String? get _lockedBannerMessage {
+    if (!access.canBackup && !access.canRestore) {
+      return access.restoreDisabledReason ?? access.backupDisabledReason;
+    }
+    if (!access.canBackup) {
+      return access.backupDisabledReason ??
+          VaultTransferCopy.driveBackupActionsLockedHint;
+    }
+    if (!access.canRestore) {
+      return access.restoreDisabledReason;
+    }
+    return null;
   }
 }
