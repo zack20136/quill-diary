@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../config/app_identifiers.dart';
 import '../features/session/application/session_unlock_coordinator.dart';
 import '../features/session/providers/session_providers.dart';
+import '../features/settings/providers/billing_providers.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -48,6 +49,8 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
       _unlockCoordinatorAttached = true;
       SessionUnlockCoordinator(ref).listen();
     }
+
+    ref.watch(sponsorBillingLifecycleProvider);
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {

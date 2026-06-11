@@ -15,7 +15,8 @@ abstract final class LegalDisclosures {
       '$billingVaultPrivacyNote';
 
   static const String billingSupportPageBody =
-      '開放後僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員。'
+      '僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；'
+      '付款由 Google 處理，開發者不保存贊助紀錄。'
       '$billingVaultPrivacyNote';
 
   static const String externalLinkUnavailableMessage =

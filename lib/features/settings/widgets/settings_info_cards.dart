@@ -72,8 +72,8 @@ class SettingsGradientHeroCard extends StatelessWidget {
             if (chips.isNotEmpty) ...<Widget>[
               const SizedBox(height: 16),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: chips
                     .map((String label) => _FactChip(label: label))
                     .toList(growable: false),
@@ -153,10 +153,10 @@ class _FactChip extends StatelessWidget {
         border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.24)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Text(
           label,
-          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
     );

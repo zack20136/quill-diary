@@ -5,7 +5,6 @@ import '../session/session_timeout_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
 import '../../shared/copy/common_copy.dart';
-import 'legal_disclosures.dart';
 
 /// 設定頁與相關對話框的繁體中文文案（單一來源）。
 ///
@@ -417,25 +416,128 @@ abstract final class SettingsIndexCopy {
 
 /// 設定「贊助」子頁文案（對齊 Google Play Billing 用語）。
 abstract final class SettingsSupportCopy {
-  static const String navButtonLabel = '贊助';
-  static const String pageTitle = '贊助開發';
+  static const String navButtonLabel = '支持';
+  static const String pageTitle = '支持開發者';
 
-  static const String heroTitle = '支持開發者';
+  static const String heroTitle = '自願性支持';
   static const String heroBody =
-      '純粹支持，不會解鎖任何額外功能。'
-      '有支持、沒支持，App 功能完全一樣。';
+      '使用者得透過 Google Play 向開發者提供自願性支持。'
+      '本項支持不提供任何額外功能，亦不影響日記內容之存取與使用。';
 
-  static const String statusCardTitle = '作者還懶得把這段做完';
-  static const String statusCardBody =
-      'Google Play 一次性支持流程還在待辦清單裡。'
-      '這頁先占位，避免讓人誤以為付費能換取功能。';
+  static const List<String> heroChips = <String>[
+    '不提供額外功能',
+    '可重複購買',
+    'Google Play 付款',
+  ];
 
-  static const String complianceCardTitle = '付款與隱私';
-  static const String complianceCardBody = LegalDisclosures.billingSupportPageBody;
+  static const String complianceCardTitle = '付款說明';
+  static const String complianceCardBody =
+      '款項由 Google Play 處理，屬一次性支持商品，非訂閱或會員資格。'
+      '本應用程式不保存支持紀錄，亦不讀取使用者日記內容。';
 
-  static const String purchaseButtonLabel = '尚未開放';
-  static const String purchaseHint =
-      '開放後會在此顯示 Google Play 價格與購買。';
-  static const String billingProductDescription =
-      '一次性支持開發者，不解鎖任何額外功能。';
+  static const String productsSectionTitle = '支持金額';
+  static const String productsSectionBody =
+      '價格由 Google Play 依使用者所在地區顯示。請選擇金額完成付款；同一商品得重複購買。';
+  static const String buyButtonPrefix = '支持';
+  static const String recommendedTierBadge = '常用';
+
+  static const String pendingMessage = '付款處理中，敬請稍候。';
+  static const String thanksMessage = '感謝您的支持。';
+  static const String errorMessage = '本次交易未完成，請稍後再試。';
+  static const String billingUnavailableMessage =
+      '本裝置目前無法使用 Google Play 購買功能。請於已安裝 Google Play 商店之 Android 裝置上操作。';
+  static const String productLoadErrorTitle = '暫無法載入金額';
+  static const String productLoadErrorBody = '請稍後再試。';
+  static const String productsNotReadyTitle = '暫無法顯示支持金額';
+  static const String productsNotReadyBody =
+      '請確認網路連線正常。若問題持續，請透過 Google Play 更新本應用程式後再試。';
+  static const String productsQueryFailedTitle = '無法連線至 Google Play';
+  static const String productsQueryFailedBody = '請確認網路連線後再試。';
+  static const String productsPartialMessage =
+      '部分支持方案暫無法顯示，您仍可選擇其他可用金額。';
+  static const String retryLoadProductsLabel = '重新載入';
+  static const String footerNote = '支持行為屬自願性質；使用者得自行決定是否提供支持。';
+
+  static SupportNoticeCopy noticeForProductLoadError(String? errorCode) {
+    return switch (errorCode) {
+      'no_products' => const SupportNoticeCopy(
+        title: productsNotReadyTitle,
+        body: productsNotReadyBody,
+      ),
+      'query_failed' => const SupportNoticeCopy(
+        title: productsQueryFailedTitle,
+        body: productsQueryFailedBody,
+      ),
+      _ => const SupportNoticeCopy(
+        title: productLoadErrorTitle,
+        body: productLoadErrorBody,
+      ),
+    };
+  }
+
+  static SponsorTierCopy? tierForProduct(String productId) {
+    for (final SponsorTierCopy tier in sponsorTiers) {
+      if (tier.productId == productId) {
+        return tier;
+      }
+    }
+    return null;
+  }
+
+  /// 五檔梯次（GitHub / Buy me a coffee 常見比喻；由低到高）。
+  /// [productId] 須與 [BillingConfig.sponsorProductIdsOrdered] 一致。
+  static const List<SponsorTierCopy> sponsorTiers = <SponsorTierCopy>[
+    SponsorTierCopy(
+      productId: 'sponsor_coffee',
+      label: '喝杯咖啡',
+      hint: '請開發者喝杯咖啡',
+    ),
+    SponsorTierCopy(
+      productId: 'sponsor_snack',
+      label: '請份點心',
+      hint: '小小支持一下',
+    ),
+    SponsorTierCopy(
+      productId: 'sponsor_lunch',
+      label: '請吃午餐',
+      hint: '很多人會選這個',
+      recommended: true,
+    ),
+    SponsorTierCopy(
+      productId: 'sponsor_treat',
+      label: '加杯咖啡',
+      hint: '再加一杯也沒關係',
+    ),
+    SponsorTierCopy(
+      productId: 'sponsor_cheer',
+      label: '盛意支持',
+      hint: '非常感謝你',
+    ),
+  ];
+}
+
+/// 贊助頁簡短提示（標題 + 內文）。
+class SupportNoticeCopy {
+  const SupportNoticeCopy({
+    required this.title,
+    required this.body,
+  });
+
+  final String title;
+  final String body;
+}
+
+/// 贊助梯次 UI 文案（與 Play 商品 ID 對應，不寫死價格）。
+class SponsorTierCopy {
+  const SponsorTierCopy({
+    required this.productId,
+    required this.label,
+    required this.hint,
+    this.recommended = false,
+  });
+
+  final String productId;
+  final String label;
+  final String hint;
+  final bool recommended;
 }

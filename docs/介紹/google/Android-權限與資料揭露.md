@@ -8,6 +8,7 @@
 
 - `android.permission.INTERNET`
 - `android.permission.USE_BIOMETRIC`
+- `com.android.vending.BILLING`（Google Play 支持開發者）
 
 目前不需要手動新增：
 
