@@ -1,12 +1,12 @@
-/// App unlock modes that protect trusted-device recovery material.
+/// 保護可信裝置復原材料的 App 解鎖模式。
 enum AppUnlockMode {
-  /// No extra system verification; background timeout uses plain unwrap.
+  /// 無額外系統驗證；背景逾時時直接解包。
   none,
 
-  /// Android device credential, such as PIN, pattern, or password.
+  /// Android 裝置憑證，例如 PIN、圖形鎖或密碼。
   deviceLock,
 
-  /// Strong biometric prompt, with Android device credential as system fallback.
+  /// 強生物辨識提示，系統後備為 Android 裝置憑證。
   biometric,
 }
 

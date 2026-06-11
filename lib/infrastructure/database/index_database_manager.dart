@@ -31,7 +31,6 @@ class IndexDatabaseManager {
     }
 
     await close();
-    await resetLegacyPlaintextIndexIfNeeded();
 
     final List<int> keyBytes = await deriveIndexDatabaseKey(
       recoveryWrapKey: session.recoveryWrapKey ??
@@ -91,24 +90,6 @@ class IndexDatabaseManager {
     await _deleteIfExists(File('$path-wal'));
     await _deleteIfExists(File('$path-shm'));
     await _deleteIfExists(File('$path-journal'));
-  }
-
-  Future<void> resetLegacyPlaintextIndexIfNeeded() async {
-    final String path = await _pathStrategy.indexDatabasePath();
-    final File file = File(path);
-    if (!file.existsSync()) {
-      return;
-    }
-    final List<int> bytes = await file.openRead(0, 16).fold<List<int>>(
-      <int>[],
-      (List<int> all, List<int> chunk) => <int>[...all, ...chunk],
-    );
-    if (bytes.length >= 16) {
-      final String header = String.fromCharCodes(bytes.take(16));
-      if (header == 'SQLite format 3\u0000') {
-        await deleteDatabaseFiles();
-      }
-    }
   }
 
   Future<void> _deleteIfExists(File file) async {

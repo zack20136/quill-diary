@@ -8,7 +8,7 @@ import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
 import '../tag_visual.dart';
 
-/// Dialog for creating or editing a tag name and accent color.
+/// 建立或編輯標籤名稱與強調色的對話框。
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
   const TagAccentComposerDialog({
     super.key,

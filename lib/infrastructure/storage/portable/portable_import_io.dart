@@ -19,13 +19,13 @@ import 'html_import_parser.dart';
 import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
-/// Factory hook used by tests and platform-specific Easy Diary import wiring.
+/// 供測試與平台專用 Easy Diary 匯入接線使用的工廠掛鉤。
 typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
 
-/// Imports portable Markdown/HTML documents and delegated third-party backups.
+/// 匯入可攜式 Markdown／HTML 文件與委派的第三方備份。
 ///
-/// The importer normalizes loose user documents into [DiaryEntry] models and
-/// lets [VaultRepository] handle encryption plus index synchronization.
+/// 匯入器將散落的使用者文件正規化為 [DiaryEntry] 模型，
+/// 並由 [VaultRepository] 處理加密與索引同步。
 class PortableImportIo {
   PortableImportIo({
     required VaultPathStrategy pathStrategy,

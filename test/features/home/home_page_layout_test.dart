@@ -12,6 +12,7 @@ import 'package:quill_diary/features/home/home_copy.dart';
 import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
 import 'package:quill_diary/features/home/widgets/calendar/calendar_pane.dart';
+import 'package:quill_diary/features/home/widgets/tags_pane.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
@@ -187,12 +188,40 @@ void main() {
 
     await pumpHomePage(tester, container);
 
-    await tester.tap(find.text('travel').first);
+    final Finder tagsPane = find.byType(TagsManagePane);
+    final Finder tagsScroll = find.descendant(
+      of: tagsPane,
+      matching: find.byType(CustomScrollView),
+    );
+    final Finder travelRow = find.descendant(
+      of: tagsPane,
+      matching: find.widgetWithText(ListTile, 'travel'),
+    );
+
+    await tester.ensureVisible(travelRow);
+    await tester.tap(travelRow);
     await tester.pumpAndSettle();
 
-    expect(find.byType(CustomScrollView), findsOneWidget);
-    expect(find.text('trip note'), findsOneWidget);
-    expect(find.text('work note'), findsNothing);
+    expect(tagsScroll, findsOneWidget);
+    expect(
+      find.descendant(
+        of: tagsPane,
+        matching: find.text(HomeCopy.diarySectionTag('travel')),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.drag(tagsScroll, const Offset(0, -420));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: tagsPane, matching: find.text('trip note')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tagsPane, matching: find.text('work note')),
+      findsNothing,
+    );
   });
 
   testWidgets('overview compact cards do not overflow on narrow screens', (WidgetTester tester) async {

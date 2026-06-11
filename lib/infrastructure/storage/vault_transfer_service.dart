@@ -36,7 +36,7 @@ final class BackupPersistResult {
   final String message;
 }
 
-/// Metadata for app-managed local backups retained under application support.
+/// 保留於應用支援目錄的 App 管理本機備份中繼資料。
 class LocalBackupFile {
   const LocalBackupFile({
     required this.name,
@@ -247,7 +247,7 @@ class VaultTransferService {
     );
   }
 
-  /// Lets the user pick a full-vault backup zip and resolves it to a readable [File].
+  /// 讓使用者選取完整 vault 備份 zip，並解析為可讀取的 [File]。
   Future<File?> pickLocalBackupFile() async {
     final PlatformFile? picked = await FilePicker.pickFile(
       dialogTitle: VaultBackupPolicy.pickBackupFileDialogTitle,
@@ -297,7 +297,7 @@ class VaultTransferService {
           return File(path);
         }
       } on Object {
-        // 某些平台會回傳 content URI，無法直接用 dart:io 開啟。
+        // 某些平台會回傳內容 URI，無法直接用 dart:io 開啟。
       }
     }
     final Uint8List? bytes = await _readPlatformFileBytes(file);
@@ -379,7 +379,7 @@ class VaultTransferService {
           );
         }
       } on Object {
-        // 某些平台會回傳 content URI，改走暫存檔。
+        // 某些平台會回傳內容 URI，改走暫存檔。
       }
     }
 
@@ -429,7 +429,7 @@ class VaultTransferService {
               continue;
             }
           } on Object {
-            // 某些平台會回傳 content URI，改走 bytes。
+            // 某些平台會回傳內容 URI，改走位元組。
           }
         }
 

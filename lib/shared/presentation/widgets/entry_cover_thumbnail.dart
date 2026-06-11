@@ -7,7 +7,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../features/editor/providers/editor_providers.dart';
 
-/// Decrypts and renders an image preview for an encrypted vault asset path.
+/// 解密並渲染加密 vault 資產路徑的圖片預覽。
 class EntryCoverThumbnail extends ConsumerWidget {
   const EntryCoverThumbnail({
     super.key,
@@ -82,7 +82,7 @@ class EntryCoverThumbnail extends ConsumerWidget {
   }
 }
 
-/// Defers thumbnail decryption until visible or after a prefetch stagger delay.
+/// 延遲縮圖解密，直至可見或預取交錯延遲後。
 class LazyEntryCoverThumbnail extends ConsumerStatefulWidget {
   const LazyEntryCoverThumbnail({
     super.key,

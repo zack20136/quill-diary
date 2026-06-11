@@ -63,7 +63,7 @@ ArchiveFile? findZipEntry(Archive archive, {required String pathSuffix}) {
   return null;
 }
 
-/// 依路徑後綴選讀單一 entry（例如 recovery.json）。
+/// 依路徑後綴選讀單一封存項目（例如 recovery.json）。
 Uint8List? readZipEntry(Archive archive, {required String pathSuffix}) {
   return findZipEntry(archive, pathSuffix: pathSuffix)?.readBytes();
 }

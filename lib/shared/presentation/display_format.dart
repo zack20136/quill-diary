@@ -103,7 +103,7 @@ abstract final class DisplayFormat {
           }
         }
       } on Object {
-        // 解析失敗時改走一般路徑 fallback。
+        // 解析失敗時改走一般路徑後備。
       }
     }
     return p.basename(trimmed);

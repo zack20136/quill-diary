@@ -63,7 +63,7 @@ void main() {
         'format_version': 2,
         'platform': 'android',
       }),
-      throwsA(isA<DeviceKeyLegacyStateException>()),
+      throwsA(isA<DeviceKeyUnsupportedFormatException>()),
     );
   });
 }

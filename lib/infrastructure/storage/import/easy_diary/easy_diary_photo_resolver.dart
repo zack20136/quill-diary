@@ -36,7 +36,7 @@ class EasyDiaryPhotoIndex {
     return EasyDiaryPhotoIndex._(byKey);
   }
 
-  /// Kotlin 端已正規化為檔名 key；保留 `content:` 防禦性略過。
+  /// Kotlin 端已正規化為檔名鍵；保留 `content:` 防禦性略過。
   File? resolve(String photoKey) {
     final String trimmed = photoKey.trim();
     if (trimmed.isEmpty || trimmed.startsWith('content:')) {

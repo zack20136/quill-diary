@@ -26,8 +26,8 @@ abstract final class LegalDisclosures {
 abstract final class SettingsLegalCopy {
   static const String sectionTitle = '法律與隱私';
   static const String sectionDescription =
-      '原始碼、隱私政策與第三方聲明均託管於 GitHub；'
-      '如有問題或建議，歡迎透過 Issues 聯絡作者。';
+      '可在 GitHub 查看原始碼、隱私政策與第三方聲明；'
+      '有問題歡迎透過 Issues 聯絡。';
 
   static const String sourceCodeTitle = 'GitHub 原始碼';
   static const String privacyPolicyTitle = '隱私權政策';

@@ -32,7 +32,7 @@ String extensionFromMimeType(String mimeType) {
   };
 }
 
-/// 依副檔名推斷 MIME（repository 用）。
+/// 依副檔名推斷 MIME（儲存庫用）。
 String mimeTypeFromExtension(String extension) {
   final String normalized = extension.startsWith('.') ? extension : '.$extension';
   return mimeTypeFromFileName('file$normalized');

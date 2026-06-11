@@ -5,21 +5,21 @@ import 'device_key_manager.dart';
 import 'keystore_unlock_policy.dart';
 
 const String kUnlockModeNeedsDeviceLockMessage = '請先在裝置設定中建立螢幕鎖，才能使用此模式。';
-const String kUnlockModeChangeNeedsUnlockMessage = '請先解鎖 App 後再變更解鎖方式。';
+const String kUnlockModeChangeNeedsUnlockMessage = '請先解鎖日記庫後，再變更解鎖方式。';
 const String kBiometricNotEnrolledSwitchModeMessage =
     '裝置尚未登錄指紋或臉部。請先到系統設定完成生物辨識設定，或改用裝置螢幕鎖。';
 const String kUseDeviceLockToUnlockMessage = '請使用裝置螢幕鎖解鎖。';
 const String kStartupNeedsBiometricMessage = '請先完成生物驗證。';
 const String kUnlockModeChangeCancelledMessage = '已取消變更，解鎖方式維持不變。';
 const String kUnlockModeChangeAuthFailedMessage = '驗證失敗，解鎖方式維持不變。';
-const String kKeystoreMigrationInProgressMessage = '正在更新裝置保護設定，請完成驗證…';
+const String kKeystoreMigrationInProgressMessage = '正在更新解鎖設定，請完成驗證…';
 
 /// 何時檢查裝置是否支援某解鎖模式。
 enum UnlockModeCapabilityContext {
-  /// 使用既有 trusted wrap 解鎖（生物辨識可事後移除，仍可用螢幕鎖 fallback）。
+  /// 使用既有可信裝置包裝解鎖（生物辨識可事後移除，仍可用螢幕鎖後備）。
   unlock,
 
-  /// 建立或切換 Keystore wrap（生物驗證模式須已登錄 strong biometric）。
+  /// 建立或切換 Keystore 包裝（生物驗證模式須已登錄強生物辨識）。
   migrate,
 }
 
@@ -41,7 +41,7 @@ extension UnlockModeCapabilityFailureMessages on UnlockModeCapabilityFailure {
       };
 }
 
-/// 裝置驗證能力快照（單次 native 查詢，避免 TOCTOU）。
+/// 裝置驗證能力快照（單次原生查詢，避免檢查與使用時間差）。
 class DeviceAuthCapabilities {
   const DeviceAuthCapabilities({
     required this.deviceCredentialAvailable,
@@ -110,7 +110,7 @@ String lockedResumeMessageFor(AppUnlockMode mode) {
   };
 }
 
-/// 比對 session、secure storage 與 index 是否皆符合目標 Keystore 策略。
+/// 比對 session、安全儲存區與索引是否皆符合目標 Keystore 策略。
 bool trustedProtectionMatches({
   required UnlockedVaultSession session,
   required KeystoreAuthKind expected,

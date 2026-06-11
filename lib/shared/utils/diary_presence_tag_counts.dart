@@ -6,9 +6,6 @@ import '../../infrastructure/database/index_database.dart';
 /// - 以 [normalizeText] 合併大小寫與留白差異；
 /// - 同一篇若重複列出相同標籤（正規化後相同）只計一次；
 /// - Map 的 key 為顯示用字串（同組內第一次看到時的留白折疊結果）。
-/// Counts how many diary entries contain each normalized tag.
-///
-/// Repeated tags inside the same entry only count once after normalization.
 Map<String, int> diaryPresenceTagCounts(List<EntryIndexRecord> entries) {
   final Map<String, int> countByNorm = <String, int>{};
   final Map<String, String> displayByNorm = <String, String>{};

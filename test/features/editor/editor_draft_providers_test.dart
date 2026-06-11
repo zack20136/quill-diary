@@ -11,7 +11,6 @@ import 'package:quill_diary/features/editor/providers/editor_draft_providers.dar
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -27,9 +26,7 @@ void main() {
     pathStrategy = _TestPathStrategy(rootDir);
     draftStore = EditorDraftStore(
       pathStrategy: pathStrategy,
-      cryptoService: LocalCryptoService(
-        deviceKeyManager: const UnsupportedDeviceKeyManager(),
-      ),
+      cryptoService: LocalCryptoService(),
     );
     await pathStrategy.ensureBaseDirectories();
 

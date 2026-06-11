@@ -273,7 +273,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
   }
 }
 
-/// Entry editor responsible for creating and updating diary content plus attachments.
+/// 負責建立與更新日記內容及附件的條目編輯器。
 class EditorPage extends ConsumerStatefulWidget {
   const EditorPage({super.key, this.entryId, this.startInEditMode = false});
 
@@ -307,7 +307,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
   late final ProviderSubscription<AsyncValue<AppSessionState>> _sessionSubscription;
-  /// 相對 vault 已儲存內容的基準，用於取消時判斷是否 dirty。
+  /// 相對 vault 已儲存內容的基準，用於取消時判斷是否有未儲存變更。
   EditorDraftSnapshot? _lastSavedSnapshot;
   /// 上次成功寫入本地草稿的快照，避免重複落盤。
   EditorDraftSnapshot? _lastPersistedDraftSnapshot;

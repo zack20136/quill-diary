@@ -1,6 +1,6 @@
 import 'app_unlock_mode.dart';
 
-/// Android Keystore authentication policies used for wrapping recovery material.
+/// 用於包裝復原材料的 Android Keystore 驗證政策。
 enum KeystoreAuthKind {
   plain,
   deviceCredential,

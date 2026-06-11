@@ -18,7 +18,7 @@ import '../vault_repository.dart';
 import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
-/// Size estimate for a selected HTML export before embedding image data.
+/// 嵌入圖片資料前，對所選 HTML 匯出的尺寸估算。
 class HtmlExportEstimate {
   const HtmlExportEstimate({
     required this.entryCount,
@@ -35,10 +35,10 @@ class HtmlExportEstimate {
   bool exceedsImageBytes(int thresholdBytes) => imageBytes >= thresholdBytes;
 }
 
-/// Writes user-portable Markdown, ZIP, and selected-entry HTML exports.
+/// 寫入使用者可攜的 Markdown、ZIP 與所選條目 HTML 匯出。
 ///
-/// These formats are intentionally separate from encrypted full-vault backup zips
-/// because users can inspect and re-import them as loose documents.
+/// 這些格式刻意與加密完整 vault 備份 zip 分開，
+/// 讓使用者可檢視並以散檔重新匯入。
 class PortableExportIo {
   PortableExportIo({
     required VaultPathStrategy pathStrategy,

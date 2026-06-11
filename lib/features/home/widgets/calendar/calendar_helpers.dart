@@ -1,4 +1,4 @@
-/// Shared helpers for the home calendar widgets.
+/// 首頁日曆 widget 共用輔助函式。
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +35,7 @@ bool calendarIsSunday(DateTime day) => day.weekday == DateTime.sunday;
 
 bool calendarIsSaturday(DateTime day) => day.weekday == DateTime.saturday;
 
-/// First [kCalendarPreviewCharCount] characters for calendar cell preview.
+/// 日曆格預覽取前 [kCalendarPreviewCharCount] 個字元。
 String calendarEntryPreviewLabel(String text) {
   final String trimmed = text.trim();
   if (trimmed.isEmpty) {

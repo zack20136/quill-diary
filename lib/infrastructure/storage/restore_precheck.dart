@@ -10,7 +10,7 @@ const String kBackupRecoveryKeyMismatchMessage =
 const String kBackupNoEncryptedSampleMessage =
     '備份內找不到可驗證的加密日記檔，無法確認復原金鑰。';
 
-/// Preview of recovery metadata inside a full-vault backup zip archive.
+/// 完整 vault 備份 zip 內復原中繼資料的預覽。
 class BackupRecoveryPreview {
   const BackupRecoveryPreview({
     required this.hasRecovery,
@@ -21,7 +21,7 @@ class BackupRecoveryPreview {
   final RecoveryMetadata? metadata;
 }
 
-/// Result of comparing a backup with the current device before restore.
+/// 還原前比對備份與目前裝置的結果。
 class RestorePrecheck {
   const RestorePrecheck({
     required this.preview,

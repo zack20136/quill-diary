@@ -108,11 +108,11 @@ void main() {
     expect(state.session?.vaultId, metadata.vaultId);
   });
 
-  test('啟動遇到 legacy trusted state 時會進入 recoveryRequired 並清掉 trusted state', () async {
+  test('啟動遇到不支援的可信裝置格式時會進入 recoveryRequired 並清掉 trusted state', () async {
     final FakeVaultRepository repository = FakeVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
-      openTrustedSessionResult: const DeviceKeyLegacyStateException('legacy slot'),
+      openTrustedSessionResult: const DeviceKeyUnsupportedFormatException('格式不符'),
     );
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
@@ -121,7 +121,7 @@ void main() {
 
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.recoveryRequired);
-    expect(state.message, 'legacy slot');
+    expect(state.message, '格式不符');
     expect(repository.clearTrustedDeviceAccessCalls, 1);
   });
 

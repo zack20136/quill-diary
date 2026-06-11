@@ -238,7 +238,7 @@ class SettingsStatusPanel extends StatelessWidget {
   }
 }
 
-/// 顯示 Recovery Key 是否已建立，以及必要的建立入口與 metadata。
+/// 顯示 Recovery Key 是否已建立，以及必要的建立入口與中繼資料。
 class RecoveryKeySectionBody extends StatelessWidget {
   const RecoveryKeySectionBody({
     required this.metadata,
@@ -337,11 +337,7 @@ class UnlockMethodSectionBody extends StatelessWidget {
   final Future<void> Function(AppUnlockMode mode) onModeSelected;
 
   static String descriptionForMode(AppUnlockMode mode) {
-    return switch (mode) {
-      AppUnlockMode.none => kUnlockModeNoneDescription,
-      AppUnlockMode.deviceLock => kUnlockModeDeviceLockDescription,
-      AppUnlockMode.biometric => kUnlockModeBiometricDescription,
-    };
+    return SettingsUnlockMethodCopy.unlockModeDescription(mode);
   }
 
   @override
@@ -608,7 +604,7 @@ class SettingsInfoBanner extends StatelessWidget {
   }
 }
 
-/// 顯示 Recovery Key metadata 等短資訊的 pill 樣式元件。
+/// 顯示 Recovery Key 中繼資料等短資訊的膠囊樣式元件。
 class SettingsFactChip extends StatelessWidget {
   const SettingsFactChip({
     required this.label,

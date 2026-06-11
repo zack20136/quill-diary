@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shared visual tokens for cards, panels, thumbnails, and layout chrome.
+/// 卡片、面板、縮圖與版面裝飾共用的視覺 token。
 abstract final class PageStyle {
   PageStyle._();
 

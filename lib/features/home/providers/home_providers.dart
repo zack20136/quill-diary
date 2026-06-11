@@ -132,7 +132,7 @@ Future<void> refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) asy
   }
 }
 
-/// editor / settings 等其他 feature 共用的索引刷新入口。
+/// 編輯器／設定等其他功能共用的索引刷新入口。
 Future<void> refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
   return refreshHomeIndexCaches(ref, editedEntryId: editedEntryId);
 }

@@ -1,9 +1,9 @@
 import '../shared/value_objects.dart';
 
-/// Canonical diary content model before encryption and after decryption.
+/// 加解密前後的標準日記內容模型。
 ///
-/// Storage encodes this model as Markdown with front matter, then encrypts the
-/// resulting document. The search index is derived from these fields.
+/// 儲存層將此模型編碼為含前置資訊的 Markdown 後再加密文件；
+/// 搜尋索引衍生自這些欄位。
 class DiaryEntry {
   const DiaryEntry({
     required this.id,

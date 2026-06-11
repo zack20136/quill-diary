@@ -7,7 +7,7 @@ import '../../../shared/presentation/page_style.dart';
 const double kHomeSearchRowControlHeight = 46;
 const double kHomeToolbarActionCircleSize = 34;
 
-/// Pill-shaped search field shared by home timeline and tags panes.
+/// 首頁時間軸與標籤面板共用的膠囊形搜尋欄。
 class HomeSearchTextField extends StatelessWidget {
   const HomeSearchTextField({
     super.key,
@@ -265,7 +265,7 @@ class HomeCircleIconButton extends StatelessWidget {
   }
 }
 
-/// Circular toggle aligned with the home search [TextField] height.
+/// 與首頁搜尋 [TextField] 高度對齊的圓形切換按鈕。
 class HomeSearchSelectionToggleButton extends StatelessWidget {
   const HomeSearchSelectionToggleButton({
     super.key,

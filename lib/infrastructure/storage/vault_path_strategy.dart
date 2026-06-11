@@ -6,10 +6,9 @@ import 'package:path_provider/path_provider.dart';
 import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 
-/// Computes every on-device path used by vault, index, and local backup storage.
+/// 計算 vault、索引與本機備份儲存使用的所有本機路徑。
 ///
-/// Keeping path construction here makes namespace changes and legacy migrations
-/// easier to audit.
+/// 路徑建構集中於此，便於稽核命名空間變更。
 class VaultPathStrategy {
   const VaultPathStrategy();
 
@@ -124,32 +123,5 @@ class VaultPathStrategy {
     await backupsRoot.create(recursive: true);
     final Directory draftsRoot = await editorDraftsRootDirectory();
     await draftsRoot.create(recursive: true);
-  }
-
-  /// 舊版將索引放在 `vault/index/`；啟動時搬至 [indexRootDirectory]（須在首次開啟 IndexDatabase 之前呼叫）。
-  Future<void> migrateLegacyVaultIndexIfNeeded() async {
-    final Directory vaultRoot = await vaultRootDirectory();
-    final Directory legacyDir = Directory(p.join(vaultRoot.path, 'index'));
-    final Directory destDir = await indexRootDirectory();
-    final File destDb = File(p.join(destDir.path, 'journal_index.sqlite'));
-    if (destDb.existsSync()) {
-      return;
-    }
-    final File legacyDb = File(p.join(legacyDir.path, 'journal_index.sqlite'));
-    if (!legacyDb.existsSync()) {
-      return;
-    }
-    await destDir.create(recursive: true);
-    for (final FileSystemEntity entity in legacyDir.listSync()) {
-      if (entity is! File) {
-        continue;
-      }
-      final String name = p.basename(entity.path);
-      if (!name.startsWith('journal_index.sqlite')) {
-        continue;
-      }
-      await entity.copy(p.join(destDir.path, name));
-    }
-    await legacyDir.delete(recursive: true);
   }
 }

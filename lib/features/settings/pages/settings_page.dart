@@ -218,30 +218,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Scaffold(
       backgroundColor: pageBackground,
       appBar: AppBar(
-        title: const Text(SettingsCopy.pageTitle),
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            const Text(SettingsCopy.pageTitle),
+            const Spacer(),
+            const _SettingsAppBarNavActions(),
+          ],
+        ),
         backgroundColor: pageBackground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: OutlinedButton.icon(
-              onPressed: () => unawaited(context.push(AppRouter.aboutRoute)),
-              icon: const Icon(Icons.info_outline_rounded, size: 18),
-              label: const Text(SettingsAboutCopy.pageTitle),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(top: 8, right: 12, bottom: 8),
-            child: FilledButton.tonalIcon(
-              onPressed: () => unawaited(context.push(AppRouter.supportRoute)),
-              icon: const Icon(Icons.favorite_border_rounded, size: 18),
-              label: const Text(SettingsSupportCopy.navButtonLabel),
-            ),
-          ),
-        ],
       ),
       body: ColoredBox(
         color: pageBackground,
@@ -276,6 +264,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
+                    icon: Icons.phonelink_lock_outlined,
                     title: SettingsUnlockMethodCopy.sectionTitle,
                     description: SettingsUnlockMethodCopy.sectionDescription,
                     child: unlockModeAsync.when(
@@ -1107,6 +1096,77 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+/// 設定頁 AppBar 右側按鈕列（介紹、贊助）。
+class _SettingsAppBarNavActions extends StatelessWidget {
+  const _SettingsAppBarNavActions();
+
+  static const double _gap = 8;
+  static const double _padding = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: _padding),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          _SettingsAppBarNavButton(
+            label: SettingsAboutCopy.pageTitle,
+            onPressed: () => unawaited(context.push(AppRouter.aboutRoute)),
+          ),
+          const SizedBox(width: _gap),
+          _SettingsAppBarNavButton(
+            label: SettingsSupportCopy.navButtonLabel,
+            onPressed: () => unawaited(context.push(AppRouter.supportRoute)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsAppBarNavButton extends StatelessWidget {
+  const _SettingsAppBarNavButton({
+    required this.label,
+    required this.onPressed,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Material(
+      color: Color.alphaBlend(
+        cs.surfaceContainerHigh.withValues(alpha: 0.72),
+        cs.surface,
+      ),
+      borderRadius: BorderRadius.circular(999),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          child: Center(
+            child: Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+                height: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

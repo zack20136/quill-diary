@@ -1,7 +1,7 @@
-/// Stable app names and namespaces shared by Dart infrastructure code.
+/// Dart 基礎設施程式碼共用的穩定應用名稱與命名空間。
 ///
-/// Changing these values can create new on-device storage, Android package,
-/// OAuth, or MethodChannel identities. Treat updates as migration-affecting.
+/// 變更這些值可能產生新的本機儲存、Android 套件、
+/// OAuth 或 MethodChannel 身份；更新應視為影響遷移。
 abstract final class AppIdentifiers {
   static const String displayName = 'Quill Diary';
   static const String dartPackageName = 'quill_diary';
@@ -21,7 +21,7 @@ abstract final class AppIdentifiers {
       'https://github.com/zack20136/quill-diary';
   static const String issuesUrl = '$sourceRepositoryUrl/issues';
 
-  /// GitHub-rendered legal docs (also valid for Google Play Console).
+  /// GitHub 渲染的法律文件（亦適用於 Google Play Console）。
   static const String privacyPolicyUrl =
       '$sourceRepositoryUrl/blob/main/docs/privacy-policy.md';
 

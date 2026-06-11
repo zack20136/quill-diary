@@ -1,8 +1,8 @@
-/// UI actions requested by [AppSessionController] after the app needs to unlock.
+/// App 需要解鎖後由 [AppSessionController] 請求的 UI 動作。
 enum ResumeUnlockAction {
-  /// Immediately run trusted-device plain unwrap (none mode).
+  /// 立即執行可信裝置直接解包（none 模式）。
   autoTrusted,
 
-  /// Run trusted-device unlock through the configured Android Keystore prompt.
+  /// 透過已設定的 Android Keystore 提示執行可信裝置解鎖。
   keystoreUnlock,
 }

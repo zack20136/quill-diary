@@ -13,10 +13,10 @@ import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'backup_archive_inspection.dart';
 
-/// Reads and writes encrypted full-vault backup zip archives.
+/// 讀寫加密完整 vault 備份 zip 封存。
 ///
-/// Backups copy the vault's authoritative encrypted files and recovery metadata;
-/// the search index is treated as derived data and rebuilt after restore.
+/// 備份複製 vault 權威加密檔與復原中繼資料；
+/// 搜尋索引視為衍生資料，還原後重建。
 class VaultBackupIo {
   VaultBackupIo({
     required VaultPathStrategy pathStrategy,
@@ -215,7 +215,7 @@ class VaultBackupIo {
     try {
       localTagCatalog = await _repository.listTagCatalog();
     } on Object {
-      // Repository or index may already be closed; fall back to vault file on disk.
+      // repository 或索引可能已關閉；改從磁碟上的 vault 檔案讀取。
     }
     if (localTagCatalog.isEmpty) {
       localTagCatalog = await TagStylesStore(_pathStrategy).read();

@@ -6,10 +6,9 @@ import '../features/settings/pages/about_page.dart';
 import '../features/settings/pages/settings_page.dart';
 import '../features/settings/pages/support_page.dart';
 
-/// Central application routes.
+/// 應用程式中央路由。
 ///
-/// The app keeps routing concerns in one place while feature pages live inside
-/// their own modules.
+/// 路由集中管理，功能頁面位於各自模組內。
 class AppRouter {
   static const String homeRoute = '/';
   static const String editorRoute = '/editor';

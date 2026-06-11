@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/shared/vault_backup_policy.dart';
+import '../session/session_timeout_policy.dart';
 import 'legal_disclosures.dart';
 
 class AboutTabCopy {
@@ -49,13 +50,13 @@ class AboutItemCopy {
 abstract final class SettingsAboutCopy {
   static const String pageTitle = '介紹';
 
-  static const List<AboutTabCopy> tabs = <AboutTabCopy>[
+  static List<AboutTabCopy> get tabs => <AboutTabCopy>[
     AboutTabCopy(
-      label: '首頁',
+      label: '簡介',
       heroIcon: Icons.menu_book_rounded,
       heroTitle: 'Quill Diary',
       heroBody:
-          '為私人日記而設計的離線加密日記。這不是把加密黏在筆記工具外面的附加功能，而是從建立、解鎖、搜尋、編輯到備份，都圍繞同一套本機保護邏輯設計。',
+          '專為私人日記設計的離線加密 App。從建立日記庫、解鎖、撰寫、搜尋到備份，都以本機加密為前提，內容預設留在你的裝置上。',
       chips: <String>[
         '僅 Android',
         '離線優先',
@@ -66,28 +67,54 @@ abstract final class SettingsAboutCopy {
       sections: <AboutSectionCopy>[
         AboutSectionCopy(
           title: '核心特色',
-          subtitle: '先理解這個 App 的定位，再看後面的細節。',
+          subtitle: '先掌握產品定位，其餘分頁再說明各模組細節。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.lock_outline_rounded,
               title: '本機加密保存',
-              body: '日記與附件不以明文形式留在日記庫中。除非你主動備份或匯出，內容不會自動離開裝置。',
+              body: '日記與附件不以明文留在日記庫中。除非你主動備份或匯出，內容不會自動離開裝置。',
             ),
             AboutItemCopy(
               icon: Icons.health_and_safety_outlined,
               title: '可信裝置與復原金鑰',
-              body: '日常使用可走可信裝置解鎖，真的需要救援或換機時則回到復原金鑰路徑。',
+              body: '日常可用可信裝置快速解鎖；換機、還原或可信狀態失效時，則需輸入復原金鑰。',
             ),
             AboutItemCopy(
               icon: Icons.search_rounded,
               title: '解鎖後全文搜尋',
-              body: '標題、標籤與內文都能找。搜尋索引只在有效 session 期間開啟，鎖定後關閉。',
+              body: '可搜尋標題、標籤與內文。搜尋索引只在解鎖期間開啟，鎖定後會關閉。',
+            ),
+          ],
+        ),
+        AboutSectionCopy(
+          title: '主畫面導覽',
+          subtitle: '解鎖後的主畫面有四個分頁，各自對應不同的瀏覽方式。',
+          items: <AboutItemCopy>[
+            AboutItemCopy(
+              icon: Icons.view_list_rounded,
+              title: '日記列表',
+              body: '依時間瀏覽日記，可搜尋標題、內文或標籤，也能選取多篇後匯出 HTML 或刪除。',
+            ),
+            AboutItemCopy(
+              icon: Icons.calendar_month_outlined,
+              title: '日曆',
+              body: '以月曆查看撰寫紀錄，點選日期即可篩選當天的日記。',
+            ),
+            AboutItemCopy(
+              icon: Icons.sell_outlined,
+              title: '標籤',
+              body: '管理標籤樣式與清單，點選標籤可預覽套用該標籤的日記摘要。',
+            ),
+            AboutItemCopy(
+              icon: Icons.insights_outlined,
+              title: '總覽',
+              body: '查看撰寫統計、熱門標籤與範圍篩選，並可匯出年度、月份或全部回顧。',
             ),
           ],
         ),
         AboutSectionCopy(
           title: '日常使用體驗',
-          subtitle: '它不只是在保護資料，也盡量把常用操作做順。',
+          subtitle: '除了保護資料，也盡量讓常用操作順手。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.edit_note_rounded,
@@ -97,33 +124,33 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.save_as_outlined,
               title: '草稿接續',
-              body: '編輯中的內容會自動保存成加密草稿。中斷後再次開啟，可選擇還原上次進度。',
+              body: '編輯中的內容會自動保存成加密草稿。再次開啟時，可選擇還原上次進度。',
             ),
             AboutItemCopy(
               icon: Icons.swap_horiz_rounded,
               title: '備份與可攜式匯出',
-              body: '完整備份用來保存整個加密日記庫；Markdown / HTML 匯出則用來整理、攜出或再匯入。',
+              body: '完整備份保存整個加密日記庫；Markdown / HTML 匯出則用來閱讀、整理或再匯入。',
             ),
           ],
         ),
         AboutSectionCopy(
           title: '你可以怎麼理解它',
-          subtitle: '這個專案的核心不是雲端同步，而是私人資料掌控。',
+          subtitle: '核心不是雲端同步，而是讓你掌握自己的私人資料。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.auto_stories_outlined,
               title: '私人日記工具',
-              body: '它優先考慮的是個人日記、回顧與保護，而不是團隊協作或公開分享。',
+              body: '優先服務個人日記、回顧與保護，而非團隊協作或公開分享。',
             ),
             AboutItemCopy(
               icon: Icons.storage_rounded,
               title: '加密資料庫',
-              body: '你也可以把它理解成一個能搜尋、備份、還原、匯出的本機加密日記資料庫。',
+              body: '也可視為一個能搜尋、備份、還原與匯出的本機加密日記資料庫。',
             ),
             AboutItemCopy(
               icon: Icons.phonelink_lock_outlined,
               title: '安全與日常平衡',
-              body: '可信裝置讓日常重新進入不必每次都走最重的流程，但最終仍以復原金鑰作為底線。',
+              body: '可信裝置讓重新進入不必每次都走最重的流程，復原金鑰則是最終保障。',
             ),
           ],
         ),
@@ -148,81 +175,83 @@ abstract final class SettingsAboutCopy {
     AboutTabCopy(
       label: '解鎖與會話',
       heroIcon: Icons.lock_person_rounded,
-      heroTitle: '解鎖不是一次動作，而是一段 session',
+      heroTitle: '解鎖後會維持一段可用期間',
       heroBody:
-          'Quill Diary 會維持一段目前可讀寫日記庫的有效 session。這一頁只講什麼時候算已解鎖、何時要重新驗證，以及可信裝置如何影響重新進入體驗。',
+          'App 解鎖後會維持一段可讀寫日記庫的期間。這一頁說明何時算已解鎖、背景多久會鎖定，以及回到 App 時要如何重新驗證。',
       chips: <String>[
-        'Session',
+        '解鎖方式',
         '可信裝置',
         '復原金鑰',
         '背景逾時',
       ],
       sections: <AboutSectionCopy>[
         AboutSectionCopy(
-          title: '三種解鎖模式',
-          subtitle: '解鎖模式決定回到前景時，系統要用哪種方式重新驗證。',
+          title: '三種解鎖方式',
+          subtitle: '可在設定頁切換；決定鎖定後回到 App 時，要用哪種方式重新驗證。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.no_encryption_gmailerrorred_outlined,
-              title: '無驗證',
-              body: '回前景時不額外驗證，逾時後走 `autoTrusted` 直接恢復可信 session。適合尚未設定螢幕鎖的裝置，但安全性較低。',
+              title: '無',
+              body: '鎖定後不額外驗證，直接解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。',
             ),
             AboutItemCopy(
               icon: Icons.lock_outline,
               title: '裝置螢幕鎖',
-              body: '使用 `deviceLock` 路徑，回前景時跳出系統螢幕鎖驗證，對應 `deviceCredential` Keystore 槽。',
+              body: '鎖定後以螢幕鎖（PIN、圖案或密碼）驗證。請先在裝置設定中建立螢幕鎖。',
             ),
             AboutItemCopy(
               icon: Icons.fingerprint_rounded,
               title: '生物驗證',
-              body: '使用 `biometric` 路徑，回前景時走系統指紋或臉部驗證，對應 `biometric` Keystore 槽。',
+              body: '鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。',
             ),
             AboutItemCopy(
               icon: Icons.info_outline_rounded,
               title: '共同前提',
-              body: '螢幕鎖與生物驗證模式都要求裝置本身已設定螢幕鎖；生物驗證模式 ideally 還要求至少有一種生物辨識已登錄。',
+              body: '螢幕鎖與生物驗證都要求裝置已設定螢幕鎖；切換至生物驗證時，另須已登錄生物辨識。',
             ),
           ],
         ),
         AboutSectionCopy(
-          title: 'Session 如何運作',
-          subtitle: '只要 session 有效，App 才能讀寫正式日記、草稿與搜尋索引。',
+          title: '解鎖期間如何運作',
+          subtitle: '解鎖期間才能讀寫正式日記、草稿與搜尋索引。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.lock_open_rounded,
-              title: '有效 session',
-              body: '有效 session 存在時，日記庫、草稿與索引都能正常使用。',
+              title: '解鎖中',
+              body: '解鎖後，日記庫、草稿與搜尋索引都能正常使用。',
             ),
             AboutItemCopy(
               icon: Icons.lock_clock_outlined,
               title: '背景逾時',
-              body: '預設 5 分鐘後 session 失效。App 回到前景時，必須重新完成系統驗證才能恢復可信 session。',
+              body:
+                  '背景超過 ${sessionBackgroundTimeoutLabel()} 未使用會鎖定，短時間切換 App 不會。'
+                  '備份、還原或匯入匯出進行中則暫不鎖定。鎖定後回到 App 時，請依解鎖方式重新驗證。',
             ),
             AboutItemCopy(
               icon: Icons.sync_rounded,
-              title: 'Resume 行為',
-              body: '逾時後依模式分支：`none` 走 `autoTrusted` 直接恢復；`deviceLock` / `biometric` 則走 `keystoreUnlock`，要求 UI 重新觸發 `unlock()` 並跳出系統驗證對話框。',
+              title: '回到 App 時',
+              body: '「無」模式逾時後直接恢復；「螢幕鎖」與「生物驗證」則會跳出系統驗證對話框，完成後才能繼續。',
             ),
           ],
         ),
         AboutSectionCopy(
-          title: '什麼時候會退回復原金鑰',
-          subtitle: '可信裝置只是便利路徑，不是最終的資料所有權依據。',
+          title: '什麼時候需要復原金鑰',
+          subtitle: '可信裝置是便利路徑，復原金鑰才是換機與還原的最終依據。',
           items: <AboutItemCopy>[
             AboutItemCopy(
               icon: Icons.warning_amber_rounded,
               title: '可信狀態失效',
-              body: '當裝置上的可信狀態失效，或 Keystore 狀態與目前模式不一致時，就不能只靠可信裝置繼續進入。',
+              body: '裝置上的可信狀態失效，或與目前解鎖方式不一致時，就不能只靠可信裝置進入。',
             ),
             AboutItemCopy(
               icon: Icons.key_outlined,
               title: '還原後不匹配',
-              body: '若還原後偵測到目前可信狀態與日記庫不再匹配，流程會退回 `recoveryRequired`，要求輸入復原金鑰。',
+              body: '還原備份後，若可信狀態與日記庫不再對應，會要求輸入建立該備份時保存的復原金鑰。',
             ),
             AboutItemCopy(
               icon: Icons.key_outlined,
               title: '復原金鑰的地位',
-              body: '復原金鑰不是可選附加功能，而是換機、還原與可信裝置失效時的最後依據。',
+              body: '復原金鑰不是附加功能，而是換機、還原與可信裝置失效時的必要憑證。',
             ),
           ],
         ),
@@ -326,7 +355,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.manage_search_outlined,
               title: '讓搜尋更快',
-              body: '首頁搜尋不直接逐篇掃描加密日記，而是對索引查詢標題、標籤與內文。',
+              body: '主畫面搜尋不逐篇掃描加密日記，而是對索引查詢標題、標籤與內文。',
             ),
             AboutItemCopy(
               icon: Icons.storage_rounded,
@@ -336,7 +365,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.lock_outline_rounded,
               title: '索引本身也加密',
-              body: '索引路徑雖然和日記庫分開，但 SQLCipher 金鑰會由 `recoveryWrapKey + vaultId` 經 HKDF 衍生，不以明文 SQLite 留在裝置上。',
+              body: '索引路徑雖然和日記庫分開，但 SQLCipher 金鑰會由 `recoveryWrapKey + vaultId` 經 HKDF-SHA256 衍生（`info: quill_diary:index:v1`），不以明文 SQLite 留在裝置上。',
             ),
           ],
         ),
@@ -347,7 +376,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.lock_open_rounded,
               title: '解鎖後開啟',
-              body: '解鎖成功後，`openForSession` 會綁定目前 `vaultId` 開啟索引。若格式不符，直接刪掉再重建。',
+              body: '解鎖成功後，`openForSession` 會綁定目前 `vaultId` 開啟加密索引；`ensureIndexReady` 再檢查 schema 版本，必要時才重建。',
             ),
             AboutItemCopy(
               icon: Icons.save_outlined,
@@ -368,7 +397,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.search_rounded,
               title: '命中欄位',
-              body: '目前搜尋命中 `title_search_text`、`body_search_text` 與 `entry_tags.tag_normalized`；`preview_text` 只用於摘要顯示。',
+              body: '查詢會先正規化，再比對 `title_search_text`、`body_search_text`（Markdown 正文正規化後）與 `entry_tags.tag_normalized`；`preview_text` 只用於摘要顯示。',
             ),
             AboutItemCopy(
               icon: Icons.manage_search_outlined,
@@ -456,7 +485,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.info_outline_rounded,
               title: '未儲存提示',
-              body: '首頁列表與檢視模式會顯示「未儲存」標記，提醒你這篇日記仍有本地草稿存在。',
+              body: '日記列表與檢視模式會顯示「未儲存」標記，提醒你這篇日記仍有本地草稿。',
             ),
           ],
         ),
@@ -508,7 +537,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.manage_search_outlined,
               title: '刪除並重建索引',
-              body: '還原後既有搜尋索引會刪除，接著從新的正式日記庫重新建立。App 會回到重新啟動與重新解鎖狀態。',
+              body: '還原時會刪除既有索引；session 啟動後才重建。同 vault 且可信狀態仍對應時，可沿用還原前 session 免再次驗證，否則會要求復原金鑰或重新解鎖。',
             ),
             AboutItemCopy(
               icon: Icons.key_outlined,
@@ -529,7 +558,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.file_upload_outlined,
               title: '匯出',
-              body: '設定頁可匯出 `markdown_*.zip`；首頁選取日記後可匯出 `html_*.html`，兩者都屬於可讀內容輸出。',
+              body: '設定頁可匯出 `markdown_*.zip`；主畫面選取日記或總覽分頁「匯出回顧」可匯出 `html_*.html`，兩者都是可讀內容輸出。',
             ),
             AboutItemCopy(
               icon: Icons.swap_horiz_rounded,

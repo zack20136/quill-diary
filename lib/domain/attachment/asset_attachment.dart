@@ -1,9 +1,9 @@
 import '../shared/value_objects.dart';
 
-/// Metadata for an encrypted attachment stored beside a diary entry.
+/// 儲存在日記條目旁的加密附件中繼資料。
 ///
-/// The actual bytes live under the vault `assets/` tree; this model is the
-/// index/front-matter view used by UI, backup, and restore flows.
+/// 實際位元組位於 vault `assets/` 樹下；此模型為 UI、備份與還原流程
+/// 使用的索引／前置資訊視圖。
 class AssetAttachment {
   const AssetAttachment({
     required this.id,

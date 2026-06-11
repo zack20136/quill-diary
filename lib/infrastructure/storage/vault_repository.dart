@@ -28,7 +28,7 @@ import 'shared/vault_file_ops.dart';
 import 'vault_path_strategy.dart';
 import 'vault_state_keys.dart';
 
-/// Attachment selected in the UI but not yet persisted into the encrypted vault.
+/// UI 中已選取但尚未寫入加密 vault 的附件。
 class PendingAttachment {
   PendingAttachment({
     this.bytes,
@@ -41,7 +41,7 @@ class PendingAttachment {
           'PendingAttachment 需要 bytes 或 sourcePath',
         );
 
-  /// 內嵌或已讀入記憶體的附件（例如 HTML data URI）。
+  /// 內嵌或已讀入記憶體的附件（例如 HTML 資料 URI）。
   final Uint8List? bytes;
 
   /// 本機檔案路徑（編輯器選檔或匯入的外部圖片）。
@@ -50,8 +50,7 @@ class PendingAttachment {
   final String originalFilename;
 }
 
-/// Result returned when a new Recovery Key is created and trusted-device access
-/// is established in the same flow.
+/// 同流程建立新 Recovery Key 並完成可信裝置存取時回傳的結果。
 class RecoverySetupResult {
   const RecoverySetupResult({
     required this.recoveryKey,
@@ -86,10 +85,10 @@ class _EntrySearchFields {
   final String bodySearchText;
 }
 
-/// Main coordination layer for encrypted vault storage.
+/// 加密 vault 儲存的主要協調層。
 ///
-/// This repository owns Recovery Key setup/unlock, trusted-device session
-/// restoration, encrypted entry/asset I/O, and index synchronization.
+/// 此儲存庫負責 Recovery Key 建立／解鎖、可信裝置 session 還原、
+/// 加密條目／附件 I/O 與索引同步。
 class VaultRepository {
   VaultRepository({
     required VaultPathStrategy pathStrategy,
@@ -178,7 +177,7 @@ class VaultRepository {
     );
   }
 
-  /// 還原同 vault 後沿用還原前 session 的 wrap key，不再觸發裝置驗證。
+  /// 還原同 vault 後沿用還原前 session 的包裝金鑰，不再觸發裝置驗證。
   Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
     UnlockedVaultSession priorSession,
   ) async {
@@ -225,7 +224,7 @@ class VaultRepository {
     return session;
   }
 
-  /// 在從備份還原並覆寫 vault 目錄後呼叫，避免仍沿用記憶體內舊的 recovery metadata。
+  /// 在從備份還原並覆寫 vault 目錄後呼叫，避免仍沿用記憶體內舊的復原中繼資料。
   void clearRecoveryMetadataCache() {
     _cachedRecoveryMetadata = null;
   }
@@ -582,7 +581,7 @@ class VaultRepository {
     await deleteTagCatalogItem(tag);
   }
 
-  /// Removes [tag] from every diary entry and clears any saved accent color.
+  /// 從所有日記條目移除 [tag]，並清除已儲存的強調色。
   Future<int> removeTagFromAllEntries(
     UnlockedVaultSession session,
     String tag,
@@ -638,7 +637,7 @@ class VaultRepository {
     }
   }
 
-  /// Keeps vault file and index in sync after rebuild or restore.
+  /// 重建或還原後保持 vault 檔案與索引同步。
   Future<void> syncTagStylesBetweenVaultAndIndex() async {
     await _applyTagCatalogFromVaultToIndex();
   }
@@ -882,7 +881,7 @@ class VaultRepository {
     );
   }
 
-  /// Reads and decrypts a vault asset (`.enc` on disk) for in-memory preview — e.g. list thumbnails.
+  /// 讀取並解密 vault 資產（磁碟上的 `.enc`）供記憶體內預覽，例如列表縮圖。
   Future<Uint8List?> readDecryptedAssetBytes(
     UnlockedVaultSession session,
     String encryptedAbsolutePath, {

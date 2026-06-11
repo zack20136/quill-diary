@@ -7,7 +7,7 @@ typedef AssetId = String;
 typedef BackupId = String;
 typedef DeviceSlotId = String;
 
-/// Stable prefixed IDs keep exported files readable and avoid cross-type mixups.
+/// 穩定前綴 ID 使匯出檔案可讀，並避免跨類型混淆。
 String generateVaultId() => 'vlt_${Ulid().toCanonical().toUpperCase()}';
 
 String generateEntryId() => 'jrn_${Ulid().toCanonical().toUpperCase()}';
@@ -45,7 +45,7 @@ String searchableTextFromMarkdown(String markdown) {
       .trim();
 }
 
-/// Calendar date stored as `yyyy-MM-dd` without timezone semantics.
+/// 以 `yyyy-MM-dd` 儲存、不含時區語意的日曆日期。
 class DateOnly {
   const DateOnly(this.value);
 

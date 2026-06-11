@@ -17,7 +17,7 @@ import '../state/app_session_state.dart';
 import '../state/resume_unlock_action.dart';
 import '../state/unlock_result.dart';
 
-/// 管理 app-level session 狀態與 trusted session 還原流程。
+/// 管理應用層級 session 狀態與可信 session 還原流程。
 class AppSessionController extends Notifier<AppSessionState> {
   DateTime? _lastForegroundExitAt;
   int _activeSensitiveTasks = 0;
@@ -210,7 +210,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: kBiometricNotEnrolledSwitchModeMessage,
       );
       return UnlockOutcome.failed;
-    } on DeviceKeyLegacyStateException catch (error) {
+    } on DeviceKeyUnsupportedFormatException catch (error) {
       await repository.clearTrustedDeviceAccess();
       state = AppSessionState(
         status: AppLockStatus.recoveryRequired,
@@ -351,7 +351,7 @@ final appSessionProvider =
       AppSessionController.new,
     );
 
-/// 冷啟動或還原後重新建立 app session（請在還原流程直接呼叫，避免與 provider 並行）。
+/// 冷啟動或還原後重新建立應用 session（請在還原流程直接呼叫，避免與 provider 並行）。
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   if (!ref.read(supportedPlatformProvider)) {
     return const AppSessionState(

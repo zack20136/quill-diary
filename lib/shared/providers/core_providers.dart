@@ -14,22 +14,22 @@ import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
 import '../../infrastructure/storage/vault_transfer_service.dart';
 
-/// Whether the current runtime can execute Android-only vault features.
+/// 目前執行環境是否可執行僅限 Android 的 vault 功能。
 final supportedPlatformProvider = Provider<bool>((Ref ref) {
   return !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 });
 
-/// Resolves all on-device paths used by the vault and index storage.
+/// 解析 vault 與索引儲存使用的所有本機路徑。
 final vaultPathStrategyProvider = Provider<VaultPathStrategy>((Ref ref) {
   return const VaultPathStrategy();
 });
 
-/// Encodes and decodes Markdown front matter for diary entries.
+/// 編解碼日記條目的 Markdown 前置資訊。
 final frontMatterCodecProvider = Provider<FrontMatterCodec>((Ref ref) {
   return const FrontMatterCodec();
 });
 
-/// Android device-key bridge used for trusted-device wrapping.
+/// 用於可信裝置包裝的 Android 裝置金鑰橋接層。
 final deviceKeyManagerProvider = Provider<DeviceKeyManager>((Ref ref) {
   if (!ref.watch(supportedPlatformProvider)) {
     return const UnsupportedDeviceKeyManager();
@@ -37,14 +37,12 @@ final deviceKeyManagerProvider = Provider<DeviceKeyManager>((Ref ref) {
   return AndroidDeviceKeyManager();
 });
 
-/// Low-level crypto service for LDJ2 encrypt/decrypt operations.
+/// LDJ2 加解密作業的底層加密服務。
 final cryptoServiceProvider = Provider<CryptoService>((Ref ref) {
-  return LocalCryptoService(
-    deviceKeyManager: ref.watch(deviceKeyManagerProvider),
-  );
+  return LocalCryptoService();
 });
 
-/// App-lock state persisted outside the encrypted vault.
+/// 儲存在加密 vault 之外的 App 鎖定狀態。
 final appLockServiceProvider = Provider<AppLockService>((Ref ref) {
   if (!ref.watch(supportedPlatformProvider)) {
     return const UnsupportedAppLockService();
@@ -52,17 +50,17 @@ final appLockServiceProvider = Provider<AppLockService>((Ref ref) {
   return LocalAppLockService();
 });
 
-/// Remote backup integration backed by Google Drive.
+/// 以 Google Drive 為後端的遠端備份整合。
 final driveBackupServiceProvider = Provider<DriveBackupService>((Ref ref) {
   return GoogleDriveBackupService();
 });
 
-/// Coordinates opening and closing the encrypted index database per session.
+/// 依 session 協調加密索引資料庫的開啟與關閉。
 final indexDatabaseManagerProvider = Provider<IndexDatabaseManager>((Ref ref) {
   return IndexDatabaseManager(ref.watch(vaultPathStrategyProvider));
 });
 
-/// Primary repository that coordinates vault I/O, session recovery, and index sync.
+/// 協調 vault I/O、session 復原與索引同步的主要儲存庫。
 final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
   return VaultRepository(
     pathStrategy: ref.watch(vaultPathStrategyProvider),
@@ -74,7 +72,7 @@ final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
   );
 });
 
-/// ZIP-based backup/archive I/O built on top of the vault repository.
+/// 建立在 vault 儲存庫之上的 ZIP 備份／封存 I/O。
 final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
   return VaultArchiveIo(
     pathStrategy: ref.watch(vaultPathStrategyProvider),
@@ -89,7 +87,7 @@ final externalDirectoryStoreProvider = Provider<ExternalDirectoryStore>((Ref ref
   return ExternalDirectoryStore(ref.watch(vaultPathStrategyProvider));
 });
 
-/// Persists encrypted local editor drafts outside the vault index.
+/// 在 vault 索引之外持久化加密的本機編輯器草稿。
 final editorDraftStoreProvider = Provider<EditorDraftStore>((Ref ref) {
   return EditorDraftStore(
     pathStrategy: ref.watch(vaultPathStrategyProvider),
@@ -97,7 +95,7 @@ final editorDraftStoreProvider = Provider<EditorDraftStore>((Ref ref) {
   );
 });
 
-/// High-level backup and restore coordinator for file picker and Drive flows.
+/// 檔案選擇器與 Drive 流程的高階備份還原協調器。
 final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
   return VaultTransferService(
     archiveIo: ref.watch(vaultArchiveIoProvider),

@@ -66,8 +66,7 @@ const List<TagCatalogItem> kDefaultTagCatalog = <TagCatalogItem>[
   TagCatalogItem(label: '購物', accentArgb: 0xFFFF6B6B),
 ];
 
-/// Persists tag catalog under [vault/tag_styles.json] so predefined and unused
-/// tags survive backup/restore.
+/// 在 [vault/tag_styles.json] 持久化標籤目錄，使預設與未使用標籤在備份／還原後保留。
 class TagStylesStore {
   TagStylesStore(this._pathStrategy);
 
@@ -125,7 +124,7 @@ class TagStylesStore {
     };
   }
 
-  /// Later entries override earlier keys.
+  /// 後面的項目覆寫較早的鍵。
   static List<TagCatalogItem> merge(
     List<TagCatalogItem> base,
     List<TagCatalogItem> overlay,

@@ -1,7 +1,7 @@
 import '../../../domain/diary/diary_entry.dart';
 import '../../../domain/shared/value_objects.dart';
 
-/// Quill Diary HTML 匯出用的 entry-date 字串（日記日期 + 建立時間）。
+/// Quill Diary HTML 匯出用的條目日期字串（日記日期 + 建立時間）。
 String formatQuillDiaryExportEntryDateTime(DiaryEntry entry) {
   final DateTime local = entry.createdAt.toLocal();
   return '${entry.date.value} '
@@ -77,7 +77,7 @@ DateOnly? parsePortableDateOnly(String text) {
   return null;
 }
 
-/// 由 HTML entry-date 與 fallback 推導匯入日記的日期與時間戳。
+/// 由 HTML 條目日期與後備值推導匯入日記的日期與時間戳。
 ({DateOnly date, DateTime createdAt, DateTime updatedAt}) resolveQuillDiaryImportEntryTimes({
   required String? dateText,
   required DateTime fallback,

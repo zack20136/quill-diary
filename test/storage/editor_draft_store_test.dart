@@ -8,7 +8,6 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/editor/editor_draft.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
@@ -22,9 +21,7 @@ void main() {
   setUp(() async {
     rootDir = await Directory.systemTemp.createTemp('editor_draft_store_test_');
     pathStrategy = _TestPathStrategy(rootDir);
-    cryptoService = LocalCryptoService(
-      deviceKeyManager: const UnsupportedDeviceKeyManager(),
-    );
+    cryptoService = LocalCryptoService();
     store = EditorDraftStore(
       pathStrategy: pathStrategy,
       cryptoService: cryptoService,

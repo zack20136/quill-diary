@@ -10,7 +10,7 @@ import 'app_unlock_mode.dart';
 import 'keystore_unlock_policy.dart';
 import 'unlock_mode_policy.dart';
 
-/// Persists the user's preferred trusted-device unlock policy outside the vault.
+/// 在 vault 外持久化使用者偏好的可信裝置解鎖政策。
 abstract class AppLockService {
   Future<AppUnlockMode> getUnlockMode();
 
@@ -25,7 +25,7 @@ abstract class AppLockService {
   Future<DeviceAuthCapabilities> getDeviceAuthCapabilities();
 }
 
-/// File-backed app-lock preferences plus native Android credential capability checks.
+/// 檔案型 App 鎖定偏好，外加原生 Android 憑證能力檢查。
 class LocalAppLockService implements AppLockService {
   LocalAppLockService();
 

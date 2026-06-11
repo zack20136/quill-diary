@@ -7,7 +7,7 @@ import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 import 'keystore_unlock_policy.dart';
 
-/// Public metadata for a trusted-device key slot.
+/// 可信裝置金鑰槽位的公開中繼資料。
 class TrustedDeviceInfo {
   const TrustedDeviceInfo({
     required this.slotId,
@@ -18,7 +18,7 @@ class TrustedDeviceInfo {
   final String platform;
 }
 
-/// Ciphertext returned by native Android after wrapping bytes with a device key.
+/// 原生 Android 以裝置金鑰包裝位元組後回傳的密文。
 class DeviceWrappedPayload {
   const DeviceWrappedPayload({
     required this.slotId,
@@ -33,10 +33,9 @@ class DeviceWrappedPayload {
   final String platform;
 }
 
-/// Persisted trusted-device copy of Recovery Key wrapping material.
+/// 持久化的可信裝置 Recovery Key 包裝材料副本。
 ///
-/// Stored in secure storage and validated with [formatVersion] so unsupported
-/// legacy records can be discarded instead of misread.
+/// 儲存於安全儲存區，並以 [formatVersion] 驗證。
 class WrappedRecoveryKeyRecord {
   const WrappedRecoveryKeyRecord({
     required this.slotId,
@@ -72,7 +71,7 @@ class WrappedRecoveryKeyRecord {
         int.tryParse('${json['format_version'] ?? kWrappedRecoveryKeyFormatVersion}') ??
             kWrappedRecoveryKeyFormatVersion;
     if (formatVersion != kWrappedRecoveryKeyFormatVersion) {
-      throw DeviceKeyLegacyStateException(
+      throw DeviceKeyUnsupportedFormatException(
         '不支援的可信裝置金鑰格式版本：$formatVersion。',
       );
     }
@@ -132,13 +131,13 @@ final class DeviceKeyInvalidatedException extends DeviceKeyException {
   const DeviceKeyInvalidatedException([super.message = '裝置金鑰已失效。']);
 }
 
-final class DeviceKeyLegacyStateException extends DeviceKeyException {
-  const DeviceKeyLegacyStateException([
-    super.message = '可信裝置資料屬於舊版格式，請使用復原金鑰重新建立。',
+final class DeviceKeyUnsupportedFormatException extends DeviceKeyException {
+  const DeviceKeyUnsupportedFormatException([
+    super.message = '可信裝置資料格式不符，請使用復原金鑰重新建立。',
   ]);
 }
 
-/// Bridge between vault recovery logic and platform-protected device keys.
+/// vault 復原邏輯與平台保護裝置金鑰之間的橋接層。
 abstract class DeviceKeyManager {
   Future<bool> hasTrustedKey(VaultId vaultId);
 
@@ -177,7 +176,7 @@ abstract class DeviceKeyManager {
   });
 }
 
-/// Android implementation backed by MethodChannel plus flutter_secure_storage.
+/// 以 MethodChannel 與 flutter_secure_storage 為後端的 Android 實作。
 class AndroidDeviceKeyManager implements DeviceKeyManager {
   AndroidDeviceKeyManager({
     MethodChannel? channel,

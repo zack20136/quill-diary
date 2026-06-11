@@ -18,7 +18,7 @@ import '../widgets/home_selection_toolbar.dart';
 import '../widgets/home_shared_widgets.dart';
 import '../widgets/home_tab_stack.dart';
 
-/// Main landing page for browsing, searching, and summarizing diary content.
+/// 瀏覽、搜尋與摘要日記內容的主要落地頁。
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 

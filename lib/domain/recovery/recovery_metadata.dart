@@ -1,10 +1,10 @@
 import 'kdf_descriptor.dart';
 import '../shared/value_objects.dart';
 
-/// Plaintext recovery descriptor stored at `vault/recovery.json`.
+/// 儲存於 `vault/recovery.json` 的明文復原描述子。
 ///
-/// It intentionally contains no diary content and no unwrapped encryption key;
-/// it only describes how a user-entered Recovery Key derives wrapping material.
+/// 刻意不含日記內容與未包裝的加密金鑰；
+/// 僅描述使用者輸入的 Recovery Key 如何衍生包裝材料。
 class RecoveryMetadata {
   const RecoveryMetadata({
     required this.vaultId,
@@ -23,7 +23,7 @@ class RecoveryMetadata {
   final VaultId vaultId;
   final bool recoveryEnabled;
 
-  /// Schema 保留欄位；金鑰輪替與還原世代判斷以 [kdf] salt 為準。
+  /// 結構版本保留欄位；金鑰輪替與還原世代判斷以 [kdf] salt 為準。
   final int recoveryKeyVersion;
   final String recoveryKeyHint;
   final DateTime createdAt;

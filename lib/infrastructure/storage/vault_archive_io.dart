@@ -18,10 +18,9 @@ export 'portable/vault_backup_io.dart' show BackupInspectResult;
 export 'portable/backup_archive_inspection.dart' show VaultBackupLayout;
 export 'portable/portable_import_io.dart' show EasyDiaryBackupImporterFactory;
 
-/// Facade for backup, restore, portable export, and portable import I/O.
+/// 備份、還原、可攜式匯出與匯入 I/O 的門面。
 ///
-/// UI code depends on this class instead of the source-specific implementations
-/// so each format can evolve without widening feature-layer dependencies.
+/// UI 依賴此類而非各來源實作，讓各格式可獨立演進而不擴大功能層依賴。
 class VaultArchiveIo {
   VaultArchiveIo({
     required VaultPathStrategy pathStrategy,

@@ -12,7 +12,7 @@ import '../../config/oauth_config.dart';
 import '../../shared/presentation/display_format.dart';
 import 'google_drive_oauth_errors.dart';
 
-/// Current Google Drive connection snapshot shown by settings and backup flows.
+/// 設定與備份流程顯示的目前 Google Drive 連線快照。
 final class DriveConnectionState {
   const DriveConnectionState({
     required this.isConnected,
@@ -45,12 +45,12 @@ final class DriveConnectionState {
   }
 }
 
-/// Authorized Drive API factory decoupled from the concrete Google Sign-In SDK.
+/// 與具體 Google Sign-In SDK 解耦的已授權 Drive API 工廠。
 abstract interface class GoogleDriveAuthorizationHandle {
   drive.DriveApi createDriveApi(List<String> scopes);
 }
 
-/// Signed-in Google account abstraction used to keep Drive code testable.
+/// 用於保持 Drive 程式可測試的已登入 Google 帳號抽象。
 abstract interface class GoogleDriveSignedInAccount {
   String get email;
 
@@ -65,7 +65,7 @@ abstract interface class GoogleDriveSignedInAccount {
   );
 }
 
-/// Minimal Google Sign-In surface required by Drive backup support.
+/// Drive 備份支援所需的最小 Google Sign-In 介面。
 abstract interface class GoogleDriveSignInClient {
   Future<void> initialize({String? serverClientId});
 
@@ -211,7 +211,7 @@ final class DriveBackupFile {
   final DateTime? createdAt;
 }
 
-/// Remote backup service backed by Google Drive appDataFolder.
+/// 以 Google Drive appDataFolder 為後端的遠端備份服務。
 abstract class DriveBackupService {
   Future<DriveConnectionState> getConnectionState();
 
@@ -234,7 +234,7 @@ abstract class DriveBackupService {
   });
 }
 
-/// Google Drive implementation with Android native-auth fallback handling.
+/// 含 Android 原生驗證後備處理的 Google Drive 實作。
 class GoogleDriveBackupService implements DriveBackupService {
   GoogleDriveBackupService({
     GoogleDriveSignInClient? signInClient,
@@ -297,7 +297,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       try {
         await _signInClient.signOut();
       } on Object {
-        // Best effort only.
+        // 僅盡力而為。
       }
     }
   }
@@ -512,7 +512,7 @@ class GoogleDriveBackupService implements DriveBackupService {
   Future<DriveConnectionState> getConnectionState() async {
     try {
       // Android：僅讀取本機已授權帳號快照。不可呼叫 attemptLightweightAuthentication，
-      // 否則 Credential Manager 會在設定頁載入時彈出 Google 登入 UI。
+      // 否則憑證管理員會在設定頁載入時彈出 Google 登入介面。
       if (Platform.isAndroid || _androidConnectionSnapshotOverride != null) {
         return _getAndroidConnectionState();
       }

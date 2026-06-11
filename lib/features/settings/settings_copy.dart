@@ -1,6 +1,7 @@
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/unlock_mode_policy.dart';
+import '../session/session_timeout_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
 import '../../shared/copy/common_copy.dart';
@@ -28,7 +29,7 @@ abstract final class SettingsCopy {
   static const String actionCancel = CommonCopy.actionCancel;
   static const String actionClose = '關閉';
   static const String actionDelete = CommonCopy.actionDelete;
-  static const String actionConfirm = '還原';
+  static const String actionConfirm = '確認還原';
   static const String actionUpdate = '更新';
   static const String actionVerifyAndRestore = '驗證並還原';
 
@@ -43,27 +44,26 @@ abstract final class SettingsCopy {
 
 abstract final class SettingsPlatformCopy {
   static const String sectionTitle = '平台限制';
-  static const String sectionDescription = '此版本僅支援 Android 上的加密日記庫。';
+  static const String sectionDescription = 'Quill Diary 目前僅支援 Android。';
 }
 
 abstract final class SettingsSecurityLockCopy {
   static const String statusPreparing = '正在準備中…';
-  static const String statusUnlocked = '安全鎖已解除，可以正常使用。';
+  static const String statusUnlocked = '已解鎖，可以正常使用。';
   static const String statusFatalError = '初始化失敗，請稍後再試。';
 
   static const String unlockingWaitHint =
-      '若等候過久，可能是驗證視窗被擋住。可取消後改用手動驗證。';
+      '若等候過久，驗證視窗可能被擋住。可取消後改用手動驗證。';
   static const String cancelUnlockButton = '取消並改用手動驗證';
   static const String unlockWithRecoveryButton = '使用復原金鑰解鎖';
-  static const String recoveryUnlockHint =
-      '輸入復原金鑰以重新解鎖本機日記庫。';
+  static const String recoveryUnlockHint = '輸入復原金鑰以解鎖日記庫。';
   static const String retryVerificationButton = '重新驗證';
 }
 
 abstract final class SettingsRecoveryKeyCopy {
   static const String notSetupBanner =
-      '尚未建立復原金鑰。日記庫無法自動解鎖時，將無法重新進入。';
-  static const String setupBanner = '復原金鑰已建立。需要時可用它重新解鎖本機日記庫。';
+      '尚未建立復原金鑰。請先建立，以便換機、備份與還原。';
+  static const String setupBanner = '復原金鑰已建立，請確認已妥善保存。';
   static const String createButton = '建立復原金鑰';
   static const String rotateButton = '更新復原金鑰';
 
@@ -85,30 +85,30 @@ abstract final class SettingsRecoveryKeyCopy {
 
 abstract final class SettingsSecurityOverviewCopy {
   static const String sectionTitle = '安全狀態';
-  static const String sectionDescription = '集中檢查復原金鑰、解鎖方式與索引狀態。';
+  static const String sectionDescription = '查看復原金鑰、解鎖方式與搜尋索引是否正常。';
 
   static const String recoveryKeyTitle = '復原金鑰';
-  static const String recoveryKeyReady = '已建立，可用於還原與換機。';
-  static const String recoveryKeyReadySaved = '復原金鑰已建立，請確認你已妥善保存。';
-  static const String recoveryKeyMissing = '尚未建立，資料還原能力不足。';
-  static const String recoveryKeyMissingOverview = '尚未建立復原金鑰，請先建立後再使用備份與還原。';
+  static const String recoveryKeyReady = '已建立，可用於換機與還原。';
+  static const String recoveryKeyReadySaved = recoveryKeyReady;
+  static const String recoveryKeyMissing = '尚未建立，請先建立後再備份或還原。';
+  static const String recoveryKeyMissingOverview = recoveryKeyMissing;
 
   static const String unlockStatusTitle = '解鎖狀態';
   static const String unlockStatusUnlocked = '日記庫目前已解鎖。';
-  static const String unlockStatusLocked = '需要重新驗證後才能執行維護動作。';
+  static const String unlockStatusLocked = '請先解鎖，才能備份、還原或調整設定。';
 
   static const String unlockModeTitle = '解鎖方式';
   static const String trustedDeviceTitle = '可信裝置';
-  static const String trustedDeviceReady = '此裝置可使用目前解鎖方式。';
-  static const String trustedDeviceReadyOverview = '此裝置可在通過驗證後解鎖日記庫。';
-  static const String trustedDeviceMissing = '此裝置尚未具備可信解鎖資料。';
+  static const String trustedDeviceReady = '這台裝置已完成驗證，可快速解鎖。';
+  static const String trustedDeviceReadyOverview = trustedDeviceReady;
+  static const String trustedDeviceMissing = '這台裝置尚未完成驗證。';
   static const String unlockModeNeedsRecoveryKeyMessage =
-      '建立復原金鑰後即可設定裝置保護模式。';
+      '建立復原金鑰後，即可設定解鎖方式。';
 
   static String unlockModeProtectedMessage(String unlockModeLabel) =>
-      '目前使用 $unlockModeLabel 保護可信裝置。';
+      '目前以 $unlockModeLabel 保護此裝置。';
 
-  static const String indexTitle = '索引資料庫';
+  static const String indexTitle = '搜尋索引';
 
   static const String createRecoveryKeyButton = '建立復原金鑰';
   static const String rotateRecoveryKeyButton = '更新復原金鑰';
@@ -137,8 +137,12 @@ extension AppUnlockModeSettingsCopy on AppUnlockMode {
 
 abstract final class SettingsUnlockMethodCopy {
   static const String sectionTitle = '解鎖方式';
-  static const String sectionDescription =
-      'App 在背景一段時間後回到前景時，要如何重新驗證身分以進入日記庫。';
+
+  /// 區塊說明（背景逾時取自 [sessionBackgroundTimeoutLabel]）。
+  static String get sectionDescription =>
+      '背景超過 ${sessionBackgroundTimeoutLabel()} 未使用會鎖定，短時間切換 App 不會。'
+      '鎖定後回到 App 時，請依下方方式重新驗證。';
+
   static const String needsRecoveryKeyBanner = '請先建立復原金鑰，才能設定解鎖方式。';
 
   static const String segmentNone = '無';
@@ -146,11 +150,21 @@ abstract final class SettingsUnlockMethodCopy {
   static const String segmentBiometric = '生物驗證';
 
   static const String biometricNeedsDeviceLockHint =
-      '須已登錄至少一種生物辨識，並設定裝置螢幕鎖；驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
+      '須已設定螢幕鎖並登錄生物辨識。\n'
+      '驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
 
   static const String unlockModeChangeCancelled = kUnlockModeChangeCancelledMessage;
 
   static const String unlockModeChangeAuthFailed = kUnlockModeChangeAuthFailedMessage;
+
+  static String unlockModeDescription(AppUnlockMode mode) => switch (mode) {
+        AppUnlockMode.none =>
+          '鎖定後不額外驗證，直接解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。',
+        AppUnlockMode.deviceLock =>
+          '鎖定後以螢幕鎖（PIN、圖案或密碼）驗證。請先在裝置設定中建立螢幕鎖。',
+        AppUnlockMode.biometric =>
+          '鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。',
+      };
 }
 
 /// 備份 / 還原 / 匯入 / 匯出在設定頁不可用時的說明（空字串表示可用）。
@@ -169,17 +183,16 @@ String sensitiveVaultTransferDisabledReason({
 
 abstract final class SettingsSensitiveVaultCopy {
   static const String needsUnlockMessage =
-      '請先解鎖日記庫後，再進行備份、還原或匯入 / 匯出。';
+      '請先解鎖日記庫，才能備份、還原或匯入 / 匯出。';
   static const String needsRecoveryKeyMessage =
-      '請先建立復原金鑰後，再進行備份、還原或匯入 / 匯出。';
+      '請先建立復原金鑰，才能備份、還原或匯入 / 匯出。';
 }
 
 abstract final class SettingsImportExportCopy {
   static const String sectionTitle = '匯入與匯出';
   static const String sectionDescriptionEnabled =
-      '可匯入 Markdown、HTML、Easy Diary 備份 zip。'
-      '匯出日記請選擇資料夾，會寫入 markdown_*.zip；'
-      '首頁匯出 HTML 會寫入 html_*.html。';
+      '可從其他 App 匯入日記，或將日記匯出成檔案。'
+      '支援 Markdown、HTML 與 Easy Diary 備份。';
 
   static const String importNoEntriesMessage =
       '找不到可匯入的日記，請確認檔案格式。';
@@ -191,12 +204,11 @@ abstract final class SettingsImportExportCopy {
       'zip 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。';
 
   static const String importFailureEasyDiaryUnsupportedPlatform =
-      'Easy Diary 完整備份 zip 目前僅支援在 Android 裝置上匯入；'
-      '請改用 Android 版 App。';
+      'Easy Diary 備份目前僅支援在 Android 上匯入。';
 
   static const String importFailureEasyDiaryRealmReadFailed =
-      '無法讀取 Easy Diary 備份資料庫（可能版本不相容）。'
-      '請在 Easy Diary 重新建立完整備份後再試。';
+      '無法讀取 Easy Diary 備份，可能版本不相容。'
+      '請在 Easy Diary 重新建立備份後再試。';
 
   static const String importFailureEasyDiaryEmptyBackup =
       'Easy Diary 備份檔內沒有可匯入的日記。';
@@ -241,9 +253,8 @@ abstract final class SettingsImportExportCopy {
 abstract final class SettingsLocalBackupCopy {
   static const String sectionTitle = '本機備份與還原';
   static String get sectionDescriptionEnabled =>
-      '可建立完整日記庫 zip 備份（backup_*.zip）並從本機還原；還原會覆寫目前日記庫。'
-      '建立與匯出前會做備份檢查，通過才寫入。'
-      '本機最多保留 ${VaultBackupPolicy.retainCount} 份，超出時自動刪除最舊備份。';
+      '建立完整備份並存於本機，還原會覆蓋目前日記。'
+      '（本機最多保留 ${VaultBackupPolicy.retainCount} 份）';
 
   static const String createButton = '建立本機備份';
   static const String restoreButton = '從本機備份還原';
@@ -267,10 +278,9 @@ abstract final class SettingsLocalBackupCopy {
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
   static const String sectionDescriptionEnabled =
-      '連結 Google Drive 後，可上傳 zip 備份到雲端，或從雲端挑選備份還原。'
-      '上傳前會做備份檢查，通過才上傳。';
+      '連結 Google Drive 後，可上傳備份到雲端，或從雲端還原。';
   static const String sectionDescriptionOAuthNotConfigured =
-      '尚未完成 Google 登入設定（OAuth）。';
+      '此版本尚未設定 Google 登入，暫無法使用雲端備份。';
 
   static const String connectButton = '連結 Google Drive';
   static const String reconnectButton = '重新連結 Google Drive';
@@ -287,7 +297,7 @@ abstract final class SettingsDriveBackupCopy {
     return '已連結 Google Drive：$accountLabel，可上傳或還原備份。';
   }
   static const String disconnectedHint = '尚未連結 Google Drive，請先完成 Google 登入與授權。';
-  static const String actionsLockedHint = '要使用雲端備份與還原，請先解鎖日記庫並建立復原金鑰。';
+  static const String actionsLockedHint = '請先解鎖日記庫並建立復原金鑰。';
 
   static String connectSuccess(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {
@@ -316,29 +326,34 @@ abstract final class SettingsRestoreDialogCopy {
   static const String recoveryKeyDialogTitle = '輸入備份復原金鑰';
   static const String recoveryKeyEmptyError = '請輸入復原金鑰。';
   static const String recoveryKeyVerifyNote =
-      '金鑰正確後才會開始還原；錯誤則不會覆寫本機資料。';
+      '金鑰正確才會開始還原；錯誤則不會覆寫本機資料。';
 
   static const String subtitleRotatedBackup =
-      '此備份在「更新復原金鑰」之前建立。請輸入建立該備份時保存的舊金鑰（不是目前這把新金鑰）。';
+      '此備份在更新復原金鑰之前建立。'
+      '請輸入建立該備份時保存的舊金鑰，不是目前這把新金鑰。';
   static const String subtitleSameVaultManual =
-      '本機無法自動解鎖此備份。請輸入建立此備份時保存的復原金鑰。';
+      '本機無法自動解鎖此備份。'
+      '請輸入建立此備份時保存的復原金鑰。';
   static const String subtitleOtherVault =
-      '此備份來自其他裝置或不同授權狀態。請輸入建立此備份時保存的復原金鑰。';
+      '此備份來自其他裝置。'
+      '請輸入建立此備份時保存的復原金鑰。';
 }
 
 abstract final class SettingsRestoreBulletCopy {
-  static const String overwriteWarning = '將以備份內容覆寫本機日記庫，現有資料無法復原。';
-  static const String rebuildIndex = '索引會在解鎖後重新建立。';
+  static const String overwriteWarning = '將以備份內容覆蓋本機日記，現有資料無法復原。';
+  static const String rebuildIndex = '搜尋索引會在解鎖後重新建立。';
   static const String backupWithoutRecovery =
-      '此備份尚未建立復原金鑰；還原後請重新建立。';
+      '此備份尚未建立復原金鑰，還原後請重新建立。';
   static const String rotatedBackup =
-      '此備份在「更新復原金鑰」之前建立；還原後請輸入建立該備份時保存的舊復原金鑰（不是目前這把新金鑰）。';
-  static const String trustedAutoUnlock = '同 vault 且復原金鑰相同時，還原後無需再次驗證。';
+      '此備份在更新復原金鑰之前建立。'
+      '還原後請輸入建立該備份時保存的舊復原金鑰，不是目前這把新金鑰。';
+  static const String trustedAutoUnlock =
+      '若備份與本機使用同一把復原金鑰，還原後通常可直接使用。';
   static const String trustedAutoUnlockFallback =
-      '若無法接續解鎖，再輸入建立此備份時保存的復原金鑰。';
+      '若無法直接解鎖，請輸入建立此備份時保存的復原金鑰。';
   static const String recoveryKeyAfterRestore =
-      '還原後需輸入建立此備份時保存的復原金鑰（非本機後來新建的另一把）。';
-  static const String rewrapNote = '首次解鎖可能需重新包裝加密檔，請保持 App 開啟。';
+      '還原後需輸入建立此備份時保存的復原金鑰。';
+  static const String rewrapNote = '還原後首次解鎖可能需要較久，請保持 App 開啟。';
 }
 
 /// 還原確認對話框的 bullet 列表（文案來自 [SettingsRestoreBulletCopy]）。
@@ -387,9 +402,9 @@ String restoreRecoveryKeyDialogSubtitle(RestorePrecheck precheck) {
 
 /// 索引重建與 Google Drive 連線進度文案。
 abstract final class SettingsIndexCopy {
-  static const String readyMessage = '可隨時從加密日記重建。';
-  static const String lockedMessage = '解鎖後可重建索引。';
-  static const String lockedOverviewMessage = '解鎖後可檢查或重建搜尋索引。';
+  static const String readyMessage = '可隨時重建，讓搜尋恢復正常。';
+  static const String lockedMessage = '解鎖後可重建搜尋索引。';
+  static const String lockedOverviewMessage = lockedMessage;
   static const String connectDriveProgress = '正在連結 Google Drive…';
   static const String reconnectDriveProgress = '正在重新連結 Google Drive…';
 
@@ -397,7 +412,7 @@ abstract final class SettingsIndexCopy {
       '最近重建完成：$entryCount 篇日記，$finishedAt。';
 
   static String rebuildSuccess(int entryCount, String duration) =>
-      '索引已重建：$entryCount 篇日記，耗時 $duration';
+      '搜尋索引已重建：$entryCount 篇日記，耗時 $duration';
 }
 
 /// 設定「贊助」子頁文案（對齊 Google Play Billing 用語）。

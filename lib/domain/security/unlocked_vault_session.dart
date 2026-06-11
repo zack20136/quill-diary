@@ -1,9 +1,9 @@
 import '../shared/value_objects.dart';
 
-/// In-memory proof that the current process can access one vault.
+/// 證明目前行程可存取某個 vault 的記憶體內憑證。
 ///
-/// A session may be restored by trusted-device material or by a Recovery Key.
-/// Keep instances short-lived and avoid persisting [recoveryWrapKey].
+/// session 可透過可信裝置材料或 Recovery Key 還原。
+/// 實例應短生命週期，避免持久化 [recoveryWrapKey]。
 class UnlockedVaultSession {
   const UnlockedVaultSession({
     required this.vaultId,

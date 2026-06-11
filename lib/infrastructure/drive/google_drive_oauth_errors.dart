@@ -24,7 +24,7 @@ String googleDriveAndroidOAuthSha1Checklist() {
       '- 若從 Google Play 安裝，還需 Play Console → App signing 的 SHA-1（通常與 upload 不同）';
 }
 
-/// CredentialManager 常把 OAuth 設定錯誤誤報為使用者取消。
+/// 憑證管理員常把 OAuth 設定錯誤誤報為使用者取消。
 @visibleForTesting
 bool looksLikeGoogleOAuthMisconfiguration(String? detail) {
   final String lowerDetail = detail?.toLowerCase() ?? '';

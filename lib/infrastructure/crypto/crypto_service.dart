@@ -5,17 +5,14 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 import '../../domain/recovery/kdf_descriptor.dart';
-import '../../infrastructure/security/device_key_manager.dart';
-
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
 const int _schemaVersion = 1;
 
-/// A wrapped copy of the per-file content key.
+/// 每個檔案內容金鑰的包裝副本。
 ///
-/// Each encrypted file can include multiple slots, such as Recovery Key access
-/// and trusted-device access, without duplicating the ciphertext body.
+/// 每個加密檔案會在復原槽位儲存其包裝後的內容金鑰。
 class EncryptionKeySlot {
   const EncryptionKeySlot({
     required this.slotId,
@@ -62,9 +59,9 @@ class EncryptionKeySlot {
   }
 }
 
-/// Authenticated LDJ2 header placed before ciphertext in every encrypted file.
+/// 置於每個加密檔案密文之前的 LDJ2 驗證標頭。
 ///
-/// Header bytes are AAD for AES-GCM, so metadata tampering fails decryption.
+/// 標頭位元組作為 AES-GCM 的 AAD，因此竄改中繼資料會導致解密失敗。
 class EncryptedDocumentHeader {
   const EncryptedDocumentHeader({
     required this.schemaVersion,
@@ -122,7 +119,7 @@ class EncryptedDocumentHeader {
   }
 }
 
-/// Raw LDJ2 file split into authenticated header bytes and ciphertext bytes.
+/// 拆分為驗證標頭位元組與密文位元組的原始 LDJ2 檔案。
 class ParsedEncryptedDocument {
   const ParsedEncryptedDocument({
     required this.header,
@@ -135,7 +132,7 @@ class ParsedEncryptedDocument {
   final Uint8List ciphertextBytes;
 }
 
-/// Encryption output that can be serialized with the LDJ2 magic and header size.
+/// 可搭配 LDJ2 magic 與標頭大小序列化的加密輸出。
 class EncryptionResult {
   const EncryptionResult({
     required this.header,
@@ -163,7 +160,7 @@ class EncryptionResult {
   }
 }
 
-/// Credentials available for one decrypt operation.
+/// 單次解密作業可用的憑證。
 class DecryptionContext {
   const DecryptionContext({
     required this.vaultId,
@@ -187,7 +184,7 @@ class DecryptionContext {
   final String? deviceSlotId;
 }
 
-/// Encrypts/decrypts vault documents and derives Recovery Key wrapping keys.
+/// 加解密 vault 文件，並衍生 Recovery Key 包裝金鑰。
 abstract class CryptoService {
   Future<EncryptionResult> encryptMarkdown({
     required String documentId,
@@ -230,18 +227,15 @@ abstract class CryptoService {
   });
 }
 
-/// Local LDJ2 implementation backed by AES-GCM and the Android device-key bridge.
+/// 以 AES-GCM 與 Android 裝置金鑰橋接層為後端的本機 LDJ2 實作。
 class LocalCryptoService implements CryptoService {
   LocalCryptoService({
-    required DeviceKeyManager deviceKeyManager,
     Cipher? contentCipher,
     Random? random,
-  })  : _deviceKeyManager = deviceKeyManager,
-        _contentCipher = contentCipher ?? AesGcm.with256bits(),
+  })  : _contentCipher = contentCipher ?? AesGcm.with256bits(),
         _recoveryWrapCipher = AesGcm.with256bits(),
         _random = random ?? Random.secure();
 
-  final DeviceKeyManager _deviceKeyManager;
   final Cipher _contentCipher;
   final Cipher _recoveryWrapCipher;
   final Random _random;
@@ -258,25 +252,6 @@ class LocalCryptoService implements CryptoService {
       ciphertextBytes,
       base64Decode(header.nonceBase64),
     );
-
-    if (context.trustedDevice) {
-      final EncryptionKeySlot? deviceSlot = _findDeviceSlot(header, context.deviceSlotId);
-      if (deviceSlot != null) {
-        try {
-          final List<int> fileKeyBytes = await _deviceKeyManager.unwrapWithDeviceKey(
-            vaultId: context.vaultId,
-            slotId: deviceSlot.slotId,
-            nonceBase64: deviceSlot.nonceBase64,
-            ciphertextBase64: deviceSlot.wrappedKeyBase64,
-          );
-          return await _contentCipher.decrypt(
-            secretBox,
-            secretKey: SecretKey(fileKeyBytes),
-            aad: headerBytes,
-          );
-        } catch (_) {}
-      }
-    }
 
     if (context.recoveryWrapKey != null) {
       final EncryptionKeySlot recoverySlot = header.keySlots.firstWhere(
@@ -410,7 +385,7 @@ class LocalCryptoService implements CryptoService {
 
     final String magic = ascii.decode(bytes.sublist(0, 4));
     if (magic != kEncryptedDocumentMagic) {
-      throw const FormatException('不支援舊版或未知的加密檔案格式。');
+      throw const FormatException('不支援的加密檔案格式。');
     }
 
     final ByteData data = ByteData.sublistView(bytes, 4, 8);
@@ -455,26 +430,6 @@ class LocalCryptoService implements CryptoService {
 
   Uint8List _canonicalHeaderBytes(EncryptedDocumentHeader header) {
     return Uint8List.fromList(utf8.encode(jsonEncode(header.toJson())));
-  }
-
-  EncryptionKeySlot? _findDeviceSlot(
-    EncryptedDocumentHeader header,
-    String? deviceSlotId,
-  ) {
-    if (deviceSlotId != null && deviceSlotId.isNotEmpty) {
-      for (final EncryptionKeySlot slot in header.keySlots) {
-        if (slot.slotType == 'device' && slot.slotId == deviceSlotId) {
-          return slot;
-        }
-      }
-      return null;
-    }
-    for (final EncryptionKeySlot slot in header.keySlots) {
-      if (slot.slotType == 'device') {
-        return slot;
-      }
-    }
-    return null;
   }
 
   EncryptedDocumentHeader _parseHeader(List<int> headerBytes) {
@@ -536,14 +491,12 @@ class LocalCryptoService implements CryptoService {
       if (slotNonce.length != _gcmNonceLength) {
         throw const FormatException('Key slot nonce is invalid.');
       }
-      if (slot.slotType == 'device') {
-        if (slot.wrapAlgorithm != 'android-keystore-aes-gcm' || (slot.platform?.isEmpty ?? true)) {
-          throw const FormatException('裝置金鑰槽資訊不正確。');
-        }
-      } else if (slot.slotType == 'recovery') {
+      if (slot.slotType == 'recovery') {
         if (slot.wrapAlgorithm != 'aes-256-gcm' || slot.kdf == null) {
           throw const FormatException('Recovery 金鑰槽資訊不正確。');
         }
+      } else {
+        throw FormatException('不支援的金鑰槽類型：${slot.slotType}。');
       }
     }
   }

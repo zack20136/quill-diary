@@ -32,7 +32,7 @@ class VaultTestHarness {
     harness.repository = VaultRepository(
       pathStrategy: harness.pathStrategy,
       frontMatterCodec: const FrontMatterCodec(),
-      cryptoService: LocalCryptoService(deviceKeyManager: harness.deviceKeyManager),
+      cryptoService: LocalCryptoService(),
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
       deviceKeyManager: harness.deviceKeyManager,
       appLockService: harness.appLockService,
