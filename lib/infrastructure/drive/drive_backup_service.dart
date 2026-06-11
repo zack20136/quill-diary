@@ -199,16 +199,25 @@ bool isVisibleDriveBackupFileName(String? fileName) {
   }
 }
 
+int? _parseDriveFileSize(String? rawSize) {
+  if (rawSize == null || rawSize.trim().isEmpty) {
+    return null;
+  }
+  return int.tryParse(rawSize.trim());
+}
+
 final class DriveBackupFile {
   const DriveBackupFile({
     required this.id,
     required this.name,
     required this.createdAt,
+    this.sizeBytes,
   });
 
   final String id;
   final String name;
   final DateTime? createdAt;
+  final int? sizeBytes;
 }
 
 /// 以 Google Drive appDataFolder 為後端的遠端備份服務。
@@ -217,7 +226,9 @@ abstract class DriveBackupService {
 
   Future<DriveConnectionState> connect();
 
-  Future<DriveConnectionState> reconnect();
+  Future<DriveConnectionState> switchAccount();
+
+  Future<void> disconnect();
 
   Future<String> uploadBackup(File backupFile);
 
@@ -532,7 +543,7 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<DriveConnectionState> reconnect() async {
+  Future<DriveConnectionState> switchAccount() async {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
@@ -541,6 +552,11 @@ class GoogleDriveBackupService implements DriveBackupService {
       resetSession: true,
     );
     return _connectedStateForAccount(authorized.account);
+  }
+
+  @override
+  Future<void> disconnect() async {
+    await _resetSignInSession();
   }
 
   Future<drive.DriveApi> _createAuthorizedDriveApi() async {
@@ -578,7 +594,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       spaces: 'appDataFolder',
       q: "name contains '.zip' and trashed = false",
       orderBy: 'createdTime desc',
-      $fields: 'files(id,name,createdTime)',
+      $fields: 'files(id,name,createdTime,size)',
     );
     return (list.files ?? const <drive.File>[])
         .where(
@@ -592,6 +608,7 @@ class GoogleDriveBackupService implements DriveBackupService {
             id: file.id!,
             name: file.name!,
             createdAt: file.createdTime,
+            sizeBytes: _parseDriveFileSize(file.size),
           ),
         )
         .toList();

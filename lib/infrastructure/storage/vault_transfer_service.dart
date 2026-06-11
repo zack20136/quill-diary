@@ -77,11 +77,16 @@ class VaultTransferService {
     return _driveBackupService.getConnectionState();
   }
 
-  Future<DriveConnectionState> connectGoogleDrive({bool reconnect = false}) {
-    if (reconnect) {
-      return _driveBackupService.reconnect();
-    }
+  Future<DriveConnectionState> linkGoogleDrive() {
     return _driveBackupService.connect();
+  }
+
+  Future<DriveConnectionState> switchGoogleDrive() {
+    return _driveBackupService.switchAccount();
+  }
+
+  Future<void> disconnectGoogleDrive() {
+    return _driveBackupService.disconnect();
   }
 
   /// 建立備份並寫入 App 內本機目錄。
@@ -110,9 +115,9 @@ class VaultTransferService {
   Future<BackupPersistResult> uploadBackupToDrive() {
     return _runInspectedBackupPipeline(
       deliver: (File stagingZip, String fileName) async {
-        final String uploadedId = await _driveBackupService.uploadBackup(stagingZip);
+        await _driveBackupService.uploadBackup(stagingZip);
         await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
-        return uploadedId;
+        return fileName;
       },
     );
   }
@@ -313,6 +318,10 @@ class VaultTransferService {
 
   Future<List<DriveBackupFile>> listDriveBackups() async {
     return _driveBackupService.listBackups();
+  }
+
+  Future<void> deleteDriveBackup(DriveBackupFile backup) async {
+    await _driveBackupService.deleteBackup(backup.id);
   }
 
   Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {

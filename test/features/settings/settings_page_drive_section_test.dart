@@ -10,8 +10,8 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
-import '../../helpers/fake_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
+import '../../helpers/fake_vault_repository.dart';
 
 void main() {
   Future<void> ensureVisibleText(
@@ -79,7 +79,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('disconnected state can connect Google Drive', (WidgetTester tester) async {
+  testWidgets('disconnected state can link Google account', (WidgetTester tester) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: const DriveConnectionState.disconnected(),
     );
@@ -91,12 +91,16 @@ void main() {
       transferService: transferService,
     );
 
-    final ButtonStyleButton connectButton = await findButtonByLabel(
+    final ButtonStyleButton linkButton = await findButtonByLabel(
       tester,
-      SettingsDriveBackupCopy.connectButton,
+      SettingsDriveBackupCopy.linkButton,
     );
 
-    expect(connectButton.onPressed, isNotNull);
+    expect(linkButton.onPressed, isNotNull);
+    expect(
+      find.text(SettingsDriveBackupCopy.disconnectedLabel, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('locked state disables connected Drive transfer actions',
@@ -130,7 +134,8 @@ void main() {
     expect(restoreButton.onPressed, isNull);
   });
 
-  testWidgets('connected state shows Drive account label', (WidgetTester tester) async {
+  testWidgets('connected state shows account label and account actions',
+      (WidgetTester tester) async {
     final DriveConnectionState connectedState = const DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -144,15 +149,24 @@ void main() {
       transferService: FakeVaultTransferService(connectionState: connectedState),
     );
 
-    final String connectedHint = SettingsDriveBackupCopy.connectedHint(
-      connectedState.accountLabel,
-    );
-    await ensureVisibleText(tester, connectedHint);
+    final String accountLabel = connectedState.accountLabel!;
+    await ensureVisibleText(tester, accountLabel);
+    await ensureVisibleText(tester, SettingsDriveBackupCopy.sectionDescriptionEnabled);
 
-    expect(
-      find.text(connectedHint, skipOffstage: false),
-      findsOneWidget,
+    expect(find.text(accountLabel, skipOffstage: false), findsOneWidget);
+    expect(find.text('已連結', skipOffstage: false), findsNothing);
+
+    final ButtonStyleButton switchButton = await findButtonByLabel(
+      tester,
+      SettingsDriveBackupCopy.switchAccountButton,
     );
+    final ButtonStyleButton disconnectButton = await findButtonByLabel(
+      tester,
+      SettingsDriveBackupCopy.disconnectButton,
+    );
+
+    expect(switchButton.onPressed, isNotNull);
+    expect(disconnectButton.onPressed, isNotNull);
   });
 
   testWidgets('local backup section shows app-managed and external backup actions',

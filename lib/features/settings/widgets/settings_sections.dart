@@ -184,6 +184,7 @@ class SettingsStatusPanel extends StatelessWidget {
             SettingsActionButton(
               label: SettingsSecurityLockCopy.cancelUnlockButton,
               icon: Icons.close_rounded,
+              appearance: SettingsActionButtonAppearance.outlined,
               onPressed: busy ? null : onCancelUnlock,
             ),
           ],
@@ -194,7 +195,7 @@ class SettingsStatusPanel extends StatelessWidget {
             SettingsActionButton(
               label: SettingsSecurityLockCopy.retryVerificationButton,
               icon: Icons.lock_open_rounded,
-              emphasized: true,
+              appearance: SettingsActionButtonAppearance.filled,
               onPressed: busy ? null : onRetryTrustedUnlock,
             ),
           ],
@@ -229,7 +230,7 @@ class SettingsStatusPanel extends StatelessWidget {
           SettingsActionButton(
             label: SettingsSecurityLockCopy.unlockWithRecoveryButton,
             icon: Icons.lock_open_rounded,
-            emphasized: true,
+            appearance: SettingsActionButtonAppearance.filled,
             onPressed: busy ? null : onUnlockWithRecovery,
           ),
         ],
@@ -272,7 +273,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
             SettingsActionButton(
               label: SettingsRecoveryKeyCopy.createButton,
               icon: Icons.key_outlined,
-              emphasized: true,
+              appearance: SettingsActionButtonAppearance.filled,
               onPressed: busy ? null : onCreateRecoveryKey,
             ),
           ],
@@ -311,6 +312,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
           SettingsActionButton(
             label: SettingsRecoveryKeyCopy.rotateButton,
             icon: Icons.lock_reset_outlined,
+            appearance: SettingsActionButtonAppearance.tonal,
             onPressed: busy ? null : onRotateRecoveryKey,
           ),
         ],
@@ -515,6 +517,14 @@ class _UnlockModeSegment extends StatelessWidget {
   }
 }
 
+/// 設定頁動作按鈕的外觀層級。
+enum SettingsActionButtonAppearance {
+  outlined,
+  tonal,
+  filled,
+  destructive,
+}
+
 /// 設定頁使用的標準動作按鈕，可切換成主要或次要樣式。
 class SettingsActionButton extends StatelessWidget {
   const SettingsActionButton({
@@ -522,6 +532,7 @@ class SettingsActionButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.emphasized = false,
+    this.appearance = SettingsActionButtonAppearance.outlined,
     this.fullWidth = false,
     super.key,
   });
@@ -530,21 +541,42 @@ class SettingsActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final bool emphasized;
+  final SettingsActionButtonAppearance appearance;
   final bool fullWidth;
+
+  SettingsActionButtonAppearance get _resolvedAppearance {
+    if (emphasized) {
+      return SettingsActionButtonAppearance.filled;
+    }
+    return appearance;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Widget button = emphasized
-        ? FilledButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon),
-            label: Text(label),
-          )
-        : OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon),
-            label: Text(label),
-          );
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final Widget button = switch (_resolvedAppearance) {
+      SettingsActionButtonAppearance.filled => FilledButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(label),
+        ),
+      SettingsActionButtonAppearance.tonal => FilledButton.tonalIcon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(label),
+        ),
+      SettingsActionButtonAppearance.destructive => OutlinedButton.icon(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error),
+          icon: Icon(icon, color: colorScheme.error),
+          label: Text(label),
+        ),
+      SettingsActionButtonAppearance.outlined => OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(label),
+        ),
+    };
     if (!fullWidth) {
       return button;
     }
@@ -735,7 +767,9 @@ class SettingsSecurityOverview extends StatelessWidget {
                   ? SettingsSecurityOverviewCopy.rotateRecoveryKeyButton
                   : SettingsSecurityOverviewCopy.createRecoveryKeyButton,
               icon: hasRecoveryKey ? Icons.lock_reset_outlined : Icons.key_outlined,
-              emphasized: !hasRecoveryKey,
+              appearance: hasRecoveryKey
+                  ? SettingsActionButtonAppearance.tonal
+                  : SettingsActionButtonAppearance.filled,
               onPressed: busy
                   ? null
                   : hasRecoveryKey
@@ -745,6 +779,7 @@ class SettingsSecurityOverview extends StatelessWidget {
             SettingsActionButton(
               label: SettingsSecurityOverviewCopy.rebuildIndexButton,
               icon: Icons.manage_search_outlined,
+              appearance: SettingsActionButtonAppearance.outlined,
               onPressed: busy ? null : onRebuildIndex,
             ),
           ],

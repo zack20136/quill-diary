@@ -73,7 +73,7 @@ void main() {
       isFalse,
     );
 
-    await transferService.connectGoogleDrive();
+    await transferService.linkGoogleDrive();
     container.invalidate(settingsDriveConnectionProvider);
     final DriveConnectionState connected =
         await container.read(settingsDriveConnectionProvider.future);
@@ -82,12 +82,12 @@ void main() {
     expect(connected.email, 'writer@example.com');
     expect(connected.displayName, 'Writer');
     expect(readData(container.read(settingsDriveConnectionProvider))?.email, 'writer@example.com');
-    expect(transferService.connectCalls, 1);
-    expect(transferService.reconnectCalls, 0);
+    expect(transferService.linkCalls, 1);
+    expect(transferService.switchAccountCalls, 0);
     expect(transferService.isConnectedCalls, 2);
   });
 
-  test('reconnect 後重新讀取會更新為最新帳號資訊', () async {
+  test('switchAccount 後重新讀取會更新為最新帳號資訊', () async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionStates: const <DriveConnectionState>[
         DriveConnectionState(
@@ -116,7 +116,7 @@ void main() {
       'before@example.com',
     );
 
-    await transferService.connectGoogleDrive(reconnect: true);
+    await transferService.switchGoogleDrive();
     container.invalidate(settingsDriveConnectionProvider);
     final DriveConnectionState reconnected =
         await container.read(settingsDriveConnectionProvider.future);
@@ -124,8 +124,8 @@ void main() {
     expect(reconnected.isConnected, isTrue);
     expect(reconnected.email, 'after@example.com');
     expect(reconnected.displayName, 'After');
-    expect(transferService.connectCalls, 0);
-    expect(transferService.reconnectCalls, 1);
+    expect(transferService.linkCalls, 0);
+    expect(transferService.switchAccountCalls, 1);
     expect(transferService.isConnectedCalls, 2);
   });
 }

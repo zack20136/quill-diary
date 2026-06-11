@@ -186,7 +186,7 @@ void main() {
       expect(state.displayName, isNull);
     });
 
-    test('reconnect resets session and returns latest account info', () async {
+    test('switchAccount resets session and returns latest account info', () async {
       final FakeGoogleDriveSignedInAccount reconnectedAccount =
           FakeGoogleDriveSignedInAccount(
         email: 'after@example.com',
@@ -209,7 +209,7 @@ void main() {
         signInClient: signInClient,
       );
 
-      final DriveConnectionState state = await service.reconnect();
+      final DriveConnectionState state = await service.switchAccount();
 
       expect(signInClient.disconnectCalls, 1);
       expect(signInClient.signOutCalls, 0);

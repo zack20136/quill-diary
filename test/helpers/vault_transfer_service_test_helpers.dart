@@ -52,7 +52,10 @@ class UnusedDriveBackupService implements DriveBackupService {
       throw UnimplementedError();
 
   @override
-  Future<DriveConnectionState> reconnect() => throw UnimplementedError();
+  Future<DriveConnectionState> switchAccount() => throw UnimplementedError();
+
+  @override
+  Future<void> disconnect() => throw UnimplementedError();
 
   @override
   Future<String> uploadBackup(File backupFile) => throw UnimplementedError();

@@ -35,6 +35,10 @@ import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
 import '../../restore/post_restore_session.dart';
 import '../../restore/restore_backup_flow.dart';
+import '../backup/backup_pick_dialog.dart';
+import '../backup/backup_pick_list_item.dart';
+import '../widgets/drive_backup_section.dart';
+import '../widgets/local_backup_section.dart';
 import '../widgets/recovery_key_save_dialog.dart';
 import '../widgets/settings_sections.dart';
 
@@ -203,9 +207,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool canSensitiveVaultTransfer = hasUnlockedSession && hasRecoveryKey;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
-    final AsyncValue<DriveConnectionState> driveConnectionAsync = isGoogleDriveConfigured
-        ? ref.watch(settingsDriveConnectionProvider)
-        : const AsyncData<DriveConnectionState>(DriveConnectionState.disconnected());
     final String disabledSensitiveVaultTransferReason =
         sensitiveVaultTransferDisabledReason(
           hasUnlockedSession: hasUnlockedSession,
@@ -297,7 +298,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         SettingsActionButton(
                           label: SettingsImportExportCopy.importButton,
                           icon: Icons.file_download_outlined,
-                          emphasized: true,
+                          appearance: SettingsActionButtonAppearance.filled,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
@@ -325,6 +326,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         SettingsActionButton(
                           label: SettingsImportExportCopy.exportButton,
                           icon: Icons.file_upload_outlined,
+                          appearance: SettingsActionButtonAppearance.tonal,
                           fullWidth: true,
                           onPressed: _busy || !canSensitiveVaultTransfer
                               ? null
@@ -355,57 +357,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    icon: Icons.storage_rounded,
-                    title: SettingsLocalBackupCopy.sectionTitle,
-                    description: canSensitiveVaultTransfer
-                        ? SettingsLocalBackupCopy.sectionDescriptionEnabled
-                        : disabledSensitiveVaultTransferReason,
-                    child: SettingsActionGroup(
-                      actions: <SettingsActionButton>[
-                        SettingsActionButton(
-                          label: SettingsLocalBackupCopy.createButton,
-                          icon: Icons.archive_outlined,
-                          emphasized: true,
-                          fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
-                              ? null
-                              : () => _runAction(_createLocalBackup),
-                        ),
-                        SettingsActionButton(
-                          label: SettingsLocalBackupCopy.restoreButton,
-                          icon: Icons.restore_rounded,
-                          fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
-                              ? null
-                              : () => _runRestoreFromAppLocalBackup(),
-                        ),
-                        SettingsActionButton(
-                          label: SettingsLocalBackupCopy.exportToExternalButton,
-                          icon: Icons.file_upload_outlined,
-                          fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
-                              ? null
-                              : () => _runAction(_exportLocalBackup),
-                        ),
-                        SettingsActionButton(
-                          label: SettingsLocalBackupCopy.importFromExternalButton,
-                          icon: Icons.file_download_outlined,
-                          fullWidth: true,
-                          onPressed: _busy || !canSensitiveVaultTransfer
-                              ? null
-                              : () => _runRestoreFromLocalBackup(),
-                        ),
-                      ],
-                    ),
+                  LocalBackupSection(
+                    busy: _busy,
+                    canSensitiveVaultTransfer: canSensitiveVaultTransfer,
+                    disabledReason: disabledSensitiveVaultTransferReason,
+                    onCreate: () => _runAction(_createLocalBackup),
+                    onRestore: _runRestoreFromAppLocalBackup,
+                    onExport: () => _runAction(_exportLocalBackup),
+                    onImport: _runRestoreFromLocalBackup,
                   ),
                   const SizedBox(height: 16),
-                  _buildDriveBackupSection(
+                  DriveBackupSection(
                     isGoogleDriveConfigured: isGoogleDriveConfigured,
-                    driveConnectionAsync: driveConnectionAsync,
+                    busy: _busy,
                     canSensitiveVaultTransfer: canSensitiveVaultTransfer,
                     disabledSensitiveVaultTransferReason:
                         disabledSensitiveVaultTransferReason,
+                    onLink: () => _runAction(
+                      _linkGoogleDrive,
+                      progressMessage: SettingsIndexCopy.linkDriveProgress,
+                    ),
+                    onSwitchAccount: () => _runAction(
+                      _switchGoogleDrive,
+                      progressMessage: SettingsIndexCopy.switchDriveAccountProgress,
+                    ),
+                    onDisconnect: _disconnectGoogleDrive,
+                    onUpload: () => _runAction(_uploadDriveBackup),
+                    onRestore: _runRestoreFromGoogleDrive,
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -425,152 +403,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<DriveBackupFile?> _pickDriveBackup(List<DriveBackupFile> backups) async {
-    if (backups.isEmpty) {
-      _showMessage(SettingsDriveBackupCopy.noBackups);
-      return null;
-    }
-    if (!mounted) {
-      return null;
-    }
-    return showDialog<DriveBackupFile>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text(SettingsDriveBackupCopy.pickDialogTitle),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: backups.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (BuildContext context, int index) {
-                final DriveBackupFile backup = backups[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.cloud_done_outlined),
-                  title: Text(backup.name),
-                  subtitle: Text(_formatDriveBackupTime(backup.createdAt)),
-                  onTap: () => Navigator.of(dialogContext).pop(backup),
-                );
-              },
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(SettingsCopy.actionCancel),
-            ),
-          ],
-        );
-      },
-        );
-  }
-
-  Future<LocalBackupFile?> _pickAppLocalBackup(List<LocalBackupFile> backups) async {
-    if (backups.isEmpty) {
-      _showMessage(SettingsLocalBackupCopy.noBackups);
-      return null;
-    }
-    if (!mounted) {
-      return null;
-    }
-    final List<LocalBackupFile> visibleBackups = List<LocalBackupFile>.from(backups);
-    return showDialog<LocalBackupFile>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setDialogState) {
-            final ColorScheme colorScheme = Theme.of(context).colorScheme;
-            final TextTheme textTheme = Theme.of(context).textTheme;
-            return AlertDialog(
-              title: const Text(SettingsLocalBackupCopy.pickDialogTitle),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: visibleBackups.isEmpty
-                    ? const Text(SettingsLocalBackupCopy.noBackups)
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: visibleBackups.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (BuildContext context, int index) {
-                          final LocalBackupFile backup = visibleBackups[index];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                            title: Text(
-                              _formatLocalBackupTime(backup),
-                              style: textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  backup.name,
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _formatBytes(backup.sizeBytes),
-                                  style: textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                            onTap: () => Navigator.of(dialogContext).pop(backup),
-                            trailing: IconButton(
-                              tooltip: SettingsLocalBackupCopy.deleteBackupTooltip,
-                              icon: Icon(
-                                Icons.delete_outline_rounded,
-                                color: colorScheme.error,
-                              ),
-                              onPressed: _busy
-                                  ? null
-                                  : () async {
-                                      final bool confirmed =
-                                          await _confirmDeleteLocalBackup(backup);
-                                      if (!confirmed) {
-                                        return;
-                                      }
-                                      await ref
-                                          .read(vaultTransferServiceProvider)
-                                          .deleteAppLocalBackup(backup);
-                                      setDialogState(() {
-                                        visibleBackups.removeAt(index);
-                                      });
-                                      _showMessage(
-                                        SettingsLocalBackupCopy.deleteBackupSuccess(backup.name),
-                                      );
-                                    },
-                            ),
-                          );
-                        },
-                      ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text(SettingsCopy.actionCancel),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<bool> _confirmDeleteLocalBackup(LocalBackupFile backup) async {
+  Future<bool> _confirmDeleteBackup({
+    required String title,
+    required String body,
+  }) async {
     if (!mounted) {
       return false;
     }
     return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) => AlertDialog(
-            title: const Text(SettingsLocalBackupCopy.deleteConfirmTitle),
-            content: Text(SettingsLocalBackupCopy.deleteConfirmBody(backup.name)),
+            title: Text(title),
+            content: Text(body),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -586,136 +430,86 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         false;
   }
 
-  Widget _buildDriveBackupSection({
-    required bool isGoogleDriveConfigured,
-    required AsyncValue<DriveConnectionState> driveConnectionAsync,
-    required bool canSensitiveVaultTransfer,
-    required String disabledSensitiveVaultTransferReason,
-  }) {
-    final String description = isGoogleDriveConfigured
-        ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-        : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
+  Future<LocalBackupFile?> _pickLocalBackup(List<LocalBackupFile> backups) async {
+    if (backups.isEmpty) {
+      _showMessage(SettingsLocalBackupCopy.noBackups);
+      return null;
+    }
+    if (!mounted) {
+      return null;
+    }
 
-    return SettingsSectionCard(
-      icon: Icons.cloud_outlined,
-      title: SettingsDriveBackupCopy.sectionTitle,
-      description: description,
-      child: !isGoogleDriveConfigured
-          ? const SettingsInfoBanner(
-              icon: Icons.cloud_off_rounded,
-              message: SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured,
-            )
-          : driveConnectionAsync.when(
-              loading: () => const SettingsSectionLoading(),
-              error: (_, _) => _buildDriveBackupContent(
-                connectionState: const DriveConnectionState.disconnected(),
-                canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                disabledSensitiveVaultTransferReason:
-                    disabledSensitiveVaultTransferReason,
-              ),
-              data: (DriveConnectionState connectionState) => _buildDriveBackupContent(
-                connectionState: connectionState,
-                canSensitiveVaultTransfer: canSensitiveVaultTransfer,
-                disabledSensitiveVaultTransferReason:
-                    disabledSensitiveVaultTransferReason,
-              ),
+    final Map<String, LocalBackupFile> backupsById = <String, LocalBackupFile>{
+      for (final LocalBackupFile backup in backups) backup.path: backup,
+    };
+    final BackupPickListItem? picked = await showBackupPickDialog(
+      context: context,
+      title: SettingsLocalBackupCopy.pickDialogTitle,
+      emptyMessage: SettingsLocalBackupCopy.noBackups,
+      deleteTooltip: SettingsLocalBackupCopy.deleteBackupTooltip,
+      actionsDisabled: _busy,
+      confirmDelete: (String fileName) => _confirmDeleteBackup(
+        title: SettingsLocalBackupCopy.deleteConfirmTitle,
+        body: SettingsLocalBackupCopy.deleteConfirmBody(fileName),
+      ),
+      items: backups
+          .map(
+            (LocalBackupFile backup) => BackupPickListItem(
+              id: backup.path,
+              createdAtLabel: _formatLocalBackupTime(backup),
+              fileName: backup.name,
+              sizeLabel: _formatBytes(backup.sizeBytes),
+              onDelete: () async {
+                await ref.read(vaultTransferServiceProvider).deleteAppLocalBackup(backup);
+                _showSuccess(SettingsLocalBackupCopy.deleteBackupSuccess(backup.name));
+              },
             ),
+          )
+          .toList(),
     );
+    return picked == null ? null : backupsById[picked.id];
   }
 
-  Widget _buildDriveBackupContent({
-    required DriveConnectionState connectionState,
-    required bool canSensitiveVaultTransfer,
-    required String disabledSensitiveVaultTransferReason,
-  }) {
-    final bool isConnected = connectionState.isConnected;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SettingsInfoBanner(
-          icon: isConnected ? Icons.cloud_done_outlined : Icons.cloud_off_rounded,
-          message: isConnected
-              ? SettingsDriveBackupCopy.connectedHint(connectionState.accountLabel)
-              : SettingsDriveBackupCopy.disconnectedHint,
-        ),
-        const SizedBox(height: 12),
-        SettingsActionGroup(
-          actions: <SettingsActionButton>[
-            if (!isConnected)
-              SettingsActionButton(
-                label: SettingsDriveBackupCopy.connectButton,
-                icon: Icons.link_rounded,
-                emphasized: true,
-                fullWidth: true,
-                onPressed: _busy
-                    ? null
-                    : () => _runAction(
-                          () => _connectGoogleDrive(),
-                          progressMessage: SettingsIndexCopy.connectDriveProgress,
-                        ),
-              ),
-            if (isConnected)
-              SettingsActionButton(
-                label: SettingsDriveBackupCopy.uploadButton,
-                icon: Icons.cloud_upload_outlined,
-                emphasized: true,
-                fullWidth: true,
-                onPressed: _busy || !canSensitiveVaultTransfer
-                    ? null
-                    : () => _runAction(() async {
-                          final BackupPersistResult result = await ref
-                              .read(appSessionProvider.notifier)
-                              .runSensitiveTask((_) {
-                            return ref.read(vaultTransferServiceProvider).uploadBackupToDrive();
-                          });
-                          _showBackupPersistResult(
-                            result,
-                            onSuccess: (_) => SettingsDriveBackupCopy.uploadSuccess,
-                          );
-                        }),
-              ),
-            if (isConnected)
-              SettingsActionButton(
-                label: SettingsDriveBackupCopy.restoreButton,
-                icon: Icons.cloud_download_outlined,
-                fullWidth: true,
-                onPressed:
-                    _busy || !canSensitiveVaultTransfer ? null : () => _runRestoreFromGoogleDrive(),
-              ),
-          ],
-        ),
-        if (isConnected) ...<Widget>[
-          const SizedBox(height: 8),
-          SettingsInfoBanner(
-            icon: Icons.history_rounded,
-            message: SettingsDriveBackupCopy.retainHint,
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _busy
+  Future<DriveBackupFile?> _pickDriveBackup(List<DriveBackupFile> backups) async {
+    if (backups.isEmpty) {
+      _showMessage(SettingsDriveBackupCopy.noBackups);
+      return null;
+    }
+    if (!mounted) {
+      return null;
+    }
+
+    final Map<String, DriveBackupFile> backupsById = <String, DriveBackupFile>{
+      for (final DriveBackupFile backup in backups) backup.id: backup,
+    };
+    final BackupPickListItem? picked = await showBackupPickDialog(
+      context: context,
+      title: SettingsDriveBackupCopy.pickDialogTitle,
+      emptyMessage: SettingsDriveBackupCopy.noBackups,
+      deleteTooltip: SettingsDriveBackupCopy.deleteBackupTooltip,
+      actionsDisabled: _busy,
+      confirmDelete: (String fileName) => _confirmDeleteBackup(
+        title: SettingsDriveBackupCopy.deleteConfirmTitle,
+        body: SettingsDriveBackupCopy.deleteConfirmBody(fileName),
+      ),
+      items: backups
+          .map(
+            (DriveBackupFile backup) => BackupPickListItem(
+              id: backup.id,
+              createdAtLabel: _formatDriveBackupTime(backup.createdAt),
+              fileName: backup.name,
+              sizeLabel: backup.sizeBytes == null
                   ? null
-                  : () => _runAction(
-                        () => _connectGoogleDrive(reconnect: true),
-                        progressMessage: SettingsIndexCopy.reconnectDriveProgress,
-                      ),
-              icon: const Icon(Icons.restart_alt_rounded, size: 18),
-              label: const Text(SettingsDriveBackupCopy.reconnectButton),
+                  : _formatBytes(backup.sizeBytes!),
+              onDelete: () async {
+                await ref.read(vaultTransferServiceProvider).deleteDriveBackup(backup);
+                _showSuccess(SettingsDriveBackupCopy.deleteBackupSuccess(backup.name));
+              },
             ),
-          ),
-        ],
-        if (!canSensitiveVaultTransfer && isConnected) ...<Widget>[
-          const SizedBox(height: 12),
-          SettingsInfoBanner(
-            icon: Icons.lock_outline_rounded,
-            message: disabledSensitiveVaultTransferReason.isEmpty
-                ? SettingsDriveBackupCopy.actionsLockedHint
-                : disabledSensitiveVaultTransferReason,
-          ),
-        ],
-      ],
+          )
+          .toList(),
     );
+    return picked == null ? null : backupsById[picked.id];
   }
 
   String _indexStatusMessage(bool hasUnlockedSession) {
@@ -774,17 +568,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _uploadDriveBackup() async {
+    final BackupPersistResult result = await ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((_) {
+      return ref.read(vaultTransferServiceProvider).uploadBackupToDrive();
+    });
+    _showBackupPersistResult(
+      result,
+      onSuccess: SettingsDriveBackupCopy.uploadSuccess,
+      inspectFailedMessage: SettingsDriveBackupCopy.backupInspectFailed,
+    );
+  }
+
   Future<void> _runRestoreFromAppLocalBackup() async {
     try {
       final List<LocalBackupFile> backups =
           await ref.read(vaultTransferServiceProvider).listAppLocalBackups();
-      final LocalBackupFile? backup = await _pickAppLocalBackup(backups);
+      final LocalBackupFile? backup = await _pickLocalBackup(backups);
       if (backup == null) {
         return;
       }
       await _restoreBackupFileWithFlow(File(backup.path));
     } catch (error) {
-      _showMessage(userFacingErrorMessage(error));
+      _showError(userFacingErrorMessage(error));
     }
   }
 
@@ -831,20 +638,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     File? tempBackup;
     String? driveBackupName;
     try {
+      final List<DriveBackupFile> backups = await ref
+          .read(appSessionProvider.notifier)
+          .runSensitiveTask((_) {
+        return ref.read(vaultTransferServiceProvider).listDriveBackups();
+      });
+      final DriveBackupFile? backup = await _pickDriveBackup(backups);
+      if (backup == null) {
+        return;
+      }
+      driveBackupName = backup.name;
       await _runAction(() async {
-        final List<DriveBackupFile> backups = await ref
-            .read(appSessionProvider.notifier)
-            .runSensitiveTask((_) {
-          return ref.read(vaultTransferServiceProvider).listDriveBackups();
-        });
-        final DriveBackupFile? backup = await _pickDriveBackup(backups);
-        if (backup == null) {
-          return;
-        }
-        driveBackupName = backup.name;
-        tempBackup = await ref
-            .read(appSessionProvider.notifier)
-            .runSensitiveTask((_) {
+        tempBackup = await ref.read(appSessionProvider.notifier).runSensitiveTask((_) {
           return ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(backup);
         });
       }, progressMessage: SettingsDriveBackupCopy.downloadProgress);
@@ -855,6 +660,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         tempBackup!,
         driveBackupName: driveBackupName,
       );
+    } catch (error) {
+      _showError(userFacingErrorMessage(error));
     } finally {
       if (tempBackup != null && tempBackup!.existsSync()) {
         await tempBackup!.delete();
@@ -862,18 +669,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _connectGoogleDrive({bool reconnect = false}) async {
+  Future<void> _linkGoogleDrive() async {
     final DriveConnectionState connectionState =
-        await ref.read(vaultTransferServiceProvider).connectGoogleDrive(
-          reconnect: reconnect,
-        );
+        await ref.read(vaultTransferServiceProvider).linkGoogleDrive();
     ref.invalidate(settingsDriveConnectionProvider);
     await ref.read(settingsDriveConnectionProvider.future);
-    _showMessage(
-      reconnect
-          ? SettingsDriveBackupCopy.reconnectSuccess(connectionState.accountLabel)
-          : SettingsDriveBackupCopy.connectSuccess(connectionState.accountLabel),
+    _showSuccess(SettingsDriveBackupCopy.linkSuccess(connectionState.accountLabel));
+  }
+
+  Future<void> _switchGoogleDrive() async {
+    final DriveConnectionState connectionState =
+        await ref.read(vaultTransferServiceProvider).switchGoogleDrive();
+    ref.invalidate(settingsDriveConnectionProvider);
+    await ref.read(settingsDriveConnectionProvider.future);
+    _showSuccess(
+      SettingsDriveBackupCopy.switchAccountSuccess(connectionState.accountLabel),
     );
+  }
+
+  Future<void> _disconnectGoogleDrive() async {
+    if (!mounted) {
+      return;
+    }
+    final bool confirmed = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text(SettingsDriveBackupCopy.disconnectConfirmTitle),
+            content: const Text(SettingsDriveBackupCopy.disconnectConfirmBody),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(SettingsCopy.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(SettingsDriveBackupCopy.disconnectButton),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) {
+      return;
+    }
+    await _runAction(
+      () => ref.read(vaultTransferServiceProvider).disconnectGoogleDrive(),
+      progressMessage: SettingsIndexCopy.disconnectDriveProgress,
+    );
+    ref.invalidate(settingsDriveConnectionProvider);
+    await ref.read(settingsDriveConnectionProvider.future);
+    _showSuccess(SettingsDriveBackupCopy.disconnectSuccess);
   }
 
   Future<void> _restoreBackupFileWithFlow(
@@ -890,12 +735,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           precheck: precheck,
           driveBackupName: driveBackupName,
           confirm: _confirmRestore,
-          onComplete: _finishRestoreAfterSuccess,
+          onComplete: ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+            UnlockedVaultSession? priorSession,
+          }) =>
+              _finishRestoreAfterSuccess(
+            backupRecoveryKey: backupRecoveryKey,
+            precheck: precheck,
+            priorSession: priorSession,
+            driveBackupName: driveBackupName,
+          ),
         ),
         progressMessage: kRestoreInProgressMessage,
       );
     } on StateError catch (error) {
-      _showMessage(userFacingErrorMessage(error));
+      _showError(userFacingErrorMessage(error));
     }
   }
 
@@ -956,6 +811,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     String? backupRecoveryKey,
     required RestorePrecheck precheck,
     UnlockedVaultSession? priorSession,
+    String? driveBackupName,
   }) async {
     final AppSessionState sessionState = await finishRestoreSession(
       ref,
@@ -976,10 +832,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
 
     context.go(AppRouter.homeRoute);
-    _showMessage(
-      snackbarMessageForPostRestore(
-        sessionState.status,
+    _showSuccess(
+      driveAwarePostRestoreSnackBarMessage(
+        status: sessionState.status,
         sessionMessage: sessionState.message,
+        driveBackupName: driveBackupName,
       ),
     );
   }
@@ -1056,8 +913,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await action();
     } catch (error) {
-      final String text = userFacingErrorMessage(error);
-      _showMessage(text);
+      _showError(userFacingErrorMessage(error));
     } finally {
       if (mounted) {
         setState(() {
@@ -1071,18 +927,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _showBackupPersistResult(
     BackupPersistResult result, {
     required String Function(String savedPath) onSuccess,
+    String Function(String message)? inspectFailedMessage,
   }) {
     switch (result.status) {
       case BackupPersistStatus.success:
         final String? savedPath = result.savedPath;
         if (savedPath != null) {
-          _showMessage(
+          _showSuccess(
             onSuccess(DisplayFormat.formatSavedFileNameForDisplay(savedPath)),
           );
         }
         return;
       case BackupPersistStatus.inspectFailed:
-        _showMessage(SettingsLocalBackupCopy.backupInspectFailed(result.message));
+        final String Function(String message) formatInspectFailed =
+            inspectFailedMessage ?? SettingsLocalBackupCopy.backupInspectFailed;
+        _showError(formatInspectFailed(result.message));
         return;
       case BackupPersistStatus.cancelled:
         return;
@@ -1090,12 +949,46 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showMessage(String message) {
+    _showFeedback(message);
+  }
+
+  void _showSuccess(String message) {
+    _showFeedback(message, isSuccess: true);
+  }
+
+  void _showError(String message) {
+    _showFeedback(message, isError: true);
+  }
+
+  void _showFeedback(
+    String message, {
+    bool isSuccess = false,
+    bool isError = false,
+  }) {
     if (!mounted) {
       return;
     }
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: isError
+              ? TextStyle(color: colorScheme.onError)
+              : isSuccess
+                  ? TextStyle(color: colorScheme.onPrimaryContainer)
+                  : null,
+        ),
+        backgroundColor: isError
+            ? colorScheme.error
+            : isSuccess
+                ? colorScheme.primaryContainer
+                : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }
 

@@ -32,8 +32,9 @@ class FakeVaultTransferService extends VaultTransferService {
   late DriveConnectionState _connectionState;
   final List<DriveConnectionState>? connectionStates;
   int isConnectedCalls = 0;
-  int connectCalls = 0;
-  int reconnectCalls = 0;
+  int linkCalls = 0;
+  int switchAccountCalls = 0;
+  int disconnectCalls = 0;
   int saveBackupToAppLocalCalls = 0;
   int listAppLocalBackupsCalls = 0;
   int saveBackupToExternalDirectoryCalls = 0;
@@ -75,14 +76,25 @@ class FakeVaultTransferService extends VaultTransferService {
   }
 
   @override
-  Future<DriveConnectionState> connectGoogleDrive({bool reconnect = false}) async {
-    if (reconnect) {
-      reconnectCalls++;
-      return _connectionState;
-    }
-    connectCalls++;
+  Future<DriveConnectionState> linkGoogleDrive() async {
+    linkCalls++;
     return _connectionState;
   }
+
+  @override
+  Future<DriveConnectionState> switchGoogleDrive() async {
+    switchAccountCalls++;
+    return _connectionState;
+  }
+
+  @override
+  Future<void> disconnectGoogleDrive() async {
+    disconnectCalls++;
+    _connectionState = const DriveConnectionState.disconnected();
+  }
+
+  @override
+  Future<void> deleteDriveBackup(DriveBackupFile backup) async {}
 }
 
 class _UnusedDriveBackupService implements DriveBackupService {
@@ -110,7 +122,10 @@ class _UnusedDriveBackupService implements DriveBackupService {
       throw UnimplementedError();
 
   @override
-  Future<DriveConnectionState> reconnect() => throw UnimplementedError();
+  Future<DriveConnectionState> switchAccount() => throw UnimplementedError();
+
+  @override
+  Future<void> disconnect() => throw UnimplementedError();
 
   @override
   Future<String> uploadBackup(File backupFile) => throw UnimplementedError();

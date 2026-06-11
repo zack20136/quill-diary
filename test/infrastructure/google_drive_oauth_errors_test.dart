@@ -31,7 +31,7 @@ void main() {
       );
 
       expect(message, contains(GoogleDriveOAuthFingerprints.releaseUploadSha1));
-      expect(message, isNot(contains('你已取消 Google 登入')));
+      expect(message, isNot(contains('已取消 Google 登入')));
     });
 
     test('canceled without detail shows short cancellation message', () {
@@ -41,7 +41,8 @@ void main() {
         ),
       );
 
-      expect(message, contains('你已取消 Google 登入'));
+      expect(message, contains('已取消 Google 登入'));
+      expect(message, contains('連結 Google 帳號'));
       expect(message, isNot(contains(GoogleDriveOAuthFingerprints.releaseUploadSha1)));
     });
 

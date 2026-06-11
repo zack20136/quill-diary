@@ -1,6 +1,8 @@
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/unlock_mode_policy.dart';
+import '../session/session_messages.dart';
+import '../session/state/app_session_state.dart';
 import '../session/session_timeout_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
@@ -276,51 +278,82 @@ abstract final class SettingsLocalBackupCopy {
 
 abstract final class SettingsDriveBackupCopy {
   static const String sectionTitle = 'Google Drive 備份與還原';
-  static const String sectionDescriptionEnabled =
-      '連結 Google Drive 後，可上傳備份到雲端，或從雲端還原。';
+  static String get sectionDescriptionEnabled =>
+      '連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。'
+      '（雲端最多保留 ${VaultBackupPolicy.retainCount} 份）';
   static const String sectionDescriptionOAuthNotConfigured =
       '此版本尚未設定 Google 登入，暫無法使用雲端備份。';
 
-  static const String connectButton = '連結 Google Drive';
-  static const String reconnectButton = '重新連結 Google Drive';
-  static const String uploadButton = '上傳備份到 Google Drive';
-  static const String restoreButton = '從 Google Drive 備份還原';
+  static const String linkButton = '連結 Google 帳號';
+  static const String switchAccountButton = '切換帳號';
+  static const String disconnectButton = '中斷連結';
+  static const String uploadButton = '備份到 Google Drive';
+  static const String restoreButton = '從 Google Drive 還原';
   static const String downloadProgress = '正在從 Google Drive 下載備份…';
-  static String get retainHint =>
-      'Google Drive 會自動保留最新 ${VaultBackupPolicy.retainCount} 份 zip 備份。';
 
-  static String connectedHint(String? accountLabel) {
-    if (accountLabel == null || accountLabel.trim().isEmpty) {
-      return '已連結 Google Drive，可上傳或還原備份。';
-    }
-    return '已連結 Google Drive：$accountLabel，可上傳或還原備份。';
-  }
-  static const String disconnectedHint = '尚未連結 Google Drive，請先完成 Google 登入與授權。';
+  static const String disconnectedLabel = '尚未連結 Google 帳號';
+  static const String fallbackAccountLabel = 'Google 帳號';
   static const String actionsLockedHint = '請先解鎖日記庫並建立復原金鑰。';
 
-  static String connectSuccess(String? accountLabel) {
+  static String linkSuccess(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {
-      return 'Google Drive 已連結。';
+      return 'Google 帳號已連結，可以開始備份或還原。';
     }
-    return 'Google Drive 已連結：$accountLabel';
+    return 'Google 帳號已連結：$accountLabel';
   }
 
-  static String reconnectSuccess(String? accountLabel) {
+  static String switchAccountSuccess(String? accountLabel) {
     if (accountLabel == null || accountLabel.trim().isEmpty) {
-      return '已重新連結 Google Drive。';
+      return '已切換 Google 帳號。';
     }
-    return '已重新連結 Google Drive：$accountLabel';
+    return '已切換為 $accountLabel';
   }
-  static const String uploadSuccess = '備份已上傳到 Google Drive。';
-  static const String noBackups = 'Google Drive 中找不到 zip 備份檔。';
+
+  static const String disconnectSuccess =
+      '已中斷 Google 帳號連線，雲端備份仍會保留。';
+  static const String disconnectConfirmTitle = '中斷 Google 帳號連線？';
+  static const String disconnectConfirmBody =
+      '中斷後需重新連結才能備份或還原。雲端上的備份檔不會被刪除。';
+
+  static String uploadSuccess(String fileName) => '已備份到 Google Drive：$fileName';
+  static String backupInspectFailed(String message) => '雲端備份未完成。\n$message';
+  static const String noBackups = 'Google Drive 目前沒有可用備份，請先建立一份。';
   static const String pickDialogTitle = '選擇 Google Drive 備份';
   static const String unknownCreatedTime = '無建立時間';
+  static const String deleteBackupTooltip = '刪除備份';
+  static const String deleteConfirmTitle = '刪除 Google Drive 備份？';
+
+  static String deleteBackupSuccess(String fileName) =>
+      '已從 Google Drive 刪除：$fileName';
+  static String deleteConfirmBody(String fileName) =>
+      '將刪除 $fileName。此動作不會影響目前日記庫。';
+  static String restoreSuccess(String fileName) => '已從 Google Drive 還原：$fileName';
+}
+
+/// 還原完成後的 SnackBar 文案；雲端還原會附上備份檔名。
+String driveAwarePostRestoreSnackBarMessage({
+  required AppLockStatus status,
+  String? sessionMessage,
+  String? driveBackupName,
+}) {
+  final String statusMessage =
+      snackbarMessageForPostRestore(status, sessionMessage: sessionMessage);
+  if (driveBackupName == null || driveBackupName.trim().isEmpty) {
+    return statusMessage;
+  }
+  final String driveMessage =
+      SettingsDriveBackupCopy.restoreSuccess(driveBackupName.trim());
+  if (status == AppLockStatus.unlocked &&
+      statusMessage == kRestoreSuccessUnlockedMessage) {
+    return driveMessage;
+  }
+  return '$driveMessage\n$statusMessage';
 }
 
 abstract final class SettingsRestoreDialogCopy {
   static const String confirmLocalTitle = '還原本機備份？';
-  static const String confirmDriveTitle = '還原 Google Drive 備份？';
-  static String driveFileLine(String name) => '檔案：$name';
+  static const String confirmDriveTitle = '從 Google Drive 還原？';
+  static String driveFileLine(String name) => '備份：$name';
 
   static const String recoveryKeyDialogTitle = '輸入備份復原金鑰';
   static const String recoveryKeyEmptyError = '請輸入復原金鑰。';
@@ -404,8 +437,9 @@ abstract final class SettingsIndexCopy {
   static const String readyMessage = '可隨時重建，讓搜尋恢復正常。';
   static const String lockedMessage = '解鎖後可重建搜尋索引。';
   static const String lockedOverviewMessage = lockedMessage;
-  static const String connectDriveProgress = '正在連結 Google Drive…';
-  static const String reconnectDriveProgress = '正在重新連結 Google Drive…';
+  static const String linkDriveProgress = '正在連結 Google 帳號…';
+  static const String switchDriveAccountProgress = '正在切換帳號…';
+  static const String disconnectDriveProgress = '正在中斷連線…';
 
   static String rebuildCompleted(int entryCount, String finishedAt) =>
       '最近重建完成：$entryCount 篇日記，$finishedAt。';

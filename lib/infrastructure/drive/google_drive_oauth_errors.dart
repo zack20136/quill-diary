@@ -60,8 +60,8 @@ String _oauthMisconfigurationMessage({
 String _misconfigurationHeadline(String? detail) {
   final String lowerDetail = detail?.toLowerCase() ?? '';
   if (lowerDetail.contains('account reauth failed') || lowerDetail.contains('[16]')) {
-    return 'Google 帳號驗證沒有完成（Account reauth failed）。\n'
-        '請確認 SHA-1 與安裝包一致；若仍失敗，請按「重新連結 Google Drive」，'
+    return 'Google 帳號驗證沒有完成。\n'
+        '請確認 SHA-1 與安裝包一致；若仍失敗，請按「切換帳號」重新登入，'
         '或到 Google 帳號移除本 App 的第三方存取權後再試。';
   }
   if (lowerDetail.contains('access_denied')) {
@@ -95,8 +95,8 @@ String userMessageForGoogleSignIn(
   }
 
   if (error.code == GoogleSignInExceptionCode.canceled) {
-    return '你已取消 Google 登入，尚未連結 Google Drive。\n'
-        '若要連結，請再按一次「連結 Google Drive」。'
+    return '已取消 Google 登入，帳號尚未連結。\n'
+        '若要繼續，請再按一次「連結 Google 帳號」。'
         '${_detailLine(detail)}';
   }
   if (error.code == GoogleSignInExceptionCode.interrupted) {
@@ -108,8 +108,8 @@ String userMessageForGoogleSignIn(
         '${_detailLine(detail)}';
   }
   if (error.code == GoogleSignInExceptionCode.userMismatch) {
-    return '目前登入中的 Google 帳號與授權帳號不一致。\n'
-        '請重新連結 Google Drive，並確認選擇的是同一個帳號。'
+    return '目前登入的 Google 帳號與授權帳號不一致。\n'
+        '請按「切換帳號」重新登入，並確認選擇同一個帳號。'
         '${_detailLine(detail)}';
   }
 
