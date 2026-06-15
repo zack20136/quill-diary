@@ -22,9 +22,10 @@ abstract final class PersonalizationCopy {
 
   static const String sessionTimeoutSectionTitle = '自動鎖定';
   static const String sessionTimeoutSectionDescription =
-      'App 進入背景超過選定時間後，再次開啟需重新解鎖。';
+      'App 放在背景超過選定時間後，回來時需要重新解鎖。';
+  static const String sessionTimeoutUnitLabel = '分鐘';
   static String sessionTimeoutSegmentLabel(SessionBackgroundTimeoutMinutes value) {
-    return '${value.minutes} 分鐘';
+    return '${value.minutes}';
   }
 
   static const String imageCompressSectionTitle = '圖片品質';

@@ -8,7 +8,7 @@
 
 ## 1. 適用範圍
 
-本政策適用於你透過 Google Play 或其他管道取得並使用的 Quill Diary Android 版本，以及本 App 提供的本機儲存、備份、匯入匯出與（若你主動啟用）Google Drive 相關功能。
+本政策適用於你透過 Google Play 或其他管道取得並使用的 Quill Diary Android 版本，以及本 App 提供的本機儲存、備份、匯入匯出、支持開發者與（若你主動啟用）Google Drive 相關功能。
 
 ## 2. 我們收集哪些資料
 
@@ -48,8 +48,9 @@
 
 本 App 目前宣告的權限為最小集：
 
-- **`INTERNET`**：用於 Google Sign-In、Google Drive 備份，以及（若未來開放）Google Play Billing
+- **`INTERNET`**：用於 Google Sign-In、Google Drive 備份，以及 Google Play Billing 商品查詢與付款流程
 - **`USE_BIOMETRIC`**：用於可信裝置的生物辨識解鎖
+- **`com.android.vending.BILLING`**：用於 App 內「支持開發者」的一次性 Google Play 購買流程
 
 本 App **不**要求相機、錄音、或讀取整個媒體庫的儲存權限。圖片與檔案附件透過系統提供的選取流程取得。
 

@@ -19,7 +19,7 @@
 
 ## pub 依賴套件
 
-本 App 使用 Flutter 與多個 pub 套件（如 Drift、Riverpod、Google Sign-In 等）。各套件授權請見 App 內 **設定 → 法律與隱私 → 依存套件授權**，或由 `flutter pub licenses` 產生完整清單。
+本 App 使用 Flutter 與多個 pub 套件（如 Drift、Riverpod、Google Sign-In 等）。目前 App 內提供的是本頁「第三方聲明」入口，未另外內嵌依存套件授權清單頁；若需完整依賴授權列表，請由 `flutter pub licenses` 產生。
 
 ## 品牌
 

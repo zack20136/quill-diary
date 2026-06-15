@@ -193,11 +193,12 @@ abstract final class SettingsUnlockMethodCopy {
 /// 自動鎖定（背景逾時）相關說明文案。
 abstract final class SettingsSessionTimeoutCopy {
   static String backgroundLockExplanation(Duration timeout) =>
-      '背景超過 ${sessionBackgroundTimeoutLabel(timeout)} 未使用會鎖定，短時間切換 App 不會。';
+      'App 放在背景超過 ${sessionBackgroundTimeoutLabel(timeout)} 會自動鎖定；如果只是短時間切換 App，通常不會。';
 
   static String aboutBackgroundTimeoutBody(Duration timeout) =>
       '${backgroundLockExplanation(timeout)}'
-      '備份、還原或匯入匯出進行中則暫不鎖定。鎖定後回到 App 時，請依解鎖方式重新驗證。';
+      '你可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。'
+      '若正在備份、還原或匯入匯出，會先暫停自動鎖定；等你回來後，再依目前的解鎖方式重新驗證。';
 }
 
 abstract final class SettingsImportExportCopy {

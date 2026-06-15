@@ -10,8 +10,10 @@ Quill Diary 是一款為 Android 設計的離線加密日記 App。
 - 支援裝置信任與復原金鑰，兼顧日常解鎖速度與資料救援能力
 - 解鎖後即可全文搜尋，快速找回過去的片段、標籤與關鍵字
 - 提供日記編輯器與草稿機制，編輯中斷後也能接續完成
+- 提供個人化設定，可調整自動鎖定、主題顏色、圖片品質與日記排版
 - 支援完整備份與還原，保留整個日記庫的結構與內容
 - 支援可攜式匯入與匯出，方便整理、搬移或轉存日記資料
+- 提供「支持開發者」頁面，透過 Google Play 一次性支持，不解鎖任何額外功能
 
 ## 為什麼它不一樣
 
@@ -45,5 +47,5 @@ Quill Diary 是一款為 Android 設計的離線加密日記 App。
 ## 隱私權政策
 
 - 完整文字：[docs/privacy-policy.md](docs/privacy-policy.md)
-- 公開網頁（Google Play 送審用）：<https://zack20136.github.io/quill-diary/privacy-policy>
+- 公開網頁（Google Play 送審與 App 內連結）：<https://zack20136.github.io/quill-diary/privacy-policy>
 - App 內亦可從設定頁進入「隱私權政策」

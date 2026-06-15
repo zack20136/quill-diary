@@ -1,5 +1,5 @@
 import '../../../domain/security/unlocked_vault_session.dart';
-import 'resume_unlock_action.dart';
+import 'session_lock_reason.dart';
 
 enum AppLockStatus {
   uninitialized,
@@ -15,32 +15,36 @@ class AppSessionState {
     required this.status,
     this.message,
     this.session,
-    this.resumeAction,
+    this.lockReason,
   });
 
   final AppLockStatus status;
   final String? message;
   final UnlockedVaultSession? session;
 
-  /// 逾時鎖定後 UI 應執行的步驟；`null` 表示不需自動介入。
-  final ResumeUnlockAction? resumeAction;
+  /// 僅在 [status] 為 [AppLockStatus.locked] 時有意義。
+  final SessionLockReason? lockReason;
 
   bool get isUnlocked => status == AppLockStatus.unlocked;
+
+  bool get shouldAutoReauth =>
+      status == AppLockStatus.locked &&
+      lockReason == SessionLockReason.inactivity;
 
   AppSessionState copyWith({
     AppLockStatus? status,
     String? message,
     UnlockedVaultSession? session,
-    ResumeUnlockAction? resumeAction,
+    SessionLockReason? lockReason,
     bool clearMessage = false,
     bool clearSession = false,
-    bool clearResumeAction = false,
+    bool clearLockReason = false,
   }) {
     return AppSessionState(
       status: status ?? this.status,
       message: clearMessage ? null : (message ?? this.message),
       session: clearSession ? null : (session ?? this.session),
-      resumeAction: clearResumeAction ? null : (resumeAction ?? this.resumeAction),
+      lockReason: clearLockReason ? null : (lockReason ?? this.lockReason),
     );
   }
 }

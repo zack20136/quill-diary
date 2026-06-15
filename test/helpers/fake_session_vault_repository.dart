@@ -110,6 +110,9 @@ class FakeSessionVaultRepository extends VaultRepository {
   }
 
   @override
+  Future<bool> needsKeystoreMigration(UnlockedVaultSession session) async => false;
+
+  @override
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
     UnlockedVaultSession session, {
     AppUnlockMode? targetMode,

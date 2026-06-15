@@ -53,6 +53,7 @@
 - Google Drive 備份
 - 本機解鎖流程
 - 圖片與附件選取
+- 支持開發者（Google Play Billing）
 
 所以上架時要特別對齊：
 
@@ -60,6 +61,7 @@
 - 隱私權政策
 - App access
 - 權限用途說明
+- Billing 商品、付款描述與支持頁文案
 
 ## 簽章
 
@@ -93,7 +95,7 @@ Play Console「Privacy policy」欄位請填入：
 
 來源文件：[docs/privacy-policy.md](../../../privacy-policy.md)
 
-**維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` 為準；頁面原始檔在 `docs/` 根目錄。開發文件在 `docs/介紹/`（Jekyll 已 exclude，不會發布）。
+**維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` / `thirdPartyNoticesUrl` 為準；頁面原始檔在 `docs/` 根目錄。開發文件在 `docs/介紹/`（Jekyll 已 exclude，不會發布）。
 
 ### 啟用 GitHub Pages
 

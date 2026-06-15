@@ -174,8 +174,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   })
                               : null,
                       onRetryTrustedUnlock:
-                          (sessionState.status == AppLockStatus.locked &&
-                                      sessionState.resumeAction == null) ||
+                          sessionState.status == AppLockStatus.locked ||
                                   sessionState.status == AppLockStatus.unlocking
                               ? () => _runBusy(_retryTrustedUnlock)
                               : null,

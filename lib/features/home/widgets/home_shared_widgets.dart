@@ -48,19 +48,16 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     }
 
     if (sessionState.status == AppLockStatus.locked) {
-      final bool autoPending = sessionState.resumeAction != null;
       return HomeStateCard(
         icon: Icons.lock_outline,
         title: blockedTitleForStatus(sessionState.status),
         message: blockedSubtitleForState(sessionState),
-        actionLabel: autoPending ? null : HomeCopy.retryVerification,
-        onAction: autoPending
-            ? null
-            : () => unawaited(
-                  ProviderScope.containerOf(context)
-                      .read(appSessionProvider.notifier)
-                      .unlock(),
-                ),
+        actionLabel: HomeCopy.retryVerification,
+        onAction: () => unawaited(
+          ProviderScope.containerOf(context)
+              .read(appSessionProvider.notifier)
+              .unlock(),
+        ),
       );
     }
 

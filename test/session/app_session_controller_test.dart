@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
@@ -12,7 +11,7 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/features/session/session_messages.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/session/state/resume_unlock_action.dart';
+import 'package:quill_diary/features/session/state/session_lock_reason.dart';
 import 'package:quill_diary/features/session/state/unlock_result.dart';
 import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
@@ -23,6 +22,8 @@ import '../helpers/fake_app_lock_service.dart';
 import '../helpers/fake_session_vault_repository.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final RecoveryMetadata metadata = RecoveryMetadata(
     vaultId: 'vlt_controller_test',
     recoveryEnabled: true,
@@ -55,6 +56,19 @@ void main() {
     return container;
   }
 
+  void armControllerClock(AppSessionController controller, DateTime start) {
+    final DateTime fakeNow = start;
+    controller.inactivityWatchdog.clock = () => fakeNow;
+    controller.inactivityWatchdog.foregroundSettleDelay = Duration.zero;
+  }
+
+  DateTime advanceClock(AppSessionController controller, Duration delta) {
+    final DateTime next =
+        controller.inactivityWatchdog.clock().add(delta);
+    controller.inactivityWatchdog.clock = () => next;
+    return next;
+  }
+
   test('unlock 成功時還原 trusted session', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
@@ -68,6 +82,7 @@ void main() {
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(container.read(appSessionProvider).session, sampleSession);
     expect(repository.ensureIndexReadyCalls, 1);
+    expect(controller.inactivityWatchdog.isArmed, isTrue);
   });
 
   test('resumeSessionAfterRestore 沿用 prior session 且不觸發 openTrustedSession', () async {
@@ -86,7 +101,7 @@ void main() {
     expect(repository.ensureIndexReadyCalls, 1);
   });
 
-  test('unlock 失敗時維持 locked', () async {
+  test('unlock 失敗時維持 locked 並標記 authFailed', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
     );
@@ -96,11 +111,13 @@ void main() {
     final UnlockOutcome outcome = await controller.unlock();
 
     expect(outcome, UnlockOutcome.failed);
-    expect(container.read(appSessionProvider).status, AppLockStatus.locked);
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.authFailed);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 
-  test('lock 會清除 session 並標記為 locked', () async {
+  test('lock 會清除 session 並標記 manual', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
@@ -110,6 +127,7 @@ void main() {
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.manual);
     expect(state.session, isNull);
     expect(state.message, kAppLockedMessage);
     expect(repository.closeUnlockedResourcesCalls, 1);
@@ -166,8 +184,7 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
     final Completer<String> gate = Completer<String>();
     final Future<String> task = controller.runSensitiveTask((UnlockedVaultSession session) async {
@@ -175,9 +192,10 @@ void main() {
       return session.vaultId;
     });
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
+    await controller.expireFromInactivity();
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.closeUnlockedResourcesCalls, 0);
@@ -197,9 +215,10 @@ void main() {
 
     expect(container.read(appSessionProvider).status, AppLockStatus.uninitialized);
     expect(repository.closeUnlockedResourcesCalls, 1);
+    expect(controller.inactivityWatchdog.isArmed, isFalse);
   });
 
-  test('無解鎖模式：背景逾時後標記 autoTrusted 供 coordinator 解鎖', () async {
+  test('背景逾時後標記 inactivity 並應自動 reauth', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -210,20 +229,21 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
+    await Future<void>.delayed(Duration.zero);
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
-    expect(state.resumeAction, ResumeUnlockAction.autoTrusted);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(controller.shouldAutoReauth, isTrue);
     expect(repository.openTrustedSessionCalls, 0);
   });
 
-  test('裝置螢幕鎖模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
+  test('裝置螢幕鎖模式：背景逾時後標記 inactivity', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -234,20 +254,19 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.expireFromInactivity();
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
-    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
-    expect(repository.openTrustedSessionCalls, 0);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(state.message, kUseDeviceLockToUnlockMessage);
   });
 
-  test('生物驗證模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
+  test('生物驗證模式：背景逾時後標記 inactivity', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -259,17 +278,16 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.expireFromInactivity();
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
-    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
-    expect(repository.openTrustedSessionCalls, 0);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(state.message, kStartupNeedsBiometricMessage);
   });
 
   test('敏感任務進行中背景逾時不鎖定', () async {
@@ -281,17 +299,16 @@ void main() {
     final Completer<void> holdSensitiveTask = Completer<void>();
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
     unawaited(
       controller.runSensitiveTask((UnlockedVaultSession _) => holdSensitiveTask.future),
     );
     await Future<void>.delayed(Duration.zero);
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.expireFromInactivity();
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     holdSensitiveTask.complete();
@@ -305,15 +322,33 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(const Duration(minutes: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, const Duration(minutes: 1));
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 0);
+  });
+
+  test('使用者互動會取消背景逾時', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
+
+    controller.notifyAppBackground();
+    controller.notifyUserInteraction();
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
   });
 
   test('個人化 1 分鐘逾時設定會套用至背景鎖定', () async {
@@ -338,16 +373,15 @@ void main() {
     await container.read(personalizationPreferencesProvider.future);
 
     controller.activateSession(sampleSession);
-    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
-    controller.clock = () => fakeNow;
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
 
-    await controller.handleLifecycleChange(AppLifecycleState.paused);
-    fakeNow = fakeNow.add(const Duration(minutes: 1, seconds: 1));
-    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+    controller.notifyAppBackground();
+    advanceClock(controller, const Duration(minutes: 1, seconds: 1));
+    await controller.expireFromInactivity();
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
-    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
+    expect(state.lockReason, SessionLockReason.inactivity);
   });
 }
 

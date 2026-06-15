@@ -1,5 +1,5 @@
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/recovery/recovery_metadata.dart';
@@ -12,27 +12,31 @@ import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../settings/providers/personalization_providers.dart';
+import '../session_inactivity_watchdog.dart';
 import '../session_messages.dart';
-import '../session_timeout_policy.dart';
 import '../state/app_session_state.dart';
-import '../state/resume_unlock_action.dart';
+import '../state/session_lock_reason.dart';
 import '../state/unlock_result.dart';
 
 /// 管理應用層級 session 狀態與可信 session 還原流程。
 class AppSessionController extends Notifier<AppSessionState> {
-  DateTime? _lastForegroundExitAt;
+  final SessionInactivityWatchdog _inactivityWatchdog = SessionInactivityWatchdog();
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
 
   @visibleForTesting
-  DateTime Function() clock = DateTime.now;
+  SessionInactivityWatchdog get inactivityWatchdog => _inactivityWatchdog;
 
   @override
   AppSessionState build() {
+    ref.onDispose(_inactivityWatchdog.disarm);
     return const AppSessionState(status: AppLockStatus.uninitialized);
   }
 
+  bool get shouldAutoReauth => state.shouldAutoReauth;
+
   void beginTrustedUnlock() {
+    _inactivityWatchdog.disarm();
     state = const AppSessionState(
       status: AppLockStatus.unlocking,
       message: kTrustedUnlockInProgressMessage,
@@ -44,10 +48,11 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   Future<void> unlockWithRecovery(String recoveryKey) async {
+    _inactivityWatchdog.disarm();
     state = state.copyWith(
       status: AppLockStatus.unlocking,
       clearMessage: true,
-      clearResumeAction: true,
+      clearLockReason: true,
     );
     try {
       final UnlockedVaultSession session = await ref
@@ -62,26 +67,24 @@ class AppSessionController extends Notifier<AppSessionState> {
         session: synced,
         message: kRecoveryUnlockSuccessMessage,
       );
+      onSessionUnlocked();
     } catch (error) {
       state = state.copyWith(
         status: AppLockStatus.recoveryRequired,
         clearSession: true,
         message: friendlySessionErrorMessage(error),
-        clearResumeAction: true,
+        clearLockReason: true,
       );
       rethrow;
     }
   }
 
   Future<void> lock() async {
-    state = state.copyWith(
-      status: AppLockStatus.locked,
-      clearSession: true,
+    _inactivityWatchdog.disarm();
+    await _expireSession(
+      lockReason: SessionLockReason.manual,
       message: kAppLockedMessage,
-      clearResumeAction: true,
     );
-    _pendingResourceCleanup = true;
-    await _cleanupUnlockedResourcesIfPossible();
   }
 
   void activateSession(UnlockedVaultSession session, {String? message}) {
@@ -90,10 +93,11 @@ class AppSessionController extends Notifier<AppSessionState> {
       session: session,
       message: message,
     );
+    onSessionUnlocked();
   }
 
   Future<void> reset() async {
-    _lastForegroundExitAt = null;
+    _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
     state = const AppSessionState(status: AppLockStatus.uninitialized);
@@ -102,7 +106,7 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   /// 還原覆寫 vault 後進入啟動流程，避免與 [appStartupProvider] 並行解鎖。
   Future<void> beginPostRestoreStartup() async {
-    _lastForegroundExitAt = null;
+    _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
     state = const AppSessionState(
@@ -112,48 +116,50 @@ class AppSessionController extends Notifier<AppSessionState> {
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
   }
 
-  Future<void> handleLifecycleChange(AppLifecycleState lifecycleState) async {
-    switch (lifecycleState) {
-      case AppLifecycleState.hidden:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-        _lastForegroundExitAt ??= clock();
-        break;
-      case AppLifecycleState.resumed:
-        final DateTime? exitAt = _lastForegroundExitAt;
-        _lastForegroundExitAt = null;
-        if (exitAt == null) {
-          return;
-        }
-        if (_activeSensitiveTasks > 0) {
-          return;
-        }
-        final Duration timeout = readSessionBackgroundTimeout(ref);
-        if (!hasSessionTimedOut(
-          lastForegroundExitAt: exitAt,
-          now: clock(),
-          timeout: timeout,
-        )) {
-          return;
-        }
-        await _expireCurrentSession();
-        final AppLockService appLock = ref.read(appLockServiceProvider);
-        final AppUnlockMode mode = await appLock.getUnlockMode();
-        if (mode == AppUnlockMode.none) {
-          state = state.copyWith(
-            resumeAction: ResumeUnlockAction.autoTrusted,
-          );
-          break;
-        }
-        state = AppSessionState(
-          status: AppLockStatus.locked,
-          message: lockedResumeMessageFor(mode),
-          resumeAction: ResumeUnlockAction.keystoreUnlock,
-        );
-        break;
-      case AppLifecycleState.detached:
-        break;
+  void notifyAppBackground() {
+    if (!_shouldWatchInactivity) {
+      return;
     }
+    _inactivityWatchdog.notifyBackground();
+  }
+
+  Future<ForegroundResumeResult> notifyAppForegroundResumed({
+    required VoidCallback onForegroundSettled,
+  }) {
+    return _inactivityWatchdog.notifyForegroundResumed(
+      onForegroundSettled: onForegroundSettled,
+    );
+  }
+
+  void notifyUserInteraction() {
+    if (!state.isUnlocked) {
+      return;
+    }
+    _inactivityWatchdog.notifyUserInteraction();
+  }
+
+  Future<void> expireFromInactivity() async {
+    if (!state.isUnlocked || _activeSensitiveTasks > 0) {
+      return;
+    }
+    final AppLockService appLock = ref.read(appLockServiceProvider);
+    final AppUnlockMode mode = await appLock.getUnlockMode();
+    await _expireSession(
+      lockReason: SessionLockReason.inactivity,
+      message: lockedResumeMessageFor(mode),
+    );
+    _inactivityWatchdog.disarm();
+  }
+
+  void onSessionUnlocked() {
+    _inactivityWatchdog.disarm();
+    if (!state.isUnlocked) {
+      return;
+    }
+    _inactivityWatchdog.arm(
+      timeout: readSessionBackgroundTimeout(ref),
+      onExpired: expireFromInactivity,
+    );
   }
 
   Future<T> runSensitiveTask<T>(
@@ -173,11 +179,15 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   Future<T> _runWithSensitiveTaskGuard<T>(Future<T> Function() action) async {
+    _inactivityWatchdog.disarm();
     _activeSensitiveTasks++;
     try {
       return await action();
     } finally {
       _activeSensitiveTasks--;
+      if (state.isUnlocked) {
+        onSessionUnlocked();
+      }
       await _cleanupUnlockedResourcesIfPossible();
     }
   }
@@ -196,6 +206,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       session = await repository.ensureKeystoreMatchesUnlockMode(session);
       await repository.ensureIndexReady(session);
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
+      onSessionUnlocked();
       return UnlockOutcome.success;
     } on DeviceKeyUserCancelledException {
       return _handleTrustedDeviceFailure();
@@ -204,22 +215,28 @@ class AppSessionController extends Notifier<AppSessionState> {
     } on DeviceKeyAuthLockoutException catch (error) {
       state = AppSessionState(
         status: AppLockStatus.locked,
+        lockReason: SessionLockReason.authFailed,
         message: error.message,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } on DeviceKeyNoDeviceCredentialException catch (error) {
       state = AppSessionState(
         status: AppLockStatus.locked,
+        lockReason: SessionLockReason.authFailed,
         message: error.message,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } on DeviceKeyAuthFailedException {
       return _handleTrustedDeviceFailure();
     } on DeviceKeyBiometricNotEnrolledException {
       state = AppSessionState(
         status: AppLockStatus.locked,
+        lockReason: SessionLockReason.authFailed,
         message: kBiometricNotEnrolledSwitchModeMessage,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } on DeviceKeyUnsupportedFormatException catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -227,6 +244,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         status: AppLockStatus.recoveryRequired,
         message: error.message,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } on DeviceKeyInvalidatedException catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -234,6 +252,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         status: AppLockStatus.recoveryRequired,
         message: error.message,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } on StateError catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -244,6 +263,7 @@ class AppSessionController extends Notifier<AppSessionState> {
           afterRestoreTrustedUnlock: afterRestore,
         ),
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     } catch (error) {
       final String message = friendlySessionErrorMessage(
@@ -257,12 +277,14 @@ class AppSessionController extends Notifier<AppSessionState> {
           status: AppLockStatus.recoveryRequired,
           message: message,
         );
+        _inactivityWatchdog.disarm();
         return UnlockOutcome.failed;
       }
       state = AppSessionState(
         status: AppLockStatus.fatalError,
         message: message,
       );
+      _inactivityWatchdog.disarm();
       return UnlockOutcome.failed;
     }
   }
@@ -270,17 +292,21 @@ class AppSessionController extends Notifier<AppSessionState> {
   Future<UnlockOutcome> _handleTrustedDeviceFailure() async {
     state = AppSessionState(
       status: AppLockStatus.locked,
+      lockReason: SessionLockReason.authFailed,
       message: kLockedRetryVerificationMessage,
     );
+    _inactivityWatchdog.disarm();
     return UnlockOutcome.failed;
   }
 
-  Future<void> _expireCurrentSession() async {
-    state = state.copyWith(
+  Future<void> _expireSession({
+    required SessionLockReason lockReason,
+    required String message,
+  }) async {
+    state = AppSessionState(
       status: AppLockStatus.locked,
-      clearSession: true,
-      message: kAppLockedMessage,
-      clearResumeAction: true,
+      lockReason: lockReason,
+      message: message,
     );
     _pendingResourceCleanup = true;
     await _cleanupUnlockedResourcesIfPossible();
@@ -297,6 +323,9 @@ class AppSessionController extends Notifier<AppSessionState> {
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
   }
 
+  bool get _shouldWatchInactivity =>
+      state.isUnlocked && _activeSensitiveTasks == 0;
+
   AppSessionState get currentState => state;
 
   /// 還原後以單一路徑啟動 session，避免與 [appStartupProvider] 並行解鎖。
@@ -310,6 +339,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   ) async {
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
 
+    _inactivityWatchdog.disarm();
     state = const AppSessionState(
       status: AppLockStatus.unlocking,
       message: kPostRestoreStartupMessage,
@@ -321,6 +351,7 @@ class AppSessionController extends Notifier<AppSessionState> {
           .resumeUnlockedSessionAfterRestore(priorSession);
       await repository.ensureIndexReady(session);
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
+      onSessionUnlocked();
       return state;
     } catch (error) {
       return _recoveryRequiredAfterRestore(repository, error);
@@ -343,6 +374,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       ),
     );
     state = next;
+    _inactivityWatchdog.disarm();
     return next;
   }
 
@@ -353,6 +385,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       message: kTrustedUnlockFailedAfterRestoreMessage,
     );
     state = next;
+    _inactivityWatchdog.disarm();
     return next;
   }
 }

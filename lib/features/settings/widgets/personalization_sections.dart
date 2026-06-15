@@ -71,19 +71,32 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
-      choices: _options
-          .map(
-            (SessionBackgroundTimeoutMinutes value) =>
-                SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
-              value: value,
-              label: PersonalizationCopy.sessionTimeoutSegmentLabel(value),
-              icon: Icons.timer_outlined,
-            ),
-          )
-          .toList(growable: false),
-      selected: selected,
-      onSelected: onSelected,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Expanded(
+          child: SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
+            choices: _options
+                .map(
+                  (SessionBackgroundTimeoutMinutes value) =>
+                      SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
+                    value: value,
+                    label: PersonalizationCopy.sessionTimeoutSegmentLabel(value),
+                    icon: null,
+                    flex: 1,
+                  ),
+                )
+                .toList(growable: false),
+            selected: selected,
+            onSelected: onSelected,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          PersonalizationCopy.sessionTimeoutUnitLabel,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
     );
   }
 }
@@ -445,14 +458,14 @@ class SettingsSegmentChoice<T> {
   const SettingsSegmentChoice({
     required this.value,
     required this.label,
-    required this.icon,
+    this.icon,
     this.flex = 2,
     this.enabled = true,
   });
 
   final T value;
   final String label;
-  final IconData icon;
+  final IconData? icon;
   final int flex;
   final bool enabled;
 }
@@ -516,7 +529,7 @@ class _SettingsSegment<T> extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+  final IconData? icon;
   final bool selected;
   final bool enabled;
   final bool compact;
@@ -547,16 +560,18 @@ class _SettingsSegment<T> extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Icon(
-                icon,
-                size: 18,
-                color: selected
-                    ? cs.onPrimaryContainer
-                    : enabled
-                        ? cs.onSurfaceVariant
-                        : cs.onSurfaceVariant.withValues(alpha: 0.45),
-              ),
-              const SizedBox(width: 4),
+              if (icon != null) ...<Widget>[
+                Icon(
+                  icon,
+                  size: 18,
+                  color: selected
+                      ? cs.onPrimaryContainer
+                      : enabled
+                          ? cs.onSurfaceVariant
+                          : cs.onSurfaceVariant.withValues(alpha: 0.45),
+                ),
+                const SizedBox(width: 4),
+              ],
               Flexible(
                 child: Text(
                   label,

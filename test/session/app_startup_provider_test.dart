@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/session_messages.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/features/session/state/session_lock_reason.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
@@ -177,7 +178,7 @@ void main() {
     final AppSessionState state = await container.read(appStartupProvider.future);
     expect(state.status, AppLockStatus.locked);
     expect(state.message, kLockedRetryVerificationMessage);
-    expect(state.resumeAction, isNull);
+    expect(state.lockReason, SessionLockReason.authFailed);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 

@@ -127,6 +127,11 @@ abstract final class SettingsAboutCopy {
               body: '編輯中的內容會自動保存成加密草稿。再次開啟時，可選擇還原上次進度。',
             ),
             AboutItemCopy(
+              icon: Icons.tune_rounded,
+              title: '個人化與支持入口',
+              body: '設定頁右上角可以進入「個人化」、「介紹」與「支持」。你可以調整主題、自動鎖定、圖片品質和日記排版；如果喜歡這個 App，也能透過 Google Play 一次性支持開發者。',
+            ),
+            AboutItemCopy(
               icon: Icons.swap_horiz_rounded,
               title: '備份與可攜式匯出',
               body: '完整備份保存整個加密日記庫；Markdown / HTML 匯出則用來閱讀、整理或再匯入。',
@@ -228,7 +233,12 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.sync_rounded,
               title: '回到 App 時',
-              body: '「無」模式逾時後直接恢復；「螢幕鎖」與「生物驗證」則會跳出系統驗證對話框，完成後才能繼續。',
+              body: '如果只是短暫切出去再回來，通常不會立刻要求你重驗。真的放在背景超過時間後再回來時，「無」模式會直接恢復；「螢幕鎖」和「生物驗證」則會跳出系統驗證。',
+            ),
+            AboutItemCopy(
+              icon: Icons.error_outline_rounded,
+              title: '驗證取消或失敗後',
+              body: '如果這次驗證取消了，或沒有通過，App 會先維持鎖定，不會一直反覆跳出。你可以稍後再按「重新驗證」重試。',
             ),
           ],
         ),

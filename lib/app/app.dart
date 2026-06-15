@@ -1,14 +1,11 @@
-import 'dart:async' show unawaited;
-
-import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../config/app_identifiers.dart';
-import '../features/session/application/session_unlock_coordinator.dart';
-import '../features/session/providers/session_providers.dart';
+import '../features/session/session_lifecycle_binding.dart';
 import '../features/settings/providers/billing_providers.dart';
 import '../features/settings/providers/personalization_providers.dart';
 import '../infrastructure/preferences/personalization_preferences.dart';
@@ -22,62 +19,53 @@ class QuillDiaryApp extends ConsumerStatefulWidget {
   ConsumerState<QuillDiaryApp> createState() => _QuillDiaryAppState();
 }
 
-class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
-    with WidgetsBindingObserver {
+class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   late final GoRouter _router = AppRouter.createRouter();
-  bool _unlockCoordinatorAttached = false;
+  late final SessionLifecycleBinding _sessionLifecycle = SessionLifecycleBinding(ref);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    _sessionLifecycle.attach();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _sessionLifecycle.detach();
     _router.dispose();
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    unawaited(ref.read(appSessionProvider.notifier).handleLifecycleChange(state));
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!_unlockCoordinatorAttached) {
-      _unlockCoordinatorAttached = true;
-      SessionUnlockCoordinator(ref).listen();
-    }
-
     ref.watch(sponsorBillingLifecycleProvider);
     final PersonalizationPreferences prefs = watchPersonalizationPreferences(ref);
 
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        return MaterialApp.router(
-          title: AppIdentifiers.displayName,
-          theme: buildAppTheme(dynamicScheme: lightDynamic),
-          darkTheme: buildAppTheme(
-            dynamicScheme: darkDynamic,
-            brightness: Brightness.dark,
-          ),
-          themeMode: prefs.materialThemeMode,
-          locale: prefs.materialLocale,
-          supportedLocales: const <Locale>[
-            Locale('zh', 'TW'),
-            Locale('en'),
-          ],
-          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          routerConfig: _router,
-        );
-      },
+    return _sessionLifecycle.wrap(
+      DynamicColorBuilder(
+        builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+          return MaterialApp.router(
+            title: AppIdentifiers.displayName,
+            theme: buildAppTheme(dynamicScheme: lightDynamic),
+            darkTheme: buildAppTheme(
+              dynamicScheme: darkDynamic,
+              brightness: Brightness.dark,
+            ),
+            themeMode: prefs.materialThemeMode,
+            locale: prefs.materialLocale,
+            supportedLocales: const <Locale>[
+              Locale('zh', 'TW'),
+              Locale('en'),
+            ],
+            localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            routerConfig: _router,
+          );
+        },
+      ),
     );
   }
 }

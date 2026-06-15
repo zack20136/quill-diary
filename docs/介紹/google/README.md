@@ -1,6 +1,6 @@
 # Google 文件
 
-這裡整理 Quill Diary 與 Google 生態有關的文件，包括 Google Drive、OAuth、Google Play 上架、權限揭露與 Billing 規劃。
+這裡整理 Quill Diary 與 Google 生態有關的文件，包括 Google Drive、OAuth、Google Play 上架、權限揭露與 Billing。
 
 這一區不是產品核心主線，但如果你要把 Google 相關功能做完或送上 Play，應該從這裡開始。
 

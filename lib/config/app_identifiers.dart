@@ -21,11 +21,13 @@ abstract final class AppIdentifiers {
   static const String sourceRepositoryUrl =
       'https://github.com/zack20136/quill-diary';
   static const String issuesUrl = '$sourceRepositoryUrl/issues';
+  static const String publicDocsBaseUrl =
+      'https://zack20136.github.io/quill-diary';
 
-  /// GitHub 渲染的法律文件（亦適用於 Google Play Console）。
+  /// 對外公開的法律文件（適用於 App 內連結與 Google Play Console）。
   static const String privacyPolicyUrl =
-      '$sourceRepositoryUrl/blob/main/docs/privacy-policy.md';
+      '$publicDocsBaseUrl/privacy-policy';
 
   static const String thirdPartyNoticesUrl =
-      '$sourceRepositoryUrl/blob/main/docs/third-party-notices.md';
+      '$publicDocsBaseUrl/third-party-notices';
 }
