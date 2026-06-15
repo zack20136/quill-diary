@@ -54,6 +54,7 @@ dev_dependencies:
     sdk: flutter
 
   in_app_purchase_platform_interface: ^1.4.1
+  url_launcher_platform_interface: ^2.3.2
   plugin_platform_interface: ^2.1.8
   flutter_lints: ^6.0.0
   drift_dev: ^2.33.0
