@@ -15,8 +15,8 @@ ProductDetails _product(String id) {
     id: id,
     title: '支持開發者 $id',
     description: '一次性支持開發者，不解鎖任何額外功能。',
-    price: r'NT$30',
-    rawPrice: 30,
+    price: r'NT$50',
+    rawPrice: 50,
     currencyCode: 'TWD',
   );
 }

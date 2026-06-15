@@ -527,34 +527,33 @@ abstract final class SettingsSupportCopy {
     return null;
   }
 
-  /// 五檔梯次（GitHub / Buy me a coffee 常見比喻；由低到高）。
+  /// 五檔梯次（由低到高；價格由 Google Play 顯示，App 不寫死）。
   /// [productId] 須與 [BillingConfig.sponsorProductIdsOrdered] 一致。
   static const List<SponsorTierCopy> sponsorTiers = <SponsorTierCopy>[
     SponsorTierCopy(
       productId: 'sponsor_coffee',
-      label: '喝杯咖啡',
-      hint: '請開發者喝杯咖啡',
+      label: '請開發者喝杯咖啡',
+      hint: '支持 Quill Diary 持續開發與維護',
     ),
     SponsorTierCopy(
       productId: 'sponsor_snack',
-      label: '請份點心',
-      hint: '小小支持一下',
+      label: '請開發者吃點心',
+      hint: '讓 Quill Diary 能繼續穩定改進',
     ),
     SponsorTierCopy(
       productId: 'sponsor_lunch',
-      label: '請吃午餐',
-      hint: '很多人會選這個',
-      recommended: true,
+      label: '請開發者吃午餐',
+      hint: '幫助 Quill Diary 持續變得更好',
     ),
     SponsorTierCopy(
-      productId: 'sponsor_treat',
-      label: '加杯咖啡',
-      hint: '再加一杯也沒關係',
+      productId: 'sponsor_boost',
+      label: '大力支持',
+      hint: '成為我們持續開發、維護與改善的動力',
     ),
     SponsorTierCopy(
-      productId: 'sponsor_cheer',
-      label: '盛意支持',
-      hint: '非常感謝你',
+      productId: 'sponsor_super',
+      label: '大大大大大力支持',
+      hint: '幫助我們更安心投入長期開發與維護',
     ),
   ];
 }

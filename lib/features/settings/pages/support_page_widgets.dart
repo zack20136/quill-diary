@@ -4,8 +4,8 @@ const List<IconData> _sponsorTierIcons = <IconData>[
   Icons.local_cafe_rounded,
   Icons.cookie_rounded,
   Icons.lunch_dining_rounded,
-  Icons.card_giftcard_rounded,
-  Icons.auto_awesome_rounded,
+  Icons.rocket_launch_rounded,
+  Icons.celebration_rounded,
 ];
 
 class _ProductsSection extends StatelessWidget {

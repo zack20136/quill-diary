@@ -5,8 +5,8 @@ abstract final class BillingConfig {
     'sponsor_coffee',
     'sponsor_snack',
     'sponsor_lunch',
-    'sponsor_treat',
-    'sponsor_cheer',
+    'sponsor_boost',
+    'sponsor_super',
   ];
 
   static final Set<String> sponsorProductIds =
