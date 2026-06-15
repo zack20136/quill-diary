@@ -9,6 +9,7 @@ import '../../database/index_database_manager.dart';
 import '../restore_precheck.dart';
 import '../shared/archive_extract.dart';
 import '../tag_styles_store.dart';
+import '../backup_task_progress.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'backup_archive_inspection.dart';
@@ -30,9 +31,15 @@ class VaultBackupIo {
   final VaultRepository _repository;
   final IndexDatabaseManager _indexDatabaseManager;
 
-  Future<File> writeBackupZip(File target) async {
+  Future<File> writeBackupZip(
+    File target, {
+    BackupTaskProgressListener? onProgress,
+  }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     await target.parent.create(recursive: true);
+    onProgress?.call(
+      const BackupTaskProgress(phase: BackupTaskPhase.creatingBackup),
+    );
     final ZipFileEncoder encoder = ZipFileEncoder();
     encoder.create(target.path);
     try {
@@ -40,6 +47,12 @@ class VaultBackupIo {
         vaultRoot,
         includeDirName: false,
         filter: (FileSystemEntity entity, double progress) {
+          onProgress?.call(
+            BackupTaskProgress(
+              phase: BackupTaskPhase.creatingBackup,
+              fraction: progress.clamp(0.0, 1.0),
+            ),
+          );
           final String relative = p.relative(entity.path, from: vaultRoot.path);
           final List<String> segments = p.split(relative);
           if (segments.isNotEmpty && segments.first == 'index') {
@@ -181,6 +194,7 @@ class VaultBackupIo {
   Future<void> restoreBackupZip(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
+    BackupTaskProgressListener? onProgress,
   }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory tempRoot = Directory('${vaultRoot.path}_restore_tmp');
@@ -193,7 +207,11 @@ class VaultBackupIo {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
         _ensureZipRestorable(zip);
-        await extractArchiveToDirectory(zip: zip, targetDirectory: tempRoot);
+        await extractArchiveToDirectory(
+          zip: zip,
+          targetDirectory: tempRoot,
+          onProgress: onProgress,
+        );
       } finally {
         await zip.close();
       }

@@ -10,6 +10,8 @@ import '../config/app_identifiers.dart';
 import '../features/session/application/session_unlock_coordinator.dart';
 import '../features/session/providers/session_providers.dart';
 import '../features/settings/providers/billing_providers.dart';
+import '../features/settings/providers/personalization_providers.dart';
+import '../infrastructure/preferences/personalization_preferences.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -51,6 +53,7 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
     }
 
     ref.watch(sponsorBillingLifecycleProvider);
+    final PersonalizationPreferences prefs = watchPersonalizationPreferences(ref);
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
@@ -61,9 +64,11 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
             dynamicScheme: darkDynamic,
             brightness: Brightness.dark,
           ),
-          themeMode: ThemeMode.system,
+          themeMode: prefs.materialThemeMode,
+          locale: prefs.materialLocale,
           supportedLocales: const <Locale>[
             Locale('zh', 'TW'),
+            Locale('en'),
           ],
           localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
             GlobalMaterialLocalizations.delegate,

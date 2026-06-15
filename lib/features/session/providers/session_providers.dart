@@ -11,6 +11,7 @@ import '../../../infrastructure/security/unlock_mode_policy.dart';
 import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../settings/providers/personalization_providers.dart';
 import '../session_messages.dart';
 import '../session_timeout_policy.dart';
 import '../state/app_session_state.dart';
@@ -127,10 +128,11 @@ class AppSessionController extends Notifier<AppSessionState> {
         if (_activeSensitiveTasks > 0) {
           return;
         }
+        final Duration timeout = readSessionBackgroundTimeout(ref);
         if (!hasSessionTimedOut(
           lastForegroundExitAt: exitAt,
           now: clock(),
-          timeout: defaultSessionTimeout,
+          timeout: timeout,
         )) {
           return;
         }

@@ -10,6 +10,7 @@ import '../../config/app_identifiers.dart';
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../config/oauth_config.dart';
 import '../../shared/presentation/display_format.dart';
+import '../storage/backup_task_progress.dart';
 import 'google_drive_oauth_errors.dart';
 
 /// 設定與備份流程顯示的目前 Google Drive 連線快照。
@@ -230,7 +231,10 @@ abstract class DriveBackupService {
 
   Future<void> disconnect();
 
-  Future<String> uploadBackup(File backupFile);
+  Future<String> uploadBackup(
+    File backupFile, {
+    BackupTaskProgressListener? onProgress,
+  });
 
   Future<List<DriveBackupFile>> listBackups();
 
@@ -242,6 +246,8 @@ abstract class DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
+    int? totalBytes,
+    BackupTaskProgressListener? onProgress,
   });
 }
 
@@ -568,17 +574,30 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<String> uploadBackup(File backupFile) async {
+  Future<String> uploadBackup(
+    File backupFile, {
+    BackupTaskProgressListener? onProgress,
+  }) async {
     final drive.DriveApi api = await _createAuthorizedDriveApi();
     final drive.File metadata = drive.File(
       name: p.basename(backupFile.path),
       parents: const <String>['appDataFolder'],
     );
+    final int totalBytes = await backupFile.length();
+    onProgress?.call(
+      const BackupTaskProgress(phase: BackupTaskPhase.uploadingDrive),
+    );
+    final Stream<List<int>> monitoredStream = reportByteStreamProgress(
+      backupFile.openRead(),
+      totalBytes: totalBytes,
+      phase: BackupTaskPhase.uploadingDrive,
+      onProgress: onProgress,
+    );
     final drive.File created = await api.files.create(
       metadata,
       uploadMedia: drive.Media(
-        backupFile.openRead(),
-        await backupFile.length(),
+        monitoredStream,
+        totalBytes,
       ),
     );
     if (created.id == null || created.id!.isEmpty) {
@@ -644,6 +663,8 @@ class GoogleDriveBackupService implements DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
+    int? totalBytes,
+    BackupTaskProgressListener? onProgress,
   }) async {
     final drive.DriveApi api = await _createAuthorizedDriveApi();
     await destinationDirectory.create(recursive: true);
@@ -653,6 +674,9 @@ class GoogleDriveBackupService implements DriveBackupService {
       directory: destinationDirectory,
       file: output,
     );
+    onProgress?.call(
+      const BackupTaskProgress(phase: BackupTaskPhase.downloadingDrive),
+    );
     final drive.Media media = await api.files.get(
           fileId,
           downloadOptions: drive.DownloadOptions.fullMedia,
@@ -660,7 +684,14 @@ class GoogleDriveBackupService implements DriveBackupService {
     IOSink? sink;
     try {
       sink = output.openWrite();
-      await media.stream.pipe(sink);
+      await for (final List<int> chunk in reportByteStreamProgress(
+        media.stream,
+        totalBytes: totalBytes ?? 0,
+        phase: BackupTaskPhase.downloadingDrive,
+        onProgress: onProgress,
+      )) {
+        sink.add(chunk);
+      }
       await sink.flush();
     } finally {
       await sink?.close();

@@ -6,6 +6,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -66,7 +67,7 @@ void main() {
     await deliverDirectory.create(recursive: true);
 
     final BackupPersistResult result = await transferService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName) async {
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
         final String destinationPath = p.join(deliverDirectory.path, fileName);
         await stagingZip.copy(destinationPath);
         return destinationPath;
@@ -83,7 +84,7 @@ void main() {
     await seedVaultForBackup();
 
     final BackupPersistResult result = await transferService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName) async => null,
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async => null,
     );
 
     expect(result.status, BackupPersistStatus.cancelled);
@@ -107,7 +108,7 @@ void main() {
 
     final BackupPersistResult result =
         await failingService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName) async {
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
         deliverCalls++;
         return p.join(harness.tempDir.path, fileName);
       },

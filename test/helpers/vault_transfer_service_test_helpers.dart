@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 
@@ -38,6 +39,8 @@ class UnusedDriveBackupService implements DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
+    int? totalBytes,
+    BackupTaskProgressListener? onProgress,
   }) =>
       throw UnimplementedError();
 
@@ -58,5 +61,8 @@ class UnusedDriveBackupService implements DriveBackupService {
   Future<void> disconnect() => throw UnimplementedError();
 
   @override
-  Future<String> uploadBackup(File backupFile) => throw UnimplementedError();
+  Future<String> uploadBackup(
+    File backupFile, {
+    BackupTaskProgressListener? onProgress,
+  }) => throw UnimplementedError();
 }

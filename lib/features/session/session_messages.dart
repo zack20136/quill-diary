@@ -40,8 +40,8 @@ const String kRestoreNeedsUnlockMessage = VaultTransferCopy.needsUnlockForRestor
 const String kSensitiveVaultTransferNeedsRecoveryKeyMessage =
     VaultTransferCopy.needsRecoveryKeyForBackup;
 const String kInvalidBackupFileMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
-const String kRestoreInProgressMessage = '正在還原備份，請勿關閉應用程式…';
-const String kPostRestoreStartupMessage = '正在啟動還原後的日記庫…';
+const String kPostRestoreStartupMessage =
+    SettingsBackupTaskProgressCopy.startingAfterRestore;
 
 const String kRestoreSuccessUnlockedMessage = '已還原備份，可以正常使用。';
 const String kRestoreSuccessLockedMessage =

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -54,7 +55,9 @@ class FakeVaultTransferService extends VaultTransferService {
   int precheckRestoreCalls = 0;
 
   @override
-  Future<BackupPersistResult> saveBackupToAppLocal() {
+  Future<BackupPersistResult> saveBackupToAppLocal({
+    BackupTaskProgressListener? onProgress,
+  }) {
     saveBackupToAppLocalCalls++;
     throw UnimplementedError();
   }
@@ -66,13 +69,17 @@ class FakeVaultTransferService extends VaultTransferService {
   }
 
   @override
-  Future<BackupPersistResult> saveBackupToExternalDirectory() {
+  Future<BackupPersistResult> saveBackupToExternalDirectory({
+    BackupTaskProgressListener? onProgress,
+  }) {
     saveBackupToExternalDirectoryCalls++;
     throw UnimplementedError();
   }
 
   @override
-  Future<BackupPersistResult> uploadBackupToDrive() {
+  Future<BackupPersistResult> uploadBackupToDrive({
+    BackupTaskProgressListener? onProgress,
+  }) {
     uploadBackupToDriveCalls++;
     throw UnimplementedError();
   }
@@ -116,7 +123,10 @@ class FakeVaultTransferService extends VaultTransferService {
   }
 
   @override
-  Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {
+  Future<File> downloadDriveBackupToTempFile(
+    DriveBackupFile backup, {
+    BackupTaskProgressListener? onProgress,
+  }) async {
     downloadDriveBackupToTempFileCalls++;
     if (downloadToTemp != null) {
       return downloadToTemp!(backup);
@@ -151,6 +161,8 @@ class _UnusedDriveBackupService implements DriveBackupService {
     required String fileId,
     required String fileName,
     required Directory destinationDirectory,
+    int? totalBytes,
+    BackupTaskProgressListener? onProgress,
   }) => throw UnimplementedError();
 
   @override
@@ -170,5 +182,8 @@ class _UnusedDriveBackupService implements DriveBackupService {
   Future<void> disconnect() => throw UnimplementedError();
 
   @override
-  Future<String> uploadBackup(File backupFile) => throw UnimplementedError();
+  Future<String> uploadBackup(
+    File backupFile, {
+    BackupTaskProgressListener? onProgress,
+  }) => throw UnimplementedError();
 }

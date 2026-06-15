@@ -5,6 +5,8 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
+import '../backup_task_progress.dart';
+
 /// 解壓前拒絕 zip-slip 等不安全路徑。
 void ensureSafeArchivePath(String relativePath) {
   final String normalizedSeparators = relativePath.replaceAll('\\', '/');
@@ -88,17 +90,54 @@ Uint8List? readEncryptedSampleBytes(Archive archive) {
 }
 
 /// 以 OS 層複製檔案，避免 readAsBytes 整包進記憶體。
-Future<void> copyFileToPath(File source, String destinationPath) async {
+Future<void> copyFileToPath(
+  File source,
+  String destinationPath, {
+  BackupTaskProgressListener? onProgress,
+  BackupTaskPhase phase = BackupTaskPhase.copyingBackup,
+}) async {
   await File(destinationPath).parent.create(recursive: true);
-  await source.copy(destinationPath);
+  if (onProgress == null) {
+    await source.copy(destinationPath);
+    return;
+  }
+
+  final int totalBytes = await source.length();
+  onProgress(BackupTaskProgress(phase: phase));
+  final IOSink sink = File(destinationPath).openWrite();
+  try {
+    await for (final List<int> chunk in reportByteStreamProgress(
+      source.openRead(),
+      totalBytes: totalBytes,
+      phase: phase,
+      onProgress: onProgress,
+    )) {
+      sink.add(chunk);
+    }
+    await sink.flush();
+  } finally {
+    await sink.close();
+  }
 }
 
 /// 驗證路徑後，將 [zip] 串流解壓至 [targetDirectory]。
 Future<void> extractArchiveToDirectory({
   required OpenedZipArchive zip,
   required Directory targetDirectory,
+  BackupTaskProgressListener? onProgress,
 }) async {
-  for (final ArchiveFile archiveFile in zip.archive.files) {
+  final List<ArchiveFile> files = zip.archive.files;
+  final int total = files.length;
+  for (var index = 0; index < files.length; index++) {
+    final ArchiveFile archiveFile = files[index];
+    if (total > 0) {
+      onProgress?.call(
+        BackupTaskProgress(
+          phase: BackupTaskPhase.restoringBackup,
+          fraction: ((index + 1) / total).clamp(0.0, 1.0),
+        ),
+      );
+    }
     final String safeRelativePath = safeArchiveRelativePath(archiveFile.name);
     final String outputPath = p.join(targetDirectory.path, safeRelativePath);
     if (archiveFile.isFile) {

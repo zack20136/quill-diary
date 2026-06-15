@@ -12,8 +12,10 @@ import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/weekday_zh.dart';
 import '../../editor/providers/editor_draft_providers.dart';
+import '../../settings/providers/personalization_providers.dart';
 import '../home_copy.dart';
 import '../home_entry_helpers.dart';
+import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
 import '../state/home_state.dart';
 
@@ -72,6 +74,8 @@ class HomeEntryList extends ConsumerWidget {
           data: (Set<String> draftKeys) => draftKeys,
           orElse: () => const <String>{},
         );
+    final EditorTypographyPreferences typography =
+        watchPersonalizationPreferences(ref).typography;
 
     return NotificationListener<OverscrollIndicatorNotification>(
       onNotification: (OverscrollIndicatorNotification notification) {
@@ -92,6 +96,7 @@ class HomeEntryList extends ConsumerWidget {
               selected: selection.isActive && selected,
               child: HomeEntryCard(
                 entry: entry,
+                typography: typography,
                 selectionActive: selection.isActive,
                 selected: selected,
                 tagAccents: tagAccents,
@@ -122,6 +127,7 @@ class HomeEntryList extends ConsumerWidget {
 class HomeEntryCard extends StatelessWidget {
   const HomeEntryCard({
     required this.entry,
+    required this.typography,
     required this.selectionActive,
     required this.selected,
     required this.tagAccents,
@@ -132,6 +138,7 @@ class HomeEntryCard extends StatelessWidget {
   });
 
   final EntryIndexRecord entry;
+  final EditorTypographyPreferences typography;
   final bool selectionActive;
   final bool selected;
   final Map<String, int> tagAccents;
@@ -147,6 +154,11 @@ class HomeEntryCard extends StatelessWidget {
     final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
     final bool showPreview = hasTitle && entry.previewText.trim().isNotEmpty;
     final double selectionLeadingWidth = selectionActive ? 34 : 0;
+    final TextStyle titleStyle = typography.listTitleTextStyle(theme.textTheme);
+    final TextStyle previewStyle = typography.listPreviewTextStyle(
+      theme.textTheme,
+      color: cs.onSurfaceVariant,
+    );
 
     return Material(
       color: selectionActive && selected
@@ -163,9 +175,7 @@ class HomeEntryCard extends StatelessWidget {
             children: <Widget>[
               HomeEntryCardHeader(
                 entry: entry,
-                titleStyle: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                titleStyle: titleStyle,
                 trailing: HomeEntryCardRightDateTime(entry: entry),
                 leading: selectionActive
                     ? Padding(
@@ -197,10 +207,7 @@ class HomeEntryCard extends StatelessWidget {
                   padding: EdgeInsets.only(left: selectionLeadingWidth),
                   child: Text(
                     entry.previewText,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.4,
-                    ),
+                    style: previewStyle,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
@@ -242,6 +249,13 @@ class HomeCompactEntryList extends ConsumerWidget {
           data: (Set<String> draftKeys) => draftKeys,
           orElse: () => const <String>{},
         );
+    final EditorTypographyPreferences typography =
+        watchPersonalizationPreferences(ref).typography;
+    final TextStyle titleStyle = typography.listTitleTextStyle(theme.textTheme);
+    final TextStyle previewStyle = typography.listCompactPreviewTextStyle(
+      theme.textTheme,
+      color: theme.colorScheme.onSurfaceVariant,
+    );
 
     return Column(
       children: entries
@@ -267,9 +281,7 @@ class HomeCompactEntryList extends ConsumerWidget {
                           children: <Widget>[
                             HomeEntryCardHeader(
                               entry: entry,
-                              titleStyle: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                              titleStyle: titleStyle,
                               trailing: HomeEntryCardRightDateTime(entry: entry, compact: true),
                             ),
                             HomeEntryListTagsWrap(
@@ -286,10 +298,7 @@ class HomeCompactEntryList extends ConsumerWidget {
                                 entry.previewText,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  height: 1.35,
-                                ),
+                                style: previewStyle,
                               ),
                             ],
                             if (entry.previewImagePaths.isNotEmpty) ...<Widget>[

@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/security/unlocked_vault_session.dart';
+import '../../infrastructure/storage/backup_task_progress.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
 import '../settings/vault_transfer_access.dart';
+import 'post_restore_session.dart';
+import 'restore_prepared_context.dart';
 import 'widgets/restore_recovery_key_dialog.dart';
 
-/// 還原備份：確認 → 驗證金鑰 → 寫入（結構驗證由呼叫端 precheck 負責）。
+/// 還原備份：確認 → 驗證金鑰 → 寫入 → 啟動 session（結構驗證由呼叫端 precheck 負責）。
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
@@ -61,33 +64,27 @@ class RestoreBackupFlow {
     }
   }
 
-  Future<void> run({
+  Future<RestorePreparedContext?> prepare({
     required BuildContext context,
     required File backupFile,
     required RestorePrecheck precheck,
     required Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName})
         confirm,
-    required Future<void> Function({
-      String? backupRecoveryKey,
-      required RestorePrecheck precheck,
-      UnlockedVaultSession? priorSession,
-    }) onComplete,
     String? driveBackupName,
   }) async {
-    final transferService = ref.read(vaultTransferServiceProvider);
     final VaultTransferAccess access = await _loadTransferAccess();
     access.ensureCanRestore();
 
     if (!context.mounted) {
-      return;
+      return null;
     }
 
     if (!await confirm(precheck, driveBackupName: driveBackupName)) {
-      return;
+      return null;
     }
 
     if (!context.mounted) {
-      return;
+      return null;
     }
 
     String? backupRecoveryKey;
@@ -98,21 +95,34 @@ class RestoreBackupFlow {
         precheck,
       );
       if (!context.mounted || backupRecoveryKey == null) {
-        return;
+        return null;
       }
     }
 
+    return RestorePreparedContext(
+      precheck: precheck,
+      priorSession: ref.read(appSessionProvider).session,
+      backupRecoveryKey: backupRecoveryKey,
+    );
+  }
+
+  Future<void> executeRestore({
+    required File backupFile,
+    required RestorePreparedContext prepared,
+    BackupTaskProgressListener? onProgress,
+  }) async {
+    final transferService = ref.read(vaultTransferServiceProvider);
     final AppSessionController sessionController =
         ref.read(appSessionProvider.notifier);
-    final UnlockedVaultSession? priorSession =
-        ref.read(appSessionProvider).session;
+    final UnlockedVaultSession? priorSession = prepared.priorSession;
     final bool hasActiveSession =
         priorSession != null && ref.read(appSessionProvider).isUnlocked;
 
     Future<void> restoreBackup() async {
       await transferService.restoreFromBackupFile(
         backupFile,
-        preserveTrustedDeviceAccess: precheck.expectsTrustedUnlockAfterRestore,
+        preserveTrustedDeviceAccess: prepared.precheck.expectsTrustedUnlockAfterRestore,
+        onProgress: onProgress,
       );
     }
 
@@ -124,11 +134,20 @@ class RestoreBackupFlow {
         await restoreBackup();
       });
     }
+  }
 
-    await onComplete(
-      backupRecoveryKey: backupRecoveryKey,
-      precheck: precheck,
-      priorSession: priorSession,
+  /// 解壓還原後接續 session 啟動與索引刷新。
+  Future<AppSessionState> executeRestoreAndFinishSession({
+    required File backupFile,
+    required RestorePreparedContext prepared,
+    BackupTaskProgressListener? onProgress,
+  }) async {
+    await executeRestore(
+      backupFile: backupFile,
+      prepared: prepared,
+      onProgress: onProgress,
     );
+    onProgress?.call(BackupTaskProgress.startingAfterRestore);
+    return finishRestoreSession(ref, prepared: prepared);
   }
 }

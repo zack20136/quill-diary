@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../features/editor/pages/editor_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/settings/pages/about_page.dart';
+import '../features/settings/pages/personalization_page.dart';
 import '../features/settings/pages/settings_page.dart';
 import '../features/settings/pages/support_page.dart';
 
@@ -15,6 +16,7 @@ class AppRouter {
   static const String editorDetailRoute = '/editor/:entryId';
   static const String settingsRoute = '/settings';
   static const String aboutRoute = '/settings/about';
+  static const String personalizationRoute = '/settings/personalization';
   static const String supportRoute = '/settings/support';
   static GoRouter createRouter() {
     return GoRouter(
@@ -42,6 +44,10 @@ class AppRouter {
         GoRoute(
           path: aboutRoute,
           builder: (_, _) => const SettingsAboutPage(),
+        ),
+        GoRoute(
+          path: personalizationRoute,
+          builder: (_, _) => const PersonalizationPage(),
         ),
         GoRoute(
           path: supportRoute,

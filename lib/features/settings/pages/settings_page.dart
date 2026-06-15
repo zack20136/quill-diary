@@ -16,6 +16,7 @@ import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/vault_transfer_service.dart';
+import '../../../infrastructure/storage/backup_task_progress.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -28,14 +29,16 @@ import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
+import '../providers/personalization_providers.dart';
 import '../about_copy.dart';
+import '../personalization_copy.dart';
 import '../legal_disclosures.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
 import '../unlock_mode_change.dart';
 import '../vault_transfer_access.dart';
-import '../../restore/post_restore_session.dart';
 import '../../restore/restore_backup_flow.dart';
+import '../../restore/restore_prepared_context.dart';
 import '../backup/backup_pick_dialog.dart';
 import '../backup/backup_pick_list_item.dart';
 import '../widgets/drive_backup_section.dart';
@@ -54,6 +57,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController = TextEditingController();
   bool _busy = false;
   String? _busyMessage;
+  double? _busyProgress;
   IndexRebuildReport? _lastIndexRebuildReport;
 
   @override
@@ -140,13 +144,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             indexMessage: _indexStatusMessage(hasUnlockedSession),
             busy: _busy,
             onCreateRecoveryKey:
-                recoveryMetadata == null ? () => _runAction(_createRecoveryKey) : null,
+                recoveryMetadata == null ? () => _runBusy(_createRecoveryKey) : null,
             onRotateRecoveryKey:
                 recoveryMetadata != null && canVaultBackup
-                    ? () => _runAction(_rotateRecoveryKey)
+                    ? () => _runBusy(_rotateRecoveryKey)
                     : null,
             onRebuildIndex:
-                hasUnlockedSession ? () => _runAction(_rebuildIndex) : null,
+                hasUnlockedSession ? () => _runBusy(_rebuildIndex) : null,
             lockPanel: sessionState?.status == AppLockStatus.unlocked
                 ? null
                 : sessionAsync.when(
@@ -160,7 +164,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       bannerTone: _sessionTone(sessionState.status),
                       onUnlockWithRecovery:
                           sessionState.status == AppLockStatus.recoveryRequired
-                              ? () => _runAction(() async {
+                              ? () => _runBusy(() async {
                                     await ref
                                         .read(appSessionProvider.notifier)
                                         .unlockWithRecovery(
@@ -173,10 +177,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           (sessionState.status == AppLockStatus.locked &&
                                       sessionState.resumeAction == null) ||
                                   sessionState.status == AppLockStatus.unlocking
-                              ? () => _runAction(_retryTrustedUnlock)
+                              ? () => _runBusy(_retryTrustedUnlock)
                               : null,
                       onCancelUnlock: sessionState.status == AppLockStatus.unlocking
-                          ? () => _runAction(() async {
+                          ? () => _runBusy(() async {
                                 await ref.read(appSessionProvider.notifier).lock();
                               })
                           : null,
@@ -267,14 +271,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.phonelink_lock_outlined,
                     title: SettingsUnlockMethodCopy.sectionTitle,
-                    description: SettingsUnlockMethodCopy.sectionDescription,
+                    description: SettingsUnlockMethodCopy.sectionDescription(
+                      watchPersonalizationPreferences(ref).sessionTimeout,
+                    ),
                     child: unlockModeAsync.when(
                       data: (AppUnlockMode unlockMode) => UnlockMethodSectionBody(
                         enabled: recoveryMetadataAsync.asData?.value != null,
                         changeAllowed: hasUnlockedSession,
                         busy: _busy,
                         unlockMode: unlockMode,
-                        onModeSelected: (AppUnlockMode selected) => _runAction(
+                        onModeSelected: (AppUnlockMode selected) => _runBusy(
                           () => _applyUnlockMode(selected),
                         ),
                       ),
@@ -303,7 +309,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           fullWidth: true,
                           onPressed: _busy || !transferAccess.canBackup
                               ? null
-                              : () => _runAction(() async {
+                              : () => _runBusy(() async {
                                     final PortableImportResult? result = await ref
                                         .read(appSessionProvider.notifier)
                                         .runSensitiveTask((UnlockedVaultSession session) {
@@ -321,7 +327,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     await refreshEntryIndexCaches(ref);
                                     _showMessage(result.formatSuccessMessage());
                                   },
-                                    progressMessage: SettingsImportExportCopy.importProgress,
+                                    message: SettingsImportExportCopy.importProgress,
                                   ),
                         ),
                         SettingsActionButton(
@@ -331,7 +337,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           fullWidth: true,
                           onPressed: _busy || !transferAccess.canBackup
                               ? null
-                              : () => _runAction(
+                              : () => _runBusy(
                                     () async {
                                     final String? exportPath = await ref
                                         .read(appSessionProvider.notifier)
@@ -351,7 +357,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       ),
                                     );
                                   },
-                                    progressMessage: SettingsImportExportCopy.exportProgress,
+                                    message: SettingsImportExportCopy.exportProgress,
                                   ),
                         ),
                       ],
@@ -361,9 +367,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   LocalBackupSection(
                     access: transferAccess,
                     busy: _busy,
-                    onCreate: () => _runAction(_createLocalBackup),
+                    onCreate: () => _runWithBackupProgress(_createLocalBackup),
                     onRestore: _runRestoreFromAppLocalBackup,
-                    onExport: () => _runAction(_exportLocalBackup),
+                    onExport: () => _runWithBackupProgress(_exportLocalBackup),
                     onImport: _runRestoreFromLocalBackup,
                   ),
                   const SizedBox(height: 16),
@@ -371,16 +377,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     access: transferAccess,
                     isGoogleDriveConfigured: isGoogleDriveConfigured,
                     busy: _busy,
-                    onLink: () => _runAction(
+                    onLink: () => _runBusy(
                       _linkGoogleDrive,
-                      progressMessage: SettingsIndexCopy.linkDriveProgress,
+                      message: SettingsIndexCopy.linkDriveProgress,
                     ),
-                    onSwitchAccount: () => _runAction(
+                    onSwitchAccount: () => _runBusy(
                       _switchGoogleDrive,
-                      progressMessage: SettingsIndexCopy.switchDriveAccountProgress,
+                      message: SettingsIndexCopy.switchDriveAccountProgress,
                     ),
                     onDisconnect: _disconnectGoogleDrive,
-                    onUpload: () => _runAction(_uploadDriveBackup),
+                    onUpload: () => _runWithBackupProgress(_uploadDriveBackup),
                     onRestore: _runRestoreFromGoogleDrive,
                   ),
                 ],
@@ -393,6 +399,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               if (_busy)
                 SettingsBlockingProgressOverlay(
                   message: _busyMessage ?? SettingsCopy.progressDefault,
+                  progress: _busyProgress,
                 ),
             ],
           ),
@@ -542,42 +549,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<void> _createLocalBackup() async {
+  Future<void> _persistBackup(
+    BackupTaskProgressListener reportProgress,
+    Future<BackupPersistResult> Function({BackupTaskProgressListener? onProgress})
+        persist, {
+    required String Function(String savedPath) successMessage,
+    String Function(String message)? inspectFailedMessage,
+  }) async {
     final BackupPersistResult result = await ref
         .read(appSessionProvider.notifier)
-        .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).saveBackupToAppLocal();
-    });
+        .runSensitiveTask((_) => persist(onProgress: reportProgress));
     _showBackupPersistResult(
       result,
-      onSuccess: SettingsLocalBackupCopy.backupSuccessInApp,
+      onSuccess: successMessage,
+      inspectFailedMessage: inspectFailedMessage,
     );
   }
 
-  Future<void> _exportLocalBackup() async {
-    final BackupPersistResult result = await ref
-        .read(appSessionProvider.notifier)
-        .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).saveBackupToExternalDirectory();
-    });
-    _showBackupPersistResult(
-      result,
-      onSuccess: SettingsLocalBackupCopy.backupExportSuccess,
-    );
-  }
+  Future<void> _createLocalBackup(BackupTaskProgressListener reportProgress) =>
+      _persistBackup(
+        reportProgress,
+        ref.read(vaultTransferServiceProvider).saveBackupToAppLocal,
+        successMessage: SettingsLocalBackupCopy.backupSuccessInApp,
+      );
 
-  Future<void> _uploadDriveBackup() async {
-    final BackupPersistResult result = await ref
-        .read(appSessionProvider.notifier)
-        .runSensitiveTask((_) {
-      return ref.read(vaultTransferServiceProvider).uploadBackupToDrive();
-    });
-    _showBackupPersistResult(
-      result,
-      onSuccess: SettingsDriveBackupCopy.uploadSuccess,
-      inspectFailedMessage: SettingsDriveBackupCopy.backupInspectFailed,
-    );
-  }
+  Future<void> _exportLocalBackup(BackupTaskProgressListener reportProgress) =>
+      _persistBackup(
+        reportProgress,
+        ref.read(vaultTransferServiceProvider).saveBackupToExternalDirectory,
+        successMessage: SettingsLocalBackupCopy.backupExportSuccess,
+      );
+
+  Future<void> _uploadDriveBackup(BackupTaskProgressListener reportProgress) =>
+      _persistBackup(
+        reportProgress,
+        ref.read(vaultTransferServiceProvider).uploadBackupToDrive,
+        successMessage: SettingsDriveBackupCopy.uploadSuccess,
+        inspectFailedMessage: SettingsDriveBackupCopy.backupInspectFailed,
+      );
 
   Future<void> _runRestoreFromAppLocalBackup() async {
     try {
@@ -643,11 +652,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return;
       }
       driveBackupName = backup.name;
-      await _runAction(() async {
-        tempBackup = await ref
-            .read(vaultTransferServiceProvider)
-            .downloadDriveBackupToTempFile(backup);
-      }, progressMessage: SettingsDriveBackupCopy.downloadProgress);
+      await _runWithBackupProgress((BackupTaskProgressListener reportProgress) async {
+        tempBackup = await ref.read(vaultTransferServiceProvider).downloadDriveBackupToTempFile(
+          backup,
+          onProgress: reportProgress,
+        );
+      });
       if (tempBackup == null) {
         return;
       }
@@ -707,9 +717,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!confirmed) {
       return;
     }
-    await _runAction(
+    await _runBusy(
       () => ref.read(vaultTransferServiceProvider).disconnectGoogleDrive(),
-      progressMessage: SettingsIndexCopy.disconnectDriveProgress,
+      message: SettingsIndexCopy.disconnectDriveProgress,
     );
     ref.invalidate(settingsDriveConnectionProvider);
     await ref.read(settingsDriveConnectionProvider.future);
@@ -723,27 +733,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       final RestorePrecheck precheck =
           await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
-      await _runAction(
-        () => RestoreBackupFlow(ref).run(
-          context: context,
-          backupFile: backupFile,
-          precheck: precheck,
-          driveBackupName: driveBackupName,
-          confirm: _confirmRestore,
-          onComplete: ({
-            String? backupRecoveryKey,
-            required RestorePrecheck precheck,
-            UnlockedVaultSession? priorSession,
-          }) =>
-              _finishRestoreAfterSuccess(
-            backupRecoveryKey: backupRecoveryKey,
-            precheck: precheck,
-            priorSession: priorSession,
-            driveBackupName: driveBackupName,
-          ),
-        ),
-        progressMessage: kRestoreInProgressMessage,
+      if (!mounted) {
+        return;
+      }
+      final RestoreBackupFlow flow = RestoreBackupFlow(ref);
+      final RestorePreparedContext? prepared = await flow.prepare(
+        context: context,
+        backupFile: backupFile,
+        precheck: precheck,
+        driveBackupName: driveBackupName,
+        confirm: _confirmRestore,
       );
+      if (prepared == null) {
+        return;
+      }
+      await _runWithBackupProgress((BackupTaskProgressListener reportProgress) async {
+        final AppSessionState sessionState =
+            await flow.executeRestoreAndFinishSession(
+          backupFile: backupFile,
+          prepared: prepared,
+          onProgress: reportProgress,
+        );
+        await _presentRestoreSuccess(
+          sessionState: sessionState,
+          prepared: prepared,
+          driveBackupName: driveBackupName,
+        );
+      });
     } on StateError catch (error) {
       _showError(userFacingErrorMessage(error));
     }
@@ -802,24 +818,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         false;
   }
 
-  Future<void> _finishRestoreAfterSuccess({
-    String? backupRecoveryKey,
-    required RestorePrecheck precheck,
-    UnlockedVaultSession? priorSession,
+  Future<void> _presentRestoreSuccess({
+    required AppSessionState sessionState,
+    required RestorePreparedContext prepared,
     String? driveBackupName,
   }) async {
-    final AppSessionState sessionState = await finishRestoreSession(
-      ref,
-      precheck: precheck,
-      backupRecoveryKey: backupRecoveryKey,
-      priorSession: priorSession,
-    );
-
     if (!mounted) {
       return;
     }
 
-    final String? trimmedKey = backupRecoveryKey?.trim();
+    final String? trimmedKey = prepared.backupRecoveryKey?.trim();
     if (trimmedKey != null &&
         trimmedKey.isNotEmpty &&
         sessionState.status != AppLockStatus.unlocked) {
@@ -900,13 +908,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
-  Future<void> _runAction(
+  Future<void> _runBusy(
     Future<void> Function() action, {
-    String? progressMessage,
+    String? message,
   }) async {
     setState(() {
       _busy = true;
-      _busyMessage = progressMessage;
+      _busyMessage = message;
+      _busyProgress = null;
     });
     try {
       await action();
@@ -917,6 +926,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         setState(() {
           _busy = false;
           _busyMessage = null;
+          _busyProgress = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _runWithBackupProgress(
+    Future<void> Function(BackupTaskProgressListener reportProgress) action,
+  ) async {
+    void reportProgress(BackupTaskProgress progress) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyMessage = SettingsBackupTaskProgressCopy.label(progress);
+        _busyProgress = progress.fraction;
+      });
+    }
+
+    setState(() {
+      _busy = true;
+      _busyMessage = null;
+      _busyProgress = null;
+    });
+    try {
+      await action(reportProgress);
+    } catch (error) {
+      _showError(userFacingErrorMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _busyMessage = null;
+          _busyProgress = null;
         });
       }
     }
@@ -990,7 +1033,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
-/// 設定頁 AppBar 右側按鈕列（介紹、贊助）。
+/// 設定頁 AppBar 右側按鈕列（個人化、介紹、支持）。
 class _SettingsAppBarNavActions extends StatelessWidget {
   const _SettingsAppBarNavActions();
 
@@ -1005,6 +1048,11 @@ class _SettingsAppBarNavActions extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
+          _SettingsAppBarNavButton(
+            label: PersonalizationCopy.navButtonLabel,
+            onPressed: () => unawaited(context.push(AppRouter.personalizationRoute)),
+          ),
+          const SizedBox(width: _gap),
           _SettingsAppBarNavButton(
             label: SettingsAboutCopy.pageTitle,
             onPressed: () => unawaited(context.push(AppRouter.aboutRoute)),

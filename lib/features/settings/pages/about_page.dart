@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/page_style.dart';
 import '../about_copy.dart';
+import '../providers/personalization_providers.dart';
 import '../widgets/settings_info_cards.dart';
 
-class SettingsAboutPage extends StatelessWidget {
+class SettingsAboutPage extends ConsumerWidget {
   const SettingsAboutPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
+    final List<AboutTabCopy> tabs = SettingsAboutCopy.tabs(
+      watchPersonalizationPreferences(ref).sessionTimeout,
+    );
 
     return DefaultTabController(
-      length: SettingsAboutCopy.tabs.length,
+      length: tabs.length,
       child: Scaffold(
         backgroundColor: pageBackground,
         appBar: AppBar(
@@ -25,13 +30,13 @@ class SettingsAboutPage extends StatelessWidget {
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: SettingsAboutCopy.tabs
+            tabs: tabs
                 .map((AboutTabCopy tab) => Tab(text: tab.label))
                 .toList(growable: false),
           ),
         ),
         body: TabBarView(
-          children: SettingsAboutCopy.tabs
+          children: tabs
               .map((AboutTabCopy tab) => _AboutTabBody(tab: tab))
               .toList(growable: false),
         ),

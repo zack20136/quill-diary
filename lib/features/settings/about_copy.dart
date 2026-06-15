@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/shared/vault_backup_policy.dart';
-import '../session/session_timeout_policy.dart';
+import 'settings_copy.dart';
 import 'legal_disclosures.dart';
 
 class AboutTabCopy {
@@ -50,7 +50,7 @@ class AboutItemCopy {
 abstract final class SettingsAboutCopy {
   static const String pageTitle = '介紹';
 
-  static List<AboutTabCopy> get tabs => <AboutTabCopy>[
+  static List<AboutTabCopy> tabs(Duration sessionTimeout) => <AboutTabCopy>[
     AboutTabCopy(
       label: '簡介',
       heroIcon: Icons.menu_book_rounded,
@@ -223,9 +223,7 @@ abstract final class SettingsAboutCopy {
             AboutItemCopy(
               icon: Icons.lock_clock_outlined,
               title: '背景逾時',
-              body:
-                  '背景超過 ${sessionBackgroundTimeoutLabel()} 未使用會鎖定，短時間切換 App 不會。'
-                  '備份、還原或匯入匯出進行中則暫不鎖定。鎖定後回到 App 時，請依解鎖方式重新驗證。',
+              body: SettingsSessionTimeoutCopy.aboutBackgroundTimeoutBody(sessionTimeout),
             ),
             AboutItemCopy(
               icon: Icons.sync_rounded,

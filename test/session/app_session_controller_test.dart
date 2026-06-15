@@ -14,6 +14,8 @@ import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/session/state/resume_unlock_action.dart';
 import 'package:quill_diary/features/session/state/unlock_result.dart';
+import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
@@ -313,4 +315,47 @@ void main() {
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 0);
   });
+
+  test('個人化 1 分鐘逾時設定會套用至背景鎖定', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.deviceLock,
+    );
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        vaultRepositoryProvider.overrideWithValue(repository),
+        appLockServiceProvider.overrideWithValue(appLock),
+        personalizationPreferencesProvider.overrideWith(
+          _OneMinuteSessionTimeoutController.new,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    await container.read(personalizationPreferencesProvider.future);
+
+    controller.activateSession(sampleSession);
+    DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
+    controller.clock = () => fakeNow;
+
+    await controller.handleLifecycleChange(AppLifecycleState.paused);
+    fakeNow = fakeNow.add(const Duration(minutes: 1, seconds: 1));
+    await controller.handleLifecycleChange(AppLifecycleState.resumed);
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.resumeAction, ResumeUnlockAction.keystoreUnlock);
+  });
+}
+
+class _OneMinuteSessionTimeoutController extends PersonalizationPreferencesController {
+  @override
+  Future<PersonalizationPreferences> build() async {
+    return PersonalizationPreferences.defaults.copyWith(
+      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.one,
+    );
+  }
 }

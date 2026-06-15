@@ -6,6 +6,7 @@ import '../session/state/app_session_state.dart';
 import '../session/session_timeout_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
+import '../../infrastructure/storage/backup_task_progress.dart';
 import '../../shared/copy/common_copy.dart';
 
 /// 設定頁與相關對話框的繁體中文文案（單一來源）。
@@ -27,12 +28,6 @@ import '../../shared/copy/common_copy.dart';
 abstract final class SettingsCopy {
   static const String pageTitle = '設定';
 
-  static const String imageCompressSectionTitle = '圖片附件';
-  static const String imageCompressOriginalLabel = '原圖';
-  static const String imageCompressStandardLabel = '標準';
-  static const String imageCompressHighLabel = '高畫質';
-  static const String imageCompressHint = '僅套用於從相簿新選取的圖片。';
-
   static const String actionCancel = CommonCopy.actionCancel;
   static const String actionClose = '關閉';
   static const String actionDelete = CommonCopy.actionDelete;
@@ -47,6 +42,27 @@ abstract final class SettingsCopy {
 
   /// 末四碼提示行（chip、橫幅、對話框共用格式）。
   static String recoveryKeyHintLine(String hint) => '末四碼：$hint';
+}
+
+/// 備份、還原與 Google Drive 傳輸進度文案。
+abstract final class SettingsBackupTaskProgressCopy {
+  static const String startingAfterRestore = '正在啟動還原後的日記庫…';
+
+  static String label(BackupTaskProgress progress) {
+    final String base = switch (progress.phase) {
+      BackupTaskPhase.creatingBackup => '正在建立備份…',
+      BackupTaskPhase.copyingBackup => '正在寫入備份…',
+      BackupTaskPhase.uploadingDrive => '正在上傳到 Google Drive…',
+      BackupTaskPhase.downloadingDrive => '正在從 Google Drive 下載…',
+      BackupTaskPhase.restoringBackup => '正在還原備份，請勿關閉應用程式…',
+      BackupTaskPhase.startingAfterRestore => startingAfterRestore,
+    };
+    final double? fraction = progress.fraction;
+    if (fraction == null) {
+      return base;
+    }
+    return '$base ${(fraction * 100).round()}%';
+  }
 }
 
 abstract final class SettingsPlatformCopy {
@@ -145,9 +161,9 @@ extension AppUnlockModeSettingsCopy on AppUnlockMode {
 abstract final class SettingsUnlockMethodCopy {
   static const String sectionTitle = '解鎖方式';
 
-  /// 區塊說明（背景逾時取自 [sessionBackgroundTimeoutLabel]）。
-  static String get sectionDescription =>
-      '背景超過 ${sessionBackgroundTimeoutLabel()} 未使用會鎖定，短時間切換 App 不會。'
+  /// 區塊說明；[sessionTimeout] 取自個人化設定的自動鎖定時間。
+  static String sectionDescription(Duration sessionTimeout) =>
+      '${SettingsSessionTimeoutCopy.backgroundLockExplanation(sessionTimeout)}'
       '鎖定後回到 App 時，請依下方方式重新驗證。';
 
   static const String needsRecoveryKeyBanner = '請先建立復原金鑰，才能設定解鎖方式。';
@@ -172,6 +188,16 @@ abstract final class SettingsUnlockMethodCopy {
         AppUnlockMode.biometric =>
           '鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。',
       };
+}
+
+/// 自動鎖定（背景逾時）相關說明文案。
+abstract final class SettingsSessionTimeoutCopy {
+  static String backgroundLockExplanation(Duration timeout) =>
+      '背景超過 ${sessionBackgroundTimeoutLabel(timeout)} 未使用會鎖定，短時間切換 App 不會。';
+
+  static String aboutBackgroundTimeoutBody(Duration timeout) =>
+      '${backgroundLockExplanation(timeout)}'
+      '備份、還原或匯入匯出進行中則暫不鎖定。鎖定後回到 App 時，請依解鎖方式重新驗證。';
 }
 
 abstract final class SettingsImportExportCopy {
@@ -275,7 +301,6 @@ abstract final class SettingsDriveBackupCopy {
   static const String disconnectButton = '中斷連結';
   static const String uploadButton = '備份到 Google Drive';
   static const String restoreButton = '從 Google Drive 還原';
-  static const String downloadProgress = '正在從 Google Drive 下載備份…';
 
   static const String disconnectedLabel = '尚未連結 Google 帳號';
   static const String fallbackAccountLabel = 'Google 帳號';

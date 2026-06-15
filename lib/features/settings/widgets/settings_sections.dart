@@ -918,36 +918,47 @@ class _SecurityOverviewTile extends StatelessWidget {
 class SettingsBlockingProgressOverlay extends StatelessWidget {
   const SettingsBlockingProgressOverlay({
     required this.message,
+    this.progress,
     super.key,
   });
 
   final String message;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final double? clampedProgress = progress?.clamp(0.0, 1.0);
     return Positioned.fill(
       child: ColoredBox(
         color: Colors.black.withValues(alpha: 0.18),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 280),
+            constraints: const BoxConstraints(maxWidth: 300),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                border: Border.fromBorderSide(PageStyle.outlineSide(theme.colorScheme)),
+                border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    const SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    ),
+                    if (clampedProgress == null)
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    else
+                      LinearProgressIndicator(
+                        value: clampedProgress,
+                        minHeight: 6,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     const SizedBox(height: 14),
                     Text(
                       message,

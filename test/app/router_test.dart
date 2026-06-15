@@ -9,10 +9,15 @@ import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/pages/about_page.dart';
+import 'package:quill_diary/features/settings/pages/personalization_page.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/pages/support_page.dart';
+import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
@@ -41,6 +46,9 @@ void main() {
           (Ref ref) async => const DriveConnectionState.disconnected(),
         ),
         editorDraftKeysProvider.overrideWith((Ref ref) async => <String>{}),
+        personalizationPreferencesProvider.overrideWith(() {
+          return _FixedPersonalizationPreferencesController();
+        }),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
@@ -85,7 +93,24 @@ void main() {
     await pumpRoute(tester, AppRouter.aboutRoute);
     expect(find.byType(SettingsAboutPage), findsOneWidget);
 
+    await pumpRoute(tester, AppRouter.personalizationRoute);
+    expect(find.byType(PersonalizationPage), findsOneWidget);
+
     await pumpRoute(tester, AppRouter.supportRoute);
     expect(find.byType(SupportPage), findsOneWidget);
   });
+}
+
+class _FixedPersonalizationPreferencesController
+    extends PersonalizationPreferencesController {
+  @override
+  Future<PersonalizationPreferences> build() async {
+    return const PersonalizationPreferences(
+      imageCompressPreset: ImageCompressPreset.standard,
+      typography: EditorTypographyPreferences.defaults,
+      themeMode: AppThemeModePreference.system,
+      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
+      locale: AppLocalePreference.zhTw,
+    );
+  }
 }

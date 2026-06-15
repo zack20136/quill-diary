@@ -15,6 +15,7 @@ import 'restore_precheck.dart';
 import 'shared/archive_extract.dart';
 import 'shared/external_directory_picker.dart';
 import 'shared/external_file_delivery.dart';
+import 'backup_task_progress.dart';
 import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
@@ -90,13 +91,20 @@ class VaultTransferService {
   }
 
   /// 建立備份並寫入 App 內本機目錄。
-  Future<BackupPersistResult> saveBackupToAppLocal() {
+  Future<BackupPersistResult> saveBackupToAppLocal({
+    BackupTaskProgressListener? onProgress,
+  }) {
     return _runInspectedBackupPipeline(
-      deliver: (File stagingZip, String fileName) async {
+      onProgress: onProgress,
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
         final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
         await backupsDirectory.create(recursive: true);
         final String destinationPath = p.join(backupsDirectory.path, fileName);
-        await copyFileToPath(stagingZip, destinationPath);
+        await copyFileToPath(
+          stagingZip,
+          destinationPath,
+          onProgress: deliverProgress,
+        );
         final List<LocalBackupFile> backups = await _loadAppLocalBackups();
         await _pruneExcessAppLocalBackupsFromSorted(backups);
         return destinationPath;
@@ -105,17 +113,35 @@ class VaultTransferService {
   }
 
   /// 建立備份並複製到使用者選擇的外部資料夾。
-  Future<BackupPersistResult> saveBackupToExternalDirectory() {
+  Future<BackupPersistResult> saveBackupToExternalDirectory({
+    BackupTaskProgressListener? onProgress,
+  }) {
     return _runInspectedBackupPipeline(
-      deliver: _deliverBackupToExternalDirectory,
+      onProgress: onProgress,
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) {
+        return deliverToExternalDirectory(
+          dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
+          fileName: fileName,
+          sourceFile: stagingZip,
+          resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
+          rememberDirectory: _externalDirectoryStore.rememberDirectory,
+          onProgress: deliverProgress,
+        );
+      },
     );
   }
 
   /// 建立備份並上傳至 Google Drive。
-  Future<BackupPersistResult> uploadBackupToDrive() {
+  Future<BackupPersistResult> uploadBackupToDrive({
+    BackupTaskProgressListener? onProgress,
+  }) {
     return _runInspectedBackupPipeline(
-      deliver: (File stagingZip, String fileName) async {
-        await _driveBackupService.uploadBackup(stagingZip);
+      onProgress: onProgress,
+      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
+        await _driveBackupService.uploadBackup(
+          stagingZip,
+          onProgress: deliverProgress,
+        );
         await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
         return fileName;
       },
@@ -287,10 +313,12 @@ class VaultTransferService {
   Future<void> restoreFromBackupFile(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
+    BackupTaskProgressListener? onProgress,
   }) async {
     await _archiveIo.restoreBackupZip(
       backupFile,
       preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+      onProgress: onProgress,
     );
   }
 
@@ -324,11 +352,16 @@ class VaultTransferService {
     await _driveBackupService.deleteBackup(backup.id);
   }
 
-  Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {
+  Future<File> downloadDriveBackupToTempFile(
+    DriveBackupFile backup, {
+    BackupTaskProgressListener? onProgress,
+  }) async {
     return _driveBackupService.downloadBackupById(
       fileId: backup.id,
       fileName: backup.name,
       destinationDirectory: await getTemporaryDirectory(),
+      totalBytes: backup.sizeBytes,
+      onProgress: onProgress,
     );
   }
 
@@ -516,12 +549,24 @@ class VaultTransferService {
   }
 
   Future<BackupPersistResult> _runInspectedBackupPipeline({
-    required Future<String?> Function(File stagingZip, String fileName) deliver,
+    required Future<String?> Function(
+      File stagingZip,
+      String fileName,
+      BackupTaskProgressListener? deliverProgress,
+    ) deliver,
+    BackupTaskProgressListener? onProgress,
   }) async {
     final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
     final File staging = await _createTempFile(fileName);
     try {
-      await _archiveIo.writeBackupZip(staging);
+      await _archiveIo.writeBackupZip(
+        staging,
+        onProgress: remapBackupTaskProgress(
+          onProgress,
+          start: 0,
+          end: backupPipelineZipEndFraction,
+        ),
+      );
       final BackupInspectResult inspect = await inspectBackup(staging);
       if (!inspect.ok) {
         return BackupPersistResult(
@@ -529,7 +574,15 @@ class VaultTransferService {
           message: inspect.message,
         );
       }
-      final String? saved = await deliver(staging, fileName);
+      final String? saved = await deliver(
+        staging,
+        fileName,
+        remapBackupTaskProgress(
+          onProgress,
+          start: backupPipelineZipEndFraction,
+          end: 1,
+        ),
+      );
       if (saved == null) {
         return const BackupPersistResult(status: BackupPersistStatus.cancelled);
       }
@@ -545,21 +598,16 @@ class VaultTransferService {
 
   @visibleForTesting
   Future<BackupPersistResult> runInspectedBackupPipelineForTesting({
-    required Future<String?> Function(File stagingZip, String fileName) deliver,
+    required Future<String?> Function(
+      File stagingZip,
+      String fileName,
+      BackupTaskProgressListener? deliverProgress,
+    ) deliver,
+    BackupTaskProgressListener? onProgress,
   }) {
-    return _runInspectedBackupPipeline(deliver: deliver);
-  }
-
-  Future<String?> _deliverBackupToExternalDirectory(
-    File stagingZip,
-    String fileName,
-  ) {
-    return deliverToExternalDirectory(
-      dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
-      fileName: fileName,
-      sourceFile: stagingZip,
-      resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
-      rememberDirectory: _externalDirectoryStore.rememberDirectory,
+    return _runInspectedBackupPipeline(
+      deliver: deliver,
+      onProgress: onProgress,
     );
   }
 

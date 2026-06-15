@@ -5,6 +5,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../config/app_identifiers.dart';
+import 'editor_typography_preferences.dart';
+import 'personalization_preferences.dart';
 
 /// 編輯器選圖時的圖片壓縮預設。
 enum ImageCompressPreset {
@@ -47,6 +49,14 @@ class UserPreferences {
   UserPreferences({File? storageFile}) : _storageFileOverride = storageFile;
 
   static const String _imageCompressPresetKey = 'image_compress_preset';
+  static const String _sessionTimeoutKey = 'session_background_timeout_minutes';
+  static const String _themeModeKey = 'theme_mode';
+  static const String _appLocaleKey = 'app_locale';
+  static const String _editorTitleFontSizeKey = 'editor_title_font_size';
+  static const String _editorTitleLineHeightKey = 'editor_title_line_height';
+  static const String _editorBodyFontSizeKey = 'editor_body_font_size';
+  static const String _editorBodyLineHeightKey = 'editor_body_line_height';
+  static const String _editorBodyParagraphSpacingKey = 'editor_body_paragraph_spacing';
 
   final File? _storageFileOverride;
   Map<String, String>? _cache;
@@ -58,6 +68,87 @@ class UserPreferences {
 
   Future<void> setImageCompressPreset(ImageCompressPreset value) async {
     await _writeValue(_imageCompressPresetKey, value.storageValue);
+  }
+
+  Future<EditorTypographyPreferences> get editorTypography async {
+    final Map<String, String> store = await _loadStore();
+    return EditorTypographyPreferences.fromStorage(
+      titleFontSize: store[_editorTitleFontSizeKey],
+      titleLineHeight: store[_editorTitleLineHeightKey],
+      bodyFontSize: store[_editorBodyFontSizeKey],
+      bodyLineHeight: store[_editorBodyLineHeightKey],
+      bodyParagraphSpacing: store[_editorBodyParagraphSpacingKey],
+    );
+  }
+
+  Future<void> setEditorTypography(EditorTypographyPreferences value) async {
+    final EditorTypographyPreferences clamped = value.clamped();
+    final Map<String, String> store = await _loadStore();
+    store[_editorTitleFontSizeKey] = clamped.titleFontSize.toString();
+    store[_editorTitleLineHeightKey] = clamped.titleLineHeight.toString();
+    store[_editorBodyFontSizeKey] = clamped.bodyFontSize.toString();
+    store[_editorBodyLineHeightKey] = clamped.bodyLineHeight.toString();
+    store[_editorBodyParagraphSpacingKey] = clamped.bodyParagraphSpacing.toString();
+    await _persistStore(store);
+  }
+
+  Future<AppThemeModePreference> get themeMode async {
+    final String? raw = await _readValue(_themeModeKey);
+    return AppThemeModePreference.fromStorage(raw);
+  }
+
+  Future<void> setThemeMode(AppThemeModePreference value) async {
+    await _writeValue(_themeModeKey, value.storageValue);
+  }
+
+  Future<SessionBackgroundTimeoutMinutes> get sessionTimeoutMinutes async {
+    final String? raw = await _readValue(_sessionTimeoutKey);
+    return SessionBackgroundTimeoutMinutes.fromStorage(raw);
+  }
+
+  Future<void> setSessionTimeoutMinutes(SessionBackgroundTimeoutMinutes value) async {
+    await _writeValue(_sessionTimeoutKey, value.storageValue);
+  }
+
+  Future<AppLocalePreference> get appLocale async {
+    final String? raw = await _readValue(_appLocaleKey);
+    return AppLocalePreference.fromStorage(raw);
+  }
+
+  Future<void> setAppLocale(AppLocalePreference value) async {
+    await _writeValue(_appLocaleKey, value.storageValue);
+  }
+
+  Future<PersonalizationPreferences> loadPersonalizationPreferences() async {
+    final Map<String, String> store = await _loadStore();
+    return PersonalizationPreferences(
+      imageCompressPreset: ImageCompressPreset.fromStorage(store[_imageCompressPresetKey]),
+      typography: EditorTypographyPreferences.fromStorage(
+        titleFontSize: store[_editorTitleFontSizeKey],
+        titleLineHeight: store[_editorTitleLineHeightKey],
+        bodyFontSize: store[_editorBodyFontSizeKey],
+        bodyLineHeight: store[_editorBodyLineHeightKey],
+        bodyParagraphSpacing: store[_editorBodyParagraphSpacingKey],
+      ),
+      themeMode: AppThemeModePreference.fromStorage(store[_themeModeKey]),
+      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.fromStorage(store[_sessionTimeoutKey]),
+      locale: AppLocalePreference.fromStorage(store[_appLocaleKey]),
+    );
+  }
+
+  Future<void> savePersonalizationPreferences(PersonalizationPreferences value) async {
+    final EditorTypographyPreferences typography = value.typography.clamped();
+    final Map<String, String> store = await _loadStore();
+    store[_imageCompressPresetKey] = value.imageCompressPreset.storageValue;
+    store[_themeModeKey] = value.themeMode.storageValue;
+    store[_sessionTimeoutKey] = value.sessionTimeoutMinutes.storageValue;
+    store[_appLocaleKey] = value.locale.storageValue;
+    store[_editorTitleFontSizeKey] = typography.titleFontSize.toString();
+    store[_editorTitleLineHeightKey] = typography.titleLineHeight.toString();
+    store[_editorBodyFontSizeKey] = typography.bodyFontSize.toString();
+    store[_editorBodyLineHeightKey] = typography.bodyLineHeight.toString();
+    store[_editorBodyParagraphSpacingKey] = typography.bodyParagraphSpacing.toString();
+    await _persistStore(store);
   }
 
   Future<String?> _readValue(String key) async {

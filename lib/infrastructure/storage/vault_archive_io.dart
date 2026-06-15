@@ -9,6 +9,7 @@ import 'portable/portable_import_io.dart';
 import 'portable/vault_backup_io.dart';
 import 'shared/portable_import_result.dart';
 import 'restore_precheck.dart';
+import 'backup_task_progress.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
@@ -49,7 +50,11 @@ class VaultArchiveIo {
   final PortableExportIo _export;
   final PortableImportIo _import;
 
-  Future<File> writeBackupZip(File target) => _backup.writeBackupZip(target);
+  Future<File> writeBackupZip(
+    File target, {
+    BackupTaskProgressListener? onProgress,
+  }) =>
+      _backup.writeBackupZip(target, onProgress: onProgress);
 
   Future<BackupInspectResult> inspectBackup(File backupFile) =>
       _backup.inspectBackup(backupFile);
@@ -118,9 +123,11 @@ class VaultArchiveIo {
   Future<void> restoreBackupZip(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
+    BackupTaskProgressListener? onProgress,
   }) =>
       _backup.restoreBackupZip(
         backupFile,
         preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+        onProgress: onProgress,
       );
 }

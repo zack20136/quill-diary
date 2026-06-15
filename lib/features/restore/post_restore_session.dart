@@ -1,29 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/security/unlocked_vault_session.dart';
-import '../../infrastructure/storage/restore_precheck.dart';
 import '../../shared/providers/core_providers.dart';
 import '../editor/providers/editor_providers.dart';
 import '../home/providers/home_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
 import '../settings/providers/settings_providers.dart';
+import 'restore_prepared_context.dart';
 
 /// 還原寫入完成後：重置依賴、建立 session、刷新索引。
 Future<AppSessionState> finishRestoreSession(
   WidgetRef ref, {
-  required RestorePrecheck precheck,
-  String? backupRecoveryKey,
-  UnlockedVaultSession? priorSession,
+  required RestorePreparedContext prepared,
 }) async {
   await resetRepositoriesAfterRestore(ref);
 
   try {
     final AppSessionState sessionState = await _startupRestoredSession(
       ref,
-      precheck: precheck,
-      backupRecoveryKey: backupRecoveryKey,
-      priorSession: priorSession,
+      prepared: prepared,
     );
     if (sessionState.isUnlocked && sessionState.session != null) {
       await refreshEntryIndexCaches(ref);
@@ -49,20 +44,18 @@ Future<void> resetRepositoriesAfterRestore(WidgetRef ref) async {
 
 Future<AppSessionState> _startupRestoredSession(
   WidgetRef ref, {
-  required RestorePrecheck precheck,
-  String? backupRecoveryKey,
-  UnlockedVaultSession? priorSession,
+  required RestorePreparedContext prepared,
 }) async {
-  final String? trimmedKey = backupRecoveryKey?.trim();
+  final String? trimmedKey = prepared.backupRecoveryKey?.trim();
   if (trimmedKey != null && trimmedKey.isNotEmpty) {
     return _unlockWithRecoveryKey(ref, trimmedKey);
   }
-  if (precheck.canResumeTrustedSession(priorSession)) {
+  if (prepared.precheck.canResumeTrustedSession(prepared.priorSession)) {
     return ref
         .read(appSessionProvider.notifier)
-        .resumeSessionAfterRestore(priorSession!);
+        .resumeSessionAfterRestore(prepared.priorSession!);
   }
-  if (precheck.expectsTrustedUnlockAfterRestore) {
+  if (prepared.precheck.expectsTrustedUnlockAfterRestore) {
     return ref
         .read(appSessionProvider.notifier)
         .enterRecoveryRequiredAfterRestore();

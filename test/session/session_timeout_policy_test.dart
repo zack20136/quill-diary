@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
+import 'package:quill_diary/features/settings/settings_copy.dart';
 
 void main() {
   test('未滿 3 分鐘不算 timeout', () {
@@ -33,6 +34,21 @@ void main() {
     expect(
       sessionBackgroundTimeoutLabel(const Duration(minutes: 3)),
       '3 分鐘',
+    );
+    expect(
+      sessionBackgroundTimeoutLabel(const Duration(minutes: 10)),
+      '10 分鐘',
+    );
+  });
+
+  test('SettingsSessionTimeoutCopy 依傳入逾時產生說明', () {
+    expect(
+      SettingsUnlockMethodCopy.sectionDescription(const Duration(minutes: 5)),
+      contains('5 分鐘'),
+    );
+    expect(
+      SettingsSessionTimeoutCopy.aboutBackgroundTimeoutBody(const Duration(minutes: 1)),
+      contains('1 分鐘'),
     );
   });
 

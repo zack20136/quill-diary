@@ -35,7 +35,10 @@ import '../../home/providers/home_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import '../../settings/providers/personalization_providers.dart';
 import '../../settings/providers/settings_providers.dart';
+import '../../../infrastructure/preferences/editor_typography_preferences.dart';
+import '../../../infrastructure/preferences/user_preferences.dart';
 import '../editor_copy.dart';
 import '../editor_draft.dart';
 import '../editor_image_staging.dart';
@@ -46,16 +49,19 @@ import '../providers/editor_providers.dart';
 part '../widgets/editor_dialogs.dart';
 
 class _MarkdownPreviewBody extends StatelessWidget {
-  const _MarkdownPreviewBody({required this.markdown});
+  const _MarkdownPreviewBody({
+    required this.markdown,
+    required this.typography,
+  });
 
   final String markdown;
+  final EditorTypographyPreferences typography;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final TextStyle bodyStyle =
-        theme.textTheme.bodyLarge?.copyWith(height: 1.76) ?? const TextStyle(height: 1.76);
+    final TextStyle bodyStyle = typography.bodyTextStyle(theme.textTheme);
     final List<String> lines = markdown.replaceAll('\r\n', '\n').split('\n');
     final List<Widget> children = <Widget>[];
     var inCodeBlock = false;
@@ -101,30 +107,23 @@ class _MarkdownPreviewBody extends StatelessWidget {
         continue;
       }
       if (line.trim().isEmpty) {
-        children.add(const SizedBox(height: 8));
+        children.add(SizedBox(height: typography.bodyParagraphSpacing));
         continue;
       }
 
       final RegExpMatch? heading = RegExp(r'^(#{1,6})\s+(.+)$').firstMatch(line);
       if (heading != null) {
-        final int level = heading.group(1)!.length;
         final String text = heading.group(2)!.trim();
-        final TextStyle? headingStyle = switch (level) {
-          1 => theme.textTheme.headlineSmall,
-          2 => theme.textTheme.titleLarge,
-          3 => theme.textTheme.titleMedium,
-          _ => theme.textTheme.titleSmall,
-        };
         children.add(
           Padding(
-            padding: EdgeInsets.only(top: children.isEmpty ? 0 : 8, bottom: 8),
+            padding: EdgeInsets.only(
+              top: children.isEmpty ? 0 : typography.bodyParagraphSpacing,
+              bottom: typography.bodyParagraphSpacing,
+            ),
             child: SelectableText.rich(
               _inlineMarkdownSpan(
                 text,
-                bodyStyle.merge(headingStyle).copyWith(
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
-                ),
+                typography.titleTextStyle(theme.textTheme, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -184,7 +183,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
 
       children.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
           child: SelectableText.rich(
             _inlineMarkdownSpan(line, bodyStyle),
           ),
@@ -1161,6 +1160,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _buildTitleHeader(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final EditorTypographyPreferences typography = watchPersonalizationPreferences(ref).typography;
+    final TextStyle titleStyle = typography.titleTextStyle(theme.textTheme);
     final int bodyCharCount = _bodyMarkdownCharCount();
     final bool showUnsavedTag = widget.entryId != null &&
         ref.watch(editorDraftKeysProvider).maybeWhen(
@@ -1177,8 +1178,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         children: <Widget>[
           Text(
             titleText.isEmpty ? EditorCopy.untitledDraft : titleText,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+            style: titleStyle.copyWith(
               color: titleText.isEmpty ? AppTypography.muted(theme.colorScheme) : null,
             ),
           ),
@@ -1203,7 +1203,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         TextField(
           controller: _titleController,
           textInputAction: TextInputAction.next,
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: titleStyle,
           decoration: _titleFieldDecoration(
             context,
             hintText: EditorCopy.titleHint,
@@ -1224,17 +1224,22 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   /// 內容區外框固定填滿可用高度，僅框內文字捲動或編輯。
   Widget _buildBodyContentPanel(ThemeData paneTheme) {
+    final EditorTypographyPreferences typography = watchPersonalizationPreferences(ref).typography;
+    final TextStyle bodyStyle = typography.bodyTextStyle(paneTheme.textTheme);
     final Widget body = _previewMode
         ? SingleChildScrollView(
             child: _bodyController.text.isEmpty
                 ? SelectableText(
                     EditorCopy.bodyEmptyPreview,
-                    style: paneTheme.textTheme.bodyLarge?.copyWith(
+                    style: bodyStyle.copyWith(
                       fontStyle: FontStyle.italic,
                       color: AppTypography.muted(paneTheme.colorScheme),
                     ),
                   )
-                : _MarkdownPreviewBody(markdown: _bodyController.text),
+                : _MarkdownPreviewBody(
+                    markdown: _bodyController.text,
+                    typography: typography,
+                  ),
           )
         : TextField(
             controller: _bodyController,
@@ -1242,7 +1247,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             maxLines: null,
             minLines: null,
             textAlignVertical: TextAlignVertical.top,
-            style: paneTheme.textTheme.bodyLarge?.copyWith(height: 1.76),
+            style: bodyStyle,
             decoration: _bodyFieldDecoration(
               context,
               hintText: EditorCopy.bodyHint,
@@ -2267,6 +2272,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
 
+    final ImageCompressPreset compressPreset =
+        watchPersonalizationPreferences(ref).imageCompressPreset;
     final Set<String> seenPaths = <String>{};
     final List<PendingAttachment> next = <PendingAttachment>[];
     for (final XFile file in files) {
@@ -2276,7 +2283,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       }
       final PendingAttachment? staged = await stagePickedImage(
         draftStore: ref.read(editorDraftStoreProvider),
-        preferences: ref.read(userPreferencesProvider),
+        preset: compressPreset,
         draftKey: _draftKey,
         sourcePath: path,
         displayName: p.basename(path),

@@ -10,10 +10,10 @@ import '../../infrastructure/storage/vault_repository.dart';
 /// 選圖後、寫入 pending 前的檔案準備結果。
 typedef PreparedImageFile = ({String path, String mimeType, String fileName});
 
-/// 依使用者偏好壓縮（若需要）並暫存到草稿 pending 目錄。
+/// 依指定壓縮預設（若需要）並暫存到草稿 pending 目錄。
 Future<PendingAttachment?> stagePickedImage({
   required EditorDraftStore draftStore,
-  required UserPreferences preferences,
+  required ImageCompressPreset preset,
   required String draftKey,
   required String sourcePath,
   required String displayName,
@@ -23,7 +23,6 @@ Future<PendingAttachment?> stagePickedImage({
     return null;
   }
 
-  final ImageCompressPreset preset = await preferences.imageCompressPreset;
   final PreparedImageFile prepared = await compressImageIfNeeded(
     sourcePath: trimmed,
     displayName: displayName,

@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/restore/restore_backup_flow.dart';
+import 'package:quill_diary/features/restore/restore_prepared_context.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
@@ -312,12 +313,24 @@ class _RestoreFlowHost extends ConsumerWidget {
           if (!context.mounted) {
             return;
           }
-          await RestoreBackupFlow(ref).run(
+          final RestoreBackupFlow flow = RestoreBackupFlow(ref);
+          final RestorePreparedContext? prepared = await flow.prepare(
             context: context,
             backupFile: backupFile,
             precheck: precheck,
             confirm: confirm,
-            onComplete: onComplete,
+          );
+          if (!context.mounted || prepared == null) {
+            return;
+          }
+          await flow.executeRestore(
+            backupFile: backupFile,
+            prepared: prepared,
+          );
+          await onComplete(
+            backupRecoveryKey: prepared.backupRecoveryKey,
+            precheck: prepared.precheck,
+            priorSession: prepared.priorSession,
           );
         },
         child: const Text('run'),

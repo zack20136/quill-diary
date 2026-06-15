@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../backup_task_progress.dart';
 import '../media_store_export.dart';
 import 'android_saf_file_copy.dart';
 import 'archive_extract.dart';
@@ -14,6 +15,7 @@ Future<String?> deliverToExternalDirectory({
   required File sourceFile,
   required Future<String?> Function() resolveInitialDirectory,
   required Future<void> Function(String directoryOrTreeUri) rememberDirectory,
+  BackupTaskProgressListener? onProgress,
 }) async {
   if (Platform.isAndroid) {
     await MediaStoreExport.ensureDownloadsSubfolder();
@@ -30,6 +32,9 @@ Future<String?> deliverToExternalDirectory({
 
   final String trimmed = picked.trim();
   if (Platform.isAndroid && trimmed.startsWith('content://')) {
+    onProgress?.call(
+      const BackupTaskProgress(phase: BackupTaskPhase.copyingBackup),
+    );
     final String savedUri = await AndroidSafFileCopy.copyFileToTree(
       treeUri: trimmed,
       sourceFile: sourceFile,
@@ -44,7 +49,7 @@ Future<String?> deliverToExternalDirectory({
     throw StateError('無法寫入選擇的資料夾，請重新選擇並允許存取。');
   }
   final String destinationPath = p.join(trimmed, fileName);
-  await copyFileToPath(sourceFile, destinationPath);
+  await copyFileToPath(sourceFile, destinationPath, onProgress: onProgress);
   await rememberDirectory(trimmed);
   return destinationPath;
 }
