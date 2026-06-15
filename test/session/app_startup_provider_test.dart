@@ -14,7 +14,7 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
-import '../helpers/fake_vault_repository.dart';
+import '../helpers/fake_session_vault_repository.dart';
 
 void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
@@ -37,7 +37,7 @@ void main() {
 
   ProviderContainer buildContainer({
     required bool supportedPlatform,
-    required FakeVaultRepository repository,
+    required FakeSessionVaultRepository repository,
     FakeAppLockService? appLock,
   }) {
     final ProviderContainer container = ProviderContainer(
@@ -54,7 +54,7 @@ void main() {
   }
 
   test('非 Android 平台回傳 fatalError', () async {
-    final FakeVaultRepository repository = FakeVaultRepository();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(
       supportedPlatform: false,
       repository: repository,
@@ -66,7 +66,7 @@ void main() {
   });
 
   test('尚未建立 Recovery Key 時進入 unlocked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(metadata: null);
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(metadata: null);
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
       repository: repository,
@@ -78,7 +78,7 @@ void main() {
   });
 
   test('有 metadata 但無 trusted device 時進入 recoveryRequired', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: false,
     );
@@ -93,7 +93,7 @@ void main() {
   });
 
   test('trusted session 還原成功時進入 unlocked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: sampleSession,
@@ -109,7 +109,7 @@ void main() {
   });
 
   test('啟動遇到不支援的可信裝置格式時會進入 recoveryRequired 並清掉 trusted state', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: const DeviceKeyUnsupportedFormatException('格式不符'),
@@ -126,7 +126,7 @@ void main() {
   });
 
   test('啟動遇到 invalidated trusted state 時會進入 recoveryRequired 並清掉 trusted state', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: const DeviceKeyInvalidatedException('invalid key'),
@@ -143,7 +143,7 @@ void main() {
   });
 
   test('啟動遇到使用者取消驗證時維持 locked，不清 trusted state', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
@@ -160,7 +160,7 @@ void main() {
   });
 
   test('生物驗證失敗時維持 locked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: const DeviceKeyAuthFailedException('bio failed'),
@@ -182,7 +182,7 @@ void main() {
   });
 
   test('trusted 資料不一致時進入 recoveryRequired 並清除', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: StateError('受信任裝置資料不一致'),
@@ -198,7 +198,7 @@ void main() {
   });
 
   test('initialize 失敗時回傳 fatalError', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       initializeError: Exception('disk failure'),
     );
@@ -213,7 +213,7 @@ void main() {
   });
 
   test('openTrustedSession 非預期錯誤時回傳 fatalError', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: Exception('unexpected keystore'),
@@ -229,7 +229,7 @@ void main() {
   });
 
   test('effectiveAppSessionProvider 已解鎖時 invalidate 不重跑 openTrustedSession', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
       openTrustedSessionResult: sampleSession,

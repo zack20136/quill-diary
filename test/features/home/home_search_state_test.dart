@@ -6,13 +6,13 @@ import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/home/providers/home_providers.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/shared/providers/core_providers.dart';
-
-import '../../helpers/entry_index_fixtures.dart';
-import '../../helpers/fake_vault_repository.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/shared/providers/core_providers.dart';
+
+import '../../helpers/entry_index_fixtures.dart';
+import '../../helpers/fake_entry_index_vault_repository.dart';
 
 void main() {
   const UnlockedVaultSession session = UnlockedVaultSession(
@@ -22,23 +22,18 @@ void main() {
   );
 
   ProviderContainer buildContainer() {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      entryIndexRecords: <EntryIndexRecord>[
-        buildEntryIndexRecord(
-          id: 'jrn_TRAVEL_1',
-          title: 'travel notes',
-          previewText: 'packing list',
-          tags: const <String>['travel'],
-          date: const DateOnly('2026-05-20'),
-        ),
-        buildEntryIndexRecord(
-          id: 'jrn_OTHER_1',
-          title: 'work notes',
-          previewText: 'general memo',
-          tags: const <String>['work'],
-          date: const DateOnly('2026-05-19'),
-        ),
-      ],
+    final FakeEntryIndexVaultRepository repository = FakeEntryIndexVaultRepository(
+      searchResponses: <String, List<EntryIndexRecord>>{
+        'travel': <EntryIndexRecord>[
+          buildEntryIndexRecord(
+            id: 'jrn_TRAVEL_1',
+            title: 'travel notes',
+            previewText: 'packing list',
+            tags: const <String>['travel'],
+            date: const DateOnly('2026-05-20'),
+          ),
+        ],
+      },
     );
 
     final ProviderContainer container = ProviderContainer(

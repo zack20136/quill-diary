@@ -2,27 +2,32 @@ import 'dart:io';
 
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 
-import 'fake_vault_repository.dart';
+import 'fake_session_vault_repository.dart';
 import 'test_vault_path_strategy.dart';
 
 class FakeVaultTransferService extends VaultTransferService {
   FakeVaultTransferService({
     DriveConnectionState? connectionState,
     this.connectionStates,
+    this.driveBackups = const <DriveBackupFile>[],
+    this.downloadToTemp,
+    this.precheckRestoreError,
+    this.precheckRestoreResult,
   }) : super(
           archiveIo: VaultArchiveIo(
             pathStrategy: DummyVaultPathStrategy(),
-            repository: FakeVaultRepository(),
+            repository: FakeSessionVaultRepository(),
             frontMatterCodec: const FrontMatterCodec(),
             indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
           ),
           driveBackupService: _UnusedDriveBackupService(),
-          vaultRepository: FakeVaultRepository(),
+          vaultRepository: FakeSessionVaultRepository(),
           externalDirectoryStore: ExternalDirectoryStore(DummyVaultPathStrategy()),
           pathStrategy: DummyVaultPathStrategy(),
         ) {
@@ -31,6 +36,11 @@ class FakeVaultTransferService extends VaultTransferService {
 
   late DriveConnectionState _connectionState;
   final List<DriveConnectionState>? connectionStates;
+  List<DriveBackupFile> driveBackups;
+  File Function(DriveBackupFile backup)? downloadToTemp;
+  Object? precheckRestoreError;
+  RestorePrecheck? precheckRestoreResult;
+
   int isConnectedCalls = 0;
   int linkCalls = 0;
   int switchAccountCalls = 0;
@@ -39,6 +49,9 @@ class FakeVaultTransferService extends VaultTransferService {
   int listAppLocalBackupsCalls = 0;
   int saveBackupToExternalDirectoryCalls = 0;
   int uploadBackupToDriveCalls = 0;
+  int listDriveBackupsCalls = 0;
+  int downloadDriveBackupToTempFileCalls = 0;
+  int precheckRestoreCalls = 0;
 
   @override
   Future<BackupPersistResult> saveBackupToAppLocal() {
@@ -95,6 +108,35 @@ class FakeVaultTransferService extends VaultTransferService {
 
   @override
   Future<void> deleteDriveBackup(DriveBackupFile backup) async {}
+
+  @override
+  Future<List<DriveBackupFile>> listDriveBackups() async {
+    listDriveBackupsCalls++;
+    return driveBackups;
+  }
+
+  @override
+  Future<File> downloadDriveBackupToTempFile(DriveBackupFile backup) async {
+    downloadDriveBackupToTempFileCalls++;
+    if (downloadToTemp != null) {
+      return downloadToTemp!(backup);
+    }
+    throw UnimplementedError('downloadToTemp not configured');
+  }
+
+  @override
+  Future<RestorePrecheck> precheckRestore(File backupFile) async {
+    precheckRestoreCalls++;
+    if (precheckRestoreError != null) {
+      throw precheckRestoreError!;
+    }
+    return precheckRestoreResult ??
+        const RestorePrecheck(
+          preview: BackupRecoveryPreview(hasRecovery: false),
+          localHasTrustedDevice: false,
+          willOverwriteLocalVault: true,
+        );
+  }
 }
 
 class _UnusedDriveBackupService implements DriveBackupService {

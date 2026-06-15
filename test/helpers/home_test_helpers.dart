@@ -4,11 +4,11 @@ import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
-import 'fake_vault_repository.dart';
+import 'fake_entry_index_vault_repository.dart';
 
 /// 建立已解鎖 session 的 home provider 測試容器。
 ProviderContainer buildUnlockedHomeContainer(
-  FakeVaultRepository repository, {
+  FakeEntryIndexVaultRepository repository, {
   String vaultId = 'vlt_home_provider_test',
 }) {
   final UnlockedVaultSession session = UnlockedVaultSession(

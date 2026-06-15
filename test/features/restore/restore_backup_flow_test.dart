@@ -14,7 +14,7 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_app_lock_service.dart';
-import '../../helpers/fake_vault_repository.dart';
+import '../../helpers/fake_session_vault_repository.dart';
 import '../../helpers/recording_vault_transfer_service.dart';
 
 void main() {
@@ -37,13 +37,13 @@ void main() {
 
   late File backupFile;
   late RecordingVaultTransferService transferService;
-  late FakeVaultRepository repository;
+  late FakeSessionVaultRepository repository;
 
   setUp(() async {
     final Directory tempDir = await Directory.systemTemp.createTemp('restore_flow_test_');
     backupFile = File('${tempDir.path}/backup.zip')..writeAsStringSync('backup');
     transferService = RecordingVaultTransferService();
-    repository = FakeVaultRepository();
+    repository = FakeSessionVaultRepository();
   });
 
   RestorePrecheck trustedPrecheck() {
@@ -250,7 +250,7 @@ void main() {
   });
 
   testWidgets('locked 且已有本機復原金鑰時拒絕還原', (WidgetTester tester) async {
-    repository = FakeVaultRepository(metadata: backupMetadata);
+    repository = FakeSessionVaultRepository(metadata: backupMetadata);
     transferService.nextPrecheck = trustedPrecheck();
     bool completed = false;
 

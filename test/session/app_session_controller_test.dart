@@ -18,7 +18,7 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
-import '../helpers/fake_vault_repository.dart';
+import '../helpers/fake_session_vault_repository.dart';
 
 void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
@@ -40,7 +40,7 @@ void main() {
   );
 
   ProviderContainer buildContainer(
-    FakeVaultRepository repository, {
+    FakeSessionVaultRepository repository, {
     FakeAppLockService? appLock,
   }) {
     final ProviderContainer container = ProviderContainer(
@@ -54,7 +54,7 @@ void main() {
   }
 
   test('unlock 成功時還原 trusted session', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);
@@ -69,7 +69,7 @@ void main() {
   });
 
   test('resumeSessionAfterRestore 沿用 prior session 且不觸發 openTrustedSession', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       resumeUnlockedSessionAfterRestoreResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);
@@ -85,7 +85,7 @@ void main() {
   });
 
   test('unlock 失敗時維持 locked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
     );
     final ProviderContainer container = buildContainer(repository);
@@ -99,7 +99,7 @@ void main() {
   });
 
   test('lock 會清除 session 並標記為 locked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
@@ -114,7 +114,7 @@ void main() {
   });
 
   test('unlockWithRecovery 成功時進入 unlocked', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       unlockWithRecoveryKeyResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);
@@ -129,7 +129,7 @@ void main() {
   });
 
   test('unlockWithRecovery 失敗時進入 recoveryRequired', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       unlockWithRecoveryKeyResult: StateError('bad recovery key'),
     );
     final ProviderContainer container = buildContainer(repository);
@@ -146,7 +146,7 @@ void main() {
   });
 
   test('runSensitiveTask 未解鎖時拋錯', () async {
-    final FakeVaultRepository repository = FakeVaultRepository();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
@@ -157,7 +157,7 @@ void main() {
   });
 
   test('runSensitiveTask 執行期間背景逾時不鎖定也不釋放資源', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);
@@ -186,7 +186,7 @@ void main() {
   });
 
   test('reset 會回到 uninitialized 並關閉資源', () async {
-    final FakeVaultRepository repository = FakeVaultRepository();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
@@ -198,7 +198,7 @@ void main() {
   });
 
   test('無解鎖模式：背景逾時後標記 autoTrusted 供 coordinator 解鎖', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(
@@ -222,7 +222,7 @@ void main() {
   });
 
   test('裝置螢幕鎖模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(
@@ -246,7 +246,7 @@ void main() {
   });
 
   test('生物驗證模式：背景逾時後維持 locked 並標記 keystoreUnlock', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(
@@ -271,7 +271,7 @@ void main() {
   });
 
   test('敏感任務進行中背景逾時不鎖定', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);
@@ -296,7 +296,7 @@ void main() {
   });
 
   test('背景未逾時時不鎖定', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final ProviderContainer container = buildContainer(repository);

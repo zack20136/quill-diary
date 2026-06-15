@@ -6,11 +6,10 @@ import 'package:quill_diary/features/home/state/home_state.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 import '../../helpers/entry_index_fixtures.dart';
-import '../../helpers/fake_vault_repository.dart';
+import '../../helpers/fake_entry_index_vault_repository.dart';
 import '../../helpers/home_test_helpers.dart';
 
 void main() {
-
   test('memory scope defaults to month', () {
     final ProviderContainer container = ProviderContainer();
     addTearDown(container.dispose);
@@ -18,9 +17,9 @@ void main() {
     expect(container.read(memoryScopeProvider), MemoryScope.month);
   });
 
-  test('homeEntriesProvider 空搜尋時沿用全量索引快取', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      entryIndexRecords: <EntryIndexRecord>[
+  test('homeEntriesProvider 空搜尋時沿用全量索引快取並排序', () async {
+    final FakeEntryIndexVaultRepository repository = FakeEntryIndexVaultRepository(
+      allEntries: <EntryIndexRecord>[
         buildEntryIndexRecord(
           id: 'jrn_OLDER',
           date: const DateOnly('2026-05-19'),
@@ -51,11 +50,12 @@ void main() {
   });
 
   test('homeEntriesProvider 有搜尋字串時保留 repository 搜尋查詢', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      entryIndexRecords: <EntryIndexRecord>[
-        buildEntryIndexRecord(id: 'jrn_MATCH', title: '旅行日記'),
-        buildEntryIndexRecord(id: 'jrn_OTHER', title: '工作筆記'),
-      ],
+    final FakeEntryIndexVaultRepository repository = FakeEntryIndexVaultRepository(
+      searchResponses: <String, List<EntryIndexRecord>>{
+        '旅行': <EntryIndexRecord>[
+          buildEntryIndexRecord(id: 'jrn_MATCH', title: '旅行日記'),
+        ],
+      },
     );
     final ProviderContainer container = buildUnlockedHomeContainer(repository);
     addTearDown(container.dispose);
@@ -71,24 +71,39 @@ void main() {
     expect(repository.listEntriesSearchQueries, <String?>['旅行']);
   });
 
-  test('日曆 provider 從全量索引派生日期與月份資料', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      entryIndexRecords: <EntryIndexRecord>[
-        buildEntryIndexRecord(
-          id: 'jrn_A',
-          date: const DateOnly('2026-05-20'),
-          updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
-        ),
-        buildEntryIndexRecord(
-          id: 'jrn_B',
-          date: const DateOnly('2026-05-20'),
-          updatedAt: DateTime.parse('2026-05-20T09:00:00Z'),
-        ),
-        buildEntryIndexRecord(
-          id: 'jrn_C',
-          date: const DateOnly('2026-06-01'),
-        ),
-      ],
+  test('日曆 provider 從 repository 取得日期與月份資料', () async {
+    final FakeEntryIndexVaultRepository repository = FakeEntryIndexVaultRepository(
+      entriesByDate: <DateOnly, List<EntryIndexRecord>>{
+        const DateOnly('2026-05-20'): <EntryIndexRecord>[
+          buildEntryIndexRecord(
+            id: 'jrn_B',
+            date: const DateOnly('2026-05-20'),
+            updatedAt: DateTime.parse('2026-05-20T09:00:00Z'),
+          ),
+          buildEntryIndexRecord(
+            id: 'jrn_A',
+            date: const DateOnly('2026-05-20'),
+            updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
+          ),
+        ],
+      },
+      monthDatesByMonth: <DateTime, List<DateOnly>>{
+        DateTime(2026, 5): const <DateOnly>[DateOnly('2026-05-20')],
+      },
+      entriesByMonth: <DateTime, List<EntryIndexRecord>>{
+        DateTime(2026, 5): <EntryIndexRecord>[
+          buildEntryIndexRecord(
+            id: 'jrn_B',
+            date: const DateOnly('2026-05-20'),
+            updatedAt: DateTime.parse('2026-05-20T09:00:00Z'),
+          ),
+          buildEntryIndexRecord(
+            id: 'jrn_A',
+            date: const DateOnly('2026-05-20'),
+            updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
+          ),
+        ],
+      },
     );
     final ProviderContainer container = buildUnlockedHomeContainer(repository);
     addTearDown(container.dispose);
@@ -124,23 +139,21 @@ void main() {
   });
 
   test('memoryEntriesProvider 的月份範圍直接查詢 repository 月資料', () async {
-    final FakeVaultRepository repository = FakeVaultRepository(
-      entryIndexRecords: <EntryIndexRecord>[
-        buildEntryIndexRecord(
-          id: 'jrn_MAY',
-          date: const DateOnly('2026-05-20'),
-          updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
-        ),
-        buildEntryIndexRecord(
-          id: 'jrn_MAY_NEWER',
-          date: const DateOnly('2026-05-21'),
-          updatedAt: DateTime.parse('2026-05-21T08:00:00Z'),
-        ),
-        buildEntryIndexRecord(
-          id: 'jrn_JUNE',
-          date: const DateOnly('2026-06-01'),
-        ),
-      ],
+    final FakeEntryIndexVaultRepository repository = FakeEntryIndexVaultRepository(
+      entriesByMonth: <DateTime, List<EntryIndexRecord>>{
+        DateTime(2026, 5): <EntryIndexRecord>[
+          buildEntryIndexRecord(
+            id: 'jrn_MAY_NEWER',
+            date: const DateOnly('2026-05-21'),
+            updatedAt: DateTime.parse('2026-05-21T08:00:00Z'),
+          ),
+          buildEntryIndexRecord(
+            id: 'jrn_MAY',
+            date: const DateOnly('2026-05-20'),
+            updatedAt: DateTime.parse('2026-05-20T08:00:00Z'),
+          ),
+        ],
+      },
     );
     final ProviderContainer container = buildUnlockedHomeContainer(repository);
     addTearDown(container.dispose);

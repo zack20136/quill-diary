@@ -12,6 +12,7 @@ import 'package:quill_diary/features/home/home_copy.dart';
 import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
 import 'package:quill_diary/features/home/widgets/calendar/calendar_pane.dart';
+import 'package:quill_diary/features/home/widgets/overview_pane.dart';
 import 'package:quill_diary/features/home/widgets/tags_pane.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
@@ -22,11 +23,11 @@ import 'package:quill_diary/shared/providers/core_providers.dart';
 import 'package:quill_diary/shared/providers/tag_providers.dart';
 
 import '../../helpers/entry_index_fixtures.dart';
-import '../../helpers/fake_vault_repository.dart';
+import '../../helpers/fake_entry_index_vault_repository.dart';
 
 void main() {
   ProviderContainer buildContainer(
-    FakeVaultRepository repository, {
+    FakeEntryIndexVaultRepository repository, {
     Future<Uint8List?> Function(String path)? coverPreviewLoader,
   }) {
     final UnlockedVaultSession session = UnlockedVaultSession(
@@ -72,17 +73,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder findButtonByLabel(String label) {
-    return find.ancestor(
-      of: find.text(label, skipOffstage: false),
-      matching: find.byWidgetPredicate((Widget widget) => widget is ButtonStyleButton),
-    );
-  }
-
   testWidgets('overview export stays enabled for all scope', (WidgetTester tester) async {
     final ProviderContainer container = buildContainer(
-      FakeVaultRepository(
-        entryIndexRecords: <EntryIndexRecord>[
+      FakeEntryIndexVaultRepository(
+        allEntries: <EntryIndexRecord>[
           buildEntryIndexRecord(id: 'jrn_1', title: 'entry one'),
           buildEntryIndexRecord(id: 'jrn_2', title: 'entry two'),
         ],
@@ -94,22 +88,28 @@ void main() {
 
     await pumpHomePage(tester, container);
 
-    final FilledButton button = tester.widget<FilledButton>(
-      findButtonByLabel(HomeCopy.exportRecapLabel).first,
+    final Finder overviewPane = find.byType(OverviewPane);
+    final Finder exportButton = find.descendant(
+      of: overviewPane,
+      matching: find.widgetWithText(FilledButton, HomeCopy.exportRecapLabel),
     );
-    expect(button.onPressed, isNotNull);
+    expect(tester.widget<FilledButton>(exportButton).onPressed, isNotNull);
   });
 
   testWidgets('calendar tab renders calendar and daily entries', (WidgetTester tester) async {
+    final EntryIndexRecord calendarEntry = buildEntryIndexRecord(
+      id: 'jrn_calendar_1',
+      title: 'calendar note',
+      date: const DateOnly('2026-05-20'),
+    );
     final ProviderContainer container = buildContainer(
-      FakeVaultRepository(
-        entryIndexRecords: <EntryIndexRecord>[
-          buildEntryIndexRecord(
-            id: 'jrn_calendar_1',
-            title: 'calendar note',
-            date: const DateOnly('2026-05-20'),
-          ),
-        ],
+      FakeEntryIndexVaultRepository(
+        entriesByDate: <DateOnly, List<EntryIndexRecord>>{
+          const DateOnly('2026-05-20'): <EntryIndexRecord>[calendarEntry],
+        },
+        entriesByMonth: <DateTime, List<EntryIndexRecord>>{
+          DateTime(2026, 5): <EntryIndexRecord>[calendarEntry],
+        },
       ),
     );
 
@@ -135,15 +135,19 @@ void main() {
   });
 
   testWidgets('IndexedStack keeps calendar mounted after tab switch', (WidgetTester tester) async {
+    final EntryIndexRecord calendarEntry = buildEntryIndexRecord(
+      id: 'jrn_calendar_keepalive',
+      title: 'keepalive note',
+      date: const DateOnly('2026-05-20'),
+    );
     final ProviderContainer container = buildContainer(
-      FakeVaultRepository(
-        entryIndexRecords: <EntryIndexRecord>[
-          buildEntryIndexRecord(
-            id: 'jrn_calendar_keepalive',
-            title: 'keepalive note',
-            date: const DateOnly('2026-05-20'),
-          ),
-        ],
+      FakeEntryIndexVaultRepository(
+        entriesByDate: <DateOnly, List<EntryIndexRecord>>{
+          const DateOnly('2026-05-20'): <EntryIndexRecord>[calendarEntry],
+        },
+        entriesByMonth: <DateTime, List<EntryIndexRecord>>{
+          DateTime(2026, 5): <EntryIndexRecord>[calendarEntry],
+        },
       ),
     );
 
@@ -172,8 +176,8 @@ void main() {
 
   testWidgets('tags tab shows selected tag preview in the same scroll flow', (WidgetTester tester) async {
     final ProviderContainer container = buildContainer(
-      FakeVaultRepository(
-        entryIndexRecords: <EntryIndexRecord>[
+      FakeEntryIndexVaultRepository(
+        allEntries: <EntryIndexRecord>[
           buildEntryIndexRecord(id: 'jrn_trip', title: 'trip note', tags: const <String>['travel']),
           buildEntryIndexRecord(id: 'jrn_work', title: 'work note', tags: const <String>['work']),
         ],
@@ -231,8 +235,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final ProviderContainer container = buildContainer(
-      FakeVaultRepository(
-        entryIndexRecords: <EntryIndexRecord>[
+      FakeEntryIndexVaultRepository(
+        allEntries: <EntryIndexRecord>[
           buildEntryIndexRecord(
             id: 'jrn_overflow',
             title: 'very long overview card title used to verify compact layouts on narrow screens',

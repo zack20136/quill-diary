@@ -13,7 +13,7 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
-import '../helpers/fake_vault_repository.dart';
+import '../helpers/fake_session_vault_repository.dart';
 
 void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
@@ -36,7 +36,7 @@ void main() {
 
   Future<ProviderContainer> pumpCoordinator(
     WidgetTester tester, {
-    required FakeVaultRepository repository,
+    required FakeSessionVaultRepository repository,
     FakeAppLockService? appLock,
   }) async {
     await tester.pumpWidget(
@@ -62,7 +62,7 @@ void main() {
   }
 
   testWidgets('autoTrusted resumeAction 觸發 unlock', (WidgetTester tester) async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(unlockMode: AppUnlockMode.none);
@@ -74,15 +74,14 @@ void main() {
     final AppSessionController controller = container.read(appSessionProvider.notifier);
 
     await triggerAutoTrustedResume(controller);
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 1);
   });
 
   testWidgets('keystoreUnlock resumeAction 觸發 unlock', (WidgetTester tester) async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(
@@ -101,15 +100,14 @@ void main() {
     await controller.handleLifecycleChange(AppLifecycleState.paused);
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
     await controller.handleLifecycleChange(AppLifecycleState.resumed);
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 1);
   });
 
   testWidgets('resumeAction 為 null 時不觸發 unlock', (WidgetTester tester) async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final ProviderContainer container = await pumpCoordinator(tester, repository: repository);
@@ -125,7 +123,7 @@ void main() {
   });
 
   testWidgets('unlock 失敗時維持 locked', (WidgetTester tester) async {
-    final FakeVaultRepository repository = FakeVaultRepository(
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
     );
     final ProviderContainer container = await pumpCoordinator(tester, repository: repository);

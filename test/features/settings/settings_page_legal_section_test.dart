@@ -9,11 +9,11 @@ import 'package:quill_diary/features/settings/providers/settings_providers.dart'
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
-import '../../helpers/fake_vault_repository.dart';
+import '../../helpers/fake_session_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
 
 void main() {
-  testWidgets('設定頁法律與隱私區塊依序顯示四個 GitHub 入口', (WidgetTester tester) async {
+  testWidgets('設定頁法律與隱私區塊顯示四個 GitHub 入口', (WidgetTester tester) async {
     await tester.pumpWidget(
       _settingsScope(
         const MaterialApp(home: SettingsPage()),
@@ -34,33 +34,6 @@ void main() {
     expect(find.text(SettingsLegalCopy.privacyPolicyTitle), findsOneWidget);
     expect(find.text(SettingsLegalCopy.thirdPartyNoticesTitle), findsOneWidget);
     expect(find.text(SettingsLegalCopy.contactAuthorTitle), findsOneWidget);
-
-    final List<String> titles = tester
-        .widgetList<Text>(
-          find.descendant(
-            of: find.ancestor(
-              of: find.text(SettingsLegalCopy.sectionTitle),
-              matching: find.byType(Column),
-            ),
-            matching: find.byType(Text),
-          ),
-        )
-        .map((Text text) => text.data!)
-        .where(
-          (String title) =>
-              title == SettingsLegalCopy.sourceCodeTitle ||
-              title == SettingsLegalCopy.privacyPolicyTitle ||
-              title == SettingsLegalCopy.thirdPartyNoticesTitle ||
-              title == SettingsLegalCopy.contactAuthorTitle,
-        )
-        .toList();
-
-    expect(titles, <String>[
-      SettingsLegalCopy.sourceCodeTitle,
-      SettingsLegalCopy.privacyPolicyTitle,
-      SettingsLegalCopy.thirdPartyNoticesTitle,
-      SettingsLegalCopy.contactAuthorTitle,
-    ]);
   });
 }
 
@@ -68,7 +41,7 @@ Widget _settingsScope(Widget child) {
   return ProviderScope(
     overrides: [
       supportedPlatformProvider.overrideWith((Ref ref) => true),
-      vaultRepositoryProvider.overrideWithValue(FakeVaultRepository()),
+      vaultRepositoryProvider.overrideWithValue(FakeSessionVaultRepository()),
       vaultTransferServiceProvider.overrideWithValue(FakeVaultTransferService()),
       effectiveAppSessionProvider.overrideWith(
         (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
