@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../media_store_export.dart';
 import 'android_saf_file_copy.dart';
 import 'archive_extract.dart';
 import 'external_directory_picker.dart';
@@ -14,6 +15,10 @@ Future<String?> deliverToExternalDirectory({
   required Future<String?> Function() resolveInitialDirectory,
   required Future<void> Function(String directoryOrTreeUri) rememberDirectory,
 }) async {
+  if (Platform.isAndroid) {
+    await MediaStoreExport.ensureDownloadsSubfolder();
+  }
+
   final String? picked = await ExternalDirectoryPicker.pickExternalDirectory(
     prompt: dialogTitle,
     initialDirectory: await resolveInitialDirectory(),

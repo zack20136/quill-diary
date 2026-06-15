@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'downloads_export_paths.dart';
+import 'user_export_paths.dart';
 import 'vault_path_strategy.dart';
+import 'media_store_export.dart';
 
 /// 記住使用者上次選擇的外部資料夾（備份交付、可攜式匯入／匯出共用）。
 class ExternalDirectoryStore {
@@ -86,13 +87,15 @@ class ExternalDirectoryStore {
   }
 
   Future<String?> _defaultDownloadsSubdirectoryPath() async {
+    await MediaStoreExport.ensureDownloadsSubfolder();
+
     final Directory? downloads = await getDownloadsDirectory();
     if (downloads == null) {
       return null;
     }
 
     final Directory preferred = Directory(
-      p.join(downloads.path, DownloadsExportPaths.subfolderName),
+      p.join(downloads.path, UserExportPaths.subfolderName),
     );
     try {
       await preferred.create(recursive: true);

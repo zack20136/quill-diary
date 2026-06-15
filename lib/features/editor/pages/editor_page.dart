@@ -38,28 +38,12 @@ import '../../session/state/app_session_state.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../editor_copy.dart';
 import '../editor_draft.dart';
+import '../editor_image_staging.dart';
+import '../gallery_image_download.dart';
 import '../providers/editor_draft_providers.dart';
 import '../providers/editor_providers.dart';
 
 part '../widgets/editor_dialogs.dart';
-
-enum _PreviewGallerySourceKind { encrypted, local }
-
-class _PreviewGalleryImage {
-  const _PreviewGalleryImage.encrypted({
-    required this.previewId,
-    required this.path,
-  }) : sourceKind = _PreviewGallerySourceKind.encrypted;
-
-  const _PreviewGalleryImage.local({
-    required this.previewId,
-    required this.path,
-  }) : sourceKind = _PreviewGallerySourceKind.local;
-
-  final String previewId;
-  final String path;
-  final _PreviewGallerySourceKind sourceKind;
-}
 
 class _MarkdownPreviewBody extends StatelessWidget {
   const _MarkdownPreviewBody({required this.markdown});
@@ -2047,16 +2031,20 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     required List<PendingAttachment> pendingImages,
     required int initialIndex,
   }) async {
-    final List<_PreviewGalleryImage> items = <_PreviewGalleryImage>[];
+    final List<GalleryImageItem> items = <GalleryImageItem>[];
     for (final AssetAttachment attachment in savedImages) {
       final String path = await _cachedEncryptedPathFuture(attachment);
       if (path.trim().isEmpty) {
         continue;
       }
       items.add(
-        _PreviewGalleryImage.encrypted(
-          previewId: attachment.id,
+        GalleryImageItem.encrypted(
           path: path,
+          fileName: galleryDownloadFileName(
+            attachment.originalFilename ?? attachment.safeFilename,
+            attachment.mimeType,
+          ),
+          mimeType: attachment.mimeType,
         ),
       );
     }
@@ -2066,9 +2054,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         continue;
       }
       items.add(
-        _PreviewGalleryImage.local(
-          previewId: path,
+        GalleryImageItem.local(
           path: path,
+          fileName: galleryDownloadFileName(
+            attachment.originalFilename,
+            attachment.mimeType,
+          ),
+          mimeType: attachment.mimeType,
         ),
       );
     }
@@ -2079,8 +2071,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black54,
-      builder: (BuildContext dialogContext) =>
-          _EntryImageGalleryDialog(items: items, initialIndex: safeInitialIndex),
+      builder: (BuildContext dialogContext) => _EntryImageGalleryDialog(
+        items: items,
+        initialIndex: safeInitialIndex,
+        scaffoldMessengerContext: context,
+      ),
     );
   }
 
@@ -2279,8 +2274,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       if (path.isEmpty || !seenPaths.add(path)) {
         continue;
       }
-      final PendingAttachment? staged = await _stagePickedFile(
-        path: path,
+      final PendingAttachment? staged = await stagePickedImage(
+        draftStore: ref.read(editorDraftStoreProvider),
+        preferences: ref.read(userPreferencesProvider),
+        draftKey: _draftKey,
+        sourcePath: path,
         displayName: p.basename(path),
       );
       if (staged != null) {

@@ -321,23 +321,26 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   }
 }
 
-class _EntryImageGalleryDialog extends StatefulWidget {
+class _EntryImageGalleryDialog extends ConsumerStatefulWidget {
   const _EntryImageGalleryDialog({
     required this.items,
     required this.initialIndex,
+    required this.scaffoldMessengerContext,
   });
 
-  final List<_PreviewGalleryImage> items;
+  final List<GalleryImageItem> items;
   final int initialIndex;
+  final BuildContext scaffoldMessengerContext;
 
   @override
-  State<_EntryImageGalleryDialog> createState() => _EntryImageGalleryDialogState();
+  ConsumerState<_EntryImageGalleryDialog> createState() => _EntryImageGalleryDialogState();
 }
 
-class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
+class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDialog> {
   late final PageController _pageController = PageController(initialPage: widget.initialIndex);
   late int _currentIndex = widget.initialIndex;
   bool _pageScrollEnabled = true;
+  bool _downloading = false;
 
   @override
   void dispose() {
@@ -351,6 +354,24 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
       return;
     }
     setState(() => _pageScrollEnabled = pageScrollEnabled);
+  }
+
+  Future<void> _downloadCurrentImage() async {
+    if (_downloading) {
+      return;
+    }
+    setState(() => _downloading = true);
+    try {
+      await downloadGalleryImage(
+        ref: ref,
+        scaffoldMessengerContext: widget.scaffoldMessengerContext,
+        item: widget.items[_currentIndex],
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _downloading = false);
+      }
+    }
   }
 
   @override
@@ -405,9 +426,29 @@ class _EntryImageGalleryDialogState extends State<_EntryImageGalleryDialog> {
             PositionedDirectional(
               top: 4,
               end: 4,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close, color: Colors.white),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  IconButton(
+                    tooltip: EditorCopy.galleryDownloadTooltip,
+                    onPressed: _downloading ? null : () => unawaited(_downloadCurrentImage()),
+                    icon: _downloading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.download_outlined, color: Colors.white),
+                  ),
+                  IconButton(
+                    tooltip: CommonCopy.closeTooltip,
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
               ),
             ),
           ],
@@ -424,19 +465,19 @@ class _GalleryImagePane extends ConsumerWidget {
     this.onZoomChanged,
   });
 
-  final _PreviewGalleryImage item;
+  final GalleryImageItem item;
   final bool isActive;
   final ValueChanged<bool>? onZoomChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return switch (item.sourceKind) {
-      _PreviewGallerySourceKind.encrypted => _EncryptedGalleryImage(
+    return switch (item.source) {
+      GalleryImageSource.encrypted => _EncryptedGalleryImage(
           path: item.path,
           isActive: isActive,
           onZoomChanged: onZoomChanged,
         ),
-      _PreviewGallerySourceKind.local => _ZoomableGalleryImage(
+      GalleryImageSource.local => _ZoomableGalleryImage(
           isActive: isActive,
           onZoomChanged: onZoomChanged,
           child: Image.file(

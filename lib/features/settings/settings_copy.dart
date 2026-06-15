@@ -27,6 +27,12 @@ import '../../shared/copy/common_copy.dart';
 abstract final class SettingsCopy {
   static const String pageTitle = '設定';
 
+  static const String imageCompressSectionTitle = '圖片附件';
+  static const String imageCompressOriginalLabel = '原圖';
+  static const String imageCompressStandardLabel = '標準';
+  static const String imageCompressHighLabel = '高畫質';
+  static const String imageCompressHint = '僅套用於從相簿新選取的圖片。';
+
   static const String actionCancel = CommonCopy.actionCancel;
   static const String actionClose = '關閉';
   static const String actionDelete = CommonCopy.actionDelete;

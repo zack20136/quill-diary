@@ -12,6 +12,7 @@ import '../../infrastructure/storage/external_directory_store.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
+import '../../infrastructure/preferences/user_preferences.dart';
 import '../../infrastructure/storage/vault_transfer_service.dart';
 
 /// 目前執行環境是否可執行僅限 Android 的 vault 功能。
@@ -40,6 +41,11 @@ final deviceKeyManagerProvider = Provider<DeviceKeyManager>((Ref ref) {
 /// LDJ2 加解密作業的底層加密服務。
 final cryptoServiceProvider = Provider<CryptoService>((Ref ref) {
   return LocalCryptoService();
+});
+
+/// 在 vault 外持久化的使用者偏好。
+final userPreferencesProvider = Provider<UserPreferences>((Ref ref) {
+  return UserPreferences();
 });
 
 /// 儲存在加密 vault 之外的 App 鎖定狀態。

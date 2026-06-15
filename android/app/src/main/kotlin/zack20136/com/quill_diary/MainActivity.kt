@@ -37,6 +37,7 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         EasyDiaryRealmChannel.register(flutterEngine, applicationContext)
+        MediaStoreExportChannel.register(flutterEngine, applicationContext)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,

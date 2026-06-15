@@ -1,3 +1,5 @@
+import '../../infrastructure/storage/user_export_paths.dart';
+
 /// 編輯器相關的繁體中文 UI 文案。
 abstract final class EditorCopy {
   static const String pageTitle = '編輯日記';
@@ -49,4 +51,9 @@ abstract final class EditorCopy {
   static const String discardDraftTitle = '捨棄草稿？';
   static const String discardDraftBody = '目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？';
   static const String discardDraftConfirm = '捨棄';
+
+  static const String galleryDownloadTooltip = '下載';
+  static const String galleryDownloadFailed = '無法下載圖片';
+  static String galleryDownloadSuccess(String fileName) =>
+      '已儲存至 ${UserExportPaths.picturesDisplayPath(fileName)}';
 }

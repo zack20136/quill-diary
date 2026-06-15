@@ -14,6 +14,7 @@ abstract final class AppIdentifiers {
   static const String oauthChannel = 'quill_diary/oauth_config';
   static const String deviceKeyChannel = 'quill_diary/device_key_bridge';
   static const String easyDiaryRealmChannel = 'quill_diary/easy_diary_realm';
+  static const String mediaStoreExportChannel = 'quill_diary/media_store_export';
 
   static const String indexKeyDerivationInfo = 'quill_diary:index:v1';
 
