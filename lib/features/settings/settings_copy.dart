@@ -463,10 +463,10 @@ abstract final class SettingsSupportCopy {
   static const String navButtonLabel = '支持';
   static const String pageTitle = '支持開發者';
 
-  static const String heroTitle = '自願性支持';
+  static const String heroTitle = '自願支持';
   static const String heroBody =
-      '使用者得透過 Google Play 向開發者提供自願性支持。'
-      '本項支持不提供任何額外功能，亦不影響日記內容之存取與使用。';
+      '您可透過 Google Play 提供一次性支持。'
+      '本項支持不附帶額外功能，亦不影響日記內容的存取與使用。';
 
   static const List<String> heroChips = <String>[
     '不提供額外功能',
@@ -474,33 +474,33 @@ abstract final class SettingsSupportCopy {
     'Google Play 付款',
   ];
 
-  static const String complianceCardTitle = '付款說明';
+  static const String complianceCardTitle = '付款與資料說明';
   static const String complianceCardBody =
-      '款項由 Google Play 處理，屬一次性支持商品，非訂閱或會員資格。'
-      '本應用程式不保存支持紀錄，亦不讀取使用者日記內容。';
+      '付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。'
+      '本應用程式不保存支持紀錄，亦不讀取日記內容。';
 
-  static const String productsSectionTitle = '支持金額';
+  static const String productsSectionTitle = '支持方案';
   static const String productsSectionBody =
-      '價格由 Google Play 依使用者所在地區顯示。請選擇金額完成付款；同一商品得重複購買。';
+      '金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。';
   static const String buyButtonPrefix = '支持';
   static const String recommendedTierBadge = '常用';
 
-  static const String pendingMessage = '付款處理中，敬請稍候。';
+  static const String pendingMessage = '付款處理中，請稍候。';
   static const String thanksMessage = '感謝您的支持。';
-  static const String errorMessage = '本次交易未完成，請稍後再試。';
+  static const String errorMessage = '付款未完成，請稍後再試。';
   static const String billingUnavailableMessage =
-      '本裝置目前無法使用 Google Play 購買功能。請於已安裝 Google Play 商店之 Android 裝置上操作。';
-  static const String productLoadErrorTitle = '暫無法載入金額';
+      '目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。';
+  static const String productLoadErrorTitle = '暫時無法載入支持方案';
   static const String productLoadErrorBody = '請稍後再試。';
-  static const String productsNotReadyTitle = '暫無法顯示支持金額';
+  static const String productsNotReadyTitle = '暫時無法顯示支持方案';
   static const String productsNotReadyBody =
-      '請確認網路連線正常。若問題持續，請透過 Google Play 更新本應用程式後再試。';
-  static const String productsQueryFailedTitle = '無法連線至 Google Play';
+      '請確認網路連線正常；若問題持續，請更新本應用程式後再試。';
+  static const String productsQueryFailedTitle = '目前無法連線至 Google Play';
   static const String productsQueryFailedBody = '請確認網路連線後再試。';
   static const String productsPartialMessage =
-      '部分支持方案暫無法顯示，您仍可選擇其他可用金額。';
+      '部分方案暫時無法顯示，您仍可選擇其他可用金額。';
   static const String retryLoadProductsLabel = '重新載入';
-  static const String footerNote = '支持行為屬自願性質；使用者得自行決定是否提供支持。';
+  static const String footerNote = '是否提供支持，請依您的需求自行決定。';
 
   static SupportNoticeCopy noticeForProductLoadError(String? errorCode) {
     return switch (errorCode) {

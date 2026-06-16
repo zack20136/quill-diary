@@ -348,18 +348,6 @@ class _SponsorProductTile extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (product.description.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 6),
-                        Text(
-                          product.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
