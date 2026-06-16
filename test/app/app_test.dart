@@ -21,26 +21,10 @@ import '../helpers/fake_vault_transfer_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('QuillDiaryApp 可組裝路由、主題與 session 外殼', (WidgetTester tester) async {
-    final ProviderContainer container = ProviderContainer(
-      overrides: [
-        supportedPlatformProvider.overrideWith((Ref ref) => false),
-        vaultRepositoryProvider.overrideWithValue(FakeEntryIndexVaultRepository()),
-        vaultTransferServiceProvider.overrideWithValue(FakeVaultTransferService()),
-        effectiveAppSessionProvider.overrideWith(
-          (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
-        ),
-        recoveryMetadataProvider.overrideWith((Ref ref) async => null),
-        unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
-        settingsDriveConnectionProvider.overrideWith(
-          (Ref ref) async => const DriveConnectionState.disconnected(),
-        ),
-        editorDraftKeysProvider.overrideWith((Ref ref) async => <String>{}),
-        personalizationPreferencesProvider.overrideWith(() {
-          return _FixedPersonalizationPreferencesController();
-        }),
-      ],
-    );
+  testWidgets('QuillDiaryApp 可完成 boot wiring smoke test', (
+    WidgetTester tester,
+  ) async {
+    final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -52,12 +36,40 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final MaterialApp app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    final MaterialApp app = tester.widget<MaterialApp>(
+      find.byType(MaterialApp),
+    );
     expect(app.title, 'Quill Diary');
     expect(app.routerConfig, isNotNull);
     expect(find.byType(HomePage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+ProviderContainer _buildSmokeTestContainer() {
+  return ProviderContainer(
+    overrides: [
+      supportedPlatformProvider.overrideWith((Ref ref) => false),
+      vaultRepositoryProvider.overrideWithValue(
+        FakeEntryIndexVaultRepository(),
+      ),
+      vaultTransferServiceProvider.overrideWithValue(
+        FakeVaultTransferService(),
+      ),
+      effectiveAppSessionProvider.overrideWith(
+        (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
+      ),
+      recoveryMetadataProvider.overrideWith((Ref ref) async => null),
+      unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
+      settingsDriveConnectionProvider.overrideWith(
+        (Ref ref) async => const DriveConnectionState.disconnected(),
+      ),
+      editorDraftKeysProvider.overrideWith((Ref ref) async => <String>{}),
+      personalizationPreferencesProvider.overrideWith(
+        _FixedPersonalizationPreferencesController.new,
+      ),
+    ],
+  );
 }
 
 class _FixedPersonalizationPreferencesController

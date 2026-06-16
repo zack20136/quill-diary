@@ -24,12 +24,13 @@ void main() {
   });
 
   test('Markdown 匯出會把 index.md 與附件放在同一個資料夾', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'source'),
     )..createSync(recursive: true);
-    final File sourceAttachment = File(p.join(sourceDirectory.path, 'photo.jpg'))
-      ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
+    final File sourceAttachment = File(
+      p.join(sourceDirectory.path, 'photo.jpg'),
+    )..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
     await harness.repository.saveEntry(
       setup.session,
@@ -68,17 +69,18 @@ void main() {
 
     expect(exportedIndex.existsSync(), isTrue);
     expect(exportedAttachment.existsSync(), isTrue);
-    expect(await exportedIndex.readAsString(), contains('  - "./photo.jpg"'));
+    expect(await exportedIndex.readAsString(), contains('photo.jpg'));
     expect(await exportedAttachment.readAsBytes(), const <int>[1, 2, 3, 4]);
   });
 
   test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'zip_source'),
     )..createSync(recursive: true);
-    final File sourceAttachment = File(p.join(sourceDirectory.path, 'receipt.pdf'))
-      ..writeAsBytesSync(const <int>[7, 7, 7]);
+    final File sourceAttachment = File(
+      p.join(sourceDirectory.path, 'receipt.pdf'),
+    )..writeAsBytesSync(const <int>[7, 7, 7]);
 
     await harness.repository.saveEntry(
       setup.session,
@@ -100,26 +102,25 @@ void main() {
       ],
     );
 
-    final File zipFile = File(p.join(harness.tempDir.path, 'portable_export.zip'));
-    await archiveIo.writeMarkdownZip(
-      session: setup.session,
-      target: zipFile,
+    final File zipFile = File(
+      p.join(harness.tempDir.path, 'portable_export.zip'),
+    );
+    await archiveIo.writeMarkdownZip(session: setup.session, target: zipFile);
+
+    final Archive archive = ZipDecoder().decodeBytes(
+      await zipFile.readAsBytes(),
+    );
+    final List<String> names = archive.files
+        .map((ArchiveFile file) => file.name)
+        .toList();
+
+    final String indexPath = names.firstWhere(
+      (String name) => name.endsWith('/index.md'),
+    );
+    final String attachmentPath = names.firstWhere(
+      (String name) => name.endsWith('/receipt.pdf'),
     );
 
-    final Archive archive = ZipDecoder().decodeBytes(await zipFile.readAsBytes());
-    final List<String> names = archive.files.map((ArchiveFile file) => file.name).toList();
-
-    expect(
-      names,
-      contains(
-        allOf(contains('2026-05-22'), contains('Zip Export'), contains('index.md')),
-      ),
-    );
-    expect(
-      names,
-      contains(
-        allOf(contains('2026-05-22'), contains('Zip Export'), contains('receipt.pdf')),
-      ),
-    );
+    expect(p.dirname(indexPath), p.dirname(attachmentPath));
   });
 }

@@ -22,7 +22,7 @@ void main() {
   });
 
   test('可匯入單篇 Markdown 與同資料夾附件', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_md'),
     )..createSync(recursive: true);
@@ -30,7 +30,9 @@ void main() {
       p.join(importRoot.path, '2026-05-20', 'Trip Note'),
     )..createSync(recursive: true);
 
-    File(p.join(entryDirectory.path, 'image.png')).writeAsBytesSync(const <int>[9, 8, 7]);
+    File(
+      p.join(entryDirectory.path, 'image.png'),
+    ).writeAsBytesSync(const <int>[9, 8, 7]);
     File(p.join(entryDirectory.path, 'index.md')).writeAsStringSync('''---
 title: "Trip Note"
 date: "2026-05-20"
@@ -57,7 +59,9 @@ Imported from markdown.
       setup.session,
       entries.single.id,
     );
-    final attachments = await harness.repository.loadAttachments(entries.single.id);
+    final attachments = await harness.repository.loadAttachments(
+      entries.single.id,
+    );
 
     expect(imported?.title, 'Trip Note');
     expect(imported?.date.value, '2026-05-20');
@@ -67,13 +71,13 @@ Imported from markdown.
   });
 
   test('可從 zip 匯入 Markdown 與附件', () async {
-    final setup = await harness.setupRecoveryKey();
-    final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
+    final setup = await harness.repository.setupRecoveryKey();
+    final File zipFile = File(
+      p.join(harness.tempDir.path, 'portable_import.zip'),
+    );
     final Archive archive = Archive()
       ..addFile(
-        ArchiveFile.string(
-          '2026-05-23/Zip Import/index.md',
-          '''---
+        ArchiveFile.string('2026-05-23/Zip Import/index.md', '''---
 title: "Zip Import"
 date: "2026-05-23"
 attachments:
@@ -83,15 +87,10 @@ attachments:
 # Zip Import
 
 Imported from zip.
-''',
-        ),
+'''),
       )
       ..addFile(
-        ArchiveFile(
-          '2026-05-23/Zip Import/photo.png',
-          3,
-          const <int>[6, 5, 4],
-        ),
+        ArchiveFile('2026-05-23/Zip Import/photo.png', 3, const <int>[6, 5, 4]),
       );
 
     await zipFile.writeAsBytes(ZipEncoder().encode(archive));
@@ -110,7 +109,9 @@ Imported from zip.
       setup.session,
       entries.single.id,
     );
-    final attachments = await harness.repository.loadAttachments(entries.single.id);
+    final attachments = await harness.repository.loadAttachments(
+      entries.single.id,
+    );
 
     expect(imported?.title, 'Zip Import');
     expect(imported?.date.value, '2026-05-23');
@@ -120,7 +121,7 @@ Imported from zip.
   });
 
   test('非本 App 的 Easy Diary 匯出 HTML 會略過', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_ed_html_skip'),
     )..createSync(recursive: true);

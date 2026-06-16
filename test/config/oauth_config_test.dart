@@ -5,7 +5,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('以環境變數為最高優先序', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
+    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '  from-env  ',
       isAndroid: true,
       androidResolver: () async => 'from-xml',
@@ -15,7 +15,7 @@ void main() {
   });
 
   test('Android 會回退到 xml 值', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
+    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '',
       isAndroid: true,
       androidResolver: () async => '  from-xml  ',
@@ -25,7 +25,7 @@ void main() {
   });
 
   test('Android fallback 例外時回傳空字串', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
+    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '',
       isAndroid: true,
       androidResolver: () async => throw StateError('broken channel'),
@@ -35,7 +35,7 @@ void main() {
   });
 
   test('非 Android 且無環境變數時回傳空字串', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
+    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '',
       isAndroid: false,
     );

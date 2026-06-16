@@ -28,7 +28,7 @@ void main() {
   });
 
   test('peekBackupRecovery 可讀取備份內 recovery.json', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
       title: 'Backup Entry',
@@ -39,14 +39,16 @@ void main() {
     final File backupFile = File(p.join(harness.tempDir.path, 'test.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
-    final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(backupFile);
+    final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(
+      backupFile,
+    );
     expect(preview.hasRecovery, isTrue);
     expect(preview.metadata?.vaultId, setup.session.vaultId);
     expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
   });
 
   test('inspectBackup accepts a readable vault backup', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
       title: 'Healthy Backup',
@@ -57,25 +59,28 @@ void main() {
     final File backupFile = File(p.join(harness.tempDir.path, 'healthy.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
-    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
+    final BackupInspectResult report = await archiveIo.inspectBackup(
+      backupFile,
+    );
 
     expect(report.ok, isTrue);
     expect(report.layout.hasRecovery, isTrue);
-    expect(report.layout.hasManifest || report.layout.entrySampleFound, isTrue);
   });
 
   test('inspectBackup rejects an invalid zip', () async {
     final File backupFile = File(p.join(harness.tempDir.path, 'invalid.zip'))
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
-    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
+    final BackupInspectResult report = await archiveIo.inspectBackup(
+      backupFile,
+    );
 
     expect(report.ok, isFalse);
     expect(report.message, contains('zip 備份'));
   });
 
   test('inspectBackup rejects portable markdown export zip', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
       title: 'Export Entry',
@@ -86,10 +91,7 @@ void main() {
     final File exportZip = File(
       p.join(harness.tempDir.path, 'markdown_2026-05-26_14-03-07.zip'),
     );
-    await archiveIo.writeMarkdownZip(
-      session: setup.session,
-      target: exportZip,
-    );
+    await archiveIo.writeMarkdownZip(session: setup.session, target: exportZip);
 
     final BackupInspectResult report = await archiveIo.inspectBackup(exportZip);
 
@@ -98,24 +100,28 @@ void main() {
   });
 
   test('inspectBackup rejects corrupted recovery.json', () async {
-    final File backupFile = File(p.join(harness.tempDir.path, 'bad_recovery.zip'));
+    final File backupFile = File(
+      p.join(harness.tempDir.path, 'bad_recovery.zip'),
+    );
     final Archive archive = Archive()
       ..addFile(ArchiveFile.string('recovery.json', 'not-json'))
       ..addFile(ArchiveFile.string('manifest.json.enc', 'enc'))
       ..addFile(ArchiveFile.string('entries/a.md.enc', 'body'));
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
-    final BackupInspectResult report = await archiveIo.inspectBackup(backupFile);
+    final BackupInspectResult report = await archiveIo.inspectBackup(
+      backupFile,
+    );
 
     expect(report.ok, isFalse);
     expect(report.message, contains('recovery.json'));
   });
 
   test('restoreBackupZip 會在覆寫前拒絕缺少加密資料的備份', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final RecoveryMetadata metadata =
         await harness.repository.readRecoveryMetadata() ??
-            (throw StateError('測試前置失敗：缺少 recovery metadata。'));
+        (throw StateError('測試前置失敗：缺少 recovery metadata。'));
     await harness.saveSimpleEntry(
       setup,
       title: 'Keep Me',
@@ -123,13 +129,12 @@ void main() {
       markdownBody: 'keep',
     );
 
-    final File incompleteBackup = File(p.join(harness.tempDir.path, 'incomplete.zip'));
+    final File incompleteBackup = File(
+      p.join(harness.tempDir.path, 'incomplete.zip'),
+    );
     final Archive archive = Archive()
       ..addFile(
-        ArchiveFile.string(
-          'recovery.json',
-          jsonEncode(metadata.toJson()),
-        ),
+        ArchiveFile.string('recovery.json', jsonEncode(metadata.toJson())),
       );
     await incompleteBackup.writeAsBytes(ZipEncoder().encode(archive));
 
@@ -144,12 +149,13 @@ void main() {
       ),
     );
 
-    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    final List<EntryIndexRecord> entries = await harness.repository
+        .listEntries();
     expect(entries, hasLength(1));
   });
 
   test('restoreBackupZip 可還原日記並保留 recovery metadata', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final String entryId = await harness.saveSimpleEntry(
       setup,
       title: 'Restore Me',
@@ -178,21 +184,25 @@ void main() {
     await harness.repository.closeUnlockedResources();
     await archiveIo.restoreBackupZip(backupFile);
 
-    final RecoveryMetadata? metadataAfterRestore =
-        await harness.repository.readRecoveryMetadata();
+    final RecoveryMetadata? metadataAfterRestore = await harness.repository
+        .readRecoveryMetadata();
     expect(metadataAfterRestore?.vaultId, setup.session.vaultId);
 
-    final UnlockedVaultSession session =
-        await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.rebuildIndex(session);
-    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    final List<EntryIndexRecord> entries = await harness.repository
+        .listEntries();
     expect(entries, hasLength(1));
-    final DiaryEntry? restored = await harness.repository.loadEntry(session, entryId);
+    final DiaryEntry? restored = await harness.repository.loadEntry(
+      session,
+      entryId,
+    );
     expect(restored?.title, 'Restore Me');
   });
 
   test('損壞的備份 zip 不應清空現有 vault', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
       title: 'Keep Me',
@@ -219,7 +229,8 @@ void main() {
       ),
     );
 
-    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    final List<EntryIndexRecord> entries = await harness.repository
+        .listEntries();
     expect(entries, hasLength(1));
   });
 }

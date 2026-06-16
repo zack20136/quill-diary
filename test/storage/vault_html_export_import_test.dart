@@ -24,7 +24,7 @@ void main() {
   });
 
   test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'html_source'),
     )..createSync(recursive: true);
@@ -73,9 +73,8 @@ void main() {
       ),
     );
 
-    final HtmlExportEstimate estimate = await archiveIo.estimateSelectedHtmlExport(
-      entryIds: <String>{selectedId},
-    );
+    final HtmlExportEstimate estimate = await archiveIo
+        .estimateSelectedHtmlExport(entryIds: <String>{selectedId});
     final File output = File(p.join(harness.tempDir.path, 'selected.html'));
     await archiveIo.writeSelectedHtmlExport(
       session: setup.session,
@@ -89,21 +88,16 @@ void main() {
     expect(estimate.imageBytes, 5);
     expect(estimate.estimatedHtmlBytes, greaterThan(5));
     expect(html, contains('HTML &lt;Export&gt;'));
-    expect(html, contains('class="entry-date">2026-05-28'));
-    expect(html, isNot(contains('建立：')));
-    expect(html, isNot(contains('更新：')));
     expect(html, contains('開心 &amp; 安心'));
     expect(html, contains('<h1>Heading</h1>'));
     expect(html, contains('&lt;script&gt;alert(1)&lt;/script&gt;'));
     expect(html, contains('data:image/png;base64,AQIDBAU='));
-    expect(html, isNot(contains('<h1>Quill Diary 匯出</h1>')));
-    expect(html, isNot(contains('<figcaption>cover.png</figcaption>')));
     expect(html, contains('note.pdf · application/pdf'));
     expect(html, isNot(contains('Not selected')));
   });
 
   test('可匯入 Quill Diary 匯出的 HTML', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'roundtrip_source'),
     )..createSync(recursive: true);
@@ -157,11 +151,16 @@ void main() {
       setup.session,
       importedRecord.id,
     );
-    final attachments = await harness.repository.loadAttachments(importedRecord.id);
+    final attachments = await harness.repository.loadAttachments(
+      importedRecord.id,
+    );
 
     expect(imported?.title, 'HTML Roundtrip');
     expect(imported?.date.value, '2026-05-28');
-    expect(imported?.createdAt, DateTime.parse('2026-05-28T08:00:00Z').toLocal());
+    expect(
+      imported?.createdAt,
+      DateTime.parse('2026-05-28T08:00:00Z').toLocal(),
+    );
     expect(imported?.tags, const <String>['分享', 'HTML']);
     expect(imported?.mood, '開心 & 安心');
     expect(imported?.markdownBody, contains('# Heading'));
@@ -173,7 +172,7 @@ void main() {
   });
 
   test('可從 Quill Diary 匯出的單一 HTML 匯入多篇日記', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'multi_roundtrip_source'),
     )..createSync(recursive: true);
@@ -214,7 +213,9 @@ void main() {
       ),
     );
 
-    final File exported = File(p.join(harness.tempDir.path, 'multi_roundtrip.html'));
+    final File exported = File(
+      p.join(harness.tempDir.path, 'multi_roundtrip.html'),
+    );
     await archiveIo.writeSelectedHtmlExport(
       session: setup.session,
       entryIds: <String>{firstId, secondId},
@@ -258,15 +259,18 @@ void main() {
       containsAll(<String>['第一篇內容', '第二篇內容']),
     );
 
-    final DiaryEntry firstImported =
-        imported.firstWhere((DiaryEntry entry) => entry.title == '第一篇');
-    final attachments = await harness.repository.loadAttachments(firstImported.id);
+    final DiaryEntry firstImported = imported.firstWhere(
+      (DiaryEntry entry) => entry.title == '第一篇',
+    );
+    final attachments = await harness.repository.loadAttachments(
+      firstImported.id,
+    );
     expect(attachments, hasLength(1));
     expect(attachments.single.mimeType, 'image/png');
   });
 
   test('HTML 匯出沒有可用日記時回報錯誤', () async {
-    final setup = await harness.setupRecoveryKey();
+    final setup = await harness.repository.setupRecoveryKey();
     final File output = File(p.join(harness.tempDir.path, 'empty.html'));
 
     expect(

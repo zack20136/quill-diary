@@ -42,14 +42,15 @@ class VaultTestHarness {
     return harness;
   }
 
-  Future<RecoverySetupResult> setupRecoveryKey() => repository.setupRecoveryKey();
-
-  VaultArchiveIo createArchiveIo() {
+  VaultArchiveIo createArchiveIo({
+    EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
+  }) {
     return VaultArchiveIo(
       pathStrategy: pathStrategy,
       repository: repository,
       frontMatterCodec: const FrontMatterCodec(),
       indexDatabaseManager: IndexDatabaseManager(pathStrategy),
+      easyDiaryBackupImporterFactory: easyDiaryBackupImporterFactory,
     );
   }
 

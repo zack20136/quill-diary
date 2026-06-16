@@ -4,8 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
@@ -25,12 +23,7 @@ void main() {
   setUp(() async {
     harness = await VaultTestHarness.create();
     installPathProviderTestBinding(harness.tempDir);
-    final VaultArchiveIo archiveIo = VaultArchiveIo(
-      pathStrategy: harness.pathStrategy,
-      repository: harness.repository,
-      frontMatterCodec: const FrontMatterCodec(),
-      indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
-    );
+    final VaultArchiveIo archiveIo = harness.createArchiveIo();
     transferService = VaultTransferService(
       archiveIo: archiveIo,
       driveBackupService: const UnusedDriveBackupService(),
@@ -46,7 +39,8 @@ void main() {
   });
 
   Future<void> seedVaultForBackup() async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
@@ -61,61 +55,90 @@ void main() {
     );
   }
 
-  test('runInspectedBackupPipelineForTesting succeeds when deliver returns path', () async {
-    await seedVaultForBackup();
-    final Directory deliverDirectory = Directory(p.join(harness.tempDir.path, 'deliver'));
-    await deliverDirectory.create(recursive: true);
+  test(
+    'runInspectedBackupPipelineForTesting succeeds when deliver returns path',
+    () async {
+      await seedVaultForBackup();
+      final Directory deliverDirectory = Directory(
+        p.join(harness.tempDir.path, 'deliver'),
+      );
+      await deliverDirectory.create(recursive: true);
 
-    final BackupPersistResult result = await transferService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
-        final String destinationPath = p.join(deliverDirectory.path, fileName);
-        await stagingZip.copy(destinationPath);
-        return destinationPath;
-      },
-    );
+      final BackupPersistResult result = await transferService
+          .runInspectedBackupPipelineForTesting(
+            deliver:
+                (
+                  File stagingZip,
+                  String fileName,
+                  BackupTaskProgressListener? deliverProgress,
+                ) async {
+                  final String destinationPath = p.join(
+                    deliverDirectory.path,
+                    fileName,
+                  );
+                  await stagingZip.copy(destinationPath);
+                  return destinationPath;
+                },
+          );
 
-    expect(result.status, BackupPersistStatus.success);
-    expect(result.savedPath, isNotNull);
-    expect(File(result.savedPath!).existsSync(), isTrue);
-    expect(result.message, isNotEmpty);
-  });
+      expect(result.status, BackupPersistStatus.success);
+      expect(result.savedPath, isNotNull);
+      expect(File(result.savedPath!).existsSync(), isTrue);
+      expect(result.message, isNotEmpty);
+    },
+  );
 
-  test('runInspectedBackupPipelineForTesting returns cancelled when deliver returns null', () async {
-    await seedVaultForBackup();
+  test(
+    'runInspectedBackupPipelineForTesting returns cancelled when deliver returns null',
+    () async {
+      await seedVaultForBackup();
 
-    final BackupPersistResult result = await transferService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async => null,
-    );
+      final BackupPersistResult result = await transferService
+          .runInspectedBackupPipelineForTesting(
+            deliver:
+                (
+                  File stagingZip,
+                  String fileName,
+                  BackupTaskProgressListener? deliverProgress,
+                ) async => null,
+          );
 
-    expect(result.status, BackupPersistStatus.cancelled);
-    expect(result.savedPath, isNull);
-  });
+      expect(result.status, BackupPersistStatus.cancelled);
+      expect(result.savedPath, isNull);
+    },
+  );
 
-  test('runInspectedBackupPipelineForTesting returns inspectFailed when inspect fails', () async {
-    await seedVaultForBackup();
-    final InspectFailingTransferService failingService = InspectFailingTransferService(
-      archiveIo: VaultArchiveIo(
-        pathStrategy: harness.pathStrategy,
-        repository: harness.repository,
-        frontMatterCodec: const FrontMatterCodec(),
-        indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
-      ),
-      vaultRepository: harness.repository,
-      externalDirectoryStore: ExternalDirectoryStore(harness.pathStrategy),
-      pathStrategy: harness.pathStrategy,
-    );
-    var deliverCalls = 0;
+  test(
+    'runInspectedBackupPipelineForTesting returns inspectFailed when inspect fails',
+    () async {
+      await seedVaultForBackup();
+      final InspectFailingTransferService failingService =
+          InspectFailingTransferService(
+            archiveIo: harness.createArchiveIo(),
+            vaultRepository: harness.repository,
+            externalDirectoryStore: ExternalDirectoryStore(
+              harness.pathStrategy,
+            ),
+            pathStrategy: harness.pathStrategy,
+          );
+      var deliverCalls = 0;
 
-    final BackupPersistResult result =
-        await failingService.runInspectedBackupPipelineForTesting(
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
-        deliverCalls++;
-        return p.join(harness.tempDir.path, fileName);
-      },
-    );
+      final BackupPersistResult result = await failingService
+          .runInspectedBackupPipelineForTesting(
+            deliver:
+                (
+                  File stagingZip,
+                  String fileName,
+                  BackupTaskProgressListener? deliverProgress,
+                ) async {
+                  deliverCalls++;
+                  return p.join(harness.tempDir.path, fileName);
+                },
+          );
 
-    expect(result.status, BackupPersistStatus.inspectFailed);
-    expect(result.savedPath, isNull);
-    expect(deliverCalls, 0);
-  });
+      expect(result.status, BackupPersistStatus.inspectFailed);
+      expect(result.savedPath, isNull);
+      expect(deliverCalls, 0);
+    },
+  );
 }

@@ -6,7 +6,7 @@ abstract final class HomeLayout {
   static const EdgeInsets bodyPadding =
       EdgeInsets.fromLTRB(bodyHorizontal, 4, bodyHorizontal, 16);
   static const double sectionGap = 12;
-  static const double tagListSectionHeight = 400;
+  static const double tagListSectionHeight = 350;
   static const ScrollCacheExtent entryListCacheExtent =
       ScrollCacheExtent.pixels(600);
 }

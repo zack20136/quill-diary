@@ -5,8 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -19,12 +17,7 @@ void main() {
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    archiveIo = VaultArchiveIo(
-      pathStrategy: harness.pathStrategy,
-      repository: harness.repository,
-      frontMatterCodec: const FrontMatterCodec(),
-      indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
-    );
+    archiveIo = harness.createArchiveIo();
   });
 
   tearDown(() async {
@@ -32,7 +25,8 @@ void main() {
   });
 
   test('還原備份後保留 tag_styles.json 與索引內顏色', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     const int workColor = 0xFF4C6EF5;
     await harness.repository.upsertTagAccentArgb('Work', workColor);
 
@@ -58,18 +52,21 @@ void main() {
     await harness.repository.closeUnlockedResources();
     await archiveIo.restoreBackupZip(backupFile);
 
-    final List<TagCatalogItem> vaultStyles = await TagStylesStore(harness.pathStrategy).read();
+    final List<TagCatalogItem> vaultStyles = await TagStylesStore(
+      harness.pathStrategy,
+    ).read();
     expect(
       TagStylesStore.toAccentMap(vaultStyles)[normalizeText('Work')],
       workColor,
     );
 
-    final UnlockedVaultSession session =
-        await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.rebuildIndex(session);
 
-    final Map<String, int> indexStyles =
-        TagStylesStore.toAccentMap(await harness.repository.listTagCatalog());
+    final Map<String, int> indexStyles = TagStylesStore.toAccentMap(
+      await harness.repository.listTagCatalog(),
+    );
     expect(indexStyles[normalizeText('Work')], workColor);
   });
 }

@@ -5,8 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -18,12 +16,7 @@ void main() {
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    archiveIo = VaultArchiveIo(
-      pathStrategy: harness.pathStrategy,
-      repository: harness.repository,
-      frontMatterCodec: const FrontMatterCodec(),
-      indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
-    );
+    archiveIo = harness.createArchiveIo();
   });
 
   tearDown(() async {
@@ -31,7 +24,8 @@ void main() {
   });
 
   test('writeBackupZip excludes derived local index files', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
@@ -52,8 +46,12 @@ void main() {
     final File backupFile = File(p.join(harness.tempDir.path, 'no_index.zip'));
     await archiveIo.writeBackupZip(backupFile);
 
-    final Archive archive = ZipDecoder().decodeBytes(await backupFile.readAsBytes());
-    final List<String> names = archive.files.map((ArchiveFile file) => file.name).toList();
+    final Archive archive = ZipDecoder().decodeBytes(
+      await backupFile.readAsBytes(),
+    );
+    final List<String> names = archive.files
+        .map((ArchiveFile file) => file.name)
+        .toList();
 
     expect(names.any((String name) => name.startsWith('index/')), isFalse);
     expect(names, contains('recovery.json'));

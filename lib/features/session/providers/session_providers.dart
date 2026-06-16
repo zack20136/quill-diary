@@ -18,14 +18,12 @@ import '../state/app_session_state.dart';
 import '../state/session_lock_reason.dart';
 import '../state/unlock_result.dart';
 
-enum UnlockRequestSource {
-  manual,
-  lifecycleResume,
-}
+enum UnlockRequestSource { manual, lifecycleResume }
 
 /// 管理應用層級 session 狀態與可信 session 還原流程。
 class AppSessionController extends Notifier<AppSessionState> {
-  final SessionInactivityWatchdog _inactivityWatchdog = SessionInactivityWatchdog();
+  final SessionInactivityWatchdog _inactivityWatchdog =
+      SessionInactivityWatchdog();
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
   bool _isInForeground = true;
@@ -215,7 +213,8 @@ class AppSessionController extends Notifier<AppSessionState> {
     final String? priorMessage = state.message;
     final SessionLockReason? priorLockReason = state.lockReason;
     final bool shouldPreserveLockState =
-        source == UnlockRequestSource.lifecycleResume && state.shouldUnlockOnResume;
+        source == UnlockRequestSource.lifecycleResume &&
+        state.shouldUnlockOnResume;
 
     beginTrustedUnlock();
     try {
@@ -380,8 +379,6 @@ class AppSessionController extends Notifier<AppSessionState> {
   bool get _shouldWatchInactivity =>
       state.isUnlocked && _activeSensitiveTasks == 0;
 
-  AppSessionState get currentState => state;
-
   void _applyState(AppSessionState next) {
     _inactivityWatchdog.disarm();
     state = next;
@@ -390,7 +387,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     }
   }
 
-  /// 還原後以單一路徑啟動 session，避免與 [appStartupProvider] 並行解鎖。
+  /// 還原流程持有的是 [WidgetRef]，透過此入口接到共用啟動邏輯。
   Future<AppSessionState> bootstrapAfterRestore() {
     return bootstrapAppSession(ref);
   }
@@ -490,9 +487,9 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
 
     final UnlockOutcome outcome = await controller.unlock();
     if (outcome != UnlockOutcome.success) {
-      return controller.currentState;
+      return ref.read(appSessionProvider);
     }
-    return controller.currentState;
+    return ref.read(appSessionProvider);
   } catch (error) {
     final String message = friendlySessionErrorMessage(error);
     if (error is SecretBoxAuthenticationError ||

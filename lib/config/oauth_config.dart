@@ -37,7 +37,7 @@ class OAuthConfig {
   }
 
   static Future<String> resolveServerClientId() async {
-    return resolveServerClientIdFromSources(
+    return _resolveServerClientId(
       envServerClientId: googleServerClientId,
       isAndroid: !kIsWeb && Platform.isAndroid,
       androidResolver: () =>
@@ -45,11 +45,23 @@ class OAuthConfig {
     );
   }
 
-  /// 允許替換 env／平台／Android resolver，供 production 與測試共用同一邏輯。
+  /// 必要的測試鉤子：允許替換 env／平台／Android resolver 來驗證 fallback 行為。
   @visibleForTesting
-  static Future<String> resolveServerClientIdFromSources({
+  static Future<String> resolveServerClientIdForTesting({
     required String envServerClientId,
     bool isAndroid = false,
+    Future<String?> Function()? androidResolver,
+  }) {
+    return _resolveServerClientId(
+      envServerClientId: envServerClientId,
+      isAndroid: isAndroid,
+      androidResolver: androidResolver,
+    );
+  }
+
+  static Future<String> _resolveServerClientId({
+    required String envServerClientId,
+    required bool isAndroid,
     Future<String?> Function()? androidResolver,
   }) async {
     final String fromEnv = envServerClientId.trim();
@@ -60,7 +72,8 @@ class OAuthConfig {
       try {
         final Future<String?> Function() resolver =
             androidResolver ??
-                () => _androidOAuthChannel.invokeMethod<String>('getServerClientId');
+            () =>
+                _androidOAuthChannel.invokeMethod<String>('getServerClientId');
         final String? fromXml = await resolver();
         return fromXml?.trim() ?? '';
       } on Object catch (error, stackTrace) {

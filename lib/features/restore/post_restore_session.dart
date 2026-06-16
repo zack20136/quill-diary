@@ -15,7 +15,15 @@ Future<AppSessionState> finishRestoreSession(
   required RestorePreparedContext prepared,
   UnlockedVaultSession? livePriorSession,
 }) async {
-  await resetRepositoriesAfterRestore(ref);
+  await ref.read(appSessionProvider.notifier).beginPostRestoreStartup();
+  ref.invalidate(vaultTransferServiceProvider);
+  ref.invalidate(vaultArchiveIoProvider);
+  ref.invalidate(vaultRepositoryProvider);
+  ref.invalidate(indexDatabaseManagerProvider);
+  ref.invalidate(recoveryMetadataProvider);
+  ref.invalidate(settingsDriveConnectionProvider);
+  ref.invalidate(unlockModeProvider);
+  ref.read(entryIndexRevisionProvider.notifier).bump();
 
   try {
     final AppSessionState sessionState = await _startupRestoredSession(
@@ -31,18 +39,6 @@ Future<AppSessionState> finishRestoreSession(
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
   }
-}
-
-Future<void> resetRepositoriesAfterRestore(WidgetRef ref) async {
-  await ref.read(appSessionProvider.notifier).beginPostRestoreStartup();
-  ref.invalidate(vaultTransferServiceProvider);
-  ref.invalidate(vaultArchiveIoProvider);
-  ref.invalidate(vaultRepositoryProvider);
-  ref.invalidate(indexDatabaseManagerProvider);
-  ref.invalidate(recoveryMetadataProvider);
-  ref.invalidate(settingsDriveConnectionProvider);
-  ref.invalidate(unlockModeProvider);
-  ref.read(entryIndexRevisionProvider.notifier).bump();
 }
 
 Future<AppSessionState> _startupRestoredSession(
