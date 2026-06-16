@@ -117,6 +117,57 @@ void main() {
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 
+  test('resume 自動驗證若被系統提前取消，保留 inactivity 狀態供後續重試', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: const DeviceKeyUserCancelledException(),
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.deviceLock,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    await controller.expireFromInactivity();
+
+    final UnlockOutcome outcome = await controller.unlock(
+      source: UnlockRequestSource.lifecycleResume,
+    );
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(outcome, UnlockOutcome.failed);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(state.message, kUseDeviceLockToUnlockMessage);
+    expect(controller.shouldAutoReauth, isTrue);
+  });
+
+  test('resume 自動驗證遇到真正驗證失敗時改為 authFailed', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: const DeviceKeyAuthFailedException('bio failed'),
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.biometric,
+      canUseDeviceCredentialResult: true,
+    );
+    final ProviderContainer container = buildContainer(repository, appLock: appLock);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+
+    controller.activateSession(sampleSession);
+    await controller.expireFromInactivity();
+
+    final UnlockOutcome outcome = await controller.unlock(
+      source: UnlockRequestSource.lifecycleResume,
+    );
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(outcome, UnlockOutcome.failed);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.authFailed);
+    expect(state.message, kLockedRetryVerificationMessage);
+    expect(controller.shouldAutoReauth, isFalse);
+  });
+
   test('lock 會清除 session 並標記 manual', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);

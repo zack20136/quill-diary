@@ -16,6 +16,7 @@ class FakeSessionVaultRepository extends VaultRepository {
     this.metadata,
     this.hasTrustedDevice = false,
     this.openTrustedSessionResult,
+    List<Object?>? openTrustedSessionResults,
     this.resumeUnlockedSessionAfterRestoreResult,
     this.initializeError,
     this.unlockWithRecoveryKeyResult,
@@ -26,7 +27,11 @@ class FakeSessionVaultRepository extends VaultRepository {
           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
           deviceKeyManager: const UnsupportedDeviceKeyManager(),
           appLockService: const UnsupportedAppLockService(),
-        );
+        ) {
+    if (openTrustedSessionResults != null) {
+      _openTrustedSessionResults = List<Object?>.of(openTrustedSessionResults);
+    }
+  }
 
   final RecoveryMetadata? metadata;
   final bool hasTrustedDevice;
@@ -40,6 +45,7 @@ class FakeSessionVaultRepository extends VaultRepository {
   int ensureIndexReadyCalls = 0;
   int openTrustedSessionCalls = 0;
   int resumeUnlockedSessionAfterRestoreCalls = 0;
+  List<Object?>? _openTrustedSessionResults;
 
   @override
   Future<void> initialize() async {
@@ -57,7 +63,13 @@ class FakeSessionVaultRepository extends VaultRepository {
   @override
   Future<UnlockedVaultSession> openTrustedSession() async {
     openTrustedSessionCalls++;
-    final Object? result = openTrustedSessionResult;
+    final Object? result;
+    final List<Object?>? queuedResults = _openTrustedSessionResults;
+    if (queuedResults != null && queuedResults.isNotEmpty) {
+      result = queuedResults.removeAt(0);
+    } else {
+      result = openTrustedSessionResult;
+    }
     if (result == null) {
       throw StateError('openTrustedSessionResult not configured');
     }
