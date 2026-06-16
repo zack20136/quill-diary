@@ -5,15 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-import '../helpers/vault_archive_io_test_harness.dart';
+import '../helpers/vault_test_harness.dart';
 
 void main() {
-  late VaultArchiveIoTestHarness harness;
+  late VaultTestHarness harness;
+  late VaultArchiveIo archiveIo;
 
   setUp(() async {
-    harness = await VaultArchiveIoTestHarness.create();
+    harness = await VaultTestHarness.create();
+    archiveIo = harness.createArchiveIo();
   });
 
   tearDown(() async {
@@ -21,14 +24,14 @@ void main() {
   });
 
   test('Markdown 匯出會把 index.md 與附件放在同一個資料夾', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'source'),
     )..createSync(recursive: true);
     final File sourceAttachment = File(p.join(sourceDirectory.path, 'photo.jpg'))
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: generateEntryId(),
@@ -51,7 +54,7 @@ void main() {
     final Directory exportParent = Directory(
       p.join(harness.tempDir.path, 'exports'),
     )..createSync(recursive: true);
-    final Directory output = await harness.archiveIo.exportMarkdown(
+    final Directory output = await archiveIo.exportMarkdown(
       session: setup.session,
       parentDirectory: exportParent,
     );
@@ -70,14 +73,14 @@ void main() {
   });
 
   test('Markdown 匯出 zip 會保留 index.md 與附件路徑', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'zip_source'),
     )..createSync(recursive: true);
     final File sourceAttachment = File(p.join(sourceDirectory.path, 'receipt.pdf'))
       ..writeAsBytesSync(const <int>[7, 7, 7]);
 
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: generateEntryId(),
@@ -98,7 +101,7 @@ void main() {
     );
 
     final File zipFile = File(p.join(harness.tempDir.path, 'portable_export.zip'));
-    await harness.archiveIo.writeMarkdownZip(
+    await archiveIo.writeMarkdownZip(
       session: setup.session,
       target: zipFile,
     );

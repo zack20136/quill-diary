@@ -74,8 +74,7 @@ void main() {
           ),
         ],
         child: const _BindingHost(
-          autoReauthDelay: Duration.zero,
-          autoReauthRetryDelay: Duration.zero,
+          resumeUnlockDelay: Duration.zero,
         ),
       ),
     );
@@ -102,14 +101,11 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('背景逾時後第一次自動驗證若取消，仍會在前景穩定後自動再試一次', (
+  testWidgets('resumed 自動驗證若取消，維持 locked 且同次 resumed 不立刻重試', (
     WidgetTester tester,
   ) async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
-      openTrustedSessionResults: <Object?>[
-        const DeviceKeyUserCancelledException(),
-        sampleSession,
-      ],
+      openTrustedSessionResult: const DeviceKeyUserCancelledException(),
     );
     late ProviderContainer container;
     await tester.pumpWidget(
@@ -121,8 +117,7 @@ void main() {
           ),
         ],
         child: const _BindingHost(
-          autoReauthDelay: Duration.zero,
-          autoReauthRetryDelay: Duration.zero,
+          resumeUnlockDelay: Duration.zero,
         ),
       ),
     );
@@ -141,6 +136,50 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(repository.openTrustedSessionCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('authFailed 狀態 resumed 時仍會再次主動驗證', (WidgetTester tester) async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResults: <Object?>[
+        const DeviceKeyAuthFailedException('bio failed'),
+        sampleSession,
+      ],
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          vaultRepositoryProvider.overrideWithValue(repository),
+          appLockServiceProvider.overrideWithValue(
+            FakeAppLockService(unlockMode: AppUnlockMode.biometric),
+          ),
+        ],
+        child: const _BindingHost(
+          resumeUnlockDelay: Duration.zero,
+        ),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    controller.activateSession(sampleSession);
+    await controller.expireFromInactivity();
+    await controller.unlock(source: UnlockRequestSource.lifecycleResume);
+
+    expect(container.read(appSessionProvider).lockReason, SessionLockReason.authFailed);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
+
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 2);
 
@@ -150,12 +189,10 @@ void main() {
 
 class _BindingHost extends ConsumerStatefulWidget {
   const _BindingHost({
-    this.autoReauthDelay = Duration.zero,
-    this.autoReauthRetryDelay = Duration.zero,
+    this.resumeUnlockDelay = Duration.zero,
   });
 
-  final Duration autoReauthDelay;
-  final Duration autoReauthRetryDelay;
+  final Duration resumeUnlockDelay;
 
   @override
   ConsumerState<_BindingHost> createState() => _BindingHostState();
@@ -169,8 +206,7 @@ class _BindingHostState extends ConsumerState<_BindingHost> {
     super.initState();
     binding = SessionLifecycleBinding(
       ref,
-      autoReauthDelay: widget.autoReauthDelay,
-      autoReauthRetryDelay: widget.autoReauthRetryDelay,
+      resumeUnlockDelay: widget.resumeUnlockDelay,
     );
     binding.attach();
   }

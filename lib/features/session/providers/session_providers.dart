@@ -39,7 +39,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     return const AppSessionState(status: AppLockStatus.uninitialized);
   }
 
-  bool get shouldAutoReauth => state.shouldAutoReauth;
+  bool get shouldUnlockOnResume => state.shouldUnlockOnResume;
 
   void beginTrustedUnlock() {
     _inactivityWatchdog.disarm();
@@ -213,8 +213,9 @@ class AppSessionController extends Notifier<AppSessionState> {
   }) async {
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
     final String? priorMessage = state.message;
-    final bool shouldPreserveInactivityLock =
-        source == UnlockRequestSource.lifecycleResume && state.shouldAutoReauth;
+    final SessionLockReason? priorLockReason = state.lockReason;
+    final bool shouldPreserveLockState =
+        source == UnlockRequestSource.lifecycleResume && state.shouldUnlockOnResume;
 
     beginTrustedUnlock();
     try {
@@ -231,14 +232,16 @@ class AppSessionController extends Notifier<AppSessionState> {
       return _handleTrustedDeviceFailure(
         source: source,
         recoverable: true,
-        preserveInactivityLock: shouldPreserveInactivityLock,
+        preserveLockState: shouldPreserveLockState,
+        preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
     } on DeviceKeyAuthTimeoutException {
       return _handleTrustedDeviceFailure(
         source: source,
         recoverable: true,
-        preserveInactivityLock: shouldPreserveInactivityLock,
+        preserveLockState: shouldPreserveLockState,
+        preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
     } on DeviceKeyAuthLockoutException catch (error) {
@@ -260,7 +263,8 @@ class AppSessionController extends Notifier<AppSessionState> {
     } on DeviceKeyAuthFailedException {
       return _handleTrustedDeviceFailure(
         source: source,
-        preserveInactivityLock: shouldPreserveInactivityLock,
+        preserveLockState: shouldPreserveLockState,
+        preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
     } on DeviceKeyBiometricNotEnrolledException {
@@ -325,15 +329,16 @@ class AppSessionController extends Notifier<AppSessionState> {
   Future<UnlockOutcome> _handleTrustedDeviceFailure({
     required UnlockRequestSource source,
     bool recoverable = false,
-    bool preserveInactivityLock = false,
+    bool preserveLockState = false,
+    SessionLockReason? preservedLockReason,
     String? preservedMessage,
   }) async {
     if (source == UnlockRequestSource.lifecycleResume &&
         recoverable &&
-        preserveInactivityLock) {
+        preserveLockState) {
       state = AppSessionState(
         status: AppLockStatus.locked,
-        lockReason: SessionLockReason.inactivity,
+        lockReason: preservedLockReason,
         message: preservedMessage,
       );
       _inactivityWatchdog.disarm();

@@ -10,6 +10,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/restore/restore_backup_flow.dart';
 import 'package:quill_diary/features/restore/restore_prepared_context.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -79,7 +80,6 @@ void main() {
     required Future<void> Function({
       String? backupRecoveryKey,
       required RestorePrecheck precheck,
-      UnlockedVaultSession? priorSession,
     }) onComplete,
     bool activateSession = true,
   }) async {
@@ -119,7 +119,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completed = true;
       },
@@ -136,7 +135,6 @@ void main() {
   testWidgets('trusted 還原跳過金鑰收集並保留 trusted', (WidgetTester tester) async {
     transferService.nextPrecheck = trustedPrecheck();
     RestorePrecheck? completedPrecheck;
-    UnlockedVaultSession? completedPriorSession;
 
     await pumpFlowHost(
       tester,
@@ -144,10 +142,8 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completedPrecheck = precheck;
-        completedPriorSession = priorSession;
       },
     );
 
@@ -158,8 +154,52 @@ void main() {
     expect(transferService.restoreCalls, 1);
     expect(transferService.lastPreserveTrusted, isTrue);
     expect(completedPrecheck?.expectsTrustedUnlockAfterRestore, isTrue);
-    expect(completedPrecheck?.canResumeTrustedSession(completedPriorSession), isTrue);
-    expect(completedPriorSession, sampleSession);
+  });
+
+  testWidgets('prepare 時取得的舊 session 若在還原前失效，不會被拿來 resume', (
+    WidgetTester tester,
+  ) async {
+    transferService.nextPrecheck = trustedPrecheck();
+    late WidgetRef capturedRef;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          supportedPlatformProvider.overrideWithValue(true),
+          vaultTransferServiceProvider.overrideWithValue(transferService),
+          vaultRepositoryProvider.overrideWithValue(repository),
+          appLockServiceProvider.overrideWithValue(FakeAppLockService()),
+        ],
+        child: Consumer(
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            capturedRef = ref;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final ProviderContainer container = ProviderScope.containerOf(
+      tester.element(find.byType(Consumer)),
+    );
+    container.read(appSessionProvider.notifier).activateSession(sampleSession);
+
+    final RestorePreparedContext prepared = RestorePreparedContext(
+      precheck: trustedPrecheck(),
+    );
+    await container.read(appSessionProvider.notifier).expireFromInactivity();
+
+    final RestoreBackupFlow flow = RestoreBackupFlow(capturedRef);
+    final AppSessionState state = await flow.executeRestoreAndFinishSession(
+      backupFile: backupFile,
+      prepared: prepared,
+    );
+
+    expect(transferService.restoreCalls, 1);
+    expect(repository.resumeUnlockedSessionAfterRestoreCalls, 0);
+    expect(state.status, AppLockStatus.recoveryRequired);
+    expect(state.session, isNull);
   });
 
   testWidgets('需要金鑰時取消對話框不還原', (WidgetTester tester) async {
@@ -172,7 +212,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completed = true;
       },
@@ -200,7 +239,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completedKey = backupRecoveryKey;
       },
@@ -238,7 +276,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completed = true;
       },
@@ -263,7 +300,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completed = true;
       },
@@ -303,7 +339,6 @@ void main() {
       onComplete: ({
         String? backupRecoveryKey,
         required RestorePrecheck precheck,
-        UnlockedVaultSession? priorSession,
       }) async {
         completed = true;
       },
@@ -329,7 +364,6 @@ class _RestoreFlowHost extends ConsumerWidget {
   final Future<void> Function({
     String? backupRecoveryKey,
     required RestorePrecheck precheck,
-    UnlockedVaultSession? priorSession,
   }) onComplete;
 
   @override
@@ -359,7 +393,6 @@ class _RestoreFlowHost extends ConsumerWidget {
           await onComplete(
             backupRecoveryKey: prepared.backupRecoveryKey,
             precheck: prepared.precheck,
-            priorSession: prepared.priorSession,
           );
         },
         child: const Text('run'),

@@ -4,8 +4,8 @@ import 'package:quill_diary/config/oauth_config.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('resolveServerClientId 以環境變數為最高優先序', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
+  test('以環境變數為最高優先序', () async {
+    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
       envServerClientId: '  from-env  ',
       isAndroid: true,
       androidResolver: () async => 'from-xml',
@@ -14,8 +14,8 @@ void main() {
     expect(resolved, 'from-env');
   });
 
-  test('resolveServerClientId 會在 Android 上回退到 xml 值', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
+  test('Android 會回退到 xml 值', () async {
+    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
       envServerClientId: '',
       isAndroid: true,
       androidResolver: () async => '  from-xml  ',
@@ -24,8 +24,8 @@ void main() {
     expect(resolved, 'from-xml');
   });
 
-  test('resolveServerClientId 的 Android fallback 例外會回傳空字串', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
+  test('Android fallback 例外時回傳空字串', () async {
+    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
       envServerClientId: '',
       isAndroid: true,
       androidResolver: () async => throw StateError('broken channel'),
@@ -34,8 +34,8 @@ void main() {
     expect(resolved, '');
   });
 
-  test('resolveServerClientId 在非 Android 且無環境變數時回傳空字串', () async {
-    final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
+  test('非 Android 且無環境變數時回傳空字串', () async {
+    final String resolved = await OAuthConfig.resolveServerClientIdFromSources(
       envServerClientId: '',
       isAndroid: false,
     );

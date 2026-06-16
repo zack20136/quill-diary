@@ -27,9 +27,7 @@ class AppSessionState {
 
   bool get isUnlocked => status == AppLockStatus.unlocked;
 
-  bool get shouldAutoReauth =>
-      status == AppLockStatus.locked &&
-      lockReason == SessionLockReason.inactivity;
+  bool get shouldUnlockOnResume => status == AppLockStatus.locked;
 
   AppSessionState copyWith({
     AppLockStatus? status,

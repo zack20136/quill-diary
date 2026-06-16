@@ -4,14 +4,17 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 
-import '../helpers/vault_archive_io_test_harness.dart';
+import '../helpers/vault_test_harness.dart';
 
 void main() {
-  late VaultArchiveIoTestHarness harness;
+  late VaultTestHarness harness;
+  late VaultArchiveIo archiveIo;
 
   setUp(() async {
-    harness = await VaultArchiveIoTestHarness.create();
+    harness = await VaultTestHarness.create();
+    archiveIo = harness.createArchiveIo();
   });
 
   tearDown(() async {
@@ -19,7 +22,7 @@ void main() {
   });
 
   test('可匯入單篇 Markdown 與同資料夾附件', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_md'),
     )..createSync(recursive: true);
@@ -40,21 +43,21 @@ attachments:
 Imported from markdown.
 ''');
 
-    final result = await harness.archiveIo.importDocuments(
+    final result = await archiveIo.importDocuments(
       session: setup.session,
       rootDirectory: importRoot,
     );
 
     expect(result.importedEntries, 1);
 
-    final entries = await harness.harness.repository.listEntries();
+    final entries = await harness.repository.listEntries();
     expect(entries, hasLength(1));
 
-    final DiaryEntry? imported = await harness.harness.repository.loadEntry(
+    final DiaryEntry? imported = await harness.repository.loadEntry(
       setup.session,
       entries.single.id,
     );
-    final attachments = await harness.harness.repository.loadAttachments(entries.single.id);
+    final attachments = await harness.repository.loadAttachments(entries.single.id);
 
     expect(imported?.title, 'Trip Note');
     expect(imported?.date.value, '2026-05-20');
@@ -64,7 +67,7 @@ Imported from markdown.
   });
 
   test('可從 zip 匯入 Markdown 與附件', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final File zipFile = File(p.join(harness.tempDir.path, 'portable_import.zip'));
     final Archive archive = Archive()
       ..addFile(
@@ -93,21 +96,21 @@ Imported from zip.
 
     await zipFile.writeAsBytes(ZipEncoder().encode(archive));
 
-    final result = await harness.archiveIo.importDocumentsFromZip(
+    final result = await archiveIo.importDocumentsFromZip(
       session: setup.session,
       zipFile: zipFile,
     );
 
     expect(result.importedEntries, 1);
 
-    final entries = await harness.harness.repository.listEntries();
+    final entries = await harness.repository.listEntries();
     expect(entries, hasLength(1));
 
-    final DiaryEntry? imported = await harness.harness.repository.loadEntry(
+    final DiaryEntry? imported = await harness.repository.loadEntry(
       setup.session,
       entries.single.id,
     );
-    final attachments = await harness.harness.repository.loadAttachments(entries.single.id);
+    final attachments = await harness.repository.loadAttachments(entries.single.id);
 
     expect(imported?.title, 'Zip Import');
     expect(imported?.date.value, '2026-05-23');
@@ -117,7 +120,7 @@ Imported from zip.
   });
 
   test('非本 App 的 Easy Diary 匯出 HTML 會略過', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_ed_html_skip'),
     )..createSync(recursive: true);
@@ -129,13 +132,13 @@ Imported from zip.
 </body></html>
 ''');
 
-    final result = await harness.archiveIo.importDocuments(
+    final result = await archiveIo.importDocuments(
       session: setup.session,
       rootDirectory: importRoot,
     );
 
     expect(result.importedEntries, 0);
     expect(result.skippedFiles, 1);
-    expect(await harness.harness.repository.listEntries(), isEmpty);
+    expect(await harness.repository.listEntries(), isEmpty);
   });
 }

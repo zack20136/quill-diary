@@ -37,7 +37,7 @@ class OAuthConfig {
   }
 
   static Future<String> resolveServerClientId() async {
-    return resolveServerClientIdForTesting(
+    return resolveServerClientIdFromSources(
       envServerClientId: googleServerClientId,
       isAndroid: !kIsWeb && Platform.isAndroid,
       androidResolver: () =>
@@ -45,9 +45,9 @@ class OAuthConfig {
     );
   }
 
-  /// 測試用注入點：保留 production 邏輯，但允許替換 Android 來源與平台判斷。
+  /// 允許替換 env／平台／Android resolver，供 production 與測試共用同一邏輯。
   @visibleForTesting
-  static Future<String> resolveServerClientIdForTesting({
+  static Future<String> resolveServerClientIdFromSources({
     required String envServerClientId,
     bool isAndroid = false,
     Future<String?> Function()? androidResolver,

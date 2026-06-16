@@ -102,12 +102,11 @@ class RestoreBackupFlow {
 
     return RestorePreparedContext(
       precheck: precheck,
-      priorSession: (await ref.read(effectiveAppSessionProvider.future)).session,
       backupRecoveryKey: backupRecoveryKey,
     );
   }
 
-  Future<void> executeRestore({
+  Future<UnlockedVaultSession?> executeRestore({
     required File backupFile,
     required RestorePreparedContext prepared,
     BackupTaskProgressListener? onProgress,
@@ -115,9 +114,14 @@ class RestoreBackupFlow {
     final transferService = ref.read(vaultTransferServiceProvider);
     final AppSessionController sessionController =
         ref.read(appSessionProvider.notifier);
-    final UnlockedVaultSession? priorSession = prepared.priorSession;
-    final bool hasActiveSession =
-        priorSession != null && ref.read(appSessionProvider).isUnlocked;
+    final AppSessionState liveState = ref.read(appSessionProvider);
+    final UnlockedVaultSession? liveSession =
+        liveState.isUnlocked ? liveState.session : null;
+    final bool hasActiveSession = liveSession != null;
+    final UnlockedVaultSession? livePriorSession = prepared.precheck
+            .canResumeTrustedSession(liveSession)
+        ? liveSession
+        : null;
 
     Future<void> restoreBackup() async {
       await transferService.restoreFromBackupFile(
@@ -135,6 +139,7 @@ class RestoreBackupFlow {
         await restoreBackup();
       });
     }
+    return livePriorSession;
   }
 
   /// 解壓還原後接續 session 啟動與索引刷新。
@@ -143,12 +148,16 @@ class RestoreBackupFlow {
     required RestorePreparedContext prepared,
     BackupTaskProgressListener? onProgress,
   }) async {
-    await executeRestore(
+    final UnlockedVaultSession? livePriorSession = await executeRestore(
       backupFile: backupFile,
       prepared: prepared,
       onProgress: onProgress,
     );
     onProgress?.call(BackupTaskProgress.startingAfterRestore);
-    return finishRestoreSession(ref, prepared: prepared);
+    return finishRestoreSession(
+      ref,
+      prepared: prepared,
+      livePriorSession: livePriorSession,
+    );
   }
 }

@@ -117,7 +117,7 @@ void main() {
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
 
-  test('resume 自動驗證若被系統提前取消，保留 inactivity 狀態供後續重試', () async {
+  test('resume 自動驗證若被取消，保留原 locked 狀態供下次 resumed 再觸發', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: const DeviceKeyUserCancelledException(),
     );
@@ -139,10 +139,10 @@ void main() {
     expect(state.status, AppLockStatus.locked);
     expect(state.lockReason, SessionLockReason.inactivity);
     expect(state.message, kUseDeviceLockToUnlockMessage);
-    expect(controller.shouldAutoReauth, isTrue);
+    expect(controller.shouldUnlockOnResume, isTrue);
   });
 
-  test('resume 自動驗證遇到真正驗證失敗時改為 authFailed', () async {
+  test('resume 自動驗證遇到真正驗證失敗時改為 authFailed 並保留下次 resumed 再驗證', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: const DeviceKeyAuthFailedException('bio failed'),
     );
@@ -165,7 +165,7 @@ void main() {
     expect(state.status, AppLockStatus.locked);
     expect(state.lockReason, SessionLockReason.authFailed);
     expect(state.message, kLockedRetryVerificationMessage);
-    expect(controller.shouldAutoReauth, isFalse);
+    expect(controller.shouldUnlockOnResume, isTrue);
   });
 
   test('lock 會清除 session 並標記 manual', () async {
@@ -297,7 +297,7 @@ void main() {
     expect(controller.inactivityWatchdog.isArmed, isFalse);
   });
 
-  test('背景逾時後標記 inactivity 並應自動 reauth', () async {
+  test('背景逾時後標記 inactivity 並在 resumed 時應主動解鎖', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -318,7 +318,7 @@ void main() {
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
     expect(state.lockReason, SessionLockReason.inactivity);
-    expect(controller.shouldAutoReauth, isTrue);
+    expect(controller.shouldUnlockOnResume, isTrue);
     expect(repository.openTrustedSessionCalls, 0);
   });
 

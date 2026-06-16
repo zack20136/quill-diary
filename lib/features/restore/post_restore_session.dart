@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/security/unlocked_vault_session.dart';
 import '../../shared/providers/core_providers.dart';
 import '../editor/providers/editor_providers.dart';
 import '../home/providers/home_providers.dart';
@@ -12,6 +13,7 @@ import 'restore_prepared_context.dart';
 Future<AppSessionState> finishRestoreSession(
   WidgetRef ref, {
   required RestorePreparedContext prepared,
+  UnlockedVaultSession? livePriorSession,
 }) async {
   await resetRepositoriesAfterRestore(ref);
 
@@ -19,6 +21,7 @@ Future<AppSessionState> finishRestoreSession(
     final AppSessionState sessionState = await _startupRestoredSession(
       ref,
       prepared: prepared,
+      livePriorSession: livePriorSession,
     );
     if (sessionState.isUnlocked && sessionState.session != null) {
       await refreshEntryIndexCaches(ref);
@@ -45,15 +48,16 @@ Future<void> resetRepositoriesAfterRestore(WidgetRef ref) async {
 Future<AppSessionState> _startupRestoredSession(
   WidgetRef ref, {
   required RestorePreparedContext prepared,
+  UnlockedVaultSession? livePriorSession,
 }) async {
   final String? trimmedKey = prepared.backupRecoveryKey?.trim();
   if (trimmedKey != null && trimmedKey.isNotEmpty) {
     return _unlockWithRecoveryKey(ref, trimmedKey);
   }
-  if (prepared.precheck.canResumeTrustedSession(prepared.priorSession)) {
+  if (prepared.precheck.canResumeTrustedSession(livePriorSession)) {
     return ref
         .read(appSessionProvider.notifier)
-        .resumeSessionAfterRestore(prepared.priorSession!);
+        .resumeSessionAfterRestore(livePriorSession!);
   }
   if (prepared.precheck.expectsTrustedUnlockAfterRestore) {
     return ref

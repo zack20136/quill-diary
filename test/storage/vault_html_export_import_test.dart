@@ -8,13 +8,15 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-import '../helpers/vault_archive_io_test_harness.dart';
+import '../helpers/vault_test_harness.dart';
 
 void main() {
-  late VaultArchiveIoTestHarness harness;
+  late VaultTestHarness harness;
+  late VaultArchiveIo archiveIo;
 
   setUp(() async {
-    harness = await VaultArchiveIoTestHarness.create();
+    harness = await VaultTestHarness.create();
+    archiveIo = harness.createArchiveIo();
   });
 
   tearDown(() async {
@@ -22,7 +24,7 @@ void main() {
   });
 
   test('選取日記可合併匯出單一 HTML 並內嵌圖片', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'html_source'),
     )..createSync(recursive: true);
@@ -32,7 +34,7 @@ void main() {
       ..writeAsBytesSync(const <int>[6, 7, 8]);
 
     final String selectedId = generateEntryId();
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: selectedId,
@@ -58,7 +60,7 @@ void main() {
         ),
       ],
     );
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: generateEntryId(),
@@ -71,11 +73,11 @@ void main() {
       ),
     );
 
-    final HtmlExportEstimate estimate = await harness.archiveIo.estimateSelectedHtmlExport(
+    final HtmlExportEstimate estimate = await archiveIo.estimateSelectedHtmlExport(
       entryIds: <String>{selectedId},
     );
     final File output = File(p.join(harness.tempDir.path, 'selected.html'));
-    await harness.archiveIo.writeSelectedHtmlExport(
+    await archiveIo.writeSelectedHtmlExport(
       session: setup.session,
       entryIds: <String>{selectedId},
       target: output,
@@ -101,7 +103,7 @@ void main() {
   });
 
   test('可匯入 Quill Diary 匯出的 HTML', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'roundtrip_source'),
     )..createSync(recursive: true);
@@ -109,7 +111,7 @@ void main() {
       ..writeAsBytesSync(const <int>[1, 2, 3, 4, 5]);
 
     final String selectedId = generateEntryId();
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: selectedId,
@@ -132,30 +134,30 @@ void main() {
     );
 
     final File exported = File(p.join(harness.tempDir.path, 'roundtrip.html'));
-    await harness.archiveIo.writeSelectedHtmlExport(
+    await archiveIo.writeSelectedHtmlExport(
       session: setup.session,
       entryIds: <String>{selectedId},
       target: exported,
     );
 
-    final PortableImportResult result = await harness.archiveIo.importDocuments(
+    final PortableImportResult result = await archiveIo.importDocuments(
       session: setup.session,
       rootDirectory: harness.tempDir,
     );
 
     expect(result.importedEntries, 1);
 
-    final entries = await harness.harness.repository.listEntries();
+    final entries = await harness.repository.listEntries();
     expect(entries, hasLength(2));
 
     final EntryIndexRecord importedRecord = entries.firstWhere(
       (EntryIndexRecord record) => record.id != selectedId,
     );
-    final DiaryEntry? imported = await harness.harness.repository.loadEntry(
+    final DiaryEntry? imported = await harness.repository.loadEntry(
       setup.session,
       importedRecord.id,
     );
-    final attachments = await harness.harness.repository.loadAttachments(importedRecord.id);
+    final attachments = await harness.repository.loadAttachments(importedRecord.id);
 
     expect(imported?.title, 'HTML Roundtrip');
     expect(imported?.date.value, '2026-05-28');
@@ -171,7 +173,7 @@ void main() {
   });
 
   test('可從 Quill Diary 匯出的單一 HTML 匯入多篇日記', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final Directory sourceDirectory = Directory(
       p.join(harness.tempDir.path, 'multi_roundtrip_source'),
     )..createSync(recursive: true);
@@ -180,7 +182,7 @@ void main() {
 
     final String firstId = generateEntryId();
     final String secondId = generateEntryId();
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: firstId,
@@ -199,7 +201,7 @@ void main() {
         ),
       ],
     );
-    await harness.harness.repository.saveEntry(
+    await harness.repository.saveEntry(
       setup.session,
       DiaryEntry(
         id: secondId,
@@ -213,20 +215,20 @@ void main() {
     );
 
     final File exported = File(p.join(harness.tempDir.path, 'multi_roundtrip.html'));
-    await harness.archiveIo.writeSelectedHtmlExport(
+    await archiveIo.writeSelectedHtmlExport(
       session: setup.session,
       entryIds: <String>{firstId, secondId},
       target: exported,
     );
 
-    final PortableImportResult result = await harness.archiveIo.importDocuments(
+    final PortableImportResult result = await archiveIo.importDocuments(
       session: setup.session,
       rootDirectory: harness.tempDir,
     );
 
     expect(result.importedEntries, 2);
 
-    final entries = await harness.harness.repository.listEntries();
+    final entries = await harness.repository.listEntries();
     expect(entries, hasLength(4));
 
     final List<DiaryEntry> imported = <DiaryEntry>[];
@@ -234,7 +236,7 @@ void main() {
       if (record.id == firstId || record.id == secondId) {
         continue;
       }
-      final DiaryEntry? entry = await harness.harness.repository.loadEntry(
+      final DiaryEntry? entry = await harness.repository.loadEntry(
         setup.session,
         record.id,
       );
@@ -258,17 +260,17 @@ void main() {
 
     final DiaryEntry firstImported =
         imported.firstWhere((DiaryEntry entry) => entry.title == '第一篇');
-    final attachments = await harness.harness.repository.loadAttachments(firstImported.id);
+    final attachments = await harness.repository.loadAttachments(firstImported.id);
     expect(attachments, hasLength(1));
     expect(attachments.single.mimeType, 'image/png');
   });
 
   test('HTML 匯出沒有可用日記時回報錯誤', () async {
-    final setup = await harness.harness.setupRecoveryKey();
+    final setup = await harness.setupRecoveryKey();
     final File output = File(p.join(harness.tempDir.path, 'empty.html'));
 
     expect(
-      () => harness.archiveIo.writeSelectedHtmlExport(
+      () => archiveIo.writeSelectedHtmlExport(
         session: setup.session,
         entryIds: <String>{'jrn_NOT_FOUND'},
         target: output,

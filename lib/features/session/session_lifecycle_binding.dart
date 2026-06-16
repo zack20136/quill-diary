@@ -4,22 +4,19 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/session_providers.dart';
-import 'state/unlock_result.dart';
 
-/// 將 App 生命週期與使用者互動接到 session 背景逾時與自動 reauth。
+/// 將 App 生命週期與使用者互動接到 session 背景逾時與 resumed 自動解鎖。
 class SessionLifecycleBinding with WidgetsBindingObserver {
   SessionLifecycleBinding(
     this.ref, {
-    this.autoReauthDelay = const Duration(milliseconds: 350),
-    this.autoReauthRetryDelay = const Duration(milliseconds: 700),
+    this.resumeUnlockDelay = const Duration(milliseconds: 350),
   });
 
   final WidgetRef ref;
-  final Duration autoReauthDelay;
-  final Duration autoReauthRetryDelay;
+  final Duration resumeUnlockDelay;
   bool _attached = false;
   bool _isForeground = true;
-  int _autoReauthToken = 0;
+  int _resumeUnlockToken = 0;
 
   void attach() {
     if (_attached) {
@@ -33,7 +30,7 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     if (!_attached) {
       return;
     }
-    _cancelPendingAutoReauth();
+    _cancelPendingResumeUnlock();
     WidgetsBinding.instance.removeObserver(this);
     _attached = false;
   }
@@ -53,16 +50,16 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _isForeground = false;
-        _cancelPendingAutoReauth();
+        _cancelPendingResumeUnlock();
         controller.notifyAppBackground();
         break;
       case AppLifecycleState.resumed:
         _isForeground = true;
         await controller.notifyAppForegroundResumed(
-          onForegroundSettled: () => _scheduleAutoReauthIfNeeded(controller),
+          onForegroundSettled: () => _scheduleResumeUnlockIfNeeded(controller),
         );
-        if (controller.shouldAutoReauth) {
-          _scheduleAutoReauthIfNeeded(controller);
+        if (controller.shouldUnlockOnResume) {
+          _scheduleResumeUnlockIfNeeded(controller);
         }
         break;
       case AppLifecycleState.inactive:
@@ -71,47 +68,38 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     }
   }
 
-  void _scheduleAutoReauthIfNeeded(AppSessionController controller) {
-    if (!_attached || !_isForeground || !controller.shouldAutoReauth) {
+  void _scheduleResumeUnlockIfNeeded(AppSessionController controller) {
+    if (!_attached || !_isForeground || !controller.shouldUnlockOnResume) {
       return;
     }
-    final int token = ++_autoReauthToken;
-    unawaited(_runAutoReauthAttempt(controller, token: token));
+    final int token = ++_resumeUnlockToken;
+    unawaited(_runResumeUnlock(controller, token: token));
   }
 
-  void _cancelPendingAutoReauth() {
-    _autoReauthToken++;
+  void _cancelPendingResumeUnlock() {
+    _resumeUnlockToken++;
   }
 
-  Future<void> _runAutoReauthAttempt(
+  Future<void> _runResumeUnlock(
     AppSessionController controller, {
     required int token,
-    int attempt = 0,
   }) async {
-    final Duration delay = attempt == 0 ? autoReauthDelay : autoReauthRetryDelay;
-    if (delay > Duration.zero) {
-      await Future<void>.delayed(delay);
+    if (resumeUnlockDelay > Duration.zero) {
+      await Future<void>.delayed(resumeUnlockDelay);
     }
-    if (!_canRunAutoReauth(controller, token)) {
+    if (!_canRunResumeUnlock(controller, token)) {
       return;
     }
-    final UnlockOutcome outcome = await controller.unlock(
+    await controller.unlock(
       source: UnlockRequestSource.lifecycleResume,
     );
-    if (outcome == UnlockOutcome.success) {
-      return;
-    }
-    if (attempt > 0 || !_canRunAutoReauth(controller, token)) {
-      return;
-    }
-    unawaited(_runAutoReauthAttempt(controller, token: token, attempt: attempt + 1));
   }
 
-  bool _canRunAutoReauth(AppSessionController controller, int token) {
+  bool _canRunResumeUnlock(AppSessionController controller, int token) {
     return _attached &&
         _isForeground &&
-        token == _autoReauthToken &&
-        controller.shouldAutoReauth;
+        token == _resumeUnlockToken &&
+        controller.shouldUnlockOnResume;
   }
 
   Widget wrap(Widget child) {
