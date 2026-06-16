@@ -86,6 +86,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          supportedPlatformProvider.overrideWithValue(true),
           vaultTransferServiceProvider.overrideWithValue(transferService),
           vaultRepositoryProvider.overrideWithValue(repository),
           appLockServiceProvider.overrideWithValue(FakeAppLockService()),
@@ -285,6 +286,34 @@ void main() {
     expect(caughtError, isA<StateError>());
     expect(transferService.restoreCalls, 0);
     expect(completed, isFalse);
+  });
+
+  testWidgets('啟動狀態為 recoveryRequired 時仍可直接還原', (WidgetTester tester) async {
+    repository = FakeSessionVaultRepository(
+      metadata: backupMetadata,
+      hasTrustedDevice: false,
+    );
+    transferService.nextPrecheck = trustedPrecheck();
+    bool completed = false;
+
+    await pumpFlowHost(
+      tester,
+      activateSession: false,
+      confirm: (_, {String? driveBackupName}) async => true,
+      onComplete: ({
+        String? backupRecoveryKey,
+        required RestorePrecheck precheck,
+        UnlockedVaultSession? priorSession,
+      }) async {
+        completed = true;
+      },
+    );
+
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+
+    expect(transferService.restoreCalls, 1);
+    expect(completed, isTrue);
   });
 }
 

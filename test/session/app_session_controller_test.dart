@@ -256,6 +256,34 @@ void main() {
     expect(repository.closeUnlockedResourcesCalls, 0);
   });
 
+  test('敏感任務在背景完成後會重新開始背景逾時計時', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final Completer<void> holdSensitiveTask = Completer<void>();
+
+    controller.activateSession(sampleSession);
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
+
+    final Future<void> task = controller.runSensitiveTask((UnlockedVaultSession _) async {
+      await holdSensitiveTask.future;
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    controller.notifyAppBackground();
+    holdSensitiveTask.complete();
+    await task;
+
+    advanceClock(controller, defaultSessionTimeout + const Duration(seconds: 1));
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.inactivity);
+  });
+
   test('reset 會回到 uninitialized 並關閉資源', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(repository);

@@ -75,6 +75,12 @@ NT$2000  大大大大大力支持
 | `TODO(manual:test-matrix)` | 實機測：成功、取消、付款失敗、pending、重複購買、重開補單 |
 | `TODO(manual:consume-complete)` | 確認 `consumePurchase` + `completePurchase` 正常，同一商品可再次購買 |
 
+## 自動化與手動驗證
+
+目前程式碼庫內已覆蓋的部分，主要是 `BillingConfig` 與 `GoogleBillingService` 的行為契約；像商品建立、License testing、實機付款流程、補單與消耗購買，仍需依 Play Console 與真機環境手動驗證。
+
+這份文件中的 `TODO(manual:...)` 代表尚未自動化、但發布前必做的清單，不是遺漏的產品需求。
+
 ## 必測情境
 
 - 五檔商品皆能查詢並顯示 Play 價格

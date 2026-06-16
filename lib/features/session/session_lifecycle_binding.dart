@@ -3,7 +3,6 @@ import 'dart:async' show unawaited;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'session_inactivity_watchdog.dart';
 import 'providers/session_providers.dart';
 import 'state/unlock_result.dart';
 
@@ -59,11 +58,10 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
         break;
       case AppLifecycleState.resumed:
         _isForeground = true;
-        final ForegroundResumeResult result = await controller
-            .notifyAppForegroundResumed(
-              onForegroundSettled: () => _scheduleAutoReauthIfNeeded(controller),
-            );
-        if (result == ForegroundResumeResult.expired) {
+        await controller.notifyAppForegroundResumed(
+          onForegroundSettled: () => _scheduleAutoReauthIfNeeded(controller),
+        );
+        if (controller.shouldAutoReauth) {
           _scheduleAutoReauthIfNeeded(controller);
         }
         break;

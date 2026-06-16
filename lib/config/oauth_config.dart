@@ -37,14 +37,31 @@ class OAuthConfig {
   }
 
   static Future<String> resolveServerClientId() async {
-    final String fromEnv = googleServerClientId.trim();
+    return resolveServerClientIdForTesting(
+      envServerClientId: googleServerClientId,
+      isAndroid: !kIsWeb && Platform.isAndroid,
+      androidResolver: () =>
+          _androidOAuthChannel.invokeMethod<String>('getServerClientId'),
+    );
+  }
+
+  /// 測試用注入點：保留 production 邏輯，但允許替換 Android 來源與平台判斷。
+  @visibleForTesting
+  static Future<String> resolveServerClientIdForTesting({
+    required String envServerClientId,
+    bool isAndroid = false,
+    Future<String?> Function()? androidResolver,
+  }) async {
+    final String fromEnv = envServerClientId.trim();
     if (fromEnv.isNotEmpty) {
       return fromEnv;
     }
-    if (!kIsWeb && Platform.isAndroid) {
+    if (isAndroid) {
       try {
-        final String? fromXml =
-            await _androidOAuthChannel.invokeMethod<String>('getServerClientId');
+        final Future<String?> Function() resolver =
+            androidResolver ??
+                () => _androidOAuthChannel.invokeMethod<String>('getServerClientId');
+        final String? fromXml = await resolver();
         return fromXml?.trim() ?? '';
       } on Object catch (error, stackTrace) {
         FlutterError.dumpErrorToConsole(

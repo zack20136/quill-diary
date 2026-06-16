@@ -93,7 +93,7 @@ Play Console「Privacy policy」欄位請填入：
 
 `https://zack20136.github.io/quill-diary/privacy-policy`
 
-來源文件：[docs/privacy-policy.md](../../../privacy-policy.md)
+來源文件：[docs/privacy-policy.md](../../privacy-policy.md)
 
 **維護注意**：公開 URL 以 `AppIdentifiers.privacyPolicyUrl` / `thirdPartyNoticesUrl` 為準；頁面原始檔在 `docs/` 根目錄。開發文件在 `docs/介紹/`（Jekyll 已 exclude，不會發布）。
 

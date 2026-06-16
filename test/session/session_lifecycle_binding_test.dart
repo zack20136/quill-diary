@@ -6,6 +6,7 @@ import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/session_lifecycle_binding.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/features/session/state/session_lock_reason.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -52,6 +53,48 @@ void main() {
     await tester.pump();
 
     await tester.pump(const Duration(milliseconds: 50));
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
+    expect(repository.openTrustedSessionCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('背景 timer 已先鎖定時，resumed 仍會自動重新驗證', (WidgetTester tester) async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          vaultRepositoryProvider.overrideWithValue(repository),
+          appLockServiceProvider.overrideWithValue(
+            FakeAppLockService(unlockMode: AppUnlockMode.none),
+          ),
+        ],
+        child: const _BindingHost(
+          autoReauthDelay: Duration.zero,
+          autoReauthRetryDelay: Duration.zero,
+        ),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+
+    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    controller.activateSession(sampleSession);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(defaultSessionTimeout + const Duration(seconds: 1));
+
+    final AppSessionState lockedState = container.read(appSessionProvider);
+    expect(lockedState.status, AppLockStatus.locked);
+    expect(lockedState.lockReason, SessionLockReason.inactivity);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 1);

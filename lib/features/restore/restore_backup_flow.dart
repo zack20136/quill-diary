@@ -21,7 +21,8 @@ class RestoreBackupFlow {
   final WidgetRef ref;
 
   Future<VaultTransferAccess> _loadTransferAccess() async {
-    final AppSessionState sessionState = ref.read(appSessionProvider);
+    final AppSessionState sessionState =
+        await ref.read(effectiveAppSessionProvider.future);
     final bool hasUnlockedSession =
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
@@ -101,7 +102,7 @@ class RestoreBackupFlow {
 
     return RestorePreparedContext(
       precheck: precheck,
-      priorSession: ref.read(appSessionProvider).session,
+      priorSession: (await ref.read(effectiveAppSessionProvider.future)).session,
       backupRecoveryKey: backupRecoveryKey,
     );
   }

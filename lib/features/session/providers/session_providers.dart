@@ -28,6 +28,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   final SessionInactivityWatchdog _inactivityWatchdog = SessionInactivityWatchdog();
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
+  bool _isInForeground = true;
 
   @visibleForTesting
   SessionInactivityWatchdog get inactivityWatchdog => _inactivityWatchdog;
@@ -96,12 +97,13 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   void activateSession(UnlockedVaultSession session, {String? message}) {
-    state = AppSessionState(
-      status: AppLockStatus.unlocked,
-      session: session,
-      message: message,
+    _applyState(
+      AppSessionState(
+        status: AppLockStatus.unlocked,
+        session: session,
+        message: message,
+      ),
     );
-    onSessionUnlocked();
   }
 
   Future<void> reset() async {
@@ -125,6 +127,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   void notifyAppBackground() {
+    _isInForeground = false;
     if (!_shouldWatchInactivity) {
       return;
     }
@@ -134,6 +137,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   Future<ForegroundResumeResult> notifyAppForegroundResumed({
     required VoidCallback onForegroundSettled,
   }) {
+    _isInForeground = true;
     return _inactivityWatchdog.notifyForegroundResumed(
       onForegroundSettled: onForegroundSettled,
     );
@@ -168,6 +172,9 @@ class AppSessionController extends Notifier<AppSessionState> {
       timeout: readSessionBackgroundTimeout(ref),
       onExpired: expireFromInactivity,
     );
+    if (!_isInForeground) {
+      _inactivityWatchdog.notifyBackground();
+    }
   }
 
   Future<T> runSensitiveTask<T>(
@@ -369,6 +376,14 @@ class AppSessionController extends Notifier<AppSessionState> {
       state.isUnlocked && _activeSensitiveTasks == 0;
 
   AppSessionState get currentState => state;
+
+  void _applyState(AppSessionState next) {
+    _inactivityWatchdog.disarm();
+    state = next;
+    if (next.isUnlocked && next.session != null) {
+      onSessionUnlocked();
+    }
+  }
 
   /// 還原後以單一路徑啟動 session，避免與 [appStartupProvider] 並行解鎖。
   Future<AppSessionState> bootstrapAfterRestore() {
