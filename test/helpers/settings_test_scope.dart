@@ -11,6 +11,7 @@ import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import 'fake_session_vault_repository.dart';
@@ -59,7 +60,11 @@ Future<void> pumpSettingsPage(
       sessionState: sessionState,
       transferService: transferService,
       recoveryMetadata: recoveryMetadata,
-      child: const MaterialApp(home: SettingsPage()),
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsPage(),
+      ),
     ),
   );
 }

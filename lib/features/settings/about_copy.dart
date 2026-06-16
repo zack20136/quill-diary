@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/shared/vault_backup_policy.dart';
+import '../../l10n/l10n.dart';
 import 'settings_copy.dart';
 import 'legal_disclosures.dart';
 
@@ -48,7 +49,8 @@ class AboutItemCopy {
 
 /// 設定「介紹」子頁文案（單一來源）。
 abstract final class SettingsAboutCopy {
-  static const String pageTitle = '介紹';
+  static String pageTitle(BuildContext context) =>
+      context.l10n.localeName.startsWith('en') ? 'About' : '介紹';
 
   static List<AboutTabCopy> tabs(Duration sessionTimeout) => <AboutTabCopy>[
     AboutTabCopy(

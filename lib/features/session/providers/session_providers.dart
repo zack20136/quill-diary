@@ -41,7 +41,7 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   void beginTrustedUnlock() {
     _inactivityWatchdog.disarm();
-    state = const AppSessionState(
+    state = AppSessionState(
       status: AppLockStatus.unlocking,
       message: kTrustedUnlockInProgressMessage,
     );
@@ -117,7 +117,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
-    state = const AppSessionState(
+    state = AppSessionState(
       status: AppLockStatus.unlocking,
       message: kPostRestoreStartupMessage,
     );
@@ -399,7 +399,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
 
     _inactivityWatchdog.disarm();
-    state = const AppSessionState(
+    state = AppSessionState(
       status: AppLockStatus.unlocking,
       message: kPostRestoreStartupMessage,
     );
@@ -457,7 +457,7 @@ final appSessionProvider =
 /// 冷啟動或還原後重新建立應用 session（請在還原流程直接呼叫，避免與 provider 並行）。
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   if (!ref.read(supportedPlatformProvider)) {
-    return const AppSessionState(
+    return AppSessionState(
       status: AppLockStatus.fatalError,
       message: kAndroidOnlyMessage,
     );
@@ -471,7 +471,7 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
 
     final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
     if (metadata == null) {
-      return const AppSessionState(
+      return AppSessionState(
         status: AppLockStatus.unlocked,
         message: kStartupNeedsRecoveryKeyMessage,
       );
@@ -479,7 +479,7 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
 
     final bool hasTrustedDevice = await repository.hasTrustedDeviceAccess();
     if (!hasTrustedDevice) {
-      return const AppSessionState(
+      return AppSessionState(
         status: AppLockStatus.recoveryRequired,
         message: kStartupNeedsTrustedDeviceMessage,
       );

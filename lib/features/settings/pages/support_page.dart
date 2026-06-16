@@ -52,7 +52,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     return Scaffold(
       backgroundColor: pageBackground,
       appBar: AppBar(
-        title: const Text(SettingsSupportCopy.pageTitle),
+        title: Text(SettingsSupportCopy.pageTitle),
         backgroundColor: pageBackground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -88,7 +88,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
               },
             ),
             const SizedBox(height: 16),
-            const _SupportInfoCard(
+            _SupportInfoCard(
               icon: Icons.payments_outlined,
               title: SettingsSupportCopy.complianceCardTitle,
               body: SettingsSupportCopy.complianceCardBody,

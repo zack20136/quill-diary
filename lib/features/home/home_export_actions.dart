@@ -5,7 +5,7 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_repository.dart';
-import '../../shared/copy/common_copy.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 import '../../shared/providers/core_providers.dart';
 import '../../shared/utils/user_facing_error.dart';
@@ -67,6 +67,7 @@ Future<void> exportEntriesAsHtml(
       SnackBar(
         content: Text(
           HomeCopy.htmlExportSuccess(
+            context,
             DisplayFormat.formatSavedFileNameForDisplay(savedPath),
           ),
         ),
@@ -89,11 +90,11 @@ Future<void> exportEntriesAsHtml(
   }
 }
 
-String overviewExportLabel(MemoryScope scope) {
+String overviewExportLabel(BuildContext context, MemoryScope scope) {
   return switch (scope) {
-    MemoryScope.all => HomeCopy.exportRecapAll,
-    MemoryScope.year => HomeCopy.exportRecapYear,
-    MemoryScope.month => HomeCopy.exportRecapMonth,
+    MemoryScope.all => HomeCopy.exportRecapAll(context),
+    MemoryScope.year => HomeCopy.exportRecapYear(context),
+    MemoryScope.month => HomeCopy.exportRecapMonth(context),
   };
 }
 
@@ -104,34 +105,37 @@ Future<bool> confirmLargeHtmlExport(
   return await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text(HomeCopy.htmlExportLargeTitle),
+          title: Text(HomeCopy.htmlExportLargeTitle(dialogContext)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(HomeCopy.htmlExportSelectionSummary(
+                dialogContext,
                 estimate.entryCount,
                 estimate.imageCount,
               )),
               const SizedBox(height: 8),
               Text(HomeCopy.htmlExportImageSize(
+                dialogContext,
                 DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
               )),
               Text(HomeCopy.htmlExportEstimatedSize(
+                dialogContext,
                 DisplayFormat.formatBytesForDisplay(estimate.estimatedHtmlBytes),
               )),
               const SizedBox(height: 12),
-              const Text(HomeCopy.htmlExportEmbeddedHint),
+              Text(HomeCopy.htmlExportEmbeddedHint(dialogContext)),
             ],
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(CommonCopy.actionCancel),
+              child: Text(dialogContext.l10n.commonActionCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(HomeCopy.htmlExportProceed),
+              child: Text(HomeCopy.htmlExportProceed(dialogContext)),
             ),
           ],
         ),

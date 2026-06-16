@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -9,6 +13,13 @@ import '../helpers/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;
+
+  Future<void> persistZhTwPreference() {
+    // Make the one-time default-tag seed deterministic for this catalog test.
+    return UserPreferences(
+      storageFile: File('${harness.tempDir.path}/app_preferences.json'),
+    ).setAppLocale(AppLanguage.zhTw);
+  }
 
   setUp(() async {
     harness = await VaultTestHarness.create();
@@ -19,6 +30,7 @@ void main() {
   });
 
   test('setupRecoveryKey 後會 seed 預設標籤與語意色', () async {
+    await persistZhTwPreference();
     await harness.repository.setupRecoveryKey();
 
     final List<TagCatalogItem> catalog = await harness.repository.listTagCatalog();
@@ -45,6 +57,7 @@ void main() {
   });
 
   test('ensureIndexReady 在空 catalog 時 seed 預設標籤', () async {
+    await persistZhTwPreference();
     final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
     await TagStylesStore(harness.pathStrategy).write(const <TagCatalogItem>[]);
 

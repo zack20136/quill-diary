@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../infrastructure/preferences/personalization_preferences.dart';
 import '../../../infrastructure/preferences/user_preferences.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
-import '../personalization_copy.dart';
 import '../providers/personalization_providers.dart';
-import '../settings_copy.dart';
 import 'settings_sections.dart';
 
-/// 語言選擇（English 第一版 disabled）。
+/// 語言選擇。
 class PersonalizationLanguageSectionBody extends StatelessWidget {
   const PersonalizationLanguageSectionBody({
     required this.selected,
@@ -19,35 +18,34 @@ class PersonalizationLanguageSectionBody extends StatelessWidget {
     super.key,
   });
 
-  final AppLocalePreference selected;
-  final Future<void> Function(AppLocalePreference value) onSelected;
+  final AppLanguage selected;
+  final Future<void> Function(AppLanguage value) onSelected;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsSegmentedChoiceBar<AppLocalePreference>(
-          choices: <SettingsSegmentChoice<AppLocalePreference>>[
-            SettingsSegmentChoice<AppLocalePreference>(
-              value: AppLocalePreference.zhTw,
-              label: PersonalizationCopy.languageZhTwLabel,
+        SettingsSegmentedChoiceBar<AppLanguage>(
+          choices: <SettingsSegmentChoice<AppLanguage>>[
+            SettingsSegmentChoice<AppLanguage>(
+              value: AppLanguage.zhTw,
+              label: context.l10n.languageNameZhTw,
               icon: Icons.translate_rounded,
             ),
-            SettingsSegmentChoice<AppLocalePreference>(
-              value: AppLocalePreference.en,
-              label: PersonalizationCopy.languageEnLabel,
+            SettingsSegmentChoice<AppLanguage>(
+              value: AppLanguage.en,
+              label: context.l10n.languageNameEn,
               icon: Icons.language_rounded,
-              enabled: false,
             ),
           ],
           selected: selected,
           onSelected: onSelected,
         ),
         const SizedBox(height: 10),
-        const SettingsInfoBanner(
+        SettingsInfoBanner(
           icon: Icons.info_outline_rounded,
-          message: PersonalizationCopy.languageComingSoonHint,
+          message: context.l10n.personalizationLanguageComingSoonHint,
           tone: SettingsBannerTone.neutral,
         ),
       ],
@@ -81,7 +79,7 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
                   (SessionBackgroundTimeoutMinutes value) =>
                       SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
                     value: value,
-                    label: PersonalizationCopy.sessionTimeoutSegmentLabel(value),
+                    label: '${value.minutes}',
                     icon: null,
                     flex: 1,
                   ),
@@ -93,7 +91,7 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          PersonalizationCopy.sessionTimeoutUnitLabel,
+          context.l10n.personalizationSessionTimeoutUnitLabel,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
@@ -124,19 +122,19 @@ class PersonalizationImageCompressSectionBody extends StatelessWidget {
           choices: <SettingsSegmentChoice<ImageCompressPreset>>[
             SettingsSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.original,
-              label: PersonalizationCopy.imageCompressOriginalLabel,
+              label: context.l10n.personalizationImageCompressOriginalLabel,
               icon: Icons.photo_size_select_large_outlined,
               flex: 2,
             ),
             SettingsSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.standard,
-              label: PersonalizationCopy.imageCompressStandardLabel,
+              label: context.l10n.personalizationImageCompressStandardLabel,
               icon: Icons.photo_size_select_small_outlined,
               flex: 2,
             ),
             SettingsSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.high,
-              label: PersonalizationCopy.imageCompressHighLabel,
+              label: context.l10n.personalizationImageCompressHighLabel,
               icon: Icons.high_quality_outlined,
               flex: 2,
             ),
@@ -146,7 +144,7 @@ class PersonalizationImageCompressSectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          PersonalizationCopy.imageCompressDescription(selected),
+          _imageCompressDescription(context.l10n, selected),
           style: theme.textTheme.bodyMedium?.copyWith(
             color: cs.onSurfaceVariant,
             height: 1.45,
@@ -174,19 +172,19 @@ class PersonalizationAppearanceSectionBody extends StatelessWidget {
       choices: <SettingsSegmentChoice<AppThemeModePreference>>[
         SettingsSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.system,
-          label: PersonalizationCopy.appearanceSystemLabel,
+          label: context.l10n.personalizationAppearanceSystemLabel,
           icon: Icons.brightness_auto_rounded,
           flex: 3,
         ),
         SettingsSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.light,
-          label: PersonalizationCopy.appearanceLightLabel,
+          label: context.l10n.personalizationAppearanceLightLabel,
           icon: Icons.light_mode_outlined,
           flex: 2,
         ),
         SettingsSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.dark,
-          label: PersonalizationCopy.appearanceDarkLabel,
+          label: context.l10n.personalizationAppearanceDarkLabel,
           icon: Icons.dark_mode_outlined,
           flex: 2,
         ),
@@ -221,7 +219,7 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         SettingsActionButton(
-          label: PersonalizationCopy.typographyResetButton,
+          label: context.l10n.personalizationTypographyResetButton,
           icon: Icons.restore_rounded,
           fullWidth: true,
           onPressed: typography.isAtDefaults
@@ -235,8 +233,8 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _PreferenceSliderRow(
-          label: PersonalizationCopy.titleFontSizeLabel,
-          valueLabel: PersonalizationCopy.fontSizeValue(typography.titleFontSize),
+          label: context.l10n.personalizationTitleFontSizeLabel,
+          valueLabel: _fontSizeValue(context.l10n, typography.titleFontSize),
           value: typography.titleFontSize,
           min: EditorTypographyPreferences.minTitleFontSize,
           max: EditorTypographyPreferences.maxTitleFontSize,
@@ -250,8 +248,8 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _PreferenceSliderRow(
-          label: PersonalizationCopy.titleLineHeightLabel,
-          valueLabel: PersonalizationCopy.lineHeightValue(typography.titleLineHeight),
+          label: context.l10n.personalizationTitleLineHeightLabel,
+          valueLabel: _lineHeightValue(context.l10n, typography.titleLineHeight),
           value: typography.titleLineHeight,
           min: EditorTypographyPreferences.minTitleLineHeight,
           max: EditorTypographyPreferences.maxTitleLineHeight,
@@ -265,8 +263,8 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _PreferenceSliderRow(
-          label: PersonalizationCopy.bodyFontSizeLabel,
-          valueLabel: PersonalizationCopy.fontSizeValue(typography.bodyFontSize),
+          label: context.l10n.personalizationBodyFontSizeLabel,
+          valueLabel: _fontSizeValue(context.l10n, typography.bodyFontSize),
           value: typography.bodyFontSize,
           min: EditorTypographyPreferences.minBodyFontSize,
           max: EditorTypographyPreferences.maxBodyFontSize,
@@ -280,8 +278,8 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _PreferenceSliderRow(
-          label: PersonalizationCopy.bodyLineHeightLabel,
-          valueLabel: PersonalizationCopy.lineHeightValue(typography.bodyLineHeight),
+          label: context.l10n.personalizationBodyLineHeightLabel,
+          valueLabel: _lineHeightValue(context.l10n, typography.bodyLineHeight),
           value: typography.bodyLineHeight,
           min: EditorTypographyPreferences.minBodyLineHeight,
           max: EditorTypographyPreferences.maxBodyLineHeight,
@@ -295,8 +293,8 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _PreferenceSliderRow(
-          label: PersonalizationCopy.bodyParagraphSpacingLabel,
-          valueLabel: PersonalizationCopy.paragraphSpacingValue(typography.bodyParagraphSpacing),
+          label: context.l10n.personalizationBodyParagraphSpacingLabel,
+          valueLabel: _paragraphSpacingValue(context.l10n, typography.bodyParagraphSpacing),
           value: typography.bodyParagraphSpacing,
           min: EditorTypographyPreferences.minBodyParagraphSpacing,
           max: EditorTypographyPreferences.maxBodyParagraphSpacing,
@@ -320,10 +318,10 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 ...List<Widget>.generate(
-                  PersonalizationCopy.typographyPreviewTitleParagraphs.length,
+                  _typographyPreviewTitleParagraphs(context.l10n).length,
                   (int index) {
                     final String paragraph =
-                        PersonalizationCopy.typographyPreviewTitleParagraphs[index];
+                        _typographyPreviewTitleParagraphs(context.l10n)[index];
                     return Padding(
                       padding: EdgeInsets.only(top: index == 0 ? 0 : 8),
                       child: Text(
@@ -335,10 +333,10 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 ...List<Widget>.generate(
-                  PersonalizationCopy.typographyPreviewBodyParagraphs.length,
+                  _typographyPreviewBodyParagraphs(context.l10n).length,
                   (int index) {
                     final String paragraph =
-                        PersonalizationCopy.typographyPreviewBodyParagraphs[index];
+                        _typographyPreviewBodyParagraphs(context.l10n)[index];
                     return Padding(
                       padding: EdgeInsets.only(
                         top: index == 0 ? 0 : typography.bodyParagraphSpacing,
@@ -366,16 +364,16 @@ Future<void> confirmAndResetTypography({
   final bool confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text(PersonalizationCopy.typographyResetConfirmTitle),
-          content: const Text(PersonalizationCopy.typographyResetConfirmBody),
+          title: Text(dialogContext.l10n.personalizationTypographyResetConfirmTitle),
+          content: Text(dialogContext.l10n.personalizationTypographyResetConfirmBody),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(SettingsCopy.actionCancel),
+              child: Text(dialogContext.l10n.commonActionCancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(PersonalizationCopy.typographyResetConfirmAction),
+              child: Text(dialogContext.l10n.personalizationTypographyResetConfirmAction),
             ),
           ],
         ),
@@ -391,8 +389,48 @@ Future<void> confirmAndResetTypography({
     return;
   }
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text(PersonalizationCopy.typographyResetSuccess)),
+    SnackBar(content: Text(context.l10n.personalizationTypographyResetSuccess)),
   );
+}
+
+String _imageCompressDescription(AppLocalizations l10n, ImageCompressPreset preset) {
+  return switch (preset) {
+    ImageCompressPreset.original => l10n.personalizationImageCompressOriginalDescription,
+    ImageCompressPreset.standard => l10n.personalizationImageCompressStandardDescription,
+    ImageCompressPreset.high => l10n.personalizationImageCompressHighDescription,
+  };
+}
+
+String _fontSizeValue(AppLocalizations l10n, double size) {
+  return l10n.personalizationFontSizeValue(_formatNumber(size));
+}
+
+String _lineHeightValue(AppLocalizations l10n, double height) {
+  return l10n.personalizationLineHeightValue(_formatNumber(height));
+}
+
+String _paragraphSpacingValue(AppLocalizations l10n, double spacing) {
+  return l10n.personalizationParagraphSpacingValue(_formatNumber(spacing));
+}
+
+List<String> _typographyPreviewTitleParagraphs(AppLocalizations l10n) {
+  return <String>[
+    l10n.personalizationTypographyPreviewTitleParagraph1,
+  ];
+}
+
+List<String> _typographyPreviewBodyParagraphs(AppLocalizations l10n) {
+  return <String>[
+    l10n.personalizationTypographyPreviewBodyParagraph1,
+    l10n.personalizationTypographyPreviewBodyParagraph2,
+  ];
+}
+
+String _formatNumber(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toStringAsFixed(0);
+  }
+  return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
 }
 
 class _PreferenceSliderRow extends StatelessWidget {

@@ -65,7 +65,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                primaryButtonLabel: EditorCopy.tagsStudioAddButton,
+                primaryButtonLabel: EditorCopy.tagsStudioAddButton(context),
               ),
             ),
           ),
@@ -186,20 +186,20 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      EditorCopy.tagsStudioTitle,
+                      EditorCopy.tagsStudioTitle(context),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: EditorCopy.tagAddTooltip,
+                    tooltip: EditorCopy.tagAddTooltip(context),
                     visualDensity: VisualDensity.compact,
                     onPressed: _openTagAccentComposer,
                     icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
                   ),
                   IconButton(
-                    tooltip: CommonCopy.closeTooltip,
+                    tooltip: CommonCopy.closeTooltip(context),
                     visualDensity: VisualDensity.compact,
                     onPressed: widget.onDismiss,
                     icon: const Icon(Icons.close_rounded),
@@ -207,7 +207,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 ],
               ),
               Text(
-                EditorCopy.tagsStudioGuide,
+                EditorCopy.tagsStudioGuide(context),
                 style: theme.textTheme.bodySmall?.copyWith(
                   height: 1.4,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -218,7 +218,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    EditorCopy.tagsStudioEmptyChosen,
+                    EditorCopy.tagsStudioEmptyChosen(context),
                     style: theme.textTheme.labelLarge?.copyWith(
                       fontStyle: FontStyle.italic,
                       color: theme.colorScheme.outline,
@@ -243,7 +243,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               TextField(
                 controller: _filterCtrl,
                 decoration: InputDecoration(
-                  hintText: EditorCopy.tagSearchHint,
+                  hintText: EditorCopy.tagSearchHint(context),
                   prefixIcon: const Icon(Icons.search_rounded, size: 22),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
@@ -254,7 +254,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                   suffixIcon: _filterCtrl.text.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: CommonCopy.clearSearchTooltip,
+                          tooltip: CommonCopy.clearSearchTooltip(context),
                           visualDensity: VisualDensity.compact,
                           onPressed: () => _filterCtrl.clear(),
                           icon: const Icon(Icons.clear_rounded),
@@ -263,7 +263,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               ),
               const SizedBox(height: 10),
               Text(
-                EditorCopy.tagLibraryHint,
+                EditorCopy.tagLibraryHint(context),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -287,7 +287,9 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8, bottom: 8),
                             child: Text(
-                              qlow.isEmpty ? EditorCopy.tagPoolEmpty : CommonCopy.noTagSearchResults,
+                              qlow.isEmpty
+                                  ? EditorCopy.tagPoolEmpty(context)
+                                  : CommonCopy.noTagSearchResults(context),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontStyle: FontStyle.italic,
                                 color: theme.colorScheme.outline,
@@ -304,11 +306,14 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               const SizedBox(height: 16),
               Row(
                 children: <Widget>[
-                  TextButton(onPressed: widget.onDismiss, child: const Text(CommonCopy.actionCancel)),
+                  TextButton(
+                    onPressed: widget.onDismiss,
+                    child: Text(CommonCopy.actionCancel(context)),
+                  ),
                   const Spacer(),
                   FilledButton(
                     onPressed: () => widget.onApply(_chosen.join(',')),
-                    child: const Text(CommonCopy.actionApply),
+                    child: Text(CommonCopy.actionApply(context)),
                   ),
                 ],
               ),
@@ -430,7 +435,7 @@ class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDial
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   IconButton(
-                    tooltip: EditorCopy.galleryDownloadTooltip,
+                    tooltip: EditorCopy.galleryDownloadTooltip(context),
                     onPressed: _downloading ? null : () => unawaited(_downloadCurrentImage()),
                     icon: _downloading
                         ? const SizedBox(
@@ -444,7 +449,7 @@ class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDial
                         : const Icon(Icons.download_outlined, color: Colors.white),
                   ),
                   IconButton(
-                    tooltip: CommonCopy.closeTooltip,
+                    tooltip: CommonCopy.closeTooltip(context),
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),
@@ -703,7 +708,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
         if (bytes == null || bytes.isEmpty) {
           return Center(
             child: Text(
-              EditorCopy.previewUnavailable,
+              EditorCopy.previewUnavailable(context),
               style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
             ),
           );
@@ -788,24 +793,24 @@ class _RestoreDraftDialog extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final String titleText = record.title?.trim().isNotEmpty == true
         ? record.title!.trim()
-        : EditorCopy.untitledDraft;
+        : EditorCopy.untitledDraft(context);
     final String updatedAtText = DisplayFormat.formatDateTimeZh(record.updatedAt);
     return AlertDialog(
-      title: const Text(EditorCopy.restoreDraftTitle),
+      title: Text(EditorCopy.restoreDraftTitle(context)),
       content: Text(
         hasExistingEntry
-            ? EditorCopy.restoreDraftOverwrite(titleText, updatedAtText)
-            : EditorCopy.restoreDraftPrompt(titleText, updatedAtText),
+            ? EditorCopy.restoreDraftOverwrite(context, titleText, updatedAtText)
+            : EditorCopy.restoreDraftPrompt(context, titleText, updatedAtText),
         style: theme.textTheme.bodyMedium,
       ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text(EditorCopy.restoreDraftDecline),
+          child: Text(EditorCopy.restoreDraftDecline(context)),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text(EditorCopy.restoreDraftAccept),
+          child: Text(EditorCopy.restoreDraftAccept(context)),
         ),
       ],
     );
@@ -818,19 +823,18 @@ class _DiscardDraftDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text(EditorCopy.discardDraftTitle),
-      content: const Text(EditorCopy.discardDraftBody),
+      title: Text(EditorCopy.discardDraftTitle(context)),
+      content: Text(EditorCopy.discardDraftBody(context)),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text(CommonCopy.actionCancel),
+          child: Text(CommonCopy.actionCancel(context)),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text(EditorCopy.discardDraftConfirm),
+          child: Text(EditorCopy.discardDraftConfirm(context)),
         ),
       ],
     );
   }
 }
-

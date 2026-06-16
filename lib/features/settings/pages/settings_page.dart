@@ -17,6 +17,7 @@ import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_archive_io.dart';
 import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../infrastructure/storage/backup_task_progress.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -31,7 +32,6 @@ import '../../session/state/unlock_result.dart';
 import '../providers/settings_providers.dart';
 import '../providers/personalization_providers.dart';
 import '../about_copy.dart';
-import '../personalization_copy.dart';
 import '../legal_disclosures.dart';
 import '../portable_import_result_messages.dart';
 import '../settings_copy.dart';
@@ -209,6 +209,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         sessionState?.isUnlocked == true && sessionState?.session != null;
     final bool hasRecoveryKey = recoveryMetadata != null;
     final VaultTransferAccess transferAccess = VaultTransferAccess.fromContext(
+      l10n: context.l10n,
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState?.status ?? AppLockStatus.uninitialized,
@@ -225,7 +226,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            const Text(SettingsCopy.pageTitle),
+            Text(SettingsCopy.pageTitle),
             const Spacer(),
             const _SettingsAppBarNavActions(),
           ],
@@ -251,7 +252,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: <Widget>[
                 if (!isSupportedPlatform)
-                  const SettingsSectionCard(
+                  SettingsSectionCard(
                     title: SettingsPlatformCopy.sectionTitle,
                     description: SettingsPlatformCopy.sectionDescription,
                     child: SettingsInfoBanner(
@@ -298,7 +299,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     description: transferAccess.canBackup
                         ? SettingsImportExportCopy.sectionDescriptionEnabled
                         : transferAccess.backupDisabledReason ??
-                            VaultTransferCopy.needsUnlockForBackup,
+                            VaultTransferCopy.needsUnlockForBackup(context.l10n),
                     child: SettingsActionGroup(
                       actions: <SettingsActionButton>[
                         SettingsActionButton(
@@ -422,11 +423,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text(SettingsCopy.actionCancel),
+                child: Text(SettingsCopy.actionCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text(SettingsCopy.actionDelete),
+                child: Text(SettingsCopy.actionDelete),
               ),
             ],
           ),
@@ -703,7 +704,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text(SettingsCopy.actionCancel),
+                child: Text(SettingsCopy.actionCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
@@ -804,7 +805,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text(SettingsCopy.actionCancel),
+                  child: Text(SettingsCopy.actionCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -831,7 +832,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         trimmedKey.isNotEmpty &&
         sessionState.status != AppLockStatus.unlocked) {
       _showError(
-        sessionState.message ?? VaultTransferCopy.restoreUnlockFailed,
+        sessionState.message ?? VaultTransferCopy.restoreUnlockFailed(context.l10n),
       );
       return;
     }
@@ -873,7 +874,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text(SettingsCopy.actionCancel),
+                  child: Text(SettingsCopy.actionCancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -1048,12 +1049,12 @@ class _SettingsAppBarNavActions extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           _SettingsAppBarNavButton(
-            label: PersonalizationCopy.navButtonLabel,
+            label: context.l10n.personalizationNavButtonLabel,
             onPressed: () => unawaited(context.push(AppRouter.personalizationRoute)),
           ),
           const SizedBox(width: _gap),
           _SettingsAppBarNavButton(
-            label: SettingsAboutCopy.pageTitle,
+            label: SettingsAboutCopy.pageTitle(context),
             onPressed: () => unawaited(context.push(AppRouter.aboutRoute)),
           ),
           const SizedBox(width: _gap),

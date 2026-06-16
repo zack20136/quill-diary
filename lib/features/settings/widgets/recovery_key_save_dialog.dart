@@ -65,7 +65,7 @@ class RecoveryKeySaveDialog extends StatelessWidget {
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(SettingsCopy.actionClose),
+          child: Text(SettingsCopy.actionClose),
         ),
       ],
     );

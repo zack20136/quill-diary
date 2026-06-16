@@ -2,10 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/home/models/overview_models.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/entry_index_fixtures.dart';
 
 void main() {
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+
   test('OverviewScopeMetrics counts photo and file attachments', () {
     final OverviewScopeMetrics metrics = OverviewScopeMetrics.fromEntries(
       <EntryIndexRecord>[
@@ -45,11 +48,11 @@ void main() {
     expect(metrics.longestWritingStreakDays, 2);
     expect(metrics.maxEntriesOnSingleDay, 2);
     expect(
-      metrics.mostEntriesInSingleDayDetail(),
+      metrics.mostEntriesInSingleDayDetail(zhL10n),
       '\u55ae\u5929\u6700\u591a 2 \u7bc7',
     );
     expect(
-      metrics.attachmentDetail(),
+      metrics.attachmentDetail(zhL10n),
       '照片 2 · 檔案 3',
     );
   });

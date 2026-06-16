@@ -75,6 +75,7 @@ final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
     indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
     deviceKeyManager: ref.watch(deviceKeyManagerProvider),
     appLockService: ref.watch(appLockServiceProvider),
+    userPreferences: ref.watch(userPreferencesProvider),
   );
 });
 

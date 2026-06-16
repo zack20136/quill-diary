@@ -3,12 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/features/editor/providers/editor_draft_providers.dart';
 import 'package:quill_diary/features/editor/providers/editor_providers.dart';
-import 'package:quill_diary/features/home/home_copy.dart';
 import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/home/state/home_state.dart';
 import 'package:quill_diary/features/home/widgets/calendar/calendar_pane.dart';
@@ -26,6 +26,8 @@ import '../../helpers/entry_index_fixtures.dart';
 import '../../helpers/fake_entry_index_vault_repository.dart';
 
 void main() {
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+
   ProviderContainer buildContainer(
     FakeEntryIndexVaultRepository repository, {
     Future<Uint8List?> Function(String path)? coverPreviewLoader,
@@ -67,7 +69,12 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: HomePage()),
+        child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const HomePage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -91,7 +98,7 @@ void main() {
     final Finder overviewPane = find.byType(OverviewPane);
     final Finder exportButton = find.descendant(
       of: overviewPane,
-      matching: find.widgetWithText(FilledButton, HomeCopy.exportRecapLabel),
+      matching: find.widgetWithText(FilledButton, zhL10n.homeExportRecapLabel),
     );
     expect(tester.widget<FilledButton>(exportButton).onPressed, isNotNull);
   });
@@ -122,7 +129,7 @@ void main() {
     final String dateLabel =
         DisplayFormat.formatDateOnlyZh(const DateOnly('2026-05-20'));
     expect(
-      find.text(HomeCopy.diarySectionTitleForDate(dateLabel), skipOffstage: false),
+      find.text(zhL10n.homeDiarySectionTitleForDate(dateLabel), skipOffstage: false),
       findsOneWidget,
     );
     expect(
@@ -210,7 +217,7 @@ void main() {
     expect(
       find.descendant(
         of: tagsPane,
-        matching: find.text(HomeCopy.diarySectionTag('travel')),
+        matching: find.text(zhL10n.homeDiarySectionTag('travel')),
       ),
       findsOneWidget,
     );

@@ -39,7 +39,7 @@ void main() {
     final MaterialApp app = tester.widget<MaterialApp>(
       find.byType(MaterialApp),
     );
-    expect(app.title, 'Quill Diary');
+    expect(app.onGenerateTitle, isNotNull);
     expect(app.routerConfig, isNotNull);
     expect(find.byType(HomePage), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -81,7 +81,7 @@ class _FixedPersonalizationPreferencesController
       typography: EditorTypographyPreferences.defaults,
       themeMode: AppThemeModePreference.system,
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
-      locale: AppLocalePreference.zhTw,
+      locale: AppLanguage.zhTw,
     );
   }
 }

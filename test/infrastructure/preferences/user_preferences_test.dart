@@ -67,7 +67,7 @@ void main() {
     expect(loaded.typography, EditorTypographyPreferences.defaults);
     expect(loaded.themeMode, AppThemeModePreference.system);
     expect(loaded.sessionTimeoutMinutes, SessionBackgroundTimeoutMinutes.three);
-    expect(loaded.locale, AppLocalePreference.zhTw);
+    expect(loaded.locale, AppLanguage.zhTw);
   });
 
   test('savePersonalizationPreferences 持久化全部欄位', () async {
@@ -82,7 +82,7 @@ void main() {
       ),
       themeMode: AppThemeModePreference.dark,
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.ten,
-      locale: AppLocalePreference.en,
+      locale: AppLanguage.en,
     );
 
     await preferences.savePersonalizationPreferences(value);

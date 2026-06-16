@@ -13,6 +13,8 @@ import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_app_lock_service.dart';
@@ -92,6 +94,9 @@ void main() {
           appLockServiceProvider.overrideWithValue(FakeAppLockService()),
         ],
         child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: _RestoreFlowHost(
             backupFile: backupFile,
             confirm: confirm,

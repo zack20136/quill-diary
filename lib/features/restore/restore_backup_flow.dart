@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/storage/backup_task_progress.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
@@ -28,6 +28,7 @@ class RestoreBackupFlow {
     final bool hasRecoveryKey =
         await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
     return VaultTransferAccess.fromContext(
+      l10n: lookupAppLocalizations(appZhTwLocale),
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState.status,
@@ -73,8 +74,9 @@ class RestoreBackupFlow {
         confirm,
     String? driveBackupName,
   }) async {
+    final AppLocalizations l10n = context.l10n;
     final VaultTransferAccess access = await _loadTransferAccess();
-    access.ensureCanRestore();
+    access.ensureCanRestore(l10n);
 
     if (!context.mounted) {
       return null;

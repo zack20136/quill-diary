@@ -1,14 +1,13 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config/app_identifiers.dart';
 import '../features/session/session_lifecycle_binding.dart';
 import '../features/settings/providers/billing_providers.dart';
 import '../features/settings/providers/personalization_providers.dart';
 import '../infrastructure/preferences/personalization_preferences.dart';
+import '../l10n/l10n.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -40,12 +39,13 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   Widget build(BuildContext context) {
     ref.watch(sponsorBillingLifecycleProvider);
     final PersonalizationPreferences prefs = watchPersonalizationPreferences(ref);
+    updateCurrentAppLocale(prefs.materialLocale);
 
     return _sessionLifecycle.wrap(
       DynamicColorBuilder(
         builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
           return MaterialApp.router(
-            title: AppIdentifiers.displayName,
+            onGenerateTitle: (BuildContext context) => context.l10n.appTitle,
             theme: buildAppTheme(dynamicScheme: lightDynamic),
             darkTheme: buildAppTheme(
               dynamicScheme: darkDynamic,
@@ -53,15 +53,23 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
             ),
             themeMode: prefs.materialThemeMode,
             locale: prefs.materialLocale,
-            supportedLocales: const <Locale>[
-              Locale('zh', 'TW'),
-              Locale('en'),
-            ],
-            localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localeListResolutionCallback: (
+              List<Locale>? locales,
+              Iterable<Locale> supportedLocales,
+            ) {
+              final List<Locale> preferred = locales ?? const <Locale>[];
+              for (final Locale locale in preferred) {
+                if (locale.languageCode == 'zh') {
+                  return appZhTwLocale;
+                }
+                if (locale.languageCode == 'en') {
+                  return appEnLocale;
+                }
+              }
+              return supportedLocales.first;
+            },
             routerConfig: _router,
           );
         },

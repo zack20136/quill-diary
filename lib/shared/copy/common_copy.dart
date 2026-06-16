@@ -1,17 +1,21 @@
+import '../../l10n/l10n.dart';
+
 /// 跨功能共用的繁體中文 UI 文案。
 abstract final class CommonCopy {
-  static const String actionCancel = '取消';
-  static const String actionDelete = '刪除';
-  static const String actionApply = '套用';
-  static const String actionClose = '關閉';
+  static AppLocalizations _l10n(BuildContext context) => context.l10n;
 
-  static const String readFailureTitle = '讀取失敗';
-  static const String confirmDeleteTitle = '確認刪除';
-  static const String noTagSearchResults = '沒有符合的標籤';
+  static String actionCancel(BuildContext context) => _l10n(context).commonActionCancel;
+  static String actionDelete(BuildContext context) => _l10n(context).commonActionDelete;
+  static String actionApply(BuildContext context) => _l10n(context).commonActionApply;
+  static String actionClose(BuildContext context) => _l10n(context).commonActionClose;
 
-  static const String closeTooltip = '關閉';
-  static const String clearSearchTooltip = '清除搜尋';
+  static String readFailureTitle(BuildContext context) => _l10n(context).commonReadFailureTitle;
+  static String confirmDeleteTitle(BuildContext context) => _l10n(context).commonConfirmDeleteTitle;
+  static String noTagSearchResults(BuildContext context) => _l10n(context).commonNoTagSearchResults;
 
-  static String confirmDeleteEntries(int count) =>
-      '確定要刪除 $count 篇日記嗎？刪除後無法復原。';
+  static String closeTooltip(BuildContext context) => _l10n(context).commonCloseTooltip;
+  static String clearSearchTooltip(BuildContext context) => _l10n(context).commonClearSearchTooltip;
+
+  static String confirmDeleteEntries(BuildContext context, int count) =>
+      _l10n(context).commonConfirmDeleteEntries(count);
 }

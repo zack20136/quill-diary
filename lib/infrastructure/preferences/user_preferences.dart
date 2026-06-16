@@ -110,12 +110,20 @@ class UserPreferences {
     await _writeValue(_sessionTimeoutKey, value.storageValue);
   }
 
-  Future<AppLocalePreference> get appLocale async {
+  Future<AppLanguage> get appLocale async {
     final String? raw = await _readValue(_appLocaleKey);
-    return AppLocalePreference.fromStorage(raw);
+    return AppLanguage.fromStorage(raw);
   }
 
-  Future<void> setAppLocale(AppLocalePreference value) async {
+  Future<AppLanguage?> get storedAppLocaleOrNull async {
+    final String? raw = await _readValue(_appLocaleKey);
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return AppLanguage.fromStorage(raw);
+  }
+
+  Future<void> setAppLocale(AppLanguage value) async {
     await _writeValue(_appLocaleKey, value.storageValue);
   }
 
@@ -132,7 +140,7 @@ class UserPreferences {
       ),
       themeMode: AppThemeModePreference.fromStorage(store[_themeModeKey]),
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.fromStorage(store[_sessionTimeoutKey]),
-      locale: AppLocalePreference.fromStorage(store[_appLocaleKey]),
+      locale: AppLanguage.fromStorage(store[_appLocaleKey]),
     );
   }
 

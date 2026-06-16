@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
@@ -30,6 +33,7 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
          deviceKeyManager: const UnsupportedDeviceKeyManager(),
          appLockService: const UnsupportedAppLockService(),
+         userPreferences: UserPreferences(storageFile: File('.unused_test_prefs.json')),
        );
 
   List<EntryIndexRecord> allEntries;

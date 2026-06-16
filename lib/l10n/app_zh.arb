@@ -1,0 +1,96 @@
+{
+  "@@locale": "zh",
+  "appTitle": "Quill Diary",
+  "languageNameZhTw": "繁體中文",
+  "languageNameEn": "English",
+  "commonActionCancel": "取消",
+  "commonActionDelete": "刪除",
+  "commonActionApply": "套用",
+  "commonActionClose": "關閉",
+  "commonReadFailureTitle": "讀取失敗",
+  "commonConfirmDeleteTitle": "確認刪除",
+  "commonNoTagSearchResults": "沒有符合的標籤",
+  "commonCloseTooltip": "關閉",
+  "commonClearSearchTooltip": "清除搜尋",
+  "commonConfirmDeleteEntries": "確定要刪除 {count} 篇日記嗎？刪除後無法復原。",
+  "@commonConfirmDeleteEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tagAddTitle": "新增標籤",
+  "tagEditTitle": "編輯標籤",
+  "tagSaveButton": "儲存",
+  "tagNameHint": "標籤名稱",
+  "tagNameRequiredMessage": "請輸入標籤名稱",
+  "tagDeleteLabel": "刪除標籤",
+  "tagUnnamedPreview": "未命名標籤",
+  "tagDefaultColorLabel": "預設色",
+  "tagHueLabel": "色相",
+  "tagPreviewLabel": "預覽",
+  "tagSaveFailure": "儲存標籤失敗：{message}",
+  "@tagSaveFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "tagDeleteFailure": "刪除標籤失敗：{message}",
+  "@tagDeleteFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationNavButtonLabel": "個人化",
+  "personalizationPageTitle": "個人化",
+  "personalizationLoadErrorMessage": "無法載入個人化設定。",
+  "personalizationTypographyResetButton": "還原預設",
+  "personalizationTypographyResetConfirmTitle": "還原日記排版預設？",
+  "personalizationTypographyResetConfirmBody": "這會把目前的標題、內文字體大小、行距與段落間距都還原成預設值。",
+  "personalizationTypographyResetConfirmAction": "還原預設",
+  "personalizationTypographyResetSuccess": "已還原日記排版預設。",
+  "personalizationLanguageSectionTitle": "語言",
+  "personalizationLanguageSectionDescription": "選擇介面顯示語言。",
+  "personalizationLanguageComingSoonHint": "部分英文翻譯仍在補完中。",
+  "personalizationSessionTimeoutSectionTitle": "自動鎖定",
+  "personalizationSessionTimeoutSectionDescription": "App 切到背景一段時間後，會自動要求重新驗證。",
+  "personalizationSessionTimeoutUnitLabel": "分鐘",
+  "personalizationImageCompressSectionTitle": "圖片品質",
+  "personalizationImageCompressSectionDescription": "調整編輯器插入圖片時的壓縮預設。",
+  "personalizationImageCompressOriginalLabel": "原圖",
+  "personalizationImageCompressStandardLabel": "標準",
+  "personalizationImageCompressHighLabel": "高畫質",
+  "personalizationAppearanceSectionTitle": "主題顏色",
+  "personalizationAppearanceSectionDescription": "選擇 App 使用的淺色、深色或跟隨系統外觀。",
+  "personalizationAppearanceSystemLabel": "跟隨系統",
+  "personalizationAppearanceLightLabel": "淺色",
+  "personalizationAppearanceDarkLabel": "深色",
+  "personalizationTypographySectionTitle": "日記排版",
+  "personalizationTypographySectionDescription": "調整日記編輯與預覽時的字體大小、行距與段落間距。",
+  "personalizationTitleFontSizeLabel": "標題字體大小",
+  "personalizationTitleLineHeightLabel": "標題行距",
+  "personalizationBodyFontSizeLabel": "內文字體大小",
+  "personalizationBodyLineHeightLabel": "內文行距",
+  "personalizationBodyParagraphSpacingLabel": "內文段落間距",
+  "settingsPageTitle": "設定",
+  "settingsProgressDefault": "正在處理，請稍候…",
+  "defaultTagDaily": "日常",
+  "defaultTagMood": "心情",
+  "defaultTagReflection": "反思",
+  "defaultTagPlanning": "計畫",
+  "defaultTagWork": "工作",
+  "defaultTagStudy": "學習",
+  "defaultTagFamily": "家庭",
+  "defaultTagFriends": "朋友",
+  "defaultTagTravel": "旅遊",
+  "defaultTagFood": "美食",
+  "defaultTagEntertainment": "娛樂",
+  "defaultTagExercise": "運動",
+  "defaultTagHealth": "健康",
+  "defaultTagShopping": "購物"
+}

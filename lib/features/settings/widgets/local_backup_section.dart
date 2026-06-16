@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n.dart';
 import '../settings_copy.dart';
 import '../vault_transfer_access.dart';
 import 'settings_sections.dart';
@@ -30,7 +31,7 @@ class LocalBackupSection extends StatelessWidget {
       title: SettingsLocalBackupCopy.sectionTitle,
       description: access.canBackup
           ? SettingsLocalBackupCopy.sectionDescriptionEnabled
-          : VaultTransferCopy.localSectionDescriptionBackupLocked,
+          : VaultTransferCopy.localSectionDescriptionBackupLocked(context.l10n),
       child: SettingsActionGroup(
         actions: <SettingsActionButton>[
           SettingsActionButton(

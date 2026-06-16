@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:path/path.dart' as p;
@@ -21,6 +22,7 @@ import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import '../security/unlock_mode_policy.dart';
+import '../preferences/user_preferences.dart';
 import 'restore_precheck.dart';
 import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
@@ -97,12 +99,14 @@ class VaultRepository {
     required IndexDatabaseManager indexDatabaseManager,
     required DeviceKeyManager deviceKeyManager,
     required AppLockService appLockService,
+    required UserPreferences userPreferences,
   })  : _pathStrategy = pathStrategy,
         _frontMatterCodec = frontMatterCodec,
         _cryptoService = cryptoService,
         _indexDatabaseManager = indexDatabaseManager,
         _deviceKeyManager = deviceKeyManager,
-        _appLockService = appLockService;
+        _appLockService = appLockService,
+        _userPreferences = userPreferences;
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
@@ -110,6 +114,7 @@ class VaultRepository {
   final IndexDatabaseManager _indexDatabaseManager;
   final DeviceKeyManager _deviceKeyManager;
   final AppLockService _appLockService;
+  final UserPreferences _userPreferences;
 
   RecoveryMetadata? _cachedRecoveryMetadata;
 
@@ -917,9 +922,17 @@ class VaultRepository {
     if (existing.isNotEmpty) {
       return;
     }
-    await _persistTagCatalogToVault(kDefaultTagCatalog);
+    // Default tags are seeded once. Prefer an explicit app-language choice;
+    // only fall back to the device locale before any preference exists.
+    final Locale seedLocale =
+        (await _userPreferences.storedAppLocaleOrNull)?.materialLocale ??
+        PlatformDispatcher.instance.locale;
+    final List<TagCatalogItem> defaultCatalog = defaultTagCatalogForLocale(
+      seedLocale,
+    );
+    await _persistTagCatalogToVault(defaultCatalog);
     final IndexDatabase indexDb = _requireOpenIndex();
-    for (final TagCatalogItem item in kDefaultTagCatalog) {
+    for (final TagCatalogItem item in defaultCatalog) {
       if (item.accentArgb == null) {
         continue;
       }

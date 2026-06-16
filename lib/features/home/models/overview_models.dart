@@ -1,5 +1,6 @@
 import '../../../infrastructure/database/index_database.dart';
-import '../home_copy.dart';
+import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/display_format.dart';
 
 class OverviewScopeMetrics {
   const OverviewScopeMetrics({
@@ -96,16 +97,19 @@ class OverviewScopeMetrics {
     );
   }
 
-  String attachmentDetail() => HomeCopy.overviewAttachmentDetail(
-        totalPhotoAttachments,
-        totalFileAttachments,
-      );
+  String attachmentDetail(AppLocalizations l10n) =>
+      l10n.homeOverviewAttachmentDetail(totalPhotoAttachments, totalFileAttachments);
 
-  String? mostEntriesInSingleDayDetail() {
+  String? mostEntriesInSingleDayDetail(AppLocalizations l10n) {
     if (maxEntriesOnSingleDay <= 0) {
       return null;
     }
-    return HomeCopy.overviewMostEntriesInSingleDay(maxEntriesOnSingleDay);
+    return l10n.homeOverviewMostEntriesInSingleDay(
+      DisplayFormat.formatCountUnit(
+        maxEntriesOnSingleDay,
+        l10n.localeName.startsWith('en') ? 'entries' : '篇',
+      ),
+    );
   }
 
   static int _longestWritingStreakDays(List<EntryIndexRecord> entries) {

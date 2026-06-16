@@ -361,7 +361,7 @@ class HomeEntryListTagsWrap extends StatelessWidget {
           children: <Widget>[
             if (showUnsavedDraft)
               HomeEntryListTagChip(
-                label: HomeCopy.unsavedDraftLabel,
+                label: HomeCopy.unsavedDraftLabel(context),
                 background: Color.alphaBlend(
                   theme.colorScheme.error.withValues(alpha: 0.14),
                   theme.colorScheme.surface,

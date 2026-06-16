@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/copy/common_copy.dart';
-import '../../../shared/copy/tag_copy.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
@@ -15,18 +14,18 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
     this.initialDisplayLabel,
     this.initialAccentArgb,
     this.lockLabel = false,
-    this.titleText = TagCopy.addTitle,
+    this.titleText,
     this.descriptionText,
-    this.primaryButtonLabel = TagCopy.saveButton,
+    this.primaryButtonLabel,
     this.onDelete,
   });
 
   final String? initialDisplayLabel;
   final int? initialAccentArgb;
   final bool lockLabel;
-  final String titleText;
+  final String? titleText;
   final String? descriptionText;
-  final String primaryButtonLabel;
+  final String? primaryButtonLabel;
   final Future<void> Function()? onDelete;
 
   @override
@@ -68,10 +67,11 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
   }
 
   Future<void> _save() async {
+    final AppLocalizations l10n = context.l10n;
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(TagCopy.nameRequiredMessage)),
+        SnackBar(content: Text(l10n.tagNameRequiredMessage)),
       );
       return;
     }
@@ -87,7 +87,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(TagCopy.saveFailure(userFacingErrorMessage(error)))),
+          SnackBar(content: Text(l10n.tagSaveFailure(userFacingErrorMessage(error)))),
         );
       }
     } finally {
@@ -98,6 +98,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
   }
 
   Future<void> _delete() async {
+    final AppLocalizations l10n = context.l10n;
     if (widget.onDelete == null || _deleting) {
       return;
     }
@@ -110,7 +111,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(TagCopy.deleteFailure(userFacingErrorMessage(error)))),
+          SnackBar(content: Text(l10n.tagDeleteFailure(userFacingErrorMessage(error)))),
         );
       }
     } finally {
@@ -122,6 +123,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final bool showBlurb =
@@ -166,14 +168,14 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        widget.titleText,
+                        widget.titleText ?? l10n.tagAddTitle,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                     IconButton(
-                      tooltip: CommonCopy.closeTooltip,
+                      tooltip: l10n.commonCloseTooltip,
                       visualDensity: VisualDensity.compact,
                       onPressed: busy ? null : () => Navigator.of(context).pop(),
                       icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
@@ -216,7 +218,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                previewText.isEmpty ? TagCopy.unnamedPreview : previewText,
+                                previewText.isEmpty ? l10n.tagUnnamedPreview : previewText,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -235,7 +237,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     textInputAction: TextInputAction.done,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: TagCopy.nameHint,
+                      hintText: l10n.tagNameHint,
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       filled: true,
@@ -250,7 +252,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                   const SizedBox(height: 20),
                 ],
                 Text(
-                  TagCopy.defaultColorLabel,
+                  l10n.tagDefaultColorLabel,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -306,7 +308,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  TagCopy.hueLabel,
+                  l10n.tagHueLabel,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface.withValues(alpha: 0.65),
@@ -348,7 +350,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     child: Row(
                       children: <Widget>[
                         Text(
-                          TagCopy.previewLabel,
+                          l10n.tagPreviewLabel,
                           style: theme.textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: cs.outline,
@@ -366,7 +368,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             ),
                           ),
                           child: Text(
-                            previewText.isEmpty ? TagCopy.nameHint : previewText,
+                            previewText.isEmpty ? l10n.tagNameHint : previewText,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: previewFg,
@@ -393,12 +395,12 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                                 ),
                               )
                             : Icon(Icons.delete_outline_rounded, color: cs.error),
-                        label: Text(TagCopy.deleteLabel, style: TextStyle(color: cs.error)),
+                        label: Text(l10n.tagDeleteLabel, style: TextStyle(color: cs.error)),
                       )
                     else
                       TextButton(
                         onPressed: busy ? null : () => Navigator.of(context).pop(),
-                        child: Text(CommonCopy.actionCancel, style: TextStyle(color: cs.onSurfaceVariant)),
+                        child: Text(l10n.commonActionCancel, style: TextStyle(color: cs.onSurfaceVariant)),
                       ),
                     const Spacer(),
                     FilledButton.icon(
@@ -417,7 +419,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             )
                           : const Icon(Icons.check_rounded, size: 20),
                       onPressed: busy ? null : _save,
-                      label: Text(widget.primaryButtonLabel),
+                      label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
                     ),
                   ],
                 ),

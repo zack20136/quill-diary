@@ -1,0 +1,474 @@
+{
+  "@@locale": "zh_TW",
+  "appTitle": "Quill Diary",
+  "languageNameZhTw": "繁體中文",
+  "languageNameEn": "English",
+  "commonActionCancel": "取消",
+  "commonActionDelete": "刪除",
+  "commonActionApply": "套用",
+  "commonActionClose": "關閉",
+  "commonReadFailureTitle": "讀取失敗",
+  "commonConfirmDeleteTitle": "確認刪除",
+  "commonNoTagSearchResults": "沒有符合的標籤",
+  "commonCloseTooltip": "關閉",
+  "commonClearSearchTooltip": "清除搜尋",
+  "commonConfirmDeleteEntries": "確定要刪除 {count} 篇日記嗎？刪除後無法復原。",
+  "@commonConfirmDeleteEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tagAddTitle": "新增標籤",
+  "tagEditTitle": "編輯標籤",
+  "tagSaveButton": "儲存",
+  "tagNameHint": "標籤名稱",
+  "tagNameRequiredMessage": "請輸入標籤名稱",
+  "tagDeleteLabel": "刪除標籤",
+  "tagUnnamedPreview": "未命名標籤",
+  "tagDefaultColorLabel": "預設色",
+  "tagHueLabel": "色相",
+  "tagPreviewLabel": "預覽",
+  "tagSaveFailure": "儲存標籤失敗：{message}",
+  "@tagSaveFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "tagDeleteFailure": "刪除標籤失敗：{message}",
+  "@tagDeleteFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationNavButtonLabel": "個人化",
+  "personalizationPageTitle": "個人化",
+  "personalizationLoadErrorMessage": "無法載入個人化設定。",
+  "personalizationTypographyResetButton": "還原預設",
+  "personalizationTypographyResetConfirmTitle": "還原日記排版預設？",
+  "personalizationTypographyResetConfirmBody": "這會把目前的標題、內文字體大小、行距與段落間距都還原成預設值。",
+  "personalizationTypographyResetConfirmAction": "還原預設",
+  "personalizationTypographyResetSuccess": "已還原日記排版預設。",
+  "personalizationLanguageSectionTitle": "語言",
+  "personalizationLanguageSectionDescription": "選擇介面顯示語言。",
+  "personalizationLanguageComingSoonHint": "部分英文翻譯仍在補完中。",
+  "personalizationSessionTimeoutSectionTitle": "自動鎖定",
+  "personalizationSessionTimeoutSectionDescription": "App 切到背景一段時間後，會自動要求重新驗證。",
+  "personalizationSessionTimeoutUnitLabel": "分鐘",
+  "personalizationImageCompressSectionTitle": "圖片品質",
+  "personalizationImageCompressSectionDescription": "調整編輯器插入圖片時的壓縮預設。",
+  "personalizationImageCompressOriginalLabel": "原圖",
+  "personalizationImageCompressStandardLabel": "標準",
+  "personalizationImageCompressHighLabel": "高畫質",
+  "personalizationAppearanceSectionTitle": "主題顏色",
+  "personalizationAppearanceSectionDescription": "選擇 App 使用的淺色、深色或跟隨系統外觀。",
+  "personalizationAppearanceSystemLabel": "跟隨系統",
+  "personalizationAppearanceLightLabel": "淺色",
+  "personalizationAppearanceDarkLabel": "深色",
+  "personalizationTypographySectionTitle": "日記排版",
+  "personalizationTypographySectionDescription": "調整日記編輯與預覽時的字體大小、行距與段落間距。",
+  "personalizationTitleFontSizeLabel": "標題字體大小",
+  "personalizationTitleLineHeightLabel": "標題行距",
+  "personalizationBodyFontSizeLabel": "內文字體大小",
+  "personalizationBodyLineHeightLabel": "內文行距",
+  "personalizationBodyParagraphSpacingLabel": "內文段落間距",
+  "settingsPageTitle": "設定",
+  "settingsProgressDefault": "正在處理，請稍候…",
+  "personalizationImageCompressOriginalDescription": "不壓縮，保留原始解析度與檔案大小。適合需要最高畫質、可接受較大日記庫時使用。",
+  "personalizationImageCompressStandardDescription": "長邊縮至 1280 px、JPEG 品質 70。在清晰度與儲存空間之間取得平衡（預設）。",
+  "personalizationImageCompressHighDescription": "長邊縮至 1920 px、JPEG 品質 85。檔案較大，但細節保留較多。",
+  "personalizationFontSizeValue": "{size} 點",
+  "@personalizationFontSizeValue": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationLineHeightValue": "{height} 倍",
+  "@personalizationLineHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationParagraphSpacingValue": "{spacing} 像素",
+  "@personalizationParagraphSpacingValue": {
+    "placeholders": {
+      "spacing": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationTypographyPreviewTitleParagraph1": "今日的小確幸，陽光剛好落在書桌上。值得記住的一刻，先寫下來再說。",
+  "personalizationTypographyPreviewBodyParagraph1": "記錄下此刻的心情，讓文字替記憶保溫。記錄下此刻的心情，讓文字替記憶保溫。",
+  "personalizationTypographyPreviewBodyParagraph2": "段落之間的間距，也會反映在預覽裡。段落之間的間距，也會反映在預覽裡。",
+  "sessionBlockedLockedTitle": "日記庫已鎖定",
+  "sessionBlockedRecoveryRequiredTitle": "需要復原金鑰",
+  "sessionBlockedFatalErrorTitle": "無法啟動",
+  "sessionBlockedDefaultTitle": "請稍候",
+  "sessionBlockedLockedSubtitle": "請完成驗證以繼續",
+  "sessionBlockedRecoveryRequiredSubtitle": "請輸入復原金鑰解鎖",
+  "sessionBlockedFatalErrorSubtitle": "請檢查設定或重新啟動應用程式",
+  "editorPageTitle": "編輯日記",
+  "editorTitleHint": "輸入標題",
+  "editorTitleRequiredError": "請輸入標題",
+  "editorBodyHint": "在這裡輸入內容…",
+  "editorBodyEmptyPreview": "尚未輸入內容",
+  "editorNeedsRecoveryKeyMessage": "請先建立復原金鑰，才能開始建立或編輯日記。",
+  "editorSessionLockedFallback": "請先重新解鎖日記庫後再繼續。",
+  "editorSaveNeedsTitleMessage": "請輸入標題才能儲存",
+  "editorUnsavedDraftLabel": "未儲存",
+  "editorConfirmDeleteTitle": "確認刪除",
+  "editorConfirmDeleteBody": "確定要刪除這篇日記嗎？刪除後無法復原。",
+  "editorTagsStudioTitle": "標籤",
+  "editorTagsStudioGuide": "右上角可建立新標籤；下方為文庫標籤，輕觸加入。",
+  "editorTagsStudioEmptyChosen": "尚未套用任何標籤",
+  "editorTagsStudioAddButton": "加入",
+  "editorPreviewUnavailable": "無法預覽",
+  "editorTagSearchHint": "搜尋標籤…",
+  "editorTagLibraryHint": "文庫裡的標籤 · 輕觸加入",
+  "editorTagPoolEmpty": "文庫裡暫時沒有其他可用標籤，或已全部加入目前清單",
+  "editorTagAddTooltip": "新增標籤",
+  "editorTooltipCancel": "取消",
+  "editorTooltipSave": "儲存",
+  "editorTooltipSaveNeedsTitle": "請先輸入標題",
+  "editorTooltipDate": "日期",
+  "editorTooltipTime": "時間",
+  "editorTooltipEditTags": "編輯標籤",
+  "editorTooltipUploadImages": "上傳圖片（可一次選多張）",
+  "editorTooltipAddAttachment": "新增附件",
+  "editorTooltipDelete": "刪除",
+  "editorTooltipEdit": "編輯",
+  "editorRestoreDraftTitle": "發現未完成的草稿",
+  "editorRestoreDraftDecline": "不使用",
+  "editorRestoreDraftAccept": "還原草稿",
+  "editorUntitledDraft": "無標題",
+  "editorRestoreDraftOverwrite": "草稿：{title}\n最後儲存：{savedAt}\n\n還原後會覆蓋目前檢視中的內容。",
+  "@editorRestoreDraftOverwrite": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorRestoreDraftPrompt": "草稿：{title}\n最後儲存：{savedAt}\n\n是否要還原這份草稿？",
+  "@editorRestoreDraftPrompt": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDiscardDraftTitle": "捨棄草稿？",
+  "editorDiscardDraftBody": "目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？",
+  "editorDiscardDraftConfirm": "捨棄",
+  "editorGalleryDownloadTooltip": "下載",
+  "editorGalleryDownloadFailed": "無法下載圖片",
+  "editorGalleryDownloadSuccess": "已儲存至 {path}",
+  "@editorGalleryDownloadSuccess": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "homeUnlockingTitle": "正在解鎖",
+  "homeRetryVerification": "重新驗證",
+  "homeGoToSettings": "前往設定",
+  "homeNavHome": "首頁",
+  "homeNavCalendar": "日曆",
+  "homeNavTags": "標籤",
+  "homeNavOverview": "總覽",
+  "homeTooltipNewEntry": "新增日記",
+  "homeTooltipSettings": "設定與備份",
+  "homeTooltipExportHtml": "匯出 HTML",
+  "homeTooltipDelete": "刪除",
+  "homeTooltipAddTag": "新增標籤",
+  "homeTooltipEditTag": "編輯標籤",
+  "homeTooltipDeleteTag": "刪除標籤",
+  "homeTooltipDeselectTag": "取消選取",
+  "homeSelectionSelectAll": "全選",
+  "homeSelectionDeselectAll": "取消全選",
+  "homeSelectionSelectDiary": "選取日記",
+  "homeSelectionSelectedCount": "已選 {count} 項",
+  "@homeSelectionSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSearchHint": "搜尋標題、內文或標籤",
+  "homeEmptyDiaryTitle": "目前沒有日記",
+  "homeEmptyDiaryMessage": "建立第一篇日記後，就會在這裡看到你的首頁列表。",
+  "homeNoAnalysisTitle": "尚無可分析內容",
+  "homeNoAnalysisMessage": "寫下一篇後，就可以在這裡看到統計、標籤與範圍內的日記。",
+  "homeExportRecapLabel": "匯出回顧",
+  "homeExportRecapAll": "匯出總回顧",
+  "homeExportRecapYear": "匯出年度回顧",
+  "homeExportRecapMonth": "匯出月份回顧",
+  "homePopularTagsTitle": "熱門標籤",
+  "homeScopeTitle": "範圍",
+  "homeScopeAllLabel": "全部",
+  "homeScopeYearLabel": "年",
+  "homeScopeMonthLabel": "月",
+  "homeScopeEmptyDiary": "此範圍內沒有符合的日記。",
+  "homeScopeEmptyDiaryForTag": "此範圍內沒有套用「{tag}」的日記。",
+  "@homeScopeEmptyDiaryForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScopeEmptyTags": "此範圍內沒有標籤。",
+  "homeUnsavedDraftLabel": "未儲存",
+  "homeHtmlExportLargeTitle": "HTML 檔案可能很大",
+  "homeHtmlExportEmbeddedHint": "圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。",
+  "homeHtmlExportProceed": "仍要匯出",
+  "homeHtmlExportSelectionSummary": "選取 {entrySummary}日記，包含 {imageSummary}圖片。",
+  "@homeHtmlExportSelectionSummary": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "imageSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportImageSize": "圖片原始大小：約 {size}",
+  "@homeHtmlExportImageSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportEstimatedSize": "HTML 估算大小：約 {size}",
+  "@homeHtmlExportEstimatedSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportSuccess": "已匯出 HTML：{fileName}",
+  "@homeHtmlExportSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDeleteTagTitle": "刪除標籤",
+  "homeDeleteTagConfirm": "確定要從所有日記移除「{label}」嗎？",
+  "@homeDeleteTagConfirm": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagSearchHint": "搜尋標籤…",
+  "homeNoTagsTitle": "尚未有標籤",
+  "homeNoTagsMessage": "可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。",
+  "homeTagListGuide": "請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。",
+  "homeTagPreviewTitle": "選取標籤以預覽日記",
+  "homeTagDeleted": "「{label}」已刪除",
+  "@homeTagDeleted": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRemovedFromEntries": "已從 {entrySummary}日記移除「{label}」",
+  "@homeTagRemovedFromEntries": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagIndexEmptyForTag": "目前索引中找不到套用「{tag}」的項目。",
+  "@homeTagIndexEmptyForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowEntryCount": "{entrySummary}日記",
+  "@homeTagRowEntryCount": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowTapHint": "輕觸列預覽",
+  "homeDiarySectionTitleForDate": "日記 · {dateLabel}",
+  "@homeDiarySectionTitleForDate": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEmptyDayMessage": "「{dateLabel}」這一天目前沒有日記。",
+  "@homeEmptyDayMessage": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewDataTitle": "資料概覽",
+  "homeOverviewScopeAll": "目前範圍 · 全部日記",
+  "homeOverviewScopeYear": "目前範圍 · {year}年",
+  "@homeOverviewScopeYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewScopeMonth": "目前範圍 · {year}年{month}月",
+  "@homeOverviewScopeMonth": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewWritingDaysLabel": "撰寫天數",
+  "homeOverviewAvgLengthLabel": "平均篇幅",
+  "homeOverviewAttachmentsLabel": "附件總數",
+  "homeOverviewAttachmentCount": "{attachmentSummary}",
+  "@homeOverviewAttachmentCount": {
+    "placeholders": {
+      "attachmentSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewLongestStreak": "連續最長 {daySummary}",
+  "@homeOverviewLongestStreak": {
+    "placeholders": {
+      "daySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewEntryStats": "共 {entrySummary}\n累計 {characterSummary}",
+  "@homeOverviewEntryStats": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "characterSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionTag": "日記 · {tag}",
+  "@homeDiarySectionTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionAll": "日記 · 全部",
+  "homeDiarySectionByYear": "日記 · 依年",
+  "homeDiarySectionByMonth": "日記 · 依月",
+  "homeDiarySectionWithTag": "{baseTitle} · {tag}",
+  "@homeDiarySectionWithTag": {
+    "placeholders": {
+      "baseTitle": {
+        "type": "String"
+      },
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCalendarMonthFormatLabel": "月",
+  "homeOverviewAvgLengthValue": "{charactersPerEntry} 字 / 篇",
+  "@homeOverviewAvgLengthValue": {
+    "placeholders": {
+      "charactersPerEntry": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewAttachmentDetail": "照片 {photos} · 檔案 {files}",
+  "@homeOverviewAttachmentDetail": {
+    "placeholders": {
+      "photos": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewMostEntriesInSingleDay": "單天最多 {entrySummary}",
+  "@homeOverviewMostEntriesInSingleDay": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultTransferNeedsUnlockForBackup": "請先解鎖日記庫，才能備份或匯出。",
+  "vaultTransferNeedsRecoveryKeyForBackup": "請先建立復原金鑰，才能備份或匯出。",
+  "vaultTransferNeedsUnlockForRestore": "請先解鎖日記庫，才能還原備份。",
+  "vaultTransferLocalSectionDescriptionBackupLocked": "建立本機備份與匯出需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接匯入外部備份還原。",
+  "vaultTransferDriveSectionDescriptionBackupLocked": "備份到 Google Drive 需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接從 Google Drive 還原。",
+  "vaultTransferDriveBackupActionsLockedHint": "請先解鎖日記庫並建立復原金鑰，才能備份到 Google Drive。",
+  "vaultTransferRestoreUnlockFailed": "備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。",
+  "androidSafWriteFailed": "無法將檔案寫入選擇的資料夾。",
+  "androidSafWriteFailedWithCode": "無法將檔案寫入選擇的資料夾（{code}）。",
+  "@androidSafWriteFailedWithCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultTagDaily": "日常",
+  "defaultTagMood": "心情",
+  "defaultTagReflection": "反思",
+  "defaultTagPlanning": "計畫",
+  "defaultTagWork": "工作",
+  "defaultTagStudy": "學習",
+  "defaultTagFamily": "家庭",
+  "defaultTagFriends": "朋友",
+  "defaultTagTravel": "旅遊",
+  "defaultTagFood": "美食",
+  "defaultTagEntertainment": "娛樂",
+  "defaultTagExercise": "運動",
+  "defaultTagHealth": "健康",
+  "defaultTagShopping": "購物"
+}

@@ -110,7 +110,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                       ),
                   actions: <HomeSelectionAction>[
                     HomeSelectionAction(
-                      tooltip: HomeCopy.tooltipExportHtml,
+                      tooltip: HomeCopy.tooltipExportHtml(context),
                       icon: Icons.html,
                       enabled: canActOnSelectedEntries,
                       onPressed: !canActOnSelectedEntries
@@ -125,7 +125,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                               ),
                     ),
                     HomeSelectionAction(
-                      tooltip: HomeCopy.tooltipDelete,
+                      tooltip: HomeCopy.tooltipDelete(context),
                       icon: Icons.delete_outline_rounded,
                       destructive: true,
                       enabled: canActOnSelectedEntries,
@@ -152,7 +152,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         child: HomeSearchTextField(
                           controller: _searchController,
                           enabled: canReadEntries,
-                          hintText: HomeCopy.searchHint,
+                          hintText: HomeCopy.searchHint(context),
                           onChanged: _handleSearchChanged,
                         ),
                       ),
@@ -172,10 +172,10 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
               ? entriesAsync.when(
                   data: (List<EntryIndexRecord> loadedEntries) {
                     if (loadedEntries.isEmpty) {
-                      return const HomeStateCard(
+                      return HomeStateCard(
                         icon: Icons.auto_stories_outlined,
-                        title: HomeCopy.emptyDiaryTitle,
-                        message: HomeCopy.emptyDiaryMessage,
+                        title: HomeCopy.emptyDiaryTitle(context),
+                        message: HomeCopy.emptyDiaryMessage(context),
                       );
                     }
                     return HomeEntryList(entries: loadedEntries);
@@ -183,7 +183,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (Object error, StackTrace _) => HomeStateCard(
                     icon: Icons.error_outline,
-                    title: CommonCopy.readFailureTitle,
+                    title: CommonCopy.readFailureTitle(context),
                     message: userFacingErrorMessage(error),
                   ),
                 )

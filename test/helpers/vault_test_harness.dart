@@ -5,6 +5,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -37,6 +38,9 @@ class VaultTestHarness {
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
       deviceKeyManager: harness.deviceKeyManager,
       appLockService: harness.appLockService,
+      userPreferences: UserPreferences(
+        storageFile: File('${harness.tempDir.path}\\app_preferences.json'),
+      ),
     );
     await harness.repository.initialize();
     return harness;

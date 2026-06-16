@@ -10,11 +10,14 @@ import 'package:quill_diary/features/settings/widgets/drive_backup_section.dart'
 import 'package:quill_diary/features/settings/widgets/local_backup_section.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/fake_vault_transfer_service.dart';
 import '../../helpers/settings_test_scope.dart';
 
 void main() {
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
@@ -29,6 +32,9 @@ void main() {
           ),
         ],
         child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: Scaffold(
             body: DriveBackupSection(
               access: access,
@@ -49,6 +55,7 @@ void main() {
 
   VaultTransferAccess lockedAccess({required bool hasRecoveryKey}) {
     return VaultTransferAccess.fromContext(
+      l10n: zhL10n,
       hasUnlockedSession: false,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: AppLockStatus.locked,
@@ -144,6 +151,9 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: appZhTwLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
         home: Scaffold(
           body: LocalBackupSection(
             access: lockedAccess(hasRecoveryKey: false),
@@ -184,7 +194,12 @@ void main() {
         transferService: FakeVaultTransferService(
           connectionState: const DriveConnectionState.disconnected(),
         ),
-        child: const MaterialApp(home: SettingsPage()),
+        child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SettingsPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

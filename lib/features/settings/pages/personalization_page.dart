@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/preferences/personalization_preferences.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
-import '../personalization_copy.dart';
 import '../providers/personalization_providers.dart';
 import '../widgets/personalization_sections.dart';
 import '../widgets/settings_sections.dart';
@@ -23,7 +23,7 @@ class PersonalizationPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: pageBackground,
       appBar: AppBar(
-        title: const Text(PersonalizationCopy.pageTitle),
+        title: Text(context.l10n.personalizationPageTitle),
         backgroundColor: pageBackground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -32,8 +32,8 @@ class PersonalizationPage extends ConsumerWidget {
       body: SafeArea(
         child: prefsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const Center(
-            child: Text(PersonalizationCopy.loadErrorMessage),
+          error: (_, _) => Center(
+            child: Text(context.l10n.personalizationLoadErrorMessage),
           ),
           data: (PersonalizationPreferences prefs) {
             final PersonalizationPreferencesController controller =
@@ -44,8 +44,8 @@ class PersonalizationPage extends ConsumerWidget {
               children: <Widget>[
                 SettingsSectionCard(
                   icon: Icons.translate_rounded,
-                  title: PersonalizationCopy.languageSectionTitle,
-                  description: PersonalizationCopy.languageSectionDescription,
+                  title: context.l10n.personalizationLanguageSectionTitle,
+                  description: context.l10n.personalizationLanguageSectionDescription,
                   child: PersonalizationLanguageSectionBody(
                     selected: prefs.locale,
                     onSelected: controller.setLocale,
@@ -54,8 +54,8 @@ class PersonalizationPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SettingsSectionCard(
                   icon: Icons.lock_clock_outlined,
-                  title: PersonalizationCopy.sessionTimeoutSectionTitle,
-                  description: PersonalizationCopy.sessionTimeoutSectionDescription,
+                  title: context.l10n.personalizationSessionTimeoutSectionTitle,
+                  description: context.l10n.personalizationSessionTimeoutSectionDescription,
                   child: PersonalizationSessionTimeoutSectionBody(
                     selected: prefs.sessionTimeoutMinutes,
                     onSelected: controller.setSessionTimeoutMinutes,
@@ -64,8 +64,8 @@ class PersonalizationPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SettingsSectionCard(
                   icon: Icons.image_outlined,
-                  title: PersonalizationCopy.imageCompressSectionTitle,
-                  description: PersonalizationCopy.imageCompressSectionDescription,
+                  title: context.l10n.personalizationImageCompressSectionTitle,
+                  description: context.l10n.personalizationImageCompressSectionDescription,
                   child: PersonalizationImageCompressSectionBody(
                     selected: prefs.imageCompressPreset,
                     onSelected: controller.setImageCompressPreset,
@@ -74,8 +74,8 @@ class PersonalizationPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SettingsSectionCard(
                   icon: Icons.palette_outlined,
-                  title: PersonalizationCopy.appearanceSectionTitle,
-                  description: PersonalizationCopy.appearanceSectionDescription,
+                  title: context.l10n.personalizationAppearanceSectionTitle,
+                  description: context.l10n.personalizationAppearanceSectionDescription,
                   child: PersonalizationAppearanceSectionBody(
                     selected: prefs.themeMode,
                     onSelected: controller.setThemeMode,
@@ -84,8 +84,8 @@ class PersonalizationPage extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SettingsSectionCard(
                   icon: Icons.text_fields_rounded,
-                  title: PersonalizationCopy.typographySectionTitle,
-                  description: PersonalizationCopy.typographySectionDescription,
+                  title: context.l10n.personalizationTypographySectionTitle,
+                  description: context.l10n.personalizationTypographySectionDescription,
                   child: PersonalizationTypographySectionBody(
                     typography: prefs.typography,
                     controller: controller,

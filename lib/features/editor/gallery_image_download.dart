@@ -123,7 +123,7 @@ Future<void> downloadGalleryImage({
   if (bytes == null || bytes.isEmpty) {
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
-      EditorCopy.galleryDownloadFailed,
+      EditorCopy.galleryDownloadFailed(scaffoldMessengerContext),
     );
     return;
   }
@@ -138,12 +138,12 @@ Future<void> downloadGalleryImage({
   if (savedName == null) {
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
-      EditorCopy.galleryDownloadFailed,
+      EditorCopy.galleryDownloadFailed(scaffoldMessengerContext),
     );
     return;
   }
   showGalleryDownloadSnackBar(
     scaffoldMessengerContext,
-    EditorCopy.galleryDownloadSuccess(savedName),
+    EditorCopy.galleryDownloadSuccess(scaffoldMessengerContext, savedName),
   );
 }

@@ -126,15 +126,15 @@ class HomeSelectionToolbar extends StatelessWidget {
           child: Row(
             children: <Widget>[
               _ToolbarPlainIconButton(
-                tooltip: HomeCopy.tooltipDeselectTag,
+                tooltip: HomeCopy.tooltipDeselectTag(context),
                 onPressed: onCancel,
                 icon: Icons.close_rounded,
               ),
               Expanded(
                 child: Text(
                   selectedCount > 0
-                      ? HomeCopy.selectionSelectedCount(selectedCount)
-                      : HomeCopy.selectionSelectDiary,
+                      ? HomeCopy.selectionSelectedCount(context, selectedCount)
+                      : HomeCopy.selectionSelectDiary(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -145,8 +145,8 @@ class HomeSelectionToolbar extends StatelessWidget {
               ),
               HomeCircleIconButton(
                 tooltip: allSelected
-                    ? HomeCopy.selectionDeselectAll
-                    : HomeCopy.selectionSelectAll,
+                    ? HomeCopy.selectionDeselectAll(context)
+                    : HomeCopy.selectionSelectAll(context),
                 onPressed: onSelectAll,
                 icon: allSelected
                     ? Icons.check_box_outline_blank_rounded
@@ -278,7 +278,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     return HomeCircleIconButton(
-      tooltip: HomeCopy.selectionSelectDiary,
+      tooltip: HomeCopy.selectionSelectDiary(context),
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: kHomeSearchRowControlHeight,
@@ -297,19 +297,19 @@ Future<bool?> confirmDeleteHomeEntries(BuildContext context, int count) {
   return showDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
-      title: const Text(CommonCopy.confirmDeleteTitle),
-      content: Text(CommonCopy.confirmDeleteEntries(count)),
+      title: Text(CommonCopy.confirmDeleteTitle(context)),
+      content: Text(CommonCopy.confirmDeleteEntries(context, count)),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text(CommonCopy.actionCancel),
+          child: Text(CommonCopy.actionCancel(context)),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: const Text(CommonCopy.actionDelete),
+          child: Text(CommonCopy.actionDelete(context)),
         ),
       ],
     ),

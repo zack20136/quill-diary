@@ -7,6 +7,8 @@ import 'package:quill_diary/features/settings/legal_disclosures.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_session_vault_repository.dart';
@@ -16,7 +18,12 @@ void main() {
   testWidgets('設定頁法律與隱私區塊顯示四個 GitHub 入口', (WidgetTester tester) async {
     await tester.pumpWidget(
       _settingsScope(
-        const MaterialApp(home: SettingsPage()),
+        MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SettingsPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import 'editor_typography_preferences.dart';
 import 'user_preferences.dart';
 
@@ -18,21 +19,21 @@ class PersonalizationPreferences {
     typography: EditorTypographyPreferences.defaults,
     themeMode: AppThemeModePreference.system,
     sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
-    locale: AppLocalePreference.zhTw,
+    locale: AppLanguage.zhTw,
   );
 
   final ImageCompressPreset imageCompressPreset;
   final EditorTypographyPreferences typography;
   final AppThemeModePreference themeMode;
   final SessionBackgroundTimeoutMinutes sessionTimeoutMinutes;
-  final AppLocalePreference locale;
+  final AppLanguage locale;
 
   PersonalizationPreferences copyWith({
     ImageCompressPreset? imageCompressPreset,
     EditorTypographyPreferences? typography,
     AppThemeModePreference? themeMode,
     SessionBackgroundTimeoutMinutes? sessionTimeoutMinutes,
-    AppLocalePreference? locale,
+    AppLanguage? locale,
   }) {
     return PersonalizationPreferences(
       imageCompressPreset: imageCompressPreset ?? this.imageCompressPreset,
@@ -75,25 +76,25 @@ enum AppThemeModePreference {
 }
 
 /// 應用語系偏好（English 第一版僅預留儲存）。
-enum AppLocalePreference {
+enum AppLanguage {
   zhTw,
   en;
 
   String get storageValue => switch (this) {
-        AppLocalePreference.zhTw => 'zh_TW',
-        AppLocalePreference.en => 'en',
+        AppLanguage.zhTw => 'zh_TW',
+        AppLanguage.en => 'en',
       };
 
   Locale get materialLocale => switch (this) {
-        AppLocalePreference.zhTw => const Locale('zh', 'TW'),
-        AppLocalePreference.en => const Locale('en'),
+        AppLanguage.zhTw => appZhTwLocale,
+        AppLanguage.en => appEnLocale,
       };
 
-  static AppLocalePreference fromStorage(String? raw) {
+  static AppLanguage fromStorage(String? raw) {
     return switch (raw?.trim()) {
-      'en' => AppLocalePreference.en,
-      'zh_TW' || null || '' => AppLocalePreference.zhTw,
-      _ => AppLocalePreference.zhTw,
+      'en' => AppLanguage.en,
+      'zh_TW' || null || '' => AppLanguage.zhTw,
+      _ => AppLanguage.zhTw,
     };
   }
 }

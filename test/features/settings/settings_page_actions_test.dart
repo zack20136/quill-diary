@@ -10,6 +10,8 @@ import 'package:quill_diary/features/settings/legal_disclosures.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
@@ -78,7 +80,12 @@ void main() {
               status: AppLockStatus.unlocked,
               session: unlockedSession,
             ),
-        child: const MaterialApp(home: SettingsPage()),
+        child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SettingsPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

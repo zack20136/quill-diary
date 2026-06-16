@@ -104,7 +104,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text(SettingsCopy.actionCancel),
+                child: Text(SettingsCopy.actionCancel),
               ),
             ],
           );

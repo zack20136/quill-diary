@@ -111,7 +111,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(SettingsCopy.actionCancel),
+          child: Text(SettingsCopy.actionCancel),
         ),
         FilledButton(
           onPressed: _submit,

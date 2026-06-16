@@ -370,7 +370,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(() => _showTitleRequired = true);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(EditorCopy.saveNeedsTitleMessage)),
+      SnackBar(content: Text(EditorCopy.saveNeedsTitleMessage(context))),
     );
   }
 
@@ -696,8 +696,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
     if (!isSupportedPlatform) {
       return Scaffold(
-        appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
-        body: const Center(child: Text(kAndroidOnlyMessage)),
+        appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
+        body: Center(child: Text(kAndroidOnlyMessage)),
       );
     }
 
@@ -706,7 +706,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         final UnlockedVaultSession? session = sessionState.session;
         if (!sessionState.isUnlocked || session == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
+            appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -718,7 +718,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                       sessionState.message ?? kTrustedUnlockInProgressMessage,
                     AppLockStatus.locked =>
                       sessionState.message ?? kLockedRetryVerificationMessage,
-                    _ => sessionState.message ?? EditorCopy.sessionLockedFallback,
+                    _ => sessionState.message ?? EditorCopy.sessionLockedFallback(context),
                   },
                 ),
               ),
@@ -754,10 +754,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 body: metadataAsync.when(
                 data: (Object? metadata) {
                   if (metadata == null) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(EditorCopy.needsRecoveryKeyMessage),
+                        padding: const EdgeInsets.all(24),
+                        child: Text(EditorCopy.needsRecoveryKeyMessage(context)),
                       ),
                     );
                   }
@@ -880,14 +880,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           },
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (Object error, StackTrace _) => Scaffold(
-            appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
+            appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
             body: Center(child: Text(userFacingErrorMessage(error))),
           ),
         );
       },
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
-        appBar: AppBar(title: const Text(EditorCopy.pageTitle)),
+        appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
         body: Center(child: Text(userFacingErrorMessage(error))),
       ),
     );
@@ -1076,7 +1076,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ),
       ),
       child: Text(
-        EditorCopy.unsavedDraftLabel,
+        EditorCopy.unsavedDraftLabel(context),
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
@@ -1177,7 +1177,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
-            titleText.isEmpty ? EditorCopy.untitledDraft : titleText,
+            titleText.isEmpty ? EditorCopy.untitledDraft(context) : titleText,
             style: titleStyle.copyWith(
               color: titleText.isEmpty ? AppTypography.muted(theme.colorScheme) : null,
             ),
@@ -1206,8 +1206,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           style: titleStyle,
           decoration: _titleFieldDecoration(
             context,
-            hintText: EditorCopy.titleHint,
-            errorText: _showTitleRequired && !_hasTitle ? EditorCopy.titleRequiredError : null,
+            hintText: EditorCopy.titleHint(context),
+            errorText: _showTitleRequired && !_hasTitle ? EditorCopy.titleRequiredError(context) : null,
           ),
         ),
         if (showTagsRow) ...<Widget>[
@@ -1230,7 +1230,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         ? SingleChildScrollView(
             child: _bodyController.text.isEmpty
                 ? SelectableText(
-                    EditorCopy.bodyEmptyPreview,
+                    EditorCopy.bodyEmptyPreview(context),
                     style: bodyStyle.copyWith(
                       fontStyle: FontStyle.italic,
                       color: AppTypography.muted(paneTheme.colorScheme),
@@ -1250,7 +1250,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             style: bodyStyle,
             decoration: _bodyFieldDecoration(
               context,
-              hintText: EditorCopy.bodyHint,
+              hintText: EditorCopy.bodyHint(context),
             ),
           );
 
@@ -1277,19 +1277,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       final bool? confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text(EditorCopy.confirmDeleteTitle),
-          content: const Text(EditorCopy.confirmDeleteBody),
+          title: Text(EditorCopy.confirmDeleteTitle(context)),
+          content: Text(EditorCopy.confirmDeleteBody(context)),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(CommonCopy.actionCancel),
+              child: Text(CommonCopy.actionCancel(context)),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
-              child: const Text(CommonCopy.actionDelete),
+              child: Text(CommonCopy.actionDelete(context)),
             ),
           ],
         ),
@@ -1333,7 +1333,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             child: Row(
               children: <Widget>[
                 IconButton(
-                  tooltip: EditorCopy.tooltipCancel,
+                  tooltip: EditorCopy.tooltipCancel(context),
                   onPressed: _saving ? null : () => unawaited(_requestClose()),
                   icon: const Icon(Icons.close_rounded),
                 ),
@@ -1345,27 +1345,27 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           IconButton(
-                            tooltip: EditorCopy.tooltipDate,
+                            tooltip: EditorCopy.tooltipDate(context),
                             onPressed: _saving ? null : _pickEntryDate,
                             icon: const Icon(Icons.calendar_today_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipTime,
+                            tooltip: EditorCopy.tooltipTime(context),
                             onPressed: _saving ? null : _pickEntryTime,
                             icon: const Icon(Icons.schedule_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipEditTags,
+                            tooltip: EditorCopy.tooltipEditTags(context),
                             onPressed: _saving ? null : _showTagsEditorDialog,
                             icon: const Icon(Icons.sell_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipUploadImages,
+                            tooltip: EditorCopy.tooltipUploadImages(context),
                             onPressed: _saving ? null : () => _pickImage(),
                             icon: const Icon(Icons.image_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipAddAttachment,
+                            tooltip: EditorCopy.tooltipAddAttachment(context),
                             onPressed: _saving ? null : () => _pickFile(),
                             icon: const Icon(Icons.attach_file),
                           ),
@@ -1374,7 +1374,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: canSave ? EditorCopy.tooltipSave : EditorCopy.tooltipSaveNeedsTitle,
+                    tooltip: canSave
+                        ? EditorCopy.tooltipSave(context)
+                        : EditorCopy.tooltipSaveNeedsTitle(context),
                     onPressed: _saving ? null : saveEntry,
                     style: IconButton.styleFrom(
                       foregroundColor: canSave
@@ -1385,7 +1387,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: EditorCopy.tooltipDelete,
+                      tooltip: EditorCopy.tooltipDelete(context),
                       onPressed: _saving ? null : deleteEntry,
                       style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),
@@ -1409,7 +1411,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: EditorCopy.tooltipEdit,
+                    tooltip: EditorCopy.tooltipEdit(context),
                     onPressed: _saving
                         ? null
                         : () => setState(() {
@@ -1423,7 +1425,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: EditorCopy.tooltipDelete,
+                      tooltip: EditorCopy.tooltipDelete(context),
                       onPressed: _saving ? null : deleteEntry,
                       style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
                       icon: const Icon(Icons.delete_outline),

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
@@ -27,6 +30,7 @@ class FakeSessionVaultRepository extends VaultRepository {
           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
           deviceKeyManager: const UnsupportedDeviceKeyManager(),
           appLockService: const UnsupportedAppLockService(),
+          userPreferences: UserPreferences(storageFile: File('.unused_test_prefs.json')),
         ) {
     if (openTrustedSessionResults != null) {
       _openTrustedSessionResults = List<Object?>.of(openTrustedSessionResults);

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
@@ -42,7 +43,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     if (sessionState.status == AppLockStatus.unlocking) {
       return HomeStateCard(
         icon: Icons.sync_rounded,
-        title: HomeCopy.unlockingTitle,
+        title: HomeCopy.unlockingTitle(context),
         message: sessionState.message ?? kTrustedUnlockInProgressMessage,
       );
     }
@@ -50,9 +51,9 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     if (sessionState.status == AppLockStatus.locked) {
       return HomeStateCard(
         icon: Icons.lock_outline,
-        title: blockedTitleForStatus(sessionState.status),
-        message: blockedSubtitleForState(sessionState),
-        actionLabel: HomeCopy.retryVerification,
+        title: blockedTitleForStatus(context.l10n, sessionState.status),
+        message: blockedSubtitleForState(context.l10n, sessionState),
+        actionLabel: HomeCopy.retryVerification(context),
         onAction: () => unawaited(
           ProviderScope.containerOf(context)
               .read(appSessionProvider.notifier)
@@ -64,9 +65,9 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     final bool offerSettings = blockedOffersSettingsNavigation(sessionState);
     return HomeStateCard(
       icon: blockedIconForStatus(sessionState.status),
-      title: blockedTitleForStatus(sessionState.status),
-      message: blockedSubtitleForState(sessionState),
-      actionLabel: offerSettings ? HomeCopy.goToSettings : null,
+      title: blockedTitleForStatus(context.l10n, sessionState.status),
+      message: blockedSubtitleForState(context.l10n, sessionState),
+      actionLabel: offerSettings ? HomeCopy.goToSettings(context) : null,
       onAction: offerSettings ? () => unawaited(context.push(AppRouter.settingsRoute)) : null,
     );
   }
@@ -197,7 +198,7 @@ class HomeDiarySectionCloseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: HomeCopy.tooltipDeselectTag,
+      tooltip: HomeCopy.tooltipDeselectTag(context),
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       iconSize: 16,

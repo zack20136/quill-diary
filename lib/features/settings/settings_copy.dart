@@ -1,4 +1,4 @@
-import '../../domain/shared/vault_backup_policy.dart';
+﻿import '../../domain/shared/vault_backup_policy.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/unlock_mode_policy.dart';
 import '../session/session_messages.dart';
@@ -7,7 +7,7 @@ import '../session/session_timeout_policy.dart';
 import '../../infrastructure/storage/restore_precheck.dart';
 import '../../infrastructure/storage/shared/portable_import_result.dart';
 import '../../infrastructure/storage/backup_task_progress.dart';
-import '../../shared/copy/common_copy.dart';
+import '../../l10n/l10n.dart';
 
 /// 設定頁與相關對話框的繁體中文文案（單一來源）。
 ///
@@ -26,16 +26,16 @@ import '../../shared/copy/common_copy.dart';
 /// - 驗證：生物驗證、裝置螢幕鎖
 /// - 末四碼：`末四碼：XXXX`
 abstract final class SettingsCopy {
-  static const String pageTitle = '設定';
+  static String get pageTitle => currentAppLocalizations.settingsPageTitle;
 
-  static const String actionCancel = CommonCopy.actionCancel;
-  static const String actionClose = '關閉';
-  static const String actionDelete = CommonCopy.actionDelete;
+  static String get actionCancel => currentAppLocalizations.commonActionCancel;
+  static String get actionClose => currentAppLocalizations.commonActionClose;
+  static String get actionDelete => currentAppLocalizations.commonActionDelete;
   static const String actionConfirm = '確認還原';
   static const String actionUpdate = '更新';
   static const String actionVerifyAndRestore = '驗證並還原';
 
-  static const String progressDefault = '處理中，請稍候…';
+  static String get progressDefault => currentAppLocalizations.settingsProgressDefault;
 
   static const String recoveryKeyFieldLabel = '復原金鑰';
   static const String recoveryKeyFieldHint = 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
@@ -46,15 +46,19 @@ abstract final class SettingsCopy {
 
 /// 備份、還原與 Google Drive 傳輸進度文案。
 abstract final class SettingsBackupTaskProgressCopy {
-  static const String startingAfterRestore = '正在啟動還原後的日記庫…';
+  static bool get _isEn => currentAppLocalizations.localeName == 'en';
+  static String _t(String zh, [String? en]) => _isEn ? (en ?? zh) : zh;
+
+  static String get startingAfterRestore =>
+      _t('正在啟動還原後的日記庫…', 'Starting the restored diary vault…');
 
   static String label(BackupTaskProgress progress) {
     final String base = switch (progress.phase) {
-      BackupTaskPhase.creatingBackup => '正在建立備份…',
-      BackupTaskPhase.copyingBackup => '正在寫入備份…',
-      BackupTaskPhase.uploadingDrive => '正在上傳到 Google Drive…',
-      BackupTaskPhase.downloadingDrive => '正在從 Google Drive 下載…',
-      BackupTaskPhase.restoringBackup => '正在還原備份，請勿關閉應用程式…',
+      BackupTaskPhase.creatingBackup => _t('正在建立備份…', 'Creating backup…'),
+      BackupTaskPhase.copyingBackup => _t('正在寫入備份…', 'Writing backup…'),
+      BackupTaskPhase.uploadingDrive => _t('正在上傳到 Google Drive…', 'Uploading to Google Drive…'),
+      BackupTaskPhase.downloadingDrive => _t('正在從 Google Drive 下載…', 'Downloading from Google Drive…'),
+      BackupTaskPhase.restoringBackup => _t('正在還原備份，請勿關閉應用程式…', 'Restoring backup. Please keep the app open…'),
       BackupTaskPhase.startingAfterRestore => startingAfterRestore,
     };
     final double? fraction = progress.fraction;
@@ -66,8 +70,11 @@ abstract final class SettingsBackupTaskProgressCopy {
 }
 
 abstract final class SettingsPlatformCopy {
-  static const String sectionTitle = '平台限制';
-  static const String sectionDescription = 'Quill Diary 目前僅支援 Android。';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Platform limitation' : '平台限制';
+  static String get sectionDescription => currentAppLocalizations.localeName == 'en'
+      ? 'Quill Diary currently supports Android only.'
+      : 'Quill Diary 目前僅支援 Android。';
 }
 
 abstract final class SettingsSecurityLockCopy {
@@ -107,8 +114,11 @@ abstract final class SettingsRecoveryKeyCopy {
 }
 
 abstract final class SettingsSecurityOverviewCopy {
-  static const String sectionTitle = '安全狀態';
-  static const String sectionDescription = '查看復原金鑰、解鎖方式與搜尋索引是否正常。';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Security overview' : '安全狀態';
+  static String get sectionDescription => currentAppLocalizations.localeName == 'en'
+      ? 'Review recovery key status, unlock method, and search index health.'
+      : '查看復原金鑰、解鎖方式與搜尋索引是否正常。';
 
   static const String recoveryKeyTitle = '復原金鑰';
   static const String recoveryKeyReady = '已建立，可用於換機與還原。';
@@ -159,7 +169,8 @@ extension AppUnlockModeSettingsCopy on AppUnlockMode {
 }
 
 abstract final class SettingsUnlockMethodCopy {
-  static const String sectionTitle = '解鎖方式';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Unlock method' : '解鎖方式';
 
   /// 區塊說明；[sessionTimeout] 取自個人化設定的自動鎖定時間。
   static String sectionDescription(Duration sessionTimeout) =>
@@ -202,10 +213,11 @@ abstract final class SettingsSessionTimeoutCopy {
 }
 
 abstract final class SettingsImportExportCopy {
-  static const String sectionTitle = '匯入與匯出';
-  static const String sectionDescriptionEnabled =
-      '可從其他 App 匯入日記，或將日記匯出成檔案。'
-      '支援 Markdown、HTML 與 Easy Diary 備份。';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Import and export' : '匯入與匯出';
+  static String get sectionDescriptionEnabled => currentAppLocalizations.localeName == 'en'
+      ? 'Import diaries from other apps or export them as files. Supports Markdown, HTML, and Easy Diary backups.'
+      : '可從其他 App 匯入日記，或將日記匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。';
 
   static const String importNoEntriesMessage =
       '找不到可匯入的日記，請確認檔案格式。';
@@ -264,7 +276,8 @@ abstract final class SettingsImportExportCopy {
 }
 
 abstract final class SettingsLocalBackupCopy {
-  static const String sectionTitle = '本機備份與還原';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Local backup and restore' : '本機備份與還原';
   static String get sectionDescriptionEnabled =>
       '建立完整備份並存於本機，還原會覆蓋目前日記。'
       '（本機最多保留 ${VaultBackupPolicy.retainCount} 份）';
@@ -289,7 +302,8 @@ abstract final class SettingsLocalBackupCopy {
 }
 
 abstract final class SettingsDriveBackupCopy {
-  static const String sectionTitle = 'Google Drive 備份與還原';
+  static String get sectionTitle =>
+      currentAppLocalizations.localeName == 'en' ? 'Google Drive backup and restore' : 'Google Drive 備份與還原';
   static String get sectionDescriptionEnabled =>
       '連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。'
       '（雲端最多保留 ${VaultBackupPolicy.retainCount} 份）';
@@ -460,62 +474,68 @@ abstract final class SettingsIndexCopy {
 
 /// 設定「贊助」子頁文案（對齊 Google Play Billing 用語）。
 abstract final class SettingsSupportCopy {
-  static const String navButtonLabel = '支持';
-  static const String pageTitle = '支持開發者';
+  static bool get _isEn => currentAppLocalizations.localeName == 'en';
+  static String _t(String zh, [String? en]) => _isEn ? (en ?? zh) : zh;
 
-  static const String heroTitle = '自願支持';
-  static const String heroBody =
-      '您可透過 Google Play 提供一次性支持。'
-      '本項支持不附帶額外功能，亦不影響日記內容的存取與使用。';
+  static String get navButtonLabel => _t('支持', 'Support');
+  static String get pageTitle => _t('支持開發者', 'Support the developer');
 
-  static const List<String> heroChips = <String>[
-    '不提供額外功能',
-    '可重複購買',
-    'Google Play 付款',
-  ];
+  static String get heroTitle => _t('自願支持', 'Voluntary support');
+  static String get heroBody =>
+      _t(
+        '您可透過 Google Play 提供一次性支持。本項支持不附帶額外功能，亦不影響日記內容的存取與使用。',
+        'You can make a one-time support purchase through Google Play. It does not unlock extra features or affect access to your diaries.',
+      );
 
-  static const String complianceCardTitle = '付款與資料說明';
-  static const String complianceCardBody =
-      '付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。'
-      '本應用程式不保存支持紀錄，亦不讀取日記內容。';
+  static List<String> get heroChips => _isEn
+      ? const <String>['No extra features', 'Repeatable purchase', 'Google Play payment']
+      : const <String>['不提供額外功能', '可重複購買', 'Google Play 付款'];
 
-  static const String productsSectionTitle = '支持方案';
-  static const String productsSectionBody =
-      '金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。';
-  static const String buyButtonPrefix = '支持';
-  static const String recommendedTierBadge = '常用';
+  static String get complianceCardTitle => _t('付款與資料說明', 'Payment and data');
+  static String get complianceCardBody =>
+      _t(
+        '付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，亦不讀取日記內容。',
+        'Payments are processed by Google Play as one-time support purchases, not subscriptions. The app does not store support records or read your diary content.',
+      );
 
-  static const String pendingMessage = '付款處理中，請稍候。';
-  static const String thanksMessage = '感謝您的支持。';
-  static const String errorMessage = '付款未完成，請稍後再試。';
-  static const String billingUnavailableMessage =
-      '目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。';
-  static const String productLoadErrorTitle = '暫時無法載入支持方案';
-  static const String productLoadErrorBody = '請稍後再試。';
-  static const String productsNotReadyTitle = '暫時無法顯示支持方案';
-  static const String productsNotReadyBody =
-      '請確認網路連線正常；若問題持續，請更新本應用程式後再試。';
-  static const String productsQueryFailedTitle = '目前無法連線至 Google Play';
-  static const String productsQueryFailedBody = '請確認網路連線後再試。';
-  static const String productsPartialMessage =
-      '部分方案暫時無法顯示，您仍可選擇其他可用金額。';
-  static const String retryLoadProductsLabel = '重新載入';
-  static const String footerNote = '是否提供支持，請依您的需求自行決定。';
+  static String get productsSectionTitle => _t('支持方案', 'Support options');
+  static String get productsSectionBody =>
+      _t('金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。', 'Google Play shows the amount and currency based on your region. Every option can be purchased more than once.');
+  static String get buyButtonPrefix => _t('支持', 'Support');
+  static String get recommendedTierBadge => _t('常用', 'Popular');
+
+  static String get pendingMessage => _t('付款處理中，請稍候。', 'Processing payment…');
+  static String get thanksMessage => _t('感謝您的支持。', 'Thank you for your support.');
+  static String get errorMessage => _t('付款未完成，請稍後再試。', 'Payment did not complete. Please try again later.');
+  static String get billingUnavailableMessage =>
+      _t('目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。',
+          'Google Play billing is currently unavailable. Use an Android device with the Google Play Store installed.');
+  static String get productLoadErrorTitle => _t('暫時無法載入支持方案', 'Unable to load support options');
+  static String get productLoadErrorBody => _t('請稍後再試。', 'Please try again later.');
+  static String get productsNotReadyTitle => _t('暫時無法顯示支持方案', 'Support options are not ready');
+  static String get productsNotReadyBody =>
+      _t('請確認網路連線正常；若問題持續，請更新本應用程式後再試。', 'Check your network connection. If the issue persists, update the app and try again.');
+  static String get productsQueryFailedTitle => _t('目前無法連線至 Google Play', 'Cannot connect to Google Play');
+  static String get productsQueryFailedBody => _t('請確認網路連線後再試。', 'Check your network connection and try again.');
+  static String get productsPartialMessage =>
+      _t('部分方案暫時無法顯示，您仍可選擇其他可用金額。', 'Some options are temporarily unavailable. You can still choose from the remaining ones.');
+  static String get retryLoadProductsLabel => _t('重新載入', 'Reload');
+  static String get footerNote => _t('是否提供支持，請依您的需求自行決定。', 'Whether to support the project is entirely up to you.');
 
   static SupportNoticeCopy noticeForProductLoadError(String? errorCode) {
     return switch (errorCode) {
-      'no_products' => const SupportNoticeCopy(
-        title: productsNotReadyTitle,
-        body: productsNotReadyBody,
-      ),
-      'query_failed' => const SupportNoticeCopy(
-        title: productsQueryFailedTitle,
-        body: productsQueryFailedBody,
-      ),
-      _ => const SupportNoticeCopy(
-        title: productLoadErrorTitle,
-        body: productLoadErrorBody,
-      ),
+        'no_products' => SupportNoticeCopy(
+          title: productsNotReadyTitle,
+          body: productsNotReadyBody,
+        ),
+        'query_failed' => SupportNoticeCopy(
+          title: productsQueryFailedTitle,
+          body: productsQueryFailedBody,
+        ),
+        _ => SupportNoticeCopy(
+          title: productLoadErrorTitle,
+          body: productLoadErrorBody,
+        ),
     };
   }
 
@@ -530,34 +550,22 @@ abstract final class SettingsSupportCopy {
 
   /// 五檔梯次（由低到高；價格由 Google Play 顯示，App 不寫死）。
   /// [productId] 須與 [BillingConfig.sponsorProductIdsOrdered] 一致。
-  static const List<SponsorTierCopy> sponsorTiers = <SponsorTierCopy>[
-    SponsorTierCopy(
-      productId: 'sponsor_coffee',
-      label: '請開發者喝杯咖啡',
-      hint: '支持 Quill Diary 持續開發與維護',
-    ),
-    SponsorTierCopy(
-      productId: 'sponsor_snack',
-      label: '請開發者吃點心',
-      hint: '讓 Quill Diary 能繼續穩定改進',
-    ),
-    SponsorTierCopy(
-      productId: 'sponsor_lunch',
-      label: '請開發者吃午餐',
-      hint: '幫助 Quill Diary 持續變得更好',
-    ),
-    SponsorTierCopy(
-      productId: 'sponsor_boost',
-      label: '大力支持',
-      hint: '成為我們持續開發、維護與改善的動力',
-    ),
-    SponsorTierCopy(
-      productId: 'sponsor_super',
-      label: '大大大大大力支持',
-      hint: '幫助我們更安心投入長期開發與維護',
-    ),
-  ];
-}
+  static List<SponsorTierCopy> get sponsorTiers => _isEn
+      ? const <SponsorTierCopy>[
+          SponsorTierCopy(productId: 'sponsor_coffee', label: 'Buy the developer a coffee', hint: 'Support ongoing Quill Diary development and maintenance'),
+          SponsorTierCopy(productId: 'sponsor_snack', label: 'Buy the developer a snack', hint: 'Help Quill Diary keep improving steadily'),
+          SponsorTierCopy(productId: 'sponsor_lunch', label: 'Buy the developer lunch', hint: 'Help Quill Diary keep getting better'),
+          SponsorTierCopy(productId: 'sponsor_boost', label: 'Strong support', hint: 'Support continuous development, maintenance, and improvement'),
+          SponsorTierCopy(productId: 'sponsor_super', label: 'Super strong support', hint: 'Help us invest in long-term development with more confidence'),
+        ]
+      : const <SponsorTierCopy>[
+          SponsorTierCopy(productId: 'sponsor_coffee', label: '請開發者喝杯咖啡', hint: '支持 Quill Diary 持續開發與維護'),
+          SponsorTierCopy(productId: 'sponsor_snack', label: '請開發者吃點心', hint: '讓 Quill Diary 能繼續穩定改進'),
+          SponsorTierCopy(productId: 'sponsor_lunch', label: '請開發者吃午餐', hint: '幫助 Quill Diary 持續變得更好'),
+          SponsorTierCopy(productId: 'sponsor_boost', label: '大力支持', hint: '成為我們持續開發、維護與改善的動力'),
+          SponsorTierCopy(productId: 'sponsor_super', label: '大大大大大力支持', hint: '幫助我們更安心投入長期開發與維護'),
+        ];
+  }
 
 /// 贊助頁簡短提示（標題 + 內文）。
 class SupportNoticeCopy {

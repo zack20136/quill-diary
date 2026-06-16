@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
-import '../../../shared/copy/common_copy.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
@@ -26,11 +26,20 @@ import 'home_shared_widgets.dart';
 
 const double kOverviewScopeControlHeight = 40;
 
-String overviewMetricRangeCaption(MemoryScope scope, DateTime focusedMonth, int focusedYear) {
+String overviewMetricRangeCaption(
+  BuildContext context,
+  MemoryScope scope,
+  DateTime focusedMonth,
+  int focusedYear,
+) {
   return switch (scope) {
-    MemoryScope.all => HomeCopy.overviewScopeAll,
-    MemoryScope.year => HomeCopy.overviewScopeYear(focusedYear),
-    MemoryScope.month => HomeCopy.overviewScopeMonth(focusedMonth.year, focusedMonth.month),
+    MemoryScope.all => HomeCopy.overviewScopeAll(context),
+    MemoryScope.year => HomeCopy.overviewScopeYear(context, focusedYear),
+    MemoryScope.month => HomeCopy.overviewScopeMonth(
+      context,
+      focusedMonth.year,
+      focusedMonth.month,
+    ),
   };
 }
 
@@ -59,16 +68,20 @@ int overviewScopeTotalDays({
   }
 }
 
-String overviewScopedDiarySectionTitle(MemoryScope scope, {String? selectedTag}) {
+String overviewScopedDiarySectionTitle(
+  BuildContext context,
+  MemoryScope scope, {
+  String? selectedTag,
+}) {
   final String base = switch (scope) {
-    MemoryScope.all => HomeCopy.diarySectionAll,
-    MemoryScope.year => HomeCopy.diarySectionByYear,
-    MemoryScope.month => HomeCopy.diarySectionByMonth,
+    MemoryScope.all => HomeCopy.diarySectionAll(context),
+    MemoryScope.year => HomeCopy.diarySectionByYear(context),
+    MemoryScope.month => HomeCopy.diarySectionByMonth(context),
   };
   if (selectedTag == null || selectedTag.isEmpty) {
     return base;
   }
-  return HomeCopy.diarySectionWithTag(base, selectedTag);
+  return HomeCopy.diarySectionWithTag(context, base, selectedTag);
 }
 
 List<Widget> overviewDiarySectionSlivers({
@@ -162,10 +175,10 @@ class OverviewPane extends ConsumerWidget {
     return allEntriesAsync.when(
       data: (List<EntryIndexRecord> allEntries) {
         if (allEntries.isEmpty) {
-          return const HomeStateCard(
+          return HomeStateCard(
             icon: Icons.insights_outlined,
-            title: HomeCopy.noAnalysisTitle,
-            message: HomeCopy.noAnalysisMessage,
+            title: HomeCopy.noAnalysisTitle(context),
+            message: HomeCopy.noAnalysisMessage(context),
           );
         }
 
@@ -177,10 +190,10 @@ class OverviewPane extends ConsumerWidget {
         final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
         final int focusedYear = ref.watch(memoryFocusedYearProvider);
         final String diarySectionTitle =
-            overviewScopedDiarySectionTitle(scope, selectedTag: selectedTag);
+            overviewScopedDiarySectionTitle(context, scope, selectedTag: selectedTag);
         final String diaryEmptyText = selectedTag == null
-            ? HomeCopy.scopeEmptyDiary
-            : HomeCopy.scopeEmptyDiaryForTag(selectedTag);
+            ? HomeCopy.scopeEmptyDiary(context)
+            : HomeCopy.scopeEmptyDiaryForTag(context, selectedTag);
         final Widget? diarySectionTitleTrail = selectedTag == null
             ? null
             : HomeDiarySectionCloseButton(
@@ -205,7 +218,7 @@ class OverviewPane extends ConsumerWidget {
             );
             final List<TagCatalogUsageItem> scopedTopTags = rankedTagUsageFromEntries(raw);
             final Widget exportButton = Tooltip(
-              message: overviewExportLabel(scope),
+              message: overviewExportLabel(context, scope),
               child: FilledButton.icon(
                 onPressed: exportEntryIds.isEmpty
                     ? null
@@ -231,7 +244,7 @@ class OverviewPane extends ConsumerWidget {
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.ios_share_rounded, size: 18),
-                label: const Text(HomeCopy.exportRecapLabel),
+                label: Text(HomeCopy.exportRecapLabel(context)),
               ),
             );
 
@@ -257,10 +270,10 @@ class OverviewPane extends ConsumerWidget {
                         ),
                         const SizedBox(height: HomeLayout.sectionGap),
                         HomeSectionCard(
-                          title: HomeCopy.popularTagsTitle,
+                          title: HomeCopy.popularTagsTitle(context),
                           stripeColor: cs.tertiary,
                           child: scopedTopTags.isEmpty
-                              ? HomePaneEmptyHint(text: HomeCopy.scopeEmptyTags)
+                              ? HomePaneEmptyHint(text: HomeCopy.scopeEmptyTags(context))
                               : Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
@@ -402,7 +415,7 @@ class OverviewPane extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace _) => HomeStateCard(
         icon: Icons.error_outline,
-        title: CommonCopy.readFailureTitle,
+        title: context.l10n.commonReadFailureTitle,
         message: userFacingErrorMessage(error),
       ),
     );
@@ -425,7 +438,12 @@ class OverviewScopedMetricPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String caption = overviewMetricRangeCaption(scope, focusedMonth, focusedYear);
+    final String caption = overviewMetricRangeCaption(
+      context,
+      scope,
+      focusedMonth,
+      focusedYear,
+    );
 
     return OverviewMetricShell(
       rangeCaption: caption,
@@ -441,29 +459,31 @@ class OverviewScopedMetricPanel extends StatelessWidget {
           return Column(
             children: <Widget>[
               OverviewNumericTile(
-                label: HomeCopy.overviewWritingDaysLabel,
+                label: HomeCopy.overviewWritingDaysLabel(context),
                 value: DisplayFormat.formatRatio(metrics.activeDays, scopeTotalDays, '天'),
                 detail: [
-                  metrics.mostEntriesInSingleDayDetail(),
-                  HomeCopy.overviewLongestStreak(metrics.longestWritingStreakDays),
+                  metrics.mostEntriesInSingleDayDetail(context.l10n),
+                  HomeCopy.overviewLongestStreak(context, metrics.longestWritingStreakDays),
                 ].whereType<String>().join('\n'),
               ),
               const SizedBox(height: 13),
               OverviewNumericTile(
-                label: HomeCopy.overviewAvgLengthLabel,
+                label: HomeCopy.overviewAvgLengthLabel(context),
                 value: HomeCopy.overviewAvgLengthValue(
+                  context,
                   metrics.avgCharactersPerEntryRounded,
                 ),
                 detail: HomeCopy.overviewEntryStats(
+                  context,
                   metrics.totalEntries,
                   metrics.totalCharacters,
                 ),
               ),
               const SizedBox(height: 13),
               OverviewNumericTile(
-                label: HomeCopy.overviewAttachmentsLabel,
-                value: HomeCopy.overviewAttachmentCount(metrics.totalAttachments),
-                detail: metrics.attachmentDetail(),
+                label: HomeCopy.overviewAttachmentsLabel(context),
+                value: HomeCopy.overviewAttachmentCount(context, metrics.totalAttachments),
+                detail: metrics.attachmentDetail(context.l10n),
               ),
             ],
           );
@@ -577,7 +597,7 @@ class OverviewScopePicker extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     return HomeSectionCard(
-      title: HomeCopy.scopeTitle,
+      title: HomeCopy.scopeTitle(context),
       stripeColor: cs.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,18 +629,18 @@ class OverviewScopePicker extends ConsumerWidget {
                         return cs.onSurfaceVariant;
                       }),
                     ),
-                    segments: const <ButtonSegment<MemoryScope>>[
+                    segments: <ButtonSegment<MemoryScope>>[
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.all,
-                        label: Text(HomeCopy.scopeAllLabel),
+                        label: Text(HomeCopy.scopeAllLabel(context)),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.year,
-                        label: Text(HomeCopy.scopeYearLabel),
+                        label: Text(HomeCopy.scopeYearLabel(context)),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.month,
-                        label: Text(HomeCopy.scopeMonthLabel),
+                        label: Text(HomeCopy.scopeMonthLabel(context)),
                       ),
                     ],
                     selected: <MemoryScope>{scope},
@@ -703,7 +723,7 @@ class OverviewMetricShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        HomeCopy.overviewDataTitle,
+                        HomeCopy.overviewDataTitle(context),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),

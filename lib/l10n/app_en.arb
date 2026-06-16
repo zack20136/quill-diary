@@ -1,0 +1,474 @@
+{
+  "@@locale": "en",
+  "appTitle": "Quill Diary",
+  "languageNameZhTw": "Traditional Chinese",
+  "languageNameEn": "English",
+  "commonActionCancel": "Cancel",
+  "commonActionDelete": "Delete",
+  "commonActionApply": "Apply",
+  "commonActionClose": "Close",
+  "commonReadFailureTitle": "Read failed",
+  "commonConfirmDeleteTitle": "Confirm delete",
+  "commonNoTagSearchResults": "No matching tags",
+  "commonCloseTooltip": "Close",
+  "commonClearSearchTooltip": "Clear search",
+  "commonConfirmDeleteEntries": "Delete {count} diary entries? This cannot be undone.",
+  "@commonConfirmDeleteEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tagAddTitle": "Add tag",
+  "tagEditTitle": "Edit tag",
+  "tagSaveButton": "Save",
+  "tagNameHint": "Tag name",
+  "tagNameRequiredMessage": "Please enter a tag name",
+  "tagDeleteLabel": "Delete tag",
+  "tagUnnamedPreview": "Untitled tag",
+  "tagDefaultColorLabel": "Default color",
+  "tagHueLabel": "Hue",
+  "tagPreviewLabel": "Preview",
+  "tagSaveFailure": "Failed to save tag: {message}",
+  "@tagSaveFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "tagDeleteFailure": "Failed to delete tag: {message}",
+  "@tagDeleteFailure": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationNavButtonLabel": "Personalization",
+  "personalizationPageTitle": "Personalization",
+  "personalizationLoadErrorMessage": "Unable to load personalization settings.",
+  "personalizationTypographyResetButton": "Reset",
+  "personalizationTypographyResetConfirmTitle": "Reset diary typography?",
+  "personalizationTypographyResetConfirmBody": "This resets the title and body font size, line height, and paragraph spacing to their defaults.",
+  "personalizationTypographyResetConfirmAction": "Reset",
+  "personalizationTypographyResetSuccess": "Diary typography has been reset.",
+  "personalizationLanguageSectionTitle": "Language",
+  "personalizationLanguageSectionDescription": "Choose the interface language.",
+  "personalizationLanguageComingSoonHint": "Some English translations are still in progress.",
+  "personalizationSessionTimeoutSectionTitle": "Auto lock",
+  "personalizationSessionTimeoutSectionDescription": "Require verification again after the app stays in the background for a while.",
+  "personalizationSessionTimeoutUnitLabel": "min",
+  "personalizationImageCompressSectionTitle": "Image quality",
+  "personalizationImageCompressSectionDescription": "Adjust the default compression when inserting images in the editor.",
+  "personalizationImageCompressOriginalLabel": "Original",
+  "personalizationImageCompressStandardLabel": "Standard",
+  "personalizationImageCompressHighLabel": "High",
+  "personalizationAppearanceSectionTitle": "Theme",
+  "personalizationAppearanceSectionDescription": "Choose light, dark, or follow the system appearance.",
+  "personalizationAppearanceSystemLabel": "System",
+  "personalizationAppearanceLightLabel": "Light",
+  "personalizationAppearanceDarkLabel": "Dark",
+  "personalizationTypographySectionTitle": "Diary typography",
+  "personalizationTypographySectionDescription": "Adjust the font size, line height, and paragraph spacing used in diary editing and preview.",
+  "personalizationTitleFontSizeLabel": "Title font size",
+  "personalizationTitleLineHeightLabel": "Title line height",
+  "personalizationBodyFontSizeLabel": "Body font size",
+  "personalizationBodyLineHeightLabel": "Body line height",
+  "personalizationBodyParagraphSpacingLabel": "Body paragraph spacing",
+  "settingsPageTitle": "Settings",
+  "settingsProgressDefault": "Working…",
+  "personalizationImageCompressOriginalDescription": "Keep the original resolution and file size with no compression. Best when you want maximum image quality and can accept a larger vault.",
+  "personalizationImageCompressStandardDescription": "Resize the long edge to 1280 px with JPEG quality 70. Balanced for clarity and storage size (default).",
+  "personalizationImageCompressHighDescription": "Resize the long edge to 1920 px with JPEG quality 85. Larger files, but more detail is preserved.",
+  "personalizationFontSizeValue": "{size} pt",
+  "@personalizationFontSizeValue": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationLineHeightValue": "{height}x",
+  "@personalizationLineHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationParagraphSpacingValue": "{spacing} px",
+  "@personalizationParagraphSpacingValue": {
+    "placeholders": {
+      "spacing": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationTypographyPreviewTitleParagraph1": "A small good thing today: the sunlight landed perfectly on the desk. A moment worth keeping, so I wrote it down first.",
+  "personalizationTypographyPreviewBodyParagraph1": "Write down how you feel right now, and let words keep the memory warm. Write down how you feel right now, and let words keep the memory warm.",
+  "personalizationTypographyPreviewBodyParagraph2": "The spacing between paragraphs is also reflected in the preview. The spacing between paragraphs is also reflected in the preview.",
+  "sessionBlockedLockedTitle": "Diary vault locked",
+  "sessionBlockedRecoveryRequiredTitle": "Recovery key required",
+  "sessionBlockedFatalErrorTitle": "Unable to start",
+  "sessionBlockedDefaultTitle": "Please wait",
+  "sessionBlockedLockedSubtitle": "Complete verification to continue",
+  "sessionBlockedRecoveryRequiredSubtitle": "Enter the recovery key to unlock",
+  "sessionBlockedFatalErrorSubtitle": "Check your setup or restart the app",
+  "editorPageTitle": "Edit diary",
+  "editorTitleHint": "Enter a title",
+  "editorTitleRequiredError": "Please enter a title",
+  "editorBodyHint": "Write here…",
+  "editorBodyEmptyPreview": "No content yet",
+  "editorNeedsRecoveryKeyMessage": "Create a recovery key before creating or editing diaries.",
+  "editorSessionLockedFallback": "Unlock the diary vault again to continue.",
+  "editorSaveNeedsTitleMessage": "Enter a title before saving",
+  "editorUnsavedDraftLabel": "Unsaved",
+  "editorConfirmDeleteTitle": "Confirm delete",
+  "editorConfirmDeleteBody": "Delete this diary entry? This cannot be undone.",
+  "editorTagsStudioTitle": "Tags",
+  "editorTagsStudioGuide": "Create a new tag from the top right, or tap a library tag below to add it.",
+  "editorTagsStudioEmptyChosen": "No tags applied yet",
+  "editorTagsStudioAddButton": "Add",
+  "editorPreviewUnavailable": "Preview unavailable",
+  "editorTagSearchHint": "Search tags…",
+  "editorTagLibraryHint": "Tags in library · tap to add",
+  "editorTagPoolEmpty": "No more available tags in the library, or all have already been added.",
+  "editorTagAddTooltip": "Add tag",
+  "editorTooltipCancel": "Cancel",
+  "editorTooltipSave": "Save",
+  "editorTooltipSaveNeedsTitle": "Enter a title first",
+  "editorTooltipDate": "Date",
+  "editorTooltipTime": "Time",
+  "editorTooltipEditTags": "Edit tags",
+  "editorTooltipUploadImages": "Upload images (multiple selection supported)",
+  "editorTooltipAddAttachment": "Add attachment",
+  "editorTooltipDelete": "Delete",
+  "editorTooltipEdit": "Edit",
+  "editorRestoreDraftTitle": "Unfinished draft found",
+  "editorRestoreDraftDecline": "Ignore",
+  "editorRestoreDraftAccept": "Restore draft",
+  "editorUntitledDraft": "Untitled",
+  "editorRestoreDraftOverwrite": "Draft: {title}\nLast saved: {savedAt}\n\nRestoring it will replace the content you are currently viewing.",
+  "@editorRestoreDraftOverwrite": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorRestoreDraftPrompt": "Draft: {title}\nLast saved: {savedAt}\n\nRestore this draft?",
+  "@editorRestoreDraftPrompt": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDiscardDraftTitle": "Discard draft?",
+  "editorDiscardDraftBody": "Your changes have not been saved as a diary entry. Discard the draft and leave?",
+  "editorDiscardDraftConfirm": "Discard",
+  "editorGalleryDownloadTooltip": "Download",
+  "editorGalleryDownloadFailed": "Unable to download image",
+  "editorGalleryDownloadSuccess": "Saved to {path}",
+  "@editorGalleryDownloadSuccess": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "homeUnlockingTitle": "Unlocking",
+  "homeRetryVerification": "Verify again",
+  "homeGoToSettings": "Go to settings",
+  "homeNavHome": "Home",
+  "homeNavCalendar": "Calendar",
+  "homeNavTags": "Tags",
+  "homeNavOverview": "Overview",
+  "homeTooltipNewEntry": "New diary",
+  "homeTooltipSettings": "Settings and backup",
+  "homeTooltipExportHtml": "Export HTML",
+  "homeTooltipDelete": "Delete",
+  "homeTooltipAddTag": "Add tag",
+  "homeTooltipEditTag": "Edit tag",
+  "homeTooltipDeleteTag": "Delete tag",
+  "homeTooltipDeselectTag": "Clear selection",
+  "homeSelectionSelectAll": "Select all",
+  "homeSelectionDeselectAll": "Deselect all",
+  "homeSelectionSelectDiary": "Select diary",
+  "homeSelectionSelectedCount": "{count} selected",
+  "@homeSelectionSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSearchHint": "Search titles, content, or tags",
+  "homeEmptyDiaryTitle": "No diary entries yet",
+  "homeEmptyDiaryMessage": "Create your first diary entry to see it here.",
+  "homeNoAnalysisTitle": "No data to analyze yet",
+  "homeNoAnalysisMessage": "Write something first to see stats, tags, and scoped diary entries here.",
+  "homeExportRecapLabel": "Export recap",
+  "homeExportRecapAll": "Export full recap",
+  "homeExportRecapYear": "Export yearly recap",
+  "homeExportRecapMonth": "Export monthly recap",
+  "homePopularTagsTitle": "Popular tags",
+  "homeScopeTitle": "Scope",
+  "homeScopeAllLabel": "All",
+  "homeScopeYearLabel": "Year",
+  "homeScopeMonthLabel": "Month",
+  "homeScopeEmptyDiary": "No diary entries in this scope.",
+  "homeScopeEmptyDiaryForTag": "No diary entries with \"{tag}\" in this scope.",
+  "@homeScopeEmptyDiaryForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScopeEmptyTags": "No tags in this scope.",
+  "homeUnsavedDraftLabel": "Unsaved",
+  "homeHtmlExportLargeTitle": "HTML file may be large",
+  "homeHtmlExportEmbeddedHint": "Images are embedded into a single HTML file, which may be slower to open or harder to share.",
+  "homeHtmlExportProceed": "Export anyway",
+  "homeHtmlExportSelectionSummary": "{entrySummary} selected, including {imageSummary}.",
+  "@homeHtmlExportSelectionSummary": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "imageSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportImageSize": "Original image size: about {size}",
+  "@homeHtmlExportImageSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportEstimatedSize": "Estimated HTML size: about {size}",
+  "@homeHtmlExportEstimatedSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportSuccess": "HTML exported: {fileName}",
+  "@homeHtmlExportSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDeleteTagTitle": "Delete tag",
+  "homeDeleteTagConfirm": "Remove \"{label}\" from all diary entries?",
+  "@homeDeleteTagConfirm": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagSearchHint": "Search tags…",
+  "homeNoTagsTitle": "No tags yet",
+  "homeNoTagsMessage": "Create your own tags or use the defaults. They stay in the list even if no diary entry uses them yet.",
+  "homeTagListGuide": "Tap a row in the tag list to preview diary entries filtered by that tag. Tap the same row again to clear the selection.",
+  "homeTagPreviewTitle": "Select a tag to preview diaries",
+  "homeTagDeleted": "\"{label}\" deleted",
+  "@homeTagDeleted": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRemovedFromEntries": "Removed \"{label}\" from {entrySummary}.",
+  "@homeTagRemovedFromEntries": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagIndexEmptyForTag": "No indexed items found with \"{tag}\".",
+  "@homeTagIndexEmptyForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowEntryCount": "{entrySummary}",
+  "@homeTagRowEntryCount": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowTapHint": "Tap row to preview",
+  "homeDiarySectionTitleForDate": "Diary · {dateLabel}",
+  "@homeDiarySectionTitleForDate": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEmptyDayMessage": "No diary entries on {dateLabel}.",
+  "@homeEmptyDayMessage": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewDataTitle": "Data overview",
+  "homeOverviewScopeAll": "Current scope · All diaries",
+  "homeOverviewScopeYear": "Current scope · {year}",
+  "@homeOverviewScopeYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewScopeMonth": "Current scope · {year}/{month}",
+  "@homeOverviewScopeMonth": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewWritingDaysLabel": "Writing days",
+  "homeOverviewAvgLengthLabel": "Average length",
+  "homeOverviewAttachmentsLabel": "Total attachments",
+  "homeOverviewAttachmentCount": "{attachmentSummary}",
+  "@homeOverviewAttachmentCount": {
+    "placeholders": {
+      "attachmentSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewLongestStreak": "Longest streak {daySummary}",
+  "@homeOverviewLongestStreak": {
+    "placeholders": {
+      "daySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewEntryStats": "{entrySummary}\n{characterSummary} total",
+  "@homeOverviewEntryStats": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "characterSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionTag": "Diary · {tag}",
+  "@homeDiarySectionTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionAll": "Diary · All",
+  "homeDiarySectionByYear": "Diary · By year",
+  "homeDiarySectionByMonth": "Diary · By month",
+  "homeDiarySectionWithTag": "{baseTitle} · {tag}",
+  "@homeDiarySectionWithTag": {
+    "placeholders": {
+      "baseTitle": {
+        "type": "String"
+      },
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCalendarMonthFormatLabel": "Month",
+  "homeOverviewAvgLengthValue": "{charactersPerEntry} chars / entry",
+  "@homeOverviewAvgLengthValue": {
+    "placeholders": {
+      "charactersPerEntry": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewAttachmentDetail": "Photos {photos} · Files {files}",
+  "@homeOverviewAttachmentDetail": {
+    "placeholders": {
+      "photos": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewMostEntriesInSingleDay": "Max in one day {entrySummary}",
+  "@homeOverviewMostEntriesInSingleDay": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultTransferNeedsUnlockForBackup": "Unlock the diary vault before backing up or exporting.",
+  "vaultTransferNeedsRecoveryKeyForBackup": "Create a recovery key before backing up or exporting.",
+  "vaultTransferNeedsUnlockForRestore": "Unlock the diary vault before restoring a backup.",
+  "vaultTransferLocalSectionDescriptionBackupLocked": "Local backup and export require an unlocked vault and a recovery key. If you have not created one or forgot it, you can still import an external backup to restore.",
+  "vaultTransferDriveSectionDescriptionBackupLocked": "Backing up to Google Drive requires an unlocked vault and a recovery key. If you have not created one or forgot it, you can still restore directly from Google Drive.",
+  "vaultTransferDriveBackupActionsLockedHint": "Unlock the diary vault and create a recovery key before backing up to Google Drive.",
+  "vaultTransferRestoreUnlockFailed": "The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.",
+  "androidSafWriteFailed": "Unable to write the file to the selected folder.",
+  "androidSafWriteFailedWithCode": "Unable to write the file to the selected folder ({code}).",
+  "@androidSafWriteFailedWithCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultTagDaily": "Daily",
+  "defaultTagMood": "Mood",
+  "defaultTagReflection": "Reflection",
+  "defaultTagPlanning": "Plan",
+  "defaultTagWork": "Work",
+  "defaultTagStudy": "Study",
+  "defaultTagFamily": "Family",
+  "defaultTagFriends": "Friends",
+  "defaultTagTravel": "Travel",
+  "defaultTagFood": "Food",
+  "defaultTagEntertainment": "Entertainment",
+  "defaultTagExercise": "Exercise",
+  "defaultTagHealth": "Health",
+  "defaultTagShopping": "Shopping"
+}

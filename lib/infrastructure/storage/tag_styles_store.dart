@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import '../../domain/shared/value_objects.dart';
+import '../../l10n/l10n.dart';
 import 'vault_path_strategy.dart';
 
 class TagCatalogItem {
@@ -49,22 +51,36 @@ class TagCatalogItem {
   }
 }
 
-const List<TagCatalogItem> kDefaultTagCatalog = <TagCatalogItem>[
-  TagCatalogItem(label: '日常', accentArgb: 0xFF748091),
-  TagCatalogItem(label: '心情', accentArgb: 0xFFD6336C),
-  TagCatalogItem(label: '反思', accentArgb: 0xFF7950F2),
-  TagCatalogItem(label: '計畫', accentArgb: 0xFF4C6EF5),
-  TagCatalogItem(label: '工作', accentArgb: 0xFF339AF0),
-  TagCatalogItem(label: '學習', accentArgb: 0xFF15AABF),
-  TagCatalogItem(label: '家庭', accentArgb: 0xFFFF922B),
-  TagCatalogItem(label: '朋友', accentArgb: 0xFFF783AC),
-  TagCatalogItem(label: '旅遊', accentArgb: 0xFF20C997),
-  TagCatalogItem(label: '美食', accentArgb: 0xFFFCC419),
-  TagCatalogItem(label: '娛樂', accentArgb: 0xFFA855F7),
-  TagCatalogItem(label: '運動', accentArgb: 0xFF51CF66),
-  TagCatalogItem(label: '健康', accentArgb: 0xFF69DB7C),
-  TagCatalogItem(label: '購物', accentArgb: 0xFFFF6B6B),
+const List<int> kDefaultTagAccents = <int>[
+  0xFF748091,
+  0xFFD6336C,
+  0xFF7950F2,
+  0xFF4C6EF5,
+  0xFF339AF0,
+  0xFF15AABF,
+  0xFFFF922B,
+  0xFFF783AC,
+  0xFF20C997,
+  0xFFFCC419,
+  0xFFA855F7,
+  0xFF51CF66,
+  0xFF69DB7C,
+  0xFFFF6B6B,
 ];
+
+List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {
+  final List<String> labels = localizedDefaultTagLabels(l10n);
+  return List<TagCatalogItem>.generate(
+    labels.length,
+    (int index) => TagCatalogItem(label: labels[index], accentArgb: kDefaultTagAccents[index]),
+    growable: false,
+  );
+}
+
+List<TagCatalogItem> defaultTagCatalogForLocale(Locale locale) {
+  final AppLocalizations l10n = lookupAppLocalizations(locale);
+  return defaultTagCatalogFor(l10n);
+}
 
 /// 在 [vault/tag_styles.json] 持久化標籤目錄，使預設與未使用標籤在備份／還原後保留。
 class TagStylesStore {

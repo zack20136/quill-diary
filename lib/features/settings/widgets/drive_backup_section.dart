@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/drive/drive_backup_service.dart';
+import '../../../l10n/l10n.dart';
 import '../providers/settings_providers.dart';
 import '../settings_copy.dart';
 import '../vault_transfer_access.dart';
@@ -36,7 +37,7 @@ class DriveBackupSection extends ConsumerWidget {
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
             ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-            : VaultTransferCopy.driveSectionDescriptionBackupLocked)
+            : VaultTransferCopy.driveSectionDescriptionBackupLocked(context.l10n))
         : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
 
     return SettingsSectionCard(
@@ -150,24 +151,24 @@ class _DriveBackupContent extends StatelessWidget {
             ],
           ],
         ),
-        if (isConnected && _lockedBannerMessage != null) ...<Widget>[
+        if (isConnected && _lockedBannerMessage(context) != null) ...<Widget>[
           const SizedBox(height: 12),
           SettingsInfoBanner(
             icon: Icons.lock_outline_rounded,
-            message: _lockedBannerMessage!,
+            message: _lockedBannerMessage(context)!,
           ),
         ],
       ],
     );
   }
 
-  String? get _lockedBannerMessage {
+  String? _lockedBannerMessage(BuildContext context) {
     if (!access.canBackup && !access.canRestore) {
       return access.restoreDisabledReason ?? access.backupDisabledReason;
     }
     if (!access.canBackup) {
       return access.backupDisabledReason ??
-          VaultTransferCopy.driveBackupActionsLockedHint;
+          VaultTransferCopy.driveBackupActionsLockedHint(context.l10n);
     }
     if (!access.canRestore) {
       return access.restoreDisabledReason;

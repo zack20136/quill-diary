@@ -5,8 +5,7 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/tag_styles_store.dart';
-import '../../../shared/copy/common_copy.dart';
-import '../../../shared/copy/tag_copy.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
@@ -77,11 +76,13 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                titleText: existingLabel == null ? TagCopy.addTitle : TagCopy.editTitle,
+                titleText: existingLabel == null
+                    ? ctx.l10n.tagAddTitle
+                    : ctx.l10n.tagEditTitle,
                 initialDisplayLabel: existingLabel,
                 lockLabel: existingLabel != null,
                 initialAccentArgb: initialArgb,
-                primaryButtonLabel: TagCopy.saveButton,
+                primaryButtonLabel: ctx.l10n.tagSaveButton,
                 onDelete: existingLabel == null || session == null
                     ? null
                     : () => _deleteTag(existingLabel, session: session),
@@ -100,19 +101,19 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     final bool? confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: const Text(HomeCopy.deleteTagTitle),
-          content: Text(HomeCopy.deleteTagConfirm(label)),
+          title: Text(HomeCopy.deleteTagTitle(dialogContext)),
+          content: Text(HomeCopy.deleteTagConfirm(dialogContext, label)),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(CommonCopy.actionCancel),
+              child: Text(dialogContext.l10n.commonActionCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
-              child: const Text(CommonCopy.actionDelete),
+              child: Text(dialogContext.l10n.commonActionDelete),
             ),
           ],
         ),
@@ -142,8 +143,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       SnackBar(
         content: Text(
           entryCount == 0
-              ? HomeCopy.tagDeleted(label)
-              : HomeCopy.tagRemovedFromEntries(entryCount, label),
+              ? HomeCopy.tagDeleted(context, label)
+              : HomeCopy.tagRemovedFromEntries(context, entryCount, label),
         ),
       ),
     );
@@ -174,7 +175,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   Widget _tagDiaryPreviewPanel(List<EntryIndexRecord> records, ThemeData theme, ColorScheme cs) {
     if (_selectedTagLabel == null) {
       return HomeDiaryListSectionCard(
-        title: HomeCopy.tagPreviewTitle,
+        title: HomeCopy.tagPreviewTitle(context),
         stripeColor: cs.primary,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
@@ -184,12 +185,12 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
               Icon(Icons.swipe_vertical_rounded, size: 40, color: cs.outline),
               const SizedBox(height: 12),
               Text(
-                HomeCopy.tagPreviewTitle,
+                HomeCopy.tagPreviewTitle(context),
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
               Text(
-                HomeCopy.tagListGuide,
+                HomeCopy.tagListGuide(context),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
@@ -205,14 +206,14 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     final List<EntryIndexRecord> matched = _entriesMatchingTag(records, _selectedTagLabel!);
 
     return HomeDiaryListSectionCard(
-      title: HomeCopy.tagFilteredDiaryTitle(_selectedTagLabel!),
+      title: HomeCopy.tagFilteredDiaryTitle(context, _selectedTagLabel!),
       stripeColor: cs.primary,
       titleTrail: HomeDiarySectionCloseButton(
         onPressed: () => setState(() => _selectedTagLabel = null),
       ),
       child: matched.isEmpty
           ? HomePaneEmptyHint(
-              text: HomeCopy.tagIndexEmptyForTag(_selectedTagLabel!),
+              text: HomeCopy.tagIndexEmptyForTag(context, _selectedTagLabel!),
             )
           : HomeCompactEntryList(entries: matched),
     );
@@ -245,12 +246,12 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
               Expanded(
                 child: HomeSearchTextField(
                   controller: _searchCtrl,
-                  hintText: HomeCopy.tagSearchHint,
+                  hintText: HomeCopy.tagSearchHint(context),
                 ),
               ),
               const SizedBox(width: 8),
               HomeCircleIconButton(
-                tooltip: HomeCopy.tooltipAddTag,
+                tooltip: HomeCopy.tooltipAddTag(context),
                 onPressed: () => _presentComposer(accentMap: accentMap),
                 icon: Icons.add_rounded,
                 size: kHomeSearchRowControlHeight,
@@ -276,10 +277,10 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 freq,
               );
               if (mergedTags.isEmpty) {
-                return const HomeStateCard(
+                return HomeStateCard(
                   icon: Icons.label_outline_rounded,
-                  title: HomeCopy.noTagsTitle,
-                  message: HomeCopy.noTagsMessage,
+                  title: HomeCopy.noTagsTitle(context),
+                  message: HomeCopy.noTagsMessage(context),
                 );
               }
               final List<TagCatalogUsageItem> list = mergedTags
@@ -291,7 +292,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
               if (list.isEmpty) {
                 return Center(
                   child: Text(
-                    CommonCopy.noTagSearchResults,
+                    context.l10n.commonNoTagSearchResults,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: cs.outline,
                       fontStyle: FontStyle.italic,
@@ -358,13 +359,13 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               Text(
-                                HomeCopy.tagRowEntryCount(e.count),
+                                HomeCopy.tagRowEntryCount(context, e.count),
                                 style: theme.textTheme.bodySmall
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                HomeCopy.tagRowTapHint,
+                                HomeCopy.tagRowTapHint(context),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant.withValues(alpha: 0.82),
                                   fontWeight: FontWeight.w500,
@@ -378,7 +379,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 HomeCircleIconButton(
-                                  tooltip: HomeCopy.tooltipEditTag,
+                                  tooltip: HomeCopy.tooltipEditTag(context),
                                   onPressed: () => _presentComposer(
                                     accentMap: accentMap,
                                     existingLabel: e.label,
@@ -393,7 +394,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                 ),
                                 const SizedBox(width: 6),
                                 HomeCircleIconButton(
-                                  tooltip: HomeCopy.tooltipDeleteTag,
+                                  tooltip: HomeCopy.tooltipDeleteTag(context),
                                   onPressed: session == null
                                       ? null
                                       : () => _deleteTag(e.label, session: session),
@@ -422,7 +423,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   slivers: <Widget>[
                     SliverToBoxAdapter(
                       child: HomeSectionCard(
-                        title: HomeCopy.navTags,
+                        title: HomeCopy.navTags(context),
                         stripeColor: cs.secondary,
                         child: SizedBox(
                           height: HomeLayout.tagListSectionHeight,
@@ -453,7 +454,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (Object err, StackTrace _) => HomeStateCard(
               icon: Icons.error_outline_rounded,
-              title: CommonCopy.readFailureTitle,
+              title: context.l10n.commonReadFailureTitle,
               message: '$err',
             ),
           ),

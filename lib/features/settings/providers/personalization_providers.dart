@@ -32,7 +32,7 @@ class PersonalizationPreferencesController
     await _persist(current.copyWith(sessionTimeoutMinutes: value));
   }
 
-  Future<void> setLocale(AppLocalePreference value) async {
+  Future<void> setLocale(AppLanguage value) async {
     final PersonalizationPreferences current = await future;
     await _persist(current.copyWith(locale: value));
   }

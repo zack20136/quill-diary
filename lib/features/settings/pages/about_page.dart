@@ -22,7 +22,7 @@ class SettingsAboutPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: pageBackground,
         appBar: AppBar(
-          title: const Text(SettingsAboutCopy.pageTitle),
+          title: Text(SettingsAboutCopy.pageTitle(context)),
           backgroundColor: pageBackground,
           surfaceTintColor: Colors.transparent,
           elevation: 0,

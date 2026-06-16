@@ -105,7 +105,7 @@ class CalendarPane extends ConsumerWidget {
     if (monthEntriesAsync.hasError && !monthEntriesAsync.hasValue) {
       return HomeStateCard(
         icon: Icons.error_outline,
-        title: CommonCopy.readFailureTitle,
+        title: CommonCopy.readFailureTitle(context),
         message: userFacingErrorMessage(monthEntriesAsync.error!),
       );
     }
@@ -154,8 +154,8 @@ class CalendarPane extends ConsumerWidget {
                           lastDay: DateTime(2100),
                           focusedDay: visibleMonth,
                           calendarFormat: CalendarFormat.month,
-                          availableCalendarFormats: const <CalendarFormat, String>{
-                            CalendarFormat.month: HomeCopy.calendarMonthFormatLabel,
+                          availableCalendarFormats: <CalendarFormat, String>{
+                            CalendarFormat.month: HomeCopy.calendarMonthFormatLabel(context),
                           },
                           startingDayOfWeek: StartingDayOfWeek.sunday,
                           sixWeekMonthsEnforced: true,
@@ -352,17 +352,17 @@ class CalendarPane extends ConsumerWidget {
               data: (List<EntryIndexRecord> entries) {
                 final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
                 return HomeDiaryListSectionCard(
-                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  title: HomeCopy.diarySectionTitleForDate(context, dateLabel),
                   stripeColor: cs.primary,
                   child: entries.isEmpty
-                      ? HomePaneEmptyHint(text: HomeCopy.emptyDayMessage(dateLabel))
+                      ? HomePaneEmptyHint(text: HomeCopy.emptyDayMessage(context, dateLabel))
                       : HomeCompactEntryList(entries: entries),
                 );
               },
               loading: () {
                 final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
                 return HomeDiaryListSectionCard(
-                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  title: HomeCopy.diarySectionTitleForDate(context, dateLabel),
                   stripeColor: cs.primary,
                   child: const Center(child: CircularProgressIndicator()),
                 );
@@ -370,7 +370,7 @@ class CalendarPane extends ConsumerWidget {
               error: (Object error, StackTrace _) {
                 final String dateLabel = DisplayFormat.formatDateOnlyZh(selectedDate);
                 return HomeDiaryListSectionCard(
-                  title: HomeCopy.diarySectionTitleForDate(dateLabel),
+                  title: HomeCopy.diarySectionTitleForDate(context, dateLabel),
                   stripeColor: cs.primary,
                   child: Text(userFacingErrorMessage(error)),
                 );

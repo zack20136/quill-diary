@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../../l10n/l10n.dart';
+
 /// Android SAF：將本機檔案串流複製到使用者授權的資料夾樹。
 abstract final class AndroidSafFileCopy {
   static const MethodChannel _channel = MethodChannel('quill_diary/saf_file_copy');
@@ -12,7 +14,9 @@ abstract final class AndroidSafFileCopy {
     required File sourceFile,
     required String fileName,
     required String mimeType,
+    AppLocalizations? l10n,
   }) async {
+    final AppLocalizations resolvedL10n = l10n ?? lookupAppLocalizations(appZhTwLocale);
     try {
       final String? result = await _channel.invokeMethod<String>('copyFileToTree', <String, String>{
         'treeUri': treeUri,
@@ -21,7 +25,7 @@ abstract final class AndroidSafFileCopy {
         'mimeType': mimeType,
       });
       if (result == null || result.trim().isEmpty) {
-        throw StateError('無法將檔案寫入選擇的資料夾。');
+        throw StateError(_writeFailedMessage(resolvedL10n));
       }
       return result;
     } on PlatformException catch (error) {
@@ -29,8 +33,15 @@ abstract final class AndroidSafFileCopy {
       if (message.isNotEmpty) {
         throw StateError(message);
       }
-      throw StateError('無法將檔案寫入選擇的資料夾（${error.code}）。');
+      throw StateError(_writeFailedMessage(resolvedL10n, code: error.code));
     }
+  }
+
+  static String _writeFailedMessage(AppLocalizations l10n, {String? code}) {
+    if (code == null || code.trim().isEmpty) {
+      return l10n.androidSafWriteFailed;
+    }
+    return l10n.androidSafWriteFailedWithCode(code);
   }
 }
 
