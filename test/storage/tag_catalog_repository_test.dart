@@ -33,7 +33,8 @@ void main() {
     await persistZhTwPreference();
     await harness.repository.setupRecoveryKey();
 
-    final List<TagCatalogItem> catalog = await harness.repository.listTagCatalog();
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
     expect(catalog.map((TagCatalogItem item) => item.label), <String>[
       '日常',
       '心情',
@@ -58,37 +59,48 @@ void main() {
 
   test('ensureIndexReady 在空 catalog 時 seed 預設標籤', () async {
     await persistZhTwPreference();
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await TagStylesStore(harness.pathStrategy).write(const <TagCatalogItem>[]);
 
-    final UnlockedVaultSession session =
-        await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.ensureIndexReady(session);
 
-    final List<TagCatalogItem> catalog = await harness.repository.listTagCatalog();
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
     expect(catalog.map((TagCatalogItem item) => item.label), contains('日常'));
     expect(catalog.map((TagCatalogItem item) => item.label), contains('工作'));
   });
 
   test('未使用標籤也會保留在標籤目錄', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
 
-    await harness.repository.upsertTagCatalogItem('臨時想法', accentArgb: 0xFF123456);
+    await harness.repository.upsertTagCatalogItem(
+      '臨時想法',
+      accentArgb: 0xFF123456,
+    );
     await harness.repository.closeUnlockedResources();
 
-    final UnlockedVaultSession session =
-        await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.ensureIndexReady(session);
 
-    final List<TagCatalogItem> catalog = await harness.repository.listTagCatalog();
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
     expect(
-      catalog.any((TagCatalogItem item) => item.label == '臨時想法' && item.accentArgb == 0xFF123456),
+      catalog.any(
+        (TagCatalogItem item) =>
+            item.label == '臨時想法' && item.accentArgb == 0xFF123456,
+      ),
       isTrue,
     );
   });
 
   test('saveEntry 會將日記標籤寫入目錄', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
 
     await harness.repository.saveEntry(
       setup.session,
@@ -103,10 +115,8 @@ void main() {
       ),
     );
 
-    final List<TagCatalogItem> catalog = await harness.repository.listTagCatalog();
-    expect(
-      catalog.any((TagCatalogItem item) => item.label == '手打標籤'),
-      isTrue,
-    );
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
+    expect(catalog.any((TagCatalogItem item) => item.label == '手打標籤'), isTrue);
   });
 }

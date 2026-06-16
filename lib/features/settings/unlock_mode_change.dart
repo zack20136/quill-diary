@@ -4,7 +4,6 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/unlock_mode_change_service.dart';
-import '../../infrastructure/security/unlock_mode_policy.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import 'providers/settings_providers.dart';
@@ -17,10 +16,12 @@ Future<UnlockModeChangeOutcome> applyUnlockModeChange({
   required AppUnlockMode mode,
 }) async {
   final AppLockService appLock = ref.read(appLockServiceProvider);
-  final UnlockedVaultSession? session = await ref.read(activeVaultSessionProvider.future);
+  final UnlockedVaultSession? session = await ref.read(
+    activeVaultSessionProvider.future,
+  );
   if (session == null) {
-    return UnlockModeChangeMessage(
-      UnlockModeCapabilityFailure.requiresUnlockedSession.message,
+    return const UnlockModeChangeMessage(
+      UnlockModeChangeMessageKind.requiresUnlockedSession,
     );
   }
 
@@ -30,7 +31,9 @@ Future<UnlockModeChangeOutcome> applyUnlockModeChange({
   );
 
   late UnlockModeChangeOutcome outcome;
-  await ref.read(appSessionProvider.notifier).runSensitiveTask((UnlockedVaultSession active) async {
+  await ref.read(appSessionProvider.notifier).runSensitiveTask((
+    UnlockedVaultSession active,
+  ) async {
     outcome = await service.apply(mode: mode, session: active);
     if (outcome case UnlockModeChangeSucceededWithSession(:final session)) {
       ref.read(appSessionProvider.notifier).activateSession(session);

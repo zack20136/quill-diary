@@ -97,10 +97,7 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
   }
 
   void enterWith(EntryId id) {
-    state = HomeEntrySelectionState(
-      isActive: true,
-      selectedIds: <EntryId>{id},
-    );
+    state = HomeEntrySelectionState(isActive: true, selectedIds: <EntryId>{id});
   }
 
   void toggle(EntryId id) {
@@ -127,9 +124,13 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
       return;
     }
     final bool allSelected =
-        state.selectedIds.length == all.length && all.every(state.selectedIds.contains);
+        state.selectedIds.length == all.length &&
+        all.every(state.selectedIds.contains);
     if (allSelected) {
-      state = HomeEntrySelectionState(isActive: true, selectedIds: const <EntryId>{});
+      state = HomeEntrySelectionState(
+        isActive: true,
+        selectedIds: const <EntryId>{},
+      );
       return;
     }
     state = HomeEntrySelectionState(isActive: true, selectedIds: all);
@@ -144,8 +145,7 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
       return;
     }
     final Set<EntryId> visible = visibleIds.toSet();
-    final Set<EntryId> next =
-        state.selectedIds.where(visible.contains).toSet();
+    final Set<EntryId> next = state.selectedIds.where(visible.contains).toSet();
     if (next.isEmpty) {
       state = state.copyWith(selectedIds: next);
       return;
@@ -160,38 +160,42 @@ final homeTabProvider = NotifierProvider<HomeTabController, HomeTab>(
   HomeTabController.new,
 );
 
-final homeSearchQueryProvider = NotifierProvider<HomeSearchQueryController, String>(
-  HomeSearchQueryController.new,
-);
+final homeSearchQueryProvider =
+    NotifierProvider<HomeSearchQueryController, String>(
+      HomeSearchQueryController.new,
+    );
 
 final calendarSelectedDateProvider =
     NotifierProvider<CalendarSelectedDateController, DateOnly?>(
-  CalendarSelectedDateController.new,
-);
+      CalendarSelectedDateController.new,
+    );
 
 final calendarVisibleMonthProvider =
     NotifierProvider<CalendarVisibleMonthController, DateTime>(
-  CalendarVisibleMonthController.new,
-);
+      CalendarVisibleMonthController.new,
+    );
 
-final overviewTagFilterProvider = NotifierProvider<OverviewTagFilterController, String?>(
-  OverviewTagFilterController.new,
-);
+final overviewTagFilterProvider =
+    NotifierProvider<OverviewTagFilterController, String?>(
+      OverviewTagFilterController.new,
+    );
 
-final memoryScopeProvider = NotifierProvider<MemoryScopeController, MemoryScope>(
-  MemoryScopeController.new,
-);
+final memoryScopeProvider =
+    NotifierProvider<MemoryScopeController, MemoryScope>(
+      MemoryScopeController.new,
+    );
 
 final memoryFocusedMonthProvider =
     NotifierProvider<MemoryFocusedMonthController, DateTime>(
-  MemoryFocusedMonthController.new,
-);
+      MemoryFocusedMonthController.new,
+    );
 
-final memoryFocusedYearProvider = NotifierProvider<MemoryFocusedYearController, int>(
-  MemoryFocusedYearController.new,
-);
+final memoryFocusedYearProvider =
+    NotifierProvider<MemoryFocusedYearController, int>(
+      MemoryFocusedYearController.new,
+    );
 
 final homeEntrySelectionProvider =
     NotifierProvider<HomeEntrySelectionController, HomeEntrySelectionState>(
-  HomeEntrySelectionController.new,
-);
+      HomeEntrySelectionController.new,
+    );

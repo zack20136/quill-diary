@@ -1,37 +1,42 @@
 import '../../../infrastructure/storage/shared/portable_import_result.dart';
-import 'settings_copy.dart';
+import '../../l10n/l10n.dart';
+import 'settings_messages.dart';
 
 extension PortableImportResultMessages on PortableImportResult {
-  bool get isFailure =>
+  bool isFailure(AppLocalizations l10n) =>
       failureCode != null ||
       failureMessage != null ||
       (importedEntries == 0 && skippedFiles > 0);
 
-  String formatSuccessMessage() {
+  String formatSuccessMessage(AppLocalizations l10n) {
     if (skippedFiles > 0 && skippedAttachments > 0) {
-      return SettingsImportExportCopy.importSuccessWithSkippedFilesAndAttachments(
-        importedEntries,
-        skippedFiles,
-        skippedAttachments,
-      );
+      return l10n
+          .settingsImportExportImportSuccessWithSkippedFilesAndAttachments(
+            importedEntries,
+            skippedFiles,
+            skippedAttachments,
+          );
     }
     if (skippedFiles > 0) {
-      return SettingsImportExportCopy.importSuccessWithSkippedFiles(
+      return l10n.settingsImportExportImportSuccessWithSkippedFiles(
         importedEntries,
         skippedFiles,
       );
     }
     if (skippedAttachments > 0) {
-      return SettingsImportExportCopy.importSuccessWithSkippedAttachments(
+      return l10n.settingsImportExportImportSuccessWithSkippedAttachments(
         importedEntries,
         skippedAttachments,
       );
     }
-    return SettingsImportExportCopy.importSuccess(importedEntries);
+    return l10n.settingsImportExportImportSuccess(importedEntries);
   }
 
-  String messageWhenNoEntriesImported() {
-    final String fromCode = SettingsImportExportCopy.messageForFailureCode(failureCode);
+  String messageWhenNoEntriesImported(AppLocalizations l10n) {
+    final String fromCode = settingsImportExportMessageForFailureCode(
+      l10n,
+      failureCode,
+    );
     if (fromCode.isNotEmpty) {
       return fromCode;
     }
@@ -39,8 +44,8 @@ extension PortableImportResultMessages on PortableImportResult {
       return failureMessage!;
     }
     if (skippedFiles > 0) {
-      return SettingsImportExportCopy.importAllSkippedMessage;
+      return l10n.settingsImportExportImportAllSkippedMessage;
     }
-    return SettingsImportExportCopy.importNoEntriesMessage;
+    return l10n.settingsImportExportImportNoEntriesMessage;
   }
 }

@@ -29,22 +29,22 @@ class VaultArchiveIo {
     required FrontMatterCodec frontMatterCodec,
     required IndexDatabaseManager indexDatabaseManager,
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
-  })  : _backup = VaultBackupIo(
-          pathStrategy: pathStrategy,
-          repository: repository,
-          indexDatabaseManager: indexDatabaseManager,
-        ),
-        _export = PortableExportIo(
-          pathStrategy: pathStrategy,
-          repository: repository,
-          frontMatterCodec: frontMatterCodec,
-        ),
-        _import = PortableImportIo(
-          pathStrategy: pathStrategy,
-          repository: repository,
-          frontMatterCodec: frontMatterCodec,
-          easyDiaryBackupImporterFactory: easyDiaryBackupImporterFactory,
-        );
+  }) : _backup = VaultBackupIo(
+         pathStrategy: pathStrategy,
+         repository: repository,
+         indexDatabaseManager: indexDatabaseManager,
+       ),
+       _export = PortableExportIo(
+         pathStrategy: pathStrategy,
+         repository: repository,
+         frontMatterCodec: frontMatterCodec,
+       ),
+       _import = PortableImportIo(
+         pathStrategy: pathStrategy,
+         repository: repository,
+         frontMatterCodec: frontMatterCodec,
+         easyDiaryBackupImporterFactory: easyDiaryBackupImporterFactory,
+       );
 
   final VaultBackupIo _backup;
   final PortableExportIo _export;
@@ -53,8 +53,7 @@ class VaultArchiveIo {
   Future<File> writeBackupZip(
     File target, {
     BackupTaskProgressListener? onProgress,
-  }) =>
-      _backup.writeBackupZip(target, onProgress: onProgress);
+  }) => _backup.writeBackupZip(target, onProgress: onProgress);
 
   Future<BackupInspectResult> inspectBackup(File backupFile) =>
       _backup.inspectBackup(backupFile);
@@ -65,54 +64,39 @@ class VaultArchiveIo {
   Future<Directory> exportMarkdown({
     required UnlockedVaultSession session,
     required Directory parentDirectory,
-  }) =>
-      _export.exportMarkdown(
-        session: session,
-        parentDirectory: parentDirectory,
-      );
+  }) => _export.exportMarkdown(
+    session: session,
+    parentDirectory: parentDirectory,
+  );
 
   Future<File> writeMarkdownZip({
     required UnlockedVaultSession session,
     required File target,
-  }) =>
-      _export.writeMarkdownZip(
-        session: session,
-        target: target,
-      );
+  }) => _export.writeMarkdownZip(session: session, target: target);
 
   Future<HtmlExportEstimate> estimateSelectedHtmlExport({
     required Set<EntryId> entryIds,
-  }) =>
-      _export.estimateSelectedHtmlExport(entryIds: entryIds);
+  }) => _export.estimateSelectedHtmlExport(entryIds: entryIds);
 
   Future<File> writeSelectedHtmlExport({
     required UnlockedVaultSession session,
     required Set<EntryId> entryIds,
     required File target,
-  }) =>
-      _export.writeSelectedHtmlExport(
-        session: session,
-        entryIds: entryIds,
-        target: target,
-      );
+  }) => _export.writeSelectedHtmlExport(
+    session: session,
+    entryIds: entryIds,
+    target: target,
+  );
 
   Future<PortableImportResult> importDocuments({
     required UnlockedVaultSession session,
     required Directory rootDirectory,
-  }) =>
-      _import.importDocuments(
-        session: session,
-        rootDirectory: rootDirectory,
-      );
+  }) => _import.importDocuments(session: session, rootDirectory: rootDirectory);
 
   Future<PortableImportResult> importDocumentsFromZip({
     required UnlockedVaultSession session,
     required File zipFile,
-  }) =>
-      _import.importDocumentsFromZip(
-        session: session,
-        zipFile: zipFile,
-      );
+  }) => _import.importDocumentsFromZip(session: session, zipFile: zipFile);
 
   Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) =>
       _backup.verifyBackupRecoveryKey(backupFile, recoveryKey);
@@ -124,10 +108,9 @@ class VaultArchiveIo {
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
     BackupTaskProgressListener? onProgress,
-  }) =>
-      _backup.restoreBackupZip(
-        backupFile,
-        preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
-        onProgress: onProgress,
-      );
+  }) => _backup.restoreBackupZip(
+    backupFile,
+    preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+    onProgress: onProgress,
+  );
 }

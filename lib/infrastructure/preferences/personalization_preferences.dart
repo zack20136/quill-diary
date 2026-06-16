@@ -39,7 +39,8 @@ class PersonalizationPreferences {
       imageCompressPreset: imageCompressPreset ?? this.imageCompressPreset,
       typography: typography ?? this.typography,
       themeMode: themeMode ?? this.themeMode,
-      sessionTimeoutMinutes: sessionTimeoutMinutes ?? this.sessionTimeoutMinutes,
+      sessionTimeoutMinutes:
+          sessionTimeoutMinutes ?? this.sessionTimeoutMinutes,
       locale: locale ?? this.locale,
     );
   }
@@ -60,10 +61,10 @@ enum AppThemeModePreference {
   String get storageValue => name;
 
   ThemeMode get materialThemeMode => switch (this) {
-        AppThemeModePreference.system => ThemeMode.system,
-        AppThemeModePreference.light => ThemeMode.light,
-        AppThemeModePreference.dark => ThemeMode.dark,
-      };
+    AppThemeModePreference.system => ThemeMode.system,
+    AppThemeModePreference.light => ThemeMode.light,
+    AppThemeModePreference.dark => ThemeMode.dark,
+  };
 
   static AppThemeModePreference fromStorage(String? raw) {
     return switch (raw?.trim()) {
@@ -81,14 +82,14 @@ enum AppLanguage {
   en;
 
   String get storageValue => switch (this) {
-        AppLanguage.zhTw => 'zh_TW',
-        AppLanguage.en => 'en',
-      };
+    AppLanguage.zhTw => 'zh_TW',
+    AppLanguage.en => 'en',
+  };
 
   Locale get materialLocale => switch (this) {
-        AppLanguage.zhTw => appZhTwLocale,
-        AppLanguage.en => appEnLocale,
-      };
+    AppLanguage.zhTw => appZhTwLocale,
+    AppLanguage.en => appEnLocale,
+  };
 
   static AppLanguage fromStorage(String? raw) {
     return switch (raw?.trim()) {

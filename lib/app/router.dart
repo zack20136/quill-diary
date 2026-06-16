@@ -22,14 +22,8 @@ class AppRouter {
     return GoRouter(
       initialLocation: homeRoute,
       routes: <RouteBase>[
-        GoRoute(
-          path: homeRoute,
-          builder: (_, _) => const HomePage(),
-        ),
-        GoRoute(
-          path: editorRoute,
-          builder: (_, _) => const EditorPage(),
-        ),
+        GoRoute(path: homeRoute, builder: (_, _) => const HomePage()),
+        GoRoute(path: editorRoute, builder: (_, _) => const EditorPage()),
         GoRoute(
           path: editorDetailRoute,
           builder: (_, GoRouterState state) => EditorPage(
@@ -37,22 +31,13 @@ class AppRouter {
             startInEditMode: state.uri.queryParameters['edit'] == '1',
           ),
         ),
-        GoRoute(
-          path: settingsRoute,
-          builder: (_, _) => const SettingsPage(),
-        ),
-        GoRoute(
-          path: aboutRoute,
-          builder: (_, _) => const SettingsAboutPage(),
-        ),
+        GoRoute(path: settingsRoute, builder: (_, _) => const SettingsPage()),
+        GoRoute(path: aboutRoute, builder: (_, _) => const SettingsAboutPage()),
         GoRoute(
           path: personalizationRoute,
           builder: (_, _) => const PersonalizationPage(),
         ),
-        GoRoute(
-          path: supportRoute,
-          builder: (_, _) => const SupportPage(),
-        ),
+        GoRoute(path: supportRoute, builder: (_, _) => const SupportPage()),
       ],
     );
   }

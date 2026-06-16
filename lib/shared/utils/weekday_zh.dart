@@ -11,6 +11,8 @@ const List<String> kWeekdayNamesZhLong = <String>[
   '星期日',
 ];
 
-String weekdayZhLong(DateTime dateTime) => kWeekdayNamesZhLong[dateTime.weekday - 1];
+String weekdayZhLong(DateTime dateTime) =>
+    kWeekdayNamesZhLong[dateTime.weekday - 1];
 
-String weekdayZhLongFromDateOnly(DateOnly date) => weekdayZhLong(date.toDateTime());
+String weekdayZhLongFromDateOnly(DateOnly date) =>
+    weekdayZhLong(date.toDateTime());

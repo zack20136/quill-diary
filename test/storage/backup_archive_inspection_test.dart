@@ -15,23 +15,29 @@ void main() {
     expect(layout.hasManifest, isTrue);
   });
 
-  test('inspectZipEntryNames rejects portable export layout by folder structure', () {
-    final VaultBackupLayout layout = inspectZipEntryNames(<String>[
-      '2026-06-01/My Entry/index.md',
-    ]);
+  test(
+    'inspectZipEntryNames rejects portable export layout by folder structure',
+    () {
+      final VaultBackupLayout layout = inspectZipEntryNames(<String>[
+        '2026-06-01/My Entry/index.md',
+      ]);
 
-    expect(layout.isRestorable, isFalse);
-    expect(layout.hasMarkdownPortableLayout, isTrue);
-    expect(layout.failureMessage, contains('日記匯出檔'));
-  });
+      expect(layout.isRestorable, isFalse);
+      expect(layout.hasMarkdownPortableLayout, isTrue);
+      expect(layout.failureMessage, contains('日記匯出檔'));
+    },
+  );
 
-  test('inspectZipEntryNames does not treat arbitrary names as portable export', () {
-    final VaultBackupLayout layout = inspectZipEntryNames(<String>[
-      'markdown_2026-05-26_14-03-07/entry.md',
-    ]);
+  test(
+    'inspectZipEntryNames does not treat arbitrary names as portable export',
+    () {
+      final VaultBackupLayout layout = inspectZipEntryNames(<String>[
+        'markdown_2026-05-26_14-03-07/entry.md',
+      ]);
 
-    expect(layout.hasMarkdownPortableLayout, isFalse);
-  });
+      expect(layout.hasMarkdownPortableLayout, isFalse);
+    },
+  );
 
   test('inspectZipEntryNames rejects unsafe paths', () {
     final VaultBackupLayout layout = inspectZipEntryNames(<String>[

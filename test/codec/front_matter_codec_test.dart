@@ -30,7 +30,10 @@ void main() {
       sha256: 'deadbeef',
     );
 
-    final String document = codec.encode(entry, attachments: <AssetAttachment>[attachment]);
+    final String document = codec.encode(
+      entry,
+      attachments: <AssetAttachment>[attachment],
+    );
     final DiaryEntry decoded = codec.decode(document);
 
     expect(decoded.id, entry.id);
@@ -63,7 +66,10 @@ void main() {
       sha256: 'abc',
     );
 
-    final String document = codec.encode(entry, attachments: <AssetAttachment>[attachment]);
+    final String document = codec.encode(
+      entry,
+      attachments: <AssetAttachment>[attachment],
+    );
     final DiaryEntry decoded = codec.decode(document);
 
     expect(decoded.attachmentIds, const <String>['ast_REAL0001']);

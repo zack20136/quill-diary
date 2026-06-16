@@ -7,10 +7,7 @@ import '../../l10n/l10n.dart';
 import 'vault_path_strategy.dart';
 
 class TagCatalogItem {
-  const TagCatalogItem({
-    required this.label,
-    this.accentArgb,
-  });
+  const TagCatalogItem({required this.label, this.accentArgb});
 
   final String label;
   final int? accentArgb;
@@ -30,7 +27,10 @@ class TagCatalogItem {
     if (raw is! Map<Object?, Object?>) {
       return null;
     }
-    final String label = '${raw['label'] ?? ''}'.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final String label = '${raw['label'] ?? ''}'.trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
     if (label.isEmpty) {
       return null;
     }
@@ -72,7 +72,10 @@ List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {
   final List<String> labels = localizedDefaultTagLabels(l10n);
   return List<TagCatalogItem>.generate(
     labels.length,
-    (int index) => TagCatalogItem(label: labels[index], accentArgb: kDefaultTagAccents[index]),
+    (int index) => TagCatalogItem(
+      label: labels[index],
+      accentArgb: kDefaultTagAccents[index],
+    ),
     growable: false,
   );
 }
@@ -112,7 +115,10 @@ class TagStylesStore {
       }
 
       return _normalizeItems(
-        rawTags.map(TagCatalogItem.fromJson).whereType<TagCatalogItem>().toList(growable: false),
+        rawTags
+            .map(TagCatalogItem.fromJson)
+            .whereType<TagCatalogItem>()
+            .toList(growable: false),
       );
     } on Object {
       return const <TagCatalogItem>[];
@@ -125,7 +131,9 @@ class TagStylesStore {
     final List<TagCatalogItem> normalized = _normalizeItems(items);
     final Map<String, Object?> payload = <String, Object?>{
       'version': schemaVersion,
-      'tags': normalized.map((TagCatalogItem item) => item.toJson()).toList(growable: false),
+      'tags': normalized
+          .map((TagCatalogItem item) => item.toJson())
+          .toList(growable: false),
     };
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(payload),
@@ -161,10 +169,7 @@ class TagStylesStore {
       if (existingIndex == null) {
         indexByNorm[normalizedKey] = normalized.length;
         normalized.add(
-          TagCatalogItem(
-            label: item.displayLabel,
-            accentArgb: item.accentArgb,
-          ),
+          TagCatalogItem(label: item.displayLabel, accentArgb: item.accentArgb),
         );
         continue;
       }

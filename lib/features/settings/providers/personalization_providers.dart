@@ -13,7 +13,9 @@ class PersonalizationPreferencesController
   }
 
   Future<void> _persist(PersonalizationPreferences value) async {
-    await ref.read(userPreferencesProvider).savePersonalizationPreferences(value);
+    await ref
+        .read(userPreferencesProvider)
+        .savePersonalizationPreferences(value);
     state = AsyncData<PersonalizationPreferences>(value);
   }
 
@@ -27,7 +29,9 @@ class PersonalizationPreferencesController
     await _persist(current.copyWith(themeMode: value));
   }
 
-  Future<void> setSessionTimeoutMinutes(SessionBackgroundTimeoutMinutes value) async {
+  Future<void> setSessionTimeoutMinutes(
+    SessionBackgroundTimeoutMinutes value,
+  ) async {
     final PersonalizationPreferences current = await future;
     await _persist(current.copyWith(sessionTimeoutMinutes: value));
   }
@@ -51,13 +55,16 @@ class PersonalizationPreferencesController
 }
 
 final personalizationPreferencesProvider =
-    AsyncNotifierProvider<PersonalizationPreferencesController, PersonalizationPreferences>(
-  PersonalizationPreferencesController.new,
-);
+    AsyncNotifierProvider<
+      PersonalizationPreferencesController,
+      PersonalizationPreferences
+    >(PersonalizationPreferencesController.new);
 
 /// 讀取背景逾時；provider 尚未載入時回傳 3 分鐘預設（避免 lifecycle 路徑碰 disk）。
 Duration readSessionBackgroundTimeout(Ref ref) {
-  return ref.read(personalizationPreferencesProvider).maybeWhen(
+  return ref
+      .read(personalizationPreferencesProvider)
+      .maybeWhen(
         data: (PersonalizationPreferences prefs) => prefs.sessionTimeout,
         orElse: () => SessionBackgroundTimeoutMinutes.three.duration,
       );
@@ -65,7 +72,9 @@ Duration readSessionBackgroundTimeout(Ref ref) {
 
 /// 已載入的個人化偏好；載入中或失敗時回傳預設值。
 PersonalizationPreferences watchPersonalizationPreferences(WidgetRef ref) {
-  return ref.watch(personalizationPreferencesProvider).maybeWhen(
+  return ref
+      .watch(personalizationPreferencesProvider)
+      .maybeWhen(
         data: (PersonalizationPreferences value) => value,
         orElse: () => PersonalizationPreferences.defaults,
       );

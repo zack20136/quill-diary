@@ -6,17 +6,15 @@ import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/settings/legal_disclosures.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../../helpers/fake_vault_transfer_service.dart';
 import '../../helpers/settings_test_scope.dart';
+import '../../helpers/test_l10n.dart';
 
 class _FakeUrlLauncher extends UrlLauncherPlatform {
   bool launchResult = false;
@@ -25,7 +23,8 @@ class _FakeUrlLauncher extends UrlLauncherPlatform {
   LinkDelegate? get linkDelegate => null;
 
   @override
-  Future<bool> launchUrl(String url, LaunchOptions options) async => launchResult;
+  Future<bool> launchUrl(String url, LaunchOptions options) async =>
+      launchResult;
 }
 
 void main() {
@@ -38,9 +37,7 @@ void main() {
     recoveryKeyVersion: 1,
     recoveryKeyHint: 'WXYZ',
     createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
-    kdf: KdfDescriptor.argon2idRecovery(
-      saltBytes: List<int>.filled(16, 1),
-    ),
+    kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
   );
 
   final UnlockedVaultSession unlockedSession = UnlockedVaultSession(
@@ -75,7 +72,8 @@ void main() {
         transferService: transferService,
         driveConnectionState: connectedState,
         recoveryMetadata: recoveryMetadata,
-        sessionState: sessionState ??
+        sessionState:
+            sessionState ??
             AppSessionState(
               status: AppLockStatus.unlocked,
               session: unlockedSession,
@@ -91,28 +89,34 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('legal link failure shows fallback message', (WidgetTester tester) async {
+  testWidgets('legal link failure shows fallback message', (
+    WidgetTester tester,
+  ) async {
     urlLauncher.launchResult = false;
 
     await pumpSettingsActionsPage(
       tester,
-      transferService: FakeVaultTransferService(connectionState: connectedState),
+      transferService: FakeVaultTransferService(
+        connectionState: connectedState,
+      ),
     );
 
     await scrollSettingsPageUntilVisible(
       tester,
-      find.text(SettingsLegalCopy.sourceCodeTitle),
+      find.text(testL10n.settingsLegalSourceCodeTitle),
     );
-    await tester.tap(find.text(SettingsLegalCopy.sourceCodeTitle));
+    await tester.tap(find.text(testL10n.settingsLegalSourceCodeTitle));
     await tester.pumpAndSettle();
 
     expect(
-      find.text(LegalDisclosures.externalLinkUnavailableMessage),
+      find.text(testL10n.legalExternalLinkUnavailableMessage),
       findsOneWidget,
     );
   });
 
-  testWidgets('disconnect cancel does not call service', (WidgetTester tester) async {
+  testWidgets('disconnect cancel does not call service', (
+    WidgetTester tester,
+  ) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: connectedState,
     );
@@ -121,20 +125,30 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(SettingsDriveBackupCopy.disconnectButton),
+      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
-    await tester.tap(settingsActionButton(SettingsDriveBackupCopy.disconnectButton));
+    await tester.tap(
+      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text(SettingsDriveBackupCopy.disconnectConfirmTitle), findsOneWidget);
-    await tester.tap(find.text(SettingsCopy.actionCancel));
+    expect(
+      find.text(testL10n.settingsDriveBackupDisconnectConfirmTitle),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(testL10n.commonActionCancel));
     await tester.pumpAndSettle();
 
     expect(transferService.disconnectCalls, 0);
-    expect(find.text(SettingsDriveBackupCopy.disconnectSuccess), findsNothing);
+    expect(
+      find.text(testL10n.settingsDriveBackupDisconnectSuccess),
+      findsNothing,
+    );
   });
 
-  testWidgets('disconnect confirm calls service and shows success', (WidgetTester tester) async {
+  testWidgets('disconnect confirm calls service and shows success', (
+    WidgetTester tester,
+  ) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: connectedState,
     );
@@ -143,19 +157,30 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(SettingsDriveBackupCopy.disconnectButton),
+      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
-    await tester.tap(settingsActionButton(SettingsDriveBackupCopy.disconnectButton));
+    await tester.tap(
+      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text(SettingsDriveBackupCopy.disconnectButton).last);
+    await tester.tap(
+      find.text(testL10n.settingsDriveBackupDisconnectButton).last,
+    );
     await tester.pumpAndSettle();
 
     expect(transferService.disconnectCalls, 1);
-    expect(find.text(SettingsDriveBackupCopy.disconnectSuccess), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsDriveBackupDisconnectSuccess),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('drive restore error deletes temp backup file', (WidgetTester tester) async {
-    final Directory tempDir = Directory.systemTemp.createTempSync('settings_restore_test');
+  testWidgets('drive restore error deletes temp backup file', (
+    WidgetTester tester,
+  ) async {
+    final Directory tempDir = Directory.systemTemp.createTempSync(
+      'settings_restore_test',
+    );
     addTearDown(() {
       if (tempDir.existsSync()) {
         tempDir.deleteSync(recursive: true);
@@ -184,9 +209,11 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(SettingsDriveBackupCopy.restoreButton),
+      settingsActionButton(testL10n.settingsDriveBackupRestoreButton),
     );
-    await tester.tap(settingsActionButton(SettingsDriveBackupCopy.restoreButton));
+    await tester.tap(
+      settingsActionButton(testL10n.settingsDriveBackupRestoreButton),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('quill-backup.zip'));

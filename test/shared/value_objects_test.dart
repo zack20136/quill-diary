@@ -10,11 +10,15 @@ void main() {
   test('normalizeSearchText unifies punctuation whitespace and case', () {
     expect(normalizeSearchText(' Marker-X30 '), 'marker x30');
     expect(normalizeSearchText('#Title   (Draft)'), 'title draft');
-    expect(normalizeSearchText('panel 60x30x3 with x30 marker'), 'panel 60x30x3 with x30 marker');
+    expect(
+      normalizeSearchText('panel 60x30x3 with x30 marker'),
+      'panel 60x30x3 with x30 marker',
+    );
   });
 
   test('previewTextFromMarkdown strips markdown and truncates', () {
-    const String markdown = '# Title\n\nBody **bold** and `code` with extra words';
+    const String markdown =
+        '# Title\n\nBody **bold** and `code` with extra words';
     final String preview = previewTextFromMarkdown(markdown, maxLength: 20);
     expect(preview.length, lessThanOrEqualTo(23));
     expect(preview, contains('…'));

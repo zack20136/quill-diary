@@ -32,13 +32,13 @@ enum UnlockModeCapabilityFailure {
 
 extension UnlockModeCapabilityFailureMessages on UnlockModeCapabilityFailure {
   String get message => switch (this) {
-        UnlockModeCapabilityFailure.requiresUnlockedSession =>
-          kUnlockModeChangeNeedsUnlockMessage,
-        UnlockModeCapabilityFailure.requiresDeviceLock =>
-          kUnlockModeNeedsDeviceLockMessage,
-        UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
-          kBiometricNotEnrolledSwitchModeMessage,
-      };
+    UnlockModeCapabilityFailure.requiresUnlockedSession =>
+      kUnlockModeChangeNeedsUnlockMessage,
+    UnlockModeCapabilityFailure.requiresDeviceLock =>
+      kUnlockModeNeedsDeviceLockMessage,
+    UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
+      kBiometricNotEnrolledSwitchModeMessage,
+  };
 }
 
 /// 裝置驗證能力快照（單次原生查詢，避免檢查與使用時間差）。
@@ -78,7 +78,8 @@ Future<UnlockModeCapabilityFailure?> precheckUnlockModeChange({
   required AppLockService appLock,
   required AppUnlockMode mode,
 }) async {
-  final DeviceAuthCapabilities capabilities = await appLock.getDeviceAuthCapabilities();
+  final DeviceAuthCapabilities capabilities = await appLock
+      .getDeviceAuthCapabilities();
   return checkUnlockModeCapability(
     mode: mode,
     capabilities: capabilities,
@@ -90,7 +91,8 @@ Future<KeystoreAuthKind> requireKeystoreAuthKindForMode({
   required AppLockService appLock,
   required AppUnlockMode mode,
 }) async {
-  final DeviceAuthCapabilities capabilities = await appLock.getDeviceAuthCapabilities();
+  final DeviceAuthCapabilities capabilities = await appLock
+      .getDeviceAuthCapabilities();
   final UnlockModeCapabilityFailure? failure = checkUnlockModeCapability(
     mode: mode,
     capabilities: capabilities,
@@ -135,7 +137,8 @@ bool trustedProtectionMatches({
     return false;
   }
 
-  if (session.deviceSlotId != null && wrappedRecord.slotId != session.deviceSlotId) {
+  if (session.deviceSlotId != null &&
+      wrappedRecord.slotId != session.deviceSlotId) {
     return false;
   }
 

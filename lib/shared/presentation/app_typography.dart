@@ -19,8 +19,9 @@ abstract final class AppTypography {
     required Brightness brightness,
     required ColorScheme scheme,
   }) {
-    final Color defaultColor =
-        brightness == Brightness.light ? ink : scheme.onSurface;
+    final Color defaultColor = brightness == Brightness.light
+        ? ink
+        : scheme.onSurface;
     final TextTheme themed = base.apply(
       bodyColor: defaultColor,
       displayColor: defaultColor,

@@ -7,11 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
-import '../../session/presentation/session_status_copy.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
-import '../home_copy.dart';
 import 'home_selection_toolbar.dart';
 
 IconData blockedIconForStatus(AppLockStatus status) {
@@ -30,7 +28,8 @@ bool blockedOffersSettingsNavigation(AppSessionState sessionState) {
   if (sessionState.status == AppLockStatus.locked) {
     return true;
   }
-  return sessionState.status == AppLockStatus.unlocked && sessionState.session == null;
+  return sessionState.status == AppLockStatus.unlocked &&
+      sessionState.session == null;
 }
 
 class HomeBlockedEntriesPane extends StatelessWidget {
@@ -43,32 +42,56 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     if (sessionState.status == AppLockStatus.unlocking) {
       return HomeStateCard(
         icon: Icons.sync_rounded,
-        title: HomeCopy.unlockingTitle(context),
-        message: sessionState.message ?? kTrustedUnlockInProgressMessage,
+        title: context.l10n.homeUnlockingTitle,
+        message:
+            sessionState.message ??
+            sessionTrustedUnlockInProgressMessage(context.l10n),
       );
     }
 
     if (sessionState.status == AppLockStatus.locked) {
+      final AppLocalizations l10n = context.l10n;
       return HomeStateCard(
         icon: Icons.lock_outline,
-        title: blockedTitleForStatus(context.l10n, sessionState.status),
-        message: blockedSubtitleForState(context.l10n, sessionState),
-        actionLabel: HomeCopy.retryVerification(context),
+        title: l10n.sessionBlockedLockedTitle,
+        message: sessionState.message?.isNotEmpty == true
+            ? sessionState.message!
+            : l10n.sessionBlockedLockedSubtitle,
+        actionLabel: context.l10n.homeRetryVerification,
         onAction: () => unawaited(
-          ProviderScope.containerOf(context)
-              .read(appSessionProvider.notifier)
-              .unlock(),
+          ProviderScope.containerOf(
+            context,
+          ).read(appSessionProvider.notifier).unlock(),
         ),
       );
     }
 
     final bool offerSettings = blockedOffersSettingsNavigation(sessionState);
+    final AppLocalizations l10n = context.l10n;
+    final String blockedTitle = switch (sessionState.status) {
+      AppLockStatus.locked => l10n.sessionBlockedLockedTitle,
+      AppLockStatus.recoveryRequired =>
+        l10n.sessionBlockedRecoveryRequiredTitle,
+      AppLockStatus.fatalError => l10n.sessionBlockedFatalErrorTitle,
+      _ => l10n.sessionBlockedDefaultTitle,
+    };
+    final String blockedSubtitle = sessionState.message?.isNotEmpty == true
+        ? sessionState.message!
+        : switch (sessionState.status) {
+            AppLockStatus.locked => l10n.sessionBlockedLockedSubtitle,
+            AppLockStatus.recoveryRequired =>
+              l10n.sessionBlockedRecoveryRequiredSubtitle,
+            AppLockStatus.fatalError => l10n.sessionBlockedFatalErrorSubtitle,
+            _ => '',
+          };
     return HomeStateCard(
       icon: blockedIconForStatus(sessionState.status),
-      title: blockedTitleForStatus(context.l10n, sessionState.status),
-      message: blockedSubtitleForState(context.l10n, sessionState),
-      actionLabel: offerSettings ? HomeCopy.goToSettings(context) : null,
-      onAction: offerSettings ? () => unawaited(context.push(AppRouter.settingsRoute)) : null,
+      title: blockedTitle,
+      message: blockedSubtitle,
+      actionLabel: offerSettings ? context.l10n.homeGoToSettings : null,
+      onAction: offerSettings
+          ? () => unawaited(context.push(AppRouter.settingsRoute))
+          : null,
     );
   }
 }
@@ -87,10 +110,7 @@ class HomeSectionShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
         border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(14), child: child),
     );
   }
 }
@@ -136,8 +156,8 @@ class HomeSectionCard extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
     final Color bg = listSection
         ? (theme.brightness == Brightness.light
-            ? Colors.white
-            : cs.surfaceContainerLowest)
+              ? Colors.white
+              : cs.surfaceContainerLowest)
         : cs.surface;
     final Color stripe = stripeColor ?? cs.primary;
 
@@ -198,7 +218,7 @@ class HomeDiarySectionCloseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: HomeCopy.tooltipDeselectTag(context),
+      tooltip: context.l10n.homeTooltipDeselectTag,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       iconSize: 16,
@@ -265,7 +285,9 @@ class HomeStateCard extends StatelessWidget {
               DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.55),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.55,
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
@@ -331,9 +353,7 @@ class HomeHeaderTabButton extends StatelessWidget {
             color: active ? cs.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
           ),
-          child: Center(
-            child: Icon(icon, size: 20, color: foreground),
-          ),
+          child: Center(child: Icon(icon, size: 20, color: foreground)),
         ),
       ),
     );
@@ -365,9 +385,7 @@ class HomeHeaderIconButton extends StatelessWidget {
         child: SizedBox(
           width: kHomeSearchRowControlHeight,
           height: kHomeSearchRowControlHeight,
-          child: Center(
-            child: Icon(icon, size: 20, color: foregroundColor),
-          ),
+          child: Center(child: Icon(icon, size: 20, color: foregroundColor)),
         ),
       ),
     );

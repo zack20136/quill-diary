@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 
 /// 跨平台選擇外部資料夾；Android 走原生 SAF tree picker。
 abstract final class ExternalDirectoryPicker {
-  static const MethodChannel _androidChannel = MethodChannel('quill_diary/directory_picker');
+  static const MethodChannel _androidChannel = MethodChannel(
+    'quill_diary/directory_picker',
+  );
 
   /// 回傳資料夾路徑或 SAF tree URI（`content://…`），取消則為 `null`。
   ///

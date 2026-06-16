@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/l10n.dart';
 
-import '../home_copy.dart';
-import '../../../shared/copy/common_copy.dart';
 import '../../../shared/presentation/page_style.dart';
 
 const double kHomeSearchRowControlHeight = 46;
@@ -126,27 +125,29 @@ class HomeSelectionToolbar extends StatelessWidget {
           child: Row(
             children: <Widget>[
               _ToolbarPlainIconButton(
-                tooltip: HomeCopy.tooltipDeselectTag(context),
+                tooltip: context.l10n.homeTooltipDeselectTag,
                 onPressed: onCancel,
                 icon: Icons.close_rounded,
               ),
               Expanded(
                 child: Text(
                   selectedCount > 0
-                      ? HomeCopy.selectionSelectedCount(context, selectedCount)
-                      : HomeCopy.selectionSelectDiary(context),
+                      ? context.l10n.homeSelectionSelectedCount(selectedCount)
+                      : context.l10n.homeSelectionSelectDiary,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: selectedCount > 0 ? cs.onSurface : cs.onSurfaceVariant,
+                    color: selectedCount > 0
+                        ? cs.onSurface
+                        : cs.onSurfaceVariant,
                   ),
                 ),
               ),
               HomeCircleIconButton(
                 tooltip: allSelected
-                    ? HomeCopy.selectionDeselectAll(context)
-                    : HomeCopy.selectionSelectAll(context),
+                    ? context.l10n.homeSelectionDeselectAll
+                    : context.l10n.homeSelectionSelectAll,
                 onPressed: onSelectAll,
                 icon: allSelected
                     ? Icons.check_box_outline_blank_rounded
@@ -167,12 +168,20 @@ class HomeSelectionToolbar extends StatelessWidget {
                   size: kHomeToolbarActionCircleSize,
                   backgroundColor: action.destructive
                       ? cs.errorContainer
-                      : Color.alphaBlend(cs.secondaryContainer.withValues(alpha: 0.65), cs.surface),
-                  foregroundColor:
-                      action.destructive ? cs.onErrorContainer : cs.onSecondaryContainer,
-                  disabledBackgroundColor:
-                      Color.alphaBlend(cs.errorContainer.withValues(alpha: 0.35), cs.surface),
-                  disabledForegroundColor: cs.onSurfaceVariant.withValues(alpha: 0.38),
+                      : Color.alphaBlend(
+                          cs.secondaryContainer.withValues(alpha: 0.65),
+                          cs.surface,
+                        ),
+                  foregroundColor: action.destructive
+                      ? cs.onErrorContainer
+                      : cs.onSecondaryContainer,
+                  disabledBackgroundColor: Color.alphaBlend(
+                    cs.errorContainer.withValues(alpha: 0.35),
+                    cs.surface,
+                  ),
+                  disabledForegroundColor: cs.onSurfaceVariant.withValues(
+                    alpha: 0.38,
+                  ),
                 ),
               ],
             ],
@@ -239,7 +248,8 @@ class HomeCircleIconButton extends StatelessWidget {
         : (disabledBackgroundColor ?? cs.surfaceContainerHighest);
     final Color fg = enabled
         ? foregroundColor
-        : (disabledForegroundColor ?? cs.onSurfaceVariant.withValues(alpha: 0.45));
+        : (disabledForegroundColor ??
+              cs.onSurfaceVariant.withValues(alpha: 0.45));
 
     return Tooltip(
       message: tooltip,
@@ -267,10 +277,7 @@ class HomeCircleIconButton extends StatelessWidget {
 
 /// 與首頁搜尋 [TextField] 高度對齊的圓形切換按鈕。
 class HomeSearchSelectionToggleButton extends StatelessWidget {
-  const HomeSearchSelectionToggleButton({
-    super.key,
-    required this.onPressed,
-  });
+  const HomeSearchSelectionToggleButton({super.key, required this.onPressed});
 
   final VoidCallback? onPressed;
 
@@ -278,7 +285,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     return HomeCircleIconButton(
-      tooltip: HomeCopy.selectionSelectDiary(context),
+      tooltip: context.l10n.homeSelectionSelectDiary,
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: kHomeSearchRowControlHeight,
@@ -297,19 +304,19 @@ Future<bool?> confirmDeleteHomeEntries(BuildContext context, int count) {
   return showDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) => AlertDialog(
-      title: Text(CommonCopy.confirmDeleteTitle(context)),
-      content: Text(CommonCopy.confirmDeleteEntries(context, count)),
+      title: Text(context.l10n.commonConfirmDeleteTitle),
+      content: Text(context.l10n.commonConfirmDeleteEntries(count)),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(CommonCopy.actionCancel(context)),
+          child: Text(context.l10n.commonActionCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(dialogContext).colorScheme.error,
           ),
-          child: Text(CommonCopy.actionDelete(context)),
+          child: Text(context.l10n.commonActionDelete),
         ),
       ],
     ),

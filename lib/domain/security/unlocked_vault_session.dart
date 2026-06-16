@@ -30,8 +30,12 @@ class UnlockedVaultSession {
     return UnlockedVaultSession(
       vaultId: vaultId ?? this.vaultId,
       trustedDevice: trustedDevice ?? this.trustedDevice,
-      recoveryWrapKey: clearRecoveryWrapKey ? null : (recoveryWrapKey ?? this.recoveryWrapKey),
-      deviceSlotId: clearDeviceSlotId ? null : (deviceSlotId ?? this.deviceSlotId),
+      recoveryWrapKey: clearRecoveryWrapKey
+          ? null
+          : (recoveryWrapKey ?? this.recoveryWrapKey),
+      deviceSlotId: clearDeviceSlotId
+          ? null
+          : (deviceSlotId ?? this.deviceSlotId),
     );
   }
 }

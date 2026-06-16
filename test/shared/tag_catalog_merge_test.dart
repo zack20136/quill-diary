@@ -17,7 +17,9 @@ void main() {
     );
 
     expect(
-      merged.map((TagCatalogUsageItem item) => <Object>[item.label, item.count]).toList(),
+      merged
+          .map((TagCatalogUsageItem item) => <Object>[item.label, item.count])
+          .toList(),
       <List<Object>>[
         <Object>['工作', 3],
         <Object>['臨時', 1],
@@ -50,7 +52,9 @@ void main() {
     );
 
     expect(
-      topTags.map((TagCatalogUsageItem item) => <Object>[item.label, item.count]).toList(),
+      topTags
+          .map((TagCatalogUsageItem item) => <Object>[item.label, item.count])
+          .toList(),
       <List<Object>>[
         <Object>['工作', 2],
         <Object>['日常', 1],

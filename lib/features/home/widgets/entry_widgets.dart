@@ -1,4 +1,5 @@
 import 'dart:async' show unawaited;
+import '../../../l10n/l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,10 +11,8 @@ import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/providers/tag_providers.dart';
-import '../../../shared/utils/weekday_zh.dart';
 import '../../editor/providers/editor_draft_providers.dart';
 import '../../settings/providers/personalization_providers.dart';
-import '../home_copy.dart';
 import '../home_entry_helpers.dart';
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
@@ -48,8 +47,8 @@ class HomeTimelineEntryShell extends StatelessWidget {
         side: selected
             ? BorderSide(color: cs.primary.withValues(alpha: 0.72), width: 1.5)
             : tintedCard
-                ? BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))
-                : BorderSide.none,
+            ? BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))
+            : BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -64,13 +63,21 @@ class HomeEntryList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
-    final Color pageBackground = PageStyle.scaffoldWash(Theme.of(context).colorScheme);
-    final Map<String, int> tagAccents = ref.watch(tagAccentArgbMapProvider).maybeWhen(
+    final HomeEntrySelectionState selection = ref.watch(
+      homeEntrySelectionProvider,
+    );
+    final Color pageBackground = PageStyle.scaffoldWash(
+      Theme.of(context).colorScheme,
+    );
+    final Map<String, int> tagAccents = ref
+        .watch(tagAccentArgbMapProvider)
+        .maybeWhen(
           data: (Map<String, int> m) => m,
           orElse: () => const <String, int>{},
         );
-    final Set<String> draftEntryIds = ref.watch(editorDraftKeysProvider).maybeWhen(
+    final Set<String> draftEntryIds = ref
+        .watch(editorDraftKeysProvider)
+        .maybeWhen(
           data: (Set<String> draftKeys) => draftKeys,
           orElse: () => const <String>{},
         );
@@ -103,17 +110,23 @@ class HomeEntryList extends ConsumerWidget {
                 showUnsavedDraft: draftEntryIds.contains(entry.id),
                 onTap: () {
                   if (selection.isActive) {
-                    ref.read(homeEntrySelectionProvider.notifier).toggle(entry.id);
+                    ref
+                        .read(homeEntrySelectionProvider.notifier)
+                        .toggle(entry.id);
                     return;
                   }
                   unawaited(context.push('/editor/${entry.id}'));
                 },
                 onLongPress: () {
                   if (selection.isActive) {
-                    ref.read(homeEntrySelectionProvider.notifier).toggle(entry.id);
+                    ref
+                        .read(homeEntrySelectionProvider.notifier)
+                        .toggle(entry.id);
                     return;
                   }
-                  ref.read(homeEntrySelectionProvider.notifier).enterWith(entry.id);
+                  ref
+                      .read(homeEntrySelectionProvider.notifier)
+                      .enterWith(entry.id);
                 },
               ),
             );
@@ -162,7 +175,10 @@ class HomeEntryCard extends StatelessWidget {
 
     return Material(
       color: selectionActive && selected
-          ? Color.alphaBlend(cs.primaryContainer.withValues(alpha: 0.34), cs.surface)
+          ? Color.alphaBlend(
+              cs.primaryContainer.withValues(alpha: 0.34),
+              cs.surface,
+            )
           : Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -196,10 +212,7 @@ class HomeEntryCard extends StatelessWidget {
                 charCount: entry.charCount,
                 tagAccents: tagAccents,
                 showUnsavedDraft: showUnsavedDraft,
-                padding: EdgeInsets.only(
-                  left: selectionLeadingWidth,
-                  top: 5,
-                ),
+                padding: EdgeInsets.only(left: selectionLeadingWidth, top: 5),
               ),
               if (showPreview) ...<Widget>[
                 const SizedBox(height: 8),
@@ -241,11 +254,15 @@ class HomeCompactEntryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final Map<String, int> tagAccents = ref.watch(tagAccentArgbMapProvider).maybeWhen(
+    final Map<String, int> tagAccents = ref
+        .watch(tagAccentArgbMapProvider)
+        .maybeWhen(
           data: (Map<String, int> m) => m,
           orElse: () => const <String, int>{},
         );
-    final Set<String> draftEntryIds = ref.watch(editorDraftKeysProvider).maybeWhen(
+    final Set<String> draftEntryIds = ref
+        .watch(editorDraftKeysProvider)
+        .maybeWhen(
           data: (Set<String> draftKeys) => draftKeys,
           orElse: () => const <String>{},
         );
@@ -258,66 +275,66 @@ class HomeCompactEntryList extends ConsumerWidget {
     );
 
     return Column(
-      children: entries
-          .map(
-            (EntryIndexRecord entry) {
-              final String? trimmedTitle = entry.title?.trim();
-              final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-              final bool showPreview = hasTitle && entry.previewText.trim().isNotEmpty;
+      children: entries.map((EntryIndexRecord entry) {
+        final String? trimmedTitle = entry.title?.trim();
+        final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
+        final bool showPreview =
+            hasTitle && entry.previewText.trim().isNotEmpty;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: HomeTimelineEntryShell(
-                  tintedCard: true,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => unawaited(context.push('/editor/${entry.id}')),
-                      borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            HomeEntryCardHeader(
-                              entry: entry,
-                              titleStyle: titleStyle,
-                              trailing: HomeEntryCardRightDateTime(entry: entry, compact: true),
-                            ),
-                            HomeEntryListTagsWrap(
-                              tags: entry.tags,
-                              charCount: entry.charCount,
-                              tagAccents: tagAccents,
-                              showUnsavedDraft: draftEntryIds.contains(entry.id),
-                              compactTags: true,
-                              padding: const EdgeInsets.only(top: 4),
-                            ),
-                            if (showPreview) ...<Widget>[
-                              const SizedBox(height: 6),
-                              Text(
-                                entry.previewText,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: previewStyle,
-                              ),
-                            ],
-                            if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
-                              const SizedBox(height: 8),
-                              HomeEntryPreviewImageStrip(
-                                paths: entry.previewImagePaths,
-                                thumbSize: 52,
-                              ),
-                            ],
-                          ],
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: HomeTimelineEntryShell(
+            tintedCard: true,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => unawaited(context.push('/editor/${entry.id}')),
+                borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      HomeEntryCardHeader(
+                        entry: entry,
+                        titleStyle: titleStyle,
+                        trailing: HomeEntryCardRightDateTime(
+                          entry: entry,
+                          compact: true,
                         ),
                       ),
-                    ),
+                      HomeEntryListTagsWrap(
+                        tags: entry.tags,
+                        charCount: entry.charCount,
+                        tagAccents: tagAccents,
+                        showUnsavedDraft: draftEntryIds.contains(entry.id),
+                        compactTags: true,
+                        padding: const EdgeInsets.only(top: 4),
+                      ),
+                      if (showPreview) ...<Widget>[
+                        const SizedBox(height: 6),
+                        Text(
+                          entry.previewText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: previewStyle,
+                        ),
+                      ],
+                      if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 8),
+                        HomeEntryPreviewImageStrip(
+                          paths: entry.previewImagePaths,
+                          thumbSize: 52,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              );
-            },
-          )
-          .toList(),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -343,9 +360,12 @@ class HomeEntryListTagsWrap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<String> trimmedTags =
-        tags.map((String t) => t.trim()).where((String t) => t.isNotEmpty).toList();
-    final bool showTagRow = trimmedTags.isNotEmpty || charCount > 0 || showUnsavedDraft;
+    final List<String> trimmedTags = tags
+        .map((String t) => t.trim())
+        .where((String t) => t.isNotEmpty)
+        .toList();
+    final bool showTagRow =
+        trimmedTags.isNotEmpty || charCount > 0 || showUnsavedDraft;
 
     if (!showTagRow) {
       return const SizedBox.shrink();
@@ -361,7 +381,7 @@ class HomeEntryListTagsWrap extends StatelessWidget {
           children: <Widget>[
             if (showUnsavedDraft)
               HomeEntryListTagChip(
-                label: HomeCopy.unsavedDraftLabel(context),
+                label: context.l10n.homeUnsavedDraftLabel,
                 background: Color.alphaBlend(
                   theme.colorScheme.error.withValues(alpha: 0.14),
                   theme.colorScheme.surface,
@@ -371,7 +391,7 @@ class HomeEntryListTagsWrap extends StatelessWidget {
               ),
             if (charCount > 0)
               HomeEntryListTagChip(
-                label: DisplayFormat.formatCountUnit(charCount, '字'),
+                label: DisplayFormat.formatCharCount(context.l10n, charCount),
                 background: Color.alphaBlend(
                   theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
                   theme.colorScheme.surface,
@@ -380,8 +400,11 @@ class HomeEntryListTagsWrap extends StatelessWidget {
                 compact: compactTags,
               ),
             ...trimmedTags.map((String tag) {
-              final (Color bg, Color fg) =
-                  tagResolvedAccentPair(tag, theme.colorScheme, tagAccents);
+              final (Color bg, Color fg) = tagResolvedAccentPair(
+                tag,
+                theme.colorScheme,
+                tagAccents,
+              );
               return HomeEntryListTagChip(
                 label: tag,
                 background: bg,
@@ -413,7 +436,8 @@ class HomeEntryListTagChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final double maxWidth = MediaQuery.sizeOf(context).width * (compact ? 0.38 : 0.52);
+    final double maxWidth =
+        MediaQuery.sizeOf(context).width * (compact ? 0.38 : 0.52);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -429,15 +453,18 @@ class HomeEntryListTagChip extends StatelessWidget {
         ),
       ),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth.clamp(120, 260).toDouble()),
+        constraints: BoxConstraints(
+          maxWidth: maxWidth.clamp(120, 260).toDouble(),
+        ),
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)?.copyWith(
-            color: foreground,
-            fontWeight: FontWeight.w700,
-          ),
+          style:
+              (compact
+                      ? theme.textTheme.labelSmall
+                      : theme.textTheme.labelMedium)
+                  ?.copyWith(color: foreground, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -484,7 +511,11 @@ class HomeEntryCardHeader extends StatelessWidget {
 }
 
 class HomeEntryCardRightDateTime extends StatelessWidget {
-  const HomeEntryCardRightDateTime({required this.entry, this.compact = false, super.key});
+  const HomeEntryCardRightDateTime({
+    required this.entry,
+    this.compact = false,
+    super.key,
+  });
 
   final EntryIndexRecord entry;
   final bool compact;
@@ -492,8 +523,12 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle? base = compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium;
-    final TextStyle? muted = base?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final TextStyle? base = compact
+        ? theme.textTheme.labelSmall
+        : theme.textTheme.labelMedium;
+    final TextStyle? muted = base?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final double maxWidth = compact ? 88 : 112;
 
     return ConstrainedBox(
@@ -503,7 +538,7 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
-            DisplayFormat.formatDateOnlyZh(entry.date),
+            DisplayFormat.formatDateOnly(context.l10n, entry.date),
             style: muted,
             textAlign: TextAlign.right,
             maxLines: 1,
@@ -511,7 +546,11 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
             softWrap: false,
           ),
           Text(
-            '${weekdayZhLongFromDateOnly(entry.date)} ${entryListTimeLabel(entry.createdAt)}',
+            DisplayFormat.formatWeekdayAndTime(
+              context.l10n,
+              entry.date,
+              entry.createdAt,
+            ),
             style: muted,
             textAlign: TextAlign.right,
             maxLines: 1,
@@ -551,18 +590,24 @@ class HomeEntryPreviewImageStrip extends StatelessWidget {
             children: <Widget>[
               for (int i = 0; i < paths.length; i++)
                 Padding(
-                  padding: EdgeInsets.only(right: i < paths.length - 1 ? 10 : 0),
+                  padding: EdgeInsets.only(
+                    right: i < paths.length - 1 ? 10 : 0,
+                  ),
                   child: lazyLoad
                       ? LazyEntryCoverThumbnail(
                           encryptedFilePath: paths[i],
                           size: thumbSize,
                           staggerIndex: i,
-                          borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                          borderRadius: BorderRadius.circular(
+                            PageStyle.radiusThumbSmall,
+                          ),
                         )
                       : EntryCoverThumbnail(
                           encryptedFilePath: paths[i],
                           size: thumbSize,
-                          borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                          borderRadius: BorderRadius.circular(
+                            PageStyle.radiusThumbSmall,
+                          ),
                         ),
                 ),
             ],

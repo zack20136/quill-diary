@@ -32,11 +32,11 @@ class PortableImportIo {
     required VaultRepository repository,
     required FrontMatterCodec frontMatterCodec,
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
-  })  : _pathStrategy = pathStrategy,
-        _repository = repository,
-        _frontMatterCodec = frontMatterCodec,
-        _easyDiaryBackupImporterFactory =
-            easyDiaryBackupImporterFactory ?? EasyDiaryBackupImporter.new;
+  }) : _pathStrategy = pathStrategy,
+       _repository = repository,
+       _frontMatterCodec = frontMatterCodec,
+       _easyDiaryBackupImporterFactory =
+           easyDiaryBackupImporterFactory ?? EasyDiaryBackupImporter.new;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
@@ -71,10 +71,11 @@ class PortableImportIo {
         continue;
       }
 
-      final List<ParsedImportEntry> parsedEntries = await _parseMarkdownExportFile(
-        file: file,
-        importRootDirectory: rootDirectory,
-      );
+      final List<ParsedImportEntry> parsedEntries =
+          await _parseMarkdownExportFile(
+            file: file,
+            importRootDirectory: rootDirectory,
+          );
       if (parsedEntries.isEmpty) {
         skippedFiles++;
         continue;
@@ -101,7 +102,10 @@ class PortableImportIo {
     required UnlockedVaultSession session,
     required File zipFile,
   }) async {
-    final Directory tempRoot = await createWorkingDirectory(_pathStrategy, 'import_zip');
+    final Directory tempRoot = await createWorkingDirectory(
+      _pathStrategy,
+      'import_zip',
+    );
     final OpenedZipArchive zip = await openZipArchive(zipFile);
     try {
       try {
@@ -110,13 +114,14 @@ class PortableImportIo {
         await zip.close();
       }
 
-      final EasyDiaryBackupImporter easyDiaryImporter = _easyDiaryBackupImporterFactory();
-      final PortableImportResult? easyDiaryResult =
-          await easyDiaryImporter.tryImportFromExtractedRoot(
-        session: session,
-        repository: _repository,
-        extractedRoot: tempRoot,
-      );
+      final EasyDiaryBackupImporter easyDiaryImporter =
+          _easyDiaryBackupImporterFactory();
+      final PortableImportResult? easyDiaryResult = await easyDiaryImporter
+          .tryImportFromExtractedRoot(
+            session: session,
+            repository: _repository,
+            extractedRoot: tempRoot,
+          );
       if (easyDiaryResult != null) {
         return easyDiaryResult;
       }
@@ -174,7 +179,9 @@ class PortableImportIo {
     );
   }
 
-  Future<void> _upsertImportedTagsToCatalog(List<ParsedImportEntry> parsedEntries) async {
+  Future<void> _upsertImportedTagsToCatalog(
+    List<ParsedImportEntry> parsedEntries,
+  ) async {
     final List<String> labels = <String>[];
     for (final ParsedImportEntry parsedEntry in parsedEntries) {
       if (parsedEntry.isEmpty) {
@@ -188,8 +195,10 @@ class PortableImportIo {
   Future<List<File>> _discoverImportFiles(Directory rootDirectory) async {
     final List<File> files = <File>[];
 
-    await for (final FileSystemEntity entity
-        in rootDirectory.list(recursive: true, followLinks: false)) {
+    await for (final FileSystemEntity entity in rootDirectory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       if (entity is! File) {
         continue;
       }
@@ -248,11 +257,12 @@ class PortableImportIo {
     required String html,
     required Directory importRootDirectory,
   }) async {
-    final List<ParsedImportEntry> parsedEntries = await _parseQuillDiaryExportArticles(
-      file: file,
-      html: html,
-      importRootDirectory: importRootDirectory,
-    );
+    final List<ParsedImportEntry> parsedEntries =
+        await _parseQuillDiaryExportArticles(
+          file: file,
+          html: html,
+          importRootDirectory: importRootDirectory,
+        );
 
     if (parsedEntries.isEmpty) {
       return const ImportFileTotals(
@@ -274,7 +284,9 @@ class PortableImportIo {
   }) async {
     final String document = await file.readAsString();
     final FileStat stat = await file.stat();
-    final DecodedFrontMatterDocument decoded = _frontMatterCodec.decodeDocument(document);
+    final DecodedFrontMatterDocument decoded = _frontMatterCodec.decodeDocument(
+      document,
+    );
     final Map<String, Object?> frontMatter = decoded.frontMatter;
     final String body = decoded.body.trimRight();
 
@@ -283,11 +295,12 @@ class PortableImportIo {
       ..._extractMarkdownLocalLinks(body),
     }.toList(growable: false);
 
-    final ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
-      references: attachmentReferences,
-      baseDirectory: file.parent,
-      importRootDirectory: importRootDirectory,
-    );
+    final ResolvedImportAttachments resolvedAttachments =
+        await _resolveImportAttachments(
+          references: attachmentReferences,
+          baseDirectory: file.parent,
+          importRootDirectory: importRootDirectory,
+        );
 
     final DateTime fallbackTime = stat.modified;
     final String inferredTitle = _inferMarkdownTitle(file, body);
@@ -298,12 +311,14 @@ class PortableImportIo {
       date: frontMatter.containsKey('date')
           ? decoded.entry.date
           : (parsePortableDateOnly('${file.path}\n$document') ??
-              DateOnly.fromDateTime(fallbackTime)),
-      createdAt: frontMatter.containsKey('created_at') &&
+                DateOnly.fromDateTime(fallbackTime)),
+      createdAt:
+          frontMatter.containsKey('created_at') &&
               decoded.entry.createdAt.millisecondsSinceEpoch > 0
           ? decoded.entry.createdAt
           : fallbackTime,
-      updatedAt: frontMatter.containsKey('updated_at') &&
+      updatedAt:
+          frontMatter.containsKey('updated_at') &&
               decoded.entry.updatedAt.millisecondsSinceEpoch > 0
           ? decoded.entry.updatedAt
           : fallbackTime,
@@ -326,16 +341,19 @@ class PortableImportIo {
   }) async {
     final FileStat stat = await file.stat();
     final String bodyHtml = extractHtmlBody(html);
-    final List<String> quillDiaryArticleSections = splitQuillDiaryArticles(bodyHtml);
+    final List<String> quillDiaryArticleSections = splitQuillDiaryArticles(
+      bodyHtml,
+    );
     final List<ParsedImportEntry> parsedEntries = <ParsedImportEntry>[];
 
     for (final String quillDiaryArticleHtml in quillDiaryArticleSections) {
-      final ParsedImportEntry? parsedEntry = await _parseQuillDiaryExportArticle(
-        quillDiaryArticleHtml: quillDiaryArticleHtml,
-        file: file,
-        stat: stat,
-        importRootDirectory: importRootDirectory,
-      );
+      final ParsedImportEntry? parsedEntry =
+          await _parseQuillDiaryExportArticle(
+            quillDiaryArticleHtml: quillDiaryArticleHtml,
+            file: file,
+            stat: stat,
+            importRootDirectory: importRootDirectory,
+          );
       if (parsedEntry != null && !parsedEntry.isEmpty) {
         parsedEntries.add(parsedEntry);
       }
@@ -350,16 +368,25 @@ class PortableImportIo {
     required FileStat stat,
     required Directory importRootDirectory,
   }) async {
-    final String? dateText = extractHtmlClassText(quillDiaryArticleHtml, 'entry-date');
+    final String? dateText = extractHtmlClassText(
+      quillDiaryArticleHtml,
+      'entry-date',
+    );
     final String? title = extractFirstHtmlTagText(quillDiaryArticleHtml, 'h2');
-    final String? entryBodyHtml =
-        extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'entry-body');
+    final String? entryBodyHtml = extractBlockInnerHtml(
+      quillDiaryArticleHtml,
+      'section',
+      'entry-body',
+    );
     if (entryBodyHtml == null && title == null && dateText == null) {
       return null;
     }
 
-    final String? entryMetaHtml =
-        extractBlockInnerHtml(quillDiaryArticleHtml, 'div', 'entry-meta');
+    final String? entryMetaHtml = extractBlockInnerHtml(
+      quillDiaryArticleHtml,
+      'div',
+      'entry-meta',
+    );
     final String? mood = entryMetaHtml == null
         ? null
         : extractQuillDiaryMetaValue(entryMetaHtml, '心情');
@@ -368,19 +395,22 @@ class PortableImportIo {
     final String attachmentSourceHtml =
         '${extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'embedded-images') ?? ''}\n'
         '${extractBlockInnerHtml(quillDiaryArticleHtml, 'section', 'attachment-list') ?? ''}';
-    final ResolvedImportAttachments resolvedAttachments = await _resolveImportAttachments(
-      references: extractHtmlAttachmentReferences(attachmentSourceHtml),
-      baseDirectory: file.parent,
-      importRootDirectory: importRootDirectory,
-    );
+    final ResolvedImportAttachments resolvedAttachments =
+        await _resolveImportAttachments(
+          references: extractHtmlAttachmentReferences(attachmentSourceHtml),
+          baseDirectory: file.parent,
+          importRootDirectory: importRootDirectory,
+        );
 
-    final String markdownBody = exportHtmlBodyToMarkdown(entryBodyHtml ?? '').trimRight();
+    final String markdownBody = exportHtmlBodyToMarkdown(
+      entryBodyHtml ?? '',
+    ).trimRight();
     final DateTime fallbackTimestamp = stat.modified;
     final ({DateOnly date, DateTime createdAt, DateTime updatedAt}) times =
         resolveQuillDiaryImportEntryTimes(
-      dateText: dateText,
-      fallback: fallbackTimestamp,
-    );
+          dateText: dateText,
+          fallback: fallbackTimestamp,
+        );
     final DateOnly entryDate = dateText == null
         ? (parsePortableDateOnly(quillDiaryArticleHtml) ?? times.date)
         : times.date;
@@ -388,7 +418,9 @@ class PortableImportIo {
     final DiaryEntry entry = DiaryEntry(
       id: generateEntryId(),
       vaultId: 'vlt_LOCAL',
-      title: title?.trim().isNotEmpty == true ? title!.trim() : _fallbackImportTitle(file),
+      title: title?.trim().isNotEmpty == true
+          ? title!.trim()
+          : _fallbackImportTitle(file),
       date: entryDate,
       createdAt: times.createdAt,
       updatedAt: times.updatedAt,
@@ -475,10 +507,7 @@ class PortableImportIo {
       );
     }
 
-    return (
-      attachments: attachments,
-      skippedAttachments: skippedAttachments,
-    );
+    return (attachments: attachments, skippedAttachments: skippedAttachments);
   }
 
   List<String> _extractMarkdownLocalLinks(String markdown) {
@@ -522,7 +551,9 @@ class PortableImportIo {
     return value.isEmpty ? null : value;
   }
 
-  ({String mimeType, Uint8List bytes})? _decodeDataUriReference(String dataUri) {
+  ({String mimeType, Uint8List bytes})? _decodeDataUriReference(
+    String dataUri,
+  ) {
     if (!dataUri.startsWith('data:')) {
       return null;
     }
@@ -532,7 +563,9 @@ class PortableImportIo {
       return null;
     }
 
-    final String metadata = dataUri.substring('data:'.length, commaIndex).trim();
+    final String metadata = dataUri
+        .substring('data:'.length, commaIndex)
+        .trim();
     String payload = dataUri.substring(commaIndex + 1);
     if (payload.startsWith(' ')) {
       payload = payload.trimLeft();
@@ -541,11 +574,7 @@ class PortableImportIo {
       return null;
     }
 
-    final String mimeType = metadata
-        .split(';')
-        .first
-        .trim()
-        .toLowerCase();
+    final String mimeType = metadata.split(';').first.trim().toLowerCase();
     final bool isBase64 = metadata.toLowerCase().contains(';base64');
 
     if (!isBase64) {
@@ -572,6 +601,7 @@ class PortableImportIo {
   bool _isPathWithinRoot(String targetPath, String rootPath) {
     final String normalizedTarget = p.normalize(targetPath);
     final String normalizedRoot = p.normalize(rootPath);
-    return normalizedTarget == normalizedRoot || p.isWithin(normalizedRoot, normalizedTarget);
+    return normalizedTarget == normalizedRoot ||
+        p.isWithin(normalizedRoot, normalizedTarget);
   }
 }

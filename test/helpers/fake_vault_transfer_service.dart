@@ -21,18 +21,21 @@ class FakeVaultTransferService extends VaultTransferService {
     this.precheckRestoreError,
     this.precheckRestoreResult,
   }) : super(
-          archiveIo: VaultArchiveIo(
-            pathStrategy: DummyVaultPathStrategy(),
-            repository: FakeSessionVaultRepository(),
-            frontMatterCodec: const FrontMatterCodec(),
-            indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          ),
-          driveBackupService: _UnusedDriveBackupService(),
-          vaultRepository: FakeSessionVaultRepository(),
-          externalDirectoryStore: ExternalDirectoryStore(DummyVaultPathStrategy()),
-          pathStrategy: DummyVaultPathStrategy(),
-        ) {
-    _connectionState = connectionState ?? const DriveConnectionState.disconnected();
+         archiveIo: VaultArchiveIo(
+           pathStrategy: DummyVaultPathStrategy(),
+           repository: FakeSessionVaultRepository(),
+           frontMatterCodec: const FrontMatterCodec(),
+           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
+         ),
+         driveBackupService: _UnusedDriveBackupService(),
+         vaultRepository: FakeSessionVaultRepository(),
+         externalDirectoryStore: ExternalDirectoryStore(
+           DummyVaultPathStrategy(),
+         ),
+         pathStrategy: DummyVaultPathStrategy(),
+       ) {
+    _connectionState =
+        connectionState ?? const DriveConnectionState.disconnected();
   }
 
   late DriveConnectionState _connectionState;
@@ -154,7 +157,8 @@ class _UnusedDriveBackupService implements DriveBackupService {
   Future<DriveConnectionState> connect() => throw UnimplementedError();
 
   @override
-  Future<DriveConnectionState> getConnectionState() => throw UnimplementedError();
+  Future<DriveConnectionState> getConnectionState() =>
+      throw UnimplementedError();
 
   @override
   Future<File> downloadBackupById({

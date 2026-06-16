@@ -1,4 +1,4 @@
-﻿part of '../pages/editor_page.dart';
+part of '../pages/editor_page.dart';
 
 class _TagsStudioDialog extends ConsumerStatefulWidget {
   const _TagsStudioDialog({
@@ -23,7 +23,8 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
 
   String _norm(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
 
-  Set<String> get _chosenNormSet => _chosen.map((String s) => normalizeText(s)).toSet();
+  Set<String> get _chosenNormSet =>
+      _chosen.map((String s) => normalizeText(s)).toSet();
 
   @override
   void initState() {
@@ -65,7 +66,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
             child: Material(
               color: Colors.transparent,
               child: TagAccentComposerDialog(
-                primaryButtonLabel: EditorCopy.tagsStudioAddButton(context),
+                primaryButtonLabel: context.l10n.editorTagsStudioAddButton,
               ),
             ),
           ),
@@ -83,12 +84,18 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   }
 
   Widget _chosenTagChip(String tag, ThemeData theme, Map<String, int> accents) {
-    final (Color bg, Color fg) =
-        tagResolvedAccentPair(tag, theme.colorScheme, accents);
+    final (Color bg, Color fg) = tagResolvedAccentPair(
+      tag,
+      theme.colorScheme,
+      accents,
+    );
     return Padding(
       padding: const EdgeInsets.only(right: 4, bottom: 4),
       child: InputChip(
-        label: Text(tag, style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+        label: Text(
+          tag,
+          style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+        ),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
         onDeleted: () {
@@ -102,9 +109,16 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     );
   }
 
-  Widget _suggestionChip(String label, ThemeData theme, Map<String, int> accents) {
-    final (Color bg0, Color fg0) =
-        tagResolvedAccentPair(label, theme.colorScheme, accents);
+  Widget _suggestionChip(
+    String label,
+    ThemeData theme,
+    Map<String, int> accents,
+  ) {
+    final (Color bg0, Color fg0) = tagResolvedAccentPair(
+      label,
+      theme.colorScheme,
+      accents,
+    );
     return ActionChip(
       avatar: Icon(
         Icons.add_rounded,
@@ -121,10 +135,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
         _chosen.add(label);
         setState(() {});
       },
-      side: BorderSide(
-        color: fg0.withValues(alpha: 0.28),
-        width: 0.95,
-      ),
+      side: BorderSide(color: fg0.withValues(alpha: 0.28), width: 0.95),
       elevation: 0,
       shadowColor: Colors.transparent,
       backgroundColor: Color.alphaBlend(
@@ -137,7 +148,9 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final Map<String, int> accentArgbByNorm = ref.watch(tagAccentArgbMapProvider).maybeWhen(
+    final Map<String, int> accentArgbByNorm = ref
+        .watch(tagAccentArgbMapProvider)
+        .maybeWhen(
           data: (Map<String, int> m) => m,
           orElse: () => const <String, int>{},
         );
@@ -158,7 +171,11 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               begin: Alignment.topLeft,
               end: const Alignment(0.15, 0.45),
               colors: <Color>[
-                Color.lerp(theme.colorScheme.primary, theme.colorScheme.surface, 0.86)!,
+                Color.lerp(
+                  theme.colorScheme.primary,
+                  theme.colorScheme.surface,
+                  0.86,
+                )!,
                 theme.colorScheme.surface,
               ],
             ),
@@ -177,151 +194,168 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 16, 12, 16),
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(Icons.label_rounded, color: theme.colorScheme.primary),
-                  const SizedBox(width: 10),
-                  Expanded(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Icon(Icons.label_rounded, color: theme.colorScheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        context.l10n.editorTagsStudioTitle,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.editorTagAddTooltip,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _openTagAccentComposer,
+                      icon: Icon(
+                        Icons.add_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.commonCloseTooltip,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: widget.onDismiss,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                Text(
+                  context.l10n.editorTagsStudioGuide,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    height: 1.4,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_chosen.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      EditorCopy.tagsStudioTitle(context),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
+                      context.l10n.editorTagsStudioEmptyChosen,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: theme.colorScheme.outline,
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: EditorCopy.tagAddTooltip(context),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _openTagAccentComposer,
-                    icon: Icon(Icons.add_rounded, color: theme.colorScheme.primary),
-                  ),
-                  IconButton(
-                    tooltip: CommonCopy.closeTooltip(context),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: widget.onDismiss,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              Text(
-                EditorCopy.tagsStudioGuide(context),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  height: 1.4,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (_chosen.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    EditorCopy.tagsStudioEmptyChosen(context),
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: theme.colorScheme.outline,
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: math.min(
+                      MediaQuery.sizeOf(context).height * 0.18,
+                      108,
                     ),
                   ),
-                ),
-              ConstrainedBox(
-                constraints:
-                    BoxConstraints(maxHeight: math.min(MediaQuery.sizeOf(context).height * 0.18, 108)),
-                child: SingleChildScrollView(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      for (final String t in _chosen)
-                        _chosenTagChip(t, theme, accentArgbByNorm),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _filterCtrl,
-                decoration: InputDecoration(
-                  hintText: EditorCopy.tagSearchHint(context),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 22),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.75),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: _filterCtrl.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: CommonCopy.clearSearchTooltip(context),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _filterCtrl.clear(),
-                          icon: const Icon(Icons.clear_rounded),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                EditorCopy.tagLibraryHint(context),
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ConstrainedBox(
-                constraints:
-                    BoxConstraints(maxHeight: math.min(MediaQuery.sizeOf(context).height * 0.34, 240)),
-                child: Scrollbar(
-                  thumbVisibility: true,
-                  thickness: 4,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 2),
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      alignment: WrapAlignment.start,
                       children: <Widget>[
-                        if (pool.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Text(
-                              qlow.isEmpty
-                                  ? EditorCopy.tagPoolEmpty(context)
-                                  : CommonCopy.noTagSearchResults(context),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontStyle: FontStyle.italic,
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                        for (final TagCatalogUsageItem item in pool.take(60))
-                          _suggestionChip(item.label, theme, accentArgbByNorm),
+                        for (final String t in _chosen)
+                          _chosenTagChip(t, theme, accentArgbByNorm),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: <Widget>[
-                  TextButton(
-                    onPressed: widget.onDismiss,
-                    child: Text(CommonCopy.actionCancel(context)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _filterCtrl,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.editorTagSearchHint,
+                    prefixIcon: const Icon(Icons.search_rounded, size: 22),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerLow.withValues(
+                      alpha: 0.75,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    suffixIcon: _filterCtrl.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: context.l10n.commonClearSearchTooltip,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _filterCtrl.clear(),
+                            icon: const Icon(Icons.clear_rounded),
+                          ),
                   ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: () => widget.onApply(_chosen.join(',')),
-                    child: Text(CommonCopy.actionApply(context)),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  context.l10n.editorTagLibraryHint,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: math.min(
+                      MediaQuery.sizeOf(context).height * 0.34,
+                      240,
+                    ),
+                  ),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    thickness: 4,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        children: <Widget>[
+                          if (pool.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8, bottom: 8),
+                              child: Text(
+                                qlow.isEmpty
+                                    ? context.l10n.editorTagPoolEmpty
+                                    : context.l10n.commonNoTagSearchResults,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                          for (final TagCatalogUsageItem item in pool.take(60))
+                            _suggestionChip(
+                              item.label,
+                              theme,
+                              accentArgbByNorm,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: widget.onDismiss,
+                      child: Text(context.l10n.commonActionCancel),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () => widget.onApply(_chosen.join(',')),
+                      child: Text(context.l10n.commonActionApply),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 }
@@ -338,11 +372,15 @@ class _EntryImageGalleryDialog extends ConsumerStatefulWidget {
   final BuildContext scaffoldMessengerContext;
 
   @override
-  ConsumerState<_EntryImageGalleryDialog> createState() => _EntryImageGalleryDialogState();
+  ConsumerState<_EntryImageGalleryDialog> createState() =>
+      _EntryImageGalleryDialogState();
 }
 
-class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDialog> {
-  late final PageController _pageController = PageController(initialPage: widget.initialIndex);
+class _EntryImageGalleryDialogState
+    extends ConsumerState<_EntryImageGalleryDialog> {
+  late final PageController _pageController = PageController(
+    initialPage: widget.initialIndex,
+  );
   late int _currentIndex = widget.initialIndex;
   bool _pageScrollEnabled = true;
   bool _downloading = false;
@@ -417,7 +455,10 @@ class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDial
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   child: Text(
                     '${_currentIndex + 1} / ${widget.items.length}',
                     style: const TextStyle(
@@ -435,8 +476,10 @@ class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDial
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   IconButton(
-                    tooltip: EditorCopy.galleryDownloadTooltip(context),
-                    onPressed: _downloading ? null : () => unawaited(_downloadCurrentImage()),
+                    tooltip: context.l10n.editorGalleryDownloadTooltip,
+                    onPressed: _downloading
+                        ? null
+                        : () => unawaited(_downloadCurrentImage()),
                     icon: _downloading
                         ? const SizedBox(
                             width: 22,
@@ -446,10 +489,13 @@ class _EntryImageGalleryDialogState extends ConsumerState<_EntryImageGalleryDial
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.download_outlined, color: Colors.white),
+                        : const Icon(
+                            Icons.download_outlined,
+                            color: Colors.white,
+                          ),
                   ),
                   IconButton(
-                    tooltip: CommonCopy.closeTooltip(context),
+                    tooltip: context.l10n.commonCloseTooltip,
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),
@@ -478,24 +524,25 @@ class _GalleryImagePane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (item.source) {
       GalleryImageSource.encrypted => _EncryptedGalleryImage(
-          path: item.path,
-          isActive: isActive,
-          onZoomChanged: onZoomChanged,
-        ),
+        path: item.path,
+        isActive: isActive,
+        onZoomChanged: onZoomChanged,
+      ),
       GalleryImageSource.local => _ZoomableGalleryImage(
-          isActive: isActive,
-          onZoomChanged: onZoomChanged,
-          child: Image.file(
-            File(item.path),
-            fit: BoxFit.contain,
-            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                const Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white,
-              size: 56,
-            ),
-          ),
+        isActive: isActive,
+        onZoomChanged: onZoomChanged,
+        child: Image.file(
+          File(item.path),
+          fit: BoxFit.contain,
+          errorBuilder:
+              (BuildContext context, Object error, StackTrace? stackTrace) =>
+                  const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white,
+                    size: 56,
+                  ),
         ),
+      ),
     };
   }
 }
@@ -523,7 +570,8 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage>
   static const double _zoomedScaleThreshold = 1.01;
   static const Duration _zoomAnimationDuration = Duration(milliseconds: 220);
 
-  final TransformationController _transformController = TransformationController();
+  final TransformationController _transformController =
+      TransformationController();
   late final AnimationController _zoomAnimationController = AnimationController(
     vsync: this,
     duration: _zoomAnimationDuration,
@@ -602,7 +650,8 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage>
 
   void _animateToMatrix(Matrix4 target) {
     _zoomAnimationController.stop();
-    final bool targetZoomed = target.getMaxScaleOnAxis() > _zoomedScaleThreshold;
+    final bool targetZoomed =
+        target.getMaxScaleOnAxis() > _zoomedScaleThreshold;
     if (targetZoomed != _isZoomed) {
       setState(() {
         _isZoomed = targetZoomed;
@@ -610,15 +659,16 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage>
       });
       widget.onZoomChanged?.call(targetZoomed);
     }
-    _zoomAnimation = Matrix4Tween(
-      begin: _transformController.value.clone(),
-      end: target,
-    ).animate(
-      CurvedAnimation(
-        parent: _zoomAnimationController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _zoomAnimation =
+        Matrix4Tween(
+          begin: _transformController.value.clone(),
+          end: target,
+        ).animate(
+          CurvedAnimation(
+            parent: _zoomAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     unawaited(
       _zoomAnimationController.forward(from: 0).whenComplete(() {
         if (!mounted) {
@@ -672,7 +722,8 @@ class _ZoomableGalleryImageState extends State<_ZoomableGalleryImage>
               if (_zoomAnimationController.isAnimating) {
                 return;
               }
-              final double scale = _transformController.value.getMaxScaleOnAxis();
+              final double scale = _transformController.value
+                  .getMaxScaleOnAxis();
               if (scale < _zoomedScaleThreshold) {
                 _resetTransform(animated: true);
               }
@@ -702,13 +753,15 @@ class _EncryptedGalleryImage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<Uint8List?> async = ref.watch(entryCoverPreviewBytesProvider(path));
+    final AsyncValue<Uint8List?> async = ref.watch(
+      entryCoverPreviewBytesProvider(path),
+    );
     return async.when(
       data: (Uint8List? bytes) {
         if (bytes == null || bytes.isEmpty) {
           return Center(
             child: Text(
-              EditorCopy.previewUnavailable(context),
+              context.l10n.editorPreviewUnavailable,
               style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
             ),
           );
@@ -723,9 +776,8 @@ class _EncryptedGalleryImage extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
+      loading: () =>
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
       error: (Object _, StackTrace _) => const Icon(
         Icons.broken_image_outlined,
         color: Colors.white,
@@ -745,14 +797,14 @@ InputDecoration _titleFieldDecoration(
     hintText: hintText,
     errorText: errorText,
     hintStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          fontStyle: FontStyle.italic,
-          color: AppTypography.muted(cs),
-        ),
+      fontWeight: FontWeight.w700,
+      fontStyle: FontStyle.italic,
+      color: AppTypography.muted(cs),
+    ),
     errorStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: cs.error,
-          fontWeight: FontWeight.w600,
-        ),
+      color: cs.error,
+      fontWeight: FontWeight.w600,
+    ),
     filled: false,
     border: InputBorder.none,
     enabledBorder: InputBorder.none,
@@ -793,24 +845,27 @@ class _RestoreDraftDialog extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final String titleText = record.title?.trim().isNotEmpty == true
         ? record.title!.trim()
-        : EditorCopy.untitledDraft(context);
-    final String updatedAtText = DisplayFormat.formatDateTimeZh(record.updatedAt);
+        : context.l10n.editorUntitledDraft;
+    final String updatedAtText = DisplayFormat.formatDateTime(
+      context.l10n,
+      record.updatedAt,
+    );
     return AlertDialog(
-      title: Text(EditorCopy.restoreDraftTitle(context)),
+      title: Text(context.l10n.editorRestoreDraftTitle),
       content: Text(
         hasExistingEntry
-            ? EditorCopy.restoreDraftOverwrite(context, titleText, updatedAtText)
-            : EditorCopy.restoreDraftPrompt(context, titleText, updatedAtText),
+            ? context.l10n.editorRestoreDraftOverwrite(titleText, updatedAtText)
+            : context.l10n.editorRestoreDraftPrompt(titleText, updatedAtText),
         style: theme.textTheme.bodyMedium,
       ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(EditorCopy.restoreDraftDecline(context)),
+          child: Text(context.l10n.editorRestoreDraftDecline),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(EditorCopy.restoreDraftAccept(context)),
+          child: Text(context.l10n.editorRestoreDraftAccept),
         ),
       ],
     );
@@ -823,16 +878,16 @@ class _DiscardDraftDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(EditorCopy.discardDraftTitle(context)),
-      content: Text(EditorCopy.discardDraftBody(context)),
+      title: Text(context.l10n.editorDiscardDraftTitle),
+      content: Text(context.l10n.editorDiscardDraftBody),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(CommonCopy.actionCancel(context)),
+          child: Text(context.l10n.commonActionCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(EditorCopy.discardDraftConfirm(context)),
+          child: Text(context.l10n.editorDiscardDraftConfirm),
         ),
       ],
     );

@@ -32,12 +32,7 @@ class GoogleBillingService {
     }
 
     final bool available = await _inAppPurchase.isAvailable();
-    _emit(
-      _state.copyWith(
-        isInitialized: true,
-        isAvailable: available,
-      ),
-    );
+    _emit(_state.copyWith(isInitialized: true, isAvailable: available));
 
     if (!available) {
       return;
@@ -74,15 +69,12 @@ class GoogleBillingService {
       _emit(_state.copyWith(isRefreshingProducts: true));
     } else {
       _emit(
-        _state.copyWith(
-          isLoadingProducts: true,
-          clearProductLoadError: true,
-        ),
+        _state.copyWith(isLoadingProducts: true, clearProductLoadError: true),
       );
     }
 
-    final ProductDetailsResponse response =
-        await _inAppPurchase.queryProductDetails(BillingConfig.sponsorProductIds);
+    final ProductDetailsResponse response = await _inAppPurchase
+        .queryProductDetails(BillingConfig.sponsorProductIds);
 
     if (response.error != null) {
       _emitProductLoadResult(
@@ -168,8 +160,7 @@ class GoogleBillingService {
         _emit(
           _state.copyWith(
             purchasePhase: SponsorPurchasePhase.error,
-            purchaseErrorMessage:
-                purchase.error?.message ?? 'purchase_error',
+            purchaseErrorMessage: purchase.error?.message ?? 'purchase_error',
           ),
         );
       case PurchaseStatus.canceled:
@@ -188,9 +179,8 @@ class GoogleBillingService {
   Future<void> _finalizePurchase(PurchaseDetails purchase) async {
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
-        final InAppPurchaseAndroidPlatformAddition android =
-            _inAppPurchase
-                .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+        final InAppPurchaseAndroidPlatformAddition android = _inAppPurchase
+            .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
         await android.consumePurchase(purchase);
       }
 

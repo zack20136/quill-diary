@@ -4,10 +4,7 @@ import 'package:quill_diary/shared/utils/user_facing_error.dart';
 void main() {
   group('userFacingErrorMessage', () {
     test('StateError 回傳 message', () {
-      expect(
-        userFacingErrorMessage(StateError('無法讀取備份檔')),
-        '無法讀取備份檔',
-      );
+      expect(userFacingErrorMessage(StateError('無法讀取備份檔')), '無法讀取備份檔');
     });
 
     test('FormatException 回傳 message', () {
@@ -18,22 +15,13 @@ void main() {
     });
 
     test('空 message 使用 fallback', () {
-      expect(
-        userFacingErrorMessage(StateError('   ')),
-        '操作失敗，請稍後再試。',
-      );
+      expect(userFacingErrorMessage(StateError('   ')), '操作失敗，請稍後再試。');
     });
 
     test('其他型別使用 fallback', () {
+      expect(userFacingErrorMessage(Exception('internal')), '操作失敗，請稍後再試。');
       expect(
-        userFacingErrorMessage(Exception('internal')),
-        '操作失敗，請稍後再試。',
-      );
-      expect(
-        userFacingErrorMessage(
-          Exception('internal'),
-          fallback: '自訂錯誤',
-        ),
+        userFacingErrorMessage(Exception('internal'), fallback: '自訂錯誤'),
         '自訂錯誤',
       );
     });
@@ -48,10 +36,7 @@ void main() {
     });
 
     test('Unix 風格路徑替換為本機檔案', () {
-      expect(
-        stripLocalPathsFromMessage('無法開啟 D:/data/secret.md'),
-        '無法開啟 本機檔案',
-      );
+      expect(stripLocalPathsFromMessage('無法開啟 D:/data/secret.md'), '無法開啟 本機檔案');
     });
 
     test('一般文字不被誤改', () {

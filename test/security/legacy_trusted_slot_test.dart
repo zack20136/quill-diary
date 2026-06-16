@@ -14,7 +14,9 @@ void main() {
         KeystoreAuthKind.plain,
       );
       expect(
-        KeystoreAuthKindWire.fromSlotId('dev_android_keystore_deviceCredential_vlt_a'),
+        KeystoreAuthKindWire.fromSlotId(
+          'dev_android_keystore_deviceCredential_vlt_a',
+        ),
         KeystoreAuthKind.deviceCredential,
       );
       expect(
@@ -24,27 +26,32 @@ void main() {
     });
   });
 
-  test('setupRecoveryKey works without device credential when mode is none', () async {
-    final VaultTestHarness harness = await VaultTestHarness.create();
-    addTearDown(harness.dispose);
+  test(
+    'setupRecoveryKey works without device credential when mode is none',
+    () async {
+      final VaultTestHarness harness = await VaultTestHarness.create();
+      addTearDown(harness.dispose);
 
-    harness.appLockService.canUseDeviceCredentialResult = false;
-    await harness.appLockService.setUnlockMode(AppUnlockMode.none);
+      harness.appLockService.canUseDeviceCredentialResult = false;
+      await harness.appLockService.setUnlockMode(AppUnlockMode.none);
 
-    await expectLater(harness.repository.setupRecoveryKey(), completes);
-    expect(harness.deviceKeyManager.lastWrapAuthKind, KeystoreAuthKind.plain);
-  });
+      await expectLater(harness.repository.setupRecoveryKey(), completes);
+      expect(harness.deviceKeyManager.lastWrapAuthKind, KeystoreAuthKind.plain);
+    },
+  );
 
   test('openTrustedSession accepts plain trusted slot in none mode', () async {
     final VaultTestHarness harness = await VaultTestHarness.create();
     addTearDown(harness.dispose);
 
     await harness.appLockService.setUnlockMode(AppUnlockMode.none);
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
 
     await harness.repository.closeUnlockedResources();
 
-    final UnlockedVaultSession session = await harness.repository.openTrustedSession();
+    final UnlockedVaultSession session = await harness.repository
+        .openTrustedSession();
     expect(session.vaultId, setup.session.vaultId);
     expect(session.trustedDevice, isTrue);
   });

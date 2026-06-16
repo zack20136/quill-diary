@@ -38,9 +38,9 @@ void main() {
         saltBytes: List<int>.generate(16, (int index) => index),
       ),
     );
-    await File(await pathStrategy.recoveryMetadataPath()).writeAsString(
-      jsonEncode(metadata.toJson()),
-    );
+    await File(
+      await pathStrategy.recoveryMetadataPath(),
+    ).writeAsString(jsonEncode(metadata.toJson()));
     session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
       trustedDevice: false,
@@ -85,8 +85,14 @@ void main() {
     final File sourceFile = File('${rootDir.path}\\picked.txt');
     await sourceFile.writeAsString('hello');
 
-    final String relativePath = await store.stagePendingFile('entry-1', sourceFile.path);
-    final String stagedPath = await store.pendingAbsolutePath('entry-1', relativePath);
+    final String relativePath = await store.stagePendingFile(
+      'entry-1',
+      sourceFile.path,
+    );
+    final String stagedPath = await store.pendingAbsolutePath(
+      'entry-1',
+      relativePath,
+    );
 
     expect(File(stagedPath).existsSync(), isTrue);
     expect(relativePath, startsWith('pending/'));
@@ -139,7 +145,9 @@ void main() {
         saltBytes: List<int>.generate(16, (int index) => index),
       ),
     );
-    final Directory draftDir = await pathStrategy.editorDraftDirectory('bad-json');
+    final Directory draftDir = await pathStrategy.editorDraftDirectory(
+      'bad-json',
+    );
     await draftDir.create(recursive: true);
     final DateTime timestamp = DateTime(2026, 6, 9);
     final EncryptionResult encrypted = await cryptoService.encryptBytes(
@@ -152,8 +160,9 @@ void main() {
       createdAt: timestamp,
       updatedAt: timestamp,
     );
-    await File(await pathStrategy.editorDraftFilePath('bad-json'))
-        .writeAsBytes(encrypted.toFileBytes());
+    await File(
+      await pathStrategy.editorDraftFilePath('bad-json'),
+    ).writeAsBytes(encrypted.toFileBytes());
 
     await expectLater(
       store.read('bad-json', session),
@@ -164,8 +173,14 @@ void main() {
   test('write 會 prune 未引用的 pending 檔', () async {
     final File sourceA = File('${rootDir.path}\\a.txt')..writeAsStringSync('a');
     final File sourceB = File('${rootDir.path}\\b.txt')..writeAsStringSync('b');
-    final String relativeA = await store.stagePendingFile('entry-prune', sourceA.path);
-    final String relativeB = await store.stagePendingFile('entry-prune', sourceB.path);
+    final String relativeA = await store.stagePendingFile(
+      'entry-prune',
+      sourceA.path,
+    );
+    final String relativeB = await store.stagePendingFile(
+      'entry-prune',
+      sourceB.path,
+    );
 
     final EditorDraftRecord record = EditorDraftRecord(
       title: null,
@@ -188,8 +203,14 @@ void main() {
     );
     await store.write('entry-prune', record, session);
 
-    final String keptPath = await store.pendingAbsolutePath('entry-prune', relativeA);
-    final String prunedPath = await store.pendingAbsolutePath('entry-prune', relativeB);
+    final String keptPath = await store.pendingAbsolutePath(
+      'entry-prune',
+      relativeA,
+    );
+    final String prunedPath = await store.pendingAbsolutePath(
+      'entry-prune',
+      relativeB,
+    );
 
     expect(File(keptPath).existsSync(), isTrue);
     expect(File(prunedPath).existsSync(), isFalse);

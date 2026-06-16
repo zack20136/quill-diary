@@ -56,8 +56,9 @@ ArchiveFile? findZipEntry(Archive archive, {required String pathSuffix}) {
     if (!file.isFile) {
       continue;
     }
-    final String normalized =
-        p.posix.normalize(file.name.replaceAll('\\', '/')).toLowerCase();
+    final String normalized = p.posix
+        .normalize(file.name.replaceAll('\\', '/'))
+        .toLowerCase();
     if (normalized == suffix || normalized.endsWith('/$suffix')) {
       return file;
     }
@@ -72,7 +73,10 @@ Uint8List? readZipEntry(Archive archive, {required String pathSuffix}) {
 
 /// 讀取 manifest.json.enc，否則取第一篇 .md.enc 作為加密樣本。
 Uint8List? readEncryptedSampleBytes(Archive archive) {
-  final Uint8List? manifest = readZipEntry(archive, pathSuffix: 'manifest.json.enc');
+  final Uint8List? manifest = readZipEntry(
+    archive,
+    pathSuffix: 'manifest.json.enc',
+  );
   if (manifest != null) {
     return manifest;
   }
@@ -80,8 +84,9 @@ Uint8List? readEncryptedSampleBytes(Archive archive) {
     if (!file.isFile) {
       continue;
     }
-    final String normalized =
-        p.posix.normalize(file.name.replaceAll('\\', '/')).toLowerCase();
+    final String normalized = p.posix
+        .normalize(file.name.replaceAll('\\', '/'))
+        .toLowerCase();
     if (normalized.endsWith('.md.enc')) {
       return file.readBytes();
     }

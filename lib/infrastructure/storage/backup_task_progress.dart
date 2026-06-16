@@ -13,10 +13,7 @@ const double backupPipelineZipEndFraction = 0.65;
 
 /// 長時間備份任務的進度更新；[fraction] 為 0.0–1.0，`null` 表示尚無法估算。
 class BackupTaskProgress {
-  const BackupTaskProgress({
-    required this.phase,
-    this.fraction,
-  });
+  const BackupTaskProgress({required this.phase, this.fraction});
 
   final BackupTaskPhase phase;
   final double? fraction;
@@ -74,9 +71,7 @@ Stream<List<int>> reportByteStreamProgress(
       return;
     }
     lastEmittedFraction = clamped;
-    onProgress(
-      BackupTaskProgress(phase: phase, fraction: clamped),
-    );
+    onProgress(BackupTaskProgress(phase: phase, fraction: clamped));
   }
 
   await for (final List<int> chunk in stream) {

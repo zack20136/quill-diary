@@ -13,7 +13,8 @@ abstract final class GoogleDriveOAuthFingerprints {
   static const String debugSha1 =
       'B0:B3:BC:E7:7C:68:8E:67:84:B4:B8:BB:FF:E5:A8:AE:24:6F:53:BB';
 
-  static const String oauthSetupDocPath = 'docs/介紹/google/Google-Drive-OAuth-設定.md';
+  static const String oauthSetupDocPath =
+      'docs/介紹/google/Google-Drive-OAuth-設定.md';
 }
 
 String googleDriveAndroidOAuthSha1Checklist() {
@@ -59,7 +60,8 @@ String _oauthMisconfigurationMessage({
 
 String _misconfigurationHeadline(String? detail) {
   final String lowerDetail = detail?.toLowerCase() ?? '';
-  if (lowerDetail.contains('account reauth failed') || lowerDetail.contains('[16]')) {
+  if (lowerDetail.contains('account reauth failed') ||
+      lowerDetail.contains('[16]')) {
     return 'Google 帳號驗證沒有完成。\n'
         '請確認 SHA-1 與安裝包一致；若仍失敗，請按「切換帳號」重新登入，'
         '或到 Google 帳號移除本 App 的第三方存取權後再試。';

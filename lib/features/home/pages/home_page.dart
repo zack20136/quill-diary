@@ -1,17 +1,17 @@
-﻿import 'dart:async' show unawaited;
+import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
-import '../home_copy.dart';
 import '../home_layout.dart';
 import '../state/home_state.dart';
 import '../widgets/home_selection_toolbar.dart';
@@ -30,20 +30,25 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
-    final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
+    final AsyncValue<AppSessionState> sessionAsync = ref.watch(
+      effectiveAppSessionProvider,
+    );
 
     if (!isSupportedPlatform) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(kAndroidOnlyMessage)),
+        body: Center(child: Text(sessionAndroidOnlyMessage(context.l10n))),
       );
     }
 
     return sessionAsync.when(
       data: (AppSessionState sessionState) {
-        final bool canCreate = sessionState.isUnlocked && sessionState.session != null;
+        final bool canCreate =
+            sessionState.isUnlocked && sessionState.session != null;
         final ColorScheme cs = Theme.of(context).colorScheme;
-        final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
+        final HomeEntrySelectionState selection = ref.watch(
+          homeEntrySelectionProvider,
+        );
         final HomeTab activeTab = ref.watch(homeTabProvider);
         final bool showFab = activeTab == HomeTab.home && !selection.isActive;
 
@@ -72,7 +77,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             floatingActionButton: showFab
                 ? FloatingActionButton(
-                    tooltip: HomeCopy.tooltipNewEntry(context),
+                    tooltip: context.l10n.homeTooltipNewEntry,
                     backgroundColor: cs.secondaryContainer,
                     foregroundColor: cs.onSecondaryContainer,
                     onPressed: canCreate
@@ -84,9 +89,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         );
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
         body: Center(child: Text(userFacingErrorMessage(error))),
@@ -132,7 +136,7 @@ class HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: HomeHeaderTabButton(
-                        label: HomeCopy.navHome(context),
+                        label: context.l10n.homeNavHome,
                         icon: Icons.home_rounded,
                         active: activeTab == HomeTab.home,
                         onTap: () => _selectTab(ref, HomeTab.home),
@@ -142,7 +146,7 @@ class HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: HomeHeaderTabButton(
-                        label: HomeCopy.navCalendar(context),
+                        label: context.l10n.homeNavCalendar,
                         icon: Icons.calendar_month_rounded,
                         active: activeTab == HomeTab.calendar,
                         onTap: () => _selectTab(ref, HomeTab.calendar),
@@ -152,7 +156,7 @@ class HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: HomeHeaderTabButton(
-                        label: HomeCopy.navTags(context),
+                        label: context.l10n.homeNavTags,
                         icon: Icons.sell_rounded,
                         active: activeTab == HomeTab.tags,
                         onTap: () => _selectTab(ref, HomeTab.tags),
@@ -162,7 +166,7 @@ class HomeHeader extends ConsumerWidget {
                     SizedBox(
                       width: 50,
                       child: HomeHeaderTabButton(
-                        label: HomeCopy.navOverview(context),
+                        label: context.l10n.homeNavOverview,
                         icon: Icons.insights_rounded,
                         active: activeTab == HomeTab.overview,
                         onTap: () => _selectTab(ref, HomeTab.overview),
@@ -174,9 +178,10 @@ class HomeHeader extends ConsumerWidget {
               const Spacer(),
               const SizedBox(width: 12),
               HomeHeaderIconButton(
-                tooltip: HomeCopy.tooltipSettings(context),
+                tooltip: context.l10n.homeTooltipSettings,
                 icon: Icons.tune_rounded,
-                onPressed: () => unawaited(context.push(AppRouter.settingsRoute)),
+                onPressed: () =>
+                    unawaited(context.push(AppRouter.settingsRoute)),
               ),
             ],
           ),

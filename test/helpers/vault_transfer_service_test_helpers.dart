@@ -41,11 +41,11 @@ class UnusedDriveBackupService implements DriveBackupService {
     required Directory destinationDirectory,
     int? totalBytes,
     BackupTaskProgressListener? onProgress,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
-  Future<DriveConnectionState> getConnectionState() => throw UnimplementedError();
+  Future<DriveConnectionState> getConnectionState() =>
+      throw UnimplementedError();
 
   @override
   Future<List<DriveBackupFile>> listBackups() => throw UnimplementedError();

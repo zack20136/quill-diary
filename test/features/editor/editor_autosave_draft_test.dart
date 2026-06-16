@@ -63,19 +63,13 @@ void main() {
         pendingFingerprints: <String>[],
       );
 
-      expect(
-        editorDraftIsDirty(current: current, saved: null),
-        isFalse,
-      );
+      expect(editorDraftIsDirty(current: current, saved: null), isFalse);
     });
 
     test('文字變更標記 dirty', () {
       final EditorDraftSnapshot current = saved.copyWithBody('changed');
 
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
-      );
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
 
     test('附件 id 變更標記 dirty', () {
@@ -83,10 +77,7 @@ void main() {
         keptAttachmentIds: <AssetId>['asset-2'],
       );
 
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
-      );
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
 
     test('pending 附件指紋變更標記 dirty', () {
@@ -94,37 +85,28 @@ void main() {
         pendingFingerprints: <String>['/tmp/a.jpg|image/jpeg|a.jpg'],
       );
 
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
-      );
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
 
     test('dateValue 變更標記 dirty', () {
       final EditorDraftSnapshot current = saved.copyWithDateValue('2026-05-18');
 
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
-      );
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
 
     test('entryHour/Minute 變更標記 dirty', () {
-      final EditorDraftSnapshot current = saved.copyWithTime(entryHour: 11, entryMinute: 0);
-
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
+      final EditorDraftSnapshot current = saved.copyWithTime(
+        entryHour: 11,
+        entryMinute: 0,
       );
+
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
 
     test('tags 變更標記 dirty', () {
       final EditorDraftSnapshot current = saved.copyWithTags(<String>['other']);
 
-      expect(
-        editorDraftIsDirty(current: current, saved: saved),
-        isTrue,
-      );
+      expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
     });
   });
 
@@ -188,7 +170,9 @@ void main() {
         updatedAt: DateTime(2026, 5, 17, 9, 15),
       );
 
-      final EditorDraftRecord restored = EditorDraftRecord.fromJson(original.toJson());
+      final EditorDraftRecord restored = EditorDraftRecord.fromJson(
+        original.toJson(),
+      );
 
       expect(restored.title, original.title);
       expect(restored.dateValue, original.dateValue);
@@ -246,11 +230,15 @@ void main() {
         updatedAt: DateTime(2026, 5, 17, 9, 15),
       );
 
-      final EditorDraftSnapshot snapshot = editorDraftSnapshotFromRecord(record);
+      final EditorDraftSnapshot snapshot = editorDraftSnapshotFromRecord(
+        record,
+      );
 
       expect(snapshot.title, 'draft title');
       expect(snapshot.markdownBody, 'body');
-      expect(snapshot.pendingFingerprints, <String>['pending/x.png|image/png|x.png']);
+      expect(snapshot.pendingFingerprints, <String>[
+        'pending/x.png|image/png|x.png',
+      ]);
     });
   });
 

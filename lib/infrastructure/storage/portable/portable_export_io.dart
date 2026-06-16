@@ -44,9 +44,9 @@ class PortableExportIo {
     required VaultPathStrategy pathStrategy,
     required VaultRepository repository,
     required FrontMatterCodec frontMatterCodec,
-  })  : _pathStrategy = pathStrategy,
-        _repository = repository,
-        _frontMatterCodec = frontMatterCodec;
+  }) : _pathStrategy = pathStrategy,
+       _repository = repository,
+       _frontMatterCodec = frontMatterCodec;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
@@ -75,15 +75,15 @@ class PortableExportIo {
         continue;
       }
 
-      final List<AssetAttachment> attachments = loaded[1] as List<AssetAttachment>;
+      final List<AssetAttachment> attachments =
+          loaded[1] as List<AssetAttachment>;
       final Directory entryDirectory = await _createExportEntryDirectory(
         exportRoot: exportRoot,
         entry: entry,
         usedRelativePaths: usedEntryDirectories,
       );
-      final Map<AssetId, String> attachmentFileNames = _buildExportAttachmentFileNames(
-        attachments,
-      );
+      final Map<AssetId, String> attachmentFileNames =
+          _buildExportAttachmentFileNames(attachments);
       final String exportMarkdown = _frontMatterCodec.encode(
         entry,
         attachments: attachments,
@@ -93,10 +93,7 @@ class PortableExportIo {
 
       await File(
         p.join(entryDirectory.path, 'index.md'),
-      ).writeAsString(
-        exportMarkdown,
-        flush: true,
-      );
+      ).writeAsString(exportMarkdown, flush: true);
 
       await _exportAttachments(
         session: session,
@@ -115,12 +112,12 @@ class PortableExportIo {
     required UnlockedVaultSession session,
     required File target,
   }) async {
-    final Directory tempRoot = await createWorkingDirectory(_pathStrategy, 'portable_export');
+    final Directory tempRoot = await createWorkingDirectory(
+      _pathStrategy,
+      'portable_export',
+    );
     try {
-      await exportMarkdown(
-        session: session,
-        parentDirectory: tempRoot,
-      );
+      await exportMarkdown(session: session, parentDirectory: tempRoot);
       await target.parent.create(recursive: true);
       final ZipFileEncoder encoder = ZipFileEncoder();
       encoder.create(target.path);
@@ -137,11 +134,12 @@ class PortableExportIo {
   Future<HtmlExportEstimate> estimateSelectedHtmlExport({
     required Set<EntryId> entryIds,
   }) async {
-    final List<HtmlExportDocument> documents = await _requireSelectedHtmlExportDocuments(
-      session: null,
-      entryIds: entryIds,
-      loadEntries: false,
-    );
+    final List<HtmlExportDocument> documents =
+        await _requireSelectedHtmlExportDocuments(
+          session: null,
+          entryIds: entryIds,
+          loadEntries: false,
+        );
 
     int textBytes = 0;
     int imageBytes = 0;
@@ -149,14 +147,18 @@ class PortableExportIo {
     for (final HtmlExportDocument document in documents) {
       final DiaryEntry? entry = document.entry;
       if (entry != null) {
-        textBytes += utf8.encode(
-          '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.mood ?? ''}\n${entry.markdownBody}',
-        ).length;
+        textBytes += utf8
+            .encode(
+              '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.mood ?? ''}\n${entry.markdownBody}',
+            )
+            .length;
       } else {
         final EntryIndexRecord record = document.record;
-        textBytes += utf8.encode(
-          '${record.title ?? ''}\n${record.tags.join(',')}\n${record.mood ?? ''}\n${record.previewText}',
-        ).length;
+        textBytes += utf8
+            .encode(
+              '${record.title ?? ''}\n${record.tags.join(',')}\n${record.mood ?? ''}\n${record.previewText}',
+            )
+            .length;
       }
       for (final AssetAttachment attachment in document.attachments) {
         if (_isImageAttachment(attachment)) {
@@ -179,11 +181,12 @@ class PortableExportIo {
     required Set<EntryId> entryIds,
     required File target,
   }) async {
-    final List<HtmlExportDocument> documents = await _requireSelectedHtmlExportDocuments(
-      session: session,
-      entryIds: entryIds,
-      loadEntries: true,
-    );
+    final List<HtmlExportDocument> documents =
+        await _requireSelectedHtmlExportDocuments(
+          session: session,
+          entryIds: entryIds,
+          loadEntries: true,
+        );
 
     final String html = await _buildSelectedHtmlDocument(
       session: session,
@@ -222,18 +225,18 @@ class PortableExportIo {
     return entryDirectory;
   }
 
-  Map<AssetId, String> _buildExportAttachmentFileNames(List<AssetAttachment> attachments) {
+  Map<AssetId, String> _buildExportAttachmentFileNames(
+    List<AssetAttachment> attachments,
+  ) {
     final Map<AssetId, String> results = <AssetId, String>{};
     final Set<String> usedNames = <String>{};
 
     for (final AssetAttachment attachment in attachments) {
-      final String preferredName = attachment.originalFilename?.trim().isNotEmpty == true
+      final String preferredName =
+          attachment.originalFilename?.trim().isNotEmpty == true
           ? attachment.originalFilename!.trim()
           : attachment.safeFilename;
-      results[attachment.id] = _uniqueFileName(
-        preferredName,
-        usedNames,
-      );
+      results[attachment.id] = _uniqueFileName(preferredName, usedNames);
     }
 
     return results;
@@ -248,24 +251,28 @@ class PortableExportIo {
       return const <HtmlExportDocument>[];
     }
 
-    final Set<EntryId> selected = entryIds.map((EntryId id) => id.trim()).toSet();
-    final List<EntryIndexRecord> records = (await _repository.listEntries())
-        .where((EntryIndexRecord record) => selected.contains(record.id))
-        .toList()
-      ..sort(compareEntriesNewestFirst);
+    final Set<EntryId> selected = entryIds
+        .map((EntryId id) => id.trim())
+        .toSet();
+    final List<EntryIndexRecord> records =
+        (await _repository.listEntries())
+            .where((EntryIndexRecord record) => selected.contains(record.id))
+            .toList()
+          ..sort(compareEntriesNewestFirst);
 
     final UnlockedVaultSession? exportSession = loadEntries
         ? session ?? (throw StateError('缺少匯出 HTML 所需的解鎖 session。'))
         : null;
-    final List<HtmlExportDocument?> documents = await Future.wait<HtmlExportDocument?>(
-      records.map(
-        (EntryIndexRecord record) => _loadHtmlExportDocument(
-          record: record,
-          session: exportSession,
-          loadEntry: loadEntries,
-        ),
-      ),
-    );
+    final List<HtmlExportDocument?> documents =
+        await Future.wait<HtmlExportDocument?>(
+          records.map(
+            (EntryIndexRecord record) => _loadHtmlExportDocument(
+              record: record,
+              session: exportSession,
+              loadEntry: loadEntries,
+            ),
+          ),
+        );
     return documents.whereType<HtmlExportDocument>().toList(growable: false);
   }
 
@@ -274,11 +281,12 @@ class PortableExportIo {
     required Set<EntryId> entryIds,
     required bool loadEntries,
   }) async {
-    final List<HtmlExportDocument> documents = await _loadSelectedHtmlExportDocuments(
-      session: session,
-      entryIds: entryIds,
-      loadEntries: loadEntries,
-    );
+    final List<HtmlExportDocument> documents =
+        await _loadSelectedHtmlExportDocuments(
+          session: session,
+          entryIds: entryIds,
+          loadEntries: loadEntries,
+        );
     if (documents.isEmpty) {
       throw StateError(kNoHtmlExportEntriesMessage);
     }
@@ -317,9 +325,7 @@ class PortableExportIo {
       body.writeln(
         '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
-      body.writeln(
-        '<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>',
-      );
+      body.writeln('<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>');
       if (entry.mood?.trim().isNotEmpty == true) {
         body.writeln('<div class="entry-meta">');
         body.writeln('<span>心情：${_escapeHtml(entry.mood!.trim())}</span>');
@@ -536,7 +542,10 @@ class PortableExportIo {
   }
 
   String _markdownToExportHtml(String markdown) {
-    final List<String> lines = markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+    final List<String> lines = markdown
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .split('\n');
     final StringBuffer html = StringBuffer();
     final List<String> paragraph = <String>[];
     var inList = false;
@@ -547,7 +556,9 @@ class PortableExportIo {
       if (paragraph.isEmpty) {
         return;
       }
-      html.writeln('<p>${paragraph.map(_inlineMarkdownToHtml).join('<br>')}</p>');
+      html.writeln(
+        '<p>${paragraph.map(_inlineMarkdownToHtml).join('<br>')}</p>',
+      );
       paragraph.clear();
     }
 
@@ -562,7 +573,9 @@ class PortableExportIo {
     for (final String line in lines) {
       if (line.trimLeft().startsWith('```')) {
         if (inCodeBlock) {
-          html.writeln('<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>');
+          html.writeln(
+            '<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>',
+          );
           codeBlock.clear();
           inCodeBlock = false;
         } else {
@@ -589,7 +602,9 @@ class PortableExportIo {
         flushParagraph();
         closeList();
         final int level = (heading.group(1) ?? '#').length.clamp(1, 6).toInt();
-        html.writeln('<h$level>${_inlineMarkdownToHtml(heading.group(2) ?? '')}</h$level>');
+        html.writeln(
+          '<h$level>${_inlineMarkdownToHtml(heading.group(2) ?? '')}</h$level>',
+        );
         continue;
       }
 
@@ -600,7 +615,9 @@ class PortableExportIo {
           html.writeln('<ul>');
           inList = true;
         }
-        html.writeln('<li>${_inlineMarkdownToHtml(bullet.group(1) ?? '')}</li>');
+        html.writeln(
+          '<li>${_inlineMarkdownToHtml(bullet.group(1) ?? '')}</li>',
+        );
         continue;
       }
 
@@ -608,7 +625,9 @@ class PortableExportIo {
     }
 
     if (inCodeBlock) {
-      html.writeln('<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>');
+      html.writeln(
+        '<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>',
+      );
     }
     flushParagraph();
     closeList();
@@ -629,14 +648,13 @@ class PortableExportIo {
       RegExp(r'\*([^*]+)\*'),
       (Match match) => '<em>${match.group(1)}</em>',
     );
-    output = output.replaceAllMapped(
-      RegExp(r'\[([^\]]+)\]\(([^)]+)\)'),
-      (Match match) {
-        final String label = match.group(1) ?? '';
-        final String href = match.group(2) ?? '';
-        return '<a href="${_escapeHtmlAttribute(href)}">$label</a>';
-      },
-    );
+    output = output.replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]+)\)'), (
+      Match match,
+    ) {
+      final String label = match.group(1) ?? '';
+      final String href = match.group(2) ?? '';
+      return '<a href="${_escapeHtmlAttribute(href)}">$label</a>';
+    });
     return output;
   }
 
@@ -660,7 +678,8 @@ class PortableExportIo {
         .replaceAll("'", '&#39;');
   }
 
-  String _escapeHtmlAttribute(String input) => _escapeHtml(input).replaceAll('\n', ' ');
+  String _escapeHtmlAttribute(String input) =>
+      _escapeHtml(input).replaceAll('\n', ' ');
 
   String _formatBytes(int bytes) {
     if (bytes < 1024) {
@@ -733,14 +752,18 @@ class PortableExportIo {
     const int batchSize = 3;
 
     for (int index = 0; index < attachments.length; index += batchSize) {
-      final List<AssetAttachment> batch = attachments.skip(index).take(batchSize).toList();
+      final List<AssetAttachment> batch = attachments
+          .skip(index)
+          .take(batchSize)
+          .toList();
       await Future.wait<void>(
         batch.map(
           (AssetAttachment attachment) => _exportAttachment(
             session: session,
             entry: entry,
             attachment: attachment,
-            outputName: attachmentFileNames[attachment.id] ?? attachment.safeFilename,
+            outputName:
+                attachmentFileNames[attachment.id] ?? attachment.safeFilename,
             entryDirectory: entryDirectory,
             vaultRoot: vaultRoot,
           ),
@@ -757,7 +780,9 @@ class PortableExportIo {
     required Directory entryDirectory,
     required Directory vaultRoot,
   }) async {
-    final String extension = p.extension(attachment.safeFilename).replaceFirst('.', '');
+    final String extension = p
+        .extension(attachment.safeFilename)
+        .replaceFirst('.', '');
     final File encryptedFile = File(
       p.join(
         vaultRoot.path,

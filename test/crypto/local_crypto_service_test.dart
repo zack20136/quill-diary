@@ -32,7 +32,9 @@ void main() {
       updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
     );
 
-    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      result.toFileBytes(),
+    );
     final String markdown = await crypto.decryptMarkdown(
       headerBytes: parsed.headerBytes,
       ciphertextBytes: parsed.ciphertextBytes,
@@ -75,7 +77,9 @@ void main() {
       createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
       updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
     );
-    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      result.toFileBytes(),
+    );
     final List<int> decrypted = await crypto.decryptBytes(
       headerBytes: parsed.headerBytes,
       ciphertextBytes: parsed.ciphertextBytes,
@@ -123,7 +127,9 @@ void main() {
       createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
       updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
     );
-    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      result.toFileBytes(),
+    );
 
     expect(
       () => crypto.decryptBytes(
@@ -156,10 +162,14 @@ void main() {
       createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
       updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
     );
-    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      result.toFileBytes(),
+    );
 
     expect(
-      parsed.header.keySlots.where((EncryptionKeySlot slot) => slot.slotType == 'device'),
+      parsed.header.keySlots.where(
+        (EncryptionKeySlot slot) => slot.slotType == 'device',
+      ),
       isEmpty,
     );
 
@@ -205,7 +215,9 @@ void main() {
       createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
       updatedAt: DateTime.parse('2026-05-13T20:30:12Z'),
     );
-    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(result.toFileBytes());
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      result.toFileBytes(),
+    );
     final Map<String, Object?> headerJson =
         jsonDecode(utf8.decode(parsed.headerBytes)) as Map<String, Object?>;
     headerJson['updated_at'] = '2030-01-01T00:00:00.000Z';

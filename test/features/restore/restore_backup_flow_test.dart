@@ -11,15 +11,14 @@ import 'package:quill_diary/features/restore/restore_backup_flow.dart';
 import 'package:quill_diary/features/restore/restore_prepared_context.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_app_lock_service.dart';
 import '../../helpers/fake_session_vault_repository.dart';
 import '../../helpers/recording_vault_transfer_service.dart';
+import '../../helpers/test_l10n.dart';
 
 void main() {
   final RecoveryMetadata backupMetadata = RecoveryMetadata(
@@ -28,9 +27,7 @@ void main() {
     recoveryKeyVersion: 1,
     recoveryKeyHint: 'WXYZ',
     createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
-    kdf: KdfDescriptor.argon2idRecovery(
-      saltBytes: List<int>.filled(16, 1),
-    ),
+    kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
   );
 
   final UnlockedVaultSession sampleSession = UnlockedVaultSession(
@@ -44,8 +41,11 @@ void main() {
   late FakeSessionVaultRepository repository;
 
   setUp(() async {
-    final Directory tempDir = await Directory.systemTemp.createTemp('restore_flow_test_');
-    backupFile = File('${tempDir.path}/backup.zip')..writeAsStringSync('backup');
+    final Directory tempDir = await Directory.systemTemp.createTemp(
+      'restore_flow_test_',
+    );
+    backupFile = File('${tempDir.path}/backup.zip')
+      ..writeAsStringSync('backup');
     transferService = RecordingVaultTransferService();
     repository = FakeSessionVaultRepository();
   });
@@ -78,11 +78,16 @@ void main() {
 
   Future<void> pumpFlowHost(
     WidgetTester tester, {
-    required Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName}) confirm,
+    required Future<bool> Function(
+      RestorePrecheck precheck, {
+      String? driveBackupName,
+    })
+    confirm,
     required Future<void> Function({
       String? backupRecoveryKey,
       required RestorePrecheck precheck,
-    }) onComplete,
+    })
+    onComplete,
     bool activateSession = true,
   }) async {
     await tester.pumpWidget(
@@ -109,7 +114,9 @@ void main() {
       final ProviderContainer container = ProviderScope.containerOf(
         tester.element(find.byType(_RestoreFlowHost)),
       );
-      container.read(appSessionProvider.notifier).activateSession(sampleSession);
+      container
+          .read(appSessionProvider.notifier)
+          .activateSession(sampleSession);
     }
     await tester.pump();
   }
@@ -121,12 +128,13 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => false,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completed = true;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completed = true;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
@@ -144,12 +152,13 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completedPrecheck = precheck;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completedPrecheck = precheck;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
@@ -214,19 +223,20 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completed = true;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completed = true;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
     await tester.pumpAndSettle();
-    expect(find.text(SettingsCopy.actionCancel), findsOneWidget);
+    expect(find.text(testL10n.commonActionCancel), findsOneWidget);
 
-    await tester.tap(find.text(SettingsCopy.actionCancel));
+    await tester.tap(find.text(testL10n.commonActionCancel));
     await tester.pumpAndSettle();
 
     expect(transferService.restoreCalls, 0);
@@ -241,19 +251,20 @@ void main() {
     await pumpFlowHost(
       tester,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completedKey = backupRecoveryKey;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completedKey = backupRecoveryKey;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'BAD-KEY');
-    await tester.tap(find.text(SettingsCopy.actionVerifyAndRestore));
+    await tester.tap(find.text(testL10n.settingsActionVerifyAndRestore));
     await tester.pumpAndSettle();
 
     expect(transferService.verifyCalls, 1);
@@ -261,7 +272,7 @@ void main() {
 
     transferService.verifyError = null;
     await tester.enterText(find.byType(TextField), 'GOOD-KEY');
-    await tester.tap(find.text(SettingsCopy.actionVerifyAndRestore));
+    await tester.tap(find.text(testL10n.settingsActionVerifyAndRestore));
     await tester.pumpAndSettle();
 
     expect(transferService.verifyCalls, 2);
@@ -278,12 +289,13 @@ void main() {
       tester,
       activateSession: false,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completed = true;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completed = true;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
@@ -302,12 +314,13 @@ void main() {
       tester,
       activateSession: false,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completed = true;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completed = true;
+          },
     );
 
     final ProviderContainer container = ProviderScope.containerOf(
@@ -317,12 +330,15 @@ void main() {
     await tester.pump();
 
     Object? caughtError;
-    await runZonedGuarded(() async {
-      await tester.tap(find.byType(ElevatedButton));
-      await tester.pump();
-    }, (Object error, StackTrace stackTrace) {
-      caughtError = error;
-    });
+    await runZonedGuarded(
+      () async {
+        await tester.tap(find.byType(ElevatedButton));
+        await tester.pump();
+      },
+      (Object error, StackTrace stackTrace) {
+        caughtError = error;
+      },
+    );
 
     expect(caughtError, isA<StateError>());
     expect(transferService.restoreCalls, 0);
@@ -341,12 +357,13 @@ void main() {
       tester,
       activateSession: false,
       confirm: (_, {String? driveBackupName}) async => true,
-      onComplete: ({
-        String? backupRecoveryKey,
-        required RestorePrecheck precheck,
-      }) async {
-        completed = true;
-      },
+      onComplete:
+          ({
+            String? backupRecoveryKey,
+            required RestorePrecheck precheck,
+          }) async {
+            completed = true;
+          },
     );
 
     await tester.tap(find.byType(ElevatedButton));
@@ -365,19 +382,25 @@ class _RestoreFlowHost extends ConsumerWidget {
   });
 
   final File backupFile;
-  final Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName}) confirm;
+  final Future<bool> Function(
+    RestorePrecheck precheck, {
+    String? driveBackupName,
+  })
+  confirm;
   final Future<void> Function({
     String? backupRecoveryKey,
     required RestorePrecheck precheck,
-  }) onComplete;
+  })
+  onComplete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: ElevatedButton(
         onPressed: () async {
-          final RestorePrecheck precheck =
-              await ref.read(vaultTransferServiceProvider).precheckRestore(backupFile);
+          final RestorePrecheck precheck = await ref
+              .read(vaultTransferServiceProvider)
+              .precheckRestore(backupFile);
           if (!context.mounted) {
             return;
           }
@@ -391,10 +414,7 @@ class _RestoreFlowHost extends ConsumerWidget {
           if (!context.mounted || prepared == null) {
             return;
           }
-          await flow.executeRestore(
-            backupFile: backupFile,
-            prepared: prepared,
-          );
+          await flow.executeRestore(backupFile: backupFile, prepared: prepared);
           await onComplete(
             backupRecoveryKey: prepared.backupRecoveryKey,
             precheck: prepared.precheck,

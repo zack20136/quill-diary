@@ -7,9 +7,13 @@ import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_
 
 void main() {
   test('可解析無副檔名的 UUID 相片檔', () {
-    final Directory tempDir = Directory.systemTemp.createTempSync('easy_photo_index_');
+    final Directory tempDir = Directory.systemTemp.createTempSync(
+      'easy_photo_index_',
+    );
     final String uuid = 'fe3121ef-e13e-41dd-a7c4-3f860786ff74';
-    File(p.join(tempDir.path, uuid)).writeAsBytesSync(<int>[0xFF, 0xD8, 0xFF, 0x00]);
+    File(
+      p.join(tempDir.path, uuid),
+    ).writeAsBytesSync(<int>[0xFF, 0xD8, 0xFF, 0x00]);
 
     final EasyDiaryPhotoIndex index = EasyDiaryPhotoIndex.scan(tempDir);
     final File? resolved = index.resolve(uuid);

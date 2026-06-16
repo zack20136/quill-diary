@@ -49,7 +49,9 @@ DateTime? parsePortableDateTime(String text) {
 
 /// 從可攜式文字解析 [DateOnly]。
 DateOnly? parsePortableDateOnly(String text) {
-  final Match? ymd = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})').firstMatch(text);
+  final Match? ymd = RegExp(
+    r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})',
+  ).firstMatch(text);
   if (ymd != null) {
     return DateOnly(
       '${ymd.group(1)}-${_pad2(ymd.group(2))}-${_pad2(ymd.group(3))}',
@@ -78,14 +80,17 @@ DateOnly? parsePortableDateOnly(String text) {
 }
 
 /// 由 HTML 條目日期與後備值推導匯入日記的日期與時間戳。
-({DateOnly date, DateTime createdAt, DateTime updatedAt}) resolveQuillDiaryImportEntryTimes({
+({DateOnly date, DateTime createdAt, DateTime updatedAt})
+resolveQuillDiaryImportEntryTimes({
   required String? dateText,
   required DateTime fallback,
 }) {
   final DateOnly date = dateText == null
       ? DateOnly.fromDateTime(fallback)
       : (parsePortableDateOnly(dateText) ?? DateOnly.fromDateTime(fallback));
-  final DateTime? parsed = dateText == null ? null : parsePortableDateTime(dateText);
+  final DateTime? parsed = dateText == null
+      ? null
+      : parsePortableDateTime(dateText);
   final DateTime timestamp = parsed ?? fallback;
   return (date: date, createdAt: timestamp, updatedAt: timestamp);
 }

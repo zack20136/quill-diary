@@ -33,24 +33,19 @@ class IndexDatabaseManager {
     await close();
 
     final List<int> keyBytes = await deriveIndexDatabaseKey(
-      recoveryWrapKey: session.recoveryWrapKey ??
+      recoveryWrapKey:
+          session.recoveryWrapKey ??
           (throw StateError('目前 session 沒有可用的 Recovery wrapping key。')),
       vaultId: session.vaultId,
     );
     try {
-      return await _connectAndInitialize(
-        session: session,
-        keyBytes: keyBytes,
-      );
+      return await _connectAndInitialize(session: session, keyBytes: keyBytes);
     } on Object catch (error) {
       if (!isUnreadableEncryptedIndexError(error)) {
         rethrow;
       }
       await deleteDatabaseFiles();
-      return await _connectAndInitialize(
-        session: session,
-        keyBytes: keyBytes,
-      );
+      return await _connectAndInitialize(session: session, keyBytes: keyBytes);
     }
   }
 
@@ -98,4 +93,3 @@ class IndexDatabaseManager {
     }
   }
 }
-

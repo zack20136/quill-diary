@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_typography.dart';
-import '../settings_copy.dart';
 
 /// 建立或更新復原金鑰後，顯示金鑰並提供複製操作。
 Future<void> showRecoveryKeySaveDialog(
@@ -12,10 +12,8 @@ Future<void> showRecoveryKeySaveDialog(
 }) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext dialogContext) => RecoveryKeySaveDialog(
-      title: title,
-      recoveryKey: recoveryKey,
-    ),
+    builder: (BuildContext dialogContext) =>
+        RecoveryKeySaveDialog(title: title, recoveryKey: recoveryKey),
   );
 }
 
@@ -36,36 +34,30 @@ class RecoveryKeySaveDialog extends StatelessWidget {
     }
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(SettingsRecoveryKeyCopy.copiedMessage)),
+      SnackBar(content: Text(context.l10n.settingsRecoveryKeyCopiedMessage)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final TextStyle keyStyle = AppTypography.mono(
       theme.textTheme.titleMedium ?? const TextStyle(),
-    ).copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.8,
-      height: 1.5,
-    );
+    ).copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.8, height: 1.5);
 
     return AlertDialog(
       title: Text(title),
-      content: SelectableText(
-        recoveryKey,
-        style: keyStyle,
-      ),
+      content: SelectableText(recoveryKey, style: keyStyle),
       actions: <Widget>[
         TextButton.icon(
           onPressed: () => _copy(context),
           icon: const Icon(Icons.content_copy_rounded, size: 18),
-          label: const Text(SettingsRecoveryKeyCopy.copyButton),
+          label: Text(l10n.settingsRecoveryKeyCopyButton),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(SettingsCopy.actionClose),
+          child: Text(l10n.commonActionClose),
         ),
       ],
     );

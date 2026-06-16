@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/settings/legal_disclosures.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../../helpers/fake_session_vault_repository.dart';
 import '../../helpers/fake_vault_transfer_service.dart';
+import '../../helpers/test_l10n.dart';
 
 void main() {
   testWidgets('設定頁法律與隱私區塊顯示四個 GitHub 入口', (WidgetTester tester) async {
@@ -29,18 +28,24 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text(SettingsLegalCopy.sectionTitle),
+      find.text(testL10n.settingsLegalSectionTitle),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text(SettingsLegalCopy.sectionTitle), findsOneWidget);
-    expect(find.textContaining(SettingsLegalCopy.sectionDescription), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.sourceCodeTitle), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.privacyPolicyTitle), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.thirdPartyNoticesTitle), findsOneWidget);
-    expect(find.text(SettingsLegalCopy.contactAuthorTitle), findsOneWidget);
+    expect(find.text(testL10n.settingsLegalSectionTitle), findsOneWidget);
+    expect(
+      find.textContaining(testL10n.settingsLegalSectionDescription),
+      findsOneWidget,
+    );
+    expect(find.text(testL10n.settingsLegalSourceCodeTitle), findsOneWidget);
+    expect(find.text(testL10n.settingsLegalPrivacyPolicyTitle), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsLegalThirdPartyNoticesTitle),
+      findsOneWidget,
+    );
+    expect(find.text(testL10n.settingsLegalContactAuthorTitle), findsOneWidget);
   });
 }
 
@@ -49,7 +54,9 @@ Widget _settingsScope(Widget child) {
     overrides: [
       supportedPlatformProvider.overrideWith((Ref ref) => true),
       vaultRepositoryProvider.overrideWithValue(FakeSessionVaultRepository()),
-      vaultTransferServiceProvider.overrideWithValue(FakeVaultTransferService()),
+      vaultTransferServiceProvider.overrideWithValue(
+        FakeVaultTransferService(),
+      ),
       effectiveAppSessionProvider.overrideWith(
         (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
       ),

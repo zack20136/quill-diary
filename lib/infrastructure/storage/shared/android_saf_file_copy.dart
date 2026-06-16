@@ -6,7 +6,9 @@ import '../../../l10n/l10n.dart';
 
 /// Android SAF：將本機檔案串流複製到使用者授權的資料夾樹。
 abstract final class AndroidSafFileCopy {
-  static const MethodChannel _channel = MethodChannel('quill_diary/saf_file_copy');
+  static const MethodChannel _channel = MethodChannel(
+    'quill_diary/saf_file_copy',
+  );
 
   /// 透過 [DocumentsContract.createDocument] 寫入 [treeUri]，回傳新檔 content URI。
   static Future<String> copyFileToTree({
@@ -16,14 +18,16 @@ abstract final class AndroidSafFileCopy {
     required String mimeType,
     AppLocalizations? l10n,
   }) async {
-    final AppLocalizations resolvedL10n = l10n ?? lookupAppLocalizations(appZhTwLocale);
+    final AppLocalizations resolvedL10n =
+        l10n ?? lookupAppLocalizations(appZhTwLocale);
     try {
-      final String? result = await _channel.invokeMethod<String>('copyFileToTree', <String, String>{
-        'treeUri': treeUri,
-        'sourcePath': sourceFile.absolute.path,
-        'fileName': fileName,
-        'mimeType': mimeType,
-      });
+      final String? result = await _channel
+          .invokeMethod<String>('copyFileToTree', <String, String>{
+            'treeUri': treeUri,
+            'sourcePath': sourceFile.absolute.path,
+            'fileName': fileName,
+            'mimeType': mimeType,
+          });
       if (result == null || result.trim().isEmpty) {
         throw StateError(_writeFailedMessage(resolvedL10n));
       }

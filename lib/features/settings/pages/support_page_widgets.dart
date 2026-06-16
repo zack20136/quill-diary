@@ -21,11 +21,12 @@ class _ProductsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final bool buttonsEnabled = billing.isAvailable && !billing.isPurchaseBusy;
     final _PurchaseStatusBanner? statusBanner =
-        _PurchaseStatusBanner.fromBilling(billing);
+        _PurchaseStatusBanner.fromBilling(l10n, billing);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -71,14 +72,14 @@ class _ProductsSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        SettingsSupportCopy.productsSectionTitle,
+                        l10n.settingsSupportProductsSectionTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        SettingsSupportCopy.productsSectionBody,
+                        l10n.settingsSupportProductsSectionBody,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
                           height: 1.5,
@@ -108,13 +109,14 @@ class _ProductsSection extends StatelessWidget {
             else if (!billing.isAvailable)
               _InlineMessage(
                 icon: Icons.storefront_outlined,
-                message: SettingsSupportCopy.billingUnavailableMessage,
+                message: l10n.settingsSupportBillingUnavailableMessage,
                 color: cs.onSurfaceVariant,
               )
             else ...<Widget>[
               if (billing.productLoadError != null) ...<Widget>[
                 _ProductLoadNotice(
-                  notice: SettingsSupportCopy.noticeForProductLoadError(
+                  notice: supportNoticeForProductLoadError(
+                    l10n,
                     billing.productLoadError,
                   ),
                   onRetry: onRetryLoad,
@@ -124,13 +126,11 @@ class _ProductsSection extends StatelessWidget {
                 const SizedBox(height: 12),
                 for (
                   int index = 0;
-                  index < SettingsSupportCopy.sponsorTiers.length;
+                  index < sponsorTiers(l10n).length;
                   index++
                 ) ...<Widget>[
                   if (index > 0) const SizedBox(height: 10),
-                  _SponsorTierPlaceholderTile(
-                    tier: SettingsSupportCopy.sponsorTiers[index],
-                  ),
+                  _SponsorTierPlaceholderTile(tier: sponsorTiers(l10n)[index]),
                 ],
               ] else ...<Widget>[
                 if (billing.notFoundProductIds.isNotEmpty)
@@ -138,11 +138,15 @@ class _ProductsSection extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _InlineMessage(
                       icon: Icons.info_outline_rounded,
-                      message: SettingsSupportCopy.productsPartialMessage,
+                      message: l10n.settingsSupportProductsPartialMessage,
                       color: cs.onSurfaceVariant,
                     ),
                   ),
-                for (int index = 0; index < billing.products.length; index++) ...<Widget>[
+                for (
+                  int index = 0;
+                  index < billing.products.length;
+                  index++
+                ) ...<Widget>[
                   if (index > 0) const SizedBox(height: 10),
                   _SponsorProductTile(
                     product: billing.products[index],
@@ -172,21 +176,24 @@ class _PurchaseStatusBanner extends StatelessWidget {
   final String message;
   final Color color;
 
-  static _PurchaseStatusBanner? fromBilling(SponsorBillingState billing) {
+  static _PurchaseStatusBanner? fromBilling(
+    AppLocalizations l10n,
+    SponsorBillingState billing,
+  ) {
     return switch (billing.purchasePhase) {
       SponsorPurchasePhase.pending => _PurchaseStatusBanner(
         icon: Icons.hourglass_top_rounded,
-        message: SettingsSupportCopy.pendingMessage,
+        message: l10n.settingsSupportPendingMessage,
         color: const Color(0xFF5C6BC0),
       ),
       SponsorPurchasePhase.error => _PurchaseStatusBanner(
         icon: Icons.info_outline_rounded,
-        message: SettingsSupportCopy.errorMessage,
+        message: l10n.settingsSupportErrorMessage,
         color: const Color(0xFFC62828),
       ),
       SponsorPurchasePhase.thanks => _PurchaseStatusBanner(
         icon: Icons.check_circle_rounded,
-        message: SettingsSupportCopy.thanksMessage,
+        message: l10n.settingsSupportThanksMessage,
         color: const Color(0xFF2E7D32),
       ),
       _ => null,
@@ -247,12 +254,14 @@ class _SponsorProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final SponsorTierCopy? tier = SettingsSupportCopy.tierForProduct(product.id);
+    final SponsorTier? tier = sponsorTierForProduct(l10n, product.id);
     final bool recommended = tier?.recommended ?? false;
-    final double tierProgress =
-        tierCount <= 1 ? 0 : tierIndex / (tierCount - 1);
+    final double tierProgress = tierCount <= 1
+        ? 0
+        : tierIndex / (tierCount - 1);
     final Color accent =
         Color.lerp(cs.secondary, cs.primary, tierProgress) ?? cs.secondary;
     final IconData tierIcon =
@@ -318,8 +327,8 @@ class _SponsorProductTile extends StatelessWidget {
                                         tier.label,
                                         style: theme.textTheme.titleSmall
                                             ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                              fontWeight: FontWeight.w800,
+                                            ),
                                       ),
                                     if (recommended)
                                       _RecommendedBadge(color: accent),
@@ -358,7 +367,7 @@ class _SponsorProductTile extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                           ),
                           child: Text(
-                            '${SettingsSupportCopy.buyButtonPrefix} ${product.price}',
+                            '${l10n.settingsSupportBuyButtonPrefix} ${product.price}',
                           ),
                         ),
                       ),
@@ -392,7 +401,7 @@ class _RecommendedBadge extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         child: Text(
-          SettingsSupportCopy.recommendedTierBadge,
+          context.l10n.settingsSupportRecommendedTierBadge,
           style: theme.textTheme.labelSmall?.copyWith(
             color: color,
             fontWeight: FontWeight.w700,
@@ -411,13 +420,14 @@ class _ProductLoadNotice extends StatelessWidget {
     required this.isError,
   });
 
-  final SupportNoticeCopy notice;
+  final SupportNotice notice;
   final VoidCallback onRetry;
   final bool isRefreshing;
   final bool isError;
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final Color tone = isError ? cs.error : cs.onSurfaceVariant;
@@ -480,10 +490,10 @@ class _ProductLoadNotice extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(SettingsSupportCopy.retryLoadProductsLabel),
+                          Text(l10n.settingsSupportRetryLoadProductsLabel),
                         ],
                       )
-                    : Text(SettingsSupportCopy.retryLoadProductsLabel),
+                    : Text(l10n.settingsSupportRetryLoadProductsLabel),
               ),
             ],
           ),
@@ -496,7 +506,7 @@ class _ProductLoadNotice extends StatelessWidget {
 class _SponsorTierPlaceholderTile extends StatelessWidget {
   const _SponsorTierPlaceholderTile({required this.tier});
 
-  final SponsorTierCopy tier;
+  final SponsorTier tier;
 
   @override
   Widget build(BuildContext context) {
@@ -507,9 +517,7 @@ class _SponsorTierPlaceholderTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(12),
-        border: Border.fromBorderSide(
-          PageStyle.outlineSide(cs, opacity: 0.18),
-        ),
+        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.18)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

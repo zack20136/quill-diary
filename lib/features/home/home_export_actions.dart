@@ -11,7 +11,7 @@ import '../../shared/providers/core_providers.dart';
 import '../../shared/utils/user_facing_error.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
-import 'home_copy.dart';
+import 'home_formatters.dart';
 import 'providers/home_providers.dart';
 import 'state/home_state.dart';
 import 'widgets/home_selection_toolbar.dart';
@@ -43,8 +43,8 @@ Future<void> exportEntriesAsHtml(
   final Set<EntryId> exportIds = Set<EntryId>.from(selectedIds);
   final transferService = ref.read(vaultTransferServiceProvider);
   try {
-    final HtmlExportEstimate estimate =
-        await transferService.estimateSelectedHtmlExport(exportIds);
+    final HtmlExportEstimate estimate = await transferService
+        .estimateSelectedHtmlExport(exportIds);
     if (!context.mounted) {
       return;
     }
@@ -58,16 +58,18 @@ Future<void> exportEntriesAsHtml(
     final String? savedPath = await ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession activeSession) {
-      return transferService.exportHtmlToDirectory(activeSession, exportIds);
-    });
+          return transferService.exportHtmlToDirectory(
+            activeSession,
+            exportIds,
+          );
+        });
     if (savedPath == null || !context.mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          HomeCopy.htmlExportSuccess(
-            context,
+          context.l10n.homeHtmlExportSuccess(
             DisplayFormat.formatSavedFileNameForDisplay(savedPath),
           ),
         ),
@@ -77,24 +79,24 @@ Future<void> exportEntriesAsHtml(
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(userFacingErrorMessage(error))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(userFacingErrorMessage(error))));
   } catch (error) {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(userFacingErrorMessage(error))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(userFacingErrorMessage(error))));
   }
 }
 
 String overviewExportLabel(BuildContext context, MemoryScope scope) {
   return switch (scope) {
-    MemoryScope.all => HomeCopy.exportRecapAll(context),
-    MemoryScope.year => HomeCopy.exportRecapYear(context),
-    MemoryScope.month => HomeCopy.exportRecapMonth(context),
+    MemoryScope.all => context.l10n.homeExportRecapAll,
+    MemoryScope.year => context.l10n.homeExportRecapYear,
+    MemoryScope.month => context.l10n.homeExportRecapMonth,
   };
 }
 
@@ -105,27 +107,33 @@ Future<bool> confirmLargeHtmlExport(
   return await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(HomeCopy.htmlExportLargeTitle(dialogContext)),
+          title: Text(dialogContext.l10n.homeHtmlExportLargeTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(HomeCopy.htmlExportSelectionSummary(
-                dialogContext,
-                estimate.entryCount,
-                estimate.imageCount,
-              )),
+              Text(
+                homeHtmlExportSelectionSummary(
+                  dialogContext.l10n,
+                  estimate.entryCount,
+                  estimate.imageCount,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(HomeCopy.htmlExportImageSize(
-                dialogContext,
-                DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
-              )),
-              Text(HomeCopy.htmlExportEstimatedSize(
-                dialogContext,
-                DisplayFormat.formatBytesForDisplay(estimate.estimatedHtmlBytes),
-              )),
+              Text(
+                dialogContext.l10n.homeHtmlExportImageSize(
+                  DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
+                ),
+              ),
+              Text(
+                dialogContext.l10n.homeHtmlExportEstimatedSize(
+                  DisplayFormat.formatBytesForDisplay(
+                    estimate.estimatedHtmlBytes,
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
-              Text(HomeCopy.htmlExportEmbeddedHint(dialogContext)),
+              Text(dialogContext.l10n.homeHtmlExportEmbeddedHint),
             ],
           ),
           actions: <Widget>[
@@ -135,7 +143,7 @@ Future<bool> confirmLargeHtmlExport(
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(HomeCopy.htmlExportProceed(dialogContext)),
+              child: Text(dialogContext.l10n.homeHtmlExportProceed),
             ),
           ],
         ),
@@ -154,7 +162,10 @@ Future<void> deleteSelectedHomeEntries(
     return;
   }
 
-  final bool? confirmed = await confirmDeleteHomeEntries(context, selectedIds.length);
+  final bool? confirmed = await confirmDeleteHomeEntries(
+    context,
+    selectedIds.length,
+  );
   if (confirmed != true || !context.mounted) {
     return;
   }

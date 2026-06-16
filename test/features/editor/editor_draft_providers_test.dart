@@ -22,7 +22,9 @@ void main() {
   late UnlockedVaultSession session;
 
   setUp(() async {
-    rootDir = await Directory.systemTemp.createTemp('editor_draft_providers_test_');
+    rootDir = await Directory.systemTemp.createTemp(
+      'editor_draft_providers_test_',
+    );
     pathStrategy = _TestPathStrategy(rootDir);
     draftStore = EditorDraftStore(
       pathStrategy: pathStrategy,
@@ -40,9 +42,9 @@ void main() {
         saltBytes: List<int>.generate(16, (int index) => index),
       ),
     );
-    await File(await pathStrategy.recoveryMetadataPath()).writeAsString(
-      jsonEncode(metadata.toJson()),
-    );
+    await File(
+      await pathStrategy.recoveryMetadataPath(),
+    ).writeAsString(jsonEncode(metadata.toJson()));
     session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
       trustedDevice: false,
@@ -94,7 +96,9 @@ void main() {
   test('未解鎖 session 時回傳空集合', () async {
     final ProviderContainer container = buildContainer(unlocked: false);
 
-    final Set<String> keys = await container.read(editorDraftKeysProvider.future);
+    final Set<String> keys = await container.read(
+      editorDraftKeysProvider.future,
+    );
 
     expect(keys, isEmpty);
   });
@@ -104,7 +108,9 @@ void main() {
     await draftStore.write('entry-a', buildRecord('entry-a'), session);
     await draftStore.write('entry-b', buildRecord('entry-b'), session);
 
-    final Set<String> keys = await container.read(editorDraftKeysProvider.future);
+    final Set<String> keys = await container.read(
+      editorDraftKeysProvider.future,
+    );
 
     expect(keys, containsAll(<String>{'entry-a', 'entry-b'}));
   });

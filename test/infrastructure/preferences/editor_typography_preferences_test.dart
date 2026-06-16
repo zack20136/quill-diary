@@ -25,26 +25,39 @@ void main() {
 
     final EditorTypographyPreferences clamped = raw.clamped();
     expect(clamped.titleFontSize, EditorTypographyPreferences.minTitleFontSize);
-    expect(clamped.titleLineHeight, EditorTypographyPreferences.maxTitleLineHeight);
+    expect(
+      clamped.titleLineHeight,
+      EditorTypographyPreferences.maxTitleLineHeight,
+    );
     expect(clamped.bodyFontSize, EditorTypographyPreferences.maxBodyFontSize);
-    expect(clamped.bodyLineHeight, EditorTypographyPreferences.minBodyLineHeight);
-    expect(clamped.bodyParagraphSpacing, EditorTypographyPreferences.maxBodyParagraphSpacing);
+    expect(
+      clamped.bodyLineHeight,
+      EditorTypographyPreferences.minBodyLineHeight,
+    );
+    expect(
+      clamped.bodyParagraphSpacing,
+      EditorTypographyPreferences.maxBodyParagraphSpacing,
+    );
   });
 
   test('copyWith 合併並 clamp', () {
-    final EditorTypographyPreferences updated = EditorTypographyPreferences.defaults.copyWith(
-      bodyFontSize: 20,
-      bodyParagraphSpacing: 16,
-    );
+    final EditorTypographyPreferences updated = EditorTypographyPreferences
+        .defaults
+        .copyWith(bodyFontSize: 20, bodyParagraphSpacing: 16);
     expect(updated.bodyFontSize, 20);
     expect(updated.bodyParagraphSpacing, 16);
-    expect(updated.titleFontSize, EditorTypographyPreferences.defaultTitleFontSize);
+    expect(
+      updated.titleFontSize,
+      EditorTypographyPreferences.defaultTitleFontSize,
+    );
   });
 
   test('isAtDefaults 辨識預設與自訂排版', () {
     expect(EditorTypographyPreferences.defaults.isAtDefaults, isTrue);
     expect(
-      EditorTypographyPreferences.defaults.copyWith(bodyFontSize: 18).isAtDefaults,
+      EditorTypographyPreferences.defaults
+          .copyWith(bodyFontSize: 18)
+          .isAtDefaults,
       isFalse,
     );
   });

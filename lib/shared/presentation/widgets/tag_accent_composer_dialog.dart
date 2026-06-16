@@ -29,10 +29,12 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
   final Future<void> Function()? onDelete;
 
   @override
-  ConsumerState<TagAccentComposerDialog> createState() => _TagAccentComposerDialogState();
+  ConsumerState<TagAccentComposerDialog> createState() =>
+      _TagAccentComposerDialogState();
 }
 
-class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialog> {
+class _TagAccentComposerDialogState
+    extends ConsumerState<TagAccentComposerDialog> {
   late final TextEditingController _nameCtrl;
   late Color _accent;
   late double _hueDeg;
@@ -70,15 +72,17 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     final AppLocalizations l10n = context.l10n;
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tagNameRequiredMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.tagNameRequiredMessage)));
       return;
     }
 
     setState(() => _saving = true);
     try {
-      await ref.read(vaultRepositoryProvider).upsertTagAccentArgb(name, colorArgb32(_accent));
+      await ref
+          .read(vaultRepositoryProvider)
+          .upsertTagAccentArgb(name, colorArgb32(_accent));
       ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
       if (mounted) {
@@ -87,7 +91,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.tagSaveFailure(userFacingErrorMessage(error)))),
+          SnackBar(
+            content: Text(l10n.tagSaveFailure(userFacingErrorMessage(error))),
+          ),
         );
       }
     } finally {
@@ -111,7 +117,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.tagDeleteFailure(userFacingErrorMessage(error)))),
+          SnackBar(
+            content: Text(l10n.tagDeleteFailure(userFacingErrorMessage(error))),
+          ),
         );
       }
     } finally {
@@ -127,9 +135,16 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final bool showBlurb =
-        widget.descriptionText != null && widget.descriptionText!.trim().isNotEmpty;
-    final String previewText = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    final (Color previewBg, Color previewFg) = chipFillFromAccentColor(_accent, cs);
+        widget.descriptionText != null &&
+        widget.descriptionText!.trim().isNotEmpty;
+    final String previewText = _nameCtrl.text.trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    final (Color previewBg, Color previewFg) = chipFillFromAccentColor(
+      _accent,
+      cs,
+    );
     final bool canDelete = widget.onDelete != null;
     final bool busy = _deleting || _saving;
 
@@ -177,8 +192,13 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     IconButton(
                       tooltip: l10n.commonCloseTooltip,
                       visualDensity: VisualDensity.compact,
-                      onPressed: busy ? null : () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
+                      onPressed: busy
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -192,9 +212,7 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     ),
                   ),
                   const SizedBox(height: 6),
-                ] else ...<Widget>[
-                  const SizedBox(height: 22),
-                ],
+                ] else ...<Widget>[const SizedBox(height: 22)],
                 if (widget.lockLabel) ...<Widget>[
                   Align(
                     alignment: Alignment.centerLeft,
@@ -207,7 +225,10 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                         ),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         child: Row(
                           children: <Widget>[
                             Icon(
@@ -218,7 +239,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                previewText.isEmpty ? l10n.tagUnnamedPreview : previewText,
+                                previewText.isEmpty
+                                    ? l10n.tagUnnamedPreview
+                                    : previewText,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -238,8 +261,10 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText: l10n.tagNameHint,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
                       filled: true,
                       fillColor: cs.surface.withValues(alpha: 0.95),
                       border: OutlineInputBorder(
@@ -270,15 +295,16 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                     itemBuilder: (BuildContext context, int index) {
                       final Color c = kEditorTagAccentPresets[index];
                       final bool selected =
-                          !_fromHueSlider && colorArgb32(c) == colorArgb32(_accent);
+                          !_fromHueSlider &&
+                          colorArgb32(c) == colorArgb32(_accent);
                       return GestureDetector(
                         onTap: busy
                             ? null
                             : () => setState(() {
-                                  _accent = c;
-                                  _hueDeg = HSVColor.fromColor(c).hue;
-                                  _fromHueSlider = false;
-                                }),
+                                _accent = c;
+                                _hueDeg = HSVColor.fromColor(c).hue;
+                                _fromHueSlider = false;
+                              }),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 160),
                           curve: Curves.easeOutCubic,
@@ -317,7 +343,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 11,
+                    ),
                     overlayShape: SliderComponentShape.noOverlay,
                   ),
                   child: Slider(
@@ -330,7 +358,12 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                         : (double v) {
                             setState(() {
                               _hueDeg = v;
-                              _accent = HSVColor.fromAHSV(1, v, 0.76, 0.9).toColor();
+                              _accent = HSVColor.fromAHSV(
+                                1,
+                                v,
+                                0.76,
+                                0.9,
+                              ).toColor();
                               _fromHueSlider = true;
                             });
                           },
@@ -339,7 +372,10 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                 const SizedBox(height: 8),
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface),
+                    color: Color.alphaBlend(
+                      cs.primary.withValues(alpha: 0.04),
+                      cs.surface,
+                    ),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: cs.outlineVariant.withValues(alpha: 0.26),
@@ -358,7 +394,10 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(999),
                             color: previewBg.withValues(alpha: 0.95),
@@ -368,7 +407,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             ),
                           ),
                           child: Text(
-                            previewText.isEmpty ? l10n.tagNameHint : previewText,
+                            previewText.isEmpty
+                                ? l10n.tagNameHint
+                                : previewText,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: previewFg,
@@ -394,19 +435,32 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                                   color: cs.error,
                                 ),
                               )
-                            : Icon(Icons.delete_outline_rounded, color: cs.error),
-                        label: Text(l10n.tagDeleteLabel, style: TextStyle(color: cs.error)),
+                            : Icon(
+                                Icons.delete_outline_rounded,
+                                color: cs.error,
+                              ),
+                        label: Text(
+                          l10n.tagDeleteLabel,
+                          style: TextStyle(color: cs.error),
+                        ),
                       )
                     else
                       TextButton(
-                        onPressed: busy ? null : () => Navigator.of(context).pop(),
-                        child: Text(l10n.commonActionCancel, style: TextStyle(color: cs.onSurfaceVariant)),
+                        onPressed: busy
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        child: Text(
+                          l10n.commonActionCancel,
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
                       ),
                     const Spacer(),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
                       ),
                       icon: _saving
                           ? SizedBox(
@@ -419,7 +473,9 @@ class _TagAccentComposerDialogState extends ConsumerState<TagAccentComposerDialo
                             )
                           : const Icon(Icons.check_rounded, size: 20),
                       onPressed: busy ? null : _save,
-                      label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
+                      label: Text(
+                        widget.primaryButtonLabel ?? l10n.tagSaveButton,
+                      ),
                     ),
                   ],
                 ),

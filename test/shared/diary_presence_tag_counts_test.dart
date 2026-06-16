@@ -19,14 +19,8 @@ void main() {
 
   test('大小寫與空白正規化後合併', () {
     final Map<String, int> counts = diaryPresenceTagCounts(<EntryIndexRecord>[
-      buildEntryIndexRecord(
-        id: 'jrn_1',
-        tags: const <String>['Work'],
-      ),
-      buildEntryIndexRecord(
-        id: 'jrn_2',
-        tags: const <String>['  work  '],
-      ),
+      buildEntryIndexRecord(id: 'jrn_1', tags: const <String>['Work']),
+      buildEntryIndexRecord(id: 'jrn_2', tags: const <String>['  work  ']),
     ]);
 
     expect(counts.length, 1);
@@ -35,10 +29,7 @@ void main() {
 
   test('空 tag 略過', () {
     final Map<String, int> counts = diaryPresenceTagCounts(<EntryIndexRecord>[
-      buildEntryIndexRecord(
-        id: 'jrn_1',
-        tags: const <String>['', '   '],
-      ),
+      buildEntryIndexRecord(id: 'jrn_1', tags: const <String>['', '   ']),
     ]);
 
     expect(counts, isEmpty);

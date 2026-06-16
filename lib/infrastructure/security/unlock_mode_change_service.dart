@@ -10,14 +10,22 @@ sealed class UnlockModeChangeOutcome {
   const UnlockModeChangeOutcome();
 }
 
+enum UnlockModeChangeMessageKind {
+  requiresUnlockedSession,
+  requiresDeviceLock,
+  requiresBiometricEnrollment,
+  changeCancelled,
+  authFailed,
+}
+
 class UnlockModeChangeSucceeded extends UnlockModeChangeOutcome {
   const UnlockModeChangeSucceeded();
 }
 
 class UnlockModeChangeMessage extends UnlockModeChangeOutcome {
-  const UnlockModeChangeMessage(this.message);
+  const UnlockModeChangeMessage(this.kind);
 
-  final String message;
+  final UnlockModeChangeMessageKind kind;
 }
 
 /// 安全地切換解鎖模式：能力檢查 → Keystore 同步 → 最後才寫入偏好。
@@ -25,8 +33,8 @@ class UnlockModeChangeService {
   const UnlockModeChangeService({
     required AppLockService appLock,
     required VaultRepository vaultRepository,
-  })  : _appLock = appLock,
-        _vaultRepository = vaultRepository;
+  }) : _appLock = appLock,
+       _vaultRepository = vaultRepository;
 
   final AppLockService _appLock;
   final VaultRepository _vaultRepository;
@@ -43,22 +51,35 @@ class UnlockModeChangeService {
     final UnlockModeCapabilityFailure? capabilityFailure =
         await precheckUnlockModeChange(appLock: _appLock, mode: mode);
     if (capabilityFailure != null) {
-      return UnlockModeChangeMessage(capabilityFailure.message);
+      return UnlockModeChangeMessage(
+        switch (capabilityFailure) {
+          UnlockModeCapabilityFailure.requiresUnlockedSession =>
+            UnlockModeChangeMessageKind.requiresUnlockedSession,
+          UnlockModeCapabilityFailure.requiresDeviceLock =>
+            UnlockModeChangeMessageKind.requiresDeviceLock,
+          UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
+            UnlockModeChangeMessageKind.requiresBiometricEnrollment,
+        },
+      );
     }
 
     try {
-      final UnlockedVaultSession synced = await _vaultRepository.ensureKeystoreMatchesUnlockMode(
-        session,
-        targetMode: mode,
-      );
+      final UnlockedVaultSession synced = await _vaultRepository
+          .ensureKeystoreMatchesUnlockMode(session, targetMode: mode);
       await _appLock.setUnlockMode(mode);
       return UnlockModeChangeSucceededWithSession(synced);
     } on DeviceKeyUserCancelledException {
-      return const UnlockModeChangeMessage(kUnlockModeChangeCancelledMessage);
+      return const UnlockModeChangeMessage(
+        UnlockModeChangeMessageKind.changeCancelled,
+      );
     } on DeviceKeyAuthFailedException {
-      return const UnlockModeChangeMessage(kUnlockModeChangeAuthFailedMessage);
+      return const UnlockModeChangeMessage(
+        UnlockModeChangeMessageKind.authFailed,
+      );
     } on DeviceKeyBiometricNotEnrolledException {
-      return const UnlockModeChangeMessage(kBiometricNotEnrolledSwitchModeMessage);
+      return const UnlockModeChangeMessage(
+        UnlockModeChangeMessageKind.requiresBiometricEnrollment,
+      );
     }
   }
 }

@@ -6,7 +6,9 @@ Widget localFileThumbnail(
   String? path, {
   double size = 56,
   BoxFit fit = BoxFit.cover,
-  BorderRadiusGeometry borderRadius = const BorderRadius.all(Radius.circular(12)),
+  BorderRadiusGeometry borderRadius = const BorderRadius.all(
+    Radius.circular(12),
+  ),
 }) {
   if (path == null || path.isEmpty) {
     return SizedBox(width: size, height: size);
@@ -28,8 +30,9 @@ Widget localFileThumbnail(
         width: double.infinity,
         height: double.infinity,
         cacheWidth: size.round().clamp(64, 512),
-        errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-            SizedBox(width: size, height: size),
+        errorBuilder:
+            (BuildContext context, Object error, StackTrace? stackTrace) =>
+                SizedBox(width: size, height: size),
       ),
     ),
   );

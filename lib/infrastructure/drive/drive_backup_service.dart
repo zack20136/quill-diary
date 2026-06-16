@@ -22,9 +22,9 @@ final class DriveConnectionState {
   });
 
   const DriveConnectionState.disconnected()
-      : isConnected = false,
-        email = null,
-        displayName = null;
+    : isConnected = false,
+      email = null,
+      displayName = null;
 
   final bool isConnected;
   final String? email;
@@ -35,7 +35,10 @@ final class DriveConnectionState {
     final String? trimmedEmail = email?.trim();
     if (trimmedName != null && trimmedName.isNotEmpty) {
       if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
-        return DisplayFormat.formatGoogleAccountLabel(trimmedName, trimmedEmail);
+        return DisplayFormat.formatGoogleAccountLabel(
+          trimmedName,
+          trimmedEmail,
+        );
       }
       return trimmedName;
     }
@@ -61,9 +64,7 @@ abstract interface class GoogleDriveSignedInAccount {
     List<String> scopes,
   );
 
-  Future<GoogleDriveAuthorizationHandle> authorizeScopes(
-    List<String> scopes,
-  );
+  Future<GoogleDriveAuthorizationHandle> authorizeScopes(List<String> scopes);
 }
 
 /// Drive 備份支援所需的最小 Google Sign-In 介面。
@@ -108,8 +109,9 @@ final class GoogleSignInAccountHandle implements GoogleDriveSignedInAccount {
   Future<GoogleDriveAuthorizationHandle?> authorizationForScopes(
     List<String> scopes,
   ) async {
-    final GoogleSignInClientAuthorization? authorization =
-        await _account.authorizationClient.authorizationForScopes(scopes);
+    final GoogleSignInClientAuthorization? authorization = await _account
+        .authorizationClient
+        .authorizationForScopes(scopes);
     if (authorization == null) {
       return null;
     }
@@ -120,15 +122,16 @@ final class GoogleSignInAccountHandle implements GoogleDriveSignedInAccount {
   Future<GoogleDriveAuthorizationHandle> authorizeScopes(
     List<String> scopes,
   ) async {
-    final GoogleSignInClientAuthorization authorization =
-        await _account.authorizationClient.authorizeScopes(scopes);
+    final GoogleSignInClientAuthorization authorization = await _account
+        .authorizationClient
+        .authorizeScopes(scopes);
     return GoogleSignInAuthorizationHandle(authorization);
   }
 }
 
 final class GoogleSignInClientAdapter implements GoogleDriveSignInClient {
   GoogleSignInClientAdapter({GoogleSignIn? googleSignIn})
-      : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+    : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   final GoogleSignIn _googleSignIn;
 
@@ -139,10 +142,11 @@ final class GoogleSignInClientAdapter implements GoogleDriveSignInClient {
 
   @override
   Future<GoogleDriveSignedInAccount?> attemptLightweightAuthentication() async {
-    final Future<GoogleSignInAccount?>? lightweight =
-        _googleSignIn.attemptLightweightAuthentication();
-    final GoogleSignInAccount? account =
-        lightweight == null ? null : await lightweight;
+    final Future<GoogleSignInAccount?>? lightweight = _googleSignIn
+        .attemptLightweightAuthentication();
+    final GoogleSignInAccount? account = lightweight == null
+        ? null
+        : await lightweight;
     return account == null ? null : GoogleSignInAccountHandle(account);
   }
 
@@ -150,8 +154,9 @@ final class GoogleSignInClientAdapter implements GoogleDriveSignInClient {
   Future<GoogleDriveSignedInAccount?> authenticate({
     List<String> scopeHint = const <String>[],
   }) async {
-    final GoogleSignInAccount account =
-        await _googleSignIn.authenticate(scopeHint: scopeHint);
+    final GoogleSignInAccount account = await _googleSignIn.authenticate(
+      scopeHint: scopeHint,
+    );
     return GoogleSignInAccountHandle(account);
   }
 
@@ -171,8 +176,9 @@ String sanitizeDriveBackupFileName(String fileName) {
   final String normalizedSeparators = trimmed.replaceAll('\\', '/');
   final String basename = p.posix.basename(normalizedSeparators);
   final bool hasPathSegments = basename != normalizedSeparators;
-  final bool hasUnsafeCharacters =
-      RegExp(r'[<>:"/\\|?*\x00-\x1F]').hasMatch(basename);
+  final bool hasUnsafeCharacters = RegExp(
+    r'[<>:"/\\|?*\x00-\x1F]',
+  ).hasMatch(basename);
   if (trimmed.isEmpty ||
       hasPathSegments ||
       basename == '.' ||
@@ -182,7 +188,8 @@ String sanitizeDriveBackupFileName(String fileName) {
       basename.endsWith(' ')) {
     throw StateError('Google Drive 備份檔名無效，請重新建立備份。');
   }
-  if (p.extension(basename).toLowerCase() != '.${VaultBackupPolicy.fileExtension}') {
+  if (p.extension(basename).toLowerCase() !=
+      '.${VaultBackupPolicy.fileExtension}') {
     throw StateError('Google Drive 備份檔必須是 zip 格式。');
   }
   return basename;
@@ -260,13 +267,17 @@ class GoogleDriveBackupService implements DriveBackupService {
        _androidConnectionSnapshotOverride = androidConnectionSnapshotOverride;
 
   /// 測試用：覆寫 Android 連線快照，不觸發 [attemptLightweightAuthentication]。
-  final Future<DriveConnectionState?> Function()? _androidConnectionSnapshotOverride;
+  final Future<DriveConnectionState?> Function()?
+  _androidConnectionSnapshotOverride;
 
   static const MethodChannel _androidDriveAuthChannel = MethodChannel(
     AppIdentifiers.oauthChannel,
   );
-  static const String _oauthSetupDocPath = GoogleDriveOAuthFingerprints.oauthSetupDocPath;
-  static const List<String> _scopes = <String>[drive.DriveApi.driveAppdataScope];
+  static const String _oauthSetupDocPath =
+      GoogleDriveOAuthFingerprints.oauthSetupDocPath;
+  static const List<String> _scopes = <String>[
+    drive.DriveApi.driveAppdataScope,
+  ];
 
   final GoogleDriveSignInClient _signInClient;
   bool _initialized = false;
@@ -276,7 +287,8 @@ class GoogleDriveBackupService implements DriveBackupService {
       return;
     }
 
-    final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
+    final String serverClientId = (await OAuthConfig.resolveServerClientId())
+        .trim();
     if (Platform.isAndroid && serverClientId.isEmpty) {
       throw StateError(
         'Android 尚未完成 Google Drive OAuth 設定。\n'
@@ -319,20 +331,21 @@ class GoogleDriveBackupService implements DriveBackupService {
     }
   }
 
-  Future<({
-    GoogleDriveSignedInAccount account,
-    GoogleDriveAuthorizationHandle authorization,
-  })> _authorization({
-    required bool interactive,
-    bool resetSession = false,
-  }) async {
+  Future<
+    ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    })
+  >
+  _authorization({required bool interactive, bool resetSession = false}) async {
     try {
       await _ensureInitialized();
       if (Platform.isAndroid && interactive) {
         final ({
           GoogleDriveSignedInAccount account,
           GoogleDriveAuthorizationHandle authorization,
-        })? nativeAuthorized = await _tryNativeAndroidAuthorization(
+        })?
+        nativeAuthorized = await _tryNativeAndroidAuthorization(
           resetSession: resetSession,
         );
         if (nativeAuthorized != null) {
@@ -343,8 +356,8 @@ class GoogleDriveBackupService implements DriveBackupService {
         await _resetSignInSession();
       }
 
-      GoogleDriveSignedInAccount? account =
-          await _signInClient.attemptLightweightAuthentication();
+      GoogleDriveSignedInAccount? account = await _signInClient
+          .attemptLightweightAuthentication();
       if (account == null && interactive) {
         account = await _signInClient.authenticate(scopeHint: _scopes);
       }
@@ -354,31 +367,38 @@ class GoogleDriveBackupService implements DriveBackupService {
 
       final GoogleDriveAuthorizationHandle authorization =
           await account.authorizationForScopes(_scopes) ??
-              await account.authorizeScopes(_scopes);
+          await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on GoogleSignInException catch (error) {
       final ({
         GoogleDriveSignedInAccount account,
         GoogleDriveAuthorizationHandle authorization,
-      })? recovered =
-          await _tryRecoverAuthorizedSessionAfterInteractiveError(error);
+      })?
+      recovered = await _tryRecoverAuthorizedSessionAfterInteractiveError(
+        error,
+      );
       if (recovered != null) {
         return recovered;
       }
       throw StateError(
-        userMessageForGoogleSignIn(error, oauthSetupDocPath: _oauthSetupDocPath),
+        userMessageForGoogleSignIn(
+          error,
+          oauthSetupDocPath: _oauthSetupDocPath,
+        ),
       );
     }
   }
 
-  Future<({
-    GoogleDriveSignedInAccount account,
-    GoogleDriveAuthorizationHandle authorization,
-  })?> _tryNativeAndroidAuthorization({
-    required bool resetSession,
-  }) async {
+  Future<
+    ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    })?
+  >
+  _tryNativeAndroidAuthorization({required bool resetSession}) async {
     try {
-      final String serverClientId = (await OAuthConfig.resolveServerClientId()).trim();
+      final String serverClientId = (await OAuthConfig.resolveServerClientId())
+          .trim();
       if (serverClientId.isEmpty) {
         return null;
       }
@@ -391,15 +411,15 @@ class GoogleDriveBackupService implements DriveBackupService {
         },
       );
 
-      final GoogleDriveSignedInAccount? account =
-          await _signInClient.attemptLightweightAuthentication();
+      final GoogleDriveSignedInAccount? account = await _signInClient
+          .attemptLightweightAuthentication();
       if (account == null) {
         return null;
       }
 
       final GoogleDriveAuthorizationHandle authorization =
           await account.authorizationForScopes(_scopes) ??
-              await account.authorizeScopes(_scopes);
+          await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on PlatformException catch (error) {
       final String? message = error.message?.trim();
@@ -414,10 +434,13 @@ class GoogleDriveBackupService implements DriveBackupService {
     }
   }
 
-  Future<({
-    GoogleDriveSignedInAccount account,
-    GoogleDriveAuthorizationHandle authorization,
-  })?> _tryRecoverAuthorizedSessionAfterInteractiveError(
+  Future<
+    ({
+      GoogleDriveSignedInAccount account,
+      GoogleDriveAuthorizationHandle authorization,
+    })?
+  >
+  _tryRecoverAuthorizedSessionAfterInteractiveError(
     GoogleSignInException exception,
   ) async {
     try {
@@ -425,8 +448,8 @@ class GoogleDriveBackupService implements DriveBackupService {
         return null;
       }
 
-      final GoogleDriveSignedInAccount? recoveredAccount =
-          await _signInClient.attemptLightweightAuthentication();
+      final GoogleDriveSignedInAccount? recoveredAccount = await _signInClient
+          .attemptLightweightAuthentication();
       if (recoveredAccount == null) {
         return null;
       }
@@ -440,10 +463,7 @@ class GoogleDriveBackupService implements DriveBackupService {
         return null;
       }
 
-      return (
-        account: recoveredAccount,
-        authorization: recoveredAuthorization,
-      );
+      return (account: recoveredAccount, authorization: recoveredAuthorization);
     } on Object {
       return null;
     }
@@ -483,8 +503,9 @@ class GoogleDriveBackupService implements DriveBackupService {
     return DriveConnectionState(
       isConnected: true,
       email: email.trim(),
-      displayName:
-          trimmedName != null && trimmedName.isNotEmpty ? trimmedName : null,
+      displayName: trimmedName != null && trimmedName.isNotEmpty
+          ? trimmedName
+          : null,
     );
   }
 
@@ -496,9 +517,8 @@ class GoogleDriveBackupService implements DriveBackupService {
       return null;
     }
     try {
-      final Object? payload = await _androidDriveAuthChannel.invokeMethod<Object?>(
-        'getGoogleDriveConnectionSnapshot',
-      );
+      final Object? payload = await _androidDriveAuthChannel
+          .invokeMethod<Object?>('getGoogleDriveConnectionSnapshot');
       return _connectionStateFromNativePayload(payload);
     } on Object {
       return null;
@@ -506,19 +526,20 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   Future<DriveConnectionState> _getAndroidConnectionState() async {
-    final DriveConnectionState? snapshot = await _readAndroidConnectionSnapshot();
+    final DriveConnectionState? snapshot =
+        await _readAndroidConnectionSnapshot();
     return snapshot ?? const DriveConnectionState.disconnected();
   }
 
   Future<DriveConnectionState> _getPluginConnectionState() async {
     await _ensureInitialized();
-    final GoogleDriveSignedInAccount? account =
-        await _signInClient.attemptLightweightAuthentication();
+    final GoogleDriveSignedInAccount? account = await _signInClient
+        .attemptLightweightAuthentication();
     if (account == null) {
       return const DriveConnectionState.disconnected();
     }
-    final GoogleDriveAuthorizationHandle? authorization =
-        await account.authorizationForScopes(_scopes);
+    final GoogleDriveAuthorizationHandle? authorization = await account
+        .authorizationForScopes(_scopes);
     if (authorization == null) {
       return const DriveConnectionState.disconnected();
     }
@@ -544,7 +565,8 @@ class GoogleDriveBackupService implements DriveBackupService {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
-    }) authorized = await _authorization(interactive: true);
+    })
+    authorized = await _authorization(interactive: true);
     return _connectedStateForAccount(authorized.account);
   }
 
@@ -553,10 +575,8 @@ class GoogleDriveBackupService implements DriveBackupService {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
-    }) authorized = await _authorization(
-      interactive: true,
-      resetSession: true,
-    );
+    })
+    authorized = await _authorization(interactive: true, resetSession: true);
     return _connectedStateForAccount(authorized.account);
   }
 
@@ -569,7 +589,8 @@ class GoogleDriveBackupService implements DriveBackupService {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
-    }) authorized = await _authorization(interactive: true);
+    })
+    authorized = await _authorization(interactive: true);
     return authorized.authorization.createDriveApi(_scopes);
   }
 
@@ -595,10 +616,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     );
     final drive.File created = await api.files.create(
       metadata,
-      uploadMedia: drive.Media(
-        monitoredStream,
-        totalBytes,
-      ),
+      uploadMedia: drive.Media(monitoredStream, totalBytes),
     );
     if (created.id == null || created.id!.isEmpty) {
       throw StateError('Google Drive 上傳完成後沒有回傳有效檔案 ID。');
@@ -646,7 +664,11 @@ class GoogleDriveBackupService implements DriveBackupService {
   @override
   Future<List<DriveBackupFile>> pruneBackups({required int retainCount}) async {
     if (retainCount < 1) {
-      throw ArgumentError.value(retainCount, 'retainCount', 'retainCount must be positive.');
+      throw ArgumentError.value(
+        retainCount,
+        'retainCount',
+        'retainCount must be positive.',
+      );
     }
     final List<DriveBackupFile> staleBackups = driveBackupsToPrune(
       await listBackups(),
@@ -670,17 +692,16 @@ class GoogleDriveBackupService implements DriveBackupService {
     await destinationDirectory.create(recursive: true);
     final String safeFileName = sanitizeDriveBackupFileName(fileName);
     final File output = File(p.join(destinationDirectory.path, safeFileName));
-    _ensurePathInsideDirectory(
-      directory: destinationDirectory,
-      file: output,
-    );
+    _ensurePathInsideDirectory(directory: destinationDirectory, file: output);
     onProgress?.call(
       const BackupTaskProgress(phase: BackupTaskPhase.downloadingDrive),
     );
-    final drive.Media media = await api.files.get(
-          fileId,
-          downloadOptions: drive.DownloadOptions.fullMedia,
-        ) as drive.Media;
+    final drive.Media media =
+        await api.files.get(
+              fileId,
+              downloadOptions: drive.DownloadOptions.fullMedia,
+            )
+            as drive.Media;
     IOSink? sink;
     try {
       sink = output.openWrite();
@@ -724,7 +745,8 @@ class GoogleDriveBackupService implements DriveBackupService {
 List<DriveBackupFile> sortDriveBackupsNewestFirst(
   Iterable<DriveBackupFile> backups,
 ) {
-  return List<DriveBackupFile>.from(backups)..sort(compareDriveBackupsNewestFirst);
+  return List<DriveBackupFile>.from(backups)
+    ..sort(compareDriveBackupsNewestFirst);
 }
 
 List<DriveBackupFile> driveBackupsToPrune(
@@ -732,7 +754,11 @@ List<DriveBackupFile> driveBackupsToPrune(
   required int retainCount,
 }) {
   if (retainCount < 1) {
-    throw ArgumentError.value(retainCount, 'retainCount', 'retainCount must be positive.');
+    throw ArgumentError.value(
+      retainCount,
+      'retainCount',
+      'retainCount must be positive.',
+    );
   }
   final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(backups);
   if (sorted.length <= retainCount) {

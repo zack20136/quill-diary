@@ -6,5 +6,6 @@ bool isUnreadableEncryptedIndexError(Object error) {
     return error.extendedResultCode == 26 || error.resultCode == 26;
   }
   final String text = error.toString();
-  return text.contains('file is not a database') || text.contains('SqliteException(26)');
+  return text.contains('file is not a database') ||
+      text.contains('SqliteException(26)');
 }

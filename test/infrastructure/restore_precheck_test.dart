@@ -13,9 +13,7 @@ void main() {
     recoveryKeyVersion: 1,
     recoveryKeyHint: 'WXYZ',
     createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
-    kdf: KdfDescriptor.argon2idRecovery(
-      saltBytes: List<int>.filled(16, 1),
-    ),
+    kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
   );
 
   RestorePrecheck buildPrecheck({
@@ -31,8 +29,8 @@ void main() {
         metadata: hasRecovery ? (metadata ?? backupMetadata) : null,
       ),
       localVaultId: localVaultId,
-      localRecoverySaltBase64: localRecoverySaltBase64 ??
-          backupMetadata.kdf.saltBase64,
+      localRecoverySaltBase64:
+          localRecoverySaltBase64 ?? backupMetadata.kdf.saltBase64,
       localHasTrustedDevice: localHasTrustedDevice,
       willOverwriteLocalVault: true,
     );
@@ -57,10 +55,7 @@ void main() {
   test('sameVaultId 需兩側 vaultId 皆存在且相等', () {
     expect(buildPrecheck(localVaultId: 'vlt_backup').sameVaultId, isTrue);
     expect(buildPrecheck(localVaultId: 'vlt_other').sameVaultId, isFalse);
-    expect(
-      buildPrecheck(localVaultId: null).sameVaultId,
-      isFalse,
-    );
+    expect(buildPrecheck(localVaultId: null).sameVaultId, isFalse);
   });
 
   test('sameRecoveryGeneration 比對備份與本機 salt', () {
@@ -108,7 +103,9 @@ void main() {
   test('expectsTrustedUnlockAfterRestore 需同 vault、trusted 且同代金鑰', () {
     expect(buildPrecheck().expectsTrustedUnlockAfterRestore, isTrue);
     expect(
-      buildPrecheck(localHasTrustedDevice: false).expectsTrustedUnlockAfterRestore,
+      buildPrecheck(
+        localHasTrustedDevice: false,
+      ).expectsTrustedUnlockAfterRestore,
       isFalse,
     );
     expect(
@@ -135,13 +132,18 @@ void main() {
     );
     expect(buildPrecheck().canResumeTrustedSession(priorSession), isTrue);
     expect(
-      buildPrecheck(localHasTrustedDevice: false).canResumeTrustedSession(priorSession),
+      buildPrecheck(
+        localHasTrustedDevice: false,
+      ).canResumeTrustedSession(priorSession),
       isFalse,
     );
     expect(buildPrecheck().canResumeTrustedSession(null), isFalse);
     expect(
       buildPrecheck().canResumeTrustedSession(
-        UnlockedVaultSession(vaultId: backupMetadata.vaultId, trustedDevice: true),
+        UnlockedVaultSession(
+          vaultId: backupMetadata.vaultId,
+          trustedDevice: true,
+        ),
       ),
       isFalse,
     );
@@ -187,9 +189,6 @@ void main() {
       buildPrecheck().backupRecoverySaltBase64,
       backupMetadata.kdf.saltBase64,
     );
-    expect(
-      buildPrecheck(hasRecovery: false).backupRecoverySaltBase64,
-      isNull,
-    );
+    expect(buildPrecheck(hasRecovery: false).backupRecoverySaltBase64, isNull);
   });
 }

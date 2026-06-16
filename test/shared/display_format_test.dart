@@ -12,10 +12,7 @@ void main() {
     });
 
     test('formatDateOnlyWithWeekdayZh 附加星期', () {
-      expect(
-        DisplayFormat.formatDateOnlyWithWeekdayZh(date),
-        '2026年6月9日 星期二',
-      );
+      expect(DisplayFormat.formatDateOnlyWithWeekdayZh(date), '2026年6月9日 星期二');
     });
 
     test('formatYearMonthZh 不含日', () {

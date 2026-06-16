@@ -29,7 +29,9 @@ class EasyDiaryBackupLayout {
       final Directory databaseDir = Directory(
         p.join(candidateRoot.path, 'Backup', 'Database'),
       );
-      final Directory photosDir = Directory(p.join(candidateRoot.path, 'Photos'));
+      final Directory photosDir = Directory(
+        p.join(candidateRoot.path, 'Photos'),
+      );
       if (!databaseDir.existsSync() || !photosDir.existsSync()) {
         continue;
       }
@@ -71,7 +73,9 @@ class EasyDiaryBackupLayout {
       return null;
     }
 
-    candidates.sort((File a, File b) => p.basename(b.path).compareTo(p.basename(a.path)));
+    candidates.sort(
+      (File a, File b) => p.basename(b.path).compareTo(p.basename(a.path)),
+    );
     return candidates.first;
   }
 }

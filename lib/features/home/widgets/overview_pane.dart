@@ -1,4 +1,5 @@
 import 'dart:async' show unawaited;
+import '../home_formatters.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +14,6 @@ import '../../../shared/providers/tag_providers.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/state/app_session_state.dart';
-import '../home_copy.dart';
 import '../home_export_actions.dart';
 import '../home_layout.dart';
 import '../home_palette.dart';
@@ -33,10 +33,9 @@ String overviewMetricRangeCaption(
   int focusedYear,
 ) {
   return switch (scope) {
-    MemoryScope.all => HomeCopy.overviewScopeAll(context),
-    MemoryScope.year => HomeCopy.overviewScopeYear(context, focusedYear),
-    MemoryScope.month => HomeCopy.overviewScopeMonth(
-      context,
+    MemoryScope.all => context.l10n.homeOverviewScopeAll,
+    MemoryScope.year => context.l10n.homeOverviewScopeYear(focusedYear),
+    MemoryScope.month => context.l10n.homeOverviewScopeMonth(
       focusedMonth.year,
       focusedMonth.month,
     ),
@@ -60,10 +59,11 @@ int overviewScopeTotalDays({
       if (entries.isEmpty) {
         return 0;
       }
-      final List<DateTime> dates = entries
-          .map((EntryIndexRecord item) => item.date.toDateTime())
-          .toList()
-        ..sort();
+      final List<DateTime> dates =
+          entries
+              .map((EntryIndexRecord item) => item.date.toDateTime())
+              .toList()
+            ..sort();
       return dates.last.difference(dates.first).inDays + 1;
   }
 }
@@ -74,14 +74,14 @@ String overviewScopedDiarySectionTitle(
   String? selectedTag,
 }) {
   final String base = switch (scope) {
-    MemoryScope.all => HomeCopy.diarySectionAll(context),
-    MemoryScope.year => HomeCopy.diarySectionByYear(context),
-    MemoryScope.month => HomeCopy.diarySectionByMonth(context),
+    MemoryScope.all => context.l10n.homeDiarySectionAll,
+    MemoryScope.year => context.l10n.homeDiarySectionByYear,
+    MemoryScope.month => context.l10n.homeDiarySectionByMonth,
   };
   if (selectedTag == null || selectedTag.isEmpty) {
     return base;
   }
-  return HomeCopy.diarySectionWithTag(context, base, selectedTag);
+  return context.l10n.homeDiarySectionWithTag(base, selectedTag);
 }
 
 List<Widget> overviewDiarySectionSlivers({
@@ -122,7 +122,8 @@ List<Widget> overviewDiarySectionSlivers({
     ];
   }
 
-  final List<EntryIndexRecord> entries = diaryEntries ?? const <EntryIndexRecord>[];
+  final List<EntryIndexRecord> entries =
+      diaryEntries ?? const <EntryIndexRecord>[];
   if (entries.isEmpty) {
     return <Widget>[
       const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
@@ -152,19 +153,20 @@ List<Widget> overviewDiarySectionSlivers({
 }
 
 class OverviewPane extends ConsumerWidget {
-  const OverviewPane({
-    required this.sessionState,
-    super.key,
-  });
+  const OverviewPane({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
-    final AsyncValue<List<EntryIndexRecord>> allEntriesAsync =
-        ref.watch(allEntryIndexRecordsProvider);
-    final AsyncValue<List<EntryIndexRecord>> scopedEntriesAsync = ref.watch(memoryEntriesProvider);
+    final bool canReadEntries =
+        sessionState.isUnlocked && sessionState.session != null;
+    final AsyncValue<List<EntryIndexRecord>> allEntriesAsync = ref.watch(
+      allEntryIndexRecordsProvider,
+    );
+    final AsyncValue<List<EntryIndexRecord>> scopedEntriesAsync = ref.watch(
+      memoryEntriesProvider,
+    );
     final String? selectedTag = ref.watch(overviewTagFilterProvider);
     final MemoryScope scope = ref.watch(memoryScopeProvider);
 
@@ -177,27 +179,33 @@ class OverviewPane extends ConsumerWidget {
         if (allEntries.isEmpty) {
           return HomeStateCard(
             icon: Icons.insights_outlined,
-            title: HomeCopy.noAnalysisTitle(context),
-            message: HomeCopy.noAnalysisMessage(context),
+            title: context.l10n.homeNoAnalysisTitle,
+            message: context.l10n.homeNoAnalysisMessage,
           );
         }
 
         final ColorScheme cs = Theme.of(context).colorScheme;
-        final Map<String, int> tagAccents = ref.watch(tagAccentArgbMapProvider).maybeWhen(
+        final Map<String, int> tagAccents = ref
+            .watch(tagAccentArgbMapProvider)
+            .maybeWhen(
               data: (Map<String, int> m) => m,
               orElse: () => const <String, int>{},
             );
         final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
         final int focusedYear = ref.watch(memoryFocusedYearProvider);
-        final String diarySectionTitle =
-            overviewScopedDiarySectionTitle(context, scope, selectedTag: selectedTag);
+        final String diarySectionTitle = overviewScopedDiarySectionTitle(
+          context,
+          scope,
+          selectedTag: selectedTag,
+        );
         final String diaryEmptyText = selectedTag == null
-            ? HomeCopy.scopeEmptyDiary(context)
-            : HomeCopy.scopeEmptyDiaryForTag(context, selectedTag);
+            ? context.l10n.homeScopeEmptyDiary
+            : context.l10n.homeScopeEmptyDiaryForTag(selectedTag);
         final Widget? diarySectionTitleTrail = selectedTag == null
             ? null
             : HomeDiarySectionCloseButton(
-                onPressed: () => ref.read(overviewTagFilterProvider.notifier).set(null),
+                onPressed: () =>
+                    ref.read(overviewTagFilterProvider.notifier).set(null),
               );
 
         return scopedEntriesAsync.when(
@@ -205,24 +213,28 @@ class OverviewPane extends ConsumerWidget {
             final List<EntryIndexRecord> diaryEntries = selectedTag == null
                 ? raw
                 : raw
-                    .where(
-                      (EntryIndexRecord e) => e.tags.any(
-                        (String t) => normalizeText(t) == normalizeText(selectedTag),
-                      ),
-                    )
-                    .toList(growable: false);
+                      .where(
+                        (EntryIndexRecord e) => e.tags.any(
+                          (String t) =>
+                              normalizeText(t) == normalizeText(selectedTag),
+                        ),
+                      )
+                      .toList(growable: false);
             final Set<EntryId> exportEntryIds = resolveOverviewExportEntryIds(
               scope: scope,
               allEntries: allEntries,
               scopedEntries: raw,
             );
-            final List<TagCatalogUsageItem> scopedTopTags = rankedTagUsageFromEntries(raw);
+            final List<TagCatalogUsageItem> scopedTopTags =
+                rankedTagUsageFromEntries(raw);
             final Widget exportButton = Tooltip(
               message: overviewExportLabel(context, scope),
               child: FilledButton.icon(
                 onPressed: exportEntryIds.isEmpty
                     ? null
-                    : () => unawaited(exportEntriesAsHtml(context, ref, exportEntryIds)),
+                    : () => unawaited(
+                        exportEntriesAsHtml(context, ref, exportEntryIds),
+                      ),
                 style: const ButtonStyle(
                   fixedSize: WidgetStatePropertyAll<Size>(
                     Size.fromHeight(kOverviewScopeControlHeight),
@@ -234,7 +246,7 @@ class OverviewPane extends ConsumerWidget {
                     Size(double.infinity, kOverviewScopeControlHeight),
                   ),
                   padding: WidgetStatePropertyAll<EdgeInsetsGeometry>(
-                    EdgeInsets.symmetric(horizontal: 18),
+                    EdgeInsets.symmetric(horizontal: 12),
                   ),
                   shape: WidgetStatePropertyAll<OutlinedBorder>(
                     RoundedRectangleBorder(
@@ -244,7 +256,7 @@ class OverviewPane extends ConsumerWidget {
                   visualDensity: VisualDensity.compact,
                 ),
                 icon: const Icon(Icons.ios_share_rounded, size: 18),
-                label: Text(HomeCopy.exportRecapLabel(context)),
+                label: Text(context.l10n.homeExportRecapLabel),
               ),
             );
 
@@ -270,57 +282,70 @@ class OverviewPane extends ConsumerWidget {
                         ),
                         const SizedBox(height: HomeLayout.sectionGap),
                         HomeSectionCard(
-                          title: HomeCopy.popularTagsTitle(context),
+                          title: context.l10n.homePopularTagsTitle,
                           stripeColor: cs.tertiary,
                           child: scopedTopTags.isEmpty
-                              ? HomePaneEmptyHint(text: HomeCopy.scopeEmptyTags(context))
+                              ? HomePaneEmptyHint(
+                                  text: context.l10n.homeScopeEmptyTags,
+                                )
                               : Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: scopedTopTags
-                                      .map(
-                                        (TagCatalogUsageItem item) {
-                                          final (Color chipBg, Color chipFg) =
-                                              tagResolvedAccentPair(item.label, cs, tagAccents);
-                                          final bool isSelected = selectedTag == item.label;
-                                          final Color bg = isSelected
-                                              ? Color.alphaBlend(
-                                                  cs.primary.withValues(alpha: 0.2),
-                                                  chipBg,
-                                                )
-                                              : chipBg;
-                                          return FilterChip(
-                                            label: Text(
-                                              '${item.label} ${item.count}',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .labelMedium
-                                                  ?.copyWith(
-                                                    color: chipFg,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
+                                  children: scopedTopTags.map((
+                                    TagCatalogUsageItem item,
+                                  ) {
+                                    final (
+                                      Color chipBg,
+                                      Color chipFg,
+                                    ) = tagResolvedAccentPair(
+                                      item.label,
+                                      cs,
+                                      tagAccents,
+                                    );
+                                    final bool isSelected =
+                                        selectedTag == item.label;
+                                    final Color bg = isSelected
+                                        ? Color.alphaBlend(
+                                            cs.primary.withValues(alpha: 0.2),
+                                            chipBg,
+                                          )
+                                        : chipBg;
+                                    return FilterChip(
+                                      label: Text(
+                                        '${item.label} ${item.count}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              color: chipFg,
+                                              fontWeight: FontWeight.w700,
                                             ),
-                                            selected: isSelected,
-                                            showCheckmark: false,
-                                            backgroundColor: bg.withValues(alpha: 0.94),
-                                            selectedColor: bg.withValues(alpha: 0.98),
-                                            checkmarkColor: chipFg,
-                                            side: BorderSide(
-                                              color: chipFg.withValues(
-                                                alpha: isSelected ? 0.48 : 0.3,
-                                              ),
-                                              width: isSelected ? 1.05 : 0.92,
-                                            ),
-                                            onSelected: (_) {
-                                              final notifier = ref.read(overviewTagFilterProvider.notifier);
-                                              notifier.set(
-                                                selectedTag == item.label ? null : item.label,
-                                              );
-                                            },
-                                          );
-                                        },
-                                      )
-                                      .toList(),
+                                      ),
+                                      selected: isSelected,
+                                      showCheckmark: false,
+                                      backgroundColor: bg.withValues(
+                                        alpha: 0.94,
+                                      ),
+                                      selectedColor: bg.withValues(alpha: 0.98),
+                                      checkmarkColor: chipFg,
+                                      side: BorderSide(
+                                        color: chipFg.withValues(
+                                          alpha: isSelected ? 0.48 : 0.3,
+                                        ),
+                                        width: isSelected ? 1.05 : 0.92,
+                                      ),
+                                      onSelected: (_) {
+                                        final notifier = ref.read(
+                                          overviewTagFilterProvider.notifier,
+                                        );
+                                        notifier.set(
+                                          selectedTag == item.label
+                                              ? null
+                                              : item.label,
+                                        );
+                                      },
+                                    );
+                                  }).toList(),
                                 ),
                         ),
                       ],
@@ -374,42 +399,43 @@ class OverviewPane extends ConsumerWidget {
               ],
             ),
           ),
-          error: (Object error, StackTrace _) => NotificationListener<OverscrollIndicatorNotification>(
-            onNotification: (OverscrollIndicatorNotification notification) {
-              notification.disallowIndicator();
-              return false;
-            },
-            child: CustomScrollView(
-              scrollCacheExtent: HomeLayout.entryListCacheExtent,
-              slivers: <Widget>[
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const OverviewScopePicker(),
-                      const SizedBox(height: HomeLayout.sectionGap),
-                      OverviewScopedMetricPanel(
-                        scope: scope,
-                        focusedMonth: focusedMonth,
-                        focusedYear: focusedYear,
-                        entriesAsync: scopedEntriesAsync,
+          error: (Object error, StackTrace _) =>
+              NotificationListener<OverscrollIndicatorNotification>(
+                onNotification: (OverscrollIndicatorNotification notification) {
+                  notification.disallowIndicator();
+                  return false;
+                },
+                child: CustomScrollView(
+                  scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                  slivers: <Widget>[
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          const OverviewScopePicker(),
+                          const SizedBox(height: HomeLayout.sectionGap),
+                          OverviewScopedMetricPanel(
+                            scope: scope,
+                            focusedMonth: focusedMonth,
+                            focusedYear: focusedYear,
+                            entriesAsync: scopedEntriesAsync,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    ...overviewDiarySectionSlivers(
+                      context: context,
+                      cs: cs,
+                      diarySectionTitle: diarySectionTitle,
+                      diaryEmptyText: diaryEmptyText,
+                      diaryEntries: null,
+                      diaryLoading: false,
+                      diaryError: error,
+                      titleTrail: diarySectionTitleTrail,
+                    ),
+                  ],
                 ),
-                ...overviewDiarySectionSlivers(
-                  context: context,
-                  cs: cs,
-                  diarySectionTitle: diarySectionTitle,
-                  diaryEmptyText: diaryEmptyText,
-                  diaryEntries: null,
-                  diaryLoading: false,
-                  diaryError: error,
-                  titleTrail: diarySectionTitleTrail,
-                ),
-              ],
-            ),
-          ),
+              ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -449,7 +475,9 @@ class OverviewScopedMetricPanel extends StatelessWidget {
       rangeCaption: caption,
       child: entriesAsync.when(
         data: (List<EntryIndexRecord> entries) {
-          final OverviewScopeMetrics metrics = OverviewScopeMetrics.fromEntries(entries);
+          final OverviewScopeMetrics metrics = OverviewScopeMetrics.fromEntries(
+            entries,
+          );
           final int scopeTotalDays = overviewScopeTotalDays(
             scope: scope,
             focusedMonth: focusedMonth,
@@ -459,30 +487,39 @@ class OverviewScopedMetricPanel extends StatelessWidget {
           return Column(
             children: <Widget>[
               OverviewNumericTile(
-                label: HomeCopy.overviewWritingDaysLabel(context),
-                value: DisplayFormat.formatRatio(metrics.activeDays, scopeTotalDays, '天'),
+                label: context.l10n.homeOverviewWritingDaysLabel,
+                value: homeOverviewWritingDaysRatio(
+                  context.l10n,
+                  metrics.activeDays,
+                  scopeTotalDays,
+                ),
                 detail: [
                   metrics.mostEntriesInSingleDayDetail(context.l10n),
-                  HomeCopy.overviewLongestStreak(context, metrics.longestWritingStreakDays),
+                  homeOverviewLongestStreak(
+                    context.l10n,
+                    metrics.longestWritingStreakDays,
+                  ),
                 ].whereType<String>().join('\n'),
               ),
               const SizedBox(height: 13),
               OverviewNumericTile(
-                label: HomeCopy.overviewAvgLengthLabel(context),
-                value: HomeCopy.overviewAvgLengthValue(
-                  context,
+                label: context.l10n.homeOverviewAvgLengthLabel,
+                value: context.l10n.homeOverviewAvgLengthValue(
                   metrics.avgCharactersPerEntryRounded,
                 ),
-                detail: HomeCopy.overviewEntryStats(
-                  context,
+                detail: homeOverviewEntryStats(
+                  context.l10n,
                   metrics.totalEntries,
                   metrics.totalCharacters,
                 ),
               ),
               const SizedBox(height: 13),
               OverviewNumericTile(
-                label: HomeCopy.overviewAttachmentsLabel(context),
-                value: HomeCopy.overviewAttachmentCount(context, metrics.totalAttachments),
+                label: context.l10n.homeOverviewAttachmentsLabel,
+                value: homeOverviewAttachmentCount(
+                  context.l10n,
+                  metrics.totalAttachments,
+                ),
                 detail: metrics.attachmentDetail(context.l10n),
               ),
             ],
@@ -513,14 +550,19 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
     final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
     final int focusedYear = ref.watch(memoryFocusedYearProvider);
 
-    return ref.watch(memoryAvailableYearsProvider).when(
+    return ref
+        .watch(memoryAvailableYearsProvider)
+        .when(
           data: (List<int> years) {
             final int? minYear = years.isEmpty ? null : years.first;
             final int? maxYear = years.isEmpty ? null : years.last;
             final ThemeData theme = Theme.of(context);
             final ColorScheme cs = theme.colorScheme;
             return Material(
-              color: Color.alphaBlend(cs.secondary.withValues(alpha: 0.06), cs.surfaceContainerLow),
+              color: Color.alphaBlend(
+                cs.secondary.withValues(alpha: 0.06),
+                cs.surfaceContainerLow,
+              ),
               borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
               clipBehavior: Clip.antiAlias,
               child: DecoratedBox(
@@ -529,30 +571,45 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                   border: Border.all(color: PageStyle.primaryMutedOutline(cs)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   child: Row(
                     children: <Widget>[
                       IconButton(
                         onPressed: scope == MemoryScope.month
-                            ? () => ref.read(memoryFocusedMonthProvider.notifier).set(
-                                  DateTime(focusedMonth.year, focusedMonth.month - 1),
-                                )
+                            ? () => ref
+                                  .read(memoryFocusedMonthProvider.notifier)
+                                  .set(
+                                    DateTime(
+                                      focusedMonth.year,
+                                      focusedMonth.month - 1,
+                                    ),
+                                  )
                             : (minYear != null && focusedYear > minYear)
-                                ? () => ref
-                                    .read(memoryFocusedYearProvider.notifier)
-                                    .set(focusedYear - 1)
-                                : null,
-                        icon: Icon(Icons.chevron_left_rounded, color: cs.primary),
+                            ? () => ref
+                                  .read(memoryFocusedYearProvider.notifier)
+                                  .set(focusedYear - 1)
+                            : null,
+                        icon: Icon(
+                          Icons.chevron_left_rounded,
+                          color: cs.primary,
+                        ),
                       ),
                       Expanded(
                         child: Center(
                           child: Text(
                             scope == MemoryScope.month
-                                ? DisplayFormat.formatYearMonthZh(
+                                ? DisplayFormat.formatYearMonth(
+                                    context.l10n,
                                     focusedMonth.year,
                                     focusedMonth.month,
                                   )
-                                : DisplayFormat.formatYearZh(focusedYear),
+                                : DisplayFormat.formatYear(
+                                    context.l10n,
+                                    focusedYear,
+                                  ),
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -561,15 +618,23 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                       ),
                       IconButton(
                         onPressed: scope == MemoryScope.month
-                            ? () => ref.read(memoryFocusedMonthProvider.notifier).set(
-                                  DateTime(focusedMonth.year, focusedMonth.month + 1),
-                                )
+                            ? () => ref
+                                  .read(memoryFocusedMonthProvider.notifier)
+                                  .set(
+                                    DateTime(
+                                      focusedMonth.year,
+                                      focusedMonth.month + 1,
+                                    ),
+                                  )
                             : (maxYear != null && focusedYear < maxYear)
-                                    ? () => ref
-                                        .read(memoryFocusedYearProvider.notifier)
-                                        .set(focusedYear + 1)
-                                    : null,
-                        icon: Icon(Icons.chevron_right_rounded, color: cs.primary),
+                            ? () => ref
+                                  .read(memoryFocusedYearProvider.notifier)
+                                  .set(focusedYear + 1)
+                            : null,
+                        icon: Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -581,7 +646,8 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
             height: 40,
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (Object error, StackTrace _) => Text(userFacingErrorMessage(error)),
+          error: (Object error, StackTrace _) =>
+              Text(userFacingErrorMessage(error)),
         );
   }
 }
@@ -597,7 +663,7 @@ class OverviewScopePicker extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     return HomeSectionCard(
-      title: HomeCopy.scopeTitle(context),
+      title: context.l10n.homeScopeTitle,
       stripeColor: cs.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,17 +678,27 @@ class OverviewScopePicker extends ConsumerWidget {
                     showSelectedIcon: false,
                     style: ButtonStyle(
                       visualDensity: VisualDensity.compact,
-                      side: const WidgetStatePropertyAll<BorderSide>(BorderSide.none),
-                      shape: WidgetStatePropertyAll<OutlinedBorder>(
-                        RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
+                      side: const WidgetStatePropertyAll<BorderSide>(
+                        BorderSide.none,
                       ),
-                      backgroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                      shape: WidgetStatePropertyAll<OutlinedBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                        ),
+                      ),
+                      backgroundColor: WidgetStateProperty.resolveWith((
+                        Set<WidgetState> states,
+                      ) {
                         if (states.contains(WidgetState.selected)) {
                           return cs.primaryContainer;
                         }
-                        return cs.surfaceContainerHighest.withValues(alpha: 0.55);
+                        return cs.surfaceContainerHighest.withValues(
+                          alpha: 0.55,
+                        );
                       }),
-                      foregroundColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+                      foregroundColor: WidgetStateProperty.resolveWith((
+                        Set<WidgetState> states,
+                      ) {
                         if (states.contains(WidgetState.selected)) {
                           return cs.onPrimaryContainer;
                         }
@@ -632,15 +708,33 @@ class OverviewScopePicker extends ConsumerWidget {
                     segments: <ButtonSegment<MemoryScope>>[
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.all,
-                        label: Text(HomeCopy.scopeAllLabel(context)),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            context.l10n.homeScopeAllLabel,
+                            maxLines: 1,
+                          ),
+                        ),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.year,
-                        label: Text(HomeCopy.scopeYearLabel(context)),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            context.l10n.homeScopeYearLabel,
+                            maxLines: 1,
+                          ),
+                        ),
                       ),
                       ButtonSegment<MemoryScope>(
                         value: MemoryScope.month,
-                        label: Text(HomeCopy.scopeMonthLabel(context)),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            context.l10n.homeScopeMonthLabel,
+                            maxLines: 1,
+                          ),
+                        ),
                       ),
                     ],
                     selected: <MemoryScope>{scope},
@@ -695,8 +789,14 @@ class OverviewMetricShell extends StatelessWidget {
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
           colors: <Color>[
-            Color.alphaBlend(cs.primary.withValues(alpha: 0.07), cs.surfaceContainerLow),
-            Color.alphaBlend(cs.surfaceContainerHigh.withValues(alpha: 0.48), cs.surface),
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.07),
+              cs.surfaceContainerLow,
+            ),
+            Color.alphaBlend(
+              cs.surfaceContainerHigh.withValues(alpha: 0.48),
+              cs.surface,
+            ),
           ],
         ),
       ),
@@ -715,7 +815,11 @@ class OverviewMetricShell extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     color: cs.primary.withValues(alpha: 0.12),
                   ),
-                  child: Icon(Icons.insights_rounded, color: cs.primary, size: 24),
+                  child: Icon(
+                    Icons.insights_rounded,
+                    color: cs.primary,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -723,7 +827,7 @@ class OverviewMetricShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        HomeCopy.overviewDataTitle(context),
+                        context.l10n.homeOverviewDataTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),

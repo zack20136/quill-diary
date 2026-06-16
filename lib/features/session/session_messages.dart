@@ -5,8 +5,7 @@ import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/device_key_manager.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/utils/user_facing_error.dart';
-import '../settings/settings_copy.dart';
-import '../settings/vault_transfer_access.dart';
+import '../settings/settings_messages.dart';
 import 'state/app_session_state.dart';
 
 export '../../infrastructure/security/unlock_mode_policy.dart'
@@ -17,56 +16,85 @@ export '../../infrastructure/security/unlock_mode_policy.dart'
         kUnlockModeNeedsDeviceLockMessage,
         kUseDeviceLockToUnlockMessage;
 
-bool get _isEn => currentAppLocalizations.localeName == 'en';
-String _t(String zh, [String? en]) => _isEn ? (en ?? zh) : zh;
+String sessionAndroidOnlyMessage(AppLocalizations l10n) =>
+    l10n.settingsPlatformSectionDescription;
 
-String get kAndroidOnlyMessage => SettingsPlatformCopy.sectionDescription;
-String get kStartupNeedsRecoveryKeyMessage => _t('尚未建立復原金鑰。', 'No recovery key has been created yet.');
-String get kStartupNeedsTrustedDeviceMessage =>
-    _t('這台裝置尚未授權，請使用復原金鑰解鎖。', 'This device is not authorized yet. Unlock it with the recovery key.');
-String get kUnlockFailedMessage => _t('解鎖失敗，請再試一次。', 'Unlock failed. Please try again.');
-String get kRecoveryUnlockSuccessMessage => _t('已使用復原金鑰解鎖。', 'Unlocked with the recovery key.');
-String get kRecoverySetupSuccessMessage =>
-    _t('復原金鑰已建立，現在可以設定解鎖方式。', 'Recovery key created. You can now configure an unlock method.');
-String get kAppLockedMessage => _t('應用程式已鎖定。', 'The app is locked.');
+String sessionStartupNeedsRecoveryKeyMessage(AppLocalizations l10n) =>
+    l10n.sessionStartupNeedsRecoveryKeyMessage;
 
-String get kTrustedUnlockInProgressMessage => _t('正在以可信裝置解鎖…', 'Unlocking with trusted device…');
-String get kLockedRetryVerificationMessage =>
-    _t('目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。', 'The app is locked. Complete device verification again. No recovery key is required.');
-String get kUnlockModeNoneDescription =>
-    SettingsUnlockMethodCopy.unlockModeDescription(AppUnlockMode.none);
-String get kUnlockModeBiometricDescription =>
-    SettingsUnlockMethodCopy.unlockModeDescription(AppUnlockMode.biometric);
-String get kUnlockModeDeviceLockDescription =>
-    SettingsUnlockMethodCopy.unlockModeDescription(AppUnlockMode.deviceLock);
-String get kRecoveryKeyRotatedMessage => _t('復原金鑰已更新，請立即保存新金鑰。', 'Recovery key updated. Save the new key now.');
-String get kRecoveryRequiredAfterRestoreMessage =>
-    _t('還原後需輸入建立此備份時保存的復原金鑰。', 'After restore, enter the recovery key saved when this backup was created.');
-String get kRestoreNeedsUnlockMessage =>
-    VaultTransferCopy.needsUnlockForRestore(currentAppLocalizations);
-String get kSensitiveVaultTransferNeedsRecoveryKeyMessage =>
-    VaultTransferCopy.needsRecoveryKeyForBackup(currentAppLocalizations);
-String get kInvalidBackupFileMessage =>
-    _t('無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。', 'Unable to read the backup file. Make sure it is intact and a valid zip backup.');
-String get kPostRestoreStartupMessage => SettingsBackupTaskProgressCopy.startingAfterRestore;
+String sessionStartupNeedsTrustedDeviceMessage(AppLocalizations l10n) =>
+    l10n.sessionStartupNeedsTrustedDeviceMessage;
 
-String get kRestoreSuccessUnlockedMessage => _t('已還原備份，可以正常使用。', 'Backup restored. Everything is ready to use.');
-String get kRestoreSuccessLockedMessage =>
-    _t('已還原備份。請完成生物驗證或螢幕鎖驗證以繼續。', 'Backup restored. Complete biometric or device-lock verification to continue.');
-String get kRestoreSuccessRecoveryRequiredMessage =>
-    _t('已還原備份。請輸入建立此備份時保存的復原金鑰。', 'Backup restored. Enter the recovery key saved when this backup was created.');
-String get kRestoreSuccessNeedsRecoveryKeySetupMessage =>
-    _t('已還原備份。此備份尚未建立復原金鑰，請先建立。', 'Backup restored. This backup does not have a recovery key yet. Create one first.');
-String get kRestoreStartupFailedMessage =>
-    _t('已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。', 'Backup restored, but startup failed. Retry from Settings or enter the recovery key.');
-String get kRecoveryKeyMismatchMessage =>
-    _t('復原金鑰不正確。若為更新復原金鑰前的舊備份，請輸入建立該備份時保存的舊金鑰。',
-        'The recovery key is incorrect. If this is an older backup created before rotating the recovery key, enter the old key saved for that backup.');
-String get kTrustedUnlockFailedAfterRestoreMessage =>
-    _t('還原後無法自動解鎖。請輸入建立此備份時保存的復原金鑰。', 'Automatic unlock failed after restore. Enter the recovery key saved for this backup.');
-String get kIndexDatabaseUnreadableMessage =>
-    _t('搜尋索引無法讀取，可能已損壞。請用復原金鑰重新解鎖；若仍失敗，可嘗試重新還原備份。',
-        'The search index cannot be read and may be corrupted. Unlock again with the recovery key, or try restoring the backup again if it still fails.');
+String sessionUnlockFailedMessage(AppLocalizations l10n) =>
+    l10n.sessionUnlockFailedMessage;
+
+String sessionRecoveryUnlockSuccessMessage(AppLocalizations l10n) =>
+    l10n.sessionRecoveryUnlockSuccessMessage;
+
+String sessionRecoverySetupSuccessMessage(AppLocalizations l10n) =>
+    l10n.sessionRecoverySetupSuccessMessage;
+
+String sessionAppLockedMessage(AppLocalizations l10n) =>
+    l10n.sessionAppLockedMessage;
+
+String sessionTrustedUnlockInProgressMessage(AppLocalizations l10n) =>
+    l10n.sessionTrustedUnlockInProgressMessage;
+
+String sessionLockedRetryVerificationMessage(AppLocalizations l10n) =>
+    l10n.sessionLockedRetryVerificationMessage;
+
+String sessionUnlockModeNoneDescription(AppLocalizations l10n) =>
+    AppUnlockMode.none.description(l10n);
+
+String sessionUnlockModeBiometricDescription(AppLocalizations l10n) =>
+    AppUnlockMode.biometric.description(l10n);
+
+String sessionUnlockModeDeviceLockDescription(AppLocalizations l10n) =>
+    AppUnlockMode.deviceLock.description(l10n);
+
+String sessionRecoveryKeyRotatedMessage(AppLocalizations l10n) =>
+    l10n.sessionRecoveryKeyRotatedMessage;
+
+String sessionRecoveryRequiredAfterRestoreMessage(AppLocalizations l10n) =>
+    l10n.sessionRecoveryRequiredAfterRestoreMessage;
+
+String sessionRestoreNeedsUnlockMessage(AppLocalizations l10n) =>
+    l10n.vaultTransferNeedsUnlockForRestore;
+
+String sessionSensitiveVaultTransferNeedsRecoveryKeyMessage(
+  AppLocalizations l10n,
+) => l10n.vaultTransferNeedsRecoveryKeyForBackup;
+
+String sessionInvalidBackupFileMessage(AppLocalizations l10n) =>
+    l10n.sessionInvalidBackupFileMessage;
+
+String sessionPostRestoreStartupMessage(AppLocalizations l10n) =>
+    l10n.settingsBackupStartingAfterRestore;
+
+String sessionRestoreSuccessUnlockedMessage(AppLocalizations l10n) =>
+    l10n.sessionRestoreSuccessUnlockedMessage;
+
+String sessionRestoreSuccessLockedMessage(AppLocalizations l10n) =>
+    l10n.sessionRestoreSuccessLockedMessage;
+
+String sessionRestoreSuccessRecoveryRequiredMessage(AppLocalizations l10n) =>
+    l10n.sessionRestoreSuccessRecoveryRequiredMessage;
+
+String sessionRestoreSuccessNeedsRecoveryKeySetupMessage(
+  AppLocalizations l10n,
+) => l10n.sessionRestoreSuccessNeedsRecoveryKeySetupMessage;
+
+String sessionRestoreStartupFailedMessage(AppLocalizations l10n) =>
+    l10n.sessionRestoreStartupFailedMessage;
+
+String sessionRecoveryKeyMismatchMessage(AppLocalizations l10n) =>
+    l10n.sessionRecoveryKeyMismatchMessage;
+
+String sessionTrustedUnlockFailedAfterRestoreMessage(AppLocalizations l10n) =>
+    l10n.sessionTrustedUnlockFailedAfterRestoreMessage;
+
+String sessionIndexDatabaseUnreadableMessage(AppLocalizations l10n) =>
+    l10n.sessionIndexDatabaseUnreadableMessage;
 
 final RegExp _userFacingTextPattern = RegExp(r'[\u4e00-\u9fff，。；：！？、]');
 
@@ -75,23 +103,23 @@ bool _looksLikeUserFacingText(String message) {
   return trimmed.isNotEmpty && _userFacingTextPattern.hasMatch(trimmed);
 }
 
-/// 將技術性錯誤轉成設定頁 / 安全鎖狀態可讀訊息。
 String friendlySessionErrorMessage(
+  AppLocalizations l10n,
   Object error, {
   bool afterRestoreTrustedUnlock = false,
 }) {
   if (error is SecretBoxAuthenticationError) {
     return afterRestoreTrustedUnlock
-        ? kTrustedUnlockFailedAfterRestoreMessage
-        : kRecoveryKeyMismatchMessage;
+        ? sessionTrustedUnlockFailedAfterRestoreMessage(l10n)
+        : sessionRecoveryKeyMismatchMessage(l10n);
   }
   if (isUnreadableEncryptedIndexError(error)) {
-    return kIndexDatabaseUnreadableMessage;
+    return sessionIndexDatabaseUnreadableMessage(l10n);
   }
   if (error is DeviceKeyUserCancelledException ||
       error is DeviceKeyAuthFailedException ||
       error is DeviceKeyAuthTimeoutException) {
-    return kLockedRetryVerificationMessage;
+    return sessionLockedRetryVerificationMessage(l10n);
   }
   if (error is DeviceKeyException) {
     return error.message;
@@ -100,36 +128,42 @@ String friendlySessionErrorMessage(
     final String message = error.message.trim();
     if (afterRestoreTrustedUnlock &&
         (message.contains('不相符') || message.contains('驗證復原金鑰'))) {
-      return kTrustedUnlockFailedAfterRestoreMessage;
+      return sessionTrustedUnlockFailedAfterRestoreMessage(l10n);
     }
     if (_looksLikeUserFacingText(message)) {
       return stripLocalPathsFromMessage(message);
     }
-    return kUnlockFailedMessage;
+    return sessionUnlockFailedMessage(l10n);
   }
-  return kUnlockFailedMessage;
+  return sessionUnlockFailedMessage(l10n);
 }
 
-String snackbarMessageForPostRestore(AppLockStatus status, {String? sessionMessage}) {
+String snackbarMessageForPostRestore(
+  AppLocalizations l10n,
+  AppLockStatus status, {
+  String? sessionMessage,
+}) {
   if (status == AppLockStatus.fatalError) {
     final String? message = sessionMessage?.trim();
-    if (message == kIndexDatabaseUnreadableMessage ||
-        message == kTrustedUnlockFailedAfterRestoreMessage ||
-        message == kRecoveryRequiredAfterRestoreMessage) {
-      return kRestoreSuccessRecoveryRequiredMessage;
+    if (message == sessionIndexDatabaseUnreadableMessage(l10n) ||
+        message == sessionTrustedUnlockFailedAfterRestoreMessage(l10n) ||
+        message == sessionRecoveryRequiredAfterRestoreMessage(l10n)) {
+      return sessionRestoreSuccessRecoveryRequiredMessage(l10n);
     }
     if (message != null && _looksLikeUserFacingText(message)) {
       return message;
     }
-    return kRestoreStartupFailedMessage;
+    return sessionRestoreStartupFailedMessage(l10n);
   }
 
   return switch (status) {
-    AppLockStatus.unlocked => sessionMessage == kStartupNeedsRecoveryKeyMessage
-        ? kRestoreSuccessNeedsRecoveryKeySetupMessage
-        : kRestoreSuccessUnlockedMessage,
-    AppLockStatus.locked => kRestoreSuccessLockedMessage,
-    AppLockStatus.recoveryRequired => kRestoreSuccessRecoveryRequiredMessage,
-    _ => kRestoreSuccessUnlockedMessage,
+    AppLockStatus.unlocked =>
+      sessionMessage == sessionStartupNeedsRecoveryKeyMessage(l10n)
+          ? sessionRestoreSuccessNeedsRecoveryKeySetupMessage(l10n)
+          : sessionRestoreSuccessUnlockedMessage(l10n),
+    AppLockStatus.locked => sessionRestoreSuccessLockedMessage(l10n),
+    AppLockStatus.recoveryRequired =>
+      sessionRestoreSuccessRecoveryRequiredMessage(l10n),
+    _ => sessionRestoreSuccessUnlockedMessage(l10n),
   };
 }

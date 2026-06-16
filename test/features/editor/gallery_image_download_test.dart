@@ -14,16 +14,10 @@ void main() {
       galleryDownloadFileName('camera_photo', 'image/jpeg'),
       'camera_photo.jpg',
     );
-    expect(
-      galleryDownloadFileName('anim', 'image/gif'),
-      'anim.gif',
-    );
+    expect(galleryDownloadFileName('anim', 'image/gif'), 'anim.gif');
   });
 
   test('空檔名 fallback 為 image.jpg', () {
-    expect(
-      galleryDownloadFileName(null, 'image/png'),
-      'image.png',
-    );
+    expect(galleryDownloadFileName(null, 'image/png'), 'image.png');
   });
 }

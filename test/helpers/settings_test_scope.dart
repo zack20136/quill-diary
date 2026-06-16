@@ -11,7 +11,7 @@ import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import 'fake_session_vault_repository.dart';
@@ -22,7 +22,9 @@ Widget settingsTestScope({
   required Widget child,
   FakeSessionVaultRepository? repository,
   FakeVaultTransferService? transferService,
-  AppSessionState sessionState = const AppSessionState(status: AppLockStatus.locked),
+  AppSessionState sessionState = const AppSessionState(
+    status: AppLockStatus.locked,
+  ),
   RecoveryMetadata? recoveryMetadata,
   DriveConnectionState? driveConnectionState,
 }) {
@@ -36,7 +38,9 @@ Widget settingsTestScope({
         transferService ?? FakeVaultTransferService(),
       ),
       effectiveAppSessionProvider.overrideWith((Ref ref) async => sessionState),
-      recoveryMetadataProvider.overrideWith((Ref ref) async => recoveryMetadata),
+      recoveryMetadataProvider.overrideWith(
+        (Ref ref) async => recoveryMetadata,
+      ),
       unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
       if (driveConnectionState != null)
         settingsDriveConnectionProvider.overrideWith(
@@ -75,7 +79,10 @@ Finder settingsActionButton(String label) {
   );
 }
 
-SettingsActionButton readSettingsActionButton(WidgetTester tester, String label) {
+SettingsActionButton readSettingsActionButton(
+  WidgetTester tester,
+  String label,
+) {
   return tester.widget<SettingsActionButton>(settingsActionButton(label));
 }
 
@@ -93,7 +100,10 @@ Future<void> scrollSettingsPageUntilVisible(
   }
 }
 
-Future<File> createTempBackupFile(Directory tempDir, {String name = 'drive-backup.zip'}) async {
+Future<File> createTempBackupFile(
+  Directory tempDir, {
+  String name = 'drive-backup.zip',
+}) async {
   final File file = File('${tempDir.path}/$name');
   await file.writeAsString('backup');
   return file;

@@ -18,9 +18,8 @@ void main() {
     expect(watchdog.backgroundSince, fakeNow);
 
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    final ForegroundResumeResult result = await watchdog.notifyForegroundResumed(
-      onForegroundSettled: () {},
-    );
+    final ForegroundResumeResult result = await watchdog
+        .notifyForegroundResumed(onForegroundSettled: () {});
 
     expect(result, ForegroundResumeResult.expired);
     expect(expiredCount, 1);
@@ -34,16 +33,12 @@ void main() {
     );
     watchdog.foregroundSettleDelay = const Duration(milliseconds: 10);
     int settledCount = 0;
-    watchdog.arm(
-      timeout: defaultSessionTimeout,
-      onExpired: () async {},
-    );
+    watchdog.arm(timeout: defaultSessionTimeout, onExpired: () async {});
 
     watchdog.notifyBackground();
     fakeNow = fakeNow.add(const Duration(minutes: 1));
-    final ForegroundResumeResult result = await watchdog.notifyForegroundResumed(
-      onForegroundSettled: () => settledCount++,
-    );
+    final ForegroundResumeResult result = await watchdog
+        .notifyForegroundResumed(onForegroundSettled: () => settledCount++);
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
     expect(result, ForegroundResumeResult.waitingForSettle);
@@ -71,9 +66,8 @@ void main() {
     watchdog.notifyBackground();
     watchdog.notifyUserInteraction();
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    final ForegroundResumeResult result = await watchdog.notifyForegroundResumed(
-      onForegroundSettled: () {},
-    );
+    final ForegroundResumeResult result = await watchdog
+        .notifyForegroundResumed(onForegroundSettled: () {});
 
     expect(result, ForegroundResumeResult.none);
     expect(expiredCount, 0);
@@ -94,9 +88,8 @@ void main() {
     watchdog.disarm();
 
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
-    final ForegroundResumeResult result = await watchdog.notifyForegroundResumed(
-      onForegroundSettled: () {},
-    );
+    final ForegroundResumeResult result = await watchdog
+        .notifyForegroundResumed(onForegroundSettled: () {});
 
     expect(result, ForegroundResumeResult.none);
     expect(expiredCount, 0);

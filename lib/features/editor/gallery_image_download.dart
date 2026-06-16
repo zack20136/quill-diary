@@ -6,10 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../infrastructure/storage/media_store_export.dart';
+import '../../infrastructure/storage/user_export_paths.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
-import 'editor_copy.dart';
 
 enum GalleryImageSource { encrypted, local }
 
@@ -49,8 +50,9 @@ String galleryDownloadFileName(String? rawName, String mimeType) {
     _ => '.jpg',
   };
   final String stem = p.basenameWithoutExtension(baseName);
-  final String safeStem =
-      stem.isEmpty ? 'image' : stem.replaceAll(RegExp(r'[^\w.\-]'), '_');
+  final String safeStem = stem.isEmpty
+      ? 'image'
+      : stem.replaceAll(RegExp(r'[^\w.\-]'), '_');
   return '$safeStem$ext';
 }
 
@@ -66,15 +68,15 @@ Future<Uint8List?> loadGalleryImageBytes({
       }
       return file.readAsBytes();
     case GalleryImageSource.encrypted:
-      final AppSessionState sessionState =
-          await ref.read(effectiveAppSessionProvider.future);
+      final AppSessionState sessionState = await ref.read(
+        effectiveAppSessionProvider.future,
+      );
       if (!sessionState.isUnlocked || sessionState.session == null) {
         return null;
       }
-      return ref.read(vaultRepositoryProvider).readDecryptedAssetBytes(
-            sessionState.session!,
-            item.path,
-          );
+      return ref
+          .read(vaultRepositoryProvider)
+          .readDecryptedAssetBytes(sessionState.session!, item.path);
   }
 }
 
@@ -104,8 +106,9 @@ void showGalleryDownloadSnackBar(
   if (!scaffoldMessengerContext.mounted) {
     return;
   }
-  final ScaffoldMessengerState messenger =
-      ScaffoldMessenger.of(scaffoldMessengerContext);
+  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
+    scaffoldMessengerContext,
+  );
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
@@ -123,7 +126,7 @@ Future<void> downloadGalleryImage({
   if (bytes == null || bytes.isEmpty) {
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
-      EditorCopy.galleryDownloadFailed(scaffoldMessengerContext),
+      scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
     );
     return;
   }
@@ -138,12 +141,14 @@ Future<void> downloadGalleryImage({
   if (savedName == null) {
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
-      EditorCopy.galleryDownloadFailed(scaffoldMessengerContext),
+      scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
     );
     return;
   }
   showGalleryDownloadSnackBar(
     scaffoldMessengerContext,
-    EditorCopy.galleryDownloadSuccess(scaffoldMessengerContext, savedName),
+    scaffoldMessengerContext.l10n.editorGalleryDownloadSuccess(
+      UserExportPaths.picturesDisplayPath(savedName),
+    ),
   );
 }

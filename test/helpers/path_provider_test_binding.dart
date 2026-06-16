@@ -7,21 +7,21 @@ import 'package:flutter_test/flutter_test.dart';
 void installPathProviderTestBinding(Directory tempDir) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('plugins.flutter.io/path_provider'),
-    (MethodCall call) async {
-      if (call.method == 'getTemporaryDirectory') {
-        return tempDir.path;
-      }
-      return null;
-    },
-  );
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall call) async {
+          if (call.method == 'getTemporaryDirectory') {
+            return tempDir.path;
+          }
+          return null;
+        },
+      );
 }
 
 /// 清除 path_provider 測試 mock。
 void clearPathProviderTestBinding() {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('plugins.flutter.io/path_provider'),
-    null,
-  );
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
 }

@@ -31,7 +31,11 @@ class KdfDescriptor {
 
   factory KdfDescriptor.argon2idRecovery({required List<int> saltBytes}) {
     if (saltBytes.length < 16) {
-      throw ArgumentError.value(saltBytes.length, 'saltBytes', 'Salt must be at least 16 bytes.');
+      throw ArgumentError.value(
+        saltBytes.length,
+        'saltBytes',
+        'Salt must be at least 16 bytes.',
+      );
     }
     return KdfDescriptor(
       name: kAlgorithmName,
@@ -57,7 +61,9 @@ class KdfDescriptor {
   factory KdfDescriptor.fromJson(Map<String, Object?> json) {
     final String nameParsed = (json['name'] ?? '').toString();
     if (nameParsed != kAlgorithmName) {
-      throw FormatException('Unsupported KDF: $nameParsed (expected $kAlgorithmName).');
+      throw FormatException(
+        'Unsupported KDF: $nameParsed (expected $kAlgorithmName).',
+      );
     }
     final String salt = (json['salt'] ?? '').toString();
     if (salt.isEmpty) {

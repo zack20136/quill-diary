@@ -60,11 +60,11 @@ class VaultTransferService {
     required VaultRepository vaultRepository,
     required ExternalDirectoryStore externalDirectoryStore,
     required VaultPathStrategy pathStrategy,
-  })  : _archiveIo = archiveIo,
-        _driveBackupService = driveBackupService,
-        _vaultRepository = vaultRepository,
-        _externalDirectoryStore = externalDirectoryStore,
-        _pathStrategy = pathStrategy;
+  }) : _archiveIo = archiveIo,
+       _driveBackupService = driveBackupService,
+       _vaultRepository = vaultRepository,
+       _externalDirectoryStore = externalDirectoryStore,
+       _pathStrategy = pathStrategy;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
@@ -96,19 +96,28 @@ class VaultTransferService {
   }) {
     return _runInspectedBackupPipeline(
       onProgress: onProgress,
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
-        final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
-        await backupsDirectory.create(recursive: true);
-        final String destinationPath = p.join(backupsDirectory.path, fileName);
-        await copyFileToPath(
-          stagingZip,
-          destinationPath,
-          onProgress: deliverProgress,
-        );
-        final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-        await _pruneExcessAppLocalBackupsFromSorted(backups);
-        return destinationPath;
-      },
+      deliver:
+          (
+            File stagingZip,
+            String fileName,
+            BackupTaskProgressListener? deliverProgress,
+          ) async {
+            final Directory backupsDirectory = await _pathStrategy
+                .localBackupsDirectory();
+            await backupsDirectory.create(recursive: true);
+            final String destinationPath = p.join(
+              backupsDirectory.path,
+              fileName,
+            );
+            await copyFileToPath(
+              stagingZip,
+              destinationPath,
+              onProgress: deliverProgress,
+            );
+            final List<LocalBackupFile> backups = await _loadAppLocalBackups();
+            await _pruneExcessAppLocalBackupsFromSorted(backups);
+            return destinationPath;
+          },
     );
   }
 
@@ -118,16 +127,22 @@ class VaultTransferService {
   }) {
     return _runInspectedBackupPipeline(
       onProgress: onProgress,
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) {
-        return deliverToExternalDirectory(
-          dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
-          fileName: fileName,
-          sourceFile: stagingZip,
-          resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
-          rememberDirectory: _externalDirectoryStore.rememberDirectory,
-          onProgress: deliverProgress,
-        );
-      },
+      deliver:
+          (
+            File stagingZip,
+            String fileName,
+            BackupTaskProgressListener? deliverProgress,
+          ) {
+            return deliverToExternalDirectory(
+              dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
+              fileName: fileName,
+              sourceFile: stagingZip,
+              resolveInitialDirectory:
+                  _externalDirectoryStore.resolveInitialDirectory,
+              rememberDirectory: _externalDirectoryStore.rememberDirectory,
+              onProgress: deliverProgress,
+            );
+          },
     );
   }
 
@@ -137,14 +152,21 @@ class VaultTransferService {
   }) {
     return _runInspectedBackupPipeline(
       onProgress: onProgress,
-      deliver: (File stagingZip, String fileName, BackupTaskProgressListener? deliverProgress) async {
-        await _driveBackupService.uploadBackup(
-          stagingZip,
-          onProgress: deliverProgress,
-        );
-        await _driveBackupService.pruneBackups(retainCount: backupRetainCount);
-        return fileName;
-      },
+      deliver:
+          (
+            File stagingZip,
+            String fileName,
+            BackupTaskProgressListener? deliverProgress,
+          ) async {
+            await _driveBackupService.uploadBackup(
+              stagingZip,
+              onProgress: deliverProgress,
+            );
+            await _driveBackupService.pruneBackups(
+              retainCount: backupRetainCount,
+            );
+            return fileName;
+          },
     );
   }
 
@@ -155,14 +177,17 @@ class VaultTransferService {
   }
 
   Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
-    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+    final Directory backupsDirectory = await _pathStrategy
+        .localBackupsDirectory();
     if (!backupsDirectory.existsSync()) {
       return <LocalBackupFile>[];
     }
     final List<LocalBackupFile> backups = <LocalBackupFile>[];
-    await for (final FileSystemEntity entity
-        in backupsDirectory.list(followLinks: false)) {
-      if (entity is! File || !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
+    await for (final FileSystemEntity entity in backupsDirectory.list(
+      followLinks: false,
+    )) {
+      if (entity is! File ||
+          !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
         continue;
       }
       backups.add(
@@ -192,8 +217,9 @@ class VaultTransferService {
     if (sortedNewestFirst.length <= backupRetainCount) {
       return;
     }
-    final List<LocalBackupFile> stale =
-        sortedNewestFirst.sublist(backupRetainCount);
+    final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
+      backupRetainCount,
+    );
     for (final LocalBackupFile backup in stale) {
       await deleteAppLocalBackup(backup);
     }
@@ -222,15 +248,17 @@ class VaultTransferService {
     return _archiveIo.inspectBackup(backupFile);
   }
 
-  Future<String?> exportMarkdownToDirectory(UnlockedVaultSession session) async {
-    final String fileName = VaultBackupPolicy.markdownPortableFileName(DateTime.now());
+  Future<String?> exportMarkdownToDirectory(
+    UnlockedVaultSession session,
+  ) async {
+    final String fileName = VaultBackupPolicy.markdownPortableFileName(
+      DateTime.now(),
+    );
     return _writeTempAndDeliver(
       dialogTitle: VaultBackupPolicy.pickMarkdownDirectoryTitle,
       fileName: fileName,
-      writeTarget: (File target) => _archiveIo.writeMarkdownZip(
-        session: session,
-        target: target,
-      ),
+      writeTarget: (File target) =>
+          _archiveIo.writeMarkdownZip(session: session, target: target),
     );
   }
 
@@ -242,7 +270,9 @@ class VaultTransferService {
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
   ) async {
-    final String fileName = VaultBackupPolicy.htmlPortableFileName(DateTime.now());
+    final String fileName = VaultBackupPolicy.htmlPortableFileName(
+      DateTime.now(),
+    );
     return _writeTempAndDeliver(
       dialogTitle: VaultBackupPolicy.pickHtmlDirectoryTitle,
       fileName: fileName,
@@ -257,15 +287,19 @@ class VaultTransferService {
   Future<PortableImportResult?> importDocumentsWithPicker(
     UnlockedVaultSession session,
   ) async {
-    final PortableImportResult? pickedResult = await _tryImportFromPickedFiles(session);
+    final PortableImportResult? pickedResult = await _tryImportFromPickedFiles(
+      session,
+    );
     if (pickedResult != null) {
       return pickedResult;
     }
 
-    final String? sourceDirectory = await ExternalDirectoryPicker.pickExternalDirectory(
-      prompt: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
-      initialDirectory: await _externalDirectoryStore.resolveInitialDirectory(),
-    );
+    final String? sourceDirectory =
+        await ExternalDirectoryPicker.pickExternalDirectory(
+          prompt: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
+          initialDirectory: await _externalDirectoryStore
+              .resolveInitialDirectory(),
+        );
     if (sourceDirectory == null) {
       return null;
     }
@@ -292,10 +326,12 @@ class VaultTransferService {
   }
 
   Future<RestorePrecheck> precheckRestore(File backupFile) async {
-    final BackupRecoveryPreview preview =
-        await _archiveIo.prepareRestorePreview(backupFile);
-    final RecoveryMetadata? localMetadata = await _vaultRepository.readRecoveryMetadata();
-    final bool localHasTrusted = localMetadata != null &&
+    final BackupRecoveryPreview preview = await _archiveIo
+        .prepareRestorePreview(backupFile);
+    final RecoveryMetadata? localMetadata = await _vaultRepository
+        .readRecoveryMetadata();
+    final bool localHasTrusted =
+        localMetadata != null &&
         await _vaultRepository.hasTrustedDeviceAccess();
     return RestorePrecheck(
       preview: preview,
@@ -306,7 +342,10 @@ class VaultTransferService {
     );
   }
 
-  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
+  Future<void> verifyBackupRecoveryKey(
+    File backupFile,
+    String recoveryKey,
+  ) async {
     await _archiveIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
@@ -337,8 +376,9 @@ class VaultTransferService {
     if (bytes == null) {
       return null;
     }
-    final String baseName =
-        file.name.isNotEmpty ? file.name : 'restore.${VaultBackupPolicy.fileExtension}';
+    final String baseName = file.name.isNotEmpty
+        ? file.name
+        : 'restore.${VaultBackupPolicy.fileExtension}';
     final File tempBackup = await _createTempFile(baseName);
     await tempBackup.writeAsBytes(bytes, flush: true);
     return tempBackup;
@@ -370,7 +410,8 @@ class VaultTransferService {
   }
 
   Future<void> _ensureFileInsideLocalBackupsDirectory(File file) async {
-    final Directory backupsDirectory = await _pathStrategy.localBackupsDirectory();
+    final Directory backupsDirectory = await _pathStrategy
+        .localBackupsDirectory();
     final String root = p.normalize(backupsDirectory.absolute.path);
     final String target = p.normalize(file.absolute.path);
     if (target == root || !p.isWithin(root, target)) {
@@ -398,7 +439,10 @@ class VaultTransferService {
     }
 
     final List<PlatformFile> documentFiles = picked.files
-        .where((PlatformFile file) => _isPortableDocumentExtension(_extensionOf(file)))
+        .where(
+          (PlatformFile file) =>
+              _isPortableDocumentExtension(_extensionOf(file)),
+        )
         .toList(growable: false);
     if (documentFiles.isEmpty) {
       return null;
@@ -553,7 +597,8 @@ class VaultTransferService {
       File stagingZip,
       String fileName,
       BackupTaskProgressListener? deliverProgress,
-    ) deliver,
+    )
+    deliver,
     BackupTaskProgressListener? onProgress,
   }) async {
     final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
@@ -602,7 +647,8 @@ class VaultTransferService {
       File stagingZip,
       String fileName,
       BackupTaskProgressListener? deliverProgress,
-    ) deliver,
+    )
+    deliver,
     BackupTaskProgressListener? onProgress,
   }) {
     return _runInspectedBackupPipeline(
@@ -624,7 +670,8 @@ class VaultTransferService {
         dialogTitle: dialogTitle,
         fileName: fileName,
         sourceFile: tempFile,
-        resolveInitialDirectory: _externalDirectoryStore.resolveInitialDirectory,
+        resolveInitialDirectory:
+            _externalDirectoryStore.resolveInitialDirectory,
         rememberDirectory: _externalDirectoryStore.rememberDirectory,
       );
     } finally {

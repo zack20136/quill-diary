@@ -37,11 +37,17 @@ class FrontMatterCodec {
       if (entry.tags.isEmpty) 'tags: []' else 'tags:',
       ...entry.tags.map((String tag) => '  - "${_escape(tag)}"'),
       'mood: ${_encodeScalar(entry.mood)}',
-      if (entry.attachmentIds.isEmpty) 'attachment_ids: []' else 'attachment_ids:',
-      ...entry.attachmentIds.map((String assetId) => '  - "${_escape(assetId)}"'),
+      if (entry.attachmentIds.isEmpty)
+        'attachment_ids: []'
+      else
+        'attachment_ids:',
+      ...entry.attachmentIds.map(
+        (String assetId) => '  - "${_escape(assetId)}"',
+      ),
       if (attachments.isEmpty) 'attachments: []' else 'attachments:',
       ...attachments.map((AssetAttachment asset) {
-        final String path = attachmentPathBuilder?.call(asset) ??
+        final String path =
+            attachmentPathBuilder?.call(asset) ??
             '../assets/${entry.date.yearString}/${entry.date.monthPadded}/${asset.safeFilename}';
         return '  - "${_escape(path)}"';
       }),
@@ -58,7 +64,9 @@ class FrontMatterCodec {
     final ({Map<String, Object?> frontMatter, String body}) parsed =
         _splitDocument(document);
     final Map<String, Object?> frontMatter = parsed.frontMatter;
-    final List<String> attachmentPaths = _stringList(frontMatter['attachments']);
+    final List<String> attachmentPaths = _stringList(
+      frontMatter['attachments'],
+    );
     final List<String> attachmentIds = _resolveAttachmentIds(
       frontMatter: frontMatter,
       attachmentPaths: attachmentPaths,
@@ -70,9 +78,11 @@ class FrontMatterCodec {
         vaultId: (frontMatter['vault_id'] ?? 'vlt_LOCAL').toString(),
         title: _nullableString(frontMatter['title']),
         date: DateOnly.parse((frontMatter['date'] ?? '1970-01-01').toString()),
-        createdAt: DateTime.tryParse('${frontMatter['created_at'] ?? ''}') ??
+        createdAt:
+            DateTime.tryParse('${frontMatter['created_at'] ?? ''}') ??
             DateTime.fromMillisecondsSinceEpoch(0),
-        updatedAt: DateTime.tryParse('${frontMatter['updated_at'] ?? ''}') ??
+        updatedAt:
+            DateTime.tryParse('${frontMatter['updated_at'] ?? ''}') ??
             DateTime.fromMillisecondsSinceEpoch(0),
         tags: _stringList(frontMatter['tags']),
         mood: _nullableString(frontMatter['mood']),
@@ -145,7 +155,10 @@ class FrontMatterCodec {
     if (value is! List<Object?>) {
       return const <String>[];
     }
-    return value.map((Object? item) => '$item').where((String item) => item.isNotEmpty).toList();
+    return value
+        .map((Object? item) => '$item')
+        .where((String item) => item.isNotEmpty)
+        .toList();
   }
 
   String? _nullableString(Object? value) {

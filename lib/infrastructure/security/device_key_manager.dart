@@ -9,10 +9,7 @@ import 'keystore_unlock_policy.dart';
 
 /// 可信裝置金鑰槽位的公開中繼資料。
 class TrustedDeviceInfo {
-  const TrustedDeviceInfo({
-    required this.slotId,
-    required this.platform,
-  });
+  const TrustedDeviceInfo({required this.slotId, required this.platform});
 
   final DeviceSlotId slotId;
   final String platform;
@@ -68,8 +65,10 @@ class WrappedRecoveryKeyRecord {
 
   factory WrappedRecoveryKeyRecord.fromJson(Map<Object?, Object?> json) {
     final int formatVersion =
-        int.tryParse('${json['format_version'] ?? kWrappedRecoveryKeyFormatVersion}') ??
-            kWrappedRecoveryKeyFormatVersion;
+        int.tryParse(
+          '${json['format_version'] ?? kWrappedRecoveryKeyFormatVersion}',
+        ) ??
+        kWrappedRecoveryKeyFormatVersion;
     if (formatVersion != kWrappedRecoveryKeyFormatVersion) {
       throw DeviceKeyUnsupportedFormatException(
         '不支援的可信裝置金鑰格式版本：$formatVersion。',
@@ -79,7 +78,8 @@ class WrappedRecoveryKeyRecord {
       slotId: '${json['slot_id'] ?? ''}',
       nonceBase64: '${json['nonce'] ?? ''}',
       ciphertextBase64: '${json['ciphertext'] ?? ''}',
-      wrappedAt: DateTime.tryParse('${json['wrapped_at'] ?? ''}') ??
+      wrappedAt:
+          DateTime.tryParse('${json['wrapped_at'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       formatVersion: formatVersion,
       platform: '${json['platform'] ?? ''}',
@@ -106,7 +106,7 @@ final class DeviceKeyAuthFailedException extends DeviceKeyException {
 
 final class DeviceKeyBiometricNotEnrolledException extends DeviceKeyException {
   const DeviceKeyBiometricNotEnrolledException()
-      : super('啟用生物驗證前，請先到裝置設定新增至少一種生物辨識。');
+    : super('啟用生物驗證前，請先到裝置設定新增至少一種生物辨識。');
 }
 
 final class DeviceKeyNoDeviceCredentialException extends DeviceKeyException {
@@ -116,15 +116,11 @@ final class DeviceKeyNoDeviceCredentialException extends DeviceKeyException {
 }
 
 final class DeviceKeyAuthLockoutException extends DeviceKeyException {
-  const DeviceKeyAuthLockoutException([
-    super.message = '驗證失敗次數過多，請稍後再試。',
-  ]);
+  const DeviceKeyAuthLockoutException([super.message = '驗證失敗次數過多，請稍後再試。']);
 }
 
 final class DeviceKeyAuthTimeoutException extends DeviceKeyException {
-  const DeviceKeyAuthTimeoutException([
-    super.message = '驗證逾時，請再試一次。',
-  ]);
+  const DeviceKeyAuthTimeoutException([super.message = '驗證逾時，請再試一次。']);
 }
 
 final class DeviceKeyInvalidatedException extends DeviceKeyException {
@@ -181,13 +177,14 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
   AndroidDeviceKeyManager({
     MethodChannel? channel,
     FlutterSecureStorage? storage,
-  })  : _channel = channel ?? const MethodChannel(_channelName),
-        _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(
-                storageNamespace: AppIdentifiers.secureStorageNamespace,
-              ),
-            );
+  }) : _channel = channel ?? const MethodChannel(_channelName),
+       _storage =
+           storage ??
+           const FlutterSecureStorage(
+             aOptions: AndroidOptions(
+               storageNamespace: AppIdentifiers.secureStorageNamespace,
+             ),
+           );
 
   static const String _channelName = AppIdentifiers.deviceKeyChannel;
   final MethodChannel _channel;
@@ -208,10 +205,13 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required KeystoreAuthKind activeAuthKind,
   }) async {
     try {
-      await _channel.invokeMethod<void>('purgeInactiveDeviceKeys', <String, Object?>{
-        'vaultId': vaultId,
-        'keystoreAuthKind': activeAuthKind.wireValue,
-      });
+      await _channel.invokeMethod<void>(
+        'purgeInactiveDeviceKeys',
+        <String, Object?>{
+          'vaultId': vaultId,
+          'keystoreAuthKind': activeAuthKind.wireValue,
+        },
+      );
     } on PlatformException catch (error) {
       throw _mapPlatformException(error);
     }
@@ -223,7 +223,8 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required KeystoreAuthKind authKind,
   }) async {
     try {
-      final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
+      final Map<Object?, Object?> result =
+          await _channel.invokeMapMethod<Object?, Object?>(
             'ensureKey',
             <String, Object?>{
               'vaultId': vaultId,
@@ -252,10 +253,10 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<bool> hasTrustedKey(VaultId vaultId) async {
-    final bool platformHasKey = await _channel.invokeMethod<bool>(
-          'hasKey',
-          <String, Object?>{'vaultId': vaultId},
-        ) ??
+    final bool platformHasKey =
+        await _channel.invokeMethod<bool>('hasKey', <String, Object?>{
+          'vaultId': vaultId,
+        }) ??
         false;
     if (!platformHasKey) {
       return false;
@@ -265,12 +266,15 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<TrustedDeviceInfo?> readDeviceInfo(VaultId vaultId) async {
-    final String? encoded = await _storage.read(key: _deviceInfoStorageKey(vaultId));
+    final String? encoded = await _storage.read(
+      key: _deviceInfoStorageKey(vaultId),
+    );
     if (encoded == null || encoded.isEmpty) {
       return null;
     }
 
-    final Map<Object?, Object?> decoded = jsonDecode(encoded) as Map<Object?, Object?>;
+    final Map<Object?, Object?> decoded =
+        jsonDecode(encoded) as Map<Object?, Object?>;
     final TrustedDeviceInfo info = TrustedDeviceInfo(
       slotId: '${decoded['slot_id'] ?? ''}',
       platform: '${decoded['platform'] ?? ''}',
@@ -282,8 +286,12 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
-  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(VaultId vaultId) async {
-    final String? encoded = await _storage.read(key: _wrappedRecoveryKeyStorageKey(vaultId));
+  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(
+    VaultId vaultId,
+  ) async {
+    final String? encoded = await _storage.read(
+      key: _wrappedRecoveryKeyStorageKey(vaultId),
+    );
     if (encoded == null || encoded.isEmpty) {
       return null;
     }
@@ -311,15 +319,13 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required String ciphertextBase64,
   }) async {
     try {
-      final List<Object?>? result = await _channel.invokeListMethod<Object?>(
-        'unwrapWithDeviceKey',
-        <String, Object?>{
-          'vaultId': vaultId,
-          'slotId': slotId,
-          'nonce': nonceBase64,
-          'ciphertext': ciphertextBase64,
-        },
-      );
+      final List<Object?>? result = await _channel
+          .invokeListMethod<Object?>('unwrapWithDeviceKey', <String, Object?>{
+            'vaultId': vaultId,
+            'slotId': slotId,
+            'nonce': nonceBase64,
+            'ciphertext': ciphertextBase64,
+          });
       if (result == null) {
         throw const DeviceKeyInvalidatedException('無法使用裝置金鑰解開資料。');
       }
@@ -336,7 +342,8 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required KeystoreAuthKind authKind,
   }) async {
     try {
-      final Map<Object?, Object?> result = await _channel.invokeMapMethod<Object?, Object?>(
+      final Map<Object?, Object?> result =
+          await _channel.invokeMapMethod<Object?, Object?>(
             'wrapWithDeviceKey',
             <String, Object?>{
               'vaultId': vaultId,
@@ -373,7 +380,9 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
       case 'device_key_auth_timeout':
         return DeviceKeyAuthTimeoutException(error.message ?? '驗證逾時，請再試一次。');
       case 'device_key_auth_lockout':
-        return DeviceKeyAuthLockoutException(error.message ?? '驗證失敗次數過多，請稍後再試。');
+        return DeviceKeyAuthLockoutException(
+          error.message ?? '驗證失敗次數過多，請稍後再試。',
+        );
       case 'device_key_no_device_credential':
         return DeviceKeyNoDeviceCredentialException(
           error.message ?? '請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。',
@@ -418,7 +427,9 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
   Future<TrustedDeviceInfo?> readDeviceInfo(VaultId vaultId) async => null;
 
   @override
-  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(VaultId vaultId) async => null;
+  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(
+    VaultId vaultId,
+  ) async => null;
 
   @override
   Future<void> storeWrappedRecoveryKey({

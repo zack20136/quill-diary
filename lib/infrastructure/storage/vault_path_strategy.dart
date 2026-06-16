@@ -14,7 +14,9 @@ class VaultPathStrategy {
 
   Future<Directory> appRootDirectory() async {
     final Directory supportDirectory = await getApplicationSupportDirectory();
-    return Directory(p.join(supportDirectory.path, AppIdentifiers.appStorageDirectory));
+    return Directory(
+      p.join(supportDirectory.path, AppIdentifiers.appStorageDirectory),
+    );
   }
 
   Future<Directory> vaultRootDirectory() async {
@@ -73,11 +75,13 @@ class VaultPathStrategy {
     return Directory(p.join(draftDir.path, 'pending'));
   }
 
-  String entryRelativePath({
-    required DateOnly date,
-    required EntryId entryId,
-  }) {
-    return p.join('entries', date.yearString, date.monthPadded, '$entryId.md.enc');
+  String entryRelativePath({required DateOnly date, required EntryId entryId}) {
+    return p.join(
+      'entries',
+      date.yearString,
+      date.monthPadded,
+      '$entryId.md.enc',
+    );
   }
 
   String assetRelativePath({
@@ -98,7 +102,10 @@ class VaultPathStrategy {
     required EntryId entryId,
   }) async {
     final Directory vaultRoot = await vaultRootDirectory();
-    return p.join(vaultRoot.path, entryRelativePath(date: date, entryId: entryId));
+    return p.join(
+      vaultRoot.path,
+      entryRelativePath(date: date, entryId: entryId),
+    );
   }
 
   Future<String> assetAbsolutePath({

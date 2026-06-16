@@ -21,16 +21,23 @@ void main() {
   });
 
   test('setupRecoveryKey 會寫入 metadata 並建立 trusted device', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
 
     final metadata = await harness.repository.readRecoveryMetadata();
     expect(metadata, isNotNull);
     expect(metadata!.vaultId, setup.session.vaultId);
     expect(metadata.recoveryKeyVersion, 1);
     expect(metadata.recoveryEnabled, isTrue);
-    expect(setup.recoveryKey, matches(RegExp(r'^[A-Z0-9]{4}(-[A-Z0-9]{4}){5}$')));
+    expect(
+      setup.recoveryKey,
+      matches(RegExp(r'^[A-Z0-9]{4}(-[A-Z0-9]{4}){5}$')),
+    );
     expect(await harness.repository.hasTrustedDeviceAccess(), isTrue);
-    expect(await harness.deviceKeyManager.hasTrustedKey(setup.session.vaultId), isTrue);
+    expect(
+      await harness.deviceKeyManager.hasTrustedKey(setup.session.vaultId),
+      isTrue,
+    );
   });
 
   test('重複 setupRecoveryKey 會拒絕', () async {
@@ -48,7 +55,8 @@ void main() {
   });
 
   test('openTrustedSession 可在關閉資源後還原 trusted session', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final String vaultId = setup.session.vaultId;
 
     await harness.repository.closeUnlockedResources();
@@ -61,7 +69,8 @@ void main() {
   });
 
   test('clearTrustedDeviceAccess 後無法 openTrustedSession', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.clearTrustedDeviceAccess();
 
     expect(await harness.repository.hasTrustedDeviceAccess(), isFalse);
@@ -69,18 +78,20 @@ void main() {
       () => harness.repository.openTrustedSession(),
       throwsA(
         predicate<Object>(
-          (Object error) => error is StateError && error.message.contains('尚未註冊'),
+          (Object error) =>
+              error is StateError && error.message.contains('尚未註冊'),
         ),
       ),
     );
 
-    final WrappedRecoveryKeyRecord? record =
-        await harness.deviceKeyManager.readWrappedRecoveryKey(setup.session.vaultId);
+    final WrappedRecoveryKeyRecord? record = await harness.deviceKeyManager
+        .readWrappedRecoveryKey(setup.session.vaultId);
     expect(record, isNull);
   });
 
   test('錯誤的 Recovery Key 無法 unlockWithRecoveryKey', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
 
     await harness.repository.saveEntry(
@@ -98,7 +109,9 @@ void main() {
     await harness.repository.closeUnlockedResources();
 
     expect(
-      () => harness.repository.unlockWithRecoveryKey('WRON-KEY1-WRON-KEY2-WRON-KEY3'),
+      () => harness.repository.unlockWithRecoveryKey(
+        'WRON-KEY1-WRON-KEY2-WRON-KEY3',
+      ),
       throwsA(
         predicate<Object>(
           (Object error) =>
@@ -110,7 +123,8 @@ void main() {
   });
 
   test('rotateRecoveryKey 會產生新金鑰並更新 metadata，trusted 仍可解鎖', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final String oldKey = setup.recoveryKey;
     final UnlockedVaultSession session = setup.session;
 
@@ -127,20 +141,31 @@ void main() {
       ),
     );
 
-    final RecoverySetupResult rotated = await harness.repository.rotateRecoveryKey(session);
+    final RecoverySetupResult rotated = await harness.repository
+        .rotateRecoveryKey(session);
     expect(rotated.recoveryKey, isNot(equals(oldKey)));
 
-    final RecoveryMetadata? metadata = await harness.repository.readRecoveryMetadata();
-    expect(metadata?.recoveryKeyHint, rotated.recoveryKey.substring(rotated.recoveryKey.length - 4));
-    expect(rotated.session.recoveryWrapKey, isNot(setup.session.recoveryWrapKey));
+    final RecoveryMetadata? metadata = await harness.repository
+        .readRecoveryMetadata();
+    expect(
+      metadata?.recoveryKeyHint,
+      rotated.recoveryKey.substring(rotated.recoveryKey.length - 4),
+    );
+    expect(
+      rotated.session.recoveryWrapKey,
+      isNot(setup.session.recoveryWrapKey),
+    );
   });
 
   test('正確的 Recovery Key 可在清除 trusted 後重新 unlock', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.clearTrustedDeviceAccess();
     expect(await harness.repository.hasTrustedDeviceAccess(), isFalse);
 
-    final session = await harness.repository.unlockWithRecoveryKey(setup.recoveryKey);
+    final session = await harness.repository.unlockWithRecoveryKey(
+      setup.recoveryKey,
+    );
 
     expect(session.vaultId, setup.session.vaultId);
     expect(await harness.repository.hasTrustedDeviceAccess(), isTrue);

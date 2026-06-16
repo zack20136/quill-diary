@@ -101,7 +101,8 @@ class EditorDraftRecord {
   }
 
   factory EditorDraftRecord.fromJson(Map<String, Object?> json) {
-    final List<Object?> rawPending = json['pending_attachments'] is List<Object?>
+    final List<Object?> rawPending =
+        json['pending_attachments'] is List<Object?>
         ? json['pending_attachments'] as List<Object?>
         : const <Object?>[];
     return EditorDraftRecord(
@@ -111,35 +112,44 @@ class EditorDraftRecord {
       dateValue: (json['date_value'] ?? '').toString(),
       entryHour: int.tryParse('${json['entry_hour'] ?? 0}') ?? 0,
       entryMinute: int.tryParse('${json['entry_minute'] ?? 0}') ?? 0,
-      tags: (json['tags'] is List<Object?> ? json['tags'] as List<Object?> : const <Object?>[])
-          .map((Object? tag) => '$tag'.trim())
-          .where((String tag) => tag.isNotEmpty)
-          .toList(),
+      tags:
+          (json['tags'] is List<Object?>
+                  ? json['tags'] as List<Object?>
+                  : const <Object?>[])
+              .map((Object? tag) => '$tag'.trim())
+              .where((String tag) => tag.isNotEmpty)
+              .toList(),
       markdownBody: (json['markdown_body'] ?? '').toString(),
-      keptAttachmentIds: (json['kept_attachment_ids'] is List<Object?>
-              ? json['kept_attachment_ids'] as List<Object?>
-              : const <Object?>[])
-          .map((Object? id) => '$id')
-          .where((String id) => id.trim().isNotEmpty)
-          .toList(),
+      keptAttachmentIds:
+          (json['kept_attachment_ids'] is List<Object?>
+                  ? json['kept_attachment_ids'] as List<Object?>
+                  : const <Object?>[])
+              .map((Object? id) => '$id')
+              .where((String id) => id.trim().isNotEmpty)
+              .toList(),
       pendingAttachments: rawPending
           .whereType<Map<Object?, Object?>>()
           .map(
-            (Map<Object?, Object?> raw) => EditorDraftPendingAttachment.fromJson(
-              raw.map(
-                (Object? key, Object? value) => MapEntry('$key', value),
-              ),
-            ),
+            (Map<Object?, Object?> raw) =>
+                EditorDraftPendingAttachment.fromJson(
+                  raw.map(
+                    (Object? key, Object? value) => MapEntry('$key', value),
+                  ),
+                ),
           )
           .where(
-            (EditorDraftPendingAttachment attachment) => attachment.relativePath.trim().isNotEmpty,
+            (EditorDraftPendingAttachment attachment) =>
+                attachment.relativePath.trim().isNotEmpty,
           )
           .toList(),
-      provisionalEntryId: (json['provisional_entry_id'] ?? '').toString().trim().isEmpty
+      provisionalEntryId:
+          (json['provisional_entry_id'] ?? '').toString().trim().isEmpty
           ? generateEntryId()
           : (json['provisional_entry_id'] ?? '').toString(),
-      createdAt: DateTime.tryParse('${json['created_at'] ?? ''}') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse('${json['updated_at'] ?? ''}') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse('${json['created_at'] ?? ''}') ?? DateTime.now(),
+      updatedAt:
+          DateTime.tryParse('${json['updated_at'] ?? ''}') ?? DateTime.now(),
     );
   }
 }
@@ -220,7 +230,9 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
   EditorDraftRecord record, {
   required String Function(String relativePath) absolutePathBuilder,
 }) {
-  return record.pendingAttachments.map((EditorDraftPendingAttachment attachment) {
+  return record.pendingAttachments.map((
+    EditorDraftPendingAttachment attachment,
+  ) {
     return PendingAttachment(
       sourcePath: absolutePathBuilder(attachment.relativePath),
       mimeType: attachment.mimeType,

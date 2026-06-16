@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/features/settings/vault_transfer_access.dart';
 import 'package:quill_diary/features/settings/widgets/drive_backup_section.dart';
 import 'package:quill_diary/features/settings/widgets/local_backup_section.dart';
@@ -14,10 +13,9 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/fake_vault_transfer_service.dart';
 import '../../helpers/settings_test_scope.dart';
+import '../../helpers/test_l10n.dart';
 
 void main() {
-  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
-
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
@@ -55,14 +53,16 @@ void main() {
 
   VaultTransferAccess lockedAccess({required bool hasRecoveryKey}) {
     return VaultTransferAccess.fromContext(
-      l10n: zhL10n,
+      l10n: testL10n,
       hasUnlockedSession: false,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: AppLockStatus.locked,
     );
   }
 
-  testWidgets('disconnected state can link Google account', (WidgetTester tester) async {
+  testWidgets('disconnected state can link Google account', (
+    WidgetTester tester,
+  ) async {
     await pumpDriveSection(
       tester,
       connectionState: const DriveConnectionState.disconnected(),
@@ -70,16 +70,21 @@ void main() {
     );
 
     expect(
-      find.text(SettingsDriveBackupCopy.disconnectedLabel),
+      find.text(testL10n.settingsDriveBackupDisconnectedLabel),
       findsOneWidget,
     );
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.linkButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupLinkButton,
+      ).onPressed,
       isNotNull,
     );
   });
 
-  testWidgets('locked without recovery key keeps Drive restore available', (WidgetTester tester) async {
+  testWidgets('locked without recovery key keeps Drive restore available', (
+    WidgetTester tester,
+  ) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -93,16 +98,24 @@ void main() {
     );
 
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.uploadButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupUploadButton,
+      ).onPressed,
       isNull,
     );
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.restoreButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupRestoreButton,
+      ).onPressed,
       isNotNull,
     );
   });
 
-  testWidgets('locked with recovery key disables Drive restore', (WidgetTester tester) async {
+  testWidgets('locked with recovery key disables Drive restore', (
+    WidgetTester tester,
+  ) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -116,12 +129,17 @@ void main() {
     );
 
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.restoreButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupRestoreButton,
+      ).onPressed,
       isNull,
     );
   });
 
-  testWidgets('connected state shows account label and account actions', (WidgetTester tester) async {
+  testWidgets('connected state shows account label and account actions', (
+    WidgetTester tester,
+  ) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -138,56 +156,77 @@ void main() {
     expect(find.text(accountLabel), findsOneWidget);
     expect(find.text('已連結'), findsNothing);
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.switchAccountButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupSwitchAccountButton,
+      ).onPressed,
       isNotNull,
     );
     expect(
-      readSettingsActionButton(tester, SettingsDriveBackupCopy.disconnectButton).onPressed,
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupDisconnectButton,
+      ).onPressed,
       isNotNull,
     );
   });
 
-  testWidgets('local backup section keeps external import available without recovery key',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: appZhTwLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: Scaffold(
-          body: LocalBackupSection(
-            access: lockedAccess(hasRecoveryKey: false),
-            busy: false,
-            onCreate: () {},
-            onRestore: () {},
-            onExport: () {},
-            onImport: () {},
+  testWidgets(
+    'local backup section keeps external import available without recovery key',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: LocalBackupSection(
+              access: lockedAccess(hasRecoveryKey: false),
+              busy: false,
+              onCreate: () {},
+              onRestore: () {},
+              onExport: () {},
+              onImport: () {},
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      readSettingsActionButton(tester, SettingsLocalBackupCopy.createButton).onPressed,
-      isNull,
-    );
-    expect(
-      readSettingsActionButton(tester, SettingsLocalBackupCopy.restoreButton).onPressed,
-      isNull,
-    );
-    expect(
-      readSettingsActionButton(tester, SettingsLocalBackupCopy.exportToExternalButton).onPressed,
-      isNull,
-    );
-    expect(
-      readSettingsActionButton(tester, SettingsLocalBackupCopy.importFromExternalButton).onPressed,
-      isNotNull,
-    );
-  });
+      expect(
+        readSettingsActionButton(
+          tester,
+          testL10n.settingsLocalBackupCreateButton,
+        ).onPressed,
+        isNull,
+      );
+      expect(
+        readSettingsActionButton(
+          tester,
+          testL10n.settingsLocalBackupRestoreButton,
+        ).onPressed,
+        isNull,
+      );
+      expect(
+        readSettingsActionButton(
+          tester,
+          testL10n.settingsLocalBackupExportToExternalButton,
+        ).onPressed,
+        isNull,
+      );
+      expect(
+        readSettingsActionButton(
+          tester,
+          testL10n.settingsLocalBackupImportFromExternalButton,
+        ).onPressed,
+        isNotNull,
+      );
+    },
+  );
 
-  testWidgets('security overview removes duplicated unlock status card',
-      (WidgetTester tester) async {
+  testWidgets('security overview removes duplicated unlock status card', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       settingsTestScope(
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
@@ -205,6 +244,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SettingsSecurityOverview), findsOneWidget);
-    expect(find.text(SettingsSecurityOverviewCopy.unlockStatusTitle), findsNothing);
+    expect(
+      find.text(testL10n.settingsSecurityOverviewUnlockStatusTitle),
+      findsNothing,
+    );
   });
 }

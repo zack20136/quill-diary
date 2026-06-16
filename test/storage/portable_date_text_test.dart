@@ -24,9 +24,9 @@ void main() {
   test('resolveQuillDiaryImportEntryTimes 由 entry-date 還原時間', () {
     final ({DateOnly date, DateTime createdAt, DateTime updatedAt}) times =
         resolveQuillDiaryImportEntryTimes(
-      dateText: '2026-05-28 16:30',
-      fallback: DateTime.parse('2026-01-01T00:00:00'),
-    );
+          dateText: '2026-05-28 16:30',
+          fallback: DateTime.parse('2026-01-01T00:00:00'),
+        );
 
     expect(times.date.value, '2026-05-28');
     expect(times.createdAt, DateTime(2026, 5, 28, 16, 30));

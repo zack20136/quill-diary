@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
-import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../helpers/vault_test_harness.dart';
@@ -18,7 +17,8 @@ void main() {
   });
 
   test('未解鎖時 precheck 失敗由 UI 層處理，service 需已解鎖 session', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final UnlockModeChangeService service = UnlockModeChangeService(
       appLock: harness.appLockService,
       vaultRepository: harness.repository,
@@ -30,11 +30,15 @@ void main() {
     );
 
     expect(outcome, isA<UnlockModeChangeSucceededWithSession>());
-    expect(await harness.appLockService.getUnlockMode(), AppUnlockMode.deviceLock);
+    expect(
+      await harness.appLockService.getUnlockMode(),
+      AppUnlockMode.deviceLock,
+    );
   });
 
   test('無螢幕鎖時無法 migrate 至 deviceLock', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     harness.appLockService.canUseDeviceCredentialResult = false;
     final UnlockModeChangeService service = UnlockModeChangeService(
       appLock: harness.appLockService,
@@ -48,8 +52,8 @@ void main() {
 
     expect(outcome, isA<UnlockModeChangeMessage>());
     expect(
-      (outcome as UnlockModeChangeMessage).message,
-      UnlockModeCapabilityFailure.requiresDeviceLock.message,
+      (outcome as UnlockModeChangeMessage).kind,
+      UnlockModeChangeMessageKind.requiresDeviceLock,
     );
     expect(await harness.appLockService.getUnlockMode(), AppUnlockMode.none);
   });

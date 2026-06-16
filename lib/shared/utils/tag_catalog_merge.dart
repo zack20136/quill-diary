@@ -4,10 +4,7 @@ import '../../infrastructure/storage/tag_styles_store.dart';
 import 'diary_presence_tag_counts.dart';
 
 class TagCatalogUsageItem {
-  const TagCatalogUsageItem({
-    required this.label,
-    required this.count,
-  });
+  const TagCatalogUsageItem({required this.label, required this.count});
 
   final String label;
   final int count;
@@ -17,7 +14,8 @@ List<TagCatalogUsageItem> mergeTagCatalogWithUsage(
   List<TagCatalogItem> catalog,
   Map<String, int> usageByLabel,
 ) {
-  final Map<String, TagCatalogUsageItem> merged = <String, TagCatalogUsageItem>{};
+  final Map<String, TagCatalogUsageItem> merged =
+      <String, TagCatalogUsageItem>{};
 
   for (final TagCatalogItem item in catalog) {
     if (item.normalized.isEmpty) {
@@ -53,7 +51,9 @@ List<TagCatalogUsageItem> rankedTagUsageFromEntries(
   ).take(limit).toList(growable: false);
 }
 
-List<TagCatalogUsageItem> _sortTagUsageItems(Iterable<TagCatalogUsageItem> items) {
+List<TagCatalogUsageItem> _sortTagUsageItems(
+  Iterable<TagCatalogUsageItem> items,
+) {
   return items.toList(growable: false)
     ..sort((TagCatalogUsageItem a, TagCatalogUsageItem b) {
       final int byCount = b.count.compareTo(a.count);

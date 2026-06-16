@@ -17,8 +17,8 @@ class EasyDiaryBackupImporter {
   EasyDiaryBackupImporter({
     MethodChannel? realmChannel,
     bool? realmReaderEnabled,
-  })  : _realmChannel = realmChannel ?? _defaultRealmChannel,
-        _realmReaderEnabled = realmReaderEnabled ?? Platform.isAndroid;
+  }) : _realmChannel = realmChannel ?? _defaultRealmChannel,
+       _realmReaderEnabled = realmReaderEnabled ?? Platform.isAndroid;
 
   static const MethodChannel _defaultRealmChannel = MethodChannel(
     AppIdentifiers.easyDiaryRealmChannel,
@@ -32,7 +32,9 @@ class EasyDiaryBackupImporter {
     required VaultRepository repository,
     required Directory extractedRoot,
   }) async {
-    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(extractedRoot);
+    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(
+      extractedRoot,
+    );
     if (layout == null) {
       return null;
     }
@@ -56,7 +58,9 @@ class EasyDiaryBackupImporter {
       );
     }
 
-    final EasyDiaryPhotoIndex photoIndex = EasyDiaryPhotoIndex.scan(layout.photosDirectory);
+    final EasyDiaryPhotoIndex photoIndex = EasyDiaryPhotoIndex.scan(
+      layout.photosDirectory,
+    );
 
     var importedEntries = 0;
     var skippedFiles = 0;
@@ -68,10 +72,11 @@ class EasyDiaryBackupImporter {
         continue;
       }
 
-      final ResolvedEasyDiaryAttachments resolved = await resolveEasyDiaryPhotoAttachments(
-        photos: realmEntry.photos,
-        photoIndex: photoIndex,
-      );
+      final ResolvedEasyDiaryAttachments resolved =
+          await resolveEasyDiaryPhotoAttachments(
+            photos: realmEntry.photos,
+            photoIndex: photoIndex,
+          );
       skippedAttachments += resolved.skippedAttachments;
 
       final DiaryEntry entry = _mapToDiaryEntry(
@@ -79,7 +84,8 @@ class EasyDiaryBackupImporter {
         realmEntry: realmEntry,
         importedPhotoKeys: resolved.importedPhotoKeys,
       );
-      if ((entry.title?.trim().isEmpty ?? true) && entry.markdownBody.trim().isEmpty) {
+      if ((entry.title?.trim().isEmpty ?? true) &&
+          entry.markdownBody.trim().isEmpty) {
         skippedFiles++;
         continue;
       }
@@ -132,11 +138,17 @@ class EasyDiaryBackupImporter {
     final DateTime timestamp = realmEntry.currentTimeMillis != null
         ? DateTime.fromMillisecondsSinceEpoch(realmEntry.currentTimeMillis!)
         : DateTime.now();
-    final DateOnly entryDate = entryDateFromEasyDiaryRealm(realmEntry.dateString, timestamp);
+    final DateOnly entryDate = entryDateFromEasyDiaryRealm(
+      realmEntry.dateString,
+      timestamp,
+    );
 
     final String title = realmEntry.title?.trim() ?? '';
     final String rawBody = realmEntry.contents ?? '';
-    final String body = stripEasyDiaryPhotoPlaceholderLines(rawBody, importedPhotoKeys);
+    final String body = stripEasyDiaryPhotoPlaceholderLines(
+      rawBody,
+      importedPhotoKeys,
+    );
 
     return DiaryEntry(
       id: generateEntryId(),

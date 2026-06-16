@@ -45,7 +45,9 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
   }
 
   Future<void> _handleLifecycleChange(AppLifecycleState state) async {
-    final AppSessionController controller = ref.read(appSessionProvider.notifier);
+    final AppSessionController controller = ref.read(
+      appSessionProvider.notifier,
+    );
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
@@ -90,9 +92,7 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     if (!_canRunResumeUnlock(controller, token)) {
       return;
     }
-    await controller.unlock(
-      source: UnlockRequestSource.lifecycleResume,
-    );
+    await controller.unlock(source: UnlockRequestSource.lifecycleResume);
   }
 
   bool _canRunResumeUnlock(AppSessionController controller, int token) {

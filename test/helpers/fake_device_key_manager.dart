@@ -7,8 +7,8 @@ import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart'
 /// Device-key fake for crypto unit tests.
 class TestDeviceKeyManager implements DeviceKeyManager {
   TestDeviceKeyManager()
-      : _cipher = AesGcm.with256bits(),
-        _keyBytes = List<int>.generate(32, (int index) => index + 1);
+    : _cipher = AesGcm.with256bits(),
+      _keyBytes = List<int>.generate(32, (int index) => index + 1);
 
   final Cipher _cipher;
   final List<int> _keyBytes;
@@ -38,11 +38,16 @@ class TestDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
-    return ensureDeviceKey(vaultId, authKind: KeystoreAuthKind.deviceCredential);
+    return ensureDeviceKey(
+      vaultId,
+      authKind: KeystoreAuthKind.deviceCredential,
+    );
   }
 
   @override
-  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
+  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(
+    String vaultId,
+  ) async {
     return _wrappedRecoveryRecords[vaultId];
   }
 
@@ -67,10 +72,7 @@ class TestDeviceKeyManager implements DeviceKeyManager {
       nonce: base64Decode(nonceBase64),
       mac: Mac(encryptedBytes.sublist(encryptedBytes.length - 16)),
     );
-    return _cipher.decrypt(
-      box,
-      secretKey: SecretKey(_keyBytes),
-    );
+    return _cipher.decrypt(box, secretKey: SecretKey(_keyBytes));
   }
 
   @override
@@ -86,7 +88,10 @@ class TestDeviceKeyManager implements DeviceKeyManager {
     return DeviceWrappedPayload(
       slotId: 'dev_android_keystore_${authKind.storageSuffix}_$vaultId',
       nonceBase64: base64Encode(box.nonce),
-      ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
+      ciphertextBase64: base64Encode(<int>[
+        ...box.cipherText,
+        ...box.mac.bytes,
+      ]),
       platform: 'android_keystore_test',
     );
   }
@@ -101,14 +106,15 @@ class TestDeviceKeyManager implements DeviceKeyManager {
 /// Records keystore auth kind usage for vault integration tests.
 class RecordingDeviceKeyManager implements DeviceKeyManager {
   RecordingDeviceKeyManager()
-      : _cipher = AesGcm.with256bits(),
-        _secureKey = List<int>.generate(32, (int index) => 255 - index);
+    : _cipher = AesGcm.with256bits(),
+      _secureKey = List<int>.generate(32, (int index) => 255 - index);
 
   final Cipher _cipher;
   final List<int> _secureKey;
   final Map<String, WrappedRecoveryKeyRecord> _wrappedRecords =
       <String, WrappedRecoveryKeyRecord>{};
-  final Map<String, TrustedDeviceInfo> _deviceInfos = <String, TrustedDeviceInfo>{};
+  final Map<String, TrustedDeviceInfo> _deviceInfos =
+      <String, TrustedDeviceInfo>{};
 
   KeystoreAuthKind? lastEnsureAuthKind;
   KeystoreAuthKind? lastWrapAuthKind;
@@ -147,14 +153,18 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<bool> hasTrustedKey(String vaultId) async {
-    return _wrappedRecords.containsKey(vaultId) && _deviceInfos.containsKey(vaultId);
+    return _wrappedRecords.containsKey(vaultId) &&
+        _deviceInfos.containsKey(vaultId);
   }
 
   @override
-  Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async => _deviceInfos[vaultId];
+  Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async =>
+      _deviceInfos[vaultId];
 
   @override
-  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(String vaultId) async {
+  Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(
+    String vaultId,
+  ) async {
     return _wrappedRecords[vaultId];
   }
 
@@ -179,10 +189,7 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
       nonce: base64Decode(nonceBase64),
       mac: Mac(encryptedBytes.sublist(encryptedBytes.length - 16)),
     );
-    return _cipher.decrypt(
-      box,
-      secretKey: SecretKey(_secretKeyBytes(slotId)),
-    );
+    return _cipher.decrypt(box, secretKey: SecretKey(_secretKeyBytes(slotId)));
   }
 
   @override
@@ -201,7 +208,10 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     return DeviceWrappedPayload(
       slotId: _slotId(vaultId, authKind),
       nonceBase64: base64Encode(box.nonce),
-      ciphertextBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
+      ciphertextBase64: base64Encode(<int>[
+        ...box.cipherText,
+        ...box.mac.bytes,
+      ]),
       platform: 'android_keystore_test',
     );
   }

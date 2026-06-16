@@ -52,32 +52,35 @@ void main() {
   });
 
   group('Drive backup retention', () {
-    test('sortDriveBackupsNewestFirst keeps null createdAt at the stale end', () {
-      final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(
-        <DriveBackupFile>[
-          DriveBackupFile(
-            id: 'unknown',
-            name: 'backup_unknown.zip',
-            createdAt: null,
-          ),
-          DriveBackupFile(
-            id: 'old',
-            name: 'backup_old.zip',
-            createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
-          ),
-          DriveBackupFile(
-            id: 'new',
-            name: 'backup_new.zip',
-            createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
-          ),
-        ],
-      );
+    test(
+      'sortDriveBackupsNewestFirst keeps null createdAt at the stale end',
+      () {
+        final List<DriveBackupFile> sorted =
+            sortDriveBackupsNewestFirst(<DriveBackupFile>[
+              DriveBackupFile(
+                id: 'unknown',
+                name: 'backup_unknown.zip',
+                createdAt: null,
+              ),
+              DriveBackupFile(
+                id: 'old',
+                name: 'backup_old.zip',
+                createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
+              ),
+              DriveBackupFile(
+                id: 'new',
+                name: 'backup_new.zip',
+                createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
+              ),
+            ]);
 
-      expect(
-        sorted.map((DriveBackupFile file) => file.id),
-        <String>['new', 'old', 'unknown'],
-      );
-    });
+        expect(sorted.map((DriveBackupFile file) => file.id), <String>[
+          'new',
+          'old',
+          'unknown',
+        ]);
+      },
+    );
 
     test('driveBackupsToPrune returns backups after retained newest files', () {
       final List<DriveBackupFile> backups = <DriveBackupFile>[
@@ -94,10 +97,10 @@ void main() {
         retainCount: 10,
       );
 
-      expect(
-        stale.map((DriveBackupFile file) => file.id),
-        <String>['backup_2', 'backup_1'],
-      );
+      expect(stale.map((DriveBackupFile file) => file.id), <String>[
+        'backup_2',
+        'backup_1',
+      ]);
     });
 
     test('driveBackupsToPrune validates retain count', () {
@@ -109,34 +112,40 @@ void main() {
   });
 
   group('GoogleDriveBackupService connection state', () {
-    test('getConnectionState returns connected account info after authorization exists', () async {
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccount: FakeGoogleDriveSignedInAccount(
-          email: 'writer@example.com',
-          displayName: 'Writer',
-          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-        ),
-      );
-      final GoogleDriveBackupService service = GoogleDriveBackupService(
-        signInClient: signInClient,
-      );
+    test(
+      'getConnectionState returns connected account info after authorization exists',
+      () async {
+        final FakeGoogleDriveSignInClient signInClient =
+            FakeGoogleDriveSignInClient(
+              lightweightAccount: FakeGoogleDriveSignedInAccount(
+                email: 'writer@example.com',
+                displayName: 'Writer',
+                existingAuthorization:
+                    const FakeGoogleDriveAuthorizationHandle(),
+              ),
+            );
+        final GoogleDriveBackupService service = GoogleDriveBackupService(
+          signInClient: signInClient,
+        );
 
-      final DriveConnectionState state = await service.getConnectionState();
+        final DriveConnectionState state = await service.getConnectionState();
 
-      expect(state.isConnected, isTrue);
-      expect(state.email, 'writer@example.com');
-      expect(state.displayName, 'Writer');
-      expect(state.accountLabel, 'Writer · writer@example.com');
-    });
+        expect(state.isConnected, isTrue);
+        expect(state.email, 'writer@example.com');
+        expect(state.displayName, 'Writer');
+        expect(state.accountLabel, 'Writer · writer@example.com');
+      },
+    );
 
     test('getConnectionState 使用 Android 快照時不呼叫輕量登入', () async {
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccount: FakeGoogleDriveSignedInAccount(
-          email: 'writer@example.com',
-          displayName: 'Writer',
-          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-        ),
-      );
+      final FakeGoogleDriveSignInClient signInClient =
+          FakeGoogleDriveSignInClient(
+            lightweightAccount: FakeGoogleDriveSignedInAccount(
+              email: 'writer@example.com',
+              displayName: 'Writer',
+              existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
+            ),
+          );
       final GoogleDriveBackupService service = GoogleDriveBackupService(
         signInClient: signInClient,
         androidConnectionSnapshotOverride: () async => null,
@@ -150,14 +159,16 @@ void main() {
     });
 
     test('getConnectionState 使用 Android 快照回傳已連結帳號', () async {
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient();
+      final FakeGoogleDriveSignInClient signInClient =
+          FakeGoogleDriveSignInClient();
       final GoogleDriveBackupService service = GoogleDriveBackupService(
         signInClient: signInClient,
-        androidConnectionSnapshotOverride: () async => const DriveConnectionState(
-          isConnected: true,
-          email: 'writer@example.com',
-          displayName: 'Writer',
-        ),
+        androidConnectionSnapshotOverride: () async =>
+            const DriveConnectionState(
+              isConnected: true,
+              email: 'writer@example.com',
+              displayName: 'Writer',
+            ),
       );
 
       final DriveConnectionState state = await service.getConnectionState();
@@ -168,117 +179,136 @@ void main() {
       expect(signInClient.lightweightCalls, 0);
     });
 
-    test('getConnectionState returns disconnected when account has no Drive authorization', () async {
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccount: FakeGoogleDriveSignedInAccount(
-          email: 'writer@example.com',
-          displayName: 'Writer',
-        ),
-      );
-      final GoogleDriveBackupService service = GoogleDriveBackupService(
-        signInClient: signInClient,
-      );
+    test(
+      'getConnectionState returns disconnected when account has no Drive authorization',
+      () async {
+        final FakeGoogleDriveSignInClient signInClient =
+            FakeGoogleDriveSignInClient(
+              lightweightAccount: FakeGoogleDriveSignedInAccount(
+                email: 'writer@example.com',
+                displayName: 'Writer',
+              ),
+            );
+        final GoogleDriveBackupService service = GoogleDriveBackupService(
+          signInClient: signInClient,
+        );
 
-      final DriveConnectionState state = await service.getConnectionState();
+        final DriveConnectionState state = await service.getConnectionState();
 
-      expect(state.isConnected, isFalse);
-      expect(state.email, isNull);
-      expect(state.displayName, isNull);
-    });
+        expect(state.isConnected, isFalse);
+        expect(state.email, isNull);
+        expect(state.displayName, isNull);
+      },
+    );
 
-    test('switchAccount resets session and returns latest account info', () async {
-      final FakeGoogleDriveSignedInAccount reconnectedAccount =
-          FakeGoogleDriveSignedInAccount(
-        email: 'after@example.com',
-        displayName: 'After',
-        authorizedAccount: FakeGoogleDriveSignedInAccount(
-          email: 'after@example.com',
-          displayName: 'After',
-          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-        ),
-      );
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccount: FakeGoogleDriveSignedInAccount(
-          email: 'before@example.com',
-          displayName: 'Before',
-          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-        ),
-        interactiveAccount: reconnectedAccount,
-      );
-      final GoogleDriveBackupService service = GoogleDriveBackupService(
-        signInClient: signInClient,
-      );
+    test(
+      'switchAccount resets session and returns latest account info',
+      () async {
+        final FakeGoogleDriveSignedInAccount reconnectedAccount =
+            FakeGoogleDriveSignedInAccount(
+              email: 'after@example.com',
+              displayName: 'After',
+              authorizedAccount: FakeGoogleDriveSignedInAccount(
+                email: 'after@example.com',
+                displayName: 'After',
+                existingAuthorization:
+                    const FakeGoogleDriveAuthorizationHandle(),
+              ),
+            );
+        final FakeGoogleDriveSignInClient signInClient =
+            FakeGoogleDriveSignInClient(
+              lightweightAccount: FakeGoogleDriveSignedInAccount(
+                email: 'before@example.com',
+                displayName: 'Before',
+                existingAuthorization:
+                    const FakeGoogleDriveAuthorizationHandle(),
+              ),
+              interactiveAccount: reconnectedAccount,
+            );
+        final GoogleDriveBackupService service = GoogleDriveBackupService(
+          signInClient: signInClient,
+        );
 
-      final DriveConnectionState state = await service.switchAccount();
+        final DriveConnectionState state = await service.switchAccount();
 
-      expect(signInClient.disconnectCalls, 1);
-      expect(signInClient.signOutCalls, 0);
-      expect(signInClient.authenticateCalls, 1);
-      expect(state.isConnected, isTrue);
-      expect(state.email, 'after@example.com');
-      expect(state.displayName, 'After');
-    });
+        expect(signInClient.disconnectCalls, 1);
+        expect(signInClient.signOutCalls, 0);
+        expect(signInClient.authenticateCalls, 1);
+        expect(state.isConnected, isTrue);
+        expect(state.email, 'after@example.com');
+        expect(state.displayName, 'After');
+      },
+    );
 
-    test('connect recovers when plugin reports canceled but session is already authorized', () async {
-      final FakeGoogleDriveSignedInAccount authorizedAccount =
-          FakeGoogleDriveSignedInAccount(
-        email: 'writer@example.com',
-        displayName: 'Writer',
-        existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-      );
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccounts: <GoogleDriveSignedInAccount?>[
-          null,
-          authorizedAccount,
-        ],
-        authenticateError: const GoogleSignInException(
-          code: GoogleSignInExceptionCode.canceled,
-        ),
-      );
-      final GoogleDriveBackupService service = GoogleDriveBackupService(
-        signInClient: signInClient,
-      );
+    test(
+      'connect recovers when plugin reports canceled but session is already authorized',
+      () async {
+        final FakeGoogleDriveSignedInAccount authorizedAccount =
+            FakeGoogleDriveSignedInAccount(
+              email: 'writer@example.com',
+              displayName: 'Writer',
+              existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
+            );
+        final FakeGoogleDriveSignInClient signInClient =
+            FakeGoogleDriveSignInClient(
+              lightweightAccounts: <GoogleDriveSignedInAccount?>[
+                null,
+                authorizedAccount,
+              ],
+              authenticateError: const GoogleSignInException(
+                code: GoogleSignInExceptionCode.canceled,
+              ),
+            );
+        final GoogleDriveBackupService service = GoogleDriveBackupService(
+          signInClient: signInClient,
+        );
 
-      final DriveConnectionState state = await service.connect();
+        final DriveConnectionState state = await service.connect();
 
-      expect(signInClient.authenticateCalls, 1);
-      expect(state.isConnected, isTrue);
-      expect(state.email, 'writer@example.com');
-      expect(state.displayName, 'Writer');
-    });
+        expect(signInClient.authenticateCalls, 1);
+        expect(state.isConnected, isTrue);
+        expect(state.email, 'writer@example.com');
+        expect(state.displayName, 'Writer');
+      },
+    );
 
-    test('connect recovers by authorizing recovered account after canceled callback', () async {
-      final FakeGoogleDriveSignedInAccount recoveredAccount =
-          FakeGoogleDriveSignedInAccount(
-        email: 'writer@example.com',
-        displayName: 'Writer',
-        authorizedAccount: FakeGoogleDriveSignedInAccount(
-          email: 'writer@example.com',
-          displayName: 'Writer',
-          existingAuthorization: const FakeGoogleDriveAuthorizationHandle(),
-        ),
-      );
-      final FakeGoogleDriveSignInClient signInClient = FakeGoogleDriveSignInClient(
-        lightweightAccounts: <GoogleDriveSignedInAccount?>[
-          null,
-          recoveredAccount,
-        ],
-        authenticateError: const GoogleSignInException(
-          code: GoogleSignInExceptionCode.canceled,
-          description: 'Account auth failed.',
-        ),
-      );
-      final GoogleDriveBackupService service = GoogleDriveBackupService(
-        signInClient: signInClient,
-      );
+    test(
+      'connect recovers by authorizing recovered account after canceled callback',
+      () async {
+        final FakeGoogleDriveSignedInAccount recoveredAccount =
+            FakeGoogleDriveSignedInAccount(
+              email: 'writer@example.com',
+              displayName: 'Writer',
+              authorizedAccount: FakeGoogleDriveSignedInAccount(
+                email: 'writer@example.com',
+                displayName: 'Writer',
+                existingAuthorization:
+                    const FakeGoogleDriveAuthorizationHandle(),
+              ),
+            );
+        final FakeGoogleDriveSignInClient signInClient =
+            FakeGoogleDriveSignInClient(
+              lightweightAccounts: <GoogleDriveSignedInAccount?>[
+                null,
+                recoveredAccount,
+              ],
+              authenticateError: const GoogleSignInException(
+                code: GoogleSignInExceptionCode.canceled,
+                description: 'Account auth failed.',
+              ),
+            );
+        final GoogleDriveBackupService service = GoogleDriveBackupService(
+          signInClient: signInClient,
+        );
 
-      final DriveConnectionState state = await service.connect();
+        final DriveConnectionState state = await service.connect();
 
-      expect(signInClient.authenticateCalls, 1);
-      expect(state.isConnected, isTrue);
-      expect(state.email, 'writer@example.com');
-      expect(recoveredAccount.authorizeScopesCalls, 1);
-    });
+        expect(signInClient.authenticateCalls, 1);
+        expect(state.isConnected, isTrue);
+        expect(state.email, 'writer@example.com');
+        expect(recoveredAccount.authorizeScopesCalls, 1);
+      },
+    );
   });
 }
 
@@ -339,7 +369,8 @@ final class FakeGoogleDriveSignInClient implements GoogleDriveSignInClient {
   }
 }
 
-final class FakeGoogleDriveSignedInAccount implements GoogleDriveSignedInAccount {
+final class FakeGoogleDriveSignedInAccount
+    implements GoogleDriveSignedInAccount {
   FakeGoogleDriveSignedInAccount({
     required this.email,
     this.displayName,
@@ -365,11 +396,13 @@ final class FakeGoogleDriveSignedInAccount implements GoogleDriveSignedInAccount
   }
 
   @override
-  Future<GoogleDriveAuthorizationHandle> authorizeScopes(List<String> scopes) async {
+  Future<GoogleDriveAuthorizationHandle> authorizeScopes(
+    List<String> scopes,
+  ) async {
     authorizeScopesCalls++;
     final GoogleDriveSignedInAccount target = authorizedAccount ?? this;
-    final GoogleDriveAuthorizationHandle? authorization =
-        await target.authorizationForScopes(scopes);
+    final GoogleDriveAuthorizationHandle? authorization = await target
+        .authorizationForScopes(scopes);
     if (authorization == null) {
       throw StateError('No authorization configured for test account.');
     }

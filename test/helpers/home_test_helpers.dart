@@ -20,10 +20,8 @@ ProviderContainer buildUnlockedHomeContainer(
     overrides: [
       vaultRepositoryProvider.overrideWithValue(repository),
       effectiveAppSessionProvider.overrideWith(
-        (Ref ref) async => AppSessionState(
-          status: AppLockStatus.unlocked,
-          session: session,
-        ),
+        (Ref ref) async =>
+            AppSessionState(status: AppLockStatus.unlocked, session: session),
       ),
     ],
   );

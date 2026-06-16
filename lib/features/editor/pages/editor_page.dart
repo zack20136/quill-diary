@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+import 'dart:async';
+import '../../../l10n/l10n.dart';
 import 'dart:collection';
 import 'dart:io';
 
@@ -18,7 +19,6 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
-import '../../../shared/copy/common_copy.dart';
 import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
@@ -39,7 +39,6 @@ import '../../settings/providers/personalization_providers.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../infrastructure/preferences/user_preferences.dart';
-import '../editor_copy.dart';
 import '../editor_draft.dart';
 import '../editor_image_staging.dart';
 import '../gallery_image_download.dart';
@@ -111,7 +110,9 @@ class _MarkdownPreviewBody extends StatelessWidget {
         continue;
       }
 
-      final RegExpMatch? heading = RegExp(r'^(#{1,6})\s+(.+)$').firstMatch(line);
+      final RegExpMatch? heading = RegExp(
+        r'^(#{1,6})\s+(.+)$',
+      ).firstMatch(line);
       if (heading != null) {
         final String text = heading.group(2)!.trim();
         children.add(
@@ -123,7 +124,10 @@ class _MarkdownPreviewBody extends StatelessWidget {
             child: SelectableText.rich(
               _inlineMarkdownSpan(
                 text,
-                typography.titleTextStyle(theme.textTheme, fontWeight: FontWeight.w800),
+                typography.titleTextStyle(
+                  theme.textTheme,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -139,9 +143,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHigh.withValues(alpha: 0.58),
-              border: Border(
-                left: BorderSide(color: cs.primary, width: 3),
-              ),
+              border: Border(left: BorderSide(color: cs.primary, width: 3)),
             ),
             child: SelectableText.rich(
               _inlineMarkdownSpan(
@@ -154,7 +156,9 @@ class _MarkdownPreviewBody extends StatelessWidget {
         continue;
       }
 
-      final RegExpMatch? listItem = RegExp(r'^(\s*)([-*]|\d+\.)\s+(.+)$').firstMatch(line);
+      final RegExpMatch? listItem = RegExp(
+        r'^(\s*)([-*]|\d+\.)\s+(.+)$',
+      ).firstMatch(line);
       if (listItem != null) {
         children.add(
           Padding(
@@ -184,9 +188,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
       children.add(
         Padding(
           padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
-          child: SelectableText.rich(
-            _inlineMarkdownSpan(line, bodyStyle),
-          ),
+          child: SelectableText.rich(_inlineMarkdownSpan(line, bodyStyle)),
         ),
       );
     }
@@ -212,7 +214,9 @@ class _MarkdownPreviewBody extends StatelessWidget {
         spans.add(TextSpan(text: text.substring(cursor, match.start)));
       }
       final String token = match.group(0)!;
-      final RegExpMatch? link = RegExp(r'^\[([^\]]+)\]\(([^)]+)\)$').firstMatch(token);
+      final RegExpMatch? link = RegExp(
+        r'^\[([^\]]+)\]\(([^)]+)\)$',
+      ).firstMatch(token);
       if (link != null) {
         spans.add(
           TextSpan(
@@ -234,9 +238,9 @@ class _MarkdownPreviewBody extends StatelessWidget {
         spans.add(
           TextSpan(
             text: token.substring(1, token.length - 1),
-            style: AppTypography.mono(const TextStyle()).copyWith(
-              backgroundColor: Colors.black.withValues(alpha: 0.06),
-            ),
+            style: AppTypography.mono(
+              const TextStyle(),
+            ).copyWith(backgroundColor: Colors.black.withValues(alpha: 0.06)),
           ),
         );
       } else {
@@ -276,7 +280,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   final TextEditingController _bodyController = TextEditingController();
   final List<PendingAttachment> _pendingAttachments = <PendingAttachment>[];
   List<AssetId> _keptExistingAttachmentIds = <AssetId>[];
-  final Map<String, Future<String>> _savedAssetPathFutures = <String, Future<String>>{};
+  final Map<String, Future<String>> _savedAssetPathFutures =
+      <String, Future<String>>{};
   late bool _previewMode;
   TimeOfDay _entryTime = TimeOfDay.now();
   bool _didLoadExisting = false;
@@ -289,9 +294,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   bool _draftPersistQueued = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
-  late final ProviderSubscription<AsyncValue<AppSessionState>> _sessionSubscription;
+  late final ProviderSubscription<AsyncValue<AppSessionState>>
+  _sessionSubscription;
+
   /// 相對 vault 已儲存內容的基準，用於取消時判斷是否有未儲存變更。
   EditorDraftSnapshot? _lastSavedSnapshot;
+
   /// 上次成功寫入本地草稿的快照，避免重複落盤。
   EditorDraftSnapshot? _lastPersistedDraftSnapshot;
   UnlockedVaultSession? _activeSession;
@@ -307,17 +315,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   String get _draftKey => widget.entryId ?? _newDraftKey;
 
   Map<String, int> _watchedTagAccentArgbMap() {
-    return ref.watch(tagAccentArgbMapProvider).maybeWhen(
+    return ref
+        .watch(tagAccentArgbMapProvider)
+        .maybeWhen(
           data: (Map<String, int> m) => m,
           orElse: () => const <String, int>{},
         );
   }
 
   Iterable<PendingAttachment> get _pendingImageAttachments =>
-      _pendingAttachments.where((PendingAttachment a) => a.mimeType.startsWith('image/'));
+      _pendingAttachments.where(
+        (PendingAttachment a) => a.mimeType.startsWith('image/'),
+      );
 
   Iterable<PendingAttachment> get _pendingNonImageAttachments =>
-      _pendingAttachments.where((PendingAttachment a) => !a.mimeType.startsWith('image/'));
+      _pendingAttachments.where(
+        (PendingAttachment a) => !a.mimeType.startsWith('image/'),
+      );
 
   bool get _hasTitle => _titleController.text.trim().isNotEmpty;
 
@@ -370,7 +384,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     setState(() => _showTitleRequired = true);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(EditorCopy.saveNeedsTitleMessage(context))),
+      SnackBar(content: Text(context.l10n.editorSaveNeedsTitleMessage)),
     );
   }
 
@@ -400,7 +414,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
     final EditorDraftSnapshot current = _currentDraftSnapshot();
     if (_lastPersistedDraftSnapshot != null &&
-        !editorDraftIsDirty(current: current, saved: _lastPersistedDraftSnapshot)) {
+        !editorDraftIsDirty(
+          current: current,
+          saved: _lastPersistedDraftSnapshot,
+        )) {
       return true;
     }
     if (widget.entryId == null && editorDraftIsEmpty(current)) {
@@ -444,7 +461,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       }
       pendingAttachments.add(
         EditorDraftPendingAttachment(
-          relativePath: await editorDraftStore.pendingRelativePath(_draftKey, sourcePath),
+          relativePath: await editorDraftStore.pendingRelativePath(
+            _draftKey,
+            sourcePath,
+          ),
           mimeType: attachment.mimeType,
           originalFilename: attachment.originalFilename,
         ),
@@ -461,7 +481,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         markdownBody: snapshot.markdownBody,
         keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
         pendingAttachments: pendingAttachments,
-        provisionalEntryId: _provisionalEntryId ??= widget.entryId ?? generateEntryId(),
+        provisionalEntryId: _provisionalEntryId ??=
+            widget.entryId ?? generateEntryId(),
         createdAt: _draftCreatedAt ?? now,
         updatedAt: now,
       );
@@ -549,7 +570,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
     _pendingAttachments.clear();
     _savedAssetPathFutures.clear();
-    _entryTime = TimeOfDay(hour: entry.createdAt.hour, minute: entry.createdAt.minute);
+    _entryTime = TimeOfDay(
+      hour: entry.createdAt.hour,
+      minute: entry.createdAt.minute,
+    );
     _provisionalEntryId = entry.id;
     _draftCreatedAt = entry.createdAt;
     _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
@@ -561,16 +585,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   Future<void> _applyDraftRecord(EditorDraftRecord record) async {
     final editorDraftStore = ref.read(editorDraftStoreProvider);
     final Map<String, String> absolutePaths = <String, String>{};
-    for (final EditorDraftPendingAttachment attachment in record.pendingAttachments) {
-      absolutePaths[attachment.relativePath] = await editorDraftStore.pendingAbsolutePath(
-        _draftKey,
-        attachment.relativePath,
-      );
+    for (final EditorDraftPendingAttachment attachment
+        in record.pendingAttachments) {
+      absolutePaths[attachment.relativePath] = await editorDraftStore
+          .pendingAbsolutePath(_draftKey, attachment.relativePath);
     }
-    final List<PendingAttachment> pendingAttachments = pendingAttachmentsFromDraftRecord(
-      record,
-      absolutePathBuilder: (String relativePath) => absolutePaths[relativePath] ?? '',
-    );
+    final List<PendingAttachment> pendingAttachments =
+        pendingAttachmentsFromDraftRecord(
+          record,
+          absolutePathBuilder: (String relativePath) =>
+              absolutePaths[relativePath] ?? '',
+        );
 
     _suppressDraftListener = true;
     _suppressTagDraftListener = true;
@@ -618,14 +643,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (!mounted || record == null) {
       return;
     }
-    final EditorDraftSnapshot recordSnapshot = editorDraftSnapshotFromRecord(record);
+    final EditorDraftSnapshot recordSnapshot = editorDraftSnapshotFromRecord(
+      record,
+    );
     if (widget.entryId == null && editorDraftIsEmpty(recordSnapshot)) {
       await _discardLocalDraft();
       return;
     }
 
     _handlingDraftRestore = true;
-    final bool? restore = await _showRestoreDraftDialog(record, hasExistingEntry: entry != null);
+    final bool? restore = await _showRestoreDraftDialog(
+      record,
+      hasExistingEntry: entry != null,
+    );
     _handlingDraftRestore = false;
     if (!mounted) {
       return;
@@ -688,16 +718,20 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   @override
   Widget build(BuildContext context) {
     final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
-    final AsyncValue<AppSessionState> sessionAsync = ref.watch(effectiveAppSessionProvider);
+    final AsyncValue<AppSessionState> sessionAsync = ref.watch(
+      effectiveAppSessionProvider,
+    );
     final AsyncValue<DiaryEntry?> entryAsync = widget.entryId == null
         ? const AsyncValue<DiaryEntry?>.data(null)
         : ref.watch(entryProvider(widget.entryId!));
-    final AsyncValue<Object?> metadataAsync = ref.watch(recoveryMetadataProvider);
+    final AsyncValue<Object?> metadataAsync = ref.watch(
+      recoveryMetadataProvider,
+    );
 
     if (!isSupportedPlatform) {
       return Scaffold(
-        appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
-        body: Center(child: Text(kAndroidOnlyMessage)),
+        appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
+        body: Center(child: Text(sessionAndroidOnlyMessage(context.l10n))),
       );
     }
 
@@ -706,21 +740,26 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         final UnlockedVaultSession? session = sessionState.session;
         if (!sessionState.isUnlocked || session == null) {
           return Scaffold(
-            appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
+            appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  switch (sessionState.status) {
-                    AppLockStatus.recoveryRequired =>
-                      sessionState.message ?? kRecoveryRequiredAfterRestoreMessage,
-                    AppLockStatus.unlocking =>
-                      sessionState.message ?? kTrustedUnlockInProgressMessage,
-                    AppLockStatus.locked =>
-                      sessionState.message ?? kLockedRetryVerificationMessage,
-                    _ => sessionState.message ?? EditorCopy.sessionLockedFallback(context),
-                  },
-                ),
+                child: Text(switch (sessionState.status) {
+                  AppLockStatus.recoveryRequired =>
+                    sessionState.message ??
+                        sessionRecoveryRequiredAfterRestoreMessage(
+                          context.l10n,
+                        ),
+                  AppLockStatus.unlocking =>
+                    sessionState.message ??
+                        sessionTrustedUnlockInProgressMessage(context.l10n),
+                  AppLockStatus.locked =>
+                    sessionState.message ??
+                        sessionLockedRetryVerificationMessage(context.l10n),
+                  _ =>
+                    sessionState.message ??
+                        context.l10n.editorSessionLockedFallback,
+                }),
               ),
             ),
           );
@@ -737,8 +776,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                 unawaited(_offerDraftRestoreIfNeeded(session, entry));
               });
             }
-            final AsyncValue<List<AssetAttachment>> attachmentsAsync = widget.entryId == null
-                ? const AsyncValue<List<AssetAttachment>>.data(<AssetAttachment>[])
+            final AsyncValue<List<AssetAttachment>> attachmentsAsync =
+                widget.entryId == null
+                ? const AsyncValue<List<AssetAttachment>>.data(
+                    <AssetAttachment>[],
+                  )
                 : ref.watch(entryAttachmentsProvider(widget.entryId!));
             final ColorScheme colorScheme = Theme.of(context).colorScheme;
             return PopScope(
@@ -752,142 +794,203 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               child: Scaffold(
                 backgroundColor: PageStyle.scaffoldWash(colorScheme),
                 body: metadataAsync.when(
-                data: (Object? metadata) {
-                  if (metadata == null) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(EditorCopy.needsRecoveryKeyMessage(context)),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      _buildEditorTopBar(session, entry),
-                      Expanded(
-                        child: SafeArea(
-                          top: false,
-                          child: LayoutBuilder(
-                            builder: (BuildContext context, BoxConstraints constraints) {
-                              final bool wide = constraints.maxWidth >= 960;
-                        final Widget sidebar = Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            if (!_previewMode)
-                              _buildSavedAndPendingImageStrip(
-                                attachmentsAsync,
-                                editable: true,
-                              ),
-                            if (!_previewMode &&
-                                (_savedNonImageAttachments(attachmentsAsync).isNotEmpty ||
-                                    _pendingNonImageAttachments.isNotEmpty))
-                              const SizedBox(height: 6),
-                            if (_savedNonImageAttachments(attachmentsAsync).isNotEmpty ||
-                                _pendingNonImageAttachments.isNotEmpty)
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: <Widget>[
-                                  ..._savedNonImageAttachments(attachmentsAsync).map(
-                                    (AssetAttachment a) =>
-                                        _savedNonImageChip(a, editable: _isEditing),
-                                  ),
-                                  ..._pendingNonImageAttachments.map(
-                                    (PendingAttachment a) =>
-                                        _pendingNonImageChip(a, editable: _isEditing),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        );
-
-                        final ThemeData paneTheme = Theme.of(context);
-                        final bool hasSidebarNonImage =
-                            _savedNonImageAttachments(attachmentsAsync).isNotEmpty ||
-                            _pendingNonImageAttachments.isNotEmpty;
-                        final bool showWideSidebarWithStrip =
-                            wide && (!_previewMode || hasSidebarNonImage);
-                        final bool narrowGapAfterSidebar = !_previewMode || hasSidebarNonImage;
-                        final Widget editorPane = Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            if (_previewMode)
-                              _buildPreviewImageGallery(attachmentsAsync),
-                            Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: 8 + MediaQuery.paddingOf(context).bottom,
-                                ),
-                                child: _buildBodyContentPanel(paneTheme),
-                              ),
-                            ),
-                          ],
-                        );
-
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              _buildTitleHeader(context),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: showWideSidebarWithStrip
-                                    ? Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          SizedBox(
-                                            width: 320,
-                                            child: SingleChildScrollView(child: sidebar),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(child: editorPane),
-                                        ],
-                                      )
-                                    : !wide
-                                        ? Column(
-                                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                                            children: <Widget>[
-                                              sidebar,
-                                              if (narrowGapAfterSidebar) const SizedBox(height: 8),
-                                              Expanded(child: editorPane),
-                                            ],
-                                          )
-                                        : editorPane,
-                              ),
-                            ],
+                  data: (Object? metadata) {
+                    if (metadata == null) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            context.l10n.editorNeedsRecoveryKeyMessage,
                           ),
-                        );
-                      },
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _buildEditorTopBar(session, entry),
+                        Expanded(
+                          child: SafeArea(
+                            top: false,
+                            child: LayoutBuilder(
+                              builder:
+                                  (
+                                    BuildContext context,
+                                    BoxConstraints constraints,
+                                  ) {
+                                    final bool wide =
+                                        constraints.maxWidth >= 960;
+                                    final Widget sidebar = Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        if (!_previewMode)
+                                          _buildSavedAndPendingImageStrip(
+                                            attachmentsAsync,
+                                            editable: true,
+                                          ),
+                                        if (!_previewMode &&
+                                            (_savedNonImageAttachments(
+                                                  attachmentsAsync,
+                                                ).isNotEmpty ||
+                                                _pendingNonImageAttachments
+                                                    .isNotEmpty))
+                                          const SizedBox(height: 6),
+                                        if (_savedNonImageAttachments(
+                                              attachmentsAsync,
+                                            ).isNotEmpty ||
+                                            _pendingNonImageAttachments
+                                                .isNotEmpty)
+                                          Wrap(
+                                            spacing: 10,
+                                            runSpacing: 10,
+                                            children: <Widget>[
+                                              ..._savedNonImageAttachments(
+                                                attachmentsAsync,
+                                              ).map(
+                                                (AssetAttachment a) =>
+                                                    _savedNonImageChip(
+                                                      a,
+                                                      editable: _isEditing,
+                                                    ),
+                                              ),
+                                              ..._pendingNonImageAttachments
+                                                  .map(
+                                                    (PendingAttachment a) =>
+                                                        _pendingNonImageChip(
+                                                          a,
+                                                          editable: _isEditing,
+                                                        ),
+                                                  ),
+                                            ],
+                                          ),
+                                      ],
+                                    );
+
+                                    final ThemeData paneTheme = Theme.of(
+                                      context,
+                                    );
+                                    final bool hasSidebarNonImage =
+                                        _savedNonImageAttachments(
+                                          attachmentsAsync,
+                                        ).isNotEmpty ||
+                                        _pendingNonImageAttachments.isNotEmpty;
+                                    final bool showWideSidebarWithStrip =
+                                        wide &&
+                                        (!_previewMode || hasSidebarNonImage);
+                                    final bool narrowGapAfterSidebar =
+                                        !_previewMode || hasSidebarNonImage;
+                                    final Widget editorPane = Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: <Widget>[
+                                        if (_previewMode)
+                                          _buildPreviewImageGallery(
+                                            attachmentsAsync,
+                                          ),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                              bottom:
+                                                  8 +
+                                                  MediaQuery.paddingOf(
+                                                    context,
+                                                  ).bottom,
+                                            ),
+                                            child: _buildBodyContentPanel(
+                                              paneTheme,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+
+                                    return Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        12,
+                                        10,
+                                        12,
+                                        6,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: <Widget>[
+                                          _buildTitleHeader(context),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: showWideSidebarWithStrip
+                                                ? Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: <Widget>[
+                                                      SizedBox(
+                                                        width: 320,
+                                                        child:
+                                                            SingleChildScrollView(
+                                                              child: sidebar,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: editorPane,
+                                                      ),
+                                                    ],
+                                                  )
+                                                : !wide
+                                                ? Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: <Widget>[
+                                                      sidebar,
+                                                      if (narrowGapAfterSidebar)
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                      Expanded(
+                                                        child: editorPane,
+                                                      ),
+                                                    ],
+                                                  )
+                                                : editorPane,
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (Object error, StackTrace _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(userFacingErrorMessage(error)),
                     ),
                   ),
                 ),
-              ],
-            );
-            },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (Object error, StackTrace _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(userFacingErrorMessage(error)),
-                  ),
-                ),
               ),
-            ),
             );
           },
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (Object error, StackTrace _) => Scaffold(
-            appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
+            appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
             body: Center(child: Text(userFacingErrorMessage(error))),
           ),
         );
       },
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
-        appBar: AppBar(title: Text(EditorCopy.pageTitle(context))),
+        appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
         body: Center(child: Text(userFacingErrorMessage(error))),
       ),
     );
@@ -901,7 +1004,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _applyEntryToControllers(entry);
   }
 
-  DateTime _composeEntryCreatedAt({required DateOnly date, required DiaryEntry? existing}) {
+  DateTime _composeEntryCreatedAt({
+    required DateOnly date,
+    required DiaryEntry? existing,
+  }) {
     final DateTime d = date.toDateTime();
     if (existing != null) {
       return DateTime(
@@ -957,7 +1063,13 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     try {
       final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
       final DateTime base = parsed.toDateTime();
-      anchor = DateTime(base.year, base.month, base.day, _entryTime.hour, _entryTime.minute);
+      anchor = DateTime(
+        base.year,
+        base.month,
+        base.day,
+        _entryTime.hour,
+        _entryTime.minute,
+      );
     } catch (_) {
       anchor = DateTime.now();
     }
@@ -985,7 +1097,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   String _formattedDisplayDate(BuildContext context) {
     try {
       final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
-      return DisplayFormat.formatDateOnlyWithWeekdayZh(parsed);
+      return DisplayFormat.formatDateOnlyWithWeekday(context.l10n, parsed);
     } catch (_) {
       final String raw = _dateController.text.trim();
       return raw.isEmpty ? '—' : raw;
@@ -996,8 +1108,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Future<List<TagCatalogUsageItem>> _tagSuggestionsFromIndexAsync() async {
     try {
-      final List<EntryIndexRecord> records =
-          await ref.read(allEntryIndexRecordsProvider.future);
+      final List<EntryIndexRecord> records = await ref.read(
+        allEntryIndexRecordsProvider.future,
+      );
       final catalog = await ref.read(tagCatalogProvider.future);
       return mergeTagCatalogWithUsage(catalog, diaryPresenceTagCounts(records));
     } catch (_) {
@@ -1019,6 +1132,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
     _onDraftFieldChanged();
   }
+
   /// 固定 24 小時制顯示（與時間選擇器一致）。
   String _formattedEntryTime24h() {
     final int h = _entryTime.hour;
@@ -1037,7 +1151,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _buildCharCountTagPill(ThemeData theme, int charCount) {
     final ColorScheme cs = theme.colorScheme;
-    final Color bg = Color.alphaBlend(cs.onSurfaceVariant.withValues(alpha: 0.12), cs.surface);
+    final Color bg = Color.alphaBlend(
+      cs.onSurfaceVariant.withValues(alpha: 0.12),
+      cs.surface,
+    );
     final Color fg = cs.onSurfaceVariant;
 
     return Container(
@@ -1045,13 +1162,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         color: bg.withValues(alpha: 0.92),
-        border: Border.all(
-          color: fg.withValues(alpha: 0.32),
-          width: 0.9,
-        ),
+        border: Border.all(color: fg.withValues(alpha: 0.32), width: 0.9),
       ),
       child: Text(
-        DisplayFormat.formatCountUnit(charCount, '字'),
+        DisplayFormat.formatCharCount(context.l10n, charCount),
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
@@ -1063,20 +1177,20 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _buildUnsavedTagPill(ThemeData theme) {
     final ColorScheme cs = theme.colorScheme;
-    final Color bg = Color.alphaBlend(cs.error.withValues(alpha: 0.14), cs.surface);
+    final Color bg = Color.alphaBlend(
+      cs.error.withValues(alpha: 0.14),
+      cs.surface,
+    );
     final Color fg = cs.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         color: bg.withValues(alpha: 0.96),
-        border: Border.all(
-          color: fg.withValues(alpha: 0.28),
-          width: 0.9,
-        ),
+        border: Border.all(color: fg.withValues(alpha: 0.28), width: 0.9),
       ),
       child: Text(
-        EditorCopy.unsavedDraftLabel(context),
+        context.l10n.editorUnsavedDraftLabel,
         style: theme.textTheme.labelMedium?.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
@@ -1097,10 +1211,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         color: bg.withValues(alpha: 0.88),
-        border: Border.all(
-          color: fg.withValues(alpha: 0.34),
-          width: 0.9,
-        ),
+        border: Border.all(color: fg.withValues(alpha: 0.34), width: 0.9),
       ),
       child: Text(
         tag,
@@ -1141,7 +1252,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     required int bodyCharCount,
   }) {
     final List<String> tags = _editableTagListPreview();
-    if (tags.isEmpty && (!showCharCount || bodyCharCount <= 0) && !showUnsavedTag) {
+    if (tags.isEmpty &&
+        (!showCharCount || bodyCharCount <= 0) &&
+        !showUnsavedTag) {
       return const SizedBox.shrink();
     }
     return SizedBox(
@@ -1151,7 +1264,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         runSpacing: 6,
         children: <Widget>[
           if (showUnsavedTag) _buildUnsavedTagPill(theme),
-          if (showCharCount && bodyCharCount > 0) _buildCharCountTagPill(theme, bodyCharCount),
+          if (showCharCount && bodyCharCount > 0)
+            _buildCharCountTagPill(theme, bodyCharCount),
           ...tags.map((String tag) => _buildTagPill(tag, theme)),
         ],
       ),
@@ -1160,16 +1274,23 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   Widget _buildTitleHeader(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final EditorTypographyPreferences typography = watchPersonalizationPreferences(ref).typography;
+    final EditorTypographyPreferences typography =
+        watchPersonalizationPreferences(ref).typography;
     final TextStyle titleStyle = typography.titleTextStyle(theme.textTheme);
     final int bodyCharCount = _bodyMarkdownCharCount();
-    final bool showUnsavedTag = widget.entryId != null &&
-        ref.watch(editorDraftKeysProvider).maybeWhen(
-              data: (Set<String> draftKeys) => draftKeys.contains(widget.entryId),
+    final bool showUnsavedTag =
+        widget.entryId != null &&
+        ref
+            .watch(editorDraftKeysProvider)
+            .maybeWhen(
+              data: (Set<String> draftKeys) =>
+                  draftKeys.contains(widget.entryId),
               orElse: () => false,
             );
     final bool showTagsRow =
-        _editableTagListPreview().isNotEmpty || bodyCharCount > 0 || (_previewMode && showUnsavedTag);
+        _editableTagListPreview().isNotEmpty ||
+        bodyCharCount > 0 ||
+        (_previewMode && showUnsavedTag);
     if (_previewMode) {
       final String titleText = _titleController.text.trim();
       return Column(
@@ -1177,9 +1298,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
-            titleText.isEmpty ? EditorCopy.untitledDraft(context) : titleText,
+            titleText.isEmpty ? context.l10n.editorUntitledDraft : titleText,
             style: titleStyle.copyWith(
-              color: titleText.isEmpty ? AppTypography.muted(theme.colorScheme) : null,
+              color: titleText.isEmpty
+                  ? AppTypography.muted(theme.colorScheme)
+                  : null,
             ),
           ),
           if (showTagsRow) ...<Widget>[
@@ -1206,8 +1329,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           style: titleStyle,
           decoration: _titleFieldDecoration(
             context,
-            hintText: EditorCopy.titleHint(context),
-            errorText: _showTitleRequired && !_hasTitle ? EditorCopy.titleRequiredError(context) : null,
+            hintText: context.l10n.editorTitleHint,
+            errorText: _showTitleRequired && !_hasTitle
+                ? context.l10n.editorTitleRequiredError
+                : null,
           ),
         ),
         if (showTagsRow) ...<Widget>[
@@ -1224,13 +1349,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   /// 內容區外框固定填滿可用高度，僅框內文字捲動或編輯。
   Widget _buildBodyContentPanel(ThemeData paneTheme) {
-    final EditorTypographyPreferences typography = watchPersonalizationPreferences(ref).typography;
+    final EditorTypographyPreferences typography =
+        watchPersonalizationPreferences(ref).typography;
     final TextStyle bodyStyle = typography.bodyTextStyle(paneTheme.textTheme);
     final Widget body = _previewMode
         ? SingleChildScrollView(
             child: _bodyController.text.isEmpty
                 ? SelectableText(
-                    EditorCopy.bodyEmptyPreview(context),
+                    context.l10n.editorBodyEmptyPreview,
                     style: bodyStyle.copyWith(
                       fontStyle: FontStyle.italic,
                       color: AppTypography.muted(paneTheme.colorScheme),
@@ -1250,7 +1376,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             style: bodyStyle,
             decoration: _bodyFieldDecoration(
               context,
-              hintText: EditorCopy.bodyHint(context),
+              hintText: context.l10n.editorBodyHint,
             ),
           );
 
@@ -1277,19 +1403,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       final bool? confirmed = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(EditorCopy.confirmDeleteTitle(context)),
-          content: Text(EditorCopy.confirmDeleteBody(context)),
+          title: Text(context.l10n.editorConfirmDeleteTitle),
+          content: Text(context.l10n.editorConfirmDeleteBody),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(CommonCopy.actionCancel(context)),
+              child: Text(context.l10n.commonActionCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
-              child: Text(CommonCopy.actionDelete(context)),
+              child: Text(context.l10n.commonActionDelete),
             ),
           ],
         ),
@@ -1297,7 +1423,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       if (confirmed != true || !mounted) {
         return;
       }
-      await ref.read(vaultRepositoryProvider).deleteEntry(session, widget.entryId!);
+      await ref
+          .read(vaultRepositoryProvider)
+          .deleteEntry(session, widget.entryId!);
       if (!mounted) {
         return;
       }
@@ -1333,7 +1461,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
             child: Row(
               children: <Widget>[
                 IconButton(
-                  tooltip: EditorCopy.tooltipCancel(context),
+                  tooltip: context.l10n.editorTooltipCancel,
                   onPressed: _saving ? null : () => unawaited(_requestClose()),
                   icon: const Icon(Icons.close_rounded),
                 ),
@@ -1345,27 +1473,27 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           IconButton(
-                            tooltip: EditorCopy.tooltipDate(context),
+                            tooltip: context.l10n.editorTooltipDate,
                             onPressed: _saving ? null : _pickEntryDate,
                             icon: const Icon(Icons.calendar_today_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipTime(context),
+                            tooltip: context.l10n.editorTooltipTime,
                             onPressed: _saving ? null : _pickEntryTime,
                             icon: const Icon(Icons.schedule_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipEditTags(context),
+                            tooltip: context.l10n.editorTooltipEditTags,
                             onPressed: _saving ? null : _showTagsEditorDialog,
                             icon: const Icon(Icons.sell_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipUploadImages(context),
+                            tooltip: context.l10n.editorTooltipUploadImages,
                             onPressed: _saving ? null : () => _pickImage(),
                             icon: const Icon(Icons.image_outlined),
                           ),
                           IconButton(
-                            tooltip: EditorCopy.tooltipAddAttachment(context),
+                            tooltip: context.l10n.editorTooltipAddAttachment,
                             onPressed: _saving ? null : () => _pickFile(),
                             icon: const Icon(Icons.attach_file),
                           ),
@@ -1375,21 +1503,25 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                   IconButton(
                     tooltip: canSave
-                        ? EditorCopy.tooltipSave(context)
-                        : EditorCopy.tooltipSaveNeedsTitle(context),
+                        ? context.l10n.editorTooltipSave
+                        : context.l10n.editorTooltipSaveNeedsTitle,
                     onPressed: _saving ? null : saveEntry,
                     style: IconButton.styleFrom(
                       foregroundColor: canSave
                           ? saveButtonColor
-                          : barTheme.colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                          : barTheme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.45,
+                            ),
                     ),
                     icon: const Icon(Icons.save_outlined),
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: EditorCopy.tooltipDelete(context),
+                      tooltip: context.l10n.editorTooltipDelete,
                       onPressed: _saving ? null : deleteEntry,
-                      style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
+                      style: IconButton.styleFrom(
+                        foregroundColor: deleteButtonColor,
+                      ),
                       icon: const Icon(Icons.delete_outline),
                     ),
                 ] else ...<Widget>[
@@ -1411,23 +1543,26 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                     ),
                   ),
                   IconButton(
-                    tooltip: EditorCopy.tooltipEdit(context),
+                    tooltip: context.l10n.editorTooltipEdit,
                     onPressed: _saving
                         ? null
                         : () => setState(() {
-                              _previewMode = false;
-                              if (_activeEntry != null) {
-                                _lastSavedSnapshot =
-                                    editorDraftSnapshotFromEntry(_activeEntry!);
-                              }
-                            }),
+                            _previewMode = false;
+                            if (_activeEntry != null) {
+                              _lastSavedSnapshot = editorDraftSnapshotFromEntry(
+                                _activeEntry!,
+                              );
+                            }
+                          }),
                     icon: const Icon(Icons.edit_outlined),
                   ),
                   if (widget.entryId != null)
                     IconButton(
-                      tooltip: EditorCopy.tooltipDelete(context),
+                      tooltip: context.l10n.editorTooltipDelete,
                       onPressed: _saving ? null : deleteEntry,
-                      style: IconButton.styleFrom(foregroundColor: deleteButtonColor),
+                      style: IconButton.styleFrom(
+                        foregroundColor: deleteButtonColor,
+                      ),
                       icon: const Icon(Icons.delete_outline),
                     ),
                 ],
@@ -1491,7 +1626,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       final DiaryEntry draft = DiaryEntry(
         id: existing?.id ?? (_provisionalEntryId ??= generateEntryId()),
         vaultId: existing?.vaultId ?? session.vaultId,
-        title: _titleController.text.trim().isEmpty ? null : _titleController.text.trim(),
+        title: _titleController.text.trim().isEmpty
+            ? null
+            : _titleController.text.trim(),
         date: parsedDate,
         createdAt: _composeEntryCreatedAt(date: parsedDate, existing: existing),
         updatedAt: now,
@@ -1499,10 +1636,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         markdownBody: _bodyController.text.trim(),
         attachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
       );
-      final DiaryEntry saved = await ref.read(vaultRepositoryProvider).saveEntry(
+      final DiaryEntry saved = await ref
+          .read(vaultRepositoryProvider)
+          .saveEntry(
             session,
             draft,
-            pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
+            pendingAttachments: List<PendingAttachment>.from(
+              _pendingAttachments,
+            ),
           );
       await refreshEntryIndexCaches(ref, editedEntryId: saved.id);
       if (!mounted) {
@@ -1512,7 +1653,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         _savedAssetPathFutures.clear();
         _keptExistingAttachmentIds = List<AssetId>.from(saved.attachmentIds);
         _pendingAttachments.clear();
-        _entryTime = TimeOfDay(hour: saved.createdAt.hour, minute: saved.createdAt.minute);
+        _entryTime = TimeOfDay(
+          hour: saved.createdAt.hour,
+          minute: saved.createdAt.minute,
+        );
         _lastSavedSnapshot = editorDraftSnapshotFromEntry(saved);
         _lastPersistedDraftSnapshot = null;
         _provisionalEntryId = saved.id;
@@ -1601,7 +1745,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               scale: scale,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                  borderRadius: BorderRadius.circular(
+                    PageStyle.radiusThumbSmall,
+                  ),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
                       color: cs.primary.withValues(alpha: 0.28 * t),
@@ -1621,7 +1767,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   ),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
+                  borderRadius: BorderRadius.circular(
+                    PageStyle.radiusThumbSmall,
+                  ),
                   child: SizedBox(
                     width: _editorImageThumbSize,
                     height: _editorImageThumbSize,
@@ -1709,12 +1857,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _pendingNonImageChip(PendingAttachment attachment, {required bool editable}) {
+  Widget _pendingNonImageChip(
+    PendingAttachment attachment, {
+    required bool editable,
+  }) {
     return Chip(
-      label: Text(
-        attachment.originalFilename,
-        overflow: TextOverflow.ellipsis,
-      ),
+      label: Text(attachment.originalFilename, overflow: TextOverflow.ellipsis),
       onDeleted: editable ? () => _removePendingAttachment(attachment) : null,
     );
   }
@@ -1742,12 +1890,16 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     required int newIndex,
   }) {
     final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
-    final List<PendingAttachment> pendingImages = _pendingImageAttachments.toList();
+    final List<PendingAttachment> pendingImages = _pendingImageAttachments
+        .toList();
     final List<Object> slots = <Object>[
       ...savedImages.map((AssetAttachment attachment) => attachment.id),
       ...pendingImages,
     ];
-    if (oldIndex < 0 || oldIndex >= slots.length || newIndex < 0 || newIndex > slots.length) {
+    if (oldIndex < 0 ||
+        oldIndex >= slots.length ||
+        newIndex < 0 ||
+        newIndex > slots.length) {
       return;
     }
 
@@ -1765,15 +1917,17 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     final Map<AssetId, AssetAttachment> byId = <AssetId, AssetAttachment>{
-      for (final AssetAttachment attachment in allSaved) attachment.id: attachment,
+      for (final AssetAttachment attachment in allSaved)
+        attachment.id: attachment,
     };
-    final List<AssetId> nonImageKeptIds = _keptExistingAttachmentIds
-        .where((AssetId id) {
-          final AssetAttachment? attachment = byId[id];
-          return attachment != null && !attachment.mimeType.startsWith('image/');
-        })
+    final List<AssetId> nonImageKeptIds = _keptExistingAttachmentIds.where((
+      AssetId id,
+    ) {
+      final AssetAttachment? attachment = byId[id];
+      return attachment != null && !attachment.mimeType.startsWith('image/');
+    }).toList();
+    final List<PendingAttachment> nonImagePending = _pendingNonImageAttachments
         .toList();
-    final List<PendingAttachment> nonImagePending = _pendingNonImageAttachments.toList();
 
     setState(() {
       _draggingEditorImageIndex = null;
@@ -1783,10 +1937,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       ];
       _pendingAttachments
         ..clear()
-        ..addAll(<PendingAttachment>[
-          ...newImagePending,
-          ...nonImagePending,
-        ]);
+        ..addAll(<PendingAttachment>[...newImagePending, ...nonImagePending]);
     });
     _onDraftFieldChanged();
   }
@@ -1841,9 +1992,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     Widget buildStripItem(int index) {
-      return _editorImageStripSlot(
-        child: buildThumbContent(index),
-      );
+      return _editorImageStripSlot(child: buildThumbContent(index));
     }
 
     return Column(
@@ -1858,13 +2007,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   padding: EdgeInsets.zero,
                   buildDefaultDragHandles: false,
                   clipBehavior: Clip.none,
-                  proxyDecorator: (
-                    Widget child,
-                    int index,
-                    Animation<double> animation,
-                  ) {
-                    return _decorateEditorImageDragProxy(child, animation);
-                  },
+                  proxyDecorator:
+                      (Widget child, int index, Animation<double> animation) {
+                        return _decorateEditorImageDragProxy(child, animation);
+                      },
                   onReorderStart: (int index) {
                     setState(() => _draggingEditorImageIndex = index);
                   },
@@ -1873,16 +2019,19 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                       setState(() => _draggingEditorImageIndex = null);
                     }
                   },
-                  onReorderItem: (int oldIndex, int newIndex) => _reorderEditorImages(
-                    allSaved: allSaved,
-                    oldIndex: oldIndex,
-                    newIndex: newIndex,
-                  ),
+                  onReorderItem: (int oldIndex, int newIndex) =>
+                      _reorderEditorImages(
+                        allSaved: allSaved,
+                        oldIndex: oldIndex,
+                        newIndex: newIndex,
+                      ),
                   itemCount: itemCount,
                   itemBuilder: (BuildContext context, int index) {
                     final Key itemKey;
                     if (index < savedImages.length) {
-                      itemKey = ValueKey<String>('saved-image-${savedImages[index].id}');
+                      itemKey = ValueKey<String>(
+                        'saved-image-${savedImages[index].id}',
+                      );
                     } else {
                       final PendingAttachment attachment =
                           pending[index - savedImages.length];
@@ -1967,7 +2116,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _buildPreviewImageGallery(AsyncValue<List<AssetAttachment>> savedAsync) {
+  Widget _buildPreviewImageGallery(
+    AsyncValue<List<AssetAttachment>> savedAsync,
+  ) {
     final List<AssetAttachment> allSaved = savedAsync.maybeWhen(
       data: (List<AssetAttachment> list) => list,
       orElse: () => <AssetAttachment>[],
@@ -1981,7 +2132,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final double maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : 360;
+        final double maxW = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 360;
         // 與兩欄格狀約略同級的邊長：半寬扣除間距後再留內距
         final double thumbSide = (((maxW - 12) / 2) - 22).clamp(108.0, 320.0);
         final double rowHeight = thumbSide;
@@ -2107,11 +2260,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (ext.isEmpty) {
       ext = 'bin';
     }
-    return ref.read(vaultPathStrategyProvider).assetAbsolutePath(
-          date: date,
-          assetId: attachment.id,
-          extension: ext,
-        );
+    return ref
+        .read(vaultPathStrategyProvider)
+        .assetAbsolutePath(date: date, assetId: attachment.id, extension: ext);
   }
 
   Future<String> _cachedEncryptedPathFuture(AssetAttachment attachment) {
@@ -2177,7 +2328,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     );
   }
 
-  Widget _savedNonImageChip(AssetAttachment attachment, {required bool editable}) {
+  Widget _savedNonImageChip(
+    AssetAttachment attachment, {
+    required bool editable,
+  }) {
     return Chip(
       label: Text(
         attachment.originalFilename ?? attachment.safeFilename,
@@ -2191,7 +2345,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     if (!mounted) {
       return;
     }
-    final List<TagCatalogUsageItem> sorted = await _tagSuggestionsFromIndexAsync();
+    final List<TagCatalogUsageItem> sorted =
+        await _tagSuggestionsFromIndexAsync();
     if (!mounted) {
       return;
     }
@@ -2242,8 +2397,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return null;
     }
     final editorDraftStore = ref.read(editorDraftStoreProvider);
-    final String relativePath = await editorDraftStore.stagePendingFile(_draftKey, trimmed);
-    final String stagedPath = await editorDraftStore.pendingAbsolutePath(_draftKey, relativePath);
+    final String relativePath = await editorDraftStore.stagePendingFile(
+      _draftKey,
+      trimmed,
+    );
+    final String stagedPath = await editorDraftStore.pendingAbsolutePath(
+      _draftKey,
+      relativePath,
+    );
     return PendingAttachment(
       sourcePath: stagedPath,
       mimeType: _mimeTypeFromPath(trimmed),
@@ -2274,8 +2435,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       return;
     }
 
-    final ImageCompressPreset compressPreset =
-        watchPersonalizationPreferences(ref).imageCompressPreset;
+    final ImageCompressPreset compressPreset = watchPersonalizationPreferences(
+      ref,
+    ).imageCompressPreset;
     final Set<String> seenPaths = <String>{};
     final List<PendingAttachment> next = <PendingAttachment>[];
     for (final XFile file in files) {

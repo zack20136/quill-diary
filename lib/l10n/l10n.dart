@@ -13,19 +13,7 @@ const Locale appZhTwLocale = Locale.fromSubtags(
 
 const Locale appEnLocale = Locale('en');
 
-const List<Locale> appSupportedLocales = <Locale>[
-  appZhTwLocale,
-  appEnLocale,
-];
-
-Locale _currentAppLocale = appZhTwLocale;
-
-void updateCurrentAppLocale(Locale locale) {
-  _currentAppLocale = locale;
-}
-
-AppLocalizations get currentAppLocalizations =>
-    lookupAppLocalizations(_currentAppLocale);
+const List<Locale> appSupportedLocales = <Locale>[appZhTwLocale, appEnLocale];
 
 extension AppLocalizationsBuildContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);

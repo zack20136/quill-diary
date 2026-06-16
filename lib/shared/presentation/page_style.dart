@@ -18,10 +18,7 @@ abstract final class PageStyle {
             cs.surfaceContainerLow.withValues(alpha: 0.42),
             cs.surface,
           )
-        : Color.alphaBlend(
-            cs.onSurface.withValues(alpha: 0.04),
-            cs.surface,
-          );
+        : Color.alphaBlend(cs.onSurface.withValues(alpha: 0.04), cs.surface);
     return Color.alphaBlend(
       cs.primary.withValues(alpha: isLight ? 0.095 : 0.08),
       base,
@@ -29,9 +26,12 @@ abstract final class PageStyle {
   }
 
   static List<Color> homeHeaderTabGradient(ColorScheme cs) => <Color>[
-        Color.alphaBlend(cs.primary.withValues(alpha: 0.07), cs.surfaceContainerLow),
-        scaffoldWash(cs),
-      ];
+    Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.07),
+      cs.surfaceContainerLow,
+    ),
+    scaffoldWash(cs),
+  ];
 
   static Color primaryMutedOutline(ColorScheme cs) =>
       Color.alphaBlend(cs.primary.withValues(alpha: 0.14), cs.outlineVariant);
@@ -40,7 +40,7 @@ abstract final class PageStyle {
       BorderSide(color: cs.outlineVariant.withValues(alpha: opacity));
 
   static Color previewPanelFill(ColorScheme cs) => Color.alphaBlend(
-        cs.surfaceContainerHighest.withValues(alpha: 0.2),
-        cs.surface.withValues(alpha: 0.88),
-      );
+    cs.surfaceContainerHighest.withValues(alpha: 0.2),
+    cs.surface.withValues(alpha: 0.88),
+  );
 }

@@ -3,10 +3,61 @@ import 'package:path/path.dart' as p;
 
 import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
+import '../../l10n/l10n.dart';
 import '../utils/weekday_zh.dart';
 
 /// App 內使用者可見的日期、時間、數量與檔案大小格式化（單一來源）。
 abstract final class DisplayFormat {
+  static bool _isEnglish(AppLocalizations l10n) =>
+      l10n.localeName.startsWith('en');
+
+  static String formatDateOnly(AppLocalizations l10n, DateOnly date) {
+    return _isEnglish(l10n)
+        ? DateFormat.yMd('en').format(date.toDateTime())
+        : formatDateOnlyZh(date);
+  }
+
+  static String formatDateOnlyWithWeekday(
+    AppLocalizations l10n,
+    DateOnly date,
+  ) {
+    final DateTime local = date.toDateTime();
+    if (_isEnglish(l10n)) {
+      return '${DateFormat.yMd('en').format(local)} ${DateFormat('EEE', 'en').format(local)}';
+    }
+    return formatDateOnlyWithWeekdayZh(date);
+  }
+
+  static String formatYearMonth(AppLocalizations l10n, int year, int month) {
+    if (_isEnglish(l10n)) {
+      return DateFormat('MMM yyyy', 'en').format(DateTime(year, month));
+    }
+    return formatYearMonthZh(year, month);
+  }
+
+  static String formatYear(AppLocalizations l10n, int year) {
+    return _isEnglish(l10n) ? '$year' : formatYearZh(year);
+  }
+
+  static String formatDateTime(AppLocalizations l10n, DateTime local) {
+    final DateTime value = local.toLocal();
+    if (_isEnglish(l10n)) {
+      return '${DateFormat.yMd('en').format(value)} ${formatTime24h(value)}';
+    }
+    return formatDateTimeZh(value);
+  }
+
+  static String formatWeekdayAndTime(AppLocalizations l10n, DateOnly date, DateTime at) {
+    if (_isEnglish(l10n)) {
+      return '${DateFormat('EEE', 'en').format(date.toDateTime())} ${formatTime24h(at)}';
+    }
+    return '${weekdayZhLongFromDateOnly(date)} ${formatTime24h(at)}';
+  }
+
+  static String formatCharCount(AppLocalizations l10n, int count) {
+    return formatCountUnit(count, _isEnglish(l10n) ? 'chars' : '字');
+  }
+
   /// 中文日期：`2026年6月9日`。
   static String formatDateOnlyZh(DateOnly date) {
     return _formatDatePartZh(date.toDateTime());

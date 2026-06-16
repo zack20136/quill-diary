@@ -43,12 +43,12 @@ void main() {
         supportedPlatformProvider.overrideWith((Ref ref) => true),
         vaultRepositoryProvider.overrideWithValue(repository),
         effectiveAppSessionProvider.overrideWith(
-          (Ref ref) async => AppSessionState(
-            status: AppLockStatus.unlocked,
-            session: session,
-          ),
+          (Ref ref) async =>
+              AppSessionState(status: AppLockStatus.unlocked, session: session),
         ),
-        tagCatalogProvider.overrideWith((Ref ref) async => repository.tagCatalog),
+        tagCatalogProvider.overrideWith(
+          (Ref ref) async => repository.tagCatalog,
+        ),
         tagAccentArgbMapProvider.overrideWith(
           (Ref ref) async => TagStylesStore.toAccentMap(repository.tagCatalog),
         ),
@@ -80,7 +80,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('overview export stays enabled for all scope', (WidgetTester tester) async {
+  testWidgets('overview export stays enabled for all scope', (
+    WidgetTester tester,
+  ) async {
     final ProviderContainer container = buildContainer(
       FakeEntryIndexVaultRepository(
         allEntries: <EntryIndexRecord>[
@@ -103,7 +105,9 @@ void main() {
     expect(tester.widget<FilledButton>(exportButton).onPressed, isNotNull);
   });
 
-  testWidgets('calendar tab renders calendar and daily entries', (WidgetTester tester) async {
+  testWidgets('calendar tab renders calendar and daily entries', (
+    WidgetTester tester,
+  ) async {
     final EntryIndexRecord calendarEntry = buildEntryIndexRecord(
       id: 'jrn_calendar_1',
       title: 'calendar note',
@@ -121,15 +125,23 @@ void main() {
     );
 
     container.read(homeTabProvider.notifier).set(HomeTab.calendar);
-    container.read(calendarVisibleMonthProvider.notifier).set(DateTime(2026, 5));
-    container.read(calendarSelectedDateProvider.notifier).set(const DateOnly('2026-05-20'));
+    container
+        .read(calendarVisibleMonthProvider.notifier)
+        .set(DateTime(2026, 5));
+    container
+        .read(calendarSelectedDateProvider.notifier)
+        .set(const DateOnly('2026-05-20'));
 
     await pumpHomePage(tester, container);
 
-    final String dateLabel =
-        DisplayFormat.formatDateOnlyZh(const DateOnly('2026-05-20'));
+    final String dateLabel = DisplayFormat.formatDateOnlyZh(
+      const DateOnly('2026-05-20'),
+    );
     expect(
-      find.text(zhL10n.homeDiarySectionTitleForDate(dateLabel), skipOffstage: false),
+      find.text(
+        zhL10n.homeDiarySectionTitleForDate(dateLabel),
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
     expect(
@@ -141,7 +153,9 @@ void main() {
     );
   });
 
-  testWidgets('IndexedStack keeps calendar mounted after tab switch', (WidgetTester tester) async {
+  testWidgets('IndexedStack keeps calendar mounted after tab switch', (
+    WidgetTester tester,
+  ) async {
     final EntryIndexRecord calendarEntry = buildEntryIndexRecord(
       id: 'jrn_calendar_keepalive',
       title: 'keepalive note',
@@ -159,8 +173,12 @@ void main() {
     );
 
     container.read(homeTabProvider.notifier).set(HomeTab.calendar);
-    container.read(calendarVisibleMonthProvider.notifier).set(DateTime(2026, 5));
-    container.read(calendarSelectedDateProvider.notifier).set(const DateOnly('2026-05-20'));
+    container
+        .read(calendarVisibleMonthProvider.notifier)
+        .set(DateTime(2026, 5));
+    container
+        .read(calendarSelectedDateProvider.notifier)
+        .set(const DateOnly('2026-05-20'));
 
     await pumpHomePage(tester, container);
     expect(find.byType(TableCalendar<Object>), findsOneWidget);
@@ -181,12 +199,22 @@ void main() {
     );
   });
 
-  testWidgets('tags tab shows selected tag preview in the same scroll flow', (WidgetTester tester) async {
+  testWidgets('tags tab shows selected tag preview in the same scroll flow', (
+    WidgetTester tester,
+  ) async {
     final ProviderContainer container = buildContainer(
       FakeEntryIndexVaultRepository(
         allEntries: <EntryIndexRecord>[
-          buildEntryIndexRecord(id: 'jrn_trip', title: 'trip note', tags: const <String>['travel']),
-          buildEntryIndexRecord(id: 'jrn_work', title: 'work note', tags: const <String>['work']),
+          buildEntryIndexRecord(
+            id: 'jrn_trip',
+            title: 'trip note',
+            tags: const <String>['travel'],
+          ),
+          buildEntryIndexRecord(
+            id: 'jrn_work',
+            title: 'work note',
+            tags: const <String>['work'],
+          ),
         ],
         tagCatalog: const <TagCatalogItem>[
           TagCatalogItem(label: 'travel'),
@@ -235,7 +263,9 @@ void main() {
     );
   });
 
-  testWidgets('overview compact cards do not overflow on narrow screens', (WidgetTester tester) async {
+  testWidgets('overview compact cards do not overflow on narrow screens', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 900);
     addTearDown(tester.view.resetPhysicalSize);
@@ -246,7 +276,8 @@ void main() {
         allEntries: <EntryIndexRecord>[
           buildEntryIndexRecord(
             id: 'jrn_overflow',
-            title: 'very long overview card title used to verify compact layouts on narrow screens',
+            title:
+                'very long overview card title used to verify compact layouts on narrow screens',
             previewText:
                 'A longer preview body is included here to exercise title, tags, dates, and image strip layout without render overflows.',
             tags: const <String>[

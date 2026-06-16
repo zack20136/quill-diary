@@ -12,10 +12,12 @@ class TestVaultPathStrategy extends VaultPathStrategy {
   Future<Directory> appRootDirectory() async => root;
 
   @override
-  Future<Directory> vaultRootDirectory() async => Directory(p.join(root.path, 'vault'));
+  Future<Directory> vaultRootDirectory() async =>
+      Directory(p.join(root.path, 'vault'));
 
   @override
-  Future<Directory> indexRootDirectory() async => Directory(p.join(root.path, 'index'));
+  Future<Directory> indexRootDirectory() async =>
+      Directory(p.join(root.path, 'index'));
 }
 
 class TmpIndexPathStrategy extends VaultPathStrategy {

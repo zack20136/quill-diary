@@ -23,9 +23,9 @@ class VaultBackupIo {
     required VaultPathStrategy pathStrategy,
     required VaultRepository repository,
     required IndexDatabaseManager indexDatabaseManager,
-  })  : _pathStrategy = pathStrategy,
-        _repository = repository,
-        _indexDatabaseManager = indexDatabaseManager;
+  }) : _pathStrategy = pathStrategy,
+       _repository = repository,
+       _indexDatabaseManager = indexDatabaseManager;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
@@ -109,9 +109,12 @@ class VaultBackupIo {
     var message = ok ? '備份檔案檢查通過。' : layout.failureMessage;
 
     if (ok && layout.hasRecovery) {
-      final Uint8List? recoveryBytes =
-          readZipEntry(zip.archive, pathSuffix: 'recovery.json');
-      if (recoveryBytes == null || parseRecoveryMetadataBytes(recoveryBytes) == null) {
+      final Uint8List? recoveryBytes = readZipEntry(
+        zip.archive,
+        pathSuffix: 'recovery.json',
+      );
+      if (recoveryBytes == null ||
+          parseRecoveryMetadataBytes(recoveryBytes) == null) {
         ok = false;
         message = VaultBackupLayout.invalidRecoveryJsonMessage;
       }
@@ -134,18 +137,17 @@ class VaultBackupIo {
         if (!layout.isRestorable) {
           throw StateError(layout.failureMessage);
         }
-        final Uint8List? recoveryBytes =
-            readZipEntry(zip.archive, pathSuffix: 'recovery.json');
+        final Uint8List? recoveryBytes = readZipEntry(
+          zip.archive,
+          pathSuffix: 'recovery.json',
+        );
         final RecoveryMetadata? metadata = recoveryBytes == null
             ? null
             : parseRecoveryMetadataBytes(recoveryBytes);
         if (metadata == null) {
           throw StateError(VaultBackupLayout.invalidRecoveryJsonMessage);
         }
-        return BackupRecoveryPreview(
-          hasRecovery: true,
-          metadata: metadata,
-        );
+        return BackupRecoveryPreview(hasRecovery: true, metadata: metadata);
       } finally {
         await zip.close();
       }
@@ -160,12 +162,17 @@ class VaultBackupIo {
     return prepareRestorePreview(backupFile);
   }
 
-  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
+  Future<void> verifyBackupRecoveryKey(
+    File backupFile,
+    String recoveryKey,
+  ) async {
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
-        final Uint8List? recoveryBytes =
-            readZipEntry(zip.archive, pathSuffix: 'recovery.json');
+        final Uint8List? recoveryBytes = readZipEntry(
+          zip.archive,
+          pathSuffix: 'recovery.json',
+        );
         final RecoveryMetadata? metadata = recoveryBytes == null
             ? null
             : parseRecoveryMetadataBytes(recoveryBytes);
@@ -270,14 +277,17 @@ class VaultBackupIo {
       Error.throwWithStackTrace(error, stackTrace);
     }
 
-    final Directory strayVaultIndex = Directory(p.join(vaultRoot.path, 'index'));
+    final Directory strayVaultIndex = Directory(
+      p.join(vaultRoot.path, 'index'),
+    );
     if (strayVaultIndex.existsSync()) {
       await strayVaultIndex.delete(recursive: true);
     }
 
     if (localTagCatalog.isNotEmpty) {
       final TagStylesStore tagStylesStore = TagStylesStore(_pathStrategy);
-      final List<TagCatalogItem> restoredVaultStyles = await tagStylesStore.read();
+      final List<TagCatalogItem> restoredVaultStyles = await tagStylesStore
+          .read();
       await tagStylesStore.write(
         TagStylesStore.merge(restoredVaultStyles, localTagCatalog),
       );
@@ -304,17 +314,26 @@ class VaultBackupIo {
   }
 
   void _validateRestoredVaultPayload(Directory root) {
-    final bool hasRecovery = File(p.join(root.path, 'recovery.json')).existsSync();
-    final bool hasEntries = Directory(p.join(root.path, 'entries')).existsSync();
+    final bool hasRecovery = File(
+      p.join(root.path, 'recovery.json'),
+    ).existsSync();
+    final bool hasEntries = Directory(
+      p.join(root.path, 'entries'),
+    ).existsSync();
     if (!hasRecovery && !hasEntries) {
       throw StateError('備份檔內容不完整，找不到日記庫資料。');
     }
   }
 
-  Future<void> _copyDirectoryTree(Directory source, Directory destination) async {
+  Future<void> _copyDirectoryTree(
+    Directory source,
+    Directory destination,
+  ) async {
     await destination.create(recursive: true);
-    await for (final FileSystemEntity entity
-        in source.list(recursive: true, followLinks: false)) {
+    await for (final FileSystemEntity entity in source.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       final String relative = p.relative(entity.path, from: source.path);
       final String targetPath = p.join(destination.path, relative);
       if (entity is Directory) {

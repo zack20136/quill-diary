@@ -29,7 +29,10 @@ void main() {
       );
       expect(access.canBackup, isFalse);
       expect(access.canRestore, isTrue);
-      expect(access.backupDisabledReason, VaultTransferCopy.needsUnlockForBackup(zhL10n));
+      expect(
+        access.backupDisabledReason,
+        zhL10n.vaultTransferNeedsUnlockForBackup,
+      );
       expect(access.restoreDisabledReason, isNull);
     });
 
@@ -54,7 +57,10 @@ void main() {
       );
       expect(access.canBackup, isFalse);
       expect(access.canRestore, isFalse);
-      expect(access.restoreDisabledReason, VaultTransferCopy.needsUnlockForRestore(zhL10n));
+      expect(
+        access.restoreDisabledReason,
+        zhL10n.vaultTransferNeedsUnlockForRestore,
+      );
     });
 
     test('未解鎖且僅缺復原金鑰時備份提示建立金鑰', () {
@@ -68,7 +74,7 @@ void main() {
       expect(access.canRestore, isTrue);
       expect(
         access.backupDisabledReason,
-        VaultTransferCopy.needsRecoveryKeyForBackup(zhL10n),
+        zhL10n.vaultTransferNeedsRecoveryKeyForBackup,
       );
     });
   });
@@ -87,7 +93,7 @@ void main() {
           isA<StateError>().having(
             (StateError error) => error.message,
             'message',
-            VaultTransferCopy.needsUnlockForRestore(zhL10n),
+            zhL10n.vaultTransferNeedsUnlockForRestore,
           ),
         ),
       );

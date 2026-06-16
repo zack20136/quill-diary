@@ -19,7 +19,9 @@ class EasyDiaryPhotoIndex {
       return EasyDiaryPhotoIndex._(byKey);
     }
 
-    for (final FileSystemEntity entity in photosDirectory.listSync(followLinks: false)) {
+    for (final FileSystemEntity entity in photosDirectory.listSync(
+      followLinks: false,
+    )) {
       if (entity is! File) {
         continue;
       }
@@ -58,7 +60,10 @@ class EasyDiaryPhotoIndex {
 
 /// 從檔案開頭位元組判斷圖片 MIME（Easy Diary 相片常無副檔名）。
 String sniffImageMimeType(Uint8List header, {String? fileNameHint}) {
-  if (header.length >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF) {
+  if (header.length >= 3 &&
+      header[0] == 0xFF &&
+      header[1] == 0xD8 &&
+      header[2] == 0xFF) {
     return 'image/jpeg';
   }
   if (header.length >= 8 &&

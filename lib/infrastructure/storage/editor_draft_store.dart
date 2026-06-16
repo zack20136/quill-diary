@@ -57,11 +57,16 @@ class EditorDraftStore {
     UnlockedVaultSession session,
   ) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    final List<int> recoveryWrapKey = session.recoveryWrapKey ??
+    final List<int> recoveryWrapKey =
+        session.recoveryWrapKey ??
         (throw StateError('目前 session 缺少 recovery wrap key。'));
-    final Directory draftDir = await _pathStrategy.editorDraftDirectory(draftKey);
+    final Directory draftDir = await _pathStrategy.editorDraftDirectory(
+      draftKey,
+    );
     await draftDir.create(recursive: true);
-    await (await _pathStrategy.editorDraftPendingDirectory(draftKey)).create(recursive: true);
+    await (await _pathStrategy.editorDraftPendingDirectory(
+      draftKey,
+    )).create(recursive: true);
 
     final Uint8List plainBytes = Uint8List.fromList(
       utf8.encode(jsonEncode(record.toJson())),
@@ -76,13 +81,16 @@ class EditorDraftStore {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     );
-    await File(await _pathStrategy.editorDraftFilePath(draftKey))
-        .writeAsBytes(encrypted.toFileBytes(), flush: true);
+    await File(
+      await _pathStrategy.editorDraftFilePath(draftKey),
+    ).writeAsBytes(encrypted.toFileBytes(), flush: true);
     await _prunePendingFiles(draftKey, record);
   }
 
   Future<void> delete(String draftKey) async {
-    final Directory draftDir = await _pathStrategy.editorDraftDirectory(draftKey);
+    final Directory draftDir = await _pathStrategy.editorDraftDirectory(
+      draftKey,
+    );
     if (!draftDir.existsSync()) {
       return;
     }
@@ -90,10 +98,7 @@ class EditorDraftStore {
   }
 
   /// 將來源檔複製到草稿 pending 目錄，回傳相對路徑。
-  Future<String> stagePendingFile(
-    String draftKey,
-    String sourcePath,
-  ) async {
+  Future<String> stagePendingFile(String draftKey, String sourcePath) async {
     final String trimmed = sourcePath.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError.value(sourcePath, 'sourcePath', '來源檔案路徑不可為空。');
@@ -103,17 +108,21 @@ class EditorDraftStore {
       throw FileSystemException('找不到待暫存的附件', trimmed);
     }
 
-    final Directory pendingDir = await _pathStrategy.editorDraftPendingDirectory(draftKey);
+    final Directory pendingDir = await _pathStrategy
+        .editorDraftPendingDirectory(draftKey);
     await pendingDir.create(recursive: true);
     final String fileName =
         '${DateTime.now().microsecondsSinceEpoch}_${_sanitizeFileName(p.basename(trimmed))}';
-    final File copied = await sourceFile.copy(p.join(pendingDir.path, fileName));
+    final File copied = await sourceFile.copy(
+      p.join(pendingDir.path, fileName),
+    );
     return pendingRelativePath(draftKey, copied.path);
   }
 
   /// 掃描 drafts 根目錄，回傳仍有 draft.json.enc 的 key 集合。
   Future<Set<String>> listDraftKeys() async {
-    final Directory draftsRoot = await _pathStrategy.editorDraftsRootDirectory();
+    final Directory draftsRoot = await _pathStrategy
+        .editorDraftsRootDirectory();
     if (!draftsRoot.existsSync()) {
       return <String>{};
     }
@@ -134,13 +143,23 @@ class EditorDraftStore {
     return File(await _pathStrategy.editorDraftFilePath(draftKey)).existsSync();
   }
 
-  Future<String> pendingRelativePath(String draftKey, String absolutePath) async {
-    final Directory draftDir = await _pathStrategy.editorDraftDirectory(draftKey);
+  Future<String> pendingRelativePath(
+    String draftKey,
+    String absolutePath,
+  ) async {
+    final Directory draftDir = await _pathStrategy.editorDraftDirectory(
+      draftKey,
+    );
     return p.relative(absolutePath, from: draftDir.path).replaceAll('\\', '/');
   }
 
-  Future<String> pendingAbsolutePath(String draftKey, String relativePath) async {
-    final Directory draftDir = await _pathStrategy.editorDraftDirectory(draftKey);
+  Future<String> pendingAbsolutePath(
+    String draftKey,
+    String relativePath,
+  ) async {
+    final Directory draftDir = await _pathStrategy.editorDraftDirectory(
+      draftKey,
+    );
     return p.normalize(
       p.join(draftDir.path, relativePath.replaceAll('/', p.separator)),
     );
@@ -168,14 +187,19 @@ class EditorDraftStore {
     String draftKey,
     EditorDraftRecord record,
   ) async {
-    final Directory pendingDir = await _pathStrategy.editorDraftPendingDirectory(draftKey);
+    final Directory pendingDir = await _pathStrategy
+        .editorDraftPendingDirectory(draftKey);
     if (!pendingDir.existsSync()) {
       return;
     }
     final Set<String> keepRelativePaths = record.pendingAttachments
-        .map((EditorDraftPendingAttachment attachment) => attachment.relativePath)
+        .map(
+          (EditorDraftPendingAttachment attachment) => attachment.relativePath,
+        )
         .toSet();
-    for (final FileSystemEntity entity in pendingDir.listSync(recursive: true)) {
+    for (final FileSystemEntity entity in pendingDir.listSync(
+      recursive: true,
+    )) {
       if (entity is! File) {
         continue;
       }

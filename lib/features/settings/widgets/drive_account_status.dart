@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
-import '../settings_copy.dart';
 
 /// 精簡的 Google Drive 帳號連線狀態列。
 class DriveAccountStatus extends StatelessWidget {
@@ -16,6 +16,7 @@ class DriveAccountStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme colorScheme = theme.colorScheme;
 
@@ -25,7 +26,7 @@ class DriveAccountStatus extends StatelessWidget {
         iconColor: colorScheme.onSurfaceVariant,
         iconBackground: colorScheme.surfaceContainerHighest,
         child: Text(
-          SettingsDriveBackupCopy.disconnectedLabel,
+          l10n.settingsDriveBackupDisconnectedLabel,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
             height: 1.4,
@@ -36,7 +37,7 @@ class DriveAccountStatus extends StatelessWidget {
 
     final String label = accountLabel?.trim().isNotEmpty == true
         ? accountLabel!.trim()
-        : SettingsDriveBackupCopy.fallbackAccountLabel;
+        : l10n.settingsDriveBackupFallbackAccountLabel;
 
     return _DriveAccountStatusCard(
       icon: Icons.cloud_done_outlined,

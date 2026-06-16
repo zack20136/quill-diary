@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import '../shared/presentation/app_typography.dart';
 import '../shared/presentation/page_style.dart';
 
-ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Brightness.light}) {
-  final ColorScheme scheme = dynamicScheme ??
+ThemeData buildAppTheme({
+  ColorScheme? dynamicScheme,
+  Brightness brightness = Brightness.light,
+}) {
+  final ColorScheme scheme =
+      dynamicScheme ??
       ColorScheme.fromSeed(
         seedColor: const Color(0xFF4C7A67),
         brightness: brightness,
@@ -21,8 +25,9 @@ ThemeData buildAppTheme({ColorScheme? dynamicScheme, Brightness brightness = Bri
     brightness: brightness,
     scheme: scheme,
   );
-  final Color foreground =
-      brightness == Brightness.light ? AppTypography.ink : scheme.onSurface;
+  final Color foreground = brightness == Brightness.light
+      ? AppTypography.ink
+      : scheme.onSurface;
 
   final ThemeData flexTheme = brightness == Brightness.dark
       ? FlexThemeData.dark(

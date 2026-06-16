@@ -1,13 +1,12 @@
 import 'dart:async' show unawaited;
+import '../../../l10n/l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/database/index_database.dart';
-import '../../../shared/copy/common_copy.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/state/app_session_state.dart';
-import '../home_copy.dart';
 import '../home_export_actions.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
@@ -16,10 +15,7 @@ import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
 
 class HomeTimelinePane extends ConsumerStatefulWidget {
-  const HomeTimelinePane({
-    required this.sessionState,
-    super.key,
-  });
+  const HomeTimelinePane({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
 
@@ -42,7 +38,9 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
       homeSearchQueryProvider,
       (String? previous, String next) {
         _syncSearchController(next);
-        final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
+        final List<EntryIndexRecord>? visible = ref
+            .read(homeEntriesProvider)
+            .value;
         if (visible != null) {
           ref
               .read(homeEntrySelectionProvider.notifier)
@@ -85,10 +83,16 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   @override
   Widget build(BuildContext context) {
     final AppSessionState sessionState = widget.sessionState;
-    final bool canReadEntries = sessionState.isUnlocked && sessionState.session != null;
-    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(homeEntriesProvider);
-    final HomeEntrySelectionState selection = ref.watch(homeEntrySelectionProvider);
-    final List<EntryIndexRecord> entries = entriesAsync.value ?? const <EntryIndexRecord>[];
+    final bool canReadEntries =
+        sessionState.isUnlocked && sessionState.session != null;
+    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(
+      homeEntriesProvider,
+    );
+    final HomeEntrySelectionState selection = ref.watch(
+      homeEntrySelectionProvider,
+    );
+    final List<EntryIndexRecord> entries =
+        entriesAsync.value ?? const <EntryIndexRecord>[];
     final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
     final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
 
@@ -101,44 +105,51 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
               ? HomeSelectionToolbar(
                   key: const ValueKey<String>('home-selection-toolbar'),
                   selectedCount: selection.selectedIds.length,
-                  allSelected: entries.isNotEmpty &&
+                  allSelected:
+                      entries.isNotEmpty &&
                       selection.selectedIds.length == entries.length &&
-                      entries.every((EntryIndexRecord item) => selection.selectedIds.contains(item.id)),
-                  onCancel: () => ref.read(homeEntrySelectionProvider.notifier).clear(),
-                  onSelectAll: () => ref.read(homeEntrySelectionProvider.notifier).selectAll(
+                      entries.every(
+                        (EntryIndexRecord item) =>
+                            selection.selectedIds.contains(item.id),
+                      ),
+                  onCancel: () =>
+                      ref.read(homeEntrySelectionProvider.notifier).clear(),
+                  onSelectAll: () => ref
+                      .read(homeEntrySelectionProvider.notifier)
+                      .selectAll(
                         entries.map((EntryIndexRecord item) => item.id),
                       ),
                   actions: <HomeSelectionAction>[
                     HomeSelectionAction(
-                      tooltip: HomeCopy.tooltipExportHtml(context),
+                      tooltip: context.l10n.homeTooltipExportHtml,
                       icon: Icons.html,
                       enabled: canActOnSelectedEntries,
                       onPressed: !canActOnSelectedEntries
                           ? null
                           : () => unawaited(
-                                exportSelectedHomeEntriesAsHtml(
-                                  context,
-                                  ref,
-                                  sessionState,
-                                  selection.selectedIds,
-                                ),
+                              exportSelectedHomeEntriesAsHtml(
+                                context,
+                                ref,
+                                sessionState,
+                                selection.selectedIds,
                               ),
+                            ),
                     ),
                     HomeSelectionAction(
-                      tooltip: HomeCopy.tooltipDelete(context),
+                      tooltip: context.l10n.homeTooltipDelete,
                       icon: Icons.delete_outline_rounded,
                       destructive: true,
                       enabled: canActOnSelectedEntries,
                       onPressed: !canActOnSelectedEntries
                           ? null
                           : () => unawaited(
-                                deleteSelectedHomeEntries(
-                                  context,
-                                  ref,
-                                  sessionState,
-                                  selection.selectedIds,
-                                ),
+                              deleteSelectedHomeEntries(
+                                context,
+                                ref,
+                                sessionState,
+                                selection.selectedIds,
                               ),
+                            ),
                     ),
                   ],
                 )
@@ -152,14 +163,16 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         child: HomeSearchTextField(
                           controller: _searchController,
                           enabled: canReadEntries,
-                          hintText: HomeCopy.searchHint(context),
+                          hintText: context.l10n.homeSearchHint,
                           onChanged: _handleSearchChanged,
                         ),
                       ),
                       const SizedBox(width: 8),
                       HomeSearchSelectionToggleButton(
                         onPressed: canReadEntries
-                            ? () => ref.read(homeEntrySelectionProvider.notifier).enterSelection()
+                            ? () => ref
+                                  .read(homeEntrySelectionProvider.notifier)
+                                  .enterSelection()
                             : null,
                       ),
                     ],
@@ -174,16 +187,17 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                     if (loadedEntries.isEmpty) {
                       return HomeStateCard(
                         icon: Icons.auto_stories_outlined,
-                        title: HomeCopy.emptyDiaryTitle(context),
-                        message: HomeCopy.emptyDiaryMessage(context),
+                        title: context.l10n.homeEmptyDiaryTitle,
+                        message: context.l10n.homeEmptyDiaryMessage,
                       );
                     }
                     return HomeEntryList(entries: loadedEntries);
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (Object error, StackTrace _) => HomeStateCard(
                     icon: Icons.error_outline,
-                    title: CommonCopy.readFailureTitle(context),
+                    title: context.l10n.commonReadFailureTitle,
                     message: userFacingErrorMessage(error),
                   ),
                 )

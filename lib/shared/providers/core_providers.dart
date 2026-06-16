@@ -90,7 +90,9 @@ final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
 });
 
 /// 記住上次選擇的外部資料夾（備份交付與可攜式匯入／匯出共用）。
-final externalDirectoryStoreProvider = Provider<ExternalDirectoryStore>((Ref ref) {
+final externalDirectoryStoreProvider = Provider<ExternalDirectoryStore>((
+  Ref ref,
+) {
   return ExternalDirectoryStore(ref.watch(vaultPathStrategyProvider));
 });
 
@@ -112,4 +114,3 @@ final vaultTransferServiceProvider = Provider<VaultTransferService>((Ref ref) {
     pathStrategy: ref.watch(vaultPathStrategyProvider),
   );
 });
-

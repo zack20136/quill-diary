@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/billing_providers.dart';
-import '../settings_copy.dart';
+import '../settings_messages.dart';
 import '../state/sponsor_billing_state.dart';
 import '../widgets/settings_info_cards.dart';
 
@@ -30,6 +31,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
@@ -42,7 +44,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
       if (next.purchasePhase == SponsorPurchasePhase.thanks) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(SettingsSupportCopy.thanksMessage),
+            content: Text(l10n.settingsSupportThanksMessage),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -52,7 +54,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     return Scaffold(
       backgroundColor: pageBackground,
       appBar: AppBar(
-        title: Text(SettingsSupportCopy.pageTitle),
+        title: Text(l10n.settingsSupportPageTitle),
         backgroundColor: pageBackground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -64,9 +66,9 @@ class _SupportPageState extends ConsumerState<SupportPage> {
           children: <Widget>[
             SettingsGradientHeroCard(
               icon: Icons.local_cafe_rounded,
-              title: SettingsSupportCopy.heroTitle,
-              body: SettingsSupportCopy.heroBody,
-              chips: SettingsSupportCopy.heroChips,
+              title: l10n.settingsSupportHeroTitle,
+              body: l10n.settingsSupportHeroBody,
+              chips: settingsSupportHeroChips(l10n),
               accentColor: cs.secondary,
               startAlpha: 0.20,
               endAlpha: 0.12,
@@ -76,7 +78,9 @@ class _SupportPageState extends ConsumerState<SupportPage> {
               billing: billing,
               onBuy: (String productId) {
                 unawaited(
-                  ref.read(sponsorBillingProvider.notifier).buyProduct(productId),
+                  ref
+                      .read(sponsorBillingProvider.notifier)
+                      .buyProduct(productId),
                 );
               },
               onRetryLoad: () {
@@ -90,12 +94,12 @@ class _SupportPageState extends ConsumerState<SupportPage> {
             const SizedBox(height: 16),
             _SupportInfoCard(
               icon: Icons.payments_outlined,
-              title: SettingsSupportCopy.complianceCardTitle,
-              body: SettingsSupportCopy.complianceCardBody,
+              title: l10n.settingsSupportComplianceCardTitle,
+              body: l10n.settingsSupportComplianceCardBody,
             ),
             const SizedBox(height: 14),
             Text(
-              SettingsSupportCopy.footerNote,
+              l10n.settingsSupportFooterNote,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: cs.outline,

@@ -36,8 +36,14 @@ const List<Color> kEditorTagAccentPresets = <Color>[
   );
   final double lum = bg.computeLuminance();
   final Color fg = lum > 0.54
-      ? Color.alphaBlend(Colors.black.withValues(alpha: 0.78), accent).withValues(alpha: 1)
-      : Color.alphaBlend(Colors.white.withValues(alpha: 0.95), accent).withValues(alpha: 1);
+      ? Color.alphaBlend(
+          Colors.black.withValues(alpha: 0.78),
+          accent,
+        ).withValues(alpha: 1)
+      : Color.alphaBlend(
+          Colors.white.withValues(alpha: 0.95),
+          accent,
+        ).withValues(alpha: 1);
   return (bg, fg);
 }
 

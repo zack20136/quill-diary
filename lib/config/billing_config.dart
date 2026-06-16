@@ -9,6 +9,7 @@ abstract final class BillingConfig {
     'sponsor_super',
   ];
 
-  static final Set<String> sponsorProductIds =
-      Set<String>.unmodifiable(sponsorProductIdsOrdered);
+  static final Set<String> sponsorProductIds = Set<String>.unmodifiable(
+    sponsorProductIdsOrdered,
+  );
 }

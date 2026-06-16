@@ -25,7 +25,8 @@ void main() {
   });
 
   test('save list search load delete and rebuild index', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
 
     final DiaryEntry draft = DiaryEntry(
@@ -40,33 +41,43 @@ void main() {
     );
 
     final DiaryEntry saved = await harness.repository.saveEntry(session, draft);
-    final List<EntryIndexRecord> entries = await harness.repository.listEntries();
+    final List<EntryIndexRecord> entries = await harness.repository
+        .listEntries();
     expect(entries.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
 
-    final List<EntryIndexRecord> searchResults =
-        await harness.repository.searchEntries('trip');
-    final List<EntryIndexRecord> tagResults =
-        await harness.repository.searchEntries('trav');
+    final List<EntryIndexRecord> searchResults = await harness.repository
+        .searchEntries('trip');
+    final List<EntryIndexRecord> tagResults = await harness.repository
+        .searchEntries('trav');
     expect(searchResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
     expect(tagResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
 
-    final DiaryEntry? loaded = await harness.repository.loadEntry(session, saved.id);
+    final DiaryEntry? loaded = await harness.repository.loadEntry(
+      session,
+      saved.id,
+    );
     expect(loaded?.markdownBody, draft.markdownBody);
     expect(loaded?.title, draft.title);
     expect(loaded?.tags, draft.tags);
 
     await harness.repository.deleteEntry(session, saved.id);
-    final List<EntryIndexRecord> afterDelete = await harness.repository.listEntries();
+    final List<EntryIndexRecord> afterDelete = await harness.repository
+        .listEntries();
     expect(afterDelete.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
 
     await harness.repository.rebuildIndex(session);
-    final List<EntryIndexRecord> afterRebuildList = await harness.repository.listEntries();
-    expect(afterRebuildList.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
+    final List<EntryIndexRecord> afterRebuildList = await harness.repository
+        .listEntries();
+    expect(
+      afterRebuildList.any((EntryIndexRecord e) => e.id == saved.id),
+      isFalse,
+    );
     expect(await harness.repository.loadEntry(session, saved.id), isNull);
   });
 
   test('searchEntries matches substrings anywhere in the full body', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
     final String longTail = ' ending marker after the preview boundary';
 
@@ -84,23 +95,36 @@ void main() {
 
     final DiaryEntry saved = await harness.repository.saveEntry(session, draft);
 
-    final List<EntryIndexRecord> midTokenResults =
-        await harness.repository.searchEntries('x30');
-    final List<EntryIndexRecord> numericResults =
-        await harness.repository.searchEntries('30');
-    final List<EntryIndexRecord> singleCharResults =
-        await harness.repository.searchEntries('x');
-    final List<EntryIndexRecord> longTailResults =
-        await harness.repository.searchEntries('preview boundary');
+    final List<EntryIndexRecord> midTokenResults = await harness.repository
+        .searchEntries('x30');
+    final List<EntryIndexRecord> numericResults = await harness.repository
+        .searchEntries('30');
+    final List<EntryIndexRecord> singleCharResults = await harness.repository
+        .searchEntries('x');
+    final List<EntryIndexRecord> longTailResults = await harness.repository
+        .searchEntries('preview boundary');
 
-    expect(midTokenResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
-    expect(numericResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
-    expect(singleCharResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
-    expect(longTailResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
+    expect(
+      midTokenResults.any((EntryIndexRecord e) => e.id == saved.id),
+      isTrue,
+    );
+    expect(
+      numericResults.any((EntryIndexRecord e) => e.id == saved.id),
+      isTrue,
+    );
+    expect(
+      singleCharResults.any((EntryIndexRecord e) => e.id == saved.id),
+      isTrue,
+    );
+    expect(
+      longTailResults.any((EntryIndexRecord e) => e.id == saved.id),
+      isTrue,
+    );
   });
 
   test('edited entry search reflects latest body immediately', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
 
     final DiaryEntry draft = DiaryEntry(
@@ -120,17 +144,18 @@ void main() {
     );
     await harness.repository.saveEntry(session, updated);
 
-    final List<EntryIndexRecord> oldResults =
-        await harness.repository.searchEntries('alpha');
-    final List<EntryIndexRecord> newResults =
-        await harness.repository.searchEntries('beta');
+    final List<EntryIndexRecord> oldResults = await harness.repository
+        .searchEntries('alpha');
+    final List<EntryIndexRecord> newResults = await harness.repository
+        .searchEntries('beta');
 
     expect(oldResults.any((EntryIndexRecord e) => e.id == saved.id), isFalse);
     expect(newResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
   });
 
   test('imported markdown entry is searchable immediately', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
     final VaultArchiveIo archiveIo = VaultArchiveIo(
       pathStrategy: harness.pathStrategy,
@@ -138,7 +163,9 @@ void main() {
       frontMatterCodec: const FrontMatterCodec(),
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
     );
-    final Directory importRoot = await Directory.systemTemp.createTemp('qld_import_search_');
+    final Directory importRoot = await Directory.systemTemp.createTemp(
+      'qld_import_search_',
+    );
 
     try {
       final File markdownFile = File('${importRoot.path}\\entry.md');
@@ -150,8 +177,8 @@ void main() {
         session: session,
         rootDirectory: importRoot,
       );
-      final List<EntryIndexRecord> results =
-          await harness.repository.searchEntries('x30');
+      final List<EntryIndexRecord> results = await harness.repository
+          .searchEntries('x30');
 
       expect(result.importedEntries, 1);
       expect(results, hasLength(1));
@@ -162,45 +189,61 @@ void main() {
     }
   });
 
-  test('ensureIndexReady rebuilds outdated search schema before searching', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
-    final session = setup.session;
+  test(
+    'ensureIndexReady rebuilds outdated search schema before searching',
+    () async {
+      final RecoverySetupResult setup = await harness.repository
+          .setupRecoveryKey();
+      final session = setup.session;
 
-    final DiaryEntry draft = DiaryEntry(
-      id: generateEntryId(),
-      vaultId: session.vaultId,
-      title: 'schema rebuild',
-      date: const DateOnly('2026-05-17'),
-      createdAt: DateTime.parse('2026-05-17T10:00:00Z'),
-      updatedAt: DateTime.parse('2026-05-17T10:00:00Z'),
-      markdownBody:
-          'body text that pushes the target well past the preview limit before marker-x30 appears',
-    );
+      final DiaryEntry draft = DiaryEntry(
+        id: generateEntryId(),
+        vaultId: session.vaultId,
+        title: 'schema rebuild',
+        date: const DateOnly('2026-05-17'),
+        createdAt: DateTime.parse('2026-05-17T10:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-17T10:00:00Z'),
+        markdownBody:
+            'body text that pushes the target well past the preview limit before marker-x30 appears',
+      );
 
-    final DiaryEntry saved = await harness.repository.saveEntry(session, draft);
-    await harness.repository.closeUnlockedResources();
+      final DiaryEntry saved = await harness.repository.saveEntry(
+        session,
+        draft,
+      );
+      await harness.repository.closeUnlockedResources();
 
-    final IndexDatabaseManager manager = IndexDatabaseManager(harness.pathStrategy);
-    await manager.openForSession(session);
-    await manager.requireOpen().customStatement(
-      "UPDATE entries_index SET body_search_text = '' WHERE id = ?;",
-      <Object?>[saved.id],
-    );
-    await manager.requireOpen().setAppValue(kSearchSchemaVersionKey, '0');
-    await manager.close();
+      final IndexDatabaseManager manager = IndexDatabaseManager(
+        harness.pathStrategy,
+      );
+      await manager.openForSession(session);
+      await manager.requireOpen().customStatement(
+        "UPDATE entries_index SET body_search_text = '' WHERE id = ?;",
+        <Object?>[saved.id],
+      );
+      await manager.requireOpen().setAppValue(kSearchSchemaVersionKey, '0');
+      await manager.close();
 
-    await harness.repository.ensureIndexReady(session);
-    final List<EntryIndexRecord> dashedResults =
-        await harness.repository.searchEntries('marker-x30');
-    final List<EntryIndexRecord> spacedResults =
-        await harness.repository.searchEntries('marker x30');
+      await harness.repository.ensureIndexReady(session);
+      final List<EntryIndexRecord> dashedResults = await harness.repository
+          .searchEntries('marker-x30');
+      final List<EntryIndexRecord> spacedResults = await harness.repository
+          .searchEntries('marker x30');
 
-    expect(dashedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
-    expect(spacedResults.any((EntryIndexRecord e) => e.id == saved.id), isTrue);
-  });
+      expect(
+        dashedResults.any((EntryIndexRecord e) => e.id == saved.id),
+        isTrue,
+      );
+      expect(
+        spacedResults.any((EntryIndexRecord e) => e.id == saved.id),
+        isTrue,
+      );
+    },
+  );
 
   test('deleteEntry removes entry and attachment files from disk', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
     final File sourceAttachment = File('${harness.tempDir.path}/photo.jpg')
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
@@ -230,7 +273,8 @@ void main() {
       date: saved.date,
       entryId: saved.id,
     );
-    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    final List<AssetAttachment> attachments = await harness.repository
+        .loadAttachments(saved.id);
     expect(attachments, hasLength(1));
     final String assetPath = await harness.pathStrategy.assetAbsolutePath(
       date: saved.date,
@@ -247,7 +291,8 @@ void main() {
   });
 
   test('saveEntry removes detached attachment files from disk', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
     final File sourceAttachment = File('${harness.tempDir.path}/detach.jpg')
       ..writeAsBytesSync(const <int>[5, 6, 7]);
@@ -272,7 +317,8 @@ void main() {
         ),
       ],
     );
-    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    final List<AssetAttachment> attachments = await harness.repository
+        .loadAttachments(saved.id);
     expect(attachments, hasLength(1));
     final String assetPath = await harness.pathStrategy.assetAbsolutePath(
       date: saved.date,
@@ -293,7 +339,8 @@ void main() {
   });
 
   test('saveEntry moves entry and attachments when date changes', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     final session = setup.session;
     final File sourceAttachment = File('${harness.tempDir.path}/move.jpg')
       ..writeAsBytesSync(const <int>[8, 9, 10]);
@@ -318,7 +365,8 @@ void main() {
         ),
       ],
     );
-    final List<AssetAttachment> attachments = await harness.repository.loadAttachments(saved.id);
+    final List<AssetAttachment> attachments = await harness.repository
+        .loadAttachments(saved.id);
     expect(attachments, hasLength(1));
     final AssetAttachment attachment = attachments.single;
     final String oldEntryPath = await harness.pathStrategy.entryAbsolutePath(

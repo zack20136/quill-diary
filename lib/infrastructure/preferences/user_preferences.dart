@@ -17,22 +17,22 @@ enum ImageCompressPreset {
   String get storageValue => name;
 
   int? get quality => switch (this) {
-        ImageCompressPreset.original => null,
-        ImageCompressPreset.standard => 70,
-        ImageCompressPreset.high => 85,
-      };
+    ImageCompressPreset.original => null,
+    ImageCompressPreset.standard => 70,
+    ImageCompressPreset.high => 85,
+  };
 
   int? get minWidth => switch (this) {
-        ImageCompressPreset.original => null,
-        ImageCompressPreset.standard => 1280,
-        ImageCompressPreset.high => 1920,
-      };
+    ImageCompressPreset.original => null,
+    ImageCompressPreset.standard => 1280,
+    ImageCompressPreset.high => 1920,
+  };
 
   int? get minHeight => switch (this) {
-        ImageCompressPreset.original => null,
-        ImageCompressPreset.standard => 1280,
-        ImageCompressPreset.high => 1920,
-      };
+    ImageCompressPreset.original => null,
+    ImageCompressPreset.standard => 1280,
+    ImageCompressPreset.high => 1920,
+  };
 
   static ImageCompressPreset fromStorage(String? raw) {
     return switch (raw?.trim()) {
@@ -56,7 +56,8 @@ class UserPreferences {
   static const String _editorTitleLineHeightKey = 'editor_title_line_height';
   static const String _editorBodyFontSizeKey = 'editor_body_font_size';
   static const String _editorBodyLineHeightKey = 'editor_body_line_height';
-  static const String _editorBodyParagraphSpacingKey = 'editor_body_paragraph_spacing';
+  static const String _editorBodyParagraphSpacingKey =
+      'editor_body_paragraph_spacing';
 
   final File? _storageFileOverride;
   Map<String, String>? _cache;
@@ -88,7 +89,8 @@ class UserPreferences {
     store[_editorTitleLineHeightKey] = clamped.titleLineHeight.toString();
     store[_editorBodyFontSizeKey] = clamped.bodyFontSize.toString();
     store[_editorBodyLineHeightKey] = clamped.bodyLineHeight.toString();
-    store[_editorBodyParagraphSpacingKey] = clamped.bodyParagraphSpacing.toString();
+    store[_editorBodyParagraphSpacingKey] = clamped.bodyParagraphSpacing
+        .toString();
     await _persistStore(store);
   }
 
@@ -106,7 +108,9 @@ class UserPreferences {
     return SessionBackgroundTimeoutMinutes.fromStorage(raw);
   }
 
-  Future<void> setSessionTimeoutMinutes(SessionBackgroundTimeoutMinutes value) async {
+  Future<void> setSessionTimeoutMinutes(
+    SessionBackgroundTimeoutMinutes value,
+  ) async {
     await _writeValue(_sessionTimeoutKey, value.storageValue);
   }
 
@@ -130,7 +134,9 @@ class UserPreferences {
   Future<PersonalizationPreferences> loadPersonalizationPreferences() async {
     final Map<String, String> store = await _loadStore();
     return PersonalizationPreferences(
-      imageCompressPreset: ImageCompressPreset.fromStorage(store[_imageCompressPresetKey]),
+      imageCompressPreset: ImageCompressPreset.fromStorage(
+        store[_imageCompressPresetKey],
+      ),
       typography: EditorTypographyPreferences.fromStorage(
         titleFontSize: store[_editorTitleFontSizeKey],
         titleLineHeight: store[_editorTitleLineHeightKey],
@@ -139,12 +145,16 @@ class UserPreferences {
         bodyParagraphSpacing: store[_editorBodyParagraphSpacingKey],
       ),
       themeMode: AppThemeModePreference.fromStorage(store[_themeModeKey]),
-      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.fromStorage(store[_sessionTimeoutKey]),
+      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.fromStorage(
+        store[_sessionTimeoutKey],
+      ),
       locale: AppLanguage.fromStorage(store[_appLocaleKey]),
     );
   }
 
-  Future<void> savePersonalizationPreferences(PersonalizationPreferences value) async {
+  Future<void> savePersonalizationPreferences(
+    PersonalizationPreferences value,
+  ) async {
     final EditorTypographyPreferences typography = value.typography.clamped();
     final Map<String, String> store = await _loadStore();
     store[_imageCompressPresetKey] = value.imageCompressPreset.storageValue;
@@ -155,7 +165,8 @@ class UserPreferences {
     store[_editorTitleLineHeightKey] = typography.titleLineHeight.toString();
     store[_editorBodyFontSizeKey] = typography.bodyFontSize.toString();
     store[_editorBodyLineHeightKey] = typography.bodyLineHeight.toString();
-    store[_editorBodyParagraphSpacingKey] = typography.bodyParagraphSpacing.toString();
+    store[_editorBodyParagraphSpacingKey] = typography.bodyParagraphSpacing
+        .toString();
     await _persistStore(store);
   }
 

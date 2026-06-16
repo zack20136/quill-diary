@@ -13,7 +13,9 @@ void main() {
 
   setUp(() async {
     cancellingManager = CancellingDeviceKeyManager();
-    harness = await VaultTestHarness.create(deviceKeyManager: cancellingManager);
+    harness = await VaultTestHarness.create(
+      deviceKeyManager: cancellingManager,
+    );
   });
 
   tearDown(() async {
@@ -21,7 +23,8 @@ void main() {
   });
 
   test('targetMode deviceLock 驗證取消時 storage 維持 none', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.ensureKeystoreMatchesUnlockMode(setup.session);
     expect(await harness.appLockService.getUnlockMode(), AppUnlockMode.none);
 
@@ -39,7 +42,8 @@ void main() {
   });
 
   test('targetMode biometric 驗證取消時 storage 維持 deviceLock', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
     await harness.repository.ensureKeystoreMatchesUnlockMode(
       setup.session,
@@ -56,20 +60,30 @@ void main() {
       throwsA(isA<DeviceKeyUserCancelledException>()),
     );
 
-    expect(await harness.appLockService.getUnlockMode(), AppUnlockMode.deviceLock);
+    expect(
+      await harness.appLockService.getUnlockMode(),
+      AppUnlockMode.deviceLock,
+    );
   });
 
   test('targetMode 成功後才應寫入 app lock mode', () async {
-    final RecoverySetupResult setup = await harness.repository.setupRecoveryKey();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
     await harness.repository.ensureKeystoreMatchesUnlockMode(setup.session);
 
     await harness.repository.ensureKeystoreMatchesUnlockMode(
       setup.session,
       targetMode: AppUnlockMode.deviceLock,
     );
-    expect(cancellingManager.lastWrapAuthKind, KeystoreAuthKind.deviceCredential);
+    expect(
+      cancellingManager.lastWrapAuthKind,
+      KeystoreAuthKind.deviceCredential,
+    );
 
     await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
-    expect(await harness.appLockService.getUnlockMode(), AppUnlockMode.deviceLock);
+    expect(
+      await harness.appLockService.getUnlockMode(),
+      AppUnlockMode.deviceLock,
+    );
   });
 }

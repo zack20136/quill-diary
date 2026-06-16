@@ -4,11 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:quill_diary/features/settings/pages/support_page.dart';
 import 'package:quill_diary/features/settings/providers/billing_providers.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/features/settings/state/sponsor_billing_state.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/services/google_billing_service.dart';
 
 import '../../helpers/fake_in_app_purchase_platform.dart';
+import '../../helpers/test_l10n.dart';
 
 ProductDetails _product(String id) {
   return ProductDetails(
@@ -47,10 +48,13 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          googleBillingServiceProvider.overrideWithValue(service),
-        ],
-        child: const MaterialApp(home: SupportPage()),
+        overrides: [googleBillingServiceProvider.overrideWithValue(service)],
+        child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SupportPage(),
+        ),
       ),
     );
     await tester.pump();
@@ -64,7 +68,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text(SettingsSupportCopy.pendingMessage), findsOneWidget);
+    expect(find.text(testL10n.settingsSupportPendingMessage), findsOneWidget);
     final FilledButton button = tester.widget<FilledButton>(
       find.byType(FilledButton),
     );
@@ -85,15 +89,18 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          googleBillingServiceProvider.overrideWithValue(service),
-        ],
-        child: const MaterialApp(home: SupportPage()),
+        overrides: [googleBillingServiceProvider.overrideWithValue(service)],
+        child: MaterialApp(
+          locale: appZhTwLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SupportPage(),
+        ),
       ),
     );
     await tester.pump();
     await tester.pump();
 
-    expect(find.text(SettingsSupportCopy.thanksMessage), findsWidgets);
+    expect(find.text(testL10n.settingsSupportThanksMessage), findsWidgets);
   });
 }

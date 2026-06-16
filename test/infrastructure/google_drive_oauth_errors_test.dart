@@ -6,7 +6,9 @@ void main() {
   group('looksLikeGoogleOAuthMisconfiguration', () {
     test('detects CredentialManager misreported cancellation', () {
       expect(
-        looksLikeGoogleOAuthMisconfiguration('Activity is cancelled by the user'),
+        looksLikeGoogleOAuthMisconfiguration(
+          'Activity is cancelled by the user',
+        ),
         isTrue,
       );
       expect(
@@ -36,14 +38,15 @@ void main() {
 
     test('canceled without detail shows short cancellation message', () {
       final String message = userMessageForGoogleSignIn(
-        const GoogleSignInException(
-          code: GoogleSignInExceptionCode.canceled,
-        ),
+        const GoogleSignInException(code: GoogleSignInExceptionCode.canceled),
       );
 
       expect(message, contains('已取消 Google 登入'));
       expect(message, contains('連結 Google 帳號'));
-      expect(message, isNot(contains(GoogleDriveOAuthFingerprints.releaseUploadSha1)));
+      expect(
+        message,
+        isNot(contains(GoogleDriveOAuthFingerprints.releaseUploadSha1)),
+      );
     });
 
     test('clientConfigurationError includes release SHA-1', () {

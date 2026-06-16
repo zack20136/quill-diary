@@ -25,7 +25,10 @@ class RecordingVaultTransferService extends FakeVaultTransferService {
   }
 
   @override
-  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) async {
+  Future<void> verifyBackupRecoveryKey(
+    File backupFile,
+    String recoveryKey,
+  ) async {
     verifyCalls++;
     verifyKeys.add(recoveryKey);
     if (verifyError != null) {

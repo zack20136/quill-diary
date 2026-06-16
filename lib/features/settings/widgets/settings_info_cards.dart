@@ -116,7 +116,8 @@ class SettingsTitleBodyCard extends StatelessWidget {
           children: <Widget>[
             Text(
               title,
-              style: titleStyle ??
+              style:
+                  titleStyle ??
                   theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -156,7 +157,9 @@ class _FactChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

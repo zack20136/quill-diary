@@ -13,7 +13,9 @@ void main() {
   late File prefsFile;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('personalization_providers_test_');
+    tempDir = await Directory.systemTemp.createTemp(
+      'personalization_providers_test_',
+    );
     prefsFile = File('${tempDir.path}/app_preferences.json');
   });
 
@@ -26,7 +28,9 @@ void main() {
   ProviderContainer buildContainer() {
     final ProviderContainer container = ProviderContainer(
       overrides: [
-        userPreferencesProvider.overrideWithValue(UserPreferences(storageFile: prefsFile)),
+        userPreferencesProvider.overrideWithValue(
+          UserPreferences(storageFile: prefsFile),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -35,12 +39,15 @@ void main() {
 
   test('resetTypographyToDefaults 只還原排版，不影響其他偏好', () async {
     final ProviderContainer container = buildContainer();
-    final PersonalizationPreferencesController controller =
-        container.read(personalizationPreferencesProvider.notifier);
+    final PersonalizationPreferencesController controller = container.read(
+      personalizationPreferencesProvider.notifier,
+    );
 
     await container.read(personalizationPreferencesProvider.future);
     await controller.setThemeMode(AppThemeModePreference.dark);
-    await controller.setSessionTimeoutMinutes(SessionBackgroundTimeoutMinutes.ten);
+    await controller.setSessionTimeoutMinutes(
+      SessionBackgroundTimeoutMinutes.ten,
+    );
     await controller.setTypography(
       const EditorTypographyPreferences(
         titleFontSize: 26,
@@ -53,15 +60,16 @@ void main() {
 
     await controller.resetTypographyToDefaults();
 
-    final PersonalizationPreferences prefs =
-        container.read(personalizationPreferencesProvider).requireValue;
+    final PersonalizationPreferences prefs = container
+        .read(personalizationPreferencesProvider)
+        .requireValue;
     expect(prefs.typography, EditorTypographyPreferences.defaults);
     expect(prefs.themeMode, AppThemeModePreference.dark);
     expect(prefs.sessionTimeoutMinutes, SessionBackgroundTimeoutMinutes.ten);
 
     final UserPreferences reloaded = UserPreferences(storageFile: prefsFile);
-    final PersonalizationPreferences stored =
-        await reloaded.loadPersonalizationPreferences();
+    final PersonalizationPreferences stored = await reloaded
+        .loadPersonalizationPreferences();
     expect(stored.typography, EditorTypographyPreferences.defaults);
     expect(stored.themeMode, AppThemeModePreference.dark);
   });

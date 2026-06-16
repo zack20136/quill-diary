@@ -33,7 +33,9 @@ class EntryCoverThumbnail extends ConsumerWidget {
       );
     }
 
-    final AsyncValue<Uint8List?> async = ref.watch(entryCoverPreviewBytesProvider(path));
+    final AsyncValue<Uint8List?> async = ref.watch(
+      entryCoverPreviewBytesProvider(path),
+    );
     return async.when(
       data: (Uint8List? bytes) {
         if (bytes == null || bytes.isEmpty) {
@@ -59,25 +61,28 @@ class EntryCoverThumbnail extends ConsumerWidget {
               height: double.infinity,
               gaplessPlayback: true,
               cacheWidth: cacheDim,
-              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                  EntryCoverThumbnailPlaceholder(
-                size: size,
-                borderRadius: borderRadius,
-                icon: placeholderIcon,
-              ),
+              errorBuilder:
+                  (
+                    BuildContext context,
+                    Object error,
+                    StackTrace? stackTrace,
+                  ) => EntryCoverThumbnailPlaceholder(
+                    size: size,
+                    borderRadius: borderRadius,
+                    icon: placeholderIcon,
+                  ),
             ),
           ),
         );
       },
-      loading: () => EntryCoverThumbnailLoading(
-        size: size,
-        borderRadius: borderRadius,
-      ),
-      error: (Object error, StackTrace stackTrace) => EntryCoverThumbnailPlaceholder(
-        size: size,
-        borderRadius: borderRadius,
-        icon: placeholderIcon,
-      ),
+      loading: () =>
+          EntryCoverThumbnailLoading(size: size, borderRadius: borderRadius),
+      error: (Object error, StackTrace stackTrace) =>
+          EntryCoverThumbnailPlaceholder(
+            size: size,
+            borderRadius: borderRadius,
+            icon: placeholderIcon,
+          ),
     );
   }
 }
@@ -100,10 +105,12 @@ class LazyEntryCoverThumbnail extends ConsumerStatefulWidget {
   final int staggerIndex;
 
   @override
-  ConsumerState<LazyEntryCoverThumbnail> createState() => _LazyEntryCoverThumbnailState();
+  ConsumerState<LazyEntryCoverThumbnail> createState() =>
+      _LazyEntryCoverThumbnailState();
 }
 
-class _LazyEntryCoverThumbnailState extends ConsumerState<LazyEntryCoverThumbnail> {
+class _LazyEntryCoverThumbnailState
+    extends ConsumerState<LazyEntryCoverThumbnail> {
   static const Duration _prefetchBaseDelay = Duration(milliseconds: 50);
   static const Duration _prefetchStaggerStep = Duration(milliseconds: 60);
 

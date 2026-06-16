@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
+
 /// 日記列表預覽用的圖片附件路徑（GROUP_CONCAT 串接）。
 const String _kPreviewImagePathsSelect = '''
   (
@@ -86,9 +87,12 @@ class EntryIndexRecord {
       wordCount: row.read<int>('word_count'),
       charCount: row.read<int>('char_count'),
       attachmentCount: row.read<int>('attachment_count'),
-      imageAttachmentCount: row.readNullable<int>('image_attachment_count') ?? 0,
+      imageAttachmentCount:
+          row.readNullable<int>('image_attachment_count') ?? 0,
       fileAttachmentCount: row.readNullable<int>('file_attachment_count') ?? 0,
-      previewImagePaths: _parsePreviewPaths(row.readNullable<String>('preview_image_paths_joined')),
+      previewImagePaths: _parsePreviewPaths(
+        row.readNullable<String>('preview_image_paths_joined'),
+      ),
     );
   }
 
@@ -116,24 +120,26 @@ class IndexDatabase extends GeneratedDatabase {
   int get schemaVersion => 1;
 
   @override
-  List<TableInfo<Table, Object?>> get allTables => const <TableInfo<Table, Object?>>[];
+  List<TableInfo<Table, Object?>> get allTables =>
+      const <TableInfo<Table, Object?>>[];
 
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => const <DatabaseSchemaEntity>[];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      const <DatabaseSchemaEntity>[];
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (Migrator m) async => initialize(),
-        onUpgrade: (Migrator m, int from, int to) async {
-          await customStatement('DROP TABLE IF EXISTS entries_index;');
-          await customStatement('DROP TABLE IF EXISTS entry_attachments;');
-          await customStatement('DROP TABLE IF EXISTS entry_tags;');
-          await initialize();
-        },
-        beforeOpen: (OpeningDetails details) async {
-          await customStatement('PRAGMA foreign_keys = ON;');
-        },
-      );
+    onCreate: (Migrator m) async => initialize(),
+    onUpgrade: (Migrator m, int from, int to) async {
+      await customStatement('DROP TABLE IF EXISTS entries_index;');
+      await customStatement('DROP TABLE IF EXISTS entry_attachments;');
+      await customStatement('DROP TABLE IF EXISTS entry_tags;');
+      await initialize();
+    },
+    beforeOpen: (OpeningDetails details) async {
+      await customStatement('PRAGMA foreign_keys = ON;');
+    },
+  );
 
   Future<void> initialize() async {
     await customStatement('''
@@ -275,9 +281,12 @@ class IndexDatabase extends GeneratedDatabase {
 
   /// `normalizeText(tag)` → 儲存的 ARGB（與 Flutter `Color` 對應）。
   Future<Map<String, int>> fetchTagAccentArgbMap() async {
-    final List<QueryRow> rows = await customSelect('SELECT tag_normalized, accent_argb FROM tag_styles;').get();
+    final List<QueryRow> rows = await customSelect(
+      'SELECT tag_normalized, accent_argb FROM tag_styles;',
+    ).get();
     return <String, int>{
-      for (final QueryRow row in rows) row.read<String>('tag_normalized'): row.read<int>('accent_argb'),
+      for (final QueryRow row in rows)
+        row.read<String>('tag_normalized'): row.read<int>('accent_argb'),
     };
   }
 
@@ -310,7 +319,10 @@ class IndexDatabase extends GeneratedDatabase {
   }
 
   Future<void> replaceTags(EntryId entryId, List<String> tags) async {
-    await customStatement('DELETE FROM entry_tags WHERE entry_id = ?;', <Object?>[entryId]);
+    await customStatement(
+      'DELETE FROM entry_tags WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
     for (final String tag in tags) {
       await customStatement(
         'INSERT INTO entry_tags (entry_id, tag, tag_normalized) VALUES (?, ?, ?);',
@@ -361,14 +373,13 @@ class IndexDatabase extends GeneratedDatabase {
     }
 
     final List<Object?> variables = <Object?>[];
-    final List<String> where = <String>[
-      if (date != null) 'e.date = ?',
-    ];
+    final List<String> where = <String>[if (date != null) 'e.date = ?'];
     if (date != null) {
       variables.add(date.value);
     }
 
-    final String sql = '''
+    final String sql =
+        '''
         SELECT
           e.*,
           GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
@@ -384,7 +395,8 @@ class IndexDatabase extends GeneratedDatabase {
     final List<QueryRow> rows = await customSelect(
       sql,
       variables: <Variable<Object>>[
-        for (final Object? value in variables) Variable.withString(value as String),
+        for (final Object? value in variables)
+          Variable.withString(value as String),
       ],
     ).get();
     return rows.map(EntryIndexRecord.fromRow).toList();
@@ -398,7 +410,9 @@ class IndexDatabase extends GeneratedDatabase {
     return _searchEntriesByLike(normalizedQuery);
   }
 
-  Future<List<EntryIndexRecord>> _searchEntriesByLike(String normalizedQuery) async {
+  Future<List<EntryIndexRecord>> _searchEntriesByLike(
+    String normalizedQuery,
+  ) async {
     final String likeQuery = '%$normalizedQuery%';
     final List<QueryRow> rows = await customSelect(
       '''
@@ -477,7 +491,8 @@ class IndexDatabase extends GeneratedDatabase {
   }
 
   Future<List<DateOnly>> monthEntryDates(DateTime month) async {
-    final String prefix = '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+    final String prefix =
+        '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
     final List<QueryRow> rows = await customSelect(
       '''
         SELECT DISTINCT date
@@ -487,7 +502,9 @@ class IndexDatabase extends GeneratedDatabase {
       ''',
       variables: <Variable<Object>>[Variable.withString('$prefix%')],
     ).get();
-    return rows.map((QueryRow row) => DateOnly.parse(row.read<String>('date'))).toList();
+    return rows
+        .map((QueryRow row) => DateOnly.parse(row.read<String>('date')))
+        .toList();
   }
 
   Future<List<AssetAttachment>> attachmentsForEntry(EntryId entryId) async {
@@ -519,9 +536,17 @@ class IndexDatabase extends GeneratedDatabase {
 
   /// 硬刪除：移除索引中的日記、標籤與附件紀錄。
   Future<void> removeEntry(EntryId entryId) async {
-    await customStatement('DELETE FROM entry_tags WHERE entry_id = ?;', <Object?>[entryId]);
-    await customStatement('DELETE FROM entry_attachments WHERE entry_id = ?;', <Object?>[entryId]);
-    await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[entryId]);
+    await customStatement(
+      'DELETE FROM entry_tags WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
+    await customStatement(
+      'DELETE FROM entry_attachments WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
+    await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[
+      entryId,
+    ]);
   }
 
   Future<void> rebuild() async {
@@ -555,10 +580,7 @@ class IndexDatabase extends GeneratedDatabase {
   }
 
   Future<void> deleteAppValue(String key) async {
-    await customStatement(
-      'DELETE FROM app_kv WHERE key = ?;',
-      <Object?>[key],
-    );
+    await customStatement('DELETE FROM app_kv WHERE key = ?;', <Object?>[key]);
   }
 
   int _wordCount(String markdown) {

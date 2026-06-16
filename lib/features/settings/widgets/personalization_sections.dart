@@ -42,12 +42,6 @@ class PersonalizationLanguageSectionBody extends StatelessWidget {
           selected: selected,
           onSelected: onSelected,
         ),
-        const SizedBox(height: 10),
-        SettingsInfoBanner(
-          icon: Icons.info_outline_rounded,
-          message: context.l10n.personalizationLanguageComingSoonHint,
-          tone: SettingsBannerTone.neutral,
-        ),
       ],
     );
   }
@@ -78,11 +72,11 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
                 .map(
                   (SessionBackgroundTimeoutMinutes value) =>
                       SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
-                    value: value,
-                    label: '${value.minutes}',
-                    icon: null,
-                    flex: 1,
-                  ),
+                        value: value,
+                        label: '${value.minutes}',
+                        icon: null,
+                        flex: 1,
+                      ),
                 )
                 .toList(growable: false),
             selected: selected,
@@ -212,8 +206,12 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final TextStyle titlePreviewStyle = typography.titleTextStyle(theme.textTheme);
-    final TextStyle bodyPreviewStyle = typography.bodyTextStyle(theme.textTheme);
+    final TextStyle titlePreviewStyle = typography.titleTextStyle(
+      theme.textTheme,
+    );
+    final TextStyle bodyPreviewStyle = typography.bodyTextStyle(
+      theme.textTheme,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,11 +223,11 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
           onPressed: typography.isAtDefaults
               ? null
               : () => unawaited(
-                    confirmAndResetTypography(
-                      context: context,
-                      controller: controller,
-                    ),
+                  confirmAndResetTypography(
+                    context: context,
+                    controller: controller,
                   ),
+                ),
         ),
         const SizedBox(height: 16),
         _PreferenceSliderRow(
@@ -238,10 +236,11 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
           value: typography.titleFontSize,
           min: EditorTypographyPreferences.minTitleFontSize,
           max: EditorTypographyPreferences.maxTitleFontSize,
-          divisions: ((EditorTypographyPreferences.maxTitleFontSize -
-                      EditorTypographyPreferences.minTitleFontSize) /
-                  0.5)
-              .round(),
+          divisions:
+              ((EditorTypographyPreferences.maxTitleFontSize -
+                          EditorTypographyPreferences.minTitleFontSize) /
+                      0.5)
+                  .round(),
           onChanged: (double value) {
             onTypographyChanged(typography.copyWith(titleFontSize: value));
           },
@@ -249,14 +248,18 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         const SizedBox(height: 8),
         _PreferenceSliderRow(
           label: context.l10n.personalizationTitleLineHeightLabel,
-          valueLabel: _lineHeightValue(context.l10n, typography.titleLineHeight),
+          valueLabel: _lineHeightValue(
+            context.l10n,
+            typography.titleLineHeight,
+          ),
           value: typography.titleLineHeight,
           min: EditorTypographyPreferences.minTitleLineHeight,
           max: EditorTypographyPreferences.maxTitleLineHeight,
-          divisions: ((EditorTypographyPreferences.maxTitleLineHeight -
-                      EditorTypographyPreferences.minTitleLineHeight) /
-                  0.05)
-              .round(),
+          divisions:
+              ((EditorTypographyPreferences.maxTitleLineHeight -
+                          EditorTypographyPreferences.minTitleLineHeight) /
+                      0.05)
+                  .round(),
           onChanged: (double value) {
             onTypographyChanged(typography.copyWith(titleLineHeight: value));
           },
@@ -268,10 +271,11 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
           value: typography.bodyFontSize,
           min: EditorTypographyPreferences.minBodyFontSize,
           max: EditorTypographyPreferences.maxBodyFontSize,
-          divisions: ((EditorTypographyPreferences.maxBodyFontSize -
-                      EditorTypographyPreferences.minBodyFontSize) /
-                  0.5)
-              .round(),
+          divisions:
+              ((EditorTypographyPreferences.maxBodyFontSize -
+                          EditorTypographyPreferences.minBodyFontSize) /
+                      0.5)
+                  .round(),
           onChanged: (double value) {
             onTypographyChanged(typography.copyWith(bodyFontSize: value));
           },
@@ -283,10 +287,11 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
           value: typography.bodyLineHeight,
           min: EditorTypographyPreferences.minBodyLineHeight,
           max: EditorTypographyPreferences.maxBodyLineHeight,
-          divisions: ((EditorTypographyPreferences.maxBodyLineHeight -
-                      EditorTypographyPreferences.minBodyLineHeight) /
-                  0.05)
-              .round(),
+          divisions:
+              ((EditorTypographyPreferences.maxBodyLineHeight -
+                          EditorTypographyPreferences.minBodyLineHeight) /
+                      0.05)
+                  .round(),
           onChanged: (double value) {
             onTypographyChanged(typography.copyWith(bodyLineHeight: value));
           },
@@ -294,15 +299,21 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         const SizedBox(height: 8),
         _PreferenceSliderRow(
           label: context.l10n.personalizationBodyParagraphSpacingLabel,
-          valueLabel: _paragraphSpacingValue(context.l10n, typography.bodyParagraphSpacing),
+          valueLabel: _paragraphSpacingValue(
+            context.l10n,
+            typography.bodyParagraphSpacing,
+          ),
           value: typography.bodyParagraphSpacing,
           min: EditorTypographyPreferences.minBodyParagraphSpacing,
           max: EditorTypographyPreferences.maxBodyParagraphSpacing,
-          divisions: (EditorTypographyPreferences.maxBodyParagraphSpacing -
-                  EditorTypographyPreferences.minBodyParagraphSpacing)
-              .round(),
+          divisions:
+              (EditorTypographyPreferences.maxBodyParagraphSpacing -
+                      EditorTypographyPreferences.minBodyParagraphSpacing)
+                  .round(),
           onChanged: (double value) {
-            onTypographyChanged(typography.copyWith(bodyParagraphSpacing: value));
+            onTypographyChanged(
+              typography.copyWith(bodyParagraphSpacing: value),
+            );
           },
         ),
         const SizedBox(height: 16),
@@ -320,14 +331,12 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
                 ...List<Widget>.generate(
                   _typographyPreviewTitleParagraphs(context.l10n).length,
                   (int index) {
-                    final String paragraph =
-                        _typographyPreviewTitleParagraphs(context.l10n)[index];
+                    final String paragraph = _typographyPreviewTitleParagraphs(
+                      context.l10n,
+                    )[index];
                     return Padding(
                       padding: EdgeInsets.only(top: index == 0 ? 0 : 8),
-                      child: Text(
-                        paragraph,
-                        style: titlePreviewStyle,
-                      ),
+                      child: Text(paragraph, style: titlePreviewStyle),
                     );
                   },
                 ),
@@ -335,16 +344,14 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
                 ...List<Widget>.generate(
                   _typographyPreviewBodyParagraphs(context.l10n).length,
                   (int index) {
-                    final String paragraph =
-                        _typographyPreviewBodyParagraphs(context.l10n)[index];
+                    final String paragraph = _typographyPreviewBodyParagraphs(
+                      context.l10n,
+                    )[index];
                     return Padding(
                       padding: EdgeInsets.only(
                         top: index == 0 ? 0 : typography.bodyParagraphSpacing,
                       ),
-                      child: Text(
-                        paragraph,
-                        style: bodyPreviewStyle,
-                      ),
+                      child: Text(paragraph, style: bodyPreviewStyle),
                     );
                   },
                 ),
@@ -361,11 +368,16 @@ Future<void> confirmAndResetTypography({
   required BuildContext context,
   required PersonalizationPreferencesController controller,
 }) async {
-  final bool confirmed = await showDialog<bool>(
+  final bool confirmed =
+      await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(dialogContext.l10n.personalizationTypographyResetConfirmTitle),
-          content: Text(dialogContext.l10n.personalizationTypographyResetConfirmBody),
+          title: Text(
+            dialogContext.l10n.personalizationTypographyResetConfirmTitle,
+          ),
+          content: Text(
+            dialogContext.l10n.personalizationTypographyResetConfirmBody,
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -373,7 +385,9 @@ Future<void> confirmAndResetTypography({
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(dialogContext.l10n.personalizationTypographyResetConfirmAction),
+              child: Text(
+                dialogContext.l10n.personalizationTypographyResetConfirmAction,
+              ),
             ),
           ],
         ),
@@ -393,11 +407,17 @@ Future<void> confirmAndResetTypography({
   );
 }
 
-String _imageCompressDescription(AppLocalizations l10n, ImageCompressPreset preset) {
+String _imageCompressDescription(
+  AppLocalizations l10n,
+  ImageCompressPreset preset,
+) {
   return switch (preset) {
-    ImageCompressPreset.original => l10n.personalizationImageCompressOriginalDescription,
-    ImageCompressPreset.standard => l10n.personalizationImageCompressStandardDescription,
-    ImageCompressPreset.high => l10n.personalizationImageCompressHighDescription,
+    ImageCompressPreset.original =>
+      l10n.personalizationImageCompressOriginalDescription,
+    ImageCompressPreset.standard =>
+      l10n.personalizationImageCompressStandardDescription,
+    ImageCompressPreset.high =>
+      l10n.personalizationImageCompressHighDescription,
   };
 }
 
@@ -414,9 +434,7 @@ String _paragraphSpacingValue(AppLocalizations l10n, double spacing) {
 }
 
 List<String> _typographyPreviewTitleParagraphs(AppLocalizations l10n) {
-  return <String>[
-    l10n.personalizationTypographyPreviewTitleParagraph1,
-  ];
+  return <String>[l10n.personalizationTypographyPreviewTitleParagraph1];
 }
 
 List<String> _typographyPreviewBodyParagraphs(AppLocalizations l10n) {
@@ -430,7 +448,10 @@ String _formatNumber(double value) {
   if (value == value.roundToDouble()) {
     return value.toStringAsFixed(0);
   }
-  return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  return value
+      .toStringAsFixed(2)
+      .replaceAll(RegExp(r'0+$'), '')
+      .replaceAll(RegExp(r'\.$'), '');
 }
 
 class _PreferenceSliderRow extends StatelessWidget {
@@ -576,12 +597,14 @@ class _SettingsSegment<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final TextStyle? labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+    final bool multiline = !compact && label.length > 8;
+    final TextStyle? labelStyle = Theme.of(context).textTheme.labelLarge
+        ?.copyWith(
           color: selected
               ? cs.onPrimaryContainer
               : enabled
-                  ? cs.onSurfaceVariant
-                  : cs.onSurfaceVariant.withValues(alpha: 0.45),
+              ? cs.onSurfaceVariant
+              : cs.onSurfaceVariant.withValues(alpha: 0.45),
           fontSize: compact ? 13 : null,
         );
     return Material(
@@ -593,10 +616,11 @@ class _SettingsSegment<T> extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: compact ? 6 : 8,
-            vertical: compact ? 10 : 12,
+            vertical: compact ? 10 : (multiline ? 8 : 10),
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (icon != null) ...<Widget>[
                 Icon(
@@ -605,19 +629,20 @@ class _SettingsSegment<T> extends StatelessWidget {
                   color: selected
                       ? cs.onPrimaryContainer
                       : enabled
-                          ? cs.onSurfaceVariant
-                          : cs.onSurfaceVariant.withValues(alpha: 0.45),
+                      ? cs.onSurfaceVariant
+                      : cs.onSurfaceVariant.withValues(alpha: 0.45),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(height: 4),
               ],
-              Flexible(
-                child: Text(
-                  label,
-                  style: labelStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
+              Text(
+                label,
+                style: labelStyle,
+                maxLines: multiline ? 2 : 1,
+                overflow: multiline
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
+                softWrap: multiline,
+                textAlign: TextAlign.center,
               ),
             ],
           ),

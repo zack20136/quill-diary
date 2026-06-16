@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../settings_copy.dart';
+import '../../../l10n/l10n.dart';
 import 'backup_pick_list_item.dart';
 
 typedef BackupDeleteConfirm = Future<bool> Function(String fileName);
@@ -19,7 +19,9 @@ Future<BackupPickListItem?> showBackupPickDialog({
     return null;
   }
 
-  final List<BackupPickListItem> visibleItems = List<BackupPickListItem>.from(items);
+  final List<BackupPickListItem> visibleItems = List<BackupPickListItem>.from(
+    items,
+  );
   return showDialog<BackupPickListItem>(
     context: context,
     builder: (BuildContext dialogContext) {
@@ -31,7 +33,10 @@ Future<BackupPickListItem?> showBackupPickDialog({
               .clamp(320.0, 420.0);
 
           return AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
             title: Text(
               title,
               style: textTheme.titleSmall?.copyWith(
@@ -49,7 +54,9 @@ Future<BackupPickListItem?> showBackupPickDialog({
                       itemBuilder: (BuildContext context, int index) {
                         final BackupPickListItem item = visibleItems[index];
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                           title: Text(
                             item.createdAtLabel,
                             style: textTheme.titleMedium?.copyWith(
@@ -87,7 +94,9 @@ Future<BackupPickListItem?> showBackupPickDialog({
                                       ? null
                                       : () async {
                                           final bool confirmed =
-                                              await confirmDelete(item.fileName);
+                                              await confirmDelete(
+                                                item.fileName,
+                                              );
                                           if (!confirmed) {
                                             return;
                                           }
@@ -104,7 +113,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(SettingsCopy.actionCancel),
+                child: Text(context.l10n.commonActionCancel),
               ),
             ],
           );

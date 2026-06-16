@@ -39,13 +39,14 @@ class EditorTypographyPreferences {
   static const double minBodyParagraphSpacing = 0;
   static const double maxBodyParagraphSpacing = 32;
 
-  static const EditorTypographyPreferences defaults = EditorTypographyPreferences(
-    titleFontSize: defaultTitleFontSize,
-    titleLineHeight: defaultTitleLineHeight,
-    bodyFontSize: defaultBodyFontSize,
-    bodyLineHeight: defaultBodyLineHeight,
-    bodyParagraphSpacing: defaultBodyParagraphSpacing,
-  );
+  static const EditorTypographyPreferences defaults =
+      EditorTypographyPreferences(
+        titleFontSize: defaultTitleFontSize,
+        titleLineHeight: defaultTitleLineHeight,
+        bodyFontSize: defaultBodyFontSize,
+        bodyLineHeight: defaultBodyLineHeight,
+        bodyParagraphSpacing: defaultBodyParagraphSpacing,
+      );
 
   bool get isAtDefaults => this == defaults;
 
@@ -58,11 +59,22 @@ class EditorTypographyPreferences {
   EditorTypographyPreferences clamped() {
     return EditorTypographyPreferences(
       titleFontSize: _clamp(titleFontSize, minTitleFontSize, maxTitleFontSize),
-      titleLineHeight: _clamp(titleLineHeight, minTitleLineHeight, maxTitleLineHeight),
+      titleLineHeight: _clamp(
+        titleLineHeight,
+        minTitleLineHeight,
+        maxTitleLineHeight,
+      ),
       bodyFontSize: _clamp(bodyFontSize, minBodyFontSize, maxBodyFontSize),
-      bodyLineHeight: _clamp(bodyLineHeight, minBodyLineHeight, maxBodyLineHeight),
-      bodyParagraphSpacing:
-          _clamp(bodyParagraphSpacing, minBodyParagraphSpacing, maxBodyParagraphSpacing),
+      bodyLineHeight: _clamp(
+        bodyLineHeight,
+        minBodyLineHeight,
+        maxBodyLineHeight,
+      ),
+      bodyParagraphSpacing: _clamp(
+        bodyParagraphSpacing,
+        minBodyParagraphSpacing,
+        maxBodyParagraphSpacing,
+      ),
     );
   }
 
@@ -94,7 +106,10 @@ class EditorTypographyPreferences {
       titleLineHeight: _parseDouble(titleLineHeight, defaultTitleLineHeight),
       bodyFontSize: _parseDouble(bodyFontSize, defaultBodyFontSize),
       bodyLineHeight: _parseDouble(bodyLineHeight, defaultBodyLineHeight),
-      bodyParagraphSpacing: _parseDouble(bodyParagraphSpacing, defaultBodyParagraphSpacing),
+      bodyParagraphSpacing: _parseDouble(
+        bodyParagraphSpacing,
+        defaultBodyParagraphSpacing,
+      ),
     ).clamped();
   }
 
@@ -160,10 +175,7 @@ class EditorTypographyPreferences {
   }
 
   /// 首頁列表摘要：以原本 `bodyMedium` + `height: 1.4` 為基準。
-  TextStyle listPreviewTextStyle(
-    TextTheme textTheme, {
-    Color? color,
-  }) {
+  TextStyle listPreviewTextStyle(TextTheme textTheme, {Color? color}) {
     final TextStyle base = textTheme.bodyMedium ?? const TextStyle();
     return base.copyWith(
       fontSize: _scale(
@@ -181,17 +193,10 @@ class EditorTypographyPreferences {
   }
 
   /// 精簡列表摘要：以原本 `bodySmall` + `height: 1.35` 為基準。
-  TextStyle listCompactPreviewTextStyle(
-    TextTheme textTheme, {
-    Color? color,
-  }) {
+  TextStyle listCompactPreviewTextStyle(TextTheme textTheme, {Color? color}) {
     final TextStyle base = textTheme.bodySmall ?? const TextStyle();
     return base.copyWith(
-      fontSize: _scale(
-        base.fontSize ?? 12,
-        bodyFontSize,
-        defaultBodyFontSize,
-      ),
+      fontSize: _scale(base.fontSize ?? 12, bodyFontSize, defaultBodyFontSize),
       height: _scale(
         defaultListCompactPreviewLineHeight,
         bodyLineHeight,
@@ -201,7 +206,11 @@ class EditorTypographyPreferences {
     );
   }
 
-  static double _scale(double base, double preference, double preferenceDefault) {
+  static double _scale(
+    double base,
+    double preference,
+    double preferenceDefault,
+  ) {
     return base * (preference / preferenceDefault);
   }
 
@@ -217,10 +226,10 @@ class EditorTypographyPreferences {
 
   @override
   int get hashCode => Object.hash(
-        titleFontSize,
-        titleLineHeight,
-        bodyFontSize,
-        bodyLineHeight,
-        bodyParagraphSpacing,
-      );
+    titleFontSize,
+    titleLineHeight,
+    bodyFontSize,
+    bodyLineHeight,
+    bodyParagraphSpacing,
+  );
 }

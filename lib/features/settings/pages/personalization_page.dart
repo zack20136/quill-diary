@@ -17,8 +17,9 @@ class PersonalizationPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
-    final AsyncValue<PersonalizationPreferences> prefsAsync =
-        ref.watch(personalizationPreferencesProvider);
+    final AsyncValue<PersonalizationPreferences> prefsAsync = ref.watch(
+      personalizationPreferencesProvider,
+    );
 
     return Scaffold(
       backgroundColor: pageBackground,
@@ -32,12 +33,12 @@ class PersonalizationPage extends ConsumerWidget {
       body: SafeArea(
         child: prefsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => Center(
-            child: Text(context.l10n.personalizationLoadErrorMessage),
-          ),
+          error: (_, _) =>
+              Center(child: Text(context.l10n.personalizationLoadErrorMessage)),
           data: (PersonalizationPreferences prefs) {
-            final PersonalizationPreferencesController controller =
-                ref.read(personalizationPreferencesProvider.notifier);
+            final PersonalizationPreferencesController controller = ref.read(
+              personalizationPreferencesProvider.notifier,
+            );
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -45,7 +46,8 @@ class PersonalizationPage extends ConsumerWidget {
                 SettingsSectionCard(
                   icon: Icons.translate_rounded,
                   title: context.l10n.personalizationLanguageSectionTitle,
-                  description: context.l10n.personalizationLanguageSectionDescription,
+                  description:
+                      context.l10n.personalizationLanguageSectionDescription,
                   child: PersonalizationLanguageSectionBody(
                     selected: prefs.locale,
                     onSelected: controller.setLocale,
@@ -55,7 +57,9 @@ class PersonalizationPage extends ConsumerWidget {
                 SettingsSectionCard(
                   icon: Icons.lock_clock_outlined,
                   title: context.l10n.personalizationSessionTimeoutSectionTitle,
-                  description: context.l10n.personalizationSessionTimeoutSectionDescription,
+                  description: context
+                      .l10n
+                      .personalizationSessionTimeoutSectionDescription,
                   child: PersonalizationSessionTimeoutSectionBody(
                     selected: prefs.sessionTimeoutMinutes,
                     onSelected: controller.setSessionTimeoutMinutes,
@@ -65,7 +69,9 @@ class PersonalizationPage extends ConsumerWidget {
                 SettingsSectionCard(
                   icon: Icons.image_outlined,
                   title: context.l10n.personalizationImageCompressSectionTitle,
-                  description: context.l10n.personalizationImageCompressSectionDescription,
+                  description: context
+                      .l10n
+                      .personalizationImageCompressSectionDescription,
                   child: PersonalizationImageCompressSectionBody(
                     selected: prefs.imageCompressPreset,
                     onSelected: controller.setImageCompressPreset,
@@ -75,7 +81,8 @@ class PersonalizationPage extends ConsumerWidget {
                 SettingsSectionCard(
                   icon: Icons.palette_outlined,
                   title: context.l10n.personalizationAppearanceSectionTitle,
-                  description: context.l10n.personalizationAppearanceSectionDescription,
+                  description:
+                      context.l10n.personalizationAppearanceSectionDescription,
                   child: PersonalizationAppearanceSectionBody(
                     selected: prefs.themeMode,
                     onSelected: controller.setThemeMode,
@@ -85,7 +92,8 @@ class PersonalizationPage extends ConsumerWidget {
                 SettingsSectionCard(
                   icon: Icons.text_fields_rounded,
                   title: context.l10n.personalizationTypographySectionTitle,
-                  description: context.l10n.personalizationTypographySectionDescription,
+                  description:
+                      context.l10n.personalizationTypographySectionDescription,
                   child: PersonalizationTypographySectionBody(
                     typography: prefs.typography,
                     controller: controller,

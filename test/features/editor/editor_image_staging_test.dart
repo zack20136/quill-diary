@@ -10,7 +10,9 @@ void main() {
   late Directory tempDir;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('editor_image_staging_test_');
+    tempDir = await Directory.systemTemp.createTemp(
+      'editor_image_staging_test_',
+    );
   });
 
   tearDown(() async {

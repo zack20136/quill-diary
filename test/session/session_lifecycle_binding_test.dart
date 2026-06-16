@@ -22,7 +22,9 @@ void main() {
     deviceSlotId: 'dev_slot',
   );
 
-  testWidgets('背景逾時後 resumed 會 post-frame 觸發 unlock', (WidgetTester tester) async {
+  testWidgets('背景逾時後 resumed 會 post-frame 觸發 unlock', (
+    WidgetTester tester,
+  ) async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
@@ -39,9 +41,13 @@ void main() {
       ),
     );
     await tester.pump();
-    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
 
-    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
     controller.activateSession(sampleSession);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
@@ -73,15 +79,17 @@ void main() {
             FakeAppLockService(unlockMode: AppUnlockMode.none),
           ),
         ],
-        child: const _BindingHost(
-          resumeUnlockDelay: Duration.zero,
-        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
     await tester.pump();
-    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
 
-    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
     controller.activateSession(sampleSession);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
@@ -116,15 +124,17 @@ void main() {
             FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
           ),
         ],
-        child: const _BindingHost(
-          resumeUnlockDelay: Duration.zero,
-        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
     await tester.pump();
-    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
 
-    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
     controller.activateSession(sampleSession);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
@@ -160,20 +170,25 @@ void main() {
             FakeAppLockService(unlockMode: AppUnlockMode.biometric),
           ),
         ],
-        child: const _BindingHost(
-          resumeUnlockDelay: Duration.zero,
-        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
     await tester.pump();
-    container = ProviderScope.containerOf(tester.element(find.byType(_BindingHost)));
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
 
-    final AppSessionController controller = container.read(appSessionProvider.notifier);
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
     controller.activateSession(sampleSession);
     await controller.expireFromInactivity();
     await controller.unlock(source: UnlockRequestSource.lifecycleResume);
 
-    expect(container.read(appSessionProvider).lockReason, SessionLockReason.authFailed);
+    expect(
+      container.read(appSessionProvider).lockReason,
+      SessionLockReason.authFailed,
+    );
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -188,9 +203,7 @@ void main() {
 }
 
 class _BindingHost extends ConsumerStatefulWidget {
-  const _BindingHost({
-    this.resumeUnlockDelay = Duration.zero,
-  });
+  const _BindingHost({this.resumeUnlockDelay = Duration.zero});
 
   final Duration resumeUnlockDelay;
 

@@ -24,14 +24,16 @@ class FakeSessionVaultRepository extends VaultRepository {
     this.initializeError,
     this.unlockWithRecoveryKeyResult,
   }) : super(
-          pathStrategy: DummyVaultPathStrategy(),
-          frontMatterCodec: const FrontMatterCodec(),
-          cryptoService: StubCryptoService(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          deviceKeyManager: const UnsupportedDeviceKeyManager(),
-          appLockService: const UnsupportedAppLockService(),
-          userPreferences: UserPreferences(storageFile: File('.unused_test_prefs.json')),
-        ) {
+         pathStrategy: DummyVaultPathStrategy(),
+         frontMatterCodec: const FrontMatterCodec(),
+         cryptoService: StubCryptoService(),
+         indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
+         deviceKeyManager: const UnsupportedDeviceKeyManager(),
+         appLockService: const UnsupportedAppLockService(),
+         userPreferences: UserPreferences(
+           storageFile: File('.unused_test_prefs.json'),
+         ),
+       ) {
     if (openTrustedSessionResults != null) {
       _openTrustedSessionResults = List<Object?>.of(openTrustedSessionResults);
     }
@@ -126,7 +128,8 @@ class FakeSessionVaultRepository extends VaultRepository {
   }
 
   @override
-  Future<bool> needsKeystoreMigration(UnlockedVaultSession session) async => false;
+  Future<bool> needsKeystoreMigration(UnlockedVaultSession session) async =>
+      false;
 
   @override
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(

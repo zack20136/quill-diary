@@ -6,7 +6,10 @@ import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
 
 void main() {
   test('deriveIndexDatabaseKey 對相同輸入穩定', () async {
-    final List<int> recoveryWrapKey = List<int>.generate(32, (int index) => index + 11);
+    final List<int> recoveryWrapKey = List<int>.generate(
+      32,
+      (int index) => index + 11,
+    );
 
     final List<int> first = await deriveIndexDatabaseKey(
       recoveryWrapKey: recoveryWrapKey,
@@ -39,7 +42,10 @@ void main() {
   });
 
   test('deriveIndexDatabaseKey 會隨 vaultId 改變', () async {
-    final List<int> recoveryWrapKey = List<int>.generate(32, (int index) => index + 21);
+    final List<int> recoveryWrapKey = List<int>.generate(
+      32,
+      (int index) => index + 21,
+    );
 
     final List<int> first = await deriveIndexDatabaseKey(
       recoveryWrapKey: recoveryWrapKey,

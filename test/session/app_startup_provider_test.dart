@@ -16,6 +16,7 @@ import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_app_lock_service.dart';
 import '../helpers/fake_session_vault_repository.dart';
+import '../helpers/test_l10n.dart';
 
 void main() {
   final RecoveryMetadata metadata = RecoveryMetadata(
@@ -61,21 +62,27 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.fatalError);
-    expect(state.message, kAndroidOnlyMessage);
+    expect(state.message, sessionAndroidOnlyMessage(testL10n));
   });
 
   test('尚未建立 Recovery Key 時進入 unlocked', () async {
-    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(metadata: null);
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      metadata: null,
+    );
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.unlocked);
-    expect(state.message, kStartupNeedsRecoveryKeyMessage);
+    expect(state.message, sessionStartupNeedsRecoveryKeyMessage(testL10n));
   });
 
   test('有 metadata 但無 trusted device 時進入 recoveryRequired', () async {
@@ -88,9 +95,11 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.recoveryRequired);
-    expect(state.message, kStartupNeedsTrustedDeviceMessage);
+    expect(state.message, sessionStartupNeedsTrustedDeviceMessage(testL10n));
   });
 
   test('trusted session 還原成功時進入 unlocked', () async {
@@ -104,7 +113,9 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.unlocked);
     expect(state.session?.vaultId, metadata.vaultId);
   });
@@ -113,35 +124,46 @@ void main() {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
-      openTrustedSessionResult: const DeviceKeyUnsupportedFormatException('格式不符'),
+      openTrustedSessionResult: const DeviceKeyUnsupportedFormatException(
+        '格式不符',
+      ),
     );
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.recoveryRequired);
     expect(state.message, '格式不符');
     expect(repository.clearTrustedDeviceAccessCalls, 1);
   });
 
-  test('啟動遇到 invalidated trusted state 時會進入 recoveryRequired 並清掉 trusted state', () async {
-    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
-      metadata: metadata,
-      hasTrustedDevice: true,
-      openTrustedSessionResult: const DeviceKeyInvalidatedException('invalid key'),
-    );
-    final ProviderContainer container = buildContainer(
-      supportedPlatform: true,
-      repository: repository,
-    );
+  test(
+    '啟動遇到 invalidated trusted state 時會進入 recoveryRequired 並清掉 trusted state',
+    () async {
+      final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+        metadata: metadata,
+        hasTrustedDevice: true,
+        openTrustedSessionResult: const DeviceKeyInvalidatedException(
+          'invalid key',
+        ),
+      );
+      final ProviderContainer container = buildContainer(
+        supportedPlatform: true,
+        repository: repository,
+      );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
-    expect(state.status, AppLockStatus.recoveryRequired);
-    expect(state.message, 'invalid key');
-    expect(repository.clearTrustedDeviceAccessCalls, 1);
-  });
+      final AppSessionState state = await container.read(
+        appStartupProvider.future,
+      );
+      expect(state.status, AppLockStatus.recoveryRequired);
+      expect(state.message, 'invalid key');
+      expect(repository.clearTrustedDeviceAccessCalls, 1);
+    },
+  );
 
   test('啟動遇到使用者取消驗證時維持 locked，不清 trusted state', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
@@ -155,7 +177,9 @@ void main() {
       appLock: FakeAppLockService(unlockMode: AppUnlockMode.biometric),
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.locked);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
@@ -164,7 +188,9 @@ void main() {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
-      openTrustedSessionResult: const DeviceKeyAuthFailedException('bio failed'),
+      openTrustedSessionResult: const DeviceKeyAuthFailedException(
+        'bio failed',
+      ),
     );
     final ProviderContainer container = buildContainer(
       supportedPlatform: true,
@@ -175,9 +201,11 @@ void main() {
       ),
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.locked);
-    expect(state.message, kLockedRetryVerificationMessage);
+    expect(state.message, sessionLockedRetryVerificationMessage(testL10n));
     expect(state.lockReason, SessionLockReason.authFailed);
     expect(repository.clearTrustedDeviceAccessCalls, 0);
   });
@@ -193,7 +221,9 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.recoveryRequired);
     expect(repository.clearTrustedDeviceAccessCalls, 1);
   });
@@ -208,9 +238,11 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.fatalError);
-    expect(state.message, kUnlockFailedMessage);
+    expect(state.message, sessionUnlockFailedMessage(testL10n));
   });
 
   test('openTrustedSession 非預期錯誤時回傳 fatalError', () async {
@@ -224,37 +256,45 @@ void main() {
       repository: repository,
     );
 
-    final AppSessionState state = await container.read(appStartupProvider.future);
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
     expect(state.status, AppLockStatus.fatalError);
-    expect(state.message, kUnlockFailedMessage);
+    expect(state.message, sessionUnlockFailedMessage(testL10n));
   });
 
-  test('effectiveAppSessionProvider 已解鎖時 invalidate 不重跑 openTrustedSession', () async {
-    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
-      metadata: metadata,
-      hasTrustedDevice: true,
-      openTrustedSessionResult: sampleSession,
-    );
-    final ProviderContainer container = buildContainer(
-      supportedPlatform: true,
-      repository: repository,
-    );
+  test(
+    'effectiveAppSessionProvider 已解鎖時 invalidate 不重跑 openTrustedSession',
+    () async {
+      final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+        metadata: metadata,
+        hasTrustedDevice: true,
+        openTrustedSessionResult: sampleSession,
+      );
+      final ProviderContainer container = buildContainer(
+        supportedPlatform: true,
+        repository: repository,
+      );
 
-    await container.read(appStartupProvider.future);
-    expect(repository.openTrustedSessionCalls, 1);
+      await container.read(appStartupProvider.future);
+      expect(repository.openTrustedSessionCalls, 1);
 
-    container.read(appSessionProvider.notifier).activateSession(sampleSession);
+      container
+          .read(appSessionProvider.notifier)
+          .activateSession(sampleSession);
 
-    final AppSessionState effective =
-        await container.read(effectiveAppSessionProvider.future);
-    expect(effective.status, AppLockStatus.unlocked);
-    expect(repository.openTrustedSessionCalls, 1);
+      final AppSessionState effective = await container.read(
+        effectiveAppSessionProvider.future,
+      );
+      expect(effective.status, AppLockStatus.unlocked);
+      expect(repository.openTrustedSessionCalls, 1);
 
-    container.invalidate(effectiveAppSessionProvider);
-    container.invalidate(appStartupProvider);
-    container.invalidate(recoveryMetadataProvider);
+      container.invalidate(effectiveAppSessionProvider);
+      container.invalidate(appStartupProvider);
+      container.invalidate(recoveryMetadataProvider);
 
-    await container.read(effectiveAppSessionProvider.future);
-    expect(repository.openTrustedSessionCalls, 1);
-  });
+      await container.read(effectiveAppSessionProvider.future);
+      expect(repository.openTrustedSessionCalls, 1);
+    },
+  );
 }

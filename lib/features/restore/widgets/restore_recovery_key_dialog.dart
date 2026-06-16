@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../settings/settings_copy.dart';
 import '../../../infrastructure/storage/restore_precheck.dart';
+import '../../../l10n/l10n.dart';
+import '../../settings/settings_messages.dart';
 
 /// 還原備份前收集建立該備份時保存的復原金鑰。
 Future<String?> showRestoreRecoveryKeyDialog(
@@ -29,7 +30,8 @@ class _RestoreRecoveryKeyDialog extends StatefulWidget {
   final String? validationError;
 
   @override
-  State<_RestoreRecoveryKeyDialog> createState() => _RestoreRecoveryKeyDialogState();
+  State<_RestoreRecoveryKeyDialog> createState() =>
+      _RestoreRecoveryKeyDialogState();
 }
 
 class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
@@ -49,9 +51,12 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
   }
 
   void _submit() {
+    final AppLocalizations l10n = context.l10n;
     final String key = _controller.text.trim();
     if (key.isEmpty) {
-      setState(() => _errorText = SettingsRestoreDialogCopy.recoveryKeyEmptyError);
+      setState(
+        () => _errorText = l10n.settingsRestoreDialogRecoveryKeyEmptyError,
+      );
       return;
     }
     Navigator.of(context).pop(key);
@@ -59,18 +64,19 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final String? hint = widget.precheck.backupRecoveryHint;
 
     return AlertDialog(
-      title: const Text(SettingsRestoreDialogCopy.recoveryKeyDialogTitle),
+      title: Text(l10n.settingsRestoreDialogRecoveryKeyTitle),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(
-              restoreRecoveryKeyDialogSubtitle(widget.precheck),
+              restoreRecoveryKeyDialogSubtitle(l10n, widget.precheck),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 height: 1.45,
@@ -78,7 +84,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              SettingsRestoreDialogCopy.recoveryKeyVerifyNote,
+              l10n.settingsRestoreDialogRecoveryKeyVerifyNote,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w600,
@@ -87,7 +93,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             if (hint != null && hint.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               Text(
-                SettingsCopy.recoveryKeyHintLine(hint),
+                settingsRecoveryKeyHintLine(l10n, hint),
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -99,8 +105,8 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
               autofocus: true,
               autocorrect: false,
               decoration: InputDecoration(
-                labelText: SettingsCopy.recoveryKeyFieldLabel,
-                hintText: SettingsCopy.recoveryKeyFieldHint,
+                labelText: l10n.settingsRecoveryKeyFieldLabel,
+                hintText: l10n.settingsRecoveryKeyFieldHint,
                 errorText: _errorText,
               ),
               onSubmitted: (_) => _submit(),
@@ -111,11 +117,11 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(SettingsCopy.actionCancel),
+          child: Text(l10n.commonActionCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text(SettingsCopy.actionVerifyAndRestore),
+          child: Text(l10n.settingsActionVerifyAndRestore),
         ),
       ],
     );

@@ -20,11 +20,7 @@ List<String> splitQuillDiaryArticles(String bodyHtml) {
       .toList(growable: false);
 }
 
-String? extractBlockInnerHtml(
-  String html,
-  String tagName,
-  String className,
-) {
+String? extractBlockInnerHtml(String html, String tagName, String className) {
   final String lowerTag = tagName.toLowerCase();
   final RegExp opener = RegExp(
     "<$lowerTag\\b[^>]*\\bclass\\s*=\\s*['\"][^'\"]*\\b"
@@ -49,9 +45,7 @@ String? extractBlockInnerHtml(
 
 String? extractQuillDiaryMetaValue(String entryMetaHtml, String label) {
   final RegExp pattern = RegExp(
-    r'<span\b[^>]*>\s*' +
-        RegExp.escape(label) +
-        r'\s*[：:]\s*([^<]+)\s*</span>',
+    r'<span\b[^>]*>\s*' + RegExp.escape(label) + r'\s*[：:]\s*([^<]+)\s*</span>',
     caseSensitive: false,
   );
   final Match? match = pattern.firstMatch(entryMetaHtml);
@@ -75,7 +69,10 @@ List<String> extractQuillDiaryTags(String articleHtml) {
   );
   return itemPattern
       .allMatches(tagsHtml)
-      .map((Match match) => decodeHtmlEntities(stripHtmlTags(match.group(1) ?? '')).trim())
+      .map(
+        (Match match) =>
+            decodeHtmlEntities(stripHtmlTags(match.group(1) ?? '')).trim(),
+      )
       .where((String value) => value.isNotEmpty)
       .toList(growable: false);
 }
@@ -88,7 +85,8 @@ String exportHtmlBodyToMarkdown(String html) {
 
   output = output.replaceAllMapped(
     RegExp(r'<pre>\s*<code>([\s\S]*?)</code>\s*</pre>', caseSensitive: false),
-    (Match match) => '```\n${decodeHtmlEntities(match.group(1) ?? '').trimRight()}\n```\n\n',
+    (Match match) =>
+        '```\n${decodeHtmlEntities(match.group(1) ?? '').trimRight()}\n```\n\n',
   );
   for (int level = 6; level >= 1; level--) {
     output = output.replaceAllMapped(
@@ -138,7 +136,8 @@ String inlineExportHtmlToMarkdown(String html) {
   );
   output = output.replaceAllMapped(
     RegExp(r'<code\b[^>]*>([\s\S]*?)</code>', caseSensitive: false),
-    (Match match) => '`${decodeHtmlEntities(stripHtmlTags(match.group(1) ?? ''))}`',
+    (Match match) =>
+        '`${decodeHtmlEntities(stripHtmlTags(match.group(1) ?? ''))}`',
   );
   output = output.replaceAllMapped(
     RegExp(
@@ -184,9 +183,7 @@ String? extractHtmlClassText(String html, String className) {
     return null;
   }
 
-  final String text = decodeHtmlEntities(
-    stripHtmlTags(innerHtml),
-  ).trim();
+  final String text = decodeHtmlEntities(stripHtmlTags(innerHtml)).trim();
   return text.isEmpty ? null : text;
 }
 
@@ -235,9 +232,11 @@ String? extractBalancedElementInnerHtml({
   var index = contentStart;
 
   while (index < html.length && depth > 0) {
-    final Match? nextOpen = openTag.matchAsPrefix(html, index) ??
+    final Match? nextOpen =
+        openTag.matchAsPrefix(html, index) ??
         _nextRegExpMatch(openTag, html, index);
-    final Match? nextClose = closeTag.matchAsPrefix(html, index) ??
+    final Match? nextClose =
+        closeTag.matchAsPrefix(html, index) ??
         _nextRegExpMatch(closeTag, html, index);
 
     final int? openAt = nextOpen?.start;
@@ -290,20 +289,16 @@ String decodeHtmlEntities(String input) {
       .replaceAll('&quot;', '"')
       .replaceAll('&#39;', "'");
 
-  output = output.replaceAllMapped(
-    RegExp(r'&#x([0-9a-fA-F]+);'),
-    (Match match) {
-      final int? codePoint = int.tryParse(match.group(1) ?? '', radix: 16);
-      return codePoint == null ? match.group(0)! : String.fromCharCode(codePoint);
-    },
-  );
-  output = output.replaceAllMapped(
-    RegExp(r'&#(\d+);'),
-    (Match match) {
-      final int? codePoint = int.tryParse(match.group(1) ?? '');
-      return codePoint == null ? match.group(0)! : String.fromCharCode(codePoint);
-    },
-  );
+  output = output.replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (
+    Match match,
+  ) {
+    final int? codePoint = int.tryParse(match.group(1) ?? '', radix: 16);
+    return codePoint == null ? match.group(0)! : String.fromCharCode(codePoint);
+  });
+  output = output.replaceAllMapped(RegExp(r'&#(\d+);'), (Match match) {
+    final int? codePoint = int.tryParse(match.group(1) ?? '');
+    return codePoint == null ? match.group(0)! : String.fromCharCode(codePoint);
+  });
   return output;
 }
 

@@ -106,7 +106,9 @@ void main() {
         session: session,
         expected: KeystoreAuthKind.deviceCredential,
         syncedSuffix: KeystoreAuthKind.deviceCredential.storageSuffix,
-        wrappedRecord: record.copyWith(slotId: 'dev_android_keystore_biometric_vlt_a'),
+        wrappedRecord: record.copyWith(
+          slotId: 'dev_android_keystore_biometric_vlt_a',
+        ),
       ),
       isFalse,
     );

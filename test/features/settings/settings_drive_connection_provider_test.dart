@@ -32,16 +32,18 @@ void main() {
     final ProviderContainer container = buildContainer(transferService);
     final ProviderSubscription<AsyncValue<DriveConnectionState>> subscription =
         container.listen(
-      settingsDriveConnectionProvider,
-      (_, _) {},
-      fireImmediately: true,
-    );
+          settingsDriveConnectionProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
     addTearDown(subscription.close);
 
-    final DriveConnectionState first =
-        await container.read(settingsDriveConnectionProvider.future);
-    final AsyncValue<DriveConnectionState> second =
-        container.read(settingsDriveConnectionProvider);
+    final DriveConnectionState first = await container.read(
+      settingsDriveConnectionProvider.future,
+    );
+    final AsyncValue<DriveConnectionState> second = container.read(
+      settingsDriveConnectionProvider,
+    );
 
     expect(first.isConnected, isFalse);
     expect(readData(second)?.isConnected, isFalse);
@@ -62,26 +64,32 @@ void main() {
     final ProviderContainer container = buildContainer(transferService);
     final ProviderSubscription<AsyncValue<DriveConnectionState>> subscription =
         container.listen(
-      settingsDriveConnectionProvider,
-      (_, _) {},
-      fireImmediately: true,
-    );
+          settingsDriveConnectionProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
     addTearDown(subscription.close);
 
     expect(
-      (await container.read(settingsDriveConnectionProvider.future)).isConnected,
+      (await container.read(
+        settingsDriveConnectionProvider.future,
+      )).isConnected,
       isFalse,
     );
 
     await transferService.linkGoogleDrive();
     container.invalidate(settingsDriveConnectionProvider);
-    final DriveConnectionState connected =
-        await container.read(settingsDriveConnectionProvider.future);
+    final DriveConnectionState connected = await container.read(
+      settingsDriveConnectionProvider.future,
+    );
 
     expect(connected.isConnected, isTrue);
     expect(connected.email, 'writer@example.com');
     expect(connected.displayName, 'Writer');
-    expect(readData(container.read(settingsDriveConnectionProvider))?.email, 'writer@example.com');
+    expect(
+      readData(container.read(settingsDriveConnectionProvider))?.email,
+      'writer@example.com',
+    );
     expect(transferService.linkCalls, 1);
     expect(transferService.switchAccountCalls, 0);
     expect(transferService.isConnectedCalls, 2);
@@ -105,10 +113,10 @@ void main() {
     final ProviderContainer container = buildContainer(transferService);
     final ProviderSubscription<AsyncValue<DriveConnectionState>> subscription =
         container.listen(
-      settingsDriveConnectionProvider,
-      (_, _) {},
-      fireImmediately: true,
-    );
+          settingsDriveConnectionProvider,
+          (_, _) {},
+          fireImmediately: true,
+        );
     addTearDown(subscription.close);
 
     expect(
@@ -118,8 +126,9 @@ void main() {
 
     await transferService.switchGoogleDrive();
     container.invalidate(settingsDriveConnectionProvider);
-    final DriveConnectionState reconnected =
-        await container.read(settingsDriveConnectionProvider.future);
+    final DriveConnectionState reconnected = await container.read(
+      settingsDriveConnectionProvider.future,
+    );
 
     expect(reconnected.isConnected, isTrue);
     expect(reconnected.email, 'after@example.com');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n.dart';
-import '../settings_copy.dart';
+import '../settings_messages.dart';
 import '../vault_transfer_access.dart';
 import 'settings_sections.dart';
 
@@ -26,37 +26,38 @@ class LocalBackupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     return SettingsSectionCard(
       icon: Icons.storage_rounded,
-      title: SettingsLocalBackupCopy.sectionTitle,
+      title: l10n.settingsLocalBackupSectionTitle,
       description: access.canBackup
-          ? SettingsLocalBackupCopy.sectionDescriptionEnabled
-          : VaultTransferCopy.localSectionDescriptionBackupLocked(context.l10n),
+          ? settingsLocalBackupSectionDescriptionEnabled(l10n)
+          : l10n.vaultTransferLocalSectionDescriptionBackupLocked,
       child: SettingsActionGroup(
         actions: <SettingsActionButton>[
           SettingsActionButton(
-            label: SettingsLocalBackupCopy.createButton,
+            label: l10n.settingsLocalBackupCreateButton,
             icon: Icons.archive_outlined,
             appearance: SettingsActionButtonAppearance.filled,
             fullWidth: true,
             onPressed: busy || !access.canBackup ? null : onCreate,
           ),
           SettingsActionButton(
-            label: SettingsLocalBackupCopy.restoreButton,
+            label: l10n.settingsLocalBackupRestoreButton,
             icon: Icons.restore_rounded,
             appearance: SettingsActionButtonAppearance.tonal,
             fullWidth: true,
             onPressed: busy || !access.canBackup ? null : onRestore,
           ),
           SettingsActionButton(
-            label: SettingsLocalBackupCopy.exportToExternalButton,
+            label: l10n.settingsLocalBackupExportToExternalButton,
             icon: Icons.file_upload_outlined,
             appearance: SettingsActionButtonAppearance.outlined,
             fullWidth: true,
             onPressed: busy || !access.canBackup ? null : onExport,
           ),
           SettingsActionButton(
-            label: SettingsLocalBackupCopy.importFromExternalButton,
+            label: l10n.settingsLocalBackupImportFromExternalButton,
             icon: Icons.file_download_outlined,
             appearance: SettingsActionButtonAppearance.outlined,
             fullWidth: true,

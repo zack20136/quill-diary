@@ -79,6 +79,407 @@
   "personalizationBodyParagraphSpacingLabel": "內文段落間距",
   "settingsPageTitle": "設定",
   "settingsProgressDefault": "正在處理，請稍候…",
+  "personalizationImageCompressOriginalDescription": "不壓縮，保留原始解析度與檔案大小。適合需要最高畫質、可接受較大日記庫時使用。",
+  "personalizationImageCompressStandardDescription": "長邊縮至 1280 px、JPEG 品質 70。在清晰度與儲存空間之間取得平衡（預設）。",
+  "personalizationImageCompressHighDescription": "長邊縮至 1920 px、JPEG 品質 85。檔案較大，但細節保留較多。",
+  "personalizationFontSizeValue": "{size} 點",
+  "@personalizationFontSizeValue": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationLineHeightValue": "{height} 倍",
+  "@personalizationLineHeightValue": {
+    "placeholders": {
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationParagraphSpacingValue": "{spacing} 像素",
+  "@personalizationParagraphSpacingValue": {
+    "placeholders": {
+      "spacing": {
+        "type": "String"
+      }
+    }
+  },
+  "personalizationTypographyPreviewTitleParagraph1": "今日的小確幸，陽光剛好落在書桌上。值得記住的一刻，先寫下來再說。",
+  "personalizationTypographyPreviewBodyParagraph1": "記錄下此刻的心情，讓文字替記憶保溫。記錄下此刻的心情，讓文字替記憶保溫。",
+  "personalizationTypographyPreviewBodyParagraph2": "段落之間的間距，也會反映在預覽裡。段落之間的間距，也會反映在預覽裡。",
+  "sessionBlockedLockedTitle": "日記庫已鎖定",
+  "sessionBlockedRecoveryRequiredTitle": "需要復原金鑰",
+  "sessionBlockedFatalErrorTitle": "無法啟動",
+  "sessionBlockedDefaultTitle": "請稍候",
+  "sessionBlockedLockedSubtitle": "請完成驗證以繼續",
+  "sessionBlockedRecoveryRequiredSubtitle": "請輸入復原金鑰解鎖",
+  "sessionBlockedFatalErrorSubtitle": "請檢查設定或重新啟動應用程式",
+  "editorPageTitle": "編輯日記",
+  "editorTitleHint": "輸入標題",
+  "editorTitleRequiredError": "請輸入標題",
+  "editorBodyHint": "在這裡輸入內容…",
+  "editorBodyEmptyPreview": "尚未輸入內容",
+  "editorNeedsRecoveryKeyMessage": "請先建立復原金鑰，才能開始建立或編輯日記。",
+  "editorSessionLockedFallback": "請先重新解鎖日記庫後再繼續。",
+  "editorSaveNeedsTitleMessage": "請輸入標題才能儲存",
+  "editorUnsavedDraftLabel": "未儲存",
+  "editorConfirmDeleteTitle": "確認刪除",
+  "editorConfirmDeleteBody": "確定要刪除這篇日記嗎？刪除後無法復原。",
+  "editorTagsStudioTitle": "標籤",
+  "editorTagsStudioGuide": "右上角可建立新標籤；下方為文庫標籤，輕觸加入。",
+  "editorTagsStudioEmptyChosen": "尚未套用任何標籤",
+  "editorTagsStudioAddButton": "加入",
+  "editorPreviewUnavailable": "無法預覽",
+  "editorTagSearchHint": "搜尋標籤…",
+  "editorTagLibraryHint": "文庫裡的標籤 · 輕觸加入",
+  "editorTagPoolEmpty": "文庫裡暫時沒有其他可用標籤，或已全部加入目前清單",
+  "editorTagAddTooltip": "新增標籤",
+  "editorTooltipCancel": "取消",
+  "editorTooltipSave": "儲存",
+  "editorTooltipSaveNeedsTitle": "請先輸入標題",
+  "editorTooltipDate": "日期",
+  "editorTooltipTime": "時間",
+  "editorTooltipEditTags": "編輯標籤",
+  "editorTooltipUploadImages": "上傳圖片（可一次選多張）",
+  "editorTooltipAddAttachment": "新增附件",
+  "editorTooltipDelete": "刪除",
+  "editorTooltipEdit": "編輯",
+  "editorRestoreDraftTitle": "發現未完成的草稿",
+  "editorRestoreDraftDecline": "不使用",
+  "editorRestoreDraftAccept": "還原草稿",
+  "editorUntitledDraft": "無標題",
+  "editorRestoreDraftOverwrite": "草稿：{title}\n最後儲存：{savedAt}\n\n還原後會覆蓋目前檢視中的內容。",
+  "@editorRestoreDraftOverwrite": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorRestoreDraftPrompt": "草稿：{title}\n最後儲存：{savedAt}\n\n是否要還原這份草稿？",
+  "@editorRestoreDraftPrompt": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "savedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDiscardDraftTitle": "捨棄草稿？",
+  "editorDiscardDraftBody": "目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？",
+  "editorDiscardDraftConfirm": "捨棄",
+  "editorGalleryDownloadTooltip": "下載",
+  "editorGalleryDownloadFailed": "無法下載圖片",
+  "editorGalleryDownloadSuccess": "已儲存至 {path}",
+  "@editorGalleryDownloadSuccess": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "homeUnlockingTitle": "正在解鎖",
+  "homeRetryVerification": "重新驗證",
+  "homeGoToSettings": "前往設定",
+  "homeNavHome": "首頁",
+  "homeNavCalendar": "日曆",
+  "homeNavTags": "標籤",
+  "homeNavOverview": "總覽",
+  "homeTooltipNewEntry": "新增日記",
+  "homeTooltipSettings": "設定與備份",
+  "homeTooltipExportHtml": "匯出 HTML",
+  "homeTooltipDelete": "刪除",
+  "homeTooltipAddTag": "新增標籤",
+  "homeTooltipEditTag": "編輯標籤",
+  "homeTooltipDeleteTag": "刪除標籤",
+  "homeTooltipDeselectTag": "取消選取",
+  "homeSelectionSelectAll": "全選",
+  "homeSelectionDeselectAll": "取消全選",
+  "homeSelectionSelectDiary": "選取日記",
+  "homeSelectionSelectedCount": "已選 {count} 項",
+  "@homeSelectionSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSearchHint": "搜尋標題、內文或標籤",
+  "homeEmptyDiaryTitle": "目前沒有日記",
+  "homeEmptyDiaryMessage": "建立第一篇日記後，就會在這裡看到你的首頁列表。",
+  "homeNoAnalysisTitle": "尚無可分析內容",
+  "homeNoAnalysisMessage": "寫下一篇後，就可以在這裡看到統計、標籤與範圍內的日記。",
+  "homeExportRecapLabel": "匯出回顧",
+  "homeExportRecapAll": "匯出總回顧",
+  "homeExportRecapYear": "匯出年度回顧",
+  "homeExportRecapMonth": "匯出月份回顧",
+  "homePopularTagsTitle": "熱門標籤",
+  "homeScopeTitle": "範圍",
+  "homeScopeAllLabel": "全部",
+  "homeScopeYearLabel": "年",
+  "homeScopeMonthLabel": "月",
+  "homeScopeEmptyDiary": "此範圍內沒有符合的日記。",
+  "homeScopeEmptyDiaryForTag": "此範圍內沒有套用「{tag}」的日記。",
+  "@homeScopeEmptyDiaryForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScopeEmptyTags": "此範圍內沒有標籤。",
+  "homeUnsavedDraftLabel": "未儲存",
+  "homeHtmlExportLargeTitle": "HTML 檔案可能很大",
+  "homeHtmlExportEmbeddedHint": "圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。",
+  "homeHtmlExportProceed": "仍要匯出",
+  "homeHtmlExportSelectionSummary": "選取 {entrySummary}日記，包含 {imageSummary}圖片。",
+  "@homeHtmlExportSelectionSummary": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "imageSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportImageSize": "圖片原始大小：約 {size}",
+  "@homeHtmlExportImageSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportEstimatedSize": "HTML 估算大小：約 {size}",
+  "@homeHtmlExportEstimatedSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHtmlExportSuccess": "已匯出 HTML：{fileName}",
+  "@homeHtmlExportSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDeleteTagTitle": "刪除標籤",
+  "homeDeleteTagConfirm": "確定要從所有日記移除「{label}」嗎？",
+  "@homeDeleteTagConfirm": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagSearchHint": "搜尋標籤…",
+  "homeNoTagsTitle": "尚未有標籤",
+  "homeNoTagsMessage": "可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。",
+  "homeTagListGuide": "請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。",
+  "homeTagPreviewTitle": "選取標籤以預覽日記",
+  "homeTagDeleted": "「{label}」已刪除",
+  "@homeTagDeleted": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRemovedFromEntries": "已從 {entrySummary}日記移除「{label}」",
+  "@homeTagRemovedFromEntries": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagIndexEmptyForTag": "目前索引中找不到套用「{tag}」的項目。",
+  "@homeTagIndexEmptyForTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowEntryCount": "{entrySummary}日記",
+  "@homeTagRowEntryCount": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTagRowTapHint": "輕觸列預覽",
+  "homeDiarySectionTitleForDate": "日記 · {dateLabel}",
+  "@homeDiarySectionTitleForDate": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEmptyDayMessage": "「{dateLabel}」這一天目前沒有日記。",
+  "@homeEmptyDayMessage": {
+    "placeholders": {
+      "dateLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewDataTitle": "資料概覽",
+  "homeOverviewScopeAll": "目前範圍 · 全部日記",
+  "homeOverviewScopeYear": "目前範圍 · {year}年",
+  "@homeOverviewScopeYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewScopeMonth": "目前範圍 · {year}年{month}月",
+  "@homeOverviewScopeMonth": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewWritingDaysLabel": "撰寫天數",
+  "homeOverviewAvgLengthLabel": "平均篇幅",
+  "homeOverviewAttachmentsLabel": "附件總數",
+  "homeOverviewAttachmentCount": "{attachmentSummary}",
+  "@homeOverviewAttachmentCount": {
+    "placeholders": {
+      "attachmentSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewLongestStreak": "連續最長 {daySummary}",
+  "@homeOverviewLongestStreak": {
+    "placeholders": {
+      "daySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOverviewEntryStats": "共 {entrySummary}\n累計 {characterSummary}",
+  "@homeOverviewEntryStats": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      },
+      "characterSummary": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionTag": "日記 · {tag}",
+  "@homeDiarySectionTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDiarySectionAll": "日記 · 全部",
+  "homeDiarySectionByYear": "日記 · 依年",
+  "homeDiarySectionByMonth": "日記 · 依月",
+  "homeDiarySectionWithTag": "{baseTitle} · {tag}",
+  "@homeDiarySectionWithTag": {
+    "placeholders": {
+      "baseTitle": {
+        "type": "String"
+      },
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCalendarMonthFormatLabel": "月",
+  "homeCalendarWeekdaySun": "日",
+  "homeCalendarWeekdayMon": "一",
+  "homeCalendarWeekdayTue": "二",
+  "homeCalendarWeekdayWed": "三",
+  "homeCalendarWeekdayThu": "四",
+  "homeCalendarWeekdayFri": "五",
+  "homeCalendarWeekdaySat": "六",
+  "sessionBackgroundTimeoutMinutes": "{count} 分鐘",
+  "@sessionBackgroundTimeoutMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionBackgroundTimeoutSeconds": "{count} 秒",
+  "@sessionBackgroundTimeoutSeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewAvgLengthValue": "{charactersPerEntry} 字 / 篇",
+  "@homeOverviewAvgLengthValue": {
+    "placeholders": {
+      "charactersPerEntry": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewAttachmentDetail": "照片 {photos} · 檔案 {files}",
+  "@homeOverviewAttachmentDetail": {
+    "placeholders": {
+      "photos": {
+        "type": "int"
+      },
+      "files": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOverviewMostEntriesInSingleDay": "單天最多 {entrySummary}",
+  "@homeOverviewMostEntriesInSingleDay": {
+    "placeholders": {
+      "entrySummary": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultTransferNeedsUnlockForBackup": "請先解鎖日記庫，才能備份或匯出。",
+  "vaultTransferNeedsRecoveryKeyForBackup": "請先建立復原金鑰，才能備份或匯出。",
+  "vaultTransferNeedsUnlockForRestore": "請先解鎖日記庫，才能還原備份。",
+  "vaultTransferLocalSectionDescriptionBackupLocked": "建立本機備份與匯出需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接匯入外部備份還原。",
+  "vaultTransferDriveSectionDescriptionBackupLocked": "備份到 Google Drive 需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接從 Google Drive 還原。",
+  "vaultTransferDriveBackupActionsLockedHint": "請先解鎖日記庫並建立復原金鑰，才能備份到 Google Drive。",
+  "vaultTransferRestoreUnlockFailed": "備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。",
+  "androidSafWriteFailed": "無法將檔案寫入選擇的資料夾。",
+  "androidSafWriteFailedWithCode": "無法將檔案寫入選擇的資料夾（{code}）。",
+  "@androidSafWriteFailedWithCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "defaultTagDaily": "日常",
   "defaultTagMood": "心情",
   "defaultTagReflection": "反思",
@@ -92,5 +493,644 @@
   "defaultTagEntertainment": "娛樂",
   "defaultTagExercise": "運動",
   "defaultTagHealth": "健康",
-  "defaultTagShopping": "購物"
+  "defaultTagShopping": "購物",
+  "settingsActionConfirm": "確認還原",
+  "settingsActionUpdate": "更新",
+  "settingsActionVerifyAndRestore": "驗證並還原",
+  "settingsRecoveryKeyFieldLabel": "復原金鑰",
+  "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
+  "settingsRecoveryKeyHintLine": "末四碼：{hint}",
+  "@settingsRecoveryKeyHintLine": {
+    "placeholders": {
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsBackupPhaseCreating": "正在建立備份…",
+  "settingsBackupPhaseCopying": "正在寫入備份…",
+  "settingsBackupPhaseUploadingDrive": "正在上傳到 Google Drive…",
+  "settingsBackupPhaseDownloadingDrive": "正在從 Google Drive 下載…",
+  "settingsBackupPhaseRestoring": "正在還原備份，請勿關閉應用程式…",
+  "settingsBackupStartingAfterRestore": "正在啟動還原後的日記庫…",
+  "settingsPlatformSectionTitle": "平台限制",
+  "settingsPlatformSectionDescription": "Quill Diary 目前僅支援 Android。",
+  "settingsSecurityLockStatusPreparing": "正在準備中…",
+  "settingsSecurityLockStatusUnlocked": "已解鎖，可以正常使用。",
+  "settingsSecurityLockStatusFatalError": "初始化失敗，請稍後再試。",
+  "settingsSecurityLockUnlockingWaitHint": "若等候過久，驗證視窗可能被擋住。可取消後改用手動驗證。",
+  "settingsSecurityLockCancelUnlockButton": "取消並改用手動驗證",
+  "settingsSecurityLockUnlockWithRecoveryButton": "使用復原金鑰解鎖",
+  "settingsSecurityLockRecoveryUnlockHint": "輸入復原金鑰以解鎖日記庫。",
+  "settingsSecurityLockRetryVerificationButton": "重新驗證",
+  "settingsRecoveryKeyNotSetupBanner": "尚未建立復原金鑰。請先建立，以便換機、備份與還原。",
+  "settingsRecoveryKeySetupBanner": "復原金鑰已建立，請確認已妥善保存。",
+  "settingsRecoveryKeyCreateButton": "建立復原金鑰",
+  "settingsRecoveryKeyRotateButton": "更新復原金鑰",
+  "settingsRecoveryKeyFactVaultLabel": "日記庫",
+  "settingsRecoveryKeyFactHintLabel": "末四碼",
+  "settingsRecoveryKeyFactKdfLabel": "加密方式",
+  "settingsRecoveryKeySaveDialogTitle": "請保存復原金鑰",
+  "settingsRecoveryKeySaveNewDialogTitle": "請保存新的復原金鑰",
+  "settingsRecoveryKeyCopyButton": "複製",
+  "settingsRecoveryKeyCopiedMessage": "已複製到剪貼簿",
+  "settingsRecoveryKeyRotateDialogTitle": "更新復原金鑰？",
+  "settingsRecoveryKeyRotateDialogBody": "將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。",
+  "settingsSecurityOverviewSectionTitle": "安全狀態",
+  "settingsSecurityOverviewSectionDescription": "查看復原金鑰、解鎖方式與搜尋索引是否正常。",
+  "settingsSecurityOverviewRecoveryKeyTitle": "復原金鑰",
+  "settingsSecurityOverviewRecoveryKeyReady": "已建立，可用於換機與還原。",
+  "settingsSecurityOverviewRecoveryKeyMissing": "尚未建立，請先建立後再備份或匯出。",
+  "settingsSecurityOverviewUnlockStatusTitle": "解鎖狀態",
+  "settingsSecurityOverviewUnlockStatusUnlocked": "日記庫目前已解鎖。",
+  "settingsSecurityOverviewUnlockStatusLocked": "請先解鎖，才能備份、還原或調整設定。",
+  "settingsSecurityOverviewUnlockModeTitle": "解鎖方式",
+  "settingsSecurityOverviewTrustedDeviceTitle": "可信裝置",
+  "settingsSecurityOverviewTrustedDeviceReady": "這台裝置已完成驗證，可快速解鎖。",
+  "settingsSecurityOverviewTrustedDeviceMissing": "這台裝置尚未完成驗證。",
+  "settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage": "建立復原金鑰後，即可設定解鎖方式。",
+  "settingsSecurityOverviewUnlockModeProtectedMessage": "目前以 {unlockModeLabel} 保護此裝置。",
+  "@settingsSecurityOverviewUnlockModeProtectedMessage": {
+    "placeholders": {
+      "unlockModeLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSecurityOverviewIndexTitle": "搜尋索引",
+  "settingsSecurityOverviewCreateRecoveryKeyButton": "建立復原金鑰",
+  "settingsSecurityOverviewRotateRecoveryKeyButton": "更新復原金鑰",
+  "settingsSecurityOverviewRebuildIndexButton": "重建索引",
+  "settingsSecurityOverviewHealthLevelOk": "正常",
+  "settingsSecurityOverviewHealthLevelWarning": "需注意",
+  "settingsSecurityOverviewHealthLevelError": "錯誤",
+  "settingsUnlockModeFullNone": "無",
+  "settingsUnlockModeFullDeviceLock": "裝置螢幕鎖",
+  "settingsUnlockModeFullBiometric": "生物驗證",
+  "settingsUnlockMethodSectionTitle": "解鎖方式",
+  "settingsUnlockMethodSectionDescription": "App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方方式重新驗證。",
+  "@settingsUnlockMethodSectionDescription": {
+    "placeholders": {
+      "timeoutLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnlockMethodNeedsRecoveryKeyBanner": "請先建立復原金鑰，才能設定解鎖方式。",
+  "settingsUnlockMethodSegmentNone": "無",
+  "settingsUnlockMethodSegmentDeviceLock": "螢幕鎖",
+  "settingsUnlockMethodSegmentBiometric": "生物驗證",
+  "settingsUnlockMethodBiometricNeedsDeviceLockHint": "須已設定螢幕鎖並登錄生物辨識。\n驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。",
+  "settingsUnlockModeChangeCancelled": "已取消變更，解鎖方式維持不變。",
+  "settingsUnlockModeChangeAuthFailed": "驗證失敗，解鎖方式維持不變。",
+  "settingsUnlockModeDescriptionNone": "鎖定後不額外驗證，直接解鎖。適合尚未設定螢幕鎖的裝置，安全性較低。",
+  "settingsUnlockModeDescriptionDeviceLock": "鎖定後以螢幕鎖（PIN、圖案或密碼）驗證。請先在裝置設定中建立螢幕鎖。",
+  "settingsUnlockModeDescriptionBiometric": "鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。",
+  "settingsSessionTimeoutBackgroundLockExplanation": "App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。",
+  "@settingsSessionTimeoutBackgroundLockExplanation": {
+    "placeholders": {
+      "timeoutLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSessionTimeoutAboutBackgroundTimeoutBody": "App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。你可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等你回來後，再依目前的解鎖方式重新驗證。",
+  "@settingsSessionTimeoutAboutBackgroundTimeoutBody": {
+    "placeholders": {
+      "timeoutLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsImportExportSectionTitle": "匯入與匯出",
+  "settingsImportExportSectionDescriptionEnabled": "可從其他 App 匯入日記，或將日記匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。",
+  "settingsImportExportImportNoEntriesMessage": "找不到可匯入的日記，請確認檔案格式。",
+  "settingsImportExportImportAllSkippedMessage": "所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。",
+  "settingsImportExportFailureZipNoEntries": "zip 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。",
+  "settingsImportExportFailureEasyDiaryUnsupportedPlatform": "Easy Diary 備份目前僅支援在 Android 上匯入。",
+  "settingsImportExportFailureEasyDiaryRealmReadFailed": "無法讀取 Easy Diary 備份，可能版本不相容。請在 Easy Diary 重新建立備份後再試。",
+  "settingsImportExportFailureEasyDiaryEmptyBackup": "Easy Diary 備份檔內沒有可匯入的日記。",
+  "settingsImportExportFailureEasyDiaryAllEncrypted": "Easy Diary 備份內的日記皆為加密狀態，無法匯入。",
+  "settingsImportExportImportProgress": "正在匯入日記，請稍候…",
+  "settingsImportExportExportButton": "匯出日記",
+  "settingsImportExportImportButton": "匯入日記",
+  "settingsImportExportExportProgress": "正在匯出日記，整理內容與附件中…",
+  "settingsImportExportExportSuccess": "已匯出：{path}",
+  "@settingsImportExportExportSuccess": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsImportExportImportSuccess": "已匯入 {count} 篇日記。",
+  "@settingsImportExportImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsImportExportImportSuccessWithSkippedFiles": "已匯入 {count} 篇日記，{skippedFiles} 個檔案無法解析。",
+  "@settingsImportExportImportSuccessWithSkippedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "skippedFiles": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsImportExportImportSuccessWithSkippedAttachments": "已匯入 {count} 篇日記，{skippedAttachments} 張圖片無法匯入。",
+  "@settingsImportExportImportSuccessWithSkippedAttachments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "skippedAttachments": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsImportExportImportSuccessWithSkippedFilesAndAttachments": "已匯入 {count} 篇日記，{skippedFiles} 個檔案無法解析，{skippedAttachments} 張圖片無法匯入。",
+  "@settingsImportExportImportSuccessWithSkippedFilesAndAttachments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "skippedFiles": {
+        "type": "int"
+      },
+      "skippedAttachments": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsLocalBackupSectionTitle": "本機備份與還原",
+  "settingsLocalBackupSectionDescriptionEnabled": "建立完整備份並存於本機，還原會覆蓋目前日記。（本機最多保留 5 份）",
+  "settingsLocalBackupCreateButton": "建立本機備份",
+  "settingsLocalBackupRestoreButton": "從本機備份還原",
+  "settingsLocalBackupExportToExternalButton": "匯出備份到資料夾",
+  "settingsLocalBackupImportFromExternalButton": "匯入外部備份",
+  "settingsLocalBackupPickDialogTitle": "選擇本機備份",
+  "settingsLocalBackupPickExternalBackupDialogTitle": "選擇備份 zip",
+  "settingsLocalBackupNoBackups": "目前沒有本機備份。",
+  "settingsLocalBackupDeleteBackupTooltip": "刪除備份",
+  "settingsLocalBackupDeleteConfirmTitle": "刪除本機備份？",
+  "settingsLocalBackupBackupSuccessInApp": "已建立本機備份：{fileName}",
+  "@settingsLocalBackupBackupSuccessInApp": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalBackupBackupExportSuccess": "已匯出備份：{fileName}",
+  "@settingsLocalBackupBackupExportSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalBackupBackupInspectFailed": "備份檢查未通過。\n{message}",
+  "@settingsLocalBackupBackupInspectFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalBackupDeleteBackupSuccess": "已刪除本機備份：{fileName}",
+  "@settingsLocalBackupDeleteBackupSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLocalBackupDeleteConfirmBody": "將刪除 {fileName}。此動作不會影響目前日記庫。",
+  "@settingsLocalBackupDeleteConfirmBody": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupSectionTitle": "Google Drive 備份與還原",
+  "settingsDriveBackupSectionDescriptionEnabled": "連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）",
+  "settingsDriveBackupSectionDescriptionOAuthNotConfigured": "此版本尚未設定 Google 登入，暫無法使用雲端備份。",
+  "settingsDriveBackupLinkButton": "連結 Google 帳號",
+  "settingsDriveBackupSwitchAccountButton": "切換帳號",
+  "settingsDriveBackupDisconnectButton": "中斷連結",
+  "settingsDriveBackupUploadButton": "備份到 Google Drive",
+  "settingsDriveBackupRestoreButton": "從 Google Drive 還原",
+  "settingsDriveBackupDisconnectedLabel": "尚未連結 Google 帳號",
+  "settingsDriveBackupFallbackAccountLabel": "Google 帳號",
+  "settingsDriveBackupLinkSuccessEmpty": "Google 帳號已連結，可以開始備份或還原。",
+  "settingsDriveBackupLinkSuccess": "Google 帳號已連結：{accountLabel}",
+  "@settingsDriveBackupLinkSuccess": {
+    "placeholders": {
+      "accountLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupSwitchAccountSuccessEmpty": "已切換 Google 帳號。",
+  "settingsDriveBackupSwitchAccountSuccess": "已切換為 {accountLabel}",
+  "@settingsDriveBackupSwitchAccountSuccess": {
+    "placeholders": {
+      "accountLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupDisconnectSuccess": "已中斷 Google 帳號連線，雲端備份仍會保留。",
+  "settingsDriveBackupDisconnectConfirmTitle": "中斷 Google 帳號連線？",
+  "settingsDriveBackupDisconnectConfirmBody": "中斷後需重新連結才能備份或還原。雲端上的備份檔不會被刪除。",
+  "settingsDriveBackupUploadSuccess": "已備份到 Google Drive：{fileName}",
+  "@settingsDriveBackupUploadSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupBackupInspectFailed": "雲端備份未完成。\n{message}",
+  "@settingsDriveBackupBackupInspectFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupNoBackups": "Google Drive 目前沒有可用備份，請先建立一份。",
+  "settingsDriveBackupPickDialogTitle": "選擇 Google Drive 備份",
+  "settingsDriveBackupUnknownCreatedTime": "無建立時間",
+  "settingsDriveBackupDeleteBackupTooltip": "刪除備份",
+  "settingsDriveBackupDeleteConfirmTitle": "刪除 Google Drive 備份？",
+  "settingsDriveBackupDeleteBackupSuccess": "已從 Google Drive 刪除：{fileName}",
+  "@settingsDriveBackupDeleteBackupSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupDeleteConfirmBody": "將刪除 {fileName}。此動作不會影響目前日記庫。",
+  "@settingsDriveBackupDeleteConfirmBody": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDriveBackupRestoreSuccess": "已從 Google Drive 還原：{fileName}",
+  "@settingsDriveBackupRestoreSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsRestoreDialogConfirmLocalTitle": "還原本機備份？",
+  "settingsRestoreDialogConfirmDriveTitle": "從 Google Drive 還原？",
+  "settingsRestoreDialogDriveFileLine": "備份：{name}",
+  "@settingsRestoreDialogDriveFileLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsRestoreDialogRecoveryKeyTitle": "輸入備份復原金鑰",
+  "settingsRestoreDialogRecoveryKeyEmptyError": "請輸入復原金鑰。",
+  "settingsRestoreDialogRecoveryKeyVerifyNote": "金鑰正確才會開始還原；錯誤則不會覆寫本機資料。",
+  "settingsRestoreDialogSubtitleRotatedBackup": "此備份在更新復原金鑰之前建立。請輸入建立該備份時保存的舊金鑰，不是目前這把新金鑰。",
+  "settingsRestoreDialogSubtitleSameVaultManual": "本機無法自動解鎖此備份。請輸入建立此備份時保存的復原金鑰。",
+  "settingsRestoreDialogSubtitleOtherVault": "此備份來自其他裝置。請輸入建立此備份時保存的復原金鑰。",
+  "settingsRestoreBulletOverwriteWarning": "將以備份內容覆蓋本機日記，現有資料無法復原。",
+  "settingsRestoreBulletRebuildIndex": "搜尋索引會在解鎖後重新建立。",
+  "settingsRestoreBulletBackupWithoutRecovery": "此備份尚未建立復原金鑰，還原後請重新建立。",
+  "settingsRestoreBulletRotatedBackup": "此備份在更新復原金鑰之前建立。還原後請輸入建立該備份時保存的舊復原金鑰，不是目前這把新金鑰。",
+  "settingsRestoreBulletTrustedAutoUnlock": "若備份與本機使用同一把復原金鑰，還原後通常可直接使用。",
+  "settingsRestoreBulletTrustedAutoUnlockFallback": "若無法直接解鎖，請輸入建立此備份時保存的復原金鑰。",
+  "settingsRestoreBulletRecoveryKeyAfterRestore": "還原後需輸入建立此備份時保存的復原金鑰。",
+  "settingsRestoreBulletRewrapNote": "還原後首次解鎖可能需要較久，請保持 App 開啟。",
+  "settingsIndexReadyMessage": "可隨時重建，讓搜尋恢復正常。",
+  "settingsIndexLockedMessage": "解鎖後可重建搜尋索引。",
+  "settingsIndexLinkDriveProgress": "正在連結 Google 帳號…",
+  "settingsIndexSwitchDriveAccountProgress": "正在切換帳號…",
+  "settingsIndexDisconnectDriveProgress": "正在中斷連線…",
+  "settingsIndexRebuildCompleted": "最近重建完成：{entryCount} 篇日記，{finishedAt}。",
+  "@settingsIndexRebuildCompleted": {
+    "placeholders": {
+      "entryCount": {
+        "type": "int"
+      },
+      "finishedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsIndexRebuildSuccess": "搜尋索引已重建：{entryCount} 篇日記，耗時 {duration}",
+  "@settingsIndexRebuildSuccess": {
+    "placeholders": {
+      "entryCount": {
+        "type": "int"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSupportNavButtonLabel": "支持",
+  "settingsSupportPageTitle": "支持開發者",
+  "settingsSupportHeroTitle": "自願支持",
+  "settingsSupportHeroBody": "您可透過 Google Play 提供一次性支持。本項支持不附帶額外功能，亦不影響日記內容的存取與使用。",
+  "settingsSupportHeroChipNoExtraFeatures": "不提供額外功能",
+  "settingsSupportHeroChipRepeatablePurchase": "可重複購買",
+  "settingsSupportHeroChipGooglePlayPayment": "Google Play 付款",
+  "settingsSupportComplianceCardTitle": "付款與資料說明",
+  "settingsSupportComplianceCardBody": "付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，亦不讀取日記內容。",
+  "settingsSupportProductsSectionTitle": "支持方案",
+  "settingsSupportProductsSectionBody": "金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。",
+  "settingsSupportBuyButtonPrefix": "支持",
+  "settingsSupportRecommendedTierBadge": "常用",
+  "settingsSupportPendingMessage": "付款處理中，請稍候。",
+  "settingsSupportThanksMessage": "感謝您的支持。",
+  "settingsSupportErrorMessage": "付款未完成，請稍後再試。",
+  "settingsSupportBillingUnavailableMessage": "目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。",
+  "settingsSupportProductLoadErrorTitle": "暫時無法載入支持方案",
+  "settingsSupportProductLoadErrorBody": "請稍後再試。",
+  "settingsSupportProductsNotReadyTitle": "暫時無法顯示支持方案",
+  "settingsSupportProductsNotReadyBody": "請確認網路連線正常；若問題持續，請更新本應用程式後再試。",
+  "settingsSupportProductsQueryFailedTitle": "目前無法連線至 Google Play",
+  "settingsSupportProductsQueryFailedBody": "請確認網路連線後再試。",
+  "settingsSupportProductsPartialMessage": "部分方案暫時無法顯示，您仍可選擇其他可用金額。",
+  "settingsSupportRetryLoadProductsLabel": "重新載入",
+  "settingsSupportFooterNote": "是否提供支持，請依您的需求自行決定。",
+  "settingsSupportTierSponsorCoffeeLabel": "請開發者喝杯咖啡",
+  "settingsSupportTierSponsorCoffeeHint": "支持 Quill Diary 持續開發與維護",
+  "settingsSupportTierSponsorSnackLabel": "請開發者吃點心",
+  "settingsSupportTierSponsorSnackHint": "讓 Quill Diary 能繼續穩定改進",
+  "settingsSupportTierSponsorLunchLabel": "請開發者吃午餐",
+  "settingsSupportTierSponsorLunchHint": "幫助 Quill Diary 持續變得更好",
+  "settingsSupportTierSponsorBoostLabel": "大力支持",
+  "settingsSupportTierSponsorBoostHint": "成為我們持續開發、維護與改善的動力",
+  "settingsSupportTierSponsorSuperLabel": "大大大大大力支持",
+  "settingsSupportTierSponsorSuperHint": "幫助我們更安心投入長期開發與維護",
+  "sessionStartupNeedsRecoveryKeyMessage": "尚未建立復原金鑰。",
+  "sessionStartupNeedsTrustedDeviceMessage": "這台裝置尚未授權，請使用復原金鑰解鎖。",
+  "sessionUnlockFailedMessage": "解鎖失敗，請再試一次。",
+  "sessionRecoveryUnlockSuccessMessage": "已使用復原金鑰解鎖。",
+  "sessionRecoverySetupSuccessMessage": "復原金鑰已建立，現在可以設定解鎖方式。",
+  "sessionAppLockedMessage": "應用程式已鎖定。",
+  "sessionTrustedUnlockInProgressMessage": "正在以可信裝置解鎖…",
+  "sessionLockedRetryVerificationMessage": "目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。",
+  "sessionRecoveryKeyRotatedMessage": "復原金鑰已更新，請立即保存新金鑰。",
+  "sessionRecoveryRequiredAfterRestoreMessage": "還原後需輸入建立此備份時保存的復原金鑰。",
+  "sessionInvalidBackupFileMessage": "無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。",
+  "sessionRestoreSuccessUnlockedMessage": "已還原備份，可以正常使用。",
+  "sessionRestoreSuccessLockedMessage": "已還原備份。請完成生物驗證或螢幕鎖驗證以繼續。",
+  "sessionRestoreSuccessRecoveryRequiredMessage": "已還原備份。請輸入建立此備份時保存的復原金鑰。",
+  "sessionRestoreSuccessNeedsRecoveryKeySetupMessage": "已還原備份。此備份尚未建立復原金鑰，請先建立。",
+  "sessionRestoreStartupFailedMessage": "已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。",
+  "sessionRecoveryKeyMismatchMessage": "復原金鑰不正確。若為更新復原金鑰前的舊備份，請輸入建立該備份時保存的舊金鑰。",
+  "sessionTrustedUnlockFailedAfterRestoreMessage": "還原後無法自動解鎖。請輸入建立此備份時保存的復原金鑰。",
+  "sessionIndexDatabaseUnreadableMessage": "搜尋索引無法讀取，可能已損壞。請用復原金鑰重新解鎖；若仍失敗，可嘗試重新還原備份。",
+  "sessionUnlockModeNeedsDeviceLockMessage": "請先在裝置設定中建立螢幕鎖，才能使用此模式。",
+  "sessionUnlockModeChangeNeedsUnlockMessage": "請先解鎖日記庫後，再變更解鎖方式。",
+  "sessionBiometricNotEnrolledSwitchModeMessage": "裝置尚未登錄指紋或臉部。請先到系統設定完成生物辨識設定，或改用裝置螢幕鎖。",
+  "sessionUseDeviceLockToUnlockMessage": "請使用裝置螢幕鎖解鎖。",
+  "sessionStartupNeedsBiometricMessage": "請先完成生物驗證。",
+  "legalPrivacyEffectiveDateLabel": "生效日期：2026 年 6 月 6 日",
+  "legalChildrenPrivacyOneLiner": "本應用程式並非專為十三歲（含）以下兒童而設計，亦不故意蒐集兒童之個人資料。",
+  "legalBrandDisclaimer": "Quill Diary 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。",
+  "legalBillingVaultPrivacyNote": "支持流程不讀取 vault 內容。",
+  "legalBillingPrivacyOneLiner": "支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；支持流程不讀取 vault 內容。",
+  "legalBillingSupportPageBody": "僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存贊助紀錄。支持流程不讀取 vault 內容。",
+  "legalExternalLinkUnavailableMessage": "無法開啟瀏覽器，請稍後再試。",
+  "settingsLegalSectionTitle": "法律與隱私",
+  "settingsLegalSectionDescription": "可在 GitHub 查看原始碼、隱私政策與第三方聲明；有問題歡迎透過 Issues 聯絡。",
+  "settingsLegalSourceCodeTitle": "GitHub 原始碼",
+  "settingsLegalPrivacyPolicyTitle": "隱私權政策",
+  "settingsLegalThirdPartyNoticesTitle": "第三方聲明",
+  "settingsLegalContactAuthorTitle": "聯絡作者",
+  "aboutPageTitle": "介紹",
+  "aboutTabIntroLabel": "簡介",
+  "aboutTabIntroHeroTitle": "把私人日記留在自己手上",
+  "aboutTabIntroHeroBody": "Quill Diary 是為個人記錄設計的本機加密日記 App。你可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非你主動操作，資料預設留在裝置上。",
+  "aboutTabIntroChip0": "資料留在裝置",
+  "aboutTabIntroChip1": "可匯出 Markdown",
+  "aboutTabIntroChip2": "全文搜尋",
+  "aboutTabIntroChip3": "完整加密備份",
+  "aboutTabIntroChip4": "可攜式匯出",
+  "aboutTabIntroSection0Title": "為什麼適合拿來寫日記",
+  "aboutTabIntroSection0Subtitle": "它不是把雲端筆記換個名字，而是把私人資料保護和日常使用一起考慮。",
+  "aboutTabIntroSection0Item0Title": "本機加密保存",
+  "aboutTabIntroSection0Item0Body": "正式日記、附件、草稿與搜尋索引都以加密或受 session 保護的方式留在裝置上。除非你主動備份或匯出，內容不會自動離開手機。",
+  "aboutTabIntroSection0Item1Title": "不用註冊就能開始",
+  "aboutTabIntroSection0Item1Body": "日常寫作不依賴帳號系統或遠端伺服器。你不需要先建立帳號，才能使用本機日記、搜尋與回顧功能。",
+  "aboutTabIntroSection0Item2Title": "少收集、少干擾",
+  "aboutTabIntroSection0Item2Body": "App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。你可以把它當成以隱私為前提的私人寫作空間。",
+  "aboutTabIntroSection1Title": "你可以怎麼使用它",
+  "aboutTabIntroSection1Subtitle": "從當下記錄，到之後回顧整理，常用功能都圍繞個人日記情境設計。",
+  "aboutTabIntroSection1Item0Title": "寫下每天想記住的內容",
+  "aboutTabIntroSection1Item0Body": "支援標題、日期、標籤、圖片與一般附件。新建日記可直接開始寫，既有日記也能先看再編輯；需要時也能把內容匯出成 Markdown 或 HTML。",
+  "aboutTabIntroSection1Item1Title": "用不同角度看自己的紀錄",
+  "aboutTabIntroSection1Item1Body": "主畫面提供列表、日曆、標籤與總覽四種入口。你可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。",
+  "aboutTabIntroSection1Item2Title": "找回以前寫過的內容",
+  "aboutTabIntroSection1Item2Body": "解鎖後可搜尋標題、標籤與內文，適合回頭找某段經歷、某個關鍵字，或快速整理某段時間的紀錄。",
+  "aboutTabIntroSection1Item3Title": "把回顧整理成可分享的形式",
+  "aboutTabIntroSection1Item3Body": "你可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。",
+  "aboutTabIntroSection2Title": "資料掌控權在你手上",
+  "aboutTabIntroSection2Subtitle": "備份、匯出與解鎖方式各自扮演不同角色，目的是讓你能保留資料，也能理解風險邊界。",
+  "aboutTabIntroSection2Item0Title": "可信裝置與復原金鑰",
+  "aboutTabIntroSection2Item0Body": "日常可用螢幕鎖或生物辨識快速回到 App；換機、還原或可信狀態失效時，復原金鑰才是重新取得存取權的關鍵。",
+  "aboutTabIntroSection2Item1Title": "完整備份保存的是加密日記庫",
+  "aboutTabIntroSection2Item1Body": "完整備份保留的是整個加密 vault，適合之後完整還原，不是直接打開就能閱讀的文件。",
+  "aboutTabIntroSection2Item2Title": "匯出內容後要自行保護",
+  "aboutTabIntroSection2Item2Body": "Markdown 與 HTML 匯出適合閱讀、整理與轉移內容，但它們屬於可讀文件，不再等同於 App 內的加密保存狀態。",
+  "aboutTabIntroSection3Title": "開源與品牌",
+  "aboutTabIntroSection3Subtitle": "你可以查看原始碼與授權條件，也能清楚知道品牌使用界線。",
+  "aboutTabIntroSection3Item0Title": "AGPL-3.0 開源",
+  "aboutTabIntroSection3Item0Body": "原始碼以 GNU Affero General Public License v3.0 發布，讓產品行為與實作方式能被公開檢視，增加透明度與可驗證性。",
+  "aboutTabIntroSection3Item1Title": "Quill Diary 品牌",
+  "aboutTabUnlockSessionLabel": "解鎖與會話",
+  "aboutTabUnlockSessionHeroTitle": "在方便解鎖和保護資料之間取得平衡",
+  "aboutTabUnlockSessionHeroBody": "Quill Diary 不會要求你每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。",
+  "aboutTabUnlockSessionChip0": "生物辨識",
+  "aboutTabUnlockSessionChip1": "螢幕鎖",
+  "aboutTabUnlockSessionChip2": "自動鎖定",
+  "aboutTabUnlockSessionChip3": "復原金鑰",
+  "aboutTabUnlockSessionSection0Title": "解鎖方式怎麼選",
+  "aboutTabUnlockSessionSection0Subtitle": "你可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。",
+  "aboutTabUnlockSessionSection0Item0Title": "無",
+  "aboutTabUnlockSessionSection0Item0Body": "鎖定後不額外驗證，回到 App 會直接恢復。適合尚未設定裝置螢幕鎖的情況，但保護力最低。",
+  "aboutTabUnlockSessionSection0Item1Title": "裝置螢幕鎖",
+  "aboutTabUnlockSessionSection0Item1Body": "回到 App 時用 PIN、圖案或密碼重新驗證。適合想保留系統層保護，又不一定使用生物辨識的人。",
+  "aboutTabUnlockSessionSection0Item2Title": "生物驗證",
+  "aboutTabUnlockSessionSection0Item2Body": "優先使用指紋或臉部驗證，失敗或取消時可改走螢幕鎖。這通常是日常使用最方便的方式。",
+  "aboutTabUnlockSessionSection0Item3Title": "共同前提",
+  "aboutTabUnlockSessionSection0Item3Body": "螢幕鎖與生物驗證模式都要求裝置先設定好螢幕鎖；要使用生物辨識，也必須先在系統中完成登錄。",
+  "aboutTabUnlockSessionSection1Title": "什麼時候會重新驗證",
+  "aboutTabUnlockSessionSection1Subtitle": "只有在有效解鎖期間內，正式日記、草稿與搜尋索引才會保持可用。",
+  "aboutTabUnlockSessionSection1Item0Title": "解鎖中",
+  "aboutTabUnlockSessionSection1Item0Body": "解鎖後，你可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。",
+  "aboutTabUnlockSessionSection1Item1Title": "背景逾時",
+  "aboutTabUnlockSessionSection1Item2Title": "回到 App 時",
+  "aboutTabUnlockSessionSection1Item2Body": "如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依你選擇的模式決定是否直接恢復或跳出系統驗證。",
+  "aboutTabUnlockSessionSection1Item3Title": "驗證取消或失敗後",
+  "aboutTabUnlockSessionSection1Item3Body": "如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。你可以在方便時再手動重試。",
+  "aboutTabUnlockSessionSection2Title": "為什麼還需要復原金鑰",
+  "aboutTabUnlockSessionSection2Subtitle": "可信裝置提供的是便利路徑，真正能跨裝置、跨狀態重新進入日記庫的依據仍然是復原金鑰。",
+  "aboutTabUnlockSessionSection2Item0Title": "換機或重設後",
+  "aboutTabUnlockSessionSection2Item0Body": "當你換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。",
+  "aboutTabUnlockSessionSection2Item1Title": "可信狀態失效",
+  "aboutTabUnlockSessionSection2Item1Body": "如果裝置上的可信狀態失效，或與目前的日記庫狀態不再對應，就不能只靠本機快速進入。",
+  "aboutTabUnlockSessionSection2Item2Title": "最終存取權",
+  "aboutTabUnlockSessionSection2Item2Body": "復原金鑰不是可有可無的備用功能，而是換機、還原與可信裝置失效時的必要憑證，請務必妥善保存。",
+  "aboutTabEncryptionLabel": "加密與解密",
+  "aboutTabEncryptionHeroTitle": "資料預設以加密形式保存",
+  "aboutTabEncryptionHeroBody": "Quill Diary 會先保護內容，再把它寫進日記庫。正式日記、附件與其他敏感資料會使用 LDJ2 格式封裝，內容以 AES-256-GCM 加密，並透過可信裝置或復原金鑰的正確路徑才能打開。",
+  "aboutTabEncryptionChip0": "本機加密",
+  "aboutTabEncryptionChip1": "LDJ2",
+  "aboutTabEncryptionChip2": "AES-256-GCM",
+  "aboutTabEncryptionChip3": "Argon2id",
+  "aboutTabEncryptionChip4": "可信裝置",
+  "aboutTabEncryptionChip5": "Android Keystore",
+  "aboutTabEncryptionSection0Title": "這套保護機制在幫你做什麼",
+  "aboutTabEncryptionSection0Subtitle": "重點不是堆術語，而是讓你知道正式資料在存放與讀取時，都有清楚而一致的保護流程。",
+  "aboutTabEncryptionSection0Item0Title": "LDJ2 + AES-256-GCM 保護內容",
+  "aboutTabEncryptionSection0Item0Body": "正式日記與附件會先用 LDJ2 格式封裝，再以 AES-256-GCM 加密正文。即使看到檔案本身，也不是直接就能讀懂的內容。",
+  "aboutTabEncryptionSection0Item1Title": "被竄改時應該直接失敗",
+  "aboutTabEncryptionSection0Item1Body": "正式資料不只加密，也帶有完整性驗證。若內容或檔案 header 被動過手腳，解密應該直接失敗，而不是悄悄回傳可疑內容。",
+  "aboutTabEncryptionSection0Item2Title": "每個檔案都有獨立金鑰",
+  "aboutTabEncryptionSection0Item2Body": "每個加密檔案都會先產生自己的隨機 file key，再由 vault 層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。",
+  "aboutTabEncryptionSection1Title": "你可以怎麼打開自己的資料",
+  "aboutTabEncryptionSection1Subtitle": "日常與緊急情況走的是不同入口，但最後都會回到同一套解密流程。",
+  "aboutTabEncryptionSection1Item0Title": "可信裝置",
+  "aboutTabEncryptionSection1Item0Body": "在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護 vault 層的重要金鑰。",
+  "aboutTabEncryptionSection1Item1Title": "復原金鑰",
+  "aboutTabEncryptionSection1Item1Body": "當你換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。",
+  "aboutTabEncryptionSection1Item2Title": "先確認 vault，再解開各檔",
+  "aboutTabEncryptionSection1Item2Body": "流程會先確認目前的存取狀態能否正確進入 vault，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。",
+  "aboutTabEncryptionSection2Title": "使用前要知道的邊界",
+  "aboutTabEncryptionSection2Subtitle": "加密能保護日記庫本身，但不代表所有情境都自動安全。",
+  "aboutTabEncryptionSection2Item0Title": "匯出後不再是同一層保護",
+  "aboutTabEncryptionSection2Item0Body": "只要你把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。",
+  "aboutTabEncryptionSection2Item1Title": "復原金鑰要自己保管",
+  "aboutTabEncryptionSection2Item1Body": "復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或你沒有妥善保存，之後可能影響資料安全或可恢復性。",
+  "aboutTabEncryptionSection2Item2Title": "它保護的是靜態資料",
+  "aboutTabEncryptionSection2Item2Body": "這套設計主要保護的是存放在裝置上的加密資料；若裝置本身遭到入侵、已解鎖狀態被他人取得，風險就不只取決於檔案格式本身。",
+  "aboutTabSearchIndexLabel": "索引與搜尋",
+  "aboutTabSearchIndexHeroTitle": "解鎖後，你可以快速找回以前寫過的內容",
+  "aboutTabSearchIndexHeroBody": "搜尋不是每次都把所有日記重新讀一遍，而是透過一份加密索引來加快查找。這份索引只在解鎖期間打開，讓搜尋體驗和資料保護可以兼顧。",
+  "aboutTabSearchIndexChip0": "標題/內文搜尋",
+  "aboutTabSearchIndexChip1": "加密索引",
+  "aboutTabSearchIndexChip2": "解鎖期間可用",
+  "aboutTabSearchIndexChip3": "可重建",
+  "aboutTabSearchIndexSection0Title": "搜尋能幫你找什麼",
+  "aboutTabSearchIndexSection0Subtitle": "適合在回顧、整理或想找某段經歷時，快速縮小範圍。",
+  "aboutTabSearchIndexSection0Item0Title": "搜尋標題、標籤與內文",
+  "aboutTabSearchIndexSection0Item0Body": "你可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。",
+  "aboutTabSearchIndexSection0Item1Title": "結果來自正式已儲存內容",
+  "aboutTabSearchIndexSection0Item1Body": "搜尋看到的是已正式寫入日記庫的內容，而不是暫時停在編輯器中的草稿。",
+  "aboutTabSearchIndexSection0Item2Title": "索引本身也受保護",
+  "aboutTabSearchIndexSection0Item2Body": "搜尋不是建立一份明文資料庫放在旁邊，而是使用另一份加密索引來支撐查找速度。",
+  "aboutTabSearchIndexSection1Title": "為什麼搜尋不會拖慢日常使用",
+  "aboutTabSearchIndexSection1Subtitle": "它把查找工作交給索引層，而不是每次都逐篇掃描正式日記。",
+  "aboutTabSearchIndexSection1Item0Title": "以索引換速度",
+  "aboutTabSearchIndexSection1Item0Body": "當你輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。",
+  "aboutTabSearchIndexSection1Item1Title": "正式儲存後才更新",
+  "aboutTabSearchIndexSection1Item1Body": "只有正式儲存成功或匯入完成後，索引才會同步更新；這樣搜尋結果才不會混入尚未確定的草稿內容。",
+  "aboutTabSearchIndexSection1Item2Title": "必要時可重建",
+  "aboutTabSearchIndexSection1Item2Body": "索引屬於衍生資料。如果格式更新、還原備份，或目前狀態不適合沿用，系統會刪除並重新生成。",
+  "aboutTabSearchIndexSection2Title": "它和安全性的關係",
+  "aboutTabSearchIndexSection2Subtitle": "搜尋好用，不代表要放棄保護邊界。",
+  "aboutTabSearchIndexSection2Item0Title": "只在解鎖期間可用",
+  "aboutTabSearchIndexSection2Item0Body": "搜尋索引只會在有效解鎖 session 期間打開；App 鎖定後，索引也會跟著關閉。",
+  "aboutTabSearchIndexSection2Item1Title": "草稿不進搜尋",
+  "aboutTabSearchIndexSection2Item1Body": "編輯中的草稿不會出現在搜尋結果裡，避免把未完成內容誤當成正式紀錄。",
+  "aboutTabSearchIndexSection2Item2Title": "正式資料仍以日記庫為準",
+  "aboutTabSearchIndexSection2Item2Body": "搜尋索引的工作是幫你更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。",
+  "aboutTabEditorLabel": "日記編輯器",
+  "aboutTabEditorHeroTitle": "寫作、暫存與正式保存各走自己的路",
+  "aboutTabEditorHeroBody": "編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等你確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。",
+  "aboutTabEditorChip0": "可匯出 Markdown",
+  "aboutTabEditorChip1": "圖片附件",
+  "aboutTabEditorChip2": "自動草稿",
+  "aboutTabEditorChip3": "未儲存提醒",
+  "aboutTabEditorSection0Title": "日常寫作功能",
+  "aboutTabEditorSection0Subtitle": "以個人記錄為核心，把常用的整理方式都放進同一個編輯流程。",
+  "aboutTabEditorSection0Item0Title": "新建或修改既有日記",
+  "aboutTabEditorSection0Item0Body": "新建日記會直接進入編輯模式；既有日記則可先閱讀，確定要改時再切換到編輯狀態。",
+  "aboutTabEditorSection0Item1Title": "內容、標題、日期與標籤",
+  "aboutTabEditorSection0Item1Body": "你可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。",
+  "aboutTabEditorSection0Item2Title": "圖片與一般附件",
+  "aboutTabEditorSection0Item2Body": "可加入多張圖片或一般檔案，並調整圖片順序。這讓日記不只是一段文字，也能保留當下的素材與脈絡。",
+  "aboutTabEditorSection1Title": "草稿機制",
+  "aboutTabEditorSection1Subtitle": "草稿不是額外的小功能，而是整個寫作體驗的重要保護層。",
+  "aboutTabEditorSection1Item0Title": "變更會自動保存",
+  "aboutTabEditorSection1Item0Body": "進入編輯後，只要標題、日期、標籤、內文或附件有變動，就會自動寫成加密草稿，降低中斷時遺失內容的風險。",
+  "aboutTabEditorSection1Item1Title": "再次開啟時可還原",
+  "aboutTabEditorSection1Item1Body": "重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問你要不要接著上次進度寫。",
+  "aboutTabEditorSection1Item2Title": "正式儲存後自動清理",
+  "aboutTabEditorSection1Item2Body": "當內容成功正式寫入日記庫，草稿就會被清掉；如果你取消編輯且沒有留下新變更，也不會一直堆積舊草稿。",
+  "aboutTabEditorSection2Title": "和其他資料的關係",
+  "aboutTabEditorSection2Subtitle": "編輯中的內容與正式保存的內容有清楚界線，避免把兩者混為一談。",
+  "aboutTabEditorSection2Item0Title": "草稿不進搜尋結果",
+  "aboutTabEditorSection2Item0Body": "搜尋只看正式寫入日記庫的內容，草稿不會出現在結果中，避免未完成內容被誤認為正式紀錄。",
+  "aboutTabEditorSection2Item1Title": "草稿不進完整備份",
+  "aboutTabEditorSection2Item1Body": "完整備份只封裝正式日記庫，不包含 `drafts/`。這代表備份與還原的重點是正式資料，而不是尚未定稿的編輯狀態。",
+  "aboutTabEditorSection2Item2Title": "未儲存提示",
+  "aboutTabEditorSection2Item2Body": "如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒你還有內容尚未正式保存。",
+  "aboutTabBackupRestoreLabel": "備份與還原",
+  "aboutTabBackupRestoreHeroTitle": "保留整個日記庫，或帶出可閱讀內容",
+  "aboutTabBackupRestoreHeroBody": "備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 則是把內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。",
+  "aboutTabBackupRestoreChip0": "完整加密備份",
+  "aboutTabBackupRestoreChip1": "Google Drive",
+  "aboutTabBackupRestoreChip2": "Markdown",
+  "aboutTabBackupRestoreChip3": "HTML",
+  "aboutTabBackupRestoreSection0Title": "完整備份適合什麼情境",
+  "aboutTabBackupRestoreSection0Subtitle": "如果你想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。",
+  "aboutTabBackupRestoreSection0Item0Title": "保存整個加密日記庫",
+  "aboutTabBackupRestoreSection0Item0Body": "`backup_*.zip` 封裝的是 `vault/` 內的正式資料，包括日記、附件、復原設定與標籤目錄；內容仍保持加密，不是明文文件。",
+  "aboutTabBackupRestoreSection0Item1Title": "建立後會先檢查",
+  "aboutTabBackupRestoreSection0Item1Body": "完整備份會先經過結構檢查，確認內容可用後，才交付到本機、外部資料夾或 Google Drive。",
+  "aboutTabBackupRestoreSection0Item2Title": "保留份數",
+  "aboutTabBackupRestoreSection0Item2Body": "本機備份與 Google Drive 都保留最新 {retainCount} 份；若你匯出到外部資料夾，則不會自動輪替或刪除舊檔。",
+  "@aboutTabBackupRestoreSection0Item2Body": {
+    "placeholders": {
+      "retainCount": {
+        "type": "int"
+      }
+    }
+  },
+  "aboutTabBackupRestoreSection1Title": "還原時會發生什麼",
+  "aboutTabBackupRestoreSection1Subtitle": "還原不是補回少掉的幾篇內容，而是把目前正式日記庫換成備份中的那一份。",
+  "aboutTabBackupRestoreSection1Item0Title": "正式日記庫會被覆寫",
+  "aboutTabBackupRestoreSection1Item0Body": "不論備份來源是 App 內清單還是外部 zip，還原流程都會用備份內容覆寫目前的 `vault/`。",
+  "aboutTabBackupRestoreSection1Item1Title": "搜尋索引會重建",
+  "aboutTabBackupRestoreSection1Item1Body": "還原時現有索引會被刪除，之後再依新的正式資料重建。若目前可信狀態無法直接沿用，也可能需要重新驗證。",
+  "aboutTabBackupRestoreSection1Item2Title": "可能會要求復原金鑰",
+  "aboutTabBackupRestoreSection1Item2Body": "如果目前裝置上的可信狀態不能直接對應到那份備份，流程就會要求輸入建立該備份時保存的復原金鑰。",
+  "aboutTabBackupRestoreSection2Title": "匯入與匯出適合什麼用途",
+  "aboutTabBackupRestoreSection2Subtitle": "這條流程處理的是內容交換與閱讀，不是拿來完整覆寫整個日記庫。",
+  "aboutTabBackupRestoreSection2Item0Title": "匯入",
+  "aboutTabBackupRestoreSection2Item0Body": "可從 zip、Markdown、HTML 或資料夾匯入內容。若是 zip，系統會先判斷是否為支援的備份格式，再決定後續處理方式。",
+  "aboutTabBackupRestoreSection2Item1Title": "匯出",
+  "aboutTabBackupRestoreSection2Item1Body": "你可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。",
+  "aboutTabBackupRestoreSection2Item2Title": "它不是同步服務",
+  "aboutTabBackupRestoreSection2Item2Body": "Google Drive 在這裡扮演的是可選的加密備份目的地，而不是跨裝置即時同步日記的服務。",
+  "aboutTabBackupRestoreSection3Title": "使用前要知道的事",
+  "aboutTabBackupRestoreSection3Subtitle": "備份與匯出都很重要，但它們保護的對象與責任邊界並不相同。",
+  "aboutTabBackupRestoreSection3Item0Title": "完整備份不包含草稿",
+  "aboutTabBackupRestoreSection3Item0Body": "完整備份只處理正式日記庫，不包含 `drafts/`。如果你還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。",
+  "aboutTabBackupRestoreSection3Item1Title": "可讀匯出要自己保管",
+  "aboutTabBackupRestoreSection3Item1Body": "Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由你自己決定。",
+  "aboutTabBackupRestoreSection3Item2Title": "別把兩條流程混用",
+  "aboutTabBackupRestoreSection3Item2Body": "如果你要的是之後完整恢復整個日記庫，請使用完整備份；如果你要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。"
 }

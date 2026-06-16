@@ -1,6 +1,6 @@
 import '../../../infrastructure/database/index_database.dart';
 import '../../../l10n/l10n.dart';
-import '../../../shared/presentation/display_format.dart';
+import '../home_formatters.dart';
 
 class OverviewScopeMetrics {
   const OverviewScopeMetrics({
@@ -35,19 +35,19 @@ class OverviewScopeMetrics {
       totalEntries == 0 ? 0 : (totalCharacters / totalEntries).round();
 
   factory OverviewScopeMetrics.empty() => const OverviewScopeMetrics(
-        totalEntries: 0,
-        totalWords: 0,
-        totalCharacters: 0,
-        totalAttachments: 0,
-        activeDays: 0,
-        longestWritingStreakDays: 0,
-        maxEntriesOnSingleDay: 0,
-        entriesWithTags: 0,
-        entriesWithAttachments: 0,
-        totalPhotoAttachments: 0,
-        totalFileAttachments: 0,
-        avgWordsPerEntryRounded: 0,
-      );
+    totalEntries: 0,
+    totalWords: 0,
+    totalCharacters: 0,
+    totalAttachments: 0,
+    activeDays: 0,
+    longestWritingStreakDays: 0,
+    maxEntriesOnSingleDay: 0,
+    entriesWithTags: 0,
+    entriesWithAttachments: 0,
+    totalPhotoAttachments: 0,
+    totalFileAttachments: 0,
+    avgWordsPerEntryRounded: 0,
+  );
 
   factory OverviewScopeMetrics.fromEntries(List<EntryIndexRecord> entries) {
     if (entries.isEmpty) {
@@ -75,8 +75,10 @@ class OverviewScopeMetrics {
       }
     }
 
-    final int activeDays =
-        entries.map((EntryIndexRecord item) => item.date.value).toSet().length;
+    final int activeDays = entries
+        .map((EntryIndexRecord item) => item.date.value)
+        .toSet()
+        .length;
     final int avgWordsRounded = (totalWords / entries.length).round();
     final int longestStreakDays = _longestWritingStreakDays(entries);
     final int maxEntriesOnSingleDay = _maxEntriesOnSingleDay(entries);
@@ -98,26 +100,25 @@ class OverviewScopeMetrics {
   }
 
   String attachmentDetail(AppLocalizations l10n) =>
-      l10n.homeOverviewAttachmentDetail(totalPhotoAttachments, totalFileAttachments);
+      l10n.homeOverviewAttachmentDetail(
+        totalPhotoAttachments,
+        totalFileAttachments,
+      );
 
   String? mostEntriesInSingleDayDetail(AppLocalizations l10n) {
     if (maxEntriesOnSingleDay <= 0) {
       return null;
     }
-    return l10n.homeOverviewMostEntriesInSingleDay(
-      DisplayFormat.formatCountUnit(
-        maxEntriesOnSingleDay,
-        l10n.localeName.startsWith('en') ? 'entries' : '篇',
-      ),
-    );
+    return homeOverviewMostEntriesInSingleDay(l10n, maxEntriesOnSingleDay);
   }
 
   static int _longestWritingStreakDays(List<EntryIndexRecord> entries) {
-    final List<DateTime> uniqueDates = entries
-        .map((EntryIndexRecord item) => item.date.toDateTime())
-        .toSet()
-        .toList()
-      ..sort();
+    final List<DateTime> uniqueDates =
+        entries
+            .map((EntryIndexRecord item) => item.date.toDateTime())
+            .toSet()
+            .toList()
+          ..sort();
     if (uniqueDates.isEmpty) {
       return 0;
     }

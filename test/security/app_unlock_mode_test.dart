@@ -6,14 +6,26 @@ void main() {
   test('missing unlock mode defaults to none', () {
     expect(AppUnlockModeStorage.fromStorage(null), AppUnlockMode.none);
     expect(AppUnlockModeStorage.fromStorage('none'), AppUnlockMode.none);
-    expect(AppUnlockModeStorage.fromStorage('deviceLock'), AppUnlockMode.deviceLock);
-    expect(AppUnlockModeStorage.fromStorage('biometric'), AppUnlockMode.biometric);
+    expect(
+      AppUnlockModeStorage.fromStorage('deviceLock'),
+      AppUnlockMode.deviceLock,
+    );
+    expect(
+      AppUnlockModeStorage.fromStorage('biometric'),
+      AppUnlockMode.biometric,
+    );
   });
 
   test('keystoreAuthFor maps unlock modes', () {
     expect(keystoreAuthFor(AppUnlockMode.none), KeystoreAuthKind.plain);
-    expect(keystoreAuthFor(AppUnlockMode.deviceLock), KeystoreAuthKind.deviceCredential);
-    expect(keystoreAuthFor(AppUnlockMode.biometric), KeystoreAuthKind.biometric);
+    expect(
+      keystoreAuthFor(AppUnlockMode.deviceLock),
+      KeystoreAuthKind.deviceCredential,
+    );
+    expect(
+      keystoreAuthFor(AppUnlockMode.biometric),
+      KeystoreAuthKind.biometric,
+    );
   });
 
   test('fromSlotId parses secure keystore slot ids', () {
@@ -22,7 +34,9 @@ void main() {
       KeystoreAuthKind.plain,
     );
     expect(
-      KeystoreAuthKindWire.fromSlotId('dev_android_keystore_deviceCredential_vlt_x'),
+      KeystoreAuthKindWire.fromSlotId(
+        'dev_android_keystore_deviceCredential_vlt_x',
+      ),
       KeystoreAuthKind.deviceCredential,
     );
     expect(

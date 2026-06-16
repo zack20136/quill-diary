@@ -1,4 +1,1 @@
-enum UnlockOutcome {
-  success,
-  failed,
-}
+enum UnlockOutcome { success, failed }

@@ -40,7 +40,7 @@ class VaultTransferAccess {
             ),
       restoreDisabledReason: canRestore
           ? null
-          : VaultTransferCopy.needsUnlockForRestore(l10n),
+          : l10n.vaultTransferNeedsUnlockForRestore,
     );
   }
 
@@ -50,7 +50,7 @@ class VaultTransferAccess {
       return;
     }
     throw StateError(
-      restoreDisabledReason ?? VaultTransferCopy.needsUnlockForRestore(l10n),
+      restoreDisabledReason ?? l10n.vaultTransferNeedsUnlockForRestore,
     );
   }
 
@@ -77,32 +77,11 @@ class VaultTransferAccess {
     required bool hasRecoveryKey,
   }) {
     if (!hasUnlockedSession) {
-      return VaultTransferCopy.needsUnlockForBackup(l10n);
+      return l10n.vaultTransferNeedsUnlockForBackup;
     }
     if (!hasRecoveryKey) {
-      return VaultTransferCopy.needsRecoveryKeyForBackup(l10n);
+      return l10n.vaultTransferNeedsRecoveryKeyForBackup;
     }
-    return VaultTransferCopy.needsUnlockForBackup(l10n);
+    return l10n.vaultTransferNeedsUnlockForBackup;
   }
-}
-
-abstract final class VaultTransferCopy {
-  static String needsUnlockForBackup(AppLocalizations l10n) =>
-      l10n.vaultTransferNeedsUnlockForBackup;
-  static String needsRecoveryKeyForBackup(AppLocalizations l10n) =>
-      l10n.vaultTransferNeedsRecoveryKeyForBackup;
-  static String needsUnlockForRestore(AppLocalizations l10n) =>
-      l10n.vaultTransferNeedsUnlockForRestore;
-
-  static String localSectionDescriptionBackupLocked(AppLocalizations l10n) =>
-      l10n.vaultTransferLocalSectionDescriptionBackupLocked;
-
-  static String driveSectionDescriptionBackupLocked(AppLocalizations l10n) =>
-      l10n.vaultTransferDriveSectionDescriptionBackupLocked;
-
-  static String driveBackupActionsLockedHint(AppLocalizations l10n) =>
-      l10n.vaultTransferDriveBackupActionsLockedHint;
-
-  static String restoreUnlockFailed(AppLocalizations l10n) =>
-      l10n.vaultTransferRestoreUnlockFailed;
 }

@@ -25,10 +25,7 @@ class CalendarDayCell extends StatelessWidget {
   final double rowHeight;
   final Map<String, int> tagAccents;
 
-  Color _entryTintBackground(
-    ColorScheme cs,
-    EntryIndexRecord entry,
-  ) {
+  Color _entryTintBackground(ColorScheme cs, EntryIndexRecord entry) {
     final String tagLabel = firstNonemptyTag(entry.tags);
     final (Color bg, _) = tagLabel.isEmpty
         ? tagNeutralAccentPair(cs)
@@ -66,7 +63,10 @@ class CalendarDayCell extends StatelessWidget {
           decoration: BoxDecoration(
             color: cellColor,
             border: isSelected
-                ? Border.all(color: cs.primary.withValues(alpha: 0.55), width: 1.2)
+                ? Border.all(
+                    color: cs.primary.withValues(alpha: 0.55),
+                    width: 1.2,
+                  )
                 : null,
           ),
           child: Padding(
@@ -84,7 +84,9 @@ class CalendarDayCell extends StatelessWidget {
                   const SizedBox(height: 2),
                   for (final EntryIndexRecord entry in visibleEntries)
                     CalendarEntryPreviewRow(
-                      label: calendarEntryPreviewLabel(entryListHeadline(entry)),
+                      label: calendarEntryPreviewLabel(
+                        entryListHeadline(entry),
+                      ),
                       tagLabel: firstNonemptyTag(entry.tags),
                       accents: tagAccents,
                       fontSize: entryFontSize,
@@ -160,10 +162,10 @@ class CalendarDayNumberBadge extends StatelessWidget {
     final Color textColor = isSelected
         ? cs.primary
         : calendarIsSunday(date)
-            ? cs.error.withValues(alpha: 0.78)
-            : calendarIsSaturday(date)
-                ? cs.primary.withValues(alpha: 0.72)
-                : cs.onSurface.withValues(alpha: 0.86);
+        ? cs.error.withValues(alpha: 0.78)
+        : calendarIsSaturday(date)
+        ? cs.primary.withValues(alpha: 0.72)
+        : cs.onSurface.withValues(alpha: 0.86);
 
     return Text(
       '$day',

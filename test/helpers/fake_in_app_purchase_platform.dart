@@ -27,7 +27,9 @@ class FakeInAppPurchasePlatform extends Fake
   Stream<List<PurchaseDetails>> get purchaseStream => purchaseController.stream;
 
   @override
-  Future<ProductDetailsResponse> queryProductDetails(Set<String> identifiers) async {
+  Future<ProductDetailsResponse> queryProductDetails(
+    Set<String> identifiers,
+  ) async {
     log.add(MethodCall('queryProductDetails', identifiers.toList()));
     final List<ProductDetails> products = identifiers
         .map(

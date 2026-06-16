@@ -3,8 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/l10n.dart';
 import '../../../../shared/presentation/display_format.dart';
-import '../../home_copy.dart';
+import '../../home_formatters.dart';
 
 const int kCalendarMaxEntriesPerCell = 2;
 const int kCalendarPreviewCharCount = 5;
@@ -23,12 +24,12 @@ bool calendarIsSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-String calendarWeekdayLabel(DateTime day) {
-  return HomeCopy.calendarWeekdayLabels[day.weekday % 7];
+String calendarWeekdayLabel(AppLocalizations l10n, DateTime day) {
+  return calendarWeekdayLabels(l10n)[day.weekday % 7];
 }
 
-String calendarMonthTitleZh(DateTime month) {
-  return DisplayFormat.formatYearMonthZh(month.year, month.month);
+String calendarMonthTitle(AppLocalizations l10n, DateTime month) {
+  return DisplayFormat.formatYearMonth(l10n, month.year, month.month);
 }
 
 bool calendarIsSunday(DateTime day) => day.weekday == DateTime.sunday;
@@ -52,17 +53,22 @@ double calendarRowHeightForAvailableHeight(
   double availableHeight, {
   double textScale = 1,
 }) {
-  if (availableHeight <= kCalendarHeaderHeight + kCalendarDaysOfWeekHeight + 1) {
+  if (availableHeight <=
+      kCalendarHeaderHeight + kCalendarDaysOfWeekHeight + 1) {
     return 40;
   }
 
   final double textScaleBuffer = textScale > 1 ? (textScale - 1) * 14 : 0;
-  final double availableForRows = availableHeight -
+  final double availableForRows =
+      availableHeight -
       kCalendarHeaderHeight -
       kCalendarDaysOfWeekHeight -
       kCalendarHeightSafetyBuffer -
       textScaleBuffer;
-  return (availableForRows / kCalendarRowCount).floorToDouble().clamp(46.0, 72.0);
+  return (availableForRows / kCalendarRowCount).floorToDouble().clamp(
+    46.0,
+    72.0,
+  );
 }
 
 double calendarContentHeight(double rowHeight) {

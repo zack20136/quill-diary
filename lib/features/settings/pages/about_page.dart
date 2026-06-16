@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/page_style.dart';
-import '../about_copy.dart';
+import '../../../l10n/l10n.dart';
+import '../about_content.dart';
 import '../providers/personalization_providers.dart';
 import '../widgets/settings_info_cards.dart';
 
@@ -13,7 +14,9 @@ class SettingsAboutPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color pageBackground = PageStyle.scaffoldWash(cs);
-    final List<AboutTabCopy> tabs = SettingsAboutCopy.tabs(
+    final AppLocalizations l10n = context.l10n;
+    final List<AboutTab> tabs = buildAboutTabs(
+      l10n,
       watchPersonalizationPreferences(ref).sessionTimeout,
     );
 
@@ -22,7 +25,7 @@ class SettingsAboutPage extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: pageBackground,
         appBar: AppBar(
-          title: Text(SettingsAboutCopy.pageTitle(context)),
+          title: Text(l10n.aboutPageTitle),
           backgroundColor: pageBackground,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
@@ -31,13 +34,13 @@ class SettingsAboutPage extends ConsumerWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: tabs
-                .map((AboutTabCopy tab) => Tab(text: tab.label))
+                .map((AboutTab tab) => Tab(text: tab.label))
                 .toList(growable: false),
           ),
         ),
         body: TabBarView(
           children: tabs
-              .map((AboutTabCopy tab) => _AboutTabBody(tab: tab))
+              .map((AboutTab tab) => _AboutTabBody(tab: tab))
               .toList(growable: false),
         ),
       ),
@@ -48,7 +51,7 @@ class SettingsAboutPage extends ConsumerWidget {
 class _AboutTabBody extends StatelessWidget {
   const _AboutTabBody({required this.tab});
 
-  final AboutTabCopy tab;
+  final AboutTab tab;
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +68,11 @@ class _AboutTabBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ...List<Widget>.generate(tab.sections.length, (int index) {
-            final AboutSectionCopy section = tab.sections[index];
+            final AboutSection section = tab.sections[index];
             return Padding(
-              padding: EdgeInsets.only(bottom: index == tab.sections.length - 1 ? 0 : 16),
+              padding: EdgeInsets.only(
+                bottom: index == tab.sections.length - 1 ? 0 : 16,
+              ),
               child: _SectionCard(section: section),
             );
           }),
@@ -80,7 +85,7 @@ class _AboutTabBody extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.section});
 
-  final AboutSectionCopy section;
+  final AboutSection section;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +105,9 @@ class _SectionCard extends StatelessWidget {
           children: <Widget>[
             Text(
               section.title,
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -112,9 +119,11 @@ class _SectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ...List<Widget>.generate(section.items.length, (int index) {
-              final AboutItemCopy item = section.items[index];
+              final AboutItem item = section.items[index];
               return Padding(
-                padding: EdgeInsets.only(bottom: index == section.items.length - 1 ? 0 : 10),
+                padding: EdgeInsets.only(
+                  bottom: index == section.items.length - 1 ? 0 : 10,
+                ),
                 child: _ItemPanel(item: item),
               );
             }),
@@ -128,7 +137,7 @@ class _SectionCard extends StatelessWidget {
 class _ItemPanel extends StatelessWidget {
   const _ItemPanel({required this.item});
 
-  final AboutItemCopy item;
+  final AboutItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +156,10 @@ class _ItemPanel extends StatelessWidget {
           children: <Widget>[
             DecoratedBox(
               decoration: BoxDecoration(
-                color: Color.alphaBlend(cs.primary.withValues(alpha: 0.12), cs.surface),
+                color: Color.alphaBlend(
+                  cs.primary.withValues(alpha: 0.12),
+                  cs.surface,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -162,7 +174,9 @@ class _ItemPanel extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     item.title,
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(

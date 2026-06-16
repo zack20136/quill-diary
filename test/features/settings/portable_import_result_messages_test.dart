@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/settings/portable_import_result_messages.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
 import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+
+import '../../helpers/test_l10n.dart';
 
 void main() {
   test('messageWhenNoEntriesImported 全部略過時回報通用略過提示', () {
@@ -10,10 +11,10 @@ void main() {
       skippedFiles: 2,
     );
 
-    expect(result.isFailure, isTrue);
+    expect(result.isFailure(testL10n), isTrue);
     expect(
-      result.messageWhenNoEntriesImported(),
-      SettingsImportExportCopy.importAllSkippedMessage,
+      result.messageWhenNoEntriesImported(testL10n),
+      testL10n.settingsImportExportImportAllSkippedMessage,
     );
   });
 
@@ -24,10 +25,10 @@ void main() {
       failureCode: PortableImportFailureCode.easyDiaryAllEncrypted,
     );
 
-    expect(result.isFailure, isTrue);
+    expect(result.isFailure(testL10n), isTrue);
     expect(
-      result.messageWhenNoEntriesImported(),
-      SettingsImportExportCopy.importFailureEasyDiaryAllEncrypted,
+      result.messageWhenNoEntriesImported(testL10n),
+      testL10n.settingsImportExportFailureEasyDiaryAllEncrypted,
     );
   });
 
@@ -38,10 +39,14 @@ void main() {
       skippedAttachments: 2,
     );
 
-    expect(result.isFailure, isFalse);
+    expect(result.isFailure(testL10n), isFalse);
     expect(
-      result.formatSuccessMessage(),
-      SettingsImportExportCopy.importSuccessWithSkippedFilesAndAttachments(3, 1, 2),
+      result.formatSuccessMessage(testL10n),
+      testL10n.settingsImportExportImportSuccessWithSkippedFilesAndAttachments(
+        3,
+        1,
+        2,
+      ),
     );
   });
 }

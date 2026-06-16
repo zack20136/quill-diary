@@ -29,7 +29,9 @@ final sponsorBillingLifecycleProvider = Provider<void>((Ref ref) {
 class SponsorBillingController extends Notifier<SponsorBillingState> {
   @override
   SponsorBillingState build() {
-    final GoogleBillingService service = ref.watch(googleBillingServiceProvider);
+    final GoogleBillingService service = ref.watch(
+      googleBillingServiceProvider,
+    );
     service.onStateChanged = (SponsorBillingState next) {
       state = next;
     };
@@ -44,9 +46,7 @@ class SponsorBillingController extends Notifier<SponsorBillingState> {
   }
 
   Future<void> loadProducts({bool retry = false}) async {
-    await ref
-        .read(googleBillingServiceProvider)
-        .loadProducts(isRetry: retry);
+    await ref.read(googleBillingServiceProvider).loadProducts(isRetry: retry);
   }
 
   Future<bool> buyProduct(String productId) async {

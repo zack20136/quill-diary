@@ -21,8 +21,9 @@ class RestoreBackupFlow {
   final WidgetRef ref;
 
   Future<VaultTransferAccess> _loadTransferAccess() async {
-    final AppSessionState sessionState =
-        await ref.read(effectiveAppSessionProvider.future);
+    final AppSessionState sessionState = await ref.read(
+      effectiveAppSessionProvider.future,
+    );
     final bool hasUnlockedSession =
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
@@ -55,10 +56,7 @@ class RestoreBackupFlow {
         return null;
       }
       try {
-        await transferService.verifyBackupRecoveryKey(
-          backupFile,
-          key,
-        );
+        await transferService.verifyBackupRecoveryKey(backupFile, key);
         return key;
       } on StateError catch (error) {
         validationError = error.message;
@@ -70,8 +68,11 @@ class RestoreBackupFlow {
     required BuildContext context,
     required File backupFile,
     required RestorePrecheck precheck,
-    required Future<bool> Function(RestorePrecheck precheck, {String? driveBackupName})
-        confirm,
+    required Future<bool> Function(
+      RestorePrecheck precheck, {
+      String? driveBackupName,
+    })
+    confirm,
     String? driveBackupName,
   }) async {
     final AppLocalizations l10n = context.l10n;
@@ -114,21 +115,24 @@ class RestoreBackupFlow {
     BackupTaskProgressListener? onProgress,
   }) async {
     final transferService = ref.read(vaultTransferServiceProvider);
-    final AppSessionController sessionController =
-        ref.read(appSessionProvider.notifier);
+    final AppSessionController sessionController = ref.read(
+      appSessionProvider.notifier,
+    );
     final AppSessionState liveState = ref.read(appSessionProvider);
-    final UnlockedVaultSession? liveSession =
-        liveState.isUnlocked ? liveState.session : null;
+    final UnlockedVaultSession? liveSession = liveState.isUnlocked
+        ? liveState.session
+        : null;
     final bool hasActiveSession = liveSession != null;
-    final UnlockedVaultSession? livePriorSession = prepared.precheck
-            .canResumeTrustedSession(liveSession)
+    final UnlockedVaultSession? livePriorSession =
+        prepared.precheck.canResumeTrustedSession(liveSession)
         ? liveSession
         : null;
 
     Future<void> restoreBackup() async {
       await transferService.restoreFromBackupFile(
         backupFile,
-        preserveTrustedDeviceAccess: prepared.precheck.expectsTrustedUnlockAfterRestore,
+        preserveTrustedDeviceAccess:
+            prepared.precheck.expectsTrustedUnlockAfterRestore,
         onProgress: onProgress,
       );
     }

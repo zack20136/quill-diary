@@ -33,7 +33,9 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
          deviceKeyManager: const UnsupportedDeviceKeyManager(),
          appLockService: const UnsupportedAppLockService(),
-         userPreferences: UserPreferences(storageFile: File('.unused_test_prefs.json')),
+         userPreferences: UserPreferences(
+           storageFile: File('.unused_test_prefs.json'),
+         ),
        );
 
   List<EntryIndexRecord> allEntries;

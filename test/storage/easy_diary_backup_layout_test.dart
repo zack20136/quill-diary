@@ -21,14 +21,22 @@ void main() {
     final Directory root = Directory(p.join(tempDir.path, 'backup_root'));
     await root.create(recursive: true);
     await File(p.join(root.path, 'preference.json')).writeAsString('{}');
-    final Directory databaseDir = Directory(p.join(root.path, 'Backup', 'Database'))
-      ..createSync(recursive: true);
+    final Directory databaseDir = Directory(
+      p.join(root.path, 'Backup', 'Database'),
+    )..createSync(recursive: true);
     Directory(p.join(root.path, 'Photos')).createSync(recursive: true);
-    await File(p.join(databaseDir.path, 'diary.realm_20260601_235852')).writeAsString('');
+    await File(
+      p.join(databaseDir.path, 'diary.realm_20260601_235852'),
+    ).writeAsString('');
 
-    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(root);
+    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(
+      root,
+    );
     expect(layout, isNotNull);
-    expect(layout!.realmSnapshotFile.path, endsWith('diary.realm_20260601_235852'));
+    expect(
+      layout!.realmSnapshotFile.path,
+      endsWith('diary.realm_20260601_235852'),
+    );
     expect(layout.photosDirectory.path, endsWith('Photos'));
   });
 
@@ -36,21 +44,33 @@ void main() {
     final Directory root = Directory(p.join(tempDir.path, 'backup_newer'));
     await root.create(recursive: true);
     await File(p.join(root.path, 'preference.json')).writeAsString('{}');
-    final Directory databaseDir = Directory(p.join(root.path, 'Backup', 'Database'))
-      ..createSync(recursive: true);
+    final Directory databaseDir = Directory(
+      p.join(root.path, 'Backup', 'Database'),
+    )..createSync(recursive: true);
     Directory(p.join(root.path, 'Photos')).createSync(recursive: true);
-    await File(p.join(databaseDir.path, 'diary.realm_20260101_000000')).writeAsString('');
-    await File(p.join(databaseDir.path, 'diary.realm_20260601_235852')).writeAsString('');
+    await File(
+      p.join(databaseDir.path, 'diary.realm_20260101_000000'),
+    ).writeAsString('');
+    await File(
+      p.join(databaseDir.path, 'diary.realm_20260601_235852'),
+    ).writeAsString('');
 
-    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(root);
-    expect(layout?.realmSnapshotFile.path, endsWith('diary.realm_20260601_235852'));
+    final EasyDiaryBackupLayout? layout = EasyDiaryBackupLayout.tryResolve(
+      root,
+    );
+    expect(
+      layout?.realmSnapshotFile.path,
+      endsWith('diary.realm_20260601_235852'),
+    );
   });
 
   test('缺少 Photos 時不視為 Easy Diary 完整備份', () async {
     final Directory root = Directory(p.join(tempDir.path, 'backup_no_photos'));
     await root.create(recursive: true);
     await File(p.join(root.path, 'preference.json')).writeAsString('{}');
-    Directory(p.join(root.path, 'Backup', 'Database')).createSync(recursive: true);
+    Directory(
+      p.join(root.path, 'Backup', 'Database'),
+    ).createSync(recursive: true);
 
     expect(EasyDiaryBackupLayout.tryResolve(root), isNull);
   });

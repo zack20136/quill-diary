@@ -31,8 +31,9 @@ class LocalAppLockService implements AppLockService {
 
   static const String _unlockModeKey = 'app_lock.unlock_mode';
 
-  static const MethodChannel _deviceKeyChannel =
-      MethodChannel(AppIdentifiers.deviceKeyChannel);
+  static const MethodChannel _deviceKeyChannel = MethodChannel(
+    AppIdentifiers.deviceKeyChannel,
+  );
 
   Map<String, String>? _cache;
 
@@ -57,13 +58,15 @@ class LocalAppLockService implements AppLockService {
 
   @override
   Future<bool> canUseDeviceCredential() async {
-    final DeviceAuthCapabilities capabilities = await getDeviceAuthCapabilities();
+    final DeviceAuthCapabilities capabilities =
+        await getDeviceAuthCapabilities();
     return capabilities.deviceCredentialAvailable;
   }
 
   @override
   Future<bool> canUseBiometric() async {
-    final DeviceAuthCapabilities capabilities = await getDeviceAuthCapabilities();
+    final DeviceAuthCapabilities capabilities =
+        await getDeviceAuthCapabilities();
     return capabilities.biometricStrongAvailable;
   }
 
@@ -76,10 +79,8 @@ class LocalAppLockService implements AppLockService {
       );
     }
     try {
-      final Map<Object?, Object?>? result =
-          await _deviceKeyChannel.invokeMapMethod<Object?, Object?>(
-        'getDeviceAuthCapabilities',
-      );
+      final Map<Object?, Object?>? result = await _deviceKeyChannel
+          .invokeMapMethod<Object?, Object?>('getDeviceAuthCapabilities');
       return DeviceAuthCapabilities(
         deviceCredentialAvailable: result?['deviceCredential'] == true,
         biometricStrongAvailable: result?['biometricStrong'] == true,

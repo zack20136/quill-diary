@@ -31,7 +31,8 @@ void main() {
   });
 
   test('RecoveryMetadata 拒絕 v0 recovery_key_version', () {
-    final Map<String, Object?> json = metadata.toJson()..['recovery_key_version'] = 0;
+    final Map<String, Object?> json = metadata.toJson()
+      ..['recovery_key_version'] = 0;
 
     expect(
       () => RecoveryMetadata.fromJson(json),
@@ -60,10 +61,7 @@ void main() {
   test('KdfDescriptor 拒絕非 argon2id 演算法', () {
     final Map<String, Object?> json = kdf.toJson()..['name'] = 'pbkdf2';
 
-    expect(
-      () => KdfDescriptor.fromJson(json),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => KdfDescriptor.fromJson(json), throwsA(isA<FormatException>()));
   });
 
   test('KdfDescriptor.argon2idRecovery 拒絕過短 salt', () {

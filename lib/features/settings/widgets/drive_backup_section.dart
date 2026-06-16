@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../l10n/l10n.dart';
 import '../providers/settings_providers.dart';
-import '../settings_copy.dart';
+import '../settings_messages.dart';
 import '../vault_transfer_access.dart';
 import 'drive_account_status.dart';
 import 'settings_sections.dart';
@@ -34,44 +34,49 @@ class DriveBackupSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppLocalizations l10n = context.l10n;
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
-            ? SettingsDriveBackupCopy.sectionDescriptionEnabled
-            : VaultTransferCopy.driveSectionDescriptionBackupLocked(context.l10n))
-        : SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured;
+              ? settingsDriveBackupSectionDescriptionEnabled(l10n)
+              : l10n.vaultTransferDriveSectionDescriptionBackupLocked)
+        : l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured;
 
     return SettingsSectionCard(
       icon: Icons.cloud_outlined,
-      title: SettingsDriveBackupCopy.sectionTitle,
+      title: l10n.settingsDriveBackupSectionTitle,
       description: description,
       child: !isGoogleDriveConfigured
-          ? const SettingsInfoBanner(
+          ? SettingsInfoBanner(
               icon: Icons.cloud_off_rounded,
-              message: SettingsDriveBackupCopy.sectionDescriptionOAuthNotConfigured,
+              message:
+                  l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured,
             )
-          : ref.watch(settingsDriveConnectionProvider).when(
-                loading: () => const SettingsSectionLoading(),
-                error: (_, _) => _DriveBackupContent(
-                  connectionState: const DriveConnectionState.disconnected(),
-                  access: access,
-                  busy: busy,
-                  onLink: onLink,
-                  onSwitchAccount: onSwitchAccount,
-                  onDisconnect: onDisconnect,
-                  onUpload: onUpload,
-                  onRestore: onRestore,
+          : ref
+                .watch(settingsDriveConnectionProvider)
+                .when(
+                  loading: () => const SettingsSectionLoading(),
+                  error: (_, _) => _DriveBackupContent(
+                    connectionState: const DriveConnectionState.disconnected(),
+                    access: access,
+                    busy: busy,
+                    onLink: onLink,
+                    onSwitchAccount: onSwitchAccount,
+                    onDisconnect: onDisconnect,
+                    onUpload: onUpload,
+                    onRestore: onRestore,
+                  ),
+                  data: (DriveConnectionState connectionState) =>
+                      _DriveBackupContent(
+                        connectionState: connectionState,
+                        access: access,
+                        busy: busy,
+                        onLink: onLink,
+                        onSwitchAccount: onSwitchAccount,
+                        onDisconnect: onDisconnect,
+                        onUpload: onUpload,
+                        onRestore: onRestore,
+                      ),
                 ),
-                data: (DriveConnectionState connectionState) => _DriveBackupContent(
-                  connectionState: connectionState,
-                  access: access,
-                  busy: busy,
-                  onLink: onLink,
-                  onSwitchAccount: onSwitchAccount,
-                  onDisconnect: onDisconnect,
-                  onUpload: onUpload,
-                  onRestore: onRestore,
-                ),
-              ),
     );
   }
 }
@@ -99,6 +104,7 @@ class _DriveBackupContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final bool isConnected = connectionState.isConnected;
 
     return Column(
@@ -113,7 +119,7 @@ class _DriveBackupContent extends StatelessWidget {
           actions: <SettingsActionButton>[
             if (!isConnected)
               SettingsActionButton(
-                label: SettingsDriveBackupCopy.linkButton,
+                label: l10n.settingsDriveBackupLinkButton,
                 icon: Icons.link_rounded,
                 appearance: SettingsActionButtonAppearance.filled,
                 fullWidth: true,
@@ -121,28 +127,28 @@ class _DriveBackupContent extends StatelessWidget {
               ),
             if (isConnected) ...<SettingsActionButton>[
               SettingsActionButton(
-                label: SettingsDriveBackupCopy.uploadButton,
+                label: l10n.settingsDriveBackupUploadButton,
                 icon: Icons.cloud_upload_outlined,
                 appearance: SettingsActionButtonAppearance.filled,
                 fullWidth: true,
                 onPressed: busy || !access.canBackup ? null : onUpload,
               ),
               SettingsActionButton(
-                label: SettingsDriveBackupCopy.restoreButton,
+                label: l10n.settingsDriveBackupRestoreButton,
                 icon: Icons.cloud_download_outlined,
                 appearance: SettingsActionButtonAppearance.tonal,
                 fullWidth: true,
                 onPressed: busy || !access.canRestore ? null : onRestore,
               ),
               SettingsActionButton(
-                label: SettingsDriveBackupCopy.switchAccountButton,
+                label: l10n.settingsDriveBackupSwitchAccountButton,
                 icon: Icons.swap_horiz_rounded,
                 appearance: SettingsActionButtonAppearance.outlined,
                 fullWidth: true,
                 onPressed: busy ? null : onSwitchAccount,
               ),
               SettingsActionButton(
-                label: SettingsDriveBackupCopy.disconnectButton,
+                label: l10n.settingsDriveBackupDisconnectButton,
                 icon: Icons.link_off_rounded,
                 appearance: SettingsActionButtonAppearance.destructive,
                 fullWidth: true,
@@ -151,24 +157,24 @@ class _DriveBackupContent extends StatelessWidget {
             ],
           ],
         ),
-        if (isConnected && _lockedBannerMessage(context) != null) ...<Widget>[
+        if (isConnected && _lockedBannerMessage(l10n) != null) ...<Widget>[
           const SizedBox(height: 12),
           SettingsInfoBanner(
             icon: Icons.lock_outline_rounded,
-            message: _lockedBannerMessage(context)!,
+            message: _lockedBannerMessage(l10n)!,
           ),
         ],
       ],
     );
   }
 
-  String? _lockedBannerMessage(BuildContext context) {
+  String? _lockedBannerMessage(AppLocalizations l10n) {
     if (!access.canBackup && !access.canRestore) {
       return access.restoreDisabledReason ?? access.backupDisabledReason;
     }
     if (!access.canBackup) {
       return access.backupDisabledReason ??
-          VaultTransferCopy.driveBackupActionsLockedHint(context.l10n);
+          l10n.vaultTransferDriveBackupActionsLockedHint;
     }
     if (!access.canRestore) {
       return access.restoreDisabledReason;

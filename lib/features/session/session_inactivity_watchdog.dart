@@ -4,11 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'session_timeout_policy.dart';
 
-enum ForegroundResumeResult {
-  none,
-  expired,
-  waitingForSettle,
-}
+enum ForegroundResumeResult { none, expired, waitingForSettle }
 
 /// 追蹤 App 進入背景後的 session 逾時；僅在 armed 且收到 [notifyBackground] 時計時。
 class SessionInactivityWatchdog {

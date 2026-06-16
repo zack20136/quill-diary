@@ -6,8 +6,9 @@ import '../../config/app_identifiers.dart';
 
 /// Android MediaStore：Pictures / Download 下的 quill-diary 子資料夾。
 abstract final class MediaStoreExport {
-  static const MethodChannel _channel =
-      MethodChannel(AppIdentifiers.mediaStoreExportChannel);
+  static const MethodChannel _channel = MethodChannel(
+    AppIdentifiers.mediaStoreExportChannel,
+  );
 
   /// 若尚不存在，於 Download/quill-diary 建立 marker 檔（scoped storage）。
   static Future<void> ensureDownloadsSubfolder() async {

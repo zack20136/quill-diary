@@ -1,13 +1,7 @@
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 /// 贊助購買流程的 UI 階段（非功能開關、不持久化）。
-enum SponsorPurchasePhase {
-  idle,
-  buying,
-  pending,
-  error,
-  thanks,
-}
+enum SponsorPurchasePhase { idle, buying, pending, error, thanks }
 
 /// 贊助頁 Billing 狀態。
 class SponsorBillingState {
@@ -61,8 +55,7 @@ class SponsorBillingState {
       isInitialized: isInitialized ?? this.isInitialized,
       isAvailable: isAvailable ?? this.isAvailable,
       isLoadingProducts: isLoadingProducts ?? this.isLoadingProducts,
-      isRefreshingProducts:
-          isRefreshingProducts ?? this.isRefreshingProducts,
+      isRefreshingProducts: isRefreshingProducts ?? this.isRefreshingProducts,
       products: products ?? this.products,
       productLoadError: clearProductLoadError
           ? null

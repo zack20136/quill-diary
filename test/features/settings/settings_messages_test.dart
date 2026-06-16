@@ -3,12 +3,17 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/features/settings/settings_copy.dart';
+import 'package:quill_diary/features/settings/settings_messages.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+
+import '../../helpers/test_l10n.dart';
 
 void main() {
   test('recoveryKeyHintLine 使用統一末四碼格式', () {
-    expect(SettingsCopy.recoveryKeyHintLine('WXYZ'), '末四碼：WXYZ');
+    expect(
+      settingsRecoveryKeyHintLine(testL10n, 'WXYZ'),
+      testL10n.settingsRecoveryKeyHintLine('WXYZ'),
+    );
   });
 
   group('buildRestoreConfirmBulletPoints', () {
@@ -18,9 +23,7 @@ void main() {
       recoveryKeyVersion: 1,
       recoveryKeyHint: 'WXYZ',
       createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
-      kdf: KdfDescriptor.argon2idRecovery(
-        saltBytes: List<int>.filled(16, 1),
-      ),
+      kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
     );
 
     test('無 recovery 時提示重新建立', () {
@@ -31,9 +34,18 @@ void main() {
         willOverwriteLocalVault: true,
       );
 
-      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
-      expect(bullets, contains(SettingsRestoreBulletCopy.backupWithoutRecovery));
-      expect(bullets, isNot(contains(SettingsRestoreBulletCopy.rewrapNote)));
+      final List<String> bullets = buildRestoreConfirmBulletPoints(
+        testL10n,
+        precheck,
+      );
+      expect(
+        bullets,
+        contains(testL10n.settingsRestoreBulletBackupWithoutRecovery),
+      );
+      expect(
+        bullets,
+        isNot(contains(testL10n.settingsRestoreBulletRewrapNote)),
+      );
     });
 
     test('同 vault 且有 trusted 時提示自動解鎖', () {
@@ -48,10 +60,16 @@ void main() {
         willOverwriteLocalVault: true,
       );
 
-      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+      final List<String> bullets = buildRestoreConfirmBulletPoints(
+        testL10n,
+        precheck,
+      );
       expect(precheck.expectsTrustedUnlockAfterRestore, isTrue);
-      expect(bullets, contains(SettingsRestoreBulletCopy.trustedAutoUnlock));
-      expect(bullets, contains(SettingsRestoreBulletCopy.rewrapNote));
+      expect(
+        bullets,
+        contains(testL10n.settingsRestoreBulletTrustedAutoUnlock),
+      );
+      expect(bullets, contains(testL10n.settingsRestoreBulletRewrapNote));
     });
 
     test('同 vault 但復原金鑰已輪替時提示舊金鑰與末四碼', () {
@@ -66,10 +84,13 @@ void main() {
         willOverwriteLocalVault: true,
       );
 
-      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+      final List<String> bullets = buildRestoreConfirmBulletPoints(
+        testL10n,
+        precheck,
+      );
       expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
-      expect(bullets, contains(SettingsRestoreBulletCopy.rotatedBackup));
-      expect(bullets, contains(SettingsCopy.recoveryKeyHintLine('WXYZ')));
+      expect(bullets, contains(testL10n.settingsRestoreBulletRotatedBackup));
+      expect(bullets, contains(settingsRecoveryKeyHintLine(testL10n, 'WXYZ')));
     });
 
     test('不同 vault 時提示備份來源復原金鑰', () {
@@ -84,10 +105,16 @@ void main() {
         willOverwriteLocalVault: true,
       );
 
-      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+      final List<String> bullets = buildRestoreConfirmBulletPoints(
+        testL10n,
+        precheck,
+      );
       expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
-      expect(bullets, contains(SettingsRestoreBulletCopy.recoveryKeyAfterRestore));
-      expect(bullets, contains(SettingsCopy.recoveryKeyHintLine('WXYZ')));
+      expect(
+        bullets,
+        contains(testL10n.settingsRestoreBulletRecoveryKeyAfterRestore),
+      );
+      expect(bullets, contains(settingsRecoveryKeyHintLine(testL10n, 'WXYZ')));
     });
 
     test('同 vault 且 trusted state 遺失時仍提示舊復原金鑰', () {
@@ -102,12 +129,15 @@ void main() {
         willOverwriteLocalVault: true,
       );
 
-      final List<String> bullets = buildRestoreConfirmBulletPoints(precheck);
+      final List<String> bullets = buildRestoreConfirmBulletPoints(
+        testL10n,
+        precheck,
+      );
       expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
       expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
       expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
-      expect(bullets, contains(SettingsRestoreBulletCopy.rotatedBackup));
-      expect(bullets, contains(SettingsCopy.recoveryKeyHintLine('WXYZ')));
+      expect(bullets, contains(testL10n.settingsRestoreBulletRotatedBackup));
+      expect(bullets, contains(settingsRecoveryKeyHintLine(testL10n, 'WXYZ')));
     });
   });
 
@@ -119,8 +149,8 @@ void main() {
       willOverwriteLocalVault: true,
     );
     expect(
-      restoreRecoveryKeyDialogSubtitle(precheck),
-      SettingsRestoreDialogCopy.subtitleOtherVault,
+      restoreRecoveryKeyDialogSubtitle(testL10n, precheck),
+      testL10n.settingsRestoreDialogSubtitleOtherVault,
     );
   });
 }

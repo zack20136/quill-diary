@@ -27,25 +27,33 @@ void main() {
   });
 
   test('write 後可 round-trip 讀回 v1 標籤目錄', () async {
-    await store.write(
-      const <TagCatalogItem>[
-        TagCatalogItem(label: '工作', accentArgb: 0xFF4C6EF5),
-        TagCatalogItem(label: '日常', accentArgb: 0xFF51CF66),
-      ],
-    );
+    await store.write(const <TagCatalogItem>[
+      TagCatalogItem(label: '工作', accentArgb: 0xFF4C6EF5),
+      TagCatalogItem(label: '日常', accentArgb: 0xFF51CF66),
+    ]);
 
     final List<TagCatalogItem> loaded = await store.read();
-    expect(loaded.map((TagCatalogItem item) => item.label), <String>['工作', '日常']);
+    expect(loaded.map((TagCatalogItem item) => item.label), <String>[
+      '工作',
+      '日常',
+    ]);
     expect(TagStylesStore.toAccentMap(loaded), <String, int>{
       normalizeText('工作'): 0xFF4C6EF5,
       normalizeText('日常'): 0xFF51CF66,
     });
 
-    final Directory vaultRoot = Directory('${tempDir.path}${Platform.pathSeparator}vault');
-    final File file = File('${vaultRoot.path}${Platform.pathSeparator}tag_styles.json');
+    final Directory vaultRoot = Directory(
+      '${tempDir.path}${Platform.pathSeparator}vault',
+    );
+    final File file = File(
+      '${vaultRoot.path}${Platform.pathSeparator}tag_styles.json',
+    );
     final Object? decoded = jsonDecode(await file.readAsString());
     expect(decoded, isA<Map<String, Object?>>());
-    expect((decoded as Map<String, Object?>)['version'], TagStylesStore.schemaVersion);
+    expect(
+      (decoded as Map<String, Object?>)['version'],
+      TagStylesStore.schemaVersion,
+    );
     expect(decoded['tags'], isA<List<Object?>>());
   });
 

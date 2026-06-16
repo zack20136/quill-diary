@@ -36,10 +36,15 @@ void main() {
     return ProviderScope(
       overrides: [
         supportedPlatformProvider.overrideWith((Ref ref) => true),
-        vaultRepositoryProvider.overrideWithValue(FakeEntryIndexVaultRepository()),
-        vaultTransferServiceProvider.overrideWithValue(FakeVaultTransferService()),
+        vaultRepositoryProvider.overrideWithValue(
+          FakeEntryIndexVaultRepository(),
+        ),
+        vaultTransferServiceProvider.overrideWithValue(
+          FakeVaultTransferService(),
+        ),
         effectiveAppSessionProvider.overrideWith(
-          (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
+          (Ref ref) async =>
+              const AppSessionState(status: AppLockStatus.locked),
         ),
         recoveryMetadataProvider.overrideWith((Ref ref) async => null),
         unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
@@ -70,28 +75,36 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('editor route without entryId builds EditorPage', (WidgetTester tester) async {
+  testWidgets('editor route without entryId builds EditorPage', (
+    WidgetTester tester,
+  ) async {
     await pumpRoute(tester, AppRouter.editorRoute);
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, isNull);
     expect(page.startInEditMode, isFalse);
   });
 
-  testWidgets('editor detail route passes entryId', (WidgetTester tester) async {
+  testWidgets('editor detail route passes entryId', (
+    WidgetTester tester,
+  ) async {
     await pumpRoute(tester, '/editor/abc');
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, 'abc');
     expect(page.startInEditMode, isFalse);
   });
 
-  testWidgets('editor detail route with edit=1 starts in edit mode', (WidgetTester tester) async {
+  testWidgets('editor detail route with edit=1 starts in edit mode', (
+    WidgetTester tester,
+  ) async {
     await pumpRoute(tester, '/editor/abc?edit=1');
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, 'abc');
     expect(page.startInEditMode, isTrue);
   });
 
-  testWidgets('settings routes build expected pages', (WidgetTester tester) async {
+  testWidgets('settings routes build expected pages', (
+    WidgetTester tester,
+  ) async {
     await pumpRoute(tester, AppRouter.settingsRoute);
     expect(find.byType(SettingsPage), findsOneWidget);
 

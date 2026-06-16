@@ -20,7 +20,8 @@ class QuillDiaryApp extends ConsumerStatefulWidget {
 
 class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   late final GoRouter _router = AppRouter.createRouter();
-  late final SessionLifecycleBinding _sessionLifecycle = SessionLifecycleBinding(ref);
+  late final SessionLifecycleBinding _sessionLifecycle =
+      SessionLifecycleBinding(ref);
 
   @override
   void initState() {
@@ -38,8 +39,9 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   @override
   Widget build(BuildContext context) {
     ref.watch(sponsorBillingLifecycleProvider);
-    final PersonalizationPreferences prefs = watchPersonalizationPreferences(ref);
-    updateCurrentAppLocale(prefs.materialLocale);
+    final PersonalizationPreferences prefs = watchPersonalizationPreferences(
+      ref,
+    );
 
     return _sessionLifecycle.wrap(
       DynamicColorBuilder(
@@ -55,21 +57,19 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
             locale: prefs.materialLocale,
             supportedLocales: appSupportedLocales,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
-            localeListResolutionCallback: (
-              List<Locale>? locales,
-              Iterable<Locale> supportedLocales,
-            ) {
-              final List<Locale> preferred = locales ?? const <Locale>[];
-              for (final Locale locale in preferred) {
-                if (locale.languageCode == 'zh') {
-                  return appZhTwLocale;
-                }
-                if (locale.languageCode == 'en') {
-                  return appEnLocale;
-                }
-              }
-              return supportedLocales.first;
-            },
+            localeListResolutionCallback:
+                (List<Locale>? locales, Iterable<Locale> supportedLocales) {
+                  final List<Locale> preferred = locales ?? const <Locale>[];
+                  for (final Locale locale in preferred) {
+                    if (locale.languageCode == 'zh') {
+                      return appZhTwLocale;
+                    }
+                    if (locale.languageCode == 'en') {
+                      return appEnLocale;
+                    }
+                  }
+                  return supportedLocales.first;
+                },
             routerConfig: _router,
           );
         },

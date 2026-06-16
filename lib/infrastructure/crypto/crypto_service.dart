@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 import '../../domain/recovery/kdf_descriptor.dart';
+
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
@@ -95,26 +96,35 @@ class EncryptedDocumentHeader {
       'updated_at': updatedAt.toIso8601String(),
       'cipher': cipher,
       'nonce': nonceBase64,
-      'key_slots': keySlots.map((EncryptionKeySlot slot) => slot.toJson()).toList(),
+      'key_slots': keySlots
+          .map((EncryptionKeySlot slot) => slot.toJson())
+          .toList(),
     };
   }
 
   factory EncryptedDocumentHeader.fromJson(Map<String, Object?> json) {
-    final List<Object?> rawSlots =
-        json['key_slots'] is List<Object?> ? json['key_slots'] as List<Object?> : const <Object?>[];
+    final List<Object?> rawSlots = json['key_slots'] is List<Object?>
+        ? json['key_slots'] as List<Object?>
+        : const <Object?>[];
 
     return EncryptedDocumentHeader(
       schemaVersion: int.tryParse('${json['schema_version'] ?? 0}') ?? 0,
       fileId: (json['file_id'] ?? '').toString(),
       vaultId: (json['vault_id'] ?? '').toString(),
-      contentType: (json['content_type'] ?? 'application/octet-stream').toString(),
-      createdAt: DateTime.tryParse('${json['created_at'] ?? ''}') ??
+      contentType: (json['content_type'] ?? 'application/octet-stream')
+          .toString(),
+      createdAt:
+          DateTime.tryParse('${json['created_at'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      updatedAt: DateTime.tryParse('${json['updated_at'] ?? ''}') ??
+      updatedAt:
+          DateTime.tryParse('${json['updated_at'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       cipher: (json['cipher'] ?? 'aes-256-gcm').toString(),
       nonceBase64: (json['nonce'] ?? '').toString(),
-      keySlots: rawSlots.whereType<Map<String, Object?>>().map(EncryptionKeySlot.fromJson).toList(),
+      keySlots: rawSlots
+          .whereType<Map<String, Object?>>()
+          .map(EncryptionKeySlot.fromJson)
+          .toList(),
     );
   }
 }
@@ -173,10 +183,10 @@ class DecryptionContext {
     required List<int> recoveryWrapKey,
     required String vaultId,
   }) : this(
-          vaultId: vaultId,
-          trustedDevice: false,
-          recoveryWrapKey: recoveryWrapKey,
-        );
+         vaultId: vaultId,
+         trustedDevice: false,
+         recoveryWrapKey: recoveryWrapKey,
+       );
 
   final String vaultId;
   final bool trustedDevice;
@@ -229,12 +239,10 @@ abstract class CryptoService {
 
 /// 以 AES-GCM 與 Android 裝置金鑰橋接層為後端的本機 LDJ2 實作。
 class LocalCryptoService implements CryptoService {
-  LocalCryptoService({
-    Cipher? contentCipher,
-    Random? random,
-  })  : _contentCipher = contentCipher ?? AesGcm.with256bits(),
-        _recoveryWrapCipher = AesGcm.with256bits(),
-        _random = random ?? Random.secure();
+  LocalCryptoService({Cipher? contentCipher, Random? random})
+    : _contentCipher = contentCipher ?? AesGcm.with256bits(),
+      _recoveryWrapCipher = AesGcm.with256bits(),
+      _random = random ?? Random.secure();
 
   final Cipher _contentCipher;
   final Cipher _recoveryWrapCipher;
@@ -422,7 +430,10 @@ class LocalCryptoService implements CryptoService {
       slotId: 'recovery',
       slotType: 'recovery',
       wrapAlgorithm: 'aes-256-gcm',
-      wrappedKeyBase64: base64Encode(<int>[...box.cipherText, ...box.mac.bytes]),
+      wrappedKeyBase64: base64Encode(<int>[
+        ...box.cipherText,
+        ...box.mac.bytes,
+      ]),
       nonceBase64: base64Encode(nonce),
       kdf: recoverySlotKdf,
     );
@@ -435,8 +446,8 @@ class LocalCryptoService implements CryptoService {
   EncryptedDocumentHeader _parseHeader(List<int> headerBytes) {
     final Map<String, Object?> headerJson =
         (jsonDecode(utf8.decode(headerBytes)) as Map<Object?, Object?>).map(
-      (Object? key, Object? value) => MapEntry('$key', _deepCast(value)),
-    );
+          (Object? key, Object? value) => MapEntry('$key', _deepCast(value)),
+        );
     return EncryptedDocumentHeader.fromJson(headerJson);
   }
 
@@ -483,7 +494,9 @@ class LocalCryptoService implements CryptoService {
     if (nonceBytes.length != _gcmNonceLength) {
       throw const FormatException('Encrypted document nonce is invalid.');
     }
-    if (!header.keySlots.any((EncryptionKeySlot slot) => slot.slotType == 'recovery')) {
+    if (!header.keySlots.any(
+      (EncryptionKeySlot slot) => slot.slotType == 'recovery',
+    )) {
       throw const FormatException('加密檔案缺少 Recovery 金鑰槽。');
     }
     for (final EncryptionKeySlot slot in header.keySlots) {

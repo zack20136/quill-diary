@@ -37,10 +37,7 @@ void main() {
 
     final Object? decoded = jsonDecode(await prefsFile.readAsString());
     expect(decoded, isA<Map<String, dynamic>>());
-    expect(
-      (decoded as Map<String, dynamic>)['image_compress_preset'],
-      'high',
-    );
+    expect((decoded as Map<String, dynamic>)['image_compress_preset'], 'high');
   });
 
   test('未知 storage 值 fallback 為 standard', () async {
@@ -53,15 +50,24 @@ void main() {
   test('ImageCompressPreset.fromStorage 對應各档', () {
     expect(ImageCompressPreset.fromStorage(null), ImageCompressPreset.standard);
     expect(ImageCompressPreset.fromStorage(''), ImageCompressPreset.standard);
-    expect(ImageCompressPreset.fromStorage('standard'), ImageCompressPreset.standard);
-    expect(ImageCompressPreset.fromStorage('original'), ImageCompressPreset.original);
+    expect(
+      ImageCompressPreset.fromStorage('standard'),
+      ImageCompressPreset.standard,
+    );
+    expect(
+      ImageCompressPreset.fromStorage('original'),
+      ImageCompressPreset.original,
+    );
     expect(ImageCompressPreset.fromStorage('high'), ImageCompressPreset.high);
-    expect(ImageCompressPreset.fromStorage('bogus'), ImageCompressPreset.standard);
+    expect(
+      ImageCompressPreset.fromStorage('bogus'),
+      ImageCompressPreset.standard,
+    );
   });
 
   test('未設定時 loadPersonalizationPreferences 使用預設值', () async {
-    final PersonalizationPreferences loaded =
-        await preferences.loadPersonalizationPreferences();
+    final PersonalizationPreferences loaded = await preferences
+        .loadPersonalizationPreferences();
 
     expect(loaded.imageCompressPreset, ImageCompressPreset.standard);
     expect(loaded.typography, EditorTypographyPreferences.defaults);
@@ -88,7 +94,8 @@ void main() {
     await preferences.savePersonalizationPreferences(value);
 
     final UserPreferences reloaded = UserPreferences(storageFile: prefsFile);
-    final PersonalizationPreferences loaded = await reloaded.loadPersonalizationPreferences();
+    final PersonalizationPreferences loaded = await reloaded
+        .loadPersonalizationPreferences();
     expect(loaded.imageCompressPreset, value.imageCompressPreset);
     expect(loaded.themeMode, value.themeMode);
     expect(loaded.sessionTimeoutMinutes, value.sessionTimeoutMinutes);
@@ -101,9 +108,16 @@ void main() {
       '{"editor_title_font_size":"999","editor_body_line_height":"0.1"}',
     );
 
-    final EditorTypographyPreferences typography = await preferences.editorTypography;
-    expect(typography.titleFontSize, EditorTypographyPreferences.maxTitleFontSize);
-    expect(typography.bodyLineHeight, EditorTypographyPreferences.minBodyLineHeight);
+    final EditorTypographyPreferences typography =
+        await preferences.editorTypography;
+    expect(
+      typography.titleFontSize,
+      EditorTypographyPreferences.maxTitleFontSize,
+    );
+    expect(
+      typography.bodyLineHeight,
+      EditorTypographyPreferences.minBodyLineHeight,
+    );
   });
 
   test('SessionBackgroundTimeoutMinutes.fromStorage 對應各档', () {

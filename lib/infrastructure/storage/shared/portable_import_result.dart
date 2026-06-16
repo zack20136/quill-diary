@@ -1,7 +1,8 @@
-/// 可攜式匯入失敗原因（穩定識別碼，UI 文案見 SettingsImportExportCopy）。
+/// 可攜式匯入失敗原因（穩定識別碼，UI 文案見 AppLocalizations settingsImportExport*）。
 abstract final class PortableImportFailureCode {
   static const String zipNoEntries = 'zip_no_entries';
-  static const String easyDiaryUnsupportedPlatform = 'easy_diary_unsupported_platform';
+  static const String easyDiaryUnsupportedPlatform =
+      'easy_diary_unsupported_platform';
   static const String easyDiaryRealmReadFailed = 'easy_diary_realm_read_failed';
   static const String easyDiaryEmptyBackup = 'easy_diary_empty_backup';
   static const String easyDiaryAllEncrypted = 'easy_diary_all_encrypted';

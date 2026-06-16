@@ -35,7 +35,10 @@ void main() {
 
     expect(states.last.isInitialized, isTrue);
     expect(states.last.isAvailable, isTrue);
-    expect(platform.log.map((MethodCall call) => call.method), contains('restorePurchases'));
+    expect(
+      platform.log.map((MethodCall call) => call.method),
+      contains('restorePurchases'),
+    );
   });
 
   test('loadProducts 依 BillingConfig 順序排序商品', () async {
@@ -43,7 +46,9 @@ void main() {
     await service.loadProducts();
 
     expect(
-      service.state.products.map((ProductDetails product) => product.id).toList(),
+      service.state.products
+          .map((ProductDetails product) => product.id)
+          .toList(),
       BillingConfig.sponsorProductIdsOrdered,
     );
   });

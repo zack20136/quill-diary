@@ -1,9 +1,6 @@
 /// Easy Diary Realm 通道回傳的單篇日記資料。
 class EasyDiaryPhotoRef {
-  const EasyDiaryPhotoRef({
-    required this.photoKey,
-    this.mimeType,
-  });
+  const EasyDiaryPhotoRef({required this.photoKey, this.mimeType});
 
   final String photoKey;
   final String? mimeType;

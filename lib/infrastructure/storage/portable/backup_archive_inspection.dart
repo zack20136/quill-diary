@@ -82,7 +82,8 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
     } on FormatException {
       safePaths = false;
     }
-    if (normalized == 'recovery.json' || normalized.endsWith('/recovery.json')) {
+    if (normalized == 'recovery.json' ||
+        normalized.endsWith('/recovery.json')) {
       hasRecovery = true;
     }
     if (normalized == 'manifest.json.enc' ||
@@ -107,7 +108,9 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
   );
 }
 
-final RegExp _portableMarkdownExportDatePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+final RegExp _portableMarkdownExportDatePattern = RegExp(
+  r'^\d{4}-\d{2}-\d{2}$',
+);
 
 /// 可攜式 Markdown 匯出路徑：`{YYYY-MM-DD}/{標題}/index.md`。
 bool _isPortableMarkdownExportPath(String normalizedPath) {
