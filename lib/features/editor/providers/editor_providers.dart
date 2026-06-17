@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/attachment/asset_attachment.dart';
 import '../../../domain/diary/diary_entry.dart';
 import '../../../domain/shared/value_objects.dart';
-import '../../../shared/providers/core_providers.dart';
+import '../application/editor_actions.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';
 
@@ -36,7 +36,7 @@ final entryCoverPreviewBytesProvider = FutureProvider.autoDispose
         return null;
       }
       final Uint8List? bytes = await ref
-          .read(vaultRepositoryProvider)
+          .read(editorActionsProvider)
           .readDecryptedAssetBytes(state.session!, path);
       if (bytes != null && bytes.isNotEmpty) {
         ref.keepAlive();
@@ -52,7 +52,7 @@ final entryProvider = FutureProvider.family<DiaryEntry?, EntryId>((
   if (session == null) {
     return null;
   }
-  return ref.read(vaultRepositoryProvider).loadEntry(session, entryId);
+  return ref.read(editorActionsProvider).loadEntry(session, entryId);
 });
 
 final entryAttachmentsProvider =
@@ -62,5 +62,5 @@ final entryAttachmentsProvider =
     ) async {
       await ref.watch(activeVaultSessionProvider.future);
       ref.watch(entryIndexRevisionProvider);
-      return ref.read(vaultRepositoryProvider).loadAttachments(entryId);
+      return ref.read(editorActionsProvider).loadAttachments(entryId);
     });

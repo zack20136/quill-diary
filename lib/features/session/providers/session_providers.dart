@@ -491,6 +491,10 @@ final appSessionProvider =
       AppSessionController.new,
     );
 
+final sessionSupportedPlatformProvider = Provider<bool>((Ref ref) {
+  return ref.watch(supportedPlatformProvider);
+});
+
 /// 冷啟動或還原後重新建立應用 session（請在還原流程直接呼叫，避免與 provider 並行）。
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   final AppLocalizations l10n = await _loadSessionL10n(ref);

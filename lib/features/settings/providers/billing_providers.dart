@@ -3,7 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
-import '../../../services/google_billing_service.dart';
+import '../../../infrastructure/billing/google_billing_service.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../state/sponsor_billing_state.dart';
 
@@ -18,7 +18,7 @@ final sponsorBillingProvider =
       SponsorBillingController.new,
     );
 
-/// App 啟動時在 Android 上初始化 Billing stream。
+/// App 啟動時在支援平台預先接上 Billing stream。
 final sponsorBillingLifecycleProvider = Provider<void>((Ref ref) {
   if (!ref.watch(supportedPlatformProvider)) {
     return;

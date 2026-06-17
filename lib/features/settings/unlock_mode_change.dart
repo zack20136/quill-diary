@@ -12,7 +12,7 @@ export '../../infrastructure/security/unlock_mode_change_service.dart';
 
 /// 變更解鎖方式：precheck → keystore 同步 → 寫入偏好。
 Future<UnlockModeChangeOutcome> applyUnlockModeChange({
-  required WidgetRef ref,
+  required Ref ref,
   required AppUnlockMode mode,
 }) async {
   final AppLockService appLock = ref.read(appLockServiceProvider);

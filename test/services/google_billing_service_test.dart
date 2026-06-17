@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:quill_diary/config/billing_config.dart';
 import 'package:quill_diary/features/settings/state/sponsor_billing_state.dart';
-import 'package:quill_diary/services/google_billing_service.dart';
+import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 
 import '../helpers/fake_in_app_purchase_platform.dart';
 

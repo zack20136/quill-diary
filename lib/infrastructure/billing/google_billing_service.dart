@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
-import '../config/billing_config.dart';
-import '../features/settings/state/sponsor_billing_state.dart';
+import '../../config/billing_config.dart';
+import '../../features/settings/state/sponsor_billing_state.dart';
 
-/// Google Play Billing 贊助整合（client-only，無後端驗證）。
+/// Google Play Billing 的 client-side 封裝。
 class GoogleBillingService {
   GoogleBillingService({InAppPurchase? inAppPurchase})
     : _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
@@ -25,7 +25,7 @@ class GoogleBillingService {
     onStateChanged?.call(next);
   }
 
-  /// 訂閱 [purchaseStream] 並補抓未完成交易。
+  /// 初始化 purchase stream 並同步既有購買狀態。
   Future<void> initialize() async {
     if (_state.isInitialized) {
       return;

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/features/editor/editor_draft.dart';
+import 'package:quill_diary/features/editor/application/editor_draft_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 void main() {

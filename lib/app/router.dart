@@ -7,9 +7,7 @@ import '../features/settings/pages/personalization_page.dart';
 import '../features/settings/pages/settings_page.dart';
 import '../features/settings/pages/support_page.dart';
 
-/// 應用程式中央路由。
-///
-/// 路由集中管理，功能頁面位於各自模組內。
+/// 集中定義全站路由與頁面入口。
 class AppRouter {
   static const String homeRoute = '/';
   static const String editorRoute = '/editor';
@@ -18,6 +16,7 @@ class AppRouter {
   static const String aboutRoute = '/settings/about';
   static const String personalizationRoute = '/settings/personalization';
   static const String supportRoute = '/settings/support';
+
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: homeRoute,

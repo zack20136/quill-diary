@@ -1,8 +1,7 @@
-import '../../domain/diary/diary_entry.dart';
-import '../../domain/shared/value_objects.dart';
-import '../../infrastructure/storage/vault_repository.dart';
+import '../../../domain/diary/diary_entry.dart';
+import '../../../domain/shared/value_objects.dart';
+import '../../../infrastructure/storage/vault_repository.dart';
 
-/// 編輯器欄位快照，用於比對是否有未儲存變更。
 class EditorDraftSnapshot {
   const EditorDraftSnapshot({
     this.title,
@@ -25,7 +24,6 @@ class EditorDraftSnapshot {
   final List<String> pendingFingerprints;
 }
 
-/// 草稿內待上傳附件的相對路徑描述。
 class EditorDraftPendingAttachment {
   const EditorDraftPendingAttachment({
     required this.relativePath,
@@ -54,7 +52,6 @@ class EditorDraftPendingAttachment {
   }
 }
 
-/// 本地加密草稿的完整內容。
 class EditorDraftRecord {
   const EditorDraftRecord({
     this.title,
@@ -241,7 +238,6 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
   }).toList();
 }
 
-/// 新建草稿且無任何實質內容時視為空白。
 bool editorDraftIsEmpty(EditorDraftSnapshot draft) {
   return draft.title == null &&
       draft.markdownBody.isEmpty &&
@@ -249,7 +245,6 @@ bool editorDraftIsEmpty(EditorDraftSnapshot draft) {
       draft.pendingFingerprints.isEmpty;
 }
 
-/// 比對目前編輯內容與基準快照（vault 已儲存或上次落盤草稿）。
 bool editorDraftIsDirty({
   required EditorDraftSnapshot current,
   required EditorDraftSnapshot? saved,

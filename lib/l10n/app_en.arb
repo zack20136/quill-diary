@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "appTitle": "Quill Diary",
-  "languageNameZh": "中文",
+  "languageNameZh": "繁體中文",
   "languageNameEn": "English",
   "commonActionCancel": "Cancel",
   "commonActionDelete": "Delete",
@@ -516,7 +516,7 @@
   "settingsActionVerifyAndRestore": "Verify and restore",
   "settingsRecoveryKeyFieldLabel": "Recovery key",
   "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
-  "settingsRecoveryKeyHintLine": "Last four digits: {hint}",
+  "settingsRecoveryKeyHintLine": "Last 4 digits: {hint}",
   "@settingsRecoveryKeyHintLine": {
     "placeholders": {
       "hint": {

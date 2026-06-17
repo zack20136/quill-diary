@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
-import '../../features/editor/editor_draft.dart';
+import '../../features/editor/application/editor_draft_models.dart';
 import '../crypto/crypto_service.dart';
 import 'vault_path_strategy.dart';
 

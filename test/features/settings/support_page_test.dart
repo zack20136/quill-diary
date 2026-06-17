@@ -6,7 +6,7 @@ import 'package:quill_diary/features/settings/pages/support_page.dart';
 import 'package:quill_diary/features/settings/providers/billing_providers.dart';
 import 'package:quill_diary/features/settings/state/sponsor_billing_state.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/services/google_billing_service.dart';
+import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 
 import '../../helpers/fake_in_app_purchase_platform.dart';
 import '../../helpers/test_l10n.dart';

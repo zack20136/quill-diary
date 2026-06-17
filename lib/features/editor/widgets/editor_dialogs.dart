@@ -787,50 +787,6 @@ class _EncryptedGalleryImage extends ConsumerWidget {
   }
 }
 
-InputDecoration _titleFieldDecoration(
-  BuildContext context, {
-  required String hintText,
-  String? errorText,
-}) {
-  final ColorScheme cs = Theme.of(context).colorScheme;
-  return InputDecoration(
-    hintText: hintText,
-    errorText: errorText,
-    hintStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-      fontWeight: FontWeight.w700,
-      fontStyle: FontStyle.italic,
-      color: AppTypography.muted(cs),
-    ),
-    errorStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: cs.error,
-      fontWeight: FontWeight.w600,
-    ),
-    filled: false,
-    border: InputBorder.none,
-    enabledBorder: InputBorder.none,
-    focusedBorder: InputBorder.none,
-    errorBorder: InputBorder.none,
-    focusedErrorBorder: InputBorder.none,
-    contentPadding: EdgeInsets.zero,
-    isDense: true,
-  );
-}
-
-InputDecoration _bodyFieldDecoration(
-  BuildContext context, {
-  required String hintText,
-}) {
-  return InputDecoration(
-    hintText: hintText,
-    filled: false,
-    border: InputBorder.none,
-    enabledBorder: InputBorder.none,
-    focusedBorder: InputBorder.none,
-    contentPadding: EdgeInsets.zero,
-    isDense: true,
-  );
-}
-
 class _RestoreDraftDialog extends StatelessWidget {
   const _RestoreDraftDialog({
     required this.record,
