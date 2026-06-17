@@ -12,7 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Quill Diary';
 
   @override
-  String get languageNameZh => '中文';
+  String get languageNameZh => '繁體中文';
 
   @override
   String get languageNameEn => 'English';
@@ -835,7 +835,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsRecoveryKeyHintLine(String hint) {
-    return 'Last four digits: $hint';
+    return 'Last 4 digits: $hint';
   }
 
   @override
