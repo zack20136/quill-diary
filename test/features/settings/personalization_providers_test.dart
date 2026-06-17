@@ -73,4 +73,25 @@ void main() {
     expect(stored.typography, EditorTypographyPreferences.defaults);
     expect(stored.themeMode, AppThemeModePreference.dark);
   });
+
+  test('storedAppLanguagePreferenceProvider 未設定時回傳 null', () async {
+    final ProviderContainer container = buildContainer();
+
+    final AppLanguage? value = await container.read(
+      storedAppLanguagePreferenceProvider.future,
+    );
+
+    expect(value, isNull);
+  });
+
+  test('storedAppLanguagePreferenceProvider 讀出已儲存的 en 偏好', () async {
+    await UserPreferences(storageFile: prefsFile).setAppLocale(AppLanguage.en);
+    final ProviderContainer container = buildContainer();
+
+    final AppLanguage? value = await container.read(
+      storedAppLanguagePreferenceProvider.future,
+    );
+
+    expect(value, AppLanguage.en);
+  });
 }

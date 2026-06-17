@@ -30,7 +30,7 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: Scaffold(
@@ -152,7 +152,7 @@ void main() {
       access: lockedAccess(hasRecoveryKey: false),
     );
 
-    final String accountLabel = connectedState.accountLabel!;
+    final String accountLabel = connectedState.accountLabel(testL10n)!;
     expect(find.text(accountLabel), findsOneWidget);
     expect(find.text('已連結'), findsNothing);
     expect(
@@ -176,7 +176,7 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: Scaffold(
@@ -234,7 +234,7 @@ void main() {
           connectionState: const DriveConnectionState.disconnected(),
         ),
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SettingsPage(),

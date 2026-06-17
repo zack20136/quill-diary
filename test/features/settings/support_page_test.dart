@@ -50,7 +50,7 @@ void main() {
       ProviderScope(
         overrides: [googleBillingServiceProvider.overrideWithValue(service)],
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SupportPage(),
@@ -91,7 +91,7 @@ void main() {
       ProviderScope(
         overrides: [googleBillingServiceProvider.overrideWithValue(service)],
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SupportPage(),

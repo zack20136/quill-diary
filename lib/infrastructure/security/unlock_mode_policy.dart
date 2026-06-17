@@ -1,4 +1,5 @@
 import '../../domain/security/unlocked_vault_session.dart';
+import '../../l10n/l10n.dart';
 import 'app_lock_service.dart';
 import 'app_unlock_mode.dart';
 import 'device_key_manager.dart';
@@ -104,11 +105,11 @@ Future<KeystoreAuthKind> requireKeystoreAuthKindForMode({
   return keystoreAuthFor(mode);
 }
 
-String lockedResumeMessageFor(AppUnlockMode mode) {
+String lockedResumeMessageFor(AppUnlockMode mode, {required AppLocalizations l10n}) {
   return switch (mode) {
-    AppUnlockMode.none => kUseDeviceLockToUnlockMessage,
-    AppUnlockMode.deviceLock => kUseDeviceLockToUnlockMessage,
-    AppUnlockMode.biometric => kStartupNeedsBiometricMessage,
+    AppUnlockMode.none => l10n.sessionUseDeviceLockToUnlockMessage,
+    AppUnlockMode.deviceLock => l10n.sessionUseDeviceLockToUnlockMessage,
+    AppUnlockMode.biometric => l10n.sessionStartupNeedsBiometricMessage,
   };
 }
 

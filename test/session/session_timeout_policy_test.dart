@@ -3,7 +3,7 @@ import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
-  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
 
   test('未滿 3 分鐘不算 timeout', () {
     final DateTime exitAt = DateTime.utc(2026, 5, 18, 1, 0, 0);

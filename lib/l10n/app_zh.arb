@@ -1,7 +1,7 @@
 {
   "@@locale": "zh",
   "appTitle": "Quill Diary",
-  "languageNameZhTw": "繁體中文",
+  "languageNameZh": "繁體中文",
   "languageNameEn": "English",
   "commonActionCancel": "取消",
   "commonActionDelete": "刪除",
@@ -12,6 +12,24 @@
   "commonNoTagSearchResults": "沒有符合的標籤",
   "commonCloseTooltip": "關閉",
   "commonClearSearchTooltip": "清除搜尋",
+  "commonUnitEntries": "篇",
+  "commonUnitImages": "張",
+  "commonUnitAttachments": "個附件",
+  "commonUnitDays": "天",
+  "commonUnitCharacters": "字",
+  "commonUnitMilliseconds": "毫秒",
+  "commonUnitSeconds": "秒",
+  "commonGoogleAccountLabel": "{name} · {email}",
+  "@commonGoogleAccountLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      }
+    }
+  },
   "commonConfirmDeleteEntries": "確定要刪除 {count} 篇日記嗎？刪除後無法復原。",
   "@commonConfirmDeleteEntries": {
     "placeholders": {
@@ -56,7 +74,6 @@
   "personalizationTypographyResetSuccess": "已還原日記排版預設。",
   "personalizationLanguageSectionTitle": "語言",
   "personalizationLanguageSectionDescription": "選擇介面顯示語言。",
-  "personalizationLanguageComingSoonHint": "部分英文翻譯仍在補完中。",
   "personalizationSessionTimeoutSectionTitle": "自動鎖定",
   "personalizationSessionTimeoutSectionDescription": "App 切到背景一段時間後，會自動要求重新驗證。",
   "personalizationSessionTimeoutUnitLabel": "分鐘",

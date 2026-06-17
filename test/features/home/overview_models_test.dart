@@ -7,7 +7,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import '../../helpers/entry_index_fixtures.dart';
 
 void main() {
-  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
 
   test('OverviewScopeMetrics counts photo and file attachments', () {
     final OverviewScopeMetrics metrics =

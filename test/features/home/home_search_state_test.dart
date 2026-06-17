@@ -62,7 +62,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const HomePage(),

@@ -128,7 +128,7 @@ class _FixedPersonalizationPreferencesController
       typography: EditorTypographyPreferences.defaults,
       themeMode: AppThemeModePreference.system,
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
-      locale: AppLanguage.zhTw,
+      locale: AppLanguage.zh,
     );
   }
 }

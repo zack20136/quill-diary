@@ -11,6 +11,7 @@ import 'package:quill_diary/features/restore/restore_backup_flow.dart';
 import 'package:quill_diary/features/restore/restore_prepared_context.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -21,6 +22,8 @@ import '../../helpers/recording_vault_transfer_service.dart';
 import '../../helpers/test_l10n.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final RecoveryMetadata backupMetadata = RecoveryMetadata(
     vaultId: 'vlt_backup',
     recoveryEnabled: true,
@@ -37,6 +40,7 @@ void main() {
   );
 
   late File backupFile;
+  late File preferencesFile;
   late RecordingVaultTransferService transferService;
   late FakeSessionVaultRepository repository;
 
@@ -46,9 +50,22 @@ void main() {
     );
     backupFile = File('${tempDir.path}/backup.zip')
       ..writeAsStringSync('backup');
+    preferencesFile = File('${tempDir.path}/prefs.json');
     transferService = RecordingVaultTransferService();
     repository = FakeSessionVaultRepository();
   });
+
+  flowOverrides() {
+    return [
+      supportedPlatformProvider.overrideWithValue(true),
+      vaultTransferServiceProvider.overrideWithValue(transferService),
+      vaultRepositoryProvider.overrideWithValue(repository),
+      appLockServiceProvider.overrideWithValue(FakeAppLockService()),
+      userPreferencesProvider.overrideWithValue(
+        UserPreferences(storageFile: preferencesFile),
+      ),
+    ];
+  }
 
   RestorePrecheck trustedPrecheck() {
     return RestorePrecheck(
@@ -92,14 +109,9 @@ void main() {
   }) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          supportedPlatformProvider.overrideWithValue(true),
-          vaultTransferServiceProvider.overrideWithValue(transferService),
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(FakeAppLockService()),
-        ],
+        overrides: flowOverrides(),
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: _RestoreFlowHost(
@@ -178,12 +190,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          supportedPlatformProvider.overrideWithValue(true),
-          vaultTransferServiceProvider.overrideWithValue(transferService),
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(FakeAppLockService()),
-        ],
+        overrides: flowOverrides(),
         child: Consumer(
           builder: (BuildContext context, WidgetRef ref, Widget? child) {
             capturedRef = ref;

@@ -26,7 +26,7 @@ import '../../helpers/entry_index_fixtures.dart';
 import '../../helpers/fake_entry_index_vault_repository.dart';
 
 void main() {
-  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
 
   ProviderContainer buildContainer(
     FakeEntryIndexVaultRepository repository, {
@@ -70,7 +70,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          locale: appZhTwLocale,
+          locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const HomePage(),
@@ -134,7 +134,8 @@ void main() {
 
     await pumpHomePage(tester, container);
 
-    final String dateLabel = DisplayFormat.formatDateOnlyZh(
+    final String dateLabel = DisplayFormat.formatDateOnly(
+      zhL10n,
       const DateOnly('2026-05-20'),
     );
     expect(

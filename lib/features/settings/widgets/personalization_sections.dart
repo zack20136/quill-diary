@@ -29,8 +29,8 @@ class PersonalizationLanguageSectionBody extends StatelessWidget {
         SettingsSegmentedChoiceBar<AppLanguage>(
           choices: <SettingsSegmentChoice<AppLanguage>>[
             SettingsSegmentChoice<AppLanguage>(
-              value: AppLanguage.zhTw,
-              label: context.l10n.languageNameZhTw,
+              value: AppLanguage.zh,
+              label: context.l10n.languageNameZh,
               icon: Icons.translate_rounded,
             ),
             SettingsSegmentChoice<AppLanguage>(

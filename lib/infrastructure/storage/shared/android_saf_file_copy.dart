@@ -16,10 +16,8 @@ abstract final class AndroidSafFileCopy {
     required File sourceFile,
     required String fileName,
     required String mimeType,
-    AppLocalizations? l10n,
+    required AppLocalizations l10n,
   }) async {
-    final AppLocalizations resolvedL10n =
-        l10n ?? lookupAppLocalizations(appZhTwLocale);
     try {
       final String? result = await _channel
           .invokeMethod<String>('copyFileToTree', <String, String>{
@@ -29,7 +27,7 @@ abstract final class AndroidSafFileCopy {
             'mimeType': mimeType,
           });
       if (result == null || result.trim().isEmpty) {
-        throw StateError(_writeFailedMessage(resolvedL10n));
+        throw StateError(_writeFailedMessage(l10n));
       }
       return result;
     } on PlatformException catch (error) {
@@ -37,7 +35,7 @@ abstract final class AndroidSafFileCopy {
       if (message.isNotEmpty) {
         throw StateError(message);
       }
-      throw StateError(_writeFailedMessage(resolvedL10n, code: error.code));
+      throw StateError(_writeFailedMessage(l10n, code: error.code));
     }
   }
 

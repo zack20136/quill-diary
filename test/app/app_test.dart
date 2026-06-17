@@ -13,6 +13,7 @@ import 'package:quill_diary/infrastructure/preferences/editor_typography_prefere
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
 import '../helpers/fake_entry_index_vault_repository.dart';
@@ -20,6 +21,10 @@ import '../helpers/fake_vault_transfer_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('appSupportedLocales 僅暴露 zh 與 en', () {
+    expect(appSupportedLocales, <Locale>[appZhLocale, appEnLocale]);
+  });
 
   testWidgets('QuillDiaryApp 可完成 boot wiring smoke test', (
     WidgetTester tester,
@@ -43,6 +48,25 @@ void main() {
     expect(app.routerConfig, isNotNull);
     expect(find.byType(HomePage), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('未設定語言偏好時 App 以 zh 啟動', (WidgetTester tester) async {
+    final ProviderContainer container = _buildSmokeTestContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const QuillDiaryApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final MaterialApp app = tester.widget<MaterialApp>(
+      find.byType(MaterialApp),
+    );
+    expect(app.locale, appZhLocale);
   });
 }
 
@@ -81,7 +105,7 @@ class _FixedPersonalizationPreferencesController
       typography: EditorTypographyPreferences.defaults,
       themeMode: AppThemeModePreference.system,
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
-      locale: AppLanguage.zhTw,
+      locale: AppLanguage.zh,
     );
   }
 }

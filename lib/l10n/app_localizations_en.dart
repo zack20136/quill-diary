@@ -12,7 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Quill Diary';
 
   @override
-  String get languageNameZhTw => '繁體中文';
+  String get languageNameZh => '中文';
 
   @override
   String get languageNameEn => 'English';
@@ -43,6 +43,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonClearSearchTooltip => 'Clear search';
+
+  @override
+  String get commonUnitEntries => 'entries';
+
+  @override
+  String get commonUnitImages => 'images';
+
+  @override
+  String get commonUnitAttachments => 'attachments';
+
+  @override
+  String get commonUnitDays => 'days';
+
+  @override
+  String get commonUnitCharacters => 'chars';
+
+  @override
+  String get commonUnitMilliseconds => 'ms';
+
+  @override
+  String get commonUnitSeconds => 'sec';
+
+  @override
+  String commonGoogleAccountLabel(String name, String email) {
+    return '$name · $email';
+  }
 
   @override
   String commonConfirmDeleteEntries(int count) {
@@ -123,10 +149,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get personalizationLanguageSectionDescription =>
       'Choose the interface language.';
-
-  @override
-  String get personalizationLanguageComingSoonHint =>
-      'Some English translations are still in progress.';
 
   @override
   String get personalizationSessionTimeoutSectionTitle => 'Auto lock';

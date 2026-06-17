@@ -20,7 +20,7 @@ class RestoreBackupFlow {
 
   final WidgetRef ref;
 
-  Future<VaultTransferAccess> _loadTransferAccess() async {
+  Future<VaultTransferAccess> _loadTransferAccess(AppLocalizations l10n) async {
     final AppSessionState sessionState = await ref.read(
       effectiveAppSessionProvider.future,
     );
@@ -29,7 +29,7 @@ class RestoreBackupFlow {
     final bool hasRecoveryKey =
         await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
     return VaultTransferAccess.fromContext(
-      l10n: lookupAppLocalizations(appZhTwLocale),
+      l10n: l10n,
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState.status,
@@ -76,7 +76,7 @@ class RestoreBackupFlow {
     String? driveBackupName,
   }) async {
     final AppLocalizations l10n = context.l10n;
-    final VaultTransferAccess access = await _loadTransferAccess();
+    final VaultTransferAccess access = await _loadTransferAccess(l10n);
     access.ensureCanRestore(l10n);
 
     if (!context.mounted) {

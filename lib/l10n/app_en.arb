@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "appTitle": "Quill Diary",
-  "languageNameZhTw": "繁體中文",
+  "languageNameZh": "中文",
   "languageNameEn": "English",
   "commonActionCancel": "Cancel",
   "commonActionDelete": "Delete",
@@ -12,6 +12,24 @@
   "commonNoTagSearchResults": "No matching tags",
   "commonCloseTooltip": "Close",
   "commonClearSearchTooltip": "Clear search",
+  "commonUnitEntries": "entries",
+  "commonUnitImages": "images",
+  "commonUnitAttachments": "attachments",
+  "commonUnitDays": "days",
+  "commonUnitCharacters": "chars",
+  "commonUnitMilliseconds": "ms",
+  "commonUnitSeconds": "sec",
+  "commonGoogleAccountLabel": "{name} · {email}",
+  "@commonGoogleAccountLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      }
+    }
+  },
   "commonConfirmDeleteEntries": "Delete {count} diary entries? This cannot be undone.",
   "@commonConfirmDeleteEntries": {
     "placeholders": {
@@ -56,7 +74,6 @@
   "personalizationTypographyResetSuccess": "Diary typography has been reset.",
   "personalizationLanguageSectionTitle": "Language",
   "personalizationLanguageSectionDescription": "Choose the interface language.",
-  "personalizationLanguageComingSoonHint": "Some English translations are still in progress.",
   "personalizationSessionTimeoutSectionTitle": "Auto lock",
   "personalizationSessionTimeoutSectionDescription": "Require verification again after the app stays in the background for a while.",
   "personalizationSessionTimeoutUnitLabel": "min",

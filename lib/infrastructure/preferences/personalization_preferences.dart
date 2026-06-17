@@ -19,7 +19,7 @@ class PersonalizationPreferences {
     typography: EditorTypographyPreferences.defaults,
     themeMode: AppThemeModePreference.system,
     sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
-    locale: AppLanguage.zhTw,
+    locale: AppLanguage.zh,
   );
 
   final ImageCompressPreset imageCompressPreset;
@@ -76,26 +76,26 @@ enum AppThemeModePreference {
   }
 }
 
-/// 應用語系偏好（English 第一版僅預留儲存）。
+/// 應用語系偏好。
 enum AppLanguage {
-  zhTw,
+  zh,
   en;
 
   String get storageValue => switch (this) {
-    AppLanguage.zhTw => 'zh_TW',
+    AppLanguage.zh => 'zh',
     AppLanguage.en => 'en',
   };
 
   Locale get materialLocale => switch (this) {
-    AppLanguage.zhTw => appZhTwLocale,
+    AppLanguage.zh => appZhLocale,
     AppLanguage.en => appEnLocale,
   };
 
   static AppLanguage fromStorage(String? raw) {
     return switch (raw?.trim()) {
       'en' => AppLanguage.en,
-      'zh_TW' || null || '' => AppLanguage.zhTw,
-      _ => AppLanguage.zhTw,
+      'zh' || null || '' => AppLanguage.zh,
+      _ => AppLanguage.zh,
     };
   }
 }

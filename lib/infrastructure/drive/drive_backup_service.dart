@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../config/app_identifiers.dart';
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../config/oauth_config.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 import '../storage/backup_task_progress.dart';
 import 'google_drive_oauth_errors.dart';
@@ -30,12 +31,13 @@ final class DriveConnectionState {
   final String? email;
   final String? displayName;
 
-  String? get accountLabel {
+  String? accountLabel(AppLocalizations l10n) {
     final String? trimmedName = displayName?.trim();
     final String? trimmedEmail = email?.trim();
     if (trimmedName != null && trimmedName.isNotEmpty) {
       if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
         return DisplayFormat.formatGoogleAccountLabel(
+          l10n,
           trimmedName,
           trimmedEmail,
         );

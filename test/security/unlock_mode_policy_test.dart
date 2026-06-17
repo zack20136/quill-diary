@@ -4,6 +4,7 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
   const DeviceAuthCapabilities noCapabilities = DeviceAuthCapabilities(
@@ -115,13 +116,14 @@ void main() {
   });
 
   test('lockedResumeMessageFor 依模式回傳提示', () {
+    final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
     expect(
-      lockedResumeMessageFor(AppUnlockMode.deviceLock),
-      kUseDeviceLockToUnlockMessage,
+      lockedResumeMessageFor(AppUnlockMode.deviceLock, l10n: zhL10n),
+      zhL10n.sessionUseDeviceLockToUnlockMessage,
     );
     expect(
-      lockedResumeMessageFor(AppUnlockMode.biometric),
-      kStartupNeedsBiometricMessage,
+      lockedResumeMessageFor(AppUnlockMode.biometric, l10n: zhL10n),
+      zhL10n.sessionStartupNeedsBiometricMessage,
     );
   });
 }

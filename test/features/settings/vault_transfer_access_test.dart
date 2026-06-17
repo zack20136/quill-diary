@@ -4,7 +4,7 @@ import 'package:quill_diary/features/settings/vault_transfer_access.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
-  final AppLocalizations zhL10n = lookupAppLocalizations(appZhTwLocale);
+  final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
 
   group('VaultTransferAccess.fromContext', () {
     test('已解鎖時可備份與還原', () {

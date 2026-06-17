@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
+  final AppLocalizations zhTwL10n = lookupAppLocalizations(appZhLocale);
+
   group('isVisibleDriveBackupFileName', () {
     test('accepts visible backup names', () {
       expect(isVisibleDriveBackupFileName('backup_2026-05-26.zip'), isTrue);
@@ -133,7 +136,10 @@ void main() {
         expect(state.isConnected, isTrue);
         expect(state.email, 'writer@example.com');
         expect(state.displayName, 'Writer');
-        expect(state.accountLabel, 'Writer · writer@example.com');
+        expect(
+          state.accountLabel(zhTwL10n),
+          'Writer · writer@example.com',
+        );
       },
     );
 

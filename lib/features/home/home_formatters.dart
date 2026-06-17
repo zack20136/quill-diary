@@ -1,11 +1,9 @@
 import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 
-bool _isEnglish(AppLocalizations l10n) => l10n.localeName.startsWith('en');
-
 String homeTagRowEntryCount(AppLocalizations l10n, int count) {
   return l10n.homeTagRowEntryCount(
-    DisplayFormat.formatCountUnit(count, _isEnglish(l10n) ? 'entries' : '篇'),
+    DisplayFormat.formatCountUnit(count, l10n.commonUnitEntries),
   );
 }
 
@@ -15,10 +13,7 @@ String homeTagRemovedFromEntries(
   String label,
 ) {
   return l10n.homeTagRemovedFromEntries(
-    DisplayFormat.formatCountUnit(
-      entryCount,
-      _isEnglish(l10n) ? 'entries' : '篇',
-    ),
+    DisplayFormat.formatCountUnit(entryCount, l10n.commonUnitEntries),
     label,
   );
 }
@@ -29,29 +24,20 @@ String homeHtmlExportSelectionSummary(
   int imageCount,
 ) {
   return l10n.homeHtmlExportSelectionSummary(
-    DisplayFormat.formatCountUnit(
-      entryCount,
-      _isEnglish(l10n) ? 'entries' : '篇',
-    ),
-    DisplayFormat.formatCountUnit(
-      imageCount,
-      _isEnglish(l10n) ? 'images' : '張',
-    ),
+    DisplayFormat.formatCountUnit(entryCount, l10n.commonUnitEntries),
+    DisplayFormat.formatCountUnit(imageCount, l10n.commonUnitImages),
   );
 }
 
 String homeOverviewAttachmentCount(AppLocalizations l10n, int count) {
   return l10n.homeOverviewAttachmentCount(
-    DisplayFormat.formatCountUnit(
-      count,
-      _isEnglish(l10n) ? 'attachments' : '個附件',
-    ),
+    DisplayFormat.formatCountUnit(count, l10n.commonUnitAttachments),
   );
 }
 
 String homeOverviewLongestStreak(AppLocalizations l10n, int days) {
   return l10n.homeOverviewLongestStreak(
-    DisplayFormat.formatCountUnit(days, _isEnglish(l10n) ? 'days' : '天'),
+    DisplayFormat.formatCountUnit(days, l10n.commonUnitDays),
   );
 }
 
@@ -60,11 +46,7 @@ String homeOverviewWritingDaysRatio(
   int activeDays,
   int totalDays,
 ) {
-  return DisplayFormat.formatRatio(
-    activeDays,
-    totalDays,
-    _isEnglish(l10n) ? 'days' : '天',
-  );
+  return DisplayFormat.formatRatio(activeDays, totalDays, l10n.commonUnitDays);
 }
 
 String homeOverviewEntryStats(
@@ -73,17 +55,14 @@ String homeOverviewEntryStats(
   int characters,
 ) {
   return l10n.homeOverviewEntryStats(
-    DisplayFormat.formatCountUnit(entries, _isEnglish(l10n) ? 'entries' : '篇'),
-    DisplayFormat.formatCountUnit(
-      characters,
-      _isEnglish(l10n) ? 'chars' : '字',
-    ),
+    DisplayFormat.formatCountUnit(entries, l10n.commonUnitEntries),
+    DisplayFormat.formatCountUnit(characters, l10n.commonUnitCharacters),
   );
 }
 
 String homeOverviewMostEntriesInSingleDay(AppLocalizations l10n, int count) {
   return l10n.homeOverviewMostEntriesInSingleDay(
-    DisplayFormat.formatCountUnit(count, _isEnglish(l10n) ? 'entries' : '篇'),
+    DisplayFormat.formatCountUnit(count, l10n.commonUnitEntries),
   );
 }
 

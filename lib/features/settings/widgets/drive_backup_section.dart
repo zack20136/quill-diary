@@ -112,7 +112,7 @@ class _DriveBackupContent extends StatelessWidget {
       children: <Widget>[
         DriveAccountStatus(
           isConnected: isConnected,
-          accountLabel: connectionState.accountLabel,
+          accountLabel: connectionState.accountLabel(l10n),
         ),
         const SizedBox(height: 10),
         SettingsActionGroup(

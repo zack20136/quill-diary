@@ -73,7 +73,7 @@ void main() {
     expect(loaded.typography, EditorTypographyPreferences.defaults);
     expect(loaded.themeMode, AppThemeModePreference.system);
     expect(loaded.sessionTimeoutMinutes, SessionBackgroundTimeoutMinutes.three);
-    expect(loaded.locale, AppLanguage.zhTw);
+    expect(loaded.locale, AppLanguage.zh);
   });
 
   test('savePersonalizationPreferences 持久化全部欄位', () async {
@@ -101,6 +101,15 @@ void main() {
     expect(loaded.sessionTimeoutMinutes, value.sessionTimeoutMinutes);
     expect(loaded.locale, value.locale);
     expect(loaded.typography, value.typography.clamped());
+  });
+
+  test('AppLanguage.fromStorage 僅接受 zh 與 en', () {
+    expect(AppLanguage.fromStorage(null), AppLanguage.zh);
+    expect(AppLanguage.fromStorage(''), AppLanguage.zh);
+    expect(AppLanguage.fromStorage('zh'), AppLanguage.zh);
+    expect(AppLanguage.fromStorage('en'), AppLanguage.en);
+    expect(AppLanguage.fromStorage('zh-hant'), AppLanguage.zh);
+    expect(AppLanguage.fromStorage('bogus'), AppLanguage.zh);
   });
 
   test('editorTypography 非法值 clamp 回合法範圍', () async {

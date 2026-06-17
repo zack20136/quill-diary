@@ -17,6 +17,7 @@ class PersonalizationPreferencesController
         .read(userPreferencesProvider)
         .savePersonalizationPreferences(value);
     state = AsyncData<PersonalizationPreferences>(value);
+    ref.invalidate(storedAppLanguagePreferenceProvider);
   }
 
   Future<void> setImageCompressPreset(ImageCompressPreset value) async {
@@ -59,6 +60,13 @@ final personalizationPreferencesProvider =
       PersonalizationPreferencesController,
       PersonalizationPreferences
     >(PersonalizationPreferencesController.new);
+
+/// 使用者是否曾明確儲存語言偏好；未設定時回傳 null。
+final storedAppLanguagePreferenceProvider = FutureProvider<AppLanguage?>((
+  Ref ref,
+) {
+  return ref.read(userPreferencesProvider).storedAppLocaleOrNull;
+});
 
 /// 讀取背景逾時；provider 尚未載入時回傳 3 分鐘預設（避免 lifecycle 路徑碰 disk）。
 Duration readSessionBackgroundTimeout(Ref ref) {

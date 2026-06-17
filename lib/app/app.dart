@@ -39,9 +39,18 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   @override
   Widget build(BuildContext context) {
     ref.watch(sponsorBillingLifecycleProvider);
-    final PersonalizationPreferences prefs = watchPersonalizationPreferences(
-      ref,
-    );
+    final Locale locale = ref
+        .watch(personalizationPreferencesProvider)
+        .maybeWhen(
+          data: (PersonalizationPreferences value) => value.materialLocale,
+          orElse: () => appZhLocale,
+        );
+    final ThemeMode themeMode = ref
+        .watch(personalizationPreferencesProvider)
+        .maybeWhen(
+          data: (value) => value.materialThemeMode,
+          orElse: () => ThemeMode.system,
+        );
 
     return _sessionLifecycle.wrap(
       DynamicColorBuilder(
@@ -53,23 +62,10 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
               dynamicScheme: darkDynamic,
               brightness: Brightness.dark,
             ),
-            themeMode: prefs.materialThemeMode,
-            locale: prefs.materialLocale,
+            themeMode: themeMode,
+            locale: locale,
             supportedLocales: appSupportedLocales,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
-            localeListResolutionCallback:
-                (List<Locale>? locales, Iterable<Locale> supportedLocales) {
-                  final List<Locale> preferred = locales ?? const <Locale>[];
-                  for (final Locale locale in preferred) {
-                    if (locale.languageCode == 'zh') {
-                      return appZhTwLocale;
-                    }
-                    if (locale.languageCode == 'en') {
-                      return appEnLocale;
-                    }
-                  }
-                  return supportedLocales.first;
-                },
             routerConfig: _router,
           );
         },

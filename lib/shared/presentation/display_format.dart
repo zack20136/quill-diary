@@ -4,17 +4,50 @@ import 'package:path/path.dart' as p;
 import '../../config/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 import '../../l10n/l10n.dart';
-import '../utils/weekday_zh.dart';
 
 /// App 內使用者可見的日期、時間、數量與檔案大小格式化（單一來源）。
 abstract final class DisplayFormat {
-  static bool _isEnglish(AppLocalizations l10n) =>
-      l10n.localeName.startsWith('en');
+  static const List<String> _englishMonthShort = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static const List<String> _englishWeekdayShort = <String>[
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+
+  static const List<String> _zhTwWeekdayLong = <String>[
+    '星期一',
+    '星期二',
+    '星期三',
+    '星期四',
+    '星期五',
+    '星期六',
+    '星期日',
+  ];
 
   static String formatDateOnly(AppLocalizations l10n, DateOnly date) {
-    return _isEnglish(l10n)
-        ? DateFormat.yMd('en').format(date.toDateTime())
-        : formatDateOnlyZh(date);
+    final DateTime value = date.toDateTime();
+    if (isEnglishL10n(l10n)) {
+      return '${value.month}/${value.day}/${value.year}';
+    }
+    return '${value.year}年${value.month}月${value.day}日';
   }
 
   static String formatDateOnlyWithWeekday(
@@ -22,69 +55,44 @@ abstract final class DisplayFormat {
     DateOnly date,
   ) {
     final DateTime local = date.toDateTime();
-    if (_isEnglish(l10n)) {
-      return '${DateFormat.yMd('en').format(local)} ${DateFormat('EEE', 'en').format(local)}';
+    if (isEnglishL10n(l10n)) {
+      return '${formatDateOnly(l10n, date)} ${_englishWeekdayShort[local.weekday - 1]}';
     }
-    return formatDateOnlyWithWeekdayZh(date);
+    return '${formatDateOnly(l10n, date)} ${_zhTwWeekdayLong[local.weekday - 1]}';
   }
 
   static String formatYearMonth(AppLocalizations l10n, int year, int month) {
-    if (_isEnglish(l10n)) {
-      return DateFormat('MMM yyyy', 'en').format(DateTime(year, month));
+    if (isEnglishL10n(l10n)) {
+      return '${_englishMonthShort[month - 1]} $year';
     }
-    return formatYearMonthZh(year, month);
+    return '$year年$month月';
   }
 
   static String formatYear(AppLocalizations l10n, int year) {
-    return _isEnglish(l10n) ? '$year' : formatYearZh(year);
+    return isEnglishL10n(l10n) ? '$year' : '$year年';
   }
 
   static String formatDateTime(AppLocalizations l10n, DateTime local) {
     final DateTime value = local.toLocal();
-    if (_isEnglish(l10n)) {
-      return '${DateFormat.yMd('en').format(value)} ${formatTime24h(value)}';
+    if (isEnglishL10n(l10n)) {
+      return '${value.month}/${value.day}/${value.year} ${formatTime24h(value)}';
     }
-    return formatDateTimeZh(value);
+    return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)}';
   }
 
-  static String formatWeekdayAndTime(AppLocalizations l10n, DateOnly date, DateTime at) {
-    if (_isEnglish(l10n)) {
-      return '${DateFormat('EEE', 'en').format(date.toDateTime())} ${formatTime24h(at)}';
+  static String formatWeekdayAndTime(
+    AppLocalizations l10n,
+    DateOnly date,
+    DateTime at,
+  ) {
+    if (isEnglishL10n(l10n)) {
+      return '${_englishWeekdayShort[date.toDateTime().weekday - 1]} ${formatTime24h(at)}';
     }
-    return '${weekdayZhLongFromDateOnly(date)} ${formatTime24h(at)}';
+    return '${_zhTwWeekdayLong[date.toDateTime().weekday - 1]} ${formatTime24h(at)}';
   }
 
   static String formatCharCount(AppLocalizations l10n, int count) {
-    return formatCountUnit(count, _isEnglish(l10n) ? 'chars' : '字');
-  }
-
-  /// 中文日期：`2026年6月9日`。
-  static String formatDateOnlyZh(DateOnly date) {
-    return _formatDatePartZh(date.toDateTime());
-  }
-
-  /// 中文日期加星期：`2026年6月9日 星期一`。
-  static String formatDateOnlyWithWeekdayZh(DateOnly date) {
-    final DateTime local = date.toDateTime();
-    return '${_formatDatePartZh(local)} ${weekdayZhLong(local)}';
-  }
-
-  /// 中文年月：`2026年6月`。
-  static String formatYearMonthZh(int year, int month) {
-    try {
-      return DateFormat('yyyy年M月', 'zh_Hant').format(DateTime(year, month));
-    } catch (_) {
-      return DateFormat('yyyy年M月').format(DateTime(year, month));
-    }
-  }
-
-  /// 中文年：`2026年`。
-  static String formatYearZh(int year) => '$year年';
-
-  /// 中文日期時間：`2026年6月9日 14:30`。
-  static String formatDateTimeZh(DateTime local) {
-    final DateTime value = local.toLocal();
-    return '${_formatDatePartZh(value)} ${formatTime24h(value)}';
+    return formatCountUnit(count, l10n.commonUnitCharacters);
   }
 
   /// 24 小時制時間：`14:30`。
@@ -100,15 +108,15 @@ abstract final class DisplayFormat {
       '$numerator / $denominator $unit';
 
   /// 耗時：`350 毫秒` 或 `1.2 秒`。
-  static String formatDurationMs(int milliseconds) {
+  static String formatDurationMs(AppLocalizations l10n, int milliseconds) {
     if (milliseconds < 1000) {
-      return formatCountUnit(milliseconds, '毫秒');
+      return formatCountUnit(milliseconds, l10n.commonUnitMilliseconds);
     }
     final double seconds = milliseconds / 1000;
     if (seconds < 10) {
-      return '${seconds.toStringAsFixed(1)} 秒';
+      return '${seconds.toStringAsFixed(1)} ${l10n.commonUnitSeconds}';
     }
-    return formatCountUnit(seconds.round(), '秒');
+    return formatCountUnit(seconds.round(), l10n.commonUnitSeconds);
   }
 
   /// 檔案大小：`1.2 MB`。
@@ -161,7 +169,11 @@ abstract final class DisplayFormat {
   }
 
   /// Google 帳號顯示：`名稱 · email@example.com`。
-  static String formatGoogleAccountLabel(String name, String email) {
+  static String formatGoogleAccountLabel(
+    AppLocalizations l10n,
+    String name,
+    String email,
+  ) {
     final String trimmedName = name.trim();
     final String trimmedEmail = email.trim();
     if (trimmedName.isEmpty) {
@@ -170,14 +182,6 @@ abstract final class DisplayFormat {
     if (trimmedEmail.isEmpty) {
       return trimmedName;
     }
-    return '$trimmedName · $trimmedEmail';
-  }
-
-  static String _formatDatePartZh(DateTime date) {
-    try {
-      return DateFormat('yyyy年M月d日', 'zh_Hant').format(date);
-    } catch (_) {
-      return DateFormat('yyyy年M月d日').format(date);
-    }
+    return l10n.commonGoogleAccountLabel(trimmedName, trimmedEmail);
   }
 }

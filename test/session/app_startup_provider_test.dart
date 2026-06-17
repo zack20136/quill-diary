@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,8 @@ import 'package:quill_diary/features/session/session_messages.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/session/state/session_lock_reason.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -19,6 +22,8 @@ import '../helpers/fake_session_vault_repository.dart';
 import '../helpers/test_l10n.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final RecoveryMetadata metadata = RecoveryMetadata(
     vaultId: 'vlt_test_startup',
     recoveryEnabled: true,
@@ -37,11 +42,21 @@ void main() {
     deviceSlotId: 'dev_android_keystore_deviceCredential_${metadata.vaultId}',
   );
 
+  File defaultPreferencesFile() {
+    return File(
+      '${Directory.systemTemp.path}/app_startup_provider_test_prefs.json',
+    );
+  }
+
   ProviderContainer buildContainer({
     required bool supportedPlatform,
     required FakeSessionVaultRepository repository,
     FakeAppLockService? appLock,
+    UserPreferences? userPreferences,
   }) {
+    final UserPreferences preferences =
+        userPreferences ??
+        UserPreferences(storageFile: defaultPreferencesFile());
     final ProviderContainer container = ProviderContainer(
       overrides: [
         supportedPlatformProvider.overrideWithValue(supportedPlatform),
@@ -49,6 +64,7 @@ void main() {
         appLockServiceProvider.overrideWithValue(
           appLock ?? FakeAppLockService(),
         ),
+        userPreferencesProvider.overrideWithValue(preferences),
       ],
     );
     addTearDown(container.dispose);
@@ -297,4 +313,30 @@ void main() {
       expect(repository.openTrustedSessionCalls, 1);
     },
   );
+
+  test('已儲存 en 偏好時，啟動訊息使用英文', () async {
+    final File prefsFile = File(
+      '${Directory.systemTemp.path}/app_startup_provider_test_en.json',
+    );
+    addTearDown(() async {
+      if (prefsFile.existsSync()) {
+        await prefsFile.delete();
+      }
+    });
+    final UserPreferences preferences = UserPreferences(storageFile: prefsFile);
+    await preferences.setAppLocale(AppLanguage.en);
+
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
+    final ProviderContainer container = buildContainer(
+      supportedPlatform: false,
+      repository: repository,
+      userPreferences: preferences,
+    );
+
+    final AppSessionState state = await container.read(
+      appStartupProvider.future,
+    );
+    expect(state.status, AppLockStatus.fatalError);
+    expect(state.message, sessionAndroidOnlyMessage(testEnL10n));
+  });
 }

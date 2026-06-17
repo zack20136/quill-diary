@@ -61,6 +61,7 @@ Future<void> exportEntriesAsHtml(
           return transferService.exportHtmlToDirectory(
             activeSession,
             exportIds,
+            context.l10n,
           );
         });
     if (savedPath == null || !context.mounted) {

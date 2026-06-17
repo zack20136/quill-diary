@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:quill_diary/features/session/session_lifecycle_binding.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/session/state/session_lock_reason.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -15,6 +18,40 @@ import '../helpers/fake_app_lock_service.dart';
 import '../helpers/fake_session_vault_repository.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  final File preferencesFile = File(
+    '${Directory.systemTemp.path}/session_lifecycle_binding_test_prefs.json',
+  );
+
+  tearDown(() async {
+    if (preferencesFile.existsSync()) {
+      await preferencesFile.delete();
+    }
+  });
+
+  bindingOverrides({
+    required FakeSessionVaultRepository repository,
+    required FakeAppLockService appLock,
+  }) {
+    return [
+      vaultRepositoryProvider.overrideWithValue(repository),
+      appLockServiceProvider.overrideWithValue(appLock),
+      userPreferencesProvider.overrideWithValue(
+        UserPreferences(storageFile: preferencesFile),
+      ),
+    ];
+  }
+
+  Future<void> flushAsyncLifecycleWork(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+  }
+
+  void armInactivityWatchdog(AppSessionController controller) {
+    controller.inactivityWatchdog.foregroundSettleDelay = Duration.zero;
+  }
   final UnlockedVaultSession sampleSession = UnlockedVaultSession(
     vaultId: 'vlt_binding_test',
     trustedDevice: true,
@@ -31,12 +68,10 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.none),
-          ),
-        ],
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.none),
+        ),
         child: const _BindingHost(),
       ),
     );
@@ -49,6 +84,7 @@ void main() {
       appSessionProvider.notifier,
     );
     controller.activateSession(sampleSession);
+    armInactivityWatchdog(controller);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
     controller.inactivityWatchdog.clock = () => fakeNow;
@@ -56,8 +92,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-
+    await flushAsyncLifecycleWork(tester);
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
@@ -73,12 +108,10 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.none),
-          ),
-        ],
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.none),
+        ),
         child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
@@ -91,17 +124,18 @@ void main() {
       appSessionProvider.notifier,
     );
     controller.activateSession(sampleSession);
+    armInactivityWatchdog(controller);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump(defaultSessionTimeout + const Duration(seconds: 1));
+    await flushAsyncLifecycleWork(tester);
 
     final AppSessionState lockedState = container.read(appSessionProvider);
     expect(lockedState.status, AppLockStatus.locked);
     expect(lockedState.lockReason, SessionLockReason.inactivity);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    await tester.pump();
+    await flushAsyncLifecycleWork(tester);
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 1);
@@ -118,12 +152,10 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
-          ),
-        ],
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
+        ),
         child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
@@ -136,6 +168,7 @@ void main() {
       appSessionProvider.notifier,
     );
     controller.activateSession(sampleSession);
+    armInactivityWatchdog(controller);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
     controller.inactivityWatchdog.clock = () => fakeNow;
@@ -143,8 +176,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     fakeNow = fakeNow.add(defaultSessionTimeout + const Duration(seconds: 1));
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    await tester.pump();
+    await flushAsyncLifecycleWork(tester);
 
     final AppSessionState state = container.read(appSessionProvider);
     expect(state.status, AppLockStatus.locked);
@@ -164,12 +196,10 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.biometric),
-          ),
-        ],
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.biometric),
+        ),
         child: const _BindingHost(resumeUnlockDelay: Duration.zero),
       ),
     );
@@ -182,6 +212,7 @@ void main() {
       appSessionProvider.notifier,
     );
     controller.activateSession(sampleSession);
+    armInactivityWatchdog(controller);
     await controller.expireFromInactivity();
     await controller.unlock(source: UnlockRequestSource.lifecycleResume);
 
@@ -192,8 +223,7 @@ void main() {
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    await tester.pump();
+    await flushAsyncLifecycleWork(tester);
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 2);

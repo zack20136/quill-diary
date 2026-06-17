@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../../l10n/l10n.dart';
 import '../backup_task_progress.dart';
 import '../media_store_export.dart';
 import 'android_saf_file_copy.dart';
@@ -13,6 +14,7 @@ Future<String?> deliverToExternalDirectory({
   required String dialogTitle,
   required String fileName,
   required File sourceFile,
+  required AppLocalizations l10n,
   required Future<String?> Function() resolveInitialDirectory,
   required Future<void> Function(String directoryOrTreeUri) rememberDirectory,
   BackupTaskProgressListener? onProgress,
@@ -40,6 +42,7 @@ Future<String?> deliverToExternalDirectory({
       sourceFile: sourceFile,
       fileName: fileName,
       mimeType: mimeTypeForExportFileName(fileName),
+      l10n: l10n,
     );
     await rememberDirectory(trimmed);
     return savedUri;

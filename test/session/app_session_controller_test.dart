@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,7 @@ import 'package:quill_diary/features/session/state/session_lock_reason.dart';
 import 'package:quill_diary/features/session/state/unlock_result.dart';
 import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 
@@ -43,6 +45,10 @@ void main() {
     deviceSlotId: 'dev_slot',
   );
 
+  final File preferencesFile = File(
+    '${Directory.systemTemp.path}/app_session_controller_test_prefs.json',
+  );
+
   ProviderContainer buildContainer(
     FakeSessionVaultRepository repository, {
     FakeAppLockService? appLock,
@@ -52,6 +58,9 @@ void main() {
         vaultRepositoryProvider.overrideWithValue(repository),
         appLockServiceProvider.overrideWithValue(
           appLock ?? FakeAppLockService(),
+        ),
+        userPreferencesProvider.overrideWithValue(
+          UserPreferences(storageFile: preferencesFile),
         ),
       ],
     );
@@ -533,6 +542,9 @@ void main() {
       overrides: [
         vaultRepositoryProvider.overrideWithValue(repository),
         appLockServiceProvider.overrideWithValue(appLock),
+        userPreferencesProvider.overrideWithValue(
+          UserPreferences(storageFile: preferencesFile),
+        ),
         personalizationPreferencesProvider.overrideWith(
           _OneMinuteSessionTimeoutController.new,
         ),

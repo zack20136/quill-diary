@@ -1,30 +1,47 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 
 void main() {
   group('DisplayFormat', () {
     const DateOnly date = DateOnly('2026-06-09');
     final DateTime local = DateTime(2026, 6, 9, 14, 30);
+    final AppLocalizations zhTwL10n = lookupAppLocalizations(appZhLocale);
+    final AppLocalizations enL10n = lookupAppLocalizations(appEnLocale);
 
-    test('formatDateOnlyZh 使用中文年月日', () {
-      expect(DisplayFormat.formatDateOnlyZh(date), '2026年6月9日');
+    test('formatDateOnly 依語系輸出日期', () {
+      expect(DisplayFormat.formatDateOnly(zhTwL10n, date), '2026年6月9日');
+      expect(DisplayFormat.formatDateOnly(enL10n, date), '6/9/2026');
     });
 
-    test('formatDateOnlyWithWeekdayZh 附加星期', () {
-      expect(DisplayFormat.formatDateOnlyWithWeekdayZh(date), '2026年6月9日 星期二');
+    test('formatDateOnlyWithWeekday 依語系附加星期', () {
+      expect(
+        DisplayFormat.formatDateOnlyWithWeekday(zhTwL10n, date),
+        '2026年6月9日 星期二',
+      );
+      expect(
+        DisplayFormat.formatDateOnlyWithWeekday(enL10n, date),
+        '6/9/2026 Tue',
+      );
     });
 
-    test('formatYearMonthZh 不含日', () {
-      expect(DisplayFormat.formatYearMonthZh(2026, 6), '2026年6月');
+    test('formatYearMonth 依語系輸出年月', () {
+      expect(DisplayFormat.formatYearMonth(zhTwL10n, 2026, 6), '2026年6月');
+      expect(DisplayFormat.formatYearMonth(enL10n, 2026, 6), 'Jun 2026');
     });
 
-    test('formatYearZh', () {
-      expect(DisplayFormat.formatYearZh(2026), '2026年');
+    test('formatYear 依語系輸出年份', () {
+      expect(DisplayFormat.formatYear(zhTwL10n, 2026), '2026年');
+      expect(DisplayFormat.formatYear(enL10n, 2026), '2026');
     });
 
-    test('formatDateTimeZh', () {
-      expect(DisplayFormat.formatDateTimeZh(local), '2026年6月9日 14:30');
+    test('formatDateTime 依語系輸出日期時間', () {
+      expect(
+        DisplayFormat.formatDateTime(zhTwL10n, local),
+        '2026年6月9日 14:30',
+      );
+      expect(DisplayFormat.formatDateTime(enL10n, local), '6/9/2026 14:30');
     });
 
     test('formatCountUnit 與 formatRatio', () {
@@ -32,10 +49,13 @@ void main() {
       expect(DisplayFormat.formatRatio(1, 30, '天'), '1 / 30 天');
     });
 
-    test('formatDurationMs', () {
-      expect(DisplayFormat.formatDurationMs(350), '350 毫秒');
-      expect(DisplayFormat.formatDurationMs(1200), '1.2 秒');
-      expect(DisplayFormat.formatDurationMs(10000), '10 秒');
+    test('formatDurationMs 依語系輸出單位', () {
+      expect(DisplayFormat.formatDurationMs(zhTwL10n, 350), '350 毫秒');
+      expect(DisplayFormat.formatDurationMs(zhTwL10n, 1200), '1.2 秒');
+      expect(DisplayFormat.formatDurationMs(zhTwL10n, 10000), '10 秒');
+      expect(DisplayFormat.formatDurationMs(enL10n, 350), '350 ms');
+      expect(DisplayFormat.formatDurationMs(enL10n, 1200), '1.2 sec');
+      expect(DisplayFormat.formatDurationMs(enL10n, 10000), '10 sec');
     });
 
     test('formatBytesForDisplay', () {
@@ -89,7 +109,19 @@ void main() {
 
     test('formatGoogleAccountLabel', () {
       expect(
-        DisplayFormat.formatGoogleAccountLabel('Alice', 'a@example.com'),
+        DisplayFormat.formatGoogleAccountLabel(
+          zhTwL10n,
+          'Alice',
+          'a@example.com',
+        ),
+        'Alice · a@example.com',
+      );
+      expect(
+        DisplayFormat.formatGoogleAccountLabel(
+          enL10n,
+          'Alice',
+          'a@example.com',
+        ),
         'Alice · a@example.com',
       );
     });

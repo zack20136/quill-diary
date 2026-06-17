@@ -9,6 +9,7 @@ import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/vault_backup_policy.dart';
 import '../../domain/shared/value_objects.dart';
+import '../../l10n/l10n.dart';
 import '../drive/drive_backup_service.dart';
 import 'external_directory_store.dart';
 import 'restore_precheck.dart';
@@ -123,6 +124,7 @@ class VaultTransferService {
 
   /// 建立備份並複製到使用者選擇的外部資料夾。
   Future<BackupPersistResult> saveBackupToExternalDirectory({
+    required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
   }) {
     return _runInspectedBackupPipeline(
@@ -137,6 +139,7 @@ class VaultTransferService {
               dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
               fileName: fileName,
               sourceFile: stagingZip,
+              l10n: l10n,
               resolveInitialDirectory:
                   _externalDirectoryStore.resolveInitialDirectory,
               rememberDirectory: _externalDirectoryStore.rememberDirectory,
@@ -250,6 +253,7 @@ class VaultTransferService {
 
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
+    AppLocalizations l10n,
   ) async {
     final String fileName = VaultBackupPolicy.markdownPortableFileName(
       DateTime.now(),
@@ -257,6 +261,7 @@ class VaultTransferService {
     return _writeTempAndDeliver(
       dialogTitle: VaultBackupPolicy.pickMarkdownDirectoryTitle,
       fileName: fileName,
+      l10n: l10n,
       writeTarget: (File target) =>
           _archiveIo.writeMarkdownZip(session: session, target: target),
     );
@@ -269,6 +274,7 @@ class VaultTransferService {
   Future<String?> exportHtmlToDirectory(
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
+    AppLocalizations l10n,
   ) async {
     final String fileName = VaultBackupPolicy.htmlPortableFileName(
       DateTime.now(),
@@ -276,6 +282,7 @@ class VaultTransferService {
     return _writeTempAndDeliver(
       dialogTitle: VaultBackupPolicy.pickHtmlDirectoryTitle,
       fileName: fileName,
+      l10n: l10n,
       writeTarget: (File target) => _archiveIo.writeSelectedHtmlExport(
         session: session,
         entryIds: entryIds,
@@ -661,6 +668,7 @@ class VaultTransferService {
   Future<String?> _writeTempAndDeliver({
     required String dialogTitle,
     required String fileName,
+    required AppLocalizations l10n,
     required Future<void> Function(File target) writeTarget,
   }) async {
     final File tempFile = await _createTempFile(fileName);
@@ -670,6 +678,7 @@ class VaultTransferService {
         dialogTitle: dialogTitle,
         fileName: fileName,
         sourceFile: tempFile,
+        l10n: l10n,
         resolveInitialDirectory:
             _externalDirectoryStore.resolveInitialDirectory,
         rememberDirectory: _externalDirectoryStore.rememberDirectory,

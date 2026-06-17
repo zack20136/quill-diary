@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
@@ -73,6 +74,7 @@ class FakeVaultTransferService extends VaultTransferService {
 
   @override
   Future<BackupPersistResult> saveBackupToExternalDirectory({
+    required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
   }) {
     saveBackupToExternalDirectoryCalls++;

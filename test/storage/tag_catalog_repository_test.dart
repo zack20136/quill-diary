@@ -18,7 +18,7 @@ void main() {
     // Make the one-time default-tag seed deterministic for this catalog test.
     return UserPreferences(
       storageFile: File('${harness.tempDir.path}/app_preferences.json'),
-    ).setAppLocale(AppLanguage.zhTw);
+    ).setAppLocale(AppLanguage.zh);
   }
 
   setUp(() async {

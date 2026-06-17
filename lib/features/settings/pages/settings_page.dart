@@ -378,6 +378,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                                     )
                                                     .exportMarkdownToDirectory(
                                                       session,
+                                                      l10n,
                                                     );
                                               });
                                           if (exportPath == null) {
@@ -628,7 +629,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _createLocalBackup(BackupTaskProgressListener reportProgress) =>
       _persistBackup(
         reportProgress,
-        ref.read(vaultTransferServiceProvider).saveBackupToAppLocal,
+        ({BackupTaskProgressListener? onProgress}) => ref
+            .read(vaultTransferServiceProvider)
+            .saveBackupToAppLocal(onProgress: onProgress),
         successMessage: (String path) =>
             context.l10n.settingsLocalBackupBackupSuccessInApp(path),
       );
@@ -636,7 +639,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _exportLocalBackup(BackupTaskProgressListener reportProgress) =>
       _persistBackup(
         reportProgress,
-        ref.read(vaultTransferServiceProvider).saveBackupToExternalDirectory,
+        ({BackupTaskProgressListener? onProgress}) => ref
+            .read(vaultTransferServiceProvider)
+            .saveBackupToExternalDirectory(
+              l10n: context.l10n,
+              onProgress: onProgress,
+            ),
         successMessage: (String path) =>
             context.l10n.settingsLocalBackupBackupExportSuccess(path),
       );
@@ -681,7 +689,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _showMessage(
         context.l10n.settingsIndexRebuildSuccess(
           report.entryCount,
-          DisplayFormat.formatDurationMs(report.duration.inMilliseconds),
+          DisplayFormat.formatDurationMs(
+            context.l10n,
+            report.duration.inMilliseconds,
+          ),
         ),
       );
     }
@@ -754,7 +765,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.invalidate(settingsDriveConnectionProvider);
     await ref.read(settingsDriveConnectionProvider.future);
     if (!mounted) return;
-    _showSuccess(settingsDriveLinkSuccess(l10n, connectionState.accountLabel));
+    _showSuccess(
+      settingsDriveLinkSuccess(l10n, connectionState.accountLabel(l10n)),
+    );
   }
 
   Future<void> _switchGoogleDrive() async {
@@ -767,7 +780,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await ref.read(settingsDriveConnectionProvider.future);
     if (!mounted) return;
     _showSuccess(
-      settingsDriveSwitchAccountSuccess(l10n, connectionState.accountLabel),
+      settingsDriveSwitchAccountSuccess(
+        l10n,
+        connectionState.accountLabel(l10n),
+      ),
     );
   }
 
