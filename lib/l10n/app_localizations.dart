@@ -407,13 +407,13 @@ abstract class AppLocalizations {
   /// No description provided for @personalizationAppearanceSectionTitle.
   ///
   /// In zh, this message translates to:
-  /// **'主題顏色'**
+  /// **'外觀'**
   String get personalizationAppearanceSectionTitle;
 
   /// No description provided for @personalizationAppearanceSectionDescription.
   ///
   /// In zh, this message translates to:
-  /// **'選擇 App 使用的淺色、深色或跟隨系統外觀。'**
+  /// **'選擇 App 使用淺色、深色或跟隨系統。'**
   String get personalizationAppearanceSectionDescription;
 
   /// No description provided for @personalizationAppearanceSystemLabel.
@@ -659,7 +659,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTagsStudioGuide.
   ///
   /// In zh, this message translates to:
-  /// **'右上角可建立新標籤；下方為文庫標籤，輕觸加入。'**
+  /// **'可從右上角建立新標籤，也可輕觸下方標籤庫中的標籤加入。'**
   String get editorTagsStudioGuide;
 
   /// No description provided for @editorTagsStudioEmptyChosen.
@@ -689,13 +689,13 @@ abstract class AppLocalizations {
   /// No description provided for @editorTagLibraryHint.
   ///
   /// In zh, this message translates to:
-  /// **'文庫裡的標籤 · 輕觸加入'**
+  /// **'標籤庫 · 輕觸加入'**
   String get editorTagLibraryHint;
 
   /// No description provided for @editorTagPoolEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'文庫裡暫時沒有其他可用標籤，或已全部加入目前清單'**
+  /// **'標籤庫中暫時沒有其他可用標籤，或已全部加入目前清單'**
   String get editorTagPoolEmpty;
 
   /// No description provided for @editorTagAddTooltip.
@@ -965,7 +965,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeEmptyDiaryMessage.
   ///
   /// In zh, this message translates to:
-  /// **'建立第一篇日記後，就會在這裡看到你的首頁列表。'**
+  /// **'建立第一篇日記後，就會在這裡看到您的首頁列表。'**
   String get homeEmptyDiaryMessage;
 
   /// No description provided for @homeNoAnalysisTitle.
@@ -1930,7 +1930,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSessionTimeoutAboutBackgroundTimeoutBody.
   ///
   /// In zh, this message translates to:
-  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。你可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等你回來後，再依目前的解鎖方式重新驗證。'**
+  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。'**
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel);
 
   /// No description provided for @settingsImportExportSectionTitle.
@@ -1960,7 +1960,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsImportExportFailureZipNoEntries.
   ///
   /// In zh, this message translates to:
-  /// **'zip 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。'**
+  /// **'ZIP 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。'**
   String get settingsImportExportFailureZipNoEntries;
 
   /// No description provided for @settingsImportExportFailureEasyDiaryUnsupportedPlatform.
@@ -2096,7 +2096,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLocalBackupPickExternalBackupDialogTitle.
   ///
   /// In zh, this message translates to:
-  /// **'選擇備份 zip'**
+  /// **'選擇備份 ZIP'**
   String get settingsLocalBackupPickExternalBackupDialogTitle;
 
   /// No description provided for @settingsLocalBackupNoBackups.
@@ -2156,7 +2156,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）'**
+  /// **'連結 Google 帳戶後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）'**
   String get settingsDriveBackupSectionDescriptionEnabled;
 
   /// No description provided for @settingsDriveBackupSectionDescriptionOAuthNotConfigured.
@@ -2168,13 +2168,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupLinkButton.
   ///
   /// In zh, this message translates to:
-  /// **'連結 Google 帳號'**
+  /// **'連結 Google 帳戶'**
   String get settingsDriveBackupLinkButton;
 
   /// No description provided for @settingsDriveBackupSwitchAccountButton.
   ///
   /// In zh, this message translates to:
-  /// **'切換帳號'**
+  /// **'切換帳戶'**
   String get settingsDriveBackupSwitchAccountButton;
 
   /// No description provided for @settingsDriveBackupDisconnectButton.
@@ -2198,31 +2198,31 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupDisconnectedLabel.
   ///
   /// In zh, this message translates to:
-  /// **'尚未連結 Google 帳號'**
+  /// **'尚未連結 Google 帳戶'**
   String get settingsDriveBackupDisconnectedLabel;
 
   /// No description provided for @settingsDriveBackupFallbackAccountLabel.
   ///
   /// In zh, this message translates to:
-  /// **'Google 帳號'**
+  /// **'Google 帳戶'**
   String get settingsDriveBackupFallbackAccountLabel;
 
   /// No description provided for @settingsDriveBackupLinkSuccessEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'Google 帳號已連結，可以開始備份或還原。'**
+  /// **'Google 帳戶已連結，可以開始備份或還原。'**
   String get settingsDriveBackupLinkSuccessEmpty;
 
   /// No description provided for @settingsDriveBackupLinkSuccess.
   ///
   /// In zh, this message translates to:
-  /// **'Google 帳號已連結：{accountLabel}'**
+  /// **'Google 帳戶已連結：{accountLabel}'**
   String settingsDriveBackupLinkSuccess(String accountLabel);
 
   /// No description provided for @settingsDriveBackupSwitchAccountSuccessEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'已切換 Google 帳號。'**
+  /// **'已切換 Google 帳戶。'**
   String get settingsDriveBackupSwitchAccountSuccessEmpty;
 
   /// No description provided for @settingsDriveBackupSwitchAccountSuccess.
@@ -2234,13 +2234,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupDisconnectSuccess.
   ///
   /// In zh, this message translates to:
-  /// **'已中斷 Google 帳號連線，雲端備份仍會保留。'**
+  /// **'已中斷 Google 帳戶連線，雲端備份仍會保留。'**
   String get settingsDriveBackupDisconnectSuccess;
 
   /// No description provided for @settingsDriveBackupDisconnectConfirmTitle.
   ///
   /// In zh, this message translates to:
-  /// **'中斷 Google 帳號連線？'**
+  /// **'中斷 Google 帳戶連線？'**
   String get settingsDriveBackupDisconnectConfirmTitle;
 
   /// No description provided for @settingsDriveBackupDisconnectConfirmBody.
@@ -2426,13 +2426,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsIndexLinkDriveProgress.
   ///
   /// In zh, this message translates to:
-  /// **'正在連結 Google 帳號…'**
+  /// **'正在連結 Google 帳戶…'**
   String get settingsIndexLinkDriveProgress;
 
   /// No description provided for @settingsIndexSwitchDriveAccountProgress.
   ///
   /// In zh, this message translates to:
-  /// **'正在切換帳號…'**
+  /// **'正在切換帳戶…'**
   String get settingsIndexSwitchDriveAccountProgress;
 
   /// No description provided for @settingsIndexDisconnectDriveProgress.
@@ -2468,25 +2468,25 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportHeroTitle.
   ///
   /// In zh, this message translates to:
-  /// **'自願支持'**
+  /// **'喜歡的話，歡迎支持'**
   String get settingsSupportHeroTitle;
 
   /// No description provided for @settingsSupportHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'您可透過 Google Play 提供一次性支持。本項支持不附帶額外功能，亦不影響日記內容的存取與使用。'**
+  /// **'如果 Quill Diary 對您有幫助，您可以透過 Google Play 提供一次性支持。這不會解鎖額外功能，也不影響日記內容的存取與使用。'**
   String get settingsSupportHeroBody;
 
   /// No description provided for @settingsSupportHeroChipNoExtraFeatures.
   ///
   /// In zh, this message translates to:
-  /// **'不提供額外功能'**
+  /// **'不解鎖額外功能'**
   String get settingsSupportHeroChipNoExtraFeatures;
 
   /// No description provided for @settingsSupportHeroChipRepeatablePurchase.
   ///
   /// In zh, this message translates to:
-  /// **'可重複購買'**
+  /// **'可再次支持'**
   String get settingsSupportHeroChipRepeatablePurchase;
 
   /// No description provided for @settingsSupportHeroChipGooglePlayPayment.
@@ -2510,13 +2510,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsSectionTitle.
   ///
   /// In zh, this message translates to:
-  /// **'支持方案'**
+  /// **'支持選項'**
   String get settingsSupportProductsSectionTitle;
 
   /// No description provided for @settingsSupportProductsSectionBody.
   ///
   /// In zh, this message translates to:
-  /// **'金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。'**
+  /// **'Google Play 會依所在地區顯示金額與幣別；每個選項都可再次支持。'**
   String get settingsSupportProductsSectionBody;
 
   /// No description provided for @settingsSupportBuyButtonPrefix.
@@ -2540,7 +2540,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportThanksMessage.
   ///
   /// In zh, this message translates to:
-  /// **'感謝您的支持。'**
+  /// **'謝謝您的支持，這對開發很有幫助。'**
   String get settingsSupportThanksMessage;
 
   /// No description provided for @settingsSupportErrorMessage.
@@ -2558,7 +2558,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductLoadErrorTitle.
   ///
   /// In zh, this message translates to:
-  /// **'暫時無法載入支持方案'**
+  /// **'暫時無法載入支持選項'**
   String get settingsSupportProductLoadErrorTitle;
 
   /// No description provided for @settingsSupportProductLoadErrorBody.
@@ -2570,7 +2570,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsNotReadyTitle.
   ///
   /// In zh, this message translates to:
-  /// **'暫時無法顯示支持方案'**
+  /// **'暫時無法顯示支持選項'**
   String get settingsSupportProductsNotReadyTitle;
 
   /// No description provided for @settingsSupportProductsNotReadyBody.
@@ -2606,7 +2606,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportFooterNote.
   ///
   /// In zh, this message translates to:
-  /// **'是否提供支持，請依您的需求自行決定。'**
+  /// **'支持完全自願，請依您的需求與意願決定。'**
   String get settingsSupportFooterNote;
 
   /// No description provided for @settingsSupportTierSponsorCoffeeLabel.
@@ -2618,7 +2618,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportTierSponsorCoffeeHint.
   ///
   /// In zh, this message translates to:
-  /// **'支持 Quill Diary 持續開發與維護'**
+  /// **'讓 Quill Diary 持續被照顧與改進'**
   String get settingsSupportTierSponsorCoffeeHint;
 
   /// No description provided for @settingsSupportTierSponsorSnackLabel.
@@ -2630,7 +2630,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportTierSponsorSnackHint.
   ///
   /// In zh, this message translates to:
-  /// **'讓 Quill Diary 能繼續穩定改進'**
+  /// **'為日常改進補充一點能量'**
   String get settingsSupportTierSponsorSnackHint;
 
   /// No description provided for @settingsSupportTierSponsorLunchLabel.
@@ -2642,7 +2642,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportTierSponsorLunchHint.
   ///
   /// In zh, this message translates to:
-  /// **'幫助 Quill Diary 持續變得更好'**
+  /// **'支持更多時間投入開發與維護'**
   String get settingsSupportTierSponsorLunchHint;
 
   /// No description provided for @settingsSupportTierSponsorBoostLabel.
@@ -2654,7 +2654,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportTierSponsorBoostHint.
   ///
   /// In zh, this message translates to:
-  /// **'成為我們持續開發、維護與改善的動力'**
+  /// **'給持續開發一份有力鼓勵'**
   String get settingsSupportTierSponsorBoostHint;
 
   /// No description provided for @settingsSupportTierSponsorSuperLabel.
@@ -2666,7 +2666,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportTierSponsorSuperHint.
   ///
   /// In zh, this message translates to:
-  /// **'幫助我們更安心投入長期開發與維護'**
+  /// **'幫助我們更安心投入長期維護與改進'**
   String get settingsSupportTierSponsorSuperHint;
 
   /// No description provided for @sessionStartupNeedsRecoveryKeyMessage.
@@ -2732,7 +2732,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionInvalidBackupFileMessage.
   ///
   /// In zh, this message translates to:
-  /// **'無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。'**
+  /// **'無法讀取備份檔，請確認檔案未損壞且為有效的 ZIP 備份。'**
   String get sessionInvalidBackupFileMessage;
 
   /// No description provided for @sessionRestoreSuccessUnlockedMessage.
@@ -2834,19 +2834,19 @@ abstract class AppLocalizations {
   /// No description provided for @legalBillingVaultPrivacyNote.
   ///
   /// In zh, this message translates to:
-  /// **'支持流程不讀取 vault 內容。'**
+  /// **'支持流程不讀取日記庫內容。'**
   String get legalBillingVaultPrivacyNote;
 
   /// No description provided for @legalBillingPrivacyOneLiner.
   ///
   /// In zh, this message translates to:
-  /// **'支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；支持流程不讀取 vault 內容。'**
+  /// **'支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；支持流程不讀取日記庫內容。'**
   String get legalBillingPrivacyOneLiner;
 
   /// No description provided for @legalBillingSupportPageBody.
   ///
   /// In zh, this message translates to:
-  /// **'僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存贊助紀錄。支持流程不讀取 vault 內容。'**
+  /// **'僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。'**
   String get legalBillingSupportPageBody;
 
   /// No description provided for @legalExternalLinkUnavailableMessage.
@@ -2912,7 +2912,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。你可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非你主動操作，資料預設留在裝置上。'**
+  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。您可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非您主動操作，資料預設留在裝置上。'**
   String get aboutTabIntroHeroBody;
 
   /// No description provided for @aboutTabIntroChip0.
@@ -2966,7 +2966,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'正式日記、附件、草稿與搜尋索引都以加密或受 session 保護的方式留在裝置上。除非你主動備份或匯出，內容不會自動離開手機。'**
+  /// **'正式日記、附件、草稿與搜尋索引都會留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份或匯出，內容不會自動離開手機。'**
   String get aboutTabIntroSection0Item0Body;
 
   /// No description provided for @aboutTabIntroSection0Item1Title.
@@ -2978,7 +2978,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'日常寫作不依賴帳號系統或遠端伺服器。你不需要先建立帳號，才能使用本機日記、搜尋與回顧功能。'**
+  /// **'日常寫作不依賴帳戶系統或遠端伺服器。您不需要先建立帳戶，才能使用本機日記、搜尋與回顧功能。'**
   String get aboutTabIntroSection0Item1Body;
 
   /// No description provided for @aboutTabIntroSection0Item2Title.
@@ -2990,13 +2990,13 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。你可以把它當成以隱私為前提的私人寫作空間。'**
+  /// **'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。您可以把它當成以隱私為前提的私人寫作空間。'**
   String get aboutTabIntroSection0Item2Body;
 
   /// No description provided for @aboutTabIntroSection1Title.
   ///
   /// In zh, this message translates to:
-  /// **'你可以怎麼使用它'**
+  /// **'您可以怎麼使用它'**
   String get aboutTabIntroSection1Title;
 
   /// No description provided for @aboutTabIntroSection1Subtitle.
@@ -3026,7 +3026,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'主畫面提供列表、日曆、標籤與總覽四種入口。你可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。'**
+  /// **'主畫面提供列表、日曆、標籤與總覽四種入口。您可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。'**
   String get aboutTabIntroSection1Item1Body;
 
   /// No description provided for @aboutTabIntroSection1Item2Title.
@@ -3050,19 +3050,19 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection1Item3Body.
   ///
   /// In zh, this message translates to:
-  /// **'你可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。'**
+  /// **'您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。'**
   String get aboutTabIntroSection1Item3Body;
 
   /// No description provided for @aboutTabIntroSection2Title.
   ///
   /// In zh, this message translates to:
-  /// **'資料掌控權在你手上'**
+  /// **'資料掌控權在您手上'**
   String get aboutTabIntroSection2Title;
 
   /// No description provided for @aboutTabIntroSection2Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'備份、匯出與解鎖方式各自扮演不同角色，目的是讓你能保留資料，也能理解風險邊界。'**
+  /// **'備份、匯出與解鎖方式各自扮演不同角色，目的是讓您能保留資料，也能理解風險邊界。'**
   String get aboutTabIntroSection2Subtitle;
 
   /// No description provided for @aboutTabIntroSection2Item0Title.
@@ -3086,7 +3086,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份保留的是整個加密 vault，適合之後完整還原，不是直接打開就能閱讀的文件。'**
+  /// **'完整備份保留的是整個加密日記庫，適合之後完整還原，不是直接打開就能閱讀的文件。'**
   String get aboutTabIntroSection2Item1Body;
 
   /// No description provided for @aboutTabIntroSection2Item2Title.
@@ -3110,7 +3110,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection3Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'你可以查看原始碼與授權條件，也能清楚知道品牌使用界線。'**
+  /// **'您可以查看原始碼與授權條件，也能清楚知道品牌使用界線。'**
   String get aboutTabIntroSection3Subtitle;
 
   /// No description provided for @aboutTabIntroSection3Item0Title.
@@ -3134,7 +3134,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionLabel.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖與會話'**
+  /// **'解鎖與狀態'**
   String get aboutTabUnlockSessionLabel;
 
   /// No description provided for @aboutTabUnlockSessionHeroTitle.
@@ -3146,7 +3146,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 不會要求你每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。'**
+  /// **'Quill Diary 不會要求您每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。'**
   String get aboutTabUnlockSessionHeroBody;
 
   /// No description provided for @aboutTabUnlockSessionChip0.
@@ -3182,7 +3182,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'你可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。'**
+  /// **'您可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。'**
   String get aboutTabUnlockSessionSection0Subtitle;
 
   /// No description provided for @aboutTabUnlockSessionSection0Item0Title.
@@ -3254,7 +3254,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後，你可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。'**
+  /// **'解鎖後，您可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。'**
   String get aboutTabUnlockSessionSection1Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item1Title.
@@ -3272,7 +3272,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依你選擇的模式決定是否直接恢復或跳出系統驗證。'**
+  /// **'如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依您選擇的模式決定是否直接恢復或跳出系統驗證。'**
   String get aboutTabUnlockSessionSection1Item2Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item3Title.
@@ -3284,7 +3284,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item3Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。你可以在方便時再手動重試。'**
+  /// **'如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。您可以在方便時再手動重試。'**
   String get aboutTabUnlockSessionSection1Item3Body;
 
   /// No description provided for @aboutTabUnlockSessionSection2Title.
@@ -3308,7 +3308,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'當你換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。'**
+  /// **'當您換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。'**
   String get aboutTabUnlockSessionSection2Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection2Item1Title.
@@ -3392,13 +3392,13 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection0Title.
   ///
   /// In zh, this message translates to:
-  /// **'這套保護機制在幫你做什麼'**
+  /// **'這套保護機制在幫您做什麼'**
   String get aboutTabEncryptionSection0Title;
 
   /// No description provided for @aboutTabEncryptionSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'重點不是堆術語，而是讓你知道正式資料在存放與讀取時，都有清楚而一致的保護流程。'**
+  /// **'重點不是堆術語，而是讓您知道正式資料在存放與讀取時，都有清楚而一致的保護流程。'**
   String get aboutTabEncryptionSection0Subtitle;
 
   /// No description provided for @aboutTabEncryptionSection0Item0Title.
@@ -3434,13 +3434,13 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection0Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'每個加密檔案都會先產生自己的隨機 file key，再由 vault 層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。'**
+  /// **'每個加密檔案都會先產生自己的隨機 file key，再由日記庫層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。'**
   String get aboutTabEncryptionSection0Item2Body;
 
   /// No description provided for @aboutTabEncryptionSection1Title.
   ///
   /// In zh, this message translates to:
-  /// **'你可以怎麼打開自己的資料'**
+  /// **'您可以怎麼打開自己的資料'**
   String get aboutTabEncryptionSection1Title;
 
   /// No description provided for @aboutTabEncryptionSection1Subtitle.
@@ -3458,7 +3458,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護 vault 層的重要金鑰。'**
+  /// **'在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護日記庫層的重要金鑰。'**
   String get aboutTabEncryptionSection1Item0Body;
 
   /// No description provided for @aboutTabEncryptionSection1Item1Title.
@@ -3470,19 +3470,19 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'當你換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。'**
+  /// **'當您換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。'**
   String get aboutTabEncryptionSection1Item1Body;
 
   /// No description provided for @aboutTabEncryptionSection1Item2Title.
   ///
   /// In zh, this message translates to:
-  /// **'先確認 vault，再解開各檔'**
+  /// **'先確認日記庫，再解開各檔'**
   String get aboutTabEncryptionSection1Item2Title;
 
   /// No description provided for @aboutTabEncryptionSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'流程會先確認目前的存取狀態能否正確進入 vault，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。'**
+  /// **'流程會先確認目前的存取狀態能否正確進入日記庫，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。'**
   String get aboutTabEncryptionSection1Item2Body;
 
   /// No description provided for @aboutTabEncryptionSection2Title.
@@ -3506,7 +3506,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'只要你把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。'**
+  /// **'只要您把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。'**
   String get aboutTabEncryptionSection2Item0Body;
 
   /// No description provided for @aboutTabEncryptionSection2Item1Title.
@@ -3518,7 +3518,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或你沒有妥善保存，之後可能影響資料安全或可恢復性。'**
+  /// **'復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，之後可能影響資料安全或可恢復性。'**
   String get aboutTabEncryptionSection2Item1Body;
 
   /// No description provided for @aboutTabEncryptionSection2Item2Title.
@@ -3542,7 +3542,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexHeroTitle.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後，你可以快速找回以前寫過的內容'**
+  /// **'解鎖後，您可以快速找回以前寫過的內容'**
   String get aboutTabSearchIndexHeroTitle;
 
   /// No description provided for @aboutTabSearchIndexHeroBody.
@@ -3578,7 +3578,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection0Title.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋能幫你找什麼'**
+  /// **'搜尋能幫您找什麼'**
   String get aboutTabSearchIndexSection0Title;
 
   /// No description provided for @aboutTabSearchIndexSection0Subtitle.
@@ -3596,7 +3596,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'你可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。'**
+  /// **'您可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。'**
   String get aboutTabSearchIndexSection0Item0Body;
 
   /// No description provided for @aboutTabSearchIndexSection0Item1Title.
@@ -3644,7 +3644,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'當你輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。'**
+  /// **'當您輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。'**
   String get aboutTabSearchIndexSection1Item0Body;
 
   /// No description provided for @aboutTabSearchIndexSection1Item1Title.
@@ -3692,7 +3692,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引只會在有效解鎖 session 期間打開；App 鎖定後，索引也會跟著關閉。'**
+  /// **'搜尋索引只會在有效解鎖期間打開；App 鎖定後，索引也會跟著關閉。'**
   String get aboutTabSearchIndexSection2Item0Body;
 
   /// No description provided for @aboutTabSearchIndexSection2Item1Title.
@@ -3716,7 +3716,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection2Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引的工作是幫你更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。'**
+  /// **'搜尋索引的工作是幫您更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。'**
   String get aboutTabSearchIndexSection2Item2Body;
 
   /// No description provided for @aboutTabEditorLabel.
@@ -3734,7 +3734,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等你確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。'**
+  /// **'編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等您確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。'**
   String get aboutTabEditorHeroBody;
 
   /// No description provided for @aboutTabEditorChip0.
@@ -3794,7 +3794,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'你可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。'**
+  /// **'您可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。'**
   String get aboutTabEditorSection0Item1Body;
 
   /// No description provided for @aboutTabEditorSection0Item2Title.
@@ -3842,7 +3842,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問你要不要接著上次進度寫。'**
+  /// **'重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問您要不要接著上次進度寫。'**
   String get aboutTabEditorSection1Item1Body;
 
   /// No description provided for @aboutTabEditorSection1Item2Title.
@@ -3854,7 +3854,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'當內容成功正式寫入日記庫，草稿就會被清掉；如果你取消編輯且沒有留下新變更，也不會一直堆積舊草稿。'**
+  /// **'當內容成功正式寫入日記庫，草稿就會被清掉；如果您取消編輯且沒有留下新變更，也不會一直堆積舊草稿。'**
   String get aboutTabEditorSection1Item2Body;
 
   /// No description provided for @aboutTabEditorSection2Title.
@@ -3902,7 +3902,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection2Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒你還有內容尚未正式保存。'**
+  /// **'如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。'**
   String get aboutTabEditorSection2Item2Body;
 
   /// No description provided for @aboutTabBackupRestoreLabel.
@@ -3956,7 +3956,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'如果你想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。'**
+  /// **'如果您想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。'**
   String get aboutTabBackupRestoreSection0Subtitle;
 
   /// No description provided for @aboutTabBackupRestoreSection0Item0Title.
@@ -3992,7 +3992,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection0Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'本機備份與 Google Drive 都保留最新 {retainCount} 份；若你匯出到外部資料夾，則不會自動輪替或刪除舊檔。'**
+  /// **'本機備份與 Google Drive 都保留最新 {retainCount} 份；若您匯出到外部資料夾，則不會自動輪替或刪除舊檔。'**
   String aboutTabBackupRestoreSection0Item2Body(int retainCount);
 
   /// No description provided for @aboutTabBackupRestoreSection1Title.
@@ -4016,7 +4016,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'不論備份來源是 App 內清單還是外部 zip，還原流程都會用備份內容覆寫目前的 `vault/`。'**
+  /// **'不論備份來源是 App 內清單還是外部 ZIP，還原流程都會用備份內容覆寫目前的 `vault/`。'**
   String get aboutTabBackupRestoreSection1Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection1Item1Title.
@@ -4064,7 +4064,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'可從 zip、Markdown、HTML 或資料夾匯入內容。若是 zip，系統會先判斷是否為支援的備份格式，再決定後續處理方式。'**
+  /// **'可從 ZIP、Markdown、HTML 或資料夾匯入內容。若是 ZIP，系統會先判斷是否為支援的備份格式，再決定後續處理方式。'**
   String get aboutTabBackupRestoreSection2Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection2Item1Title.
@@ -4076,7 +4076,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'你可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。'**
+  /// **'您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。'**
   String get aboutTabBackupRestoreSection2Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection2Item2Title.
@@ -4112,7 +4112,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份只處理正式日記庫，不包含 `drafts/`。如果你還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。'**
+  /// **'完整備份只處理正式日記庫，不包含 `drafts/`。如果您還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。'**
   String get aboutTabBackupRestoreSection3Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Item1Title.
@@ -4124,7 +4124,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由你自己決定。'**
+  /// **'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由您自己決定。'**
   String get aboutTabBackupRestoreSection3Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Item2Title.
@@ -4136,7 +4136,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果你要的是之後完整恢復整個日記庫，請使用完整備份；如果你要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。'**
+  /// **'如果您要的是之後完整恢復整個日記庫，請使用完整備份；如果您要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。'**
   String get aboutTabBackupRestoreSection3Item2Body;
 }
 

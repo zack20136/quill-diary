@@ -115,12 +115,6 @@ class PersonalizationImageCompressSectionBody extends StatelessWidget {
         SettingsSegmentedChoiceBar<ImageCompressPreset>(
           choices: <SettingsSegmentChoice<ImageCompressPreset>>[
             SettingsSegmentChoice<ImageCompressPreset>(
-              value: ImageCompressPreset.original,
-              label: context.l10n.personalizationImageCompressOriginalLabel,
-              icon: Icons.photo_size_select_large_outlined,
-              flex: 2,
-            ),
-            SettingsSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.standard,
               label: context.l10n.personalizationImageCompressStandardLabel,
               icon: Icons.photo_size_select_small_outlined,
@@ -130,6 +124,12 @@ class PersonalizationImageCompressSectionBody extends StatelessWidget {
               value: ImageCompressPreset.high,
               label: context.l10n.personalizationImageCompressHighLabel,
               icon: Icons.high_quality_outlined,
+              flex: 2,
+            ),
+            SettingsSegmentChoice<ImageCompressPreset>(
+              value: ImageCompressPreset.original,
+              label: context.l10n.personalizationImageCompressOriginalLabel,
+              icon: Icons.photo_size_select_large_outlined,
               flex: 2,
             ),
           ],
@@ -508,146 +508,6 @@ class _PreferenceSliderRow extends StatelessWidget {
           onChanged: onChanged,
         ),
       ],
-    );
-  }
-}
-
-/// 設定頁通用的分段 pill 選項列。
-class SettingsSegmentChoice<T> {
-  const SettingsSegmentChoice({
-    required this.value,
-    required this.label,
-    this.icon,
-    this.flex = 2,
-    this.enabled = true,
-  });
-
-  final T value;
-  final String label;
-  final IconData? icon;
-  final int flex;
-  final bool enabled;
-}
-
-class SettingsSegmentedChoiceBar<T> extends StatelessWidget {
-  const SettingsSegmentedChoiceBar({
-    required this.choices,
-    required this.selected,
-    required this.onSelected,
-    this.busy = false,
-    super.key,
-  });
-
-  final List<SettingsSegmentChoice<T>> choices;
-  final T selected;
-  final bool busy;
-  final Future<void> Function(T value) onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      child: Row(
-        children: <Widget>[
-          for (var index = 0; index < choices.length; index++) ...<Widget>[
-            if (index > 0)
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.35),
-              ),
-            Expanded(
-              flex: choices[index].flex,
-              child: _SettingsSegment<T>(
-                label: choices[index].label,
-                icon: choices[index].icon,
-                selected: selected == choices[index].value,
-                enabled: choices[index].enabled && !busy,
-                compact: choices[index].label.length <= 3,
-                onTap: choices[index].enabled && !busy
-                    ? () => unawaited(onSelected(choices[index].value))
-                    : null,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsSegment<T> extends StatelessWidget {
-  const _SettingsSegment({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.enabled,
-    required this.compact,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData? icon;
-  final bool selected;
-  final bool enabled;
-  final bool compact;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    final bool multiline = !compact && label.length > 8;
-    final TextStyle? labelStyle = Theme.of(context).textTheme.labelLarge
-        ?.copyWith(
-          color: selected
-              ? cs.onPrimaryContainer
-              : enabled
-              ? cs.onSurfaceVariant
-              : cs.onSurfaceVariant.withValues(alpha: 0.45),
-          fontSize: compact ? 13 : null,
-        );
-    return Material(
-      color: selected
-          ? cs.primaryContainer
-          : cs.surfaceContainerHighest.withValues(alpha: enabled ? 0.55 : 0.35),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 6 : 8,
-            vertical: compact ? 10 : (multiline ? 8 : 10),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(
-                  icon,
-                  size: 18,
-                  color: selected
-                      ? cs.onPrimaryContainer
-                      : enabled
-                      ? cs.onSurfaceVariant
-                      : cs.onSurfaceVariant.withValues(alpha: 0.45),
-                ),
-                const SizedBox(height: 4),
-              ],
-              Text(
-                label,
-                style: labelStyle,
-                maxLines: multiline ? 2 : 1,
-                overflow: multiline
-                    ? TextOverflow.visible
-                    : TextOverflow.ellipsis,
-                softWrap: multiline,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

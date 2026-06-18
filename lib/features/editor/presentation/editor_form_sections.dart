@@ -21,6 +21,7 @@ class EditorTitleSection extends StatelessWidget {
     required this.showTitleRequired,
     required this.hasTitle,
     required this.showUnsavedTag,
+    required this.showMetadataTags,
     required this.tagAccentArgbMap,
   });
 
@@ -34,6 +35,7 @@ class EditorTitleSection extends StatelessWidget {
   final bool showTitleRequired;
   final bool hasTitle;
   final bool showUnsavedTag;
+  final bool showMetadataTags;
   final Map<String, int> tagAccentArgbMap;
 
   @override
@@ -41,10 +43,11 @@ class EditorTitleSection extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final TextStyle titleStyle = typography.titleTextStyle(theme.textTheme);
     final int bodyCharCount = bodyController.text.runes.length;
-    final bool showTagsRow =
+    final bool hasTagMetadata =
         _editableTagListPreview(tagsController.text).isNotEmpty ||
         bodyCharCount > 0 ||
         (previewMode && showUnsavedTag);
+    final bool showTagsRow = showMetadataTags && hasTagMetadata;
 
     if (previewMode) {
       final String titleText = titleController.text.trim();

@@ -45,7 +45,7 @@ abstract final class DisplayFormat {
   static String formatDateOnly(AppLocalizations l10n, DateOnly date) {
     final DateTime value = date.toDateTime();
     if (isEnglishL10n(l10n)) {
-      return '${value.month}/${value.day}/${value.year}';
+      return _formatEnglishDate(value);
     }
     return '${value.year}年${value.month}月${value.day}日';
   }
@@ -75,7 +75,7 @@ abstract final class DisplayFormat {
   static String formatDateTime(AppLocalizations l10n, DateTime local) {
     final DateTime value = local.toLocal();
     if (isEnglishL10n(l10n)) {
-      return '${value.month}/${value.day}/${value.year} ${formatTime24h(value)}';
+      return '${_formatEnglishDate(value)} ${formatTime24h(value)}';
     }
     return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)}';
   }
@@ -89,6 +89,13 @@ abstract final class DisplayFormat {
       return '${_englishWeekdayShort[date.toDateTime().weekday - 1]} ${formatTime24h(at)}';
     }
     return '${_zhTwWeekdayLong[date.toDateTime().weekday - 1]} ${formatTime24h(at)}';
+  }
+
+  static String _formatEnglishDate(DateTime value) {
+    final String year = value.year.toString().padLeft(4, '0');
+    final String month = value.month.toString().padLeft(2, '0');
+    final String day = value.day.toString().padLeft(2, '0');
+    return '$year/$month/$day';
   }
 
   static String formatCharCount(AppLocalizations l10n, int count) {

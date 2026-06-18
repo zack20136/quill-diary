@@ -77,12 +77,12 @@ class OAuthConfig {
         final String? fromXml = await resolver();
         return fromXml?.trim() ?? '';
       } on Object catch (error, stackTrace) {
-        FlutterError.dumpErrorToConsole(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'OAuthConfig.resolveServerClientId',
-          ),
+        debugPrint(
+          'OAuthConfig.resolveServerClientId fallback failed: $error',
+        );
+        debugPrintStack(
+          stackTrace: stackTrace,
+          label: 'OAuthConfig.resolveServerClientId',
         );
         return '';
       }

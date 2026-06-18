@@ -12,7 +12,7 @@ void main() {
 
     test('formatDateOnly 依語系輸出日期', () {
       expect(DisplayFormat.formatDateOnly(zhTwL10n, date), '2026年6月9日');
-      expect(DisplayFormat.formatDateOnly(enL10n, date), '6/9/2026');
+      expect(DisplayFormat.formatDateOnly(enL10n, date), '2026/06/09');
     });
 
     test('formatDateOnlyWithWeekday 依語系附加星期', () {
@@ -22,7 +22,7 @@ void main() {
       );
       expect(
         DisplayFormat.formatDateOnlyWithWeekday(enL10n, date),
-        '6/9/2026 Tue',
+        '2026/06/09 Tue',
       );
     });
 
@@ -41,7 +41,7 @@ void main() {
         DisplayFormat.formatDateTime(zhTwL10n, local),
         '2026年6月9日 14:30',
       );
-      expect(DisplayFormat.formatDateTime(enL10n, local), '6/9/2026 14:30');
+      expect(DisplayFormat.formatDateTime(enL10n, local), '2026/06/09 14:30');
     });
 
     test('formatCountUnit 與 formatRatio', () {

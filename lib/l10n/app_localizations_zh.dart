@@ -173,11 +173,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get personalizationImageCompressHighLabel => '高畫質';
 
   @override
-  String get personalizationAppearanceSectionTitle => '主題顏色';
+  String get personalizationAppearanceSectionTitle => '外觀';
 
   @override
   String get personalizationAppearanceSectionDescription =>
-      '選擇 App 使用的淺色、深色或跟隨系統外觀。';
+      '選擇 App 使用淺色、深色或跟隨系統。';
 
   @override
   String get personalizationAppearanceSystemLabel => '跟隨系統';
@@ -313,7 +313,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTagsStudioTitle => '標籤';
 
   @override
-  String get editorTagsStudioGuide => '右上角可建立新標籤；下方為文庫標籤，輕觸加入。';
+  String get editorTagsStudioGuide => '可從右上角建立新標籤，也可輕觸下方標籤庫中的標籤加入。';
 
   @override
   String get editorTagsStudioEmptyChosen => '尚未套用任何標籤';
@@ -328,10 +328,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTagSearchHint => '搜尋標籤…';
 
   @override
-  String get editorTagLibraryHint => '文庫裡的標籤 · 輕觸加入';
+  String get editorTagLibraryHint => '標籤庫 · 輕觸加入';
 
   @override
-  String get editorTagPoolEmpty => '文庫裡暫時沒有其他可用標籤，或已全部加入目前清單';
+  String get editorTagPoolEmpty => '標籤庫中暫時沒有其他可用標籤，或已全部加入目前清單';
 
   @override
   String get editorTagAddTooltip => '新增標籤';
@@ -474,7 +474,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeEmptyDiaryTitle => '目前沒有日記';
 
   @override
-  String get homeEmptyDiaryMessage => '建立第一篇日記後，就會在這裡看到你的首頁列表。';
+  String get homeEmptyDiaryMessage => '建立第一篇日記後，就會在這裡看到您的首頁列表。';
 
   @override
   String get homeNoAnalysisTitle => '尚無可分析內容';
@@ -1030,7 +1030,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel) {
-    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。你可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等你回來後，再依目前的解鎖方式重新驗證。';
+    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。';
   }
 
   @override
@@ -1049,7 +1049,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsImportExportFailureZipNoEntries =>
-      'zip 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。';
+      'ZIP 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。';
 
   @override
   String get settingsImportExportFailureEasyDiaryUnsupportedPlatform =>
@@ -1137,7 +1137,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLocalBackupPickDialogTitle => '選擇本機備份';
 
   @override
-  String get settingsLocalBackupPickExternalBackupDialogTitle => '選擇備份 zip';
+  String get settingsLocalBackupPickExternalBackupDialogTitle => '選擇備份 ZIP';
 
   @override
   String get settingsLocalBackupNoBackups => '目前沒有本機備份。';
@@ -1178,17 +1178,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionEnabled =>
-      '連結 Google 帳號後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）';
+      '連結 Google 帳戶後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）';
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
       '此版本尚未設定 Google 登入，暫無法使用雲端備份。';
 
   @override
-  String get settingsDriveBackupLinkButton => '連結 Google 帳號';
+  String get settingsDriveBackupLinkButton => '連結 Google 帳戶';
 
   @override
-  String get settingsDriveBackupSwitchAccountButton => '切換帳號';
+  String get settingsDriveBackupSwitchAccountButton => '切換帳戶';
 
   @override
   String get settingsDriveBackupDisconnectButton => '中斷連結';
@@ -1200,21 +1200,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDriveBackupRestoreButton => '從 Google Drive 還原';
 
   @override
-  String get settingsDriveBackupDisconnectedLabel => '尚未連結 Google 帳號';
+  String get settingsDriveBackupDisconnectedLabel => '尚未連結 Google 帳戶';
 
   @override
-  String get settingsDriveBackupFallbackAccountLabel => 'Google 帳號';
+  String get settingsDriveBackupFallbackAccountLabel => 'Google 帳戶';
 
   @override
-  String get settingsDriveBackupLinkSuccessEmpty => 'Google 帳號已連結，可以開始備份或還原。';
+  String get settingsDriveBackupLinkSuccessEmpty => 'Google 帳戶已連結，可以開始備份或還原。';
 
   @override
   String settingsDriveBackupLinkSuccess(String accountLabel) {
-    return 'Google 帳號已連結：$accountLabel';
+    return 'Google 帳戶已連結：$accountLabel';
   }
 
   @override
-  String get settingsDriveBackupSwitchAccountSuccessEmpty => '已切換 Google 帳號。';
+  String get settingsDriveBackupSwitchAccountSuccessEmpty => '已切換 Google 帳戶。';
 
   @override
   String settingsDriveBackupSwitchAccountSuccess(String accountLabel) {
@@ -1223,10 +1223,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupDisconnectSuccess =>
-      '已中斷 Google 帳號連線，雲端備份仍會保留。';
+      '已中斷 Google 帳戶連線，雲端備份仍會保留。';
 
   @override
-  String get settingsDriveBackupDisconnectConfirmTitle => '中斷 Google 帳號連線？';
+  String get settingsDriveBackupDisconnectConfirmTitle => '中斷 Google 帳戶連線？';
 
   @override
   String get settingsDriveBackupDisconnectConfirmBody =>
@@ -1341,10 +1341,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsIndexLockedMessage => '解鎖後可重建搜尋索引。';
 
   @override
-  String get settingsIndexLinkDriveProgress => '正在連結 Google 帳號…';
+  String get settingsIndexLinkDriveProgress => '正在連結 Google 帳戶…';
 
   @override
-  String get settingsIndexSwitchDriveAccountProgress => '正在切換帳號…';
+  String get settingsIndexSwitchDriveAccountProgress => '正在切換帳戶…';
 
   @override
   String get settingsIndexDisconnectDriveProgress => '正在中斷連線…';
@@ -1366,17 +1366,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSupportPageTitle => '支持開發者';
 
   @override
-  String get settingsSupportHeroTitle => '自願支持';
+  String get settingsSupportHeroTitle => '喜歡的話，歡迎支持';
 
   @override
   String get settingsSupportHeroBody =>
-      '您可透過 Google Play 提供一次性支持。本項支持不附帶額外功能，亦不影響日記內容的存取與使用。';
+      '如果 Quill Diary 對您有幫助，您可以透過 Google Play 提供一次性支持。這不會解鎖額外功能，也不影響日記內容的存取與使用。';
 
   @override
-  String get settingsSupportHeroChipNoExtraFeatures => '不提供額外功能';
+  String get settingsSupportHeroChipNoExtraFeatures => '不解鎖額外功能';
 
   @override
-  String get settingsSupportHeroChipRepeatablePurchase => '可重複購買';
+  String get settingsSupportHeroChipRepeatablePurchase => '可再次支持';
 
   @override
   String get settingsSupportHeroChipGooglePlayPayment => 'Google Play 付款';
@@ -1389,11 +1389,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，亦不讀取日記內容。';
 
   @override
-  String get settingsSupportProductsSectionTitle => '支持方案';
+  String get settingsSupportProductsSectionTitle => '支持選項';
 
   @override
   String get settingsSupportProductsSectionBody =>
-      '金額與幣別由 Google Play 依所在地區顯示；各方案皆可重複支持。';
+      'Google Play 會依所在地區顯示金額與幣別；每個選項都可再次支持。';
 
   @override
   String get settingsSupportBuyButtonPrefix => '支持';
@@ -1405,7 +1405,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSupportPendingMessage => '付款處理中，請稍候。';
 
   @override
-  String get settingsSupportThanksMessage => '感謝您的支持。';
+  String get settingsSupportThanksMessage => '謝謝您的支持，這對開發很有幫助。';
 
   @override
   String get settingsSupportErrorMessage => '付款未完成，請稍後再試。';
@@ -1415,13 +1415,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。';
 
   @override
-  String get settingsSupportProductLoadErrorTitle => '暫時無法載入支持方案';
+  String get settingsSupportProductLoadErrorTitle => '暫時無法載入支持選項';
 
   @override
   String get settingsSupportProductLoadErrorBody => '請稍後再試。';
 
   @override
-  String get settingsSupportProductsNotReadyTitle => '暫時無法顯示支持方案';
+  String get settingsSupportProductsNotReadyTitle => '暫時無法顯示支持選項';
 
   @override
   String get settingsSupportProductsNotReadyBody =>
@@ -1440,37 +1440,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSupportRetryLoadProductsLabel => '重新載入';
 
   @override
-  String get settingsSupportFooterNote => '是否提供支持，請依您的需求自行決定。';
+  String get settingsSupportFooterNote => '支持完全自願，請依您的需求與意願決定。';
 
   @override
   String get settingsSupportTierSponsorCoffeeLabel => '請開發者喝杯咖啡';
 
   @override
-  String get settingsSupportTierSponsorCoffeeHint => '支持 Quill Diary 持續開發與維護';
+  String get settingsSupportTierSponsorCoffeeHint => '讓 Quill Diary 持續被照顧與改進';
 
   @override
   String get settingsSupportTierSponsorSnackLabel => '請開發者吃點心';
 
   @override
-  String get settingsSupportTierSponsorSnackHint => '讓 Quill Diary 能繼續穩定改進';
+  String get settingsSupportTierSponsorSnackHint => '為日常改進補充一點能量';
 
   @override
   String get settingsSupportTierSponsorLunchLabel => '請開發者吃午餐';
 
   @override
-  String get settingsSupportTierSponsorLunchHint => '幫助 Quill Diary 持續變得更好';
+  String get settingsSupportTierSponsorLunchHint => '支持更多時間投入開發與維護';
 
   @override
   String get settingsSupportTierSponsorBoostLabel => '大力支持';
 
   @override
-  String get settingsSupportTierSponsorBoostHint => '成為我們持續開發、維護與改善的動力';
+  String get settingsSupportTierSponsorBoostHint => '給持續開發一份有力鼓勵';
 
   @override
   String get settingsSupportTierSponsorSuperLabel => '大大大大大力支持';
 
   @override
-  String get settingsSupportTierSponsorSuperHint => '幫助我們更安心投入長期開發與維護';
+  String get settingsSupportTierSponsorSuperHint => '幫助我們更安心投入長期維護與改進';
 
   @override
   String get sessionStartupNeedsRecoveryKeyMessage => '尚未建立復原金鑰。';
@@ -1505,7 +1505,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '還原後需輸入建立此備份時保存的復原金鑰。';
 
   @override
-  String get sessionInvalidBackupFileMessage => '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
+  String get sessionInvalidBackupFileMessage => '無法讀取備份檔，請確認檔案未損壞且為有效的 ZIP 備份。';
 
   @override
   String get sessionRestoreSuccessUnlockedMessage => '已還原備份，可以正常使用。';
@@ -1566,15 +1566,15 @@ class AppLocalizationsZh extends AppLocalizations {
       'Quill Diary 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。';
 
   @override
-  String get legalBillingVaultPrivacyNote => '支持流程不讀取 vault 內容。';
+  String get legalBillingVaultPrivacyNote => '支持流程不讀取日記庫內容。';
 
   @override
   String get legalBillingPrivacyOneLiner =>
-      '支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；支持流程不讀取 vault 內容。';
+      '支持開發者之付款由 Google Play 處理，屬自願性一次性支持，不解鎖任何額外功能；支持流程不讀取日記庫內容。';
 
   @override
   String get legalBillingSupportPageBody =>
-      '僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存贊助紀錄。支持流程不讀取 vault 內容。';
+      '僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。';
 
   @override
   String get legalExternalLinkUnavailableMessage => '無法開啟瀏覽器，請稍後再試。';
@@ -1609,7 +1609,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary 是為個人記錄設計的本機加密日記 App。你可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非你主動操作，資料預設留在裝置上。';
+      'Quill Diary 是為個人記錄設計的本機加密日記 App。您可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非您主動操作，資料預設留在裝置上。';
 
   @override
   String get aboutTabIntroChip0 => '資料留在裝置';
@@ -1638,24 +1638,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      '正式日記、附件、草稿與搜尋索引都以加密或受 session 保護的方式留在裝置上。除非你主動備份或匯出，內容不會自動離開手機。';
+      '正式日記、附件、草稿與搜尋索引都會留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份或匯出，內容不會自動離開手機。';
 
   @override
   String get aboutTabIntroSection0Item1Title => '不用註冊就能開始';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      '日常寫作不依賴帳號系統或遠端伺服器。你不需要先建立帳號，才能使用本機日記、搜尋與回顧功能。';
+      '日常寫作不依賴帳戶系統或遠端伺服器。您不需要先建立帳戶，才能使用本機日記、搜尋與回顧功能。';
 
   @override
   String get aboutTabIntroSection0Item2Title => '少收集、少干擾';
 
   @override
   String get aboutTabIntroSection0Item2Body =>
-      'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。你可以把它當成以隱私為前提的私人寫作空間。';
+      'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。您可以把它當成以隱私為前提的私人寫作空間。';
 
   @override
-  String get aboutTabIntroSection1Title => '你可以怎麼使用它';
+  String get aboutTabIntroSection1Title => '您可以怎麼使用它';
 
   @override
   String get aboutTabIntroSection1Subtitle => '從當下記錄，到之後回顧整理，常用功能都圍繞個人日記情境設計。';
@@ -1672,7 +1672,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item1Body =>
-      '主畫面提供列表、日曆、標籤與總覽四種入口。你可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。';
+      '主畫面提供列表、日曆、標籤與總覽四種入口。您可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。';
 
   @override
   String get aboutTabIntroSection1Item2Title => '找回以前寫過的內容';
@@ -1686,14 +1686,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      '你可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。';
+      '您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。';
 
   @override
-  String get aboutTabIntroSection2Title => '資料掌控權在你手上';
+  String get aboutTabIntroSection2Title => '資料掌控權在您手上';
 
   @override
   String get aboutTabIntroSection2Subtitle =>
-      '備份、匯出與解鎖方式各自扮演不同角色，目的是讓你能保留資料，也能理解風險邊界。';
+      '備份、匯出與解鎖方式各自扮演不同角色，目的是讓您能保留資料，也能理解風險邊界。';
 
   @override
   String get aboutTabIntroSection2Item0Title => '可信裝置與復原金鑰';
@@ -1707,7 +1707,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item1Body =>
-      '完整備份保留的是整個加密 vault，適合之後完整還原，不是直接打開就能閱讀的文件。';
+      '完整備份保留的是整個加密日記庫，適合之後完整還原，不是直接打開就能閱讀的文件。';
 
   @override
   String get aboutTabIntroSection2Item2Title => '匯出內容後要自行保護';
@@ -1720,7 +1720,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroSection3Title => '開源與品牌';
 
   @override
-  String get aboutTabIntroSection3Subtitle => '你可以查看原始碼與授權條件，也能清楚知道品牌使用界線。';
+  String get aboutTabIntroSection3Subtitle => '您可以查看原始碼與授權條件，也能清楚知道品牌使用界線。';
 
   @override
   String get aboutTabIntroSection3Item0Title => 'AGPL-3.0 開源';
@@ -1733,14 +1733,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroSection3Item1Title => 'Quill Diary 品牌';
 
   @override
-  String get aboutTabUnlockSessionLabel => '解鎖與會話';
+  String get aboutTabUnlockSessionLabel => '解鎖與狀態';
 
   @override
   String get aboutTabUnlockSessionHeroTitle => '在方便解鎖和保護資料之間取得平衡';
 
   @override
   String get aboutTabUnlockSessionHeroBody =>
-      'Quill Diary 不會要求你每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。';
+      'Quill Diary 不會要求您每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。';
 
   @override
   String get aboutTabUnlockSessionChip0 => '生物辨識';
@@ -1759,7 +1759,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection0Subtitle =>
-      '你可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。';
+      '您可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。';
 
   @override
   String get aboutTabUnlockSessionSection0Item0Title => '無';
@@ -1801,7 +1801,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      '解鎖後，你可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。';
+      '解鎖後，您可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。';
 
   @override
   String get aboutTabUnlockSessionSection1Item1Title => '背景逾時';
@@ -1811,14 +1811,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item2Body =>
-      '如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依你選擇的模式決定是否直接恢復或跳出系統驗證。';
+      '如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依您選擇的模式決定是否直接恢復或跳出系統驗證。';
 
   @override
   String get aboutTabUnlockSessionSection1Item3Title => '驗證取消或失敗後';
 
   @override
   String get aboutTabUnlockSessionSection1Item3Body =>
-      '如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。你可以在方便時再手動重試。';
+      '如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。您可以在方便時再手動重試。';
 
   @override
   String get aboutTabUnlockSessionSection2Title => '為什麼還需要復原金鑰';
@@ -1832,7 +1832,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Item0Body =>
-      '當你換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。';
+      '當您換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。';
 
   @override
   String get aboutTabUnlockSessionSection2Item1Title => '可信狀態失效';
@@ -1877,11 +1877,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEncryptionChip5 => 'Android Keystore';
 
   @override
-  String get aboutTabEncryptionSection0Title => '這套保護機制在幫你做什麼';
+  String get aboutTabEncryptionSection0Title => '這套保護機制在幫您做什麼';
 
   @override
   String get aboutTabEncryptionSection0Subtitle =>
-      '重點不是堆術語，而是讓你知道正式資料在存放與讀取時，都有清楚而一致的保護流程。';
+      '重點不是堆術語，而是讓您知道正式資料在存放與讀取時，都有清楚而一致的保護流程。';
 
   @override
   String get aboutTabEncryptionSection0Item0Title => 'LDJ2 + AES-256-GCM 保護內容';
@@ -1902,10 +1902,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Item2Body =>
-      '每個加密檔案都會先產生自己的隨機 file key，再由 vault 層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。';
+      '每個加密檔案都會先產生自己的隨機 file key，再由日記庫層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。';
 
   @override
-  String get aboutTabEncryptionSection1Title => '你可以怎麼打開自己的資料';
+  String get aboutTabEncryptionSection1Title => '您可以怎麼打開自己的資料';
 
   @override
   String get aboutTabEncryptionSection1Subtitle =>
@@ -1916,21 +1916,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item0Body =>
-      '在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護 vault 層的重要金鑰。';
+      '在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護日記庫層的重要金鑰。';
 
   @override
   String get aboutTabEncryptionSection1Item1Title => '復原金鑰';
 
   @override
   String get aboutTabEncryptionSection1Item1Body =>
-      '當你換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。';
+      '當您換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。';
 
   @override
-  String get aboutTabEncryptionSection1Item2Title => '先確認 vault，再解開各檔';
+  String get aboutTabEncryptionSection1Item2Title => '先確認日記庫，再解開各檔';
 
   @override
   String get aboutTabEncryptionSection1Item2Body =>
-      '流程會先確認目前的存取狀態能否正確進入 vault，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。';
+      '流程會先確認目前的存取狀態能否正確進入日記庫，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。';
 
   @override
   String get aboutTabEncryptionSection2Title => '使用前要知道的邊界';
@@ -1943,14 +1943,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Item0Body =>
-      '只要你把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。';
+      '只要您把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。';
 
   @override
   String get aboutTabEncryptionSection2Item1Title => '復原金鑰要自己保管';
 
   @override
   String get aboutTabEncryptionSection2Item1Body =>
-      '復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或你沒有妥善保存，之後可能影響資料安全或可恢復性。';
+      '復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，之後可能影響資料安全或可恢復性。';
 
   @override
   String get aboutTabEncryptionSection2Item2Title => '它保護的是靜態資料';
@@ -1963,7 +1963,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabSearchIndexLabel => '索引與搜尋';
 
   @override
-  String get aboutTabSearchIndexHeroTitle => '解鎖後，你可以快速找回以前寫過的內容';
+  String get aboutTabSearchIndexHeroTitle => '解鎖後，您可以快速找回以前寫過的內容';
 
   @override
   String get aboutTabSearchIndexHeroBody =>
@@ -1982,7 +1982,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabSearchIndexChip3 => '可重建';
 
   @override
-  String get aboutTabSearchIndexSection0Title => '搜尋能幫你找什麼';
+  String get aboutTabSearchIndexSection0Title => '搜尋能幫您找什麼';
 
   @override
   String get aboutTabSearchIndexSection0Subtitle => '適合在回顧、整理或想找某段經歷時，快速縮小範圍。';
@@ -1992,7 +1992,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection0Item0Body =>
-      '你可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。';
+      '您可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。';
 
   @override
   String get aboutTabSearchIndexSection0Item1Title => '結果來自正式已儲存內容';
@@ -2020,7 +2020,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Item0Body =>
-      '當你輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。';
+      '當您輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。';
 
   @override
   String get aboutTabSearchIndexSection1Item1Title => '正式儲存後才更新';
@@ -2047,7 +2047,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item0Body =>
-      '搜尋索引只會在有效解鎖 session 期間打開；App 鎖定後，索引也會跟著關閉。';
+      '搜尋索引只會在有效解鎖期間打開；App 鎖定後，索引也會跟著關閉。';
 
   @override
   String get aboutTabSearchIndexSection2Item1Title => '草稿不進搜尋';
@@ -2061,7 +2061,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item2Body =>
-      '搜尋索引的工作是幫你更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。';
+      '搜尋索引的工作是幫您更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。';
 
   @override
   String get aboutTabEditorLabel => '日記編輯器';
@@ -2071,7 +2071,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorHeroBody =>
-      '編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等你確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。';
+      '編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等您確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。';
 
   @override
   String get aboutTabEditorChip0 => '可匯出 Markdown';
@@ -2103,7 +2103,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      '你可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。';
+      '您可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。';
 
   @override
   String get aboutTabEditorSection0Item2Title => '圖片與一般附件';
@@ -2130,14 +2130,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection1Item1Body =>
-      '重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問你要不要接著上次進度寫。';
+      '重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問您要不要接著上次進度寫。';
 
   @override
   String get aboutTabEditorSection1Item2Title => '正式儲存後自動清理';
 
   @override
   String get aboutTabEditorSection1Item2Body =>
-      '當內容成功正式寫入日記庫，草稿就會被清掉；如果你取消編輯且沒有留下新變更，也不會一直堆積舊草稿。';
+      '當內容成功正式寫入日記庫，草稿就會被清掉；如果您取消編輯且沒有留下新變更，也不會一直堆積舊草稿。';
 
   @override
   String get aboutTabEditorSection2Title => '和其他資料的關係';
@@ -2164,7 +2164,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection2Item2Body =>
-      '如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒你還有內容尚未正式保存。';
+      '如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。';
 
   @override
   String get aboutTabBackupRestoreLabel => '備份與還原';
@@ -2193,7 +2193,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection0Subtitle =>
-      '如果你想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。';
+      '如果您想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Title => '保存整個加密日記庫';
@@ -2214,7 +2214,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String aboutTabBackupRestoreSection0Item2Body(int retainCount) {
-    return '本機備份與 Google Drive 都保留最新 $retainCount 份；若你匯出到外部資料夾，則不會自動輪替或刪除舊檔。';
+    return '本機備份與 Google Drive 都保留最新 $retainCount 份；若您匯出到外部資料夾，則不會自動輪替或刪除舊檔。';
   }
 
   @override
@@ -2229,7 +2229,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      '不論備份來源是 App 內清單還是外部 zip，還原流程都會用備份內容覆寫目前的 `vault/`。';
+      '不論備份來源是 App 內清單還是外部 ZIP，還原流程都會用備份內容覆寫目前的 `vault/`。';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title => '搜尋索引會重建';
@@ -2257,14 +2257,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Item0Body =>
-      '可從 zip、Markdown、HTML 或資料夾匯入內容。若是 zip，系統會先判斷是否為支援的備份格式，再決定後續處理方式。';
+      '可從 ZIP、Markdown、HTML 或資料夾匯入內容。若是 ZIP，系統會先判斷是否為支援的備份格式，再決定後續處理方式。';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Title => '匯出';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Body =>
-      '你可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。';
+      '您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Title => '它不是同步服務';
@@ -2285,19 +2285,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      '完整備份只處理正式日記庫，不包含 `drafts/`。如果你還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。';
+      '完整備份只處理正式日記庫，不包含 `drafts/`。如果您還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title => '可讀匯出要自己保管';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Body =>
-      'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由你自己決定。';
+      'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由您自己決定。';
 
   @override
   String get aboutTabBackupRestoreSection3Item2Title => '別把兩條流程混用';
 
   @override
   String get aboutTabBackupRestoreSection3Item2Body =>
-      '如果你要的是之後完整恢復整個日記庫，請使用完整備份；如果你要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。';
+      '如果您要的是之後完整恢復整個日記庫，請使用完整備份；如果您要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。';
 }

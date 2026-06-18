@@ -55,6 +55,16 @@ class EditorPage extends ConsumerStatefulWidget {
 }
 
 class _EditorPageState extends ConsumerState<EditorPage> {
+  static const Duration _attachmentVisibilityAnimationDuration = Duration(
+    milliseconds: 100,
+  );
+  static const double _editorSectionGap = 8;
+  static const Key _attachmentAreaVisibleKey = Key(
+    'editor-attachment-area-visible',
+  );
+  static const Key _attachmentAreaHiddenKey = Key(
+    'editor-attachment-area-hidden',
+  );
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _dateController = TextEditingController(
     text: DateOnly.fromDateTime(DateTime.now()).value,
@@ -565,178 +575,183 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                         Expanded(
                           child: SafeArea(
                             top: false,
-                            child: LayoutBuilder(
-                              builder:
-                                  (
-                                    BuildContext context,
-                                    BoxConstraints constraints,
-                                  ) {
-                                    final bool wide =
-                                        constraints.maxWidth >= 960;
-                                    final bool hasSidebarNonImage =
-                                        savedNonImages.isNotEmpty ||
-                                        pendingNonImages.isNotEmpty;
-                                    final Widget sidebar = Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        if (!_previewMode || hasSidebarNonImage)
-                                          EditorAttachmentStrip(
-                                            savedImages: savedImages,
-                                            pendingImages: pendingImages,
-                                            savedNonImages: savedNonImages,
-                                            pendingNonImages: pendingNonImages,
-                                            editable: _isEditing,
-                                            draggingIndex:
-                                                _draggingEditorImageIndex,
-                                            encryptedPathFuture:
-                                                _cachedEncryptedPathFuture,
-                                            onRemoveSaved:
-                                                _removeSavedAttachment,
-                                            onRemovePending:
-                                                _removePendingAttachment,
-                                            onReorder:
-                                                (int oldIndex, int newIndex) =>
-                                                    _reorderEditorImages(
-                                                      allSaved:
-                                                          allSavedAttachments,
-                                                      oldIndex: oldIndex,
-                                                      newIndex: newIndex,
+                            child: Builder(
+                              builder: (BuildContext context) {
+                                final bool keyboardVisible =
+                                    MediaQuery.viewInsetsOf(this.context).bottom >
+                                    0;
+                                final bool hideEditorChromeForKeyboard =
+                                    _isEditing && keyboardVisible;
+                                final bool showVisualEditorChrome =
+                                    !hideEditorChromeForKeyboard;
+                                final bool hasNonImageAttachments =
+                                    savedNonImages.isNotEmpty ||
+                                    pendingNonImages.isNotEmpty;
+                                final bool shouldShowSidebarAttachments =
+                                    (!_previewMode || hasNonImageAttachments) &&
+                                    showVisualEditorChrome;
+                                final Widget sidebar = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    if (shouldShowSidebarAttachments)
+                                      EditorAttachmentStrip(
+                                        savedImages: savedImages,
+                                        pendingImages: pendingImages,
+                                        savedNonImages: savedNonImages,
+                                        pendingNonImages: pendingNonImages,
+                                        editable: _isEditing,
+                                        draggingIndex:
+                                            _draggingEditorImageIndex,
+                                        encryptedPathFuture:
+                                            _cachedEncryptedPathFuture,
+                                        onRemoveSaved: _removeSavedAttachment,
+                                        onRemovePending:
+                                            _removePendingAttachment,
+                                        onReorder:
+                                            (int oldIndex, int newIndex) =>
+                                                _reorderEditorImages(
+                                                  allSaved:
+                                                      allSavedAttachments,
+                                                  oldIndex: oldIndex,
+                                                  newIndex: newIndex,
+                                                ),
+                                        onDragStart:
+                                            (int index) => setState(
+                                              () =>
+                                                  _draggingEditorImageIndex =
+                                                      index,
+                                            ),
+                                        onDragEnd: (int index) {
+                                          if (_draggingEditorImageIndex !=
+                                              null) {
+                                            setState(
+                                              () =>
+                                                  _draggingEditorImageIndex =
+                                                      null,
+                                            );
+                                          }
+                                        },
+                                      ),
+                                  ],
+                                );
+                                final Widget animatedAttachmentArea =
+                                    AnimatedSwitcher(
+                                      duration:
+                                          _attachmentVisibilityAnimationDuration,
+                                      switchInCurve: Curves.easeOut,
+                                      switchOutCurve: Curves.easeIn,
+                                      transitionBuilder:
+                                          (
+                                            Widget child,
+                                            Animation<double> animation,
+                                          ) {
+                                            return FadeTransition(
+                                              opacity: animation,
+                                              child: SizeTransition(
+                                                sizeFactor: animation,
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                      -1,
+                                                      -1,
                                                     ),
-                                            onDragStart:
-                                                (int index) => setState(
-                                                  () =>
-                                                      _draggingEditorImageIndex =
-                                                          index,
-                                                ),
-                                            onDragEnd: (int index) {
-                                              if (_draggingEditorImageIndex !=
-                                                  null) {
-                                                setState(
-                                                  () =>
-                                                      _draggingEditorImageIndex =
-                                                          null,
-                                                );
-                                              }
-                                            },
-                                          ),
-                                      ],
+                                                child: child,
+                                              ),
+                                            );
+                                          },
+                                      child: shouldShowSidebarAttachments
+                                          ? Padding(
+                                              key: _attachmentAreaVisibleKey,
+                                              padding: const EdgeInsets.only(
+                                                bottom: _editorSectionGap,
+                                              ),
+                                              child: sidebar,
+                                            )
+                                          : const SizedBox.shrink(
+                                              key: _attachmentAreaHiddenKey,
+                                            ),
                                     );
-                                    final bool showWideSidebarWithStrip =
-                                        wide &&
-                                        (!_previewMode || hasSidebarNonImage);
-                                    final bool narrowGapAfterSidebar =
-                                        !_previewMode || hasSidebarNonImage;
-                                    final Widget editorPane = Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: <Widget>[
-                                        if (_previewMode)
-                                          EditorPreviewGallery(
+                                final Widget editorPane = Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    if (_previewMode && showVisualEditorChrome)
+                                      EditorPreviewGallery(
+                                        savedImages: savedImages,
+                                        pendingImages: pendingImages,
+                                        encryptedPathFuture:
+                                            _cachedEncryptedPathFuture,
+                                        onOpenGallery: (int index) => unawaited(
+                                          _openImagePreviewGallery(
                                             savedImages: savedImages,
                                             pendingImages: pendingImages,
-                                            encryptedPathFuture:
-                                                _cachedEncryptedPathFuture,
-                                            onOpenGallery: (int index) =>
-                                                unawaited(
-                                                  _openImagePreviewGallery(
-                                                    savedImages: savedImages,
-                                                    pendingImages:
-                                                        pendingImages,
-                                                    initialIndex: index,
-                                                  ),
-                                                ),
-                                          ),
-                                        Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(
-                                              bottom:
-                                                  8 +
-                                                  MediaQuery.paddingOf(
-                                                    context,
-                                                  ).bottom,
-                                            ),
-                                            child: EditorBodySection(
-                                              previewMode: _previewMode,
-                                              bodyController: _bodyController,
-                                              typography: typography,
-                                            ),
+                                            initialIndex: index,
                                           ),
                                         ),
-                                      ],
-                                    );
+                                      ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom:
+                                              8 +
+                                              MediaQuery.paddingOf(context)
+                                                  .bottom,
+                                        ),
+                                        child: EditorBodySection(
+                                          previewMode: _previewMode,
+                                          bodyController: _bodyController,
+                                          typography: typography,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
 
-                                    return Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        12,
-                                        10,
-                                        12,
-                                        6,
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    10,
+                                    12,
+                                    6,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: <Widget>[
+                                      EditorTitleSection(
+                                        previewMode: _previewMode,
+                                        titleController: _titleController,
+                                        bodyController: _bodyController,
+                                        tagsController: _tagsController,
+                                        typography: typography,
+                                        formattedDisplayDate:
+                                            _formattedDisplayDate(context),
+                                        formattedEntryTime:
+                                            _formattedEntryTime24h(),
+                                        showTitleRequired: _showTitleRequired,
+                                        hasTitle: _hasTitle,
+                                        showUnsavedTag: showUnsavedTag,
+                                        showMetadataTags:
+                                            showVisualEditorChrome,
+                                        tagAccentArgbMap:
+                                            _watchedTagAccentArgbMap(),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: <Widget>[
-                                          EditorTitleSection(
-                                            previewMode: _previewMode,
-                                            titleController: _titleController,
-                                            bodyController: _bodyController,
-                                            tagsController: _tagsController,
-                                            typography: typography,
-                                            formattedDisplayDate:
-                                                _formattedDisplayDate(context),
-                                            formattedEntryTime:
-                                                _formattedEntryTime24h(),
-                                            showTitleRequired:
-                                                _showTitleRequired,
-                                            hasTitle: _hasTitle,
-                                            showUnsavedTag: showUnsavedTag,
-                                            tagAccentArgbMap:
-                                                _watchedTagAccentArgbMap(),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Expanded(
-                                            child: showWideSidebarWithStrip
-                                                ? Row(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: <Widget>[
-                                                      SizedBox(
-                                                        width: 320,
-                                                        child:
-                                                            SingleChildScrollView(
-                                                              child: sidebar,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: editorPane,
-                                                      ),
-                                                    ],
-                                                  )
-                                                : !wide
-                                                ? Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
-                                                    children: <Widget>[
-                                                      sidebar,
-                                                      if (narrowGapAfterSidebar)
-                                                        const SizedBox(
-                                                          height: 8,
-                                                        ),
-                                                      Expanded(
-                                                        child: editorPane,
-                                                      ),
-                                                    ],
-                                                  )
-                                                : editorPane,
-                                          ),
-                                        ],
+                                      const SizedBox(
+                                        height: _editorSectionGap,
                                       ),
-                                    );
-                                  },
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: <Widget>[
+                                            animatedAttachmentArea,
+                                            Expanded(child: editorPane),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),

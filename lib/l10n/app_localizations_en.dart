@@ -30,19 +30,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonActionClose => 'Close';
 
   @override
-  String get commonReadFailureTitle => 'Read failed';
+  String get commonReadFailureTitle => 'Read Failed';
 
   @override
-  String get commonConfirmDeleteTitle => 'Confirm delete';
+  String get commonConfirmDeleteTitle => 'Confirm Delete';
 
   @override
-  String get commonNoTagSearchResults => 'No matching tags';
+  String get commonNoTagSearchResults => 'No Matching Tags';
 
   @override
   String get commonCloseTooltip => 'Close';
 
   @override
-  String get commonClearSearchTooltip => 'Clear search';
+  String get commonClearSearchTooltip => 'Clear Search';
 
   @override
   String get commonUnitEntries => 'entries';
@@ -72,32 +72,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String commonConfirmDeleteEntries(int count) {
-    return 'Delete $count diary entries? This cannot be undone.';
+    return 'Delete $count entries? This cannot be undone.';
   }
 
   @override
-  String get tagAddTitle => 'Add tag';
+  String get tagAddTitle => 'Add Tag';
 
   @override
-  String get tagEditTitle => 'Edit tag';
+  String get tagEditTitle => 'Edit Tag';
 
   @override
   String get tagSaveButton => 'Save';
 
   @override
-  String get tagNameHint => 'Tag name';
+  String get tagNameHint => 'Tag Name';
 
   @override
   String get tagNameRequiredMessage => 'Please enter a tag name';
 
   @override
-  String get tagDeleteLabel => 'Delete tag';
+  String get tagDeleteLabel => 'Delete Tag';
 
   @override
-  String get tagUnnamedPreview => 'Untitled tag';
+  String get tagUnnamedPreview => 'Untitled Tag';
 
   @override
-  String get tagDefaultColorLabel => 'Default color';
+  String get tagDefaultColorLabel => 'Default Color';
 
   @override
   String get tagHueLabel => 'Hue';
@@ -130,7 +130,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalizationTypographyResetConfirmTitle =>
-      'Reset diary typography?';
+      'Reset Entry Typography?';
 
   @override
   String get personalizationTypographyResetConfirmBody =>
@@ -141,7 +141,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalizationTypographyResetSuccess =>
-      'Diary typography has been reset.';
+      'Entry typography has been reset.';
 
   @override
   String get personalizationLanguageSectionTitle => 'Language';
@@ -151,7 +151,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose the interface language.';
 
   @override
-  String get personalizationSessionTimeoutSectionTitle => 'Auto lock';
+  String get personalizationSessionTimeoutSectionTitle => 'Auto-Lock';
 
   @override
   String get personalizationSessionTimeoutSectionDescription =>
@@ -161,7 +161,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personalizationSessionTimeoutUnitLabel => 'min';
 
   @override
-  String get personalizationImageCompressSectionTitle => 'Image quality';
+  String get personalizationImageCompressSectionTitle => 'Image Quality';
 
   @override
   String get personalizationImageCompressSectionDescription =>
@@ -177,11 +177,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personalizationImageCompressHighLabel => 'High';
 
   @override
-  String get personalizationAppearanceSectionTitle => 'Theme';
+  String get personalizationAppearanceSectionTitle => 'Appearance';
 
   @override
   String get personalizationAppearanceSectionDescription =>
-      'Choose light, dark, or follow the system appearance.';
+      'Choose light, dark, or system appearance.';
 
   @override
   String get personalizationAppearanceSystemLabel => 'System';
@@ -193,27 +193,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personalizationAppearanceDarkLabel => 'Dark';
 
   @override
-  String get personalizationTypographySectionTitle => 'Diary typography';
+  String get personalizationTypographySectionTitle => 'Entry Typography';
 
   @override
   String get personalizationTypographySectionDescription =>
-      'Adjust the font size, line height, and paragraph spacing used in diary editing and preview.';
+      'Adjust the font size, line height, and paragraph spacing used when editing and previewing entries.';
 
   @override
-  String get personalizationTitleFontSizeLabel => 'Title font size';
+  String get personalizationTitleFontSizeLabel => 'Title Font Size';
 
   @override
-  String get personalizationTitleLineHeightLabel => 'Title line height';
+  String get personalizationTitleLineHeightLabel => 'Title Line Height';
 
   @override
-  String get personalizationBodyFontSizeLabel => 'Body font size';
+  String get personalizationBodyFontSizeLabel => 'Body Font Size';
 
   @override
-  String get personalizationBodyLineHeightLabel => 'Body line height';
+  String get personalizationBodyLineHeightLabel => 'Body Line Height';
 
   @override
   String get personalizationBodyParagraphSpacingLabel =>
-      'Body paragraph spacing';
+      'Body Paragraph Spacing';
 
   @override
   String get settingsPageTitle => 'Settings';
@@ -254,23 +254,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalizationTypographyPreviewBodyParagraph1 =>
-      'Write down how you feel now and let words keep the memory warm.';
+      'Write down how you feel now and let words keep the memory warm. Write down how you feel now and let words keep the memory warm.';
 
   @override
   String get personalizationTypographyPreviewBodyParagraph2 =>
-      'Paragraph spacing is reflected in the preview.';
+      'Paragraph spacing is also reflected in the preview. Paragraph spacing is also reflected in the preview.';
 
   @override
-  String get sessionBlockedLockedTitle => 'Diary vault locked';
+  String get sessionBlockedLockedTitle => 'Diary Vault Locked';
 
   @override
-  String get sessionBlockedRecoveryRequiredTitle => 'Recovery key required';
+  String get sessionBlockedRecoveryRequiredTitle => 'Recovery Key Required';
 
   @override
-  String get sessionBlockedFatalErrorTitle => 'Unable to start';
+  String get sessionBlockedFatalErrorTitle => 'Unable to Start';
 
   @override
-  String get sessionBlockedDefaultTitle => 'Please wait';
+  String get sessionBlockedDefaultTitle => 'Please Wait';
 
   @override
   String get sessionBlockedLockedSubtitle =>
@@ -285,7 +285,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check your setup or restart the app';
 
   @override
-  String get editorPageTitle => 'Edit diary';
+  String get editorPageTitle => 'Edit Entry';
 
   @override
   String get editorTitleHint => 'Enter a title';
@@ -301,7 +301,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorNeedsRecoveryKeyMessage =>
-      'Create a recovery key before creating or editing diaries.';
+      'Create a recovery key before creating or editing entries.';
 
   @override
   String get editorSessionLockedFallback =>
@@ -314,18 +314,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorUnsavedDraftLabel => 'Unsaved';
 
   @override
-  String get editorConfirmDeleteTitle => 'Confirm delete';
+  String get editorConfirmDeleteTitle => 'Confirm Delete';
 
   @override
   String get editorConfirmDeleteBody =>
-      'Delete this diary entry? This cannot be undone.';
+      'Delete this entry? This cannot be undone.';
 
   @override
   String get editorTagsStudioTitle => 'Tags';
 
   @override
   String get editorTagsStudioGuide =>
-      'Create a new tag from the top right, or tap a library tag below to add it.';
+      'Create a new tag from the top right, or tap a tag from the library below to add it.';
 
   @override
   String get editorTagsStudioEmptyChosen => 'No tags applied yet';
@@ -334,20 +334,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTagsStudioAddButton => 'Add';
 
   @override
-  String get editorPreviewUnavailable => 'Preview unavailable';
+  String get editorPreviewUnavailable => 'Preview Unavailable';
 
   @override
   String get editorTagSearchHint => 'Search tags…';
 
   @override
-  String get editorTagLibraryHint => 'Tags in library · tap to add';
+  String get editorTagLibraryHint => 'Tag Library · Tap to Add';
 
   @override
   String get editorTagPoolEmpty =>
       'No more available tags in the library, or all have already been added.';
 
   @override
-  String get editorTagAddTooltip => 'Add tag';
+  String get editorTagAddTooltip => 'Add Tag';
 
   @override
   String get editorTooltipCancel => 'Cancel';
@@ -356,7 +356,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipSave => 'Save';
 
   @override
-  String get editorTooltipSaveNeedsTitle => 'Enter a title first';
+  String get editorTooltipSaveNeedsTitle => 'Enter a Title First';
 
   @override
   String get editorTooltipDate => 'Date';
@@ -365,14 +365,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipTime => 'Time';
 
   @override
-  String get editorTooltipEditTags => 'Edit tags';
+  String get editorTooltipEditTags => 'Edit Tags';
 
   @override
   String get editorTooltipUploadImages =>
-      'Upload images (multiple selection supported)';
+      'Upload Images (Multiple Selection Supported)';
 
   @override
-  String get editorTooltipAddAttachment => 'Add attachment';
+  String get editorTooltipAddAttachment => 'Add Attachment';
 
   @override
   String get editorTooltipDelete => 'Delete';
@@ -381,13 +381,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipEdit => 'Edit';
 
   @override
-  String get editorRestoreDraftTitle => 'Unfinished draft found';
+  String get editorRestoreDraftTitle => 'Unfinished Draft Found';
 
   @override
   String get editorRestoreDraftDecline => 'Ignore';
 
   @override
-  String get editorRestoreDraftAccept => 'Restore draft';
+  String get editorRestoreDraftAccept => 'Restore Draft';
 
   @override
   String get editorUntitledDraft => 'Untitled';
@@ -403,11 +403,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get editorDiscardDraftTitle => 'Discard draft?';
+  String get editorDiscardDraftTitle => 'Discard Draft?';
 
   @override
   String get editorDiscardDraftBody =>
-      'Your changes have not been saved as a diary entry. Discard the draft and leave?';
+      'Your changes have not been saved as an entry. Discard the draft and leave?';
 
   @override
   String get editorDiscardDraftConfirm => 'Discard';
@@ -427,10 +427,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeUnlockingTitle => 'Unlocking';
 
   @override
-  String get homeRetryVerification => 'Verify again';
+  String get homeRetryVerification => 'Verify Again';
 
   @override
-  String get homeGoToSettings => 'Go to settings';
+  String get homeGoToSettings => 'Go to Settings';
 
   @override
   String get homeNavHome => 'Home';
@@ -445,10 +445,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeNavOverview => 'Overview';
 
   @override
-  String get homeTooltipNewEntry => 'New diary';
+  String get homeTooltipNewEntry => 'New Entry';
 
   @override
-  String get homeTooltipSettings => 'Settings and backup';
+  String get homeTooltipSettings => 'Settings & Backup';
 
   @override
   String get homeTooltipExportHtml => 'Export HTML';
@@ -457,62 +457,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTooltipDelete => 'Delete';
 
   @override
-  String get homeTooltipAddTag => 'Add tag';
+  String get homeTooltipAddTag => 'Add Tag';
 
   @override
-  String get homeTooltipEditTag => 'Edit tag';
+  String get homeTooltipEditTag => 'Edit Tag';
 
   @override
-  String get homeTooltipDeleteTag => 'Delete tag';
+  String get homeTooltipDeleteTag => 'Delete Tag';
 
   @override
-  String get homeTooltipDeselectTag => 'Clear selection';
+  String get homeTooltipDeselectTag => 'Clear Selection';
 
   @override
-  String get homeSelectionSelectAll => 'Select all';
+  String get homeSelectionSelectAll => 'Select All';
 
   @override
-  String get homeSelectionDeselectAll => 'Deselect all';
+  String get homeSelectionDeselectAll => 'Deselect All';
 
   @override
-  String get homeSelectionSelectDiary => 'Select diary';
+  String get homeSelectionSelectDiary => 'Select Entry';
 
   @override
   String homeSelectionSelectedCount(int count) {
-    return '$count selected';
+    return '$count Selected';
   }
 
   @override
   String get homeSearchHint => 'Search titles, content, or tags';
 
   @override
-  String get homeEmptyDiaryTitle => 'No diary entries yet';
+  String get homeEmptyDiaryTitle => 'No Entries Yet';
 
   @override
-  String get homeEmptyDiaryMessage =>
-      'Create your first diary entry to see it here.';
+  String get homeEmptyDiaryMessage => 'Create your first entry to see it here.';
 
   @override
-  String get homeNoAnalysisTitle => 'No data to analyze yet';
+  String get homeNoAnalysisTitle => 'No Data to Analyze Yet';
 
   @override
   String get homeNoAnalysisMessage =>
-      'Write something first to see stats, tags, and scoped diary entries here.';
+      'Write something first to see stats, tags, and entries in scope here.';
 
   @override
-  String get homeExportRecapLabel => 'Export';
+  String get homeExportRecapLabel => 'Export Recap';
 
   @override
-  String get homeExportRecapAll => 'Export full recap';
+  String get homeExportRecapAll => 'Export Full Recap';
 
   @override
-  String get homeExportRecapYear => 'Export yearly recap';
+  String get homeExportRecapYear => 'Export Yearly Recap';
 
   @override
-  String get homeExportRecapMonth => 'Export monthly recap';
+  String get homeExportRecapMonth => 'Export Monthly Recap';
 
   @override
-  String get homePopularTagsTitle => 'Popular tags';
+  String get homePopularTagsTitle => 'Popular Tags';
 
   @override
   String get homeScopeTitle => 'Scope';
@@ -527,11 +526,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeScopeMonthLabel => 'Month';
 
   @override
-  String get homeScopeEmptyDiary => 'No diary entries in this scope.';
+  String get homeScopeEmptyDiary => 'No entries in this scope.';
 
   @override
   String homeScopeEmptyDiaryForTag(String tag) {
-    return 'No diary entries with \"$tag\" in this scope.';
+    return 'No entries with \"$tag\" in this scope.';
   }
 
   @override
@@ -541,14 +540,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeUnsavedDraftLabel => 'Unsaved';
 
   @override
-  String get homeHtmlExportLargeTitle => 'HTML file may be large';
+  String get homeHtmlExportLargeTitle => 'HTML File May Be Large';
 
   @override
   String get homeHtmlExportEmbeddedHint =>
       'Images are embedded into a single HTML file, which may be slower to open or harder to share.';
 
   @override
-  String get homeHtmlExportProceed => 'Export anyway';
+  String get homeHtmlExportProceed => 'Export Anyway';
 
   @override
   String homeHtmlExportSelectionSummary(
@@ -574,29 +573,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeDeleteTagTitle => 'Delete tag';
+  String get homeDeleteTagTitle => 'Delete Tag';
 
   @override
   String homeDeleteTagConfirm(String label) {
-    return 'Remove \"$label\" from all diary entries?';
+    return 'Remove \"$label\" from all entries?';
   }
 
   @override
   String get homeTagSearchHint => 'Search tags…';
 
   @override
-  String get homeNoTagsTitle => 'No tags yet';
+  String get homeNoTagsTitle => 'No Tags Yet';
 
   @override
   String get homeNoTagsMessage =>
-      'Create your own tags or use the defaults. They stay in the list even if no diary entry uses them yet.';
+      'Create your own tags or use the defaults. They stay in the list even if no entry uses them yet.';
 
   @override
   String get homeTagListGuide =>
-      'Tap a row in the tag list to preview diary entries filtered by that tag. Tap the same row again to clear the selection.';
+      'Tap a row in the tag list to preview entries filtered by that tag. Tap the same row again to clear the selection.';
 
   @override
-  String get homeTagPreviewTitle => 'Select a tag to preview diaries';
+  String get homeTagPreviewTitle => 'Select a Tag to Preview Entries';
 
   @override
   String homeTagDeleted(String label) {
@@ -619,42 +618,42 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeTagRowTapHint => 'Tap row to preview';
+  String get homeTagRowTapHint => 'Tap Row to Preview';
 
   @override
   String homeDiarySectionTitleForDate(String dateLabel) {
-    return 'Diary · $dateLabel';
+    return 'Entries · $dateLabel';
   }
 
   @override
   String homeEmptyDayMessage(String dateLabel) {
-    return 'No diary entries on $dateLabel.';
+    return 'No entries on $dateLabel.';
   }
 
   @override
-  String get homeOverviewDataTitle => 'Data overview';
+  String get homeOverviewDataTitle => 'Data Overview';
 
   @override
-  String get homeOverviewScopeAll => 'Current scope · All diaries';
+  String get homeOverviewScopeAll => 'Scope · All Entries';
 
   @override
   String homeOverviewScopeYear(int year) {
-    return 'Current scope · $year';
+    return 'Scope · $year';
   }
 
   @override
   String homeOverviewScopeMonth(int year, int month) {
-    return 'Current scope · $year/$month';
+    return 'Scope · $year/$month';
   }
 
   @override
-  String get homeOverviewWritingDaysLabel => 'Writing days';
+  String get homeOverviewWritingDaysLabel => 'Days Written';
 
   @override
-  String get homeOverviewAvgLengthLabel => 'Average length';
+  String get homeOverviewAvgLengthLabel => 'Avg. Length';
 
   @override
-  String get homeOverviewAttachmentsLabel => 'Total attachments';
+  String get homeOverviewAttachmentsLabel => 'Attachments';
 
   @override
   String homeOverviewAttachmentCount(String attachmentSummary) {
@@ -663,7 +662,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeOverviewLongestStreak(String daySummary) {
-    return 'Longest streak $daySummary';
+    return 'Streak $daySummary';
   }
 
   @override
@@ -673,17 +672,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeDiarySectionTag(String tag) {
-    return 'Diary · $tag';
+    return 'Entries · $tag';
   }
 
   @override
-  String get homeDiarySectionAll => 'Diary · All';
+  String get homeDiarySectionAll => 'Entries · All';
 
   @override
-  String get homeDiarySectionByYear => 'Diary · By year';
+  String get homeDiarySectionByYear => 'Entries · By Year';
 
   @override
-  String get homeDiarySectionByMonth => 'Diary · By month';
+  String get homeDiarySectionByMonth => 'Entries · By Month';
 
   @override
   String homeDiarySectionWithTag(String baseTitle, String tag) {
@@ -726,17 +725,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeOverviewAvgLengthValue(int charactersPerEntry) {
-    return '$charactersPerEntry chars / entry';
+    return '$charactersPerEntry chars/entry';
   }
 
   @override
   String homeOverviewAttachmentDetail(int photos, int files) {
-    return 'Photos $photos · Files $files';
+    return 'Pics $photos · Files $files';
   }
 
   @override
   String homeOverviewMostEntriesInSingleDay(String entrySummary) {
-    return 'Max in one day $entrySummary';
+    return 'Peak $entrySummary';
   }
 
   @override
@@ -753,7 +752,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultTransferLocalSectionDescriptionBackupLocked =>
-      'Local backup/export require an unlocked vault and a recovery key. If none exists or you forgot it, import an external backup to restore.';
+      'Local backup/export requires an unlocked vault and a recovery key. If none exists or you forgot it, import an external backup to restore.';
 
   @override
   String get vaultTransferDriveSectionDescriptionBackupLocked =>
@@ -819,23 +818,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultTagShopping => 'Shopping';
 
   @override
-  String get settingsActionConfirm => 'Confirm restore';
+  String get settingsActionConfirm => 'Confirm Restore';
 
   @override
   String get settingsActionUpdate => 'Update';
 
   @override
-  String get settingsActionVerifyAndRestore => 'Verify and restore';
+  String get settingsActionVerifyAndRestore => 'Verify and Restore';
 
   @override
-  String get settingsRecoveryKeyFieldLabel => 'Recovery key';
+  String get settingsRecoveryKeyFieldLabel => 'Recovery Key';
 
   @override
   String get settingsRecoveryKeyFieldHint => 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
 
   @override
   String settingsRecoveryKeyHintLine(String hint) {
-    return 'Last 4 digits: $hint';
+    return 'Last 4: $hint';
   }
 
   @override
@@ -860,7 +859,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Starting the restored diary vault…';
 
   @override
-  String get settingsPlatformSectionTitle => 'Platform limitation';
+  String get settingsPlatformSectionTitle => 'Platform Limitation';
 
   @override
   String get settingsPlatformSectionDescription =>
@@ -883,18 +882,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityLockCancelUnlockButton =>
-      'Cancel and verify manually';
+      'Cancel and Verify Manually';
 
   @override
   String get settingsSecurityLockUnlockWithRecoveryButton =>
-      'Unlock with recovery key';
+      'Unlock with Recovery Key';
 
   @override
   String get settingsSecurityLockRecoveryUnlockHint =>
       'Enter the recovery key to unlock the diary vault.';
 
   @override
-  String get settingsSecurityLockRetryVerificationButton => 'Verify again';
+  String get settingsSecurityLockRetryVerificationButton => 'Verify Again';
 
   @override
   String get settingsRecoveryKeyNotSetupBanner =>
@@ -905,26 +904,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recovery key created. Make sure you have saved it securely.';
 
   @override
-  String get settingsRecoveryKeyCreateButton => 'Create recovery key';
+  String get settingsRecoveryKeyCreateButton => 'Create Recovery Key';
 
   @override
-  String get settingsRecoveryKeyRotateButton => 'Rotate recovery key';
+  String get settingsRecoveryKeyRotateButton => 'Update Recovery Key';
 
   @override
-  String get settingsRecoveryKeyFactVaultLabel => 'Diary vault';
+  String get settingsRecoveryKeyFactVaultLabel => 'Diary Vault';
 
   @override
-  String get settingsRecoveryKeyFactHintLabel => 'Last four digits';
+  String get settingsRecoveryKeyFactHintLabel => 'Last 4';
 
   @override
   String get settingsRecoveryKeyFactKdfLabel => 'Encryption';
 
   @override
-  String get settingsRecoveryKeySaveDialogTitle => 'Save your recovery key';
+  String get settingsRecoveryKeySaveDialogTitle => 'Save Your Recovery Key';
 
   @override
   String get settingsRecoveryKeySaveNewDialogTitle =>
-      'Save your new recovery key';
+      'Save Your New Recovery Key';
 
   @override
   String get settingsRecoveryKeyCopyButton => 'Copy';
@@ -933,21 +932,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRecoveryKeyCopiedMessage => 'Copied to clipboard';
 
   @override
-  String get settingsRecoveryKeyRotateDialogTitle => 'Rotate recovery key?';
+  String get settingsRecoveryKeyRotateDialogTitle => 'Update Recovery Key?';
 
   @override
   String get settingsRecoveryKeyRotateDialogBody =>
-      'A new recovery key will be generated—save it immediately. Existing backups still require the old key to restore; create a new backup after rotating.';
+      'A new recovery key will be generated—save it immediately.\n\nExisting local or Google Drive backups still require the old key to restore; create a new backup after updating.';
 
   @override
-  String get settingsSecurityOverviewSectionTitle => 'Security overview';
+  String get settingsSecurityOverviewSectionTitle => 'Security Overview';
 
   @override
   String get settingsSecurityOverviewSectionDescription =>
       'Review recovery key status, unlock method, and search index health.';
 
   @override
-  String get settingsSecurityOverviewRecoveryKeyTitle => 'Recovery key';
+  String get settingsSecurityOverviewRecoveryKeyTitle => 'Recovery Key';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyReady =>
@@ -958,7 +957,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not created yet. Create one before backing up or exporting.';
 
   @override
-  String get settingsSecurityOverviewUnlockStatusTitle => 'Unlock status';
+  String get settingsSecurityOverviewUnlockStatusTitle => 'Unlock Status';
 
   @override
   String get settingsSecurityOverviewUnlockStatusUnlocked =>
@@ -969,10 +968,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock first to back up, restore, or change settings.';
 
   @override
-  String get settingsSecurityOverviewUnlockModeTitle => 'Unlock method';
+  String get settingsSecurityOverviewUnlockModeTitle => 'Unlock Method';
 
   @override
-  String get settingsSecurityOverviewTrustedDeviceTitle => 'Trusted device';
+  String get settingsSecurityOverviewTrustedDeviceTitle => 'Trusted Device';
 
   @override
   String get settingsSecurityOverviewTrustedDeviceReady =>
@@ -994,24 +993,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsSecurityOverviewIndexTitle => 'Search index';
+  String get settingsSecurityOverviewIndexTitle => 'Search Index';
 
   @override
   String get settingsSecurityOverviewCreateRecoveryKeyButton =>
-      'Create recovery key';
+      'Create Recovery Key';
 
   @override
   String get settingsSecurityOverviewRotateRecoveryKeyButton =>
-      'Rotate recovery key';
+      'Update Recovery Key';
 
   @override
-  String get settingsSecurityOverviewRebuildIndexButton => 'Rebuild index';
+  String get settingsSecurityOverviewRebuildIndexButton => 'Rebuild Index';
 
   @override
   String get settingsSecurityOverviewHealthLevelOk => 'OK';
 
   @override
-  String get settingsSecurityOverviewHealthLevelWarning => 'Needs attention';
+  String get settingsSecurityOverviewHealthLevelWarning => 'Needs Attention';
 
   @override
   String get settingsSecurityOverviewHealthLevelError => 'Error';
@@ -1020,17 +1019,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsUnlockModeFullNone => 'None';
 
   @override
-  String get settingsUnlockModeFullDeviceLock => 'Device screen lock';
+  String get settingsUnlockModeFullDeviceLock => 'Device Screen Lock';
 
   @override
-  String get settingsUnlockModeFullBiometric => 'Biometric verification';
+  String get settingsUnlockModeFullBiometric => 'Biometric Verification';
 
   @override
-  String get settingsUnlockMethodSectionTitle => 'Unlock method';
+  String get settingsUnlockMethodSectionTitle => 'Unlock Method';
 
   @override
   String settingsUnlockMethodSectionDescription(String timeoutLabel) {
-    return 'The app locks after $timeoutLabel. Brief app switches usually do not trigger a lock. When you return, verify using the method below.';
+    return 'The app auto-locks after staying in the background for $timeoutLabel. Brief app switches usually do not trigger a lock. When you return, verify using the method below.';
   }
 
   @override
@@ -1041,14 +1040,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsUnlockMethodSegmentNone => 'None';
 
   @override
-  String get settingsUnlockMethodSegmentDeviceLock => 'Screen lock';
+  String get settingsUnlockMethodSegmentDeviceLock => 'Screen Lock';
 
   @override
   String get settingsUnlockMethodSegmentBiometric => 'Biometric';
 
   @override
   String get settingsUnlockMethodBiometricNeedsDeviceLockHint =>
-      'Requires a screen lock and enrolled biometrics. If verification is cancelled or fails, use the screen lock instead of the recovery key.';
+      'Requires a screen lock and enrolled biometrics.\nIf verification is cancelled or fails, use the screen lock instead of the recovery key.';
 
   @override
   String get settingsUnlockModeChangeCancelled =>
@@ -1072,24 +1071,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsSessionTimeoutBackgroundLockExplanation(String timeoutLabel) {
-    return 'The app locks after $timeoutLabel; brief app switches usually do not trigger a lock.';
+    return 'The app auto-locks after staying in the background for $timeoutLabel; brief app switches usually do not trigger a lock.';
   }
 
   @override
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel) {
-    return 'The app locks after $timeoutLabel. Change this to 1/3/5/10 minutes in Personalization. Auto-lock pauses during backup, restore, or import/export; when returning, verify with your chosen unlock method.';
+    return 'The app auto-locks after staying in the background for $timeoutLabel; brief app switches usually do not trigger a lock. You can change this to 1 / 3 / 5 / 10 minutes in Personalization. Auto-lock pauses during backup, restore, or import/export; when you return, verify with your current unlock method.';
   }
 
   @override
-  String get settingsImportExportSectionTitle => 'Import and export';
+  String get settingsImportExportSectionTitle => 'Import & Export';
 
   @override
   String get settingsImportExportSectionDescriptionEnabled =>
-      'Import diaries from other apps or export them as files. Supports Markdown, HTML, and Easy Diary backups.';
+      'Import entries from other apps or export them as files. Supports Markdown, HTML, and Easy Diary backups.';
 
   @override
   String get settingsImportExportImportNoEntriesMessage =>
-      'No importable diaries found. Check the file format.';
+      'No importable entries found. Check the file format.';
 
   @override
   String get settingsImportExportImportAllSkippedMessage =>
@@ -1097,7 +1096,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsImportExportFailureZipNoEntries =>
-      'The zip contains no importable Markdown, HTML, or full Easy Diary backup.';
+      'The ZIP contains no importable Markdown, HTML, or full Easy Diary backup.';
 
   @override
   String get settingsImportExportFailureEasyDiaryUnsupportedPlatform =>
@@ -1109,24 +1108,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsImportExportFailureEasyDiaryEmptyBackup =>
-      'The Easy Diary backup contains no importable diaries.';
+      'The Easy Diary backup contains no importable entries.';
 
   @override
   String get settingsImportExportFailureEasyDiaryAllEncrypted =>
-      'All diaries in the Easy Diary backup are encrypted and cannot be imported.';
+      'All entries in the Easy Diary backup are encrypted and cannot be imported.';
 
   @override
-  String get settingsImportExportImportProgress => 'Importing diaries…';
+  String get settingsImportExportImportProgress => 'Importing entries…';
 
   @override
-  String get settingsImportExportExportButton => 'Export diaries';
+  String get settingsImportExportExportButton => 'Export Entries';
 
   @override
-  String get settingsImportExportImportButton => 'Import diaries';
+  String get settingsImportExportImportButton => 'Import Entries';
 
   @override
   String get settingsImportExportExportProgress =>
-      'Exporting diaries and preparing attachments…';
+      'Exporting entries and preparing attachments…';
 
   @override
   String settingsImportExportExportSuccess(String path) {
@@ -1135,7 +1134,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsImportExportImportSuccess(int count) {
-    return 'Imported $count diary entries.';
+    return 'Imported $count entries.';
   }
 
   @override
@@ -1143,7 +1142,7 @@ class AppLocalizationsEn extends AppLocalizations {
     int count,
     int skippedFiles,
   ) {
-    return 'Imported $count diary entries; $skippedFiles files could not be parsed.';
+    return 'Imported $count entries; $skippedFiles files could not be parsed.';
   }
 
   @override
@@ -1151,7 +1150,7 @@ class AppLocalizationsEn extends AppLocalizations {
     int count,
     int skippedAttachments,
   ) {
-    return 'Imported $count diary entries; $skippedAttachments images could not be imported.';
+    return 'Imported $count entries; $skippedAttachments images could not be imported.';
   }
 
   @override
@@ -1160,45 +1159,45 @@ class AppLocalizationsEn extends AppLocalizations {
     int skippedFiles,
     int skippedAttachments,
   ) {
-    return 'Imported $count diary entries; $skippedFiles files and $skippedAttachments images could not be imported.';
+    return 'Imported $count entries; $skippedFiles files and $skippedAttachments images could not be imported.';
   }
 
   @override
-  String get settingsLocalBackupSectionTitle => 'Local backup and restore';
+  String get settingsLocalBackupSectionTitle => 'Local Backup & Restore';
 
   @override
   String get settingsLocalBackupSectionDescriptionEnabled =>
-      'Create full backups stored on this device; restore overwrites current diaries. (Keeps up to 5 local backups)';
+      'Create full backups stored on this device; restore overwrites current entries. (Keeps up to 5 local backups)';
 
   @override
-  String get settingsLocalBackupCreateButton => 'Create local backup';
+  String get settingsLocalBackupCreateButton => 'Create Local Backup';
 
   @override
-  String get settingsLocalBackupRestoreButton => 'Restore from local backup';
+  String get settingsLocalBackupRestoreButton => 'Restore from Local Backup';
 
   @override
   String get settingsLocalBackupExportToExternalButton =>
-      'Export backup to folder';
+      'Export Backup to Folder';
 
   @override
   String get settingsLocalBackupImportFromExternalButton =>
-      'Import external backup';
+      'Import External Backup';
 
   @override
-  String get settingsLocalBackupPickDialogTitle => 'Choose local backup';
+  String get settingsLocalBackupPickDialogTitle => 'Choose Local Backup';
 
   @override
   String get settingsLocalBackupPickExternalBackupDialogTitle =>
-      'Choose backup zip';
+      'Choose Backup ZIP';
 
   @override
   String get settingsLocalBackupNoBackups => 'No local backups yet.';
 
   @override
-  String get settingsLocalBackupDeleteBackupTooltip => 'Delete backup';
+  String get settingsLocalBackupDeleteBackupTooltip => 'Delete Backup';
 
   @override
-  String get settingsLocalBackupDeleteConfirmTitle => 'Delete local backup?';
+  String get settingsLocalBackupDeleteConfirmTitle => 'Delete Local Backup?';
 
   @override
   String settingsLocalBackupBackupSuccessInApp(String fileName) {
@@ -1226,51 +1225,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsDriveBackupSectionTitle =>
-      'Google Drive backup and restore';
+  String get settingsDriveBackupSectionTitle => 'Google Drive Backup & Restore';
 
   @override
   String get settingsDriveBackupSectionDescriptionEnabled =>
-      'Link a Google account to upload backups or restore from the cloud; restores overwrite current diaries. (Keeps up to 5 cloud backups)';
+      'Link a Google Account to upload backups or restore from the cloud; restores overwrite current entries. (Keeps up to 5 cloud backups)';
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
-      'Google sign-in is not configured in this build, so cloud backup is unavailable.';
+      'Google Sign-In is not configured in this build, so cloud backup is unavailable.';
 
   @override
-  String get settingsDriveBackupLinkButton => 'Link Google account';
+  String get settingsDriveBackupLinkButton => 'Link Google Account';
 
   @override
-  String get settingsDriveBackupSwitchAccountButton => 'Switch account';
+  String get settingsDriveBackupSwitchAccountButton => 'Switch Account';
 
   @override
   String get settingsDriveBackupDisconnectButton => 'Disconnect';
 
   @override
-  String get settingsDriveBackupUploadButton => 'Back up to Google Drive';
+  String get settingsDriveBackupUploadButton => 'Back Up to Google Drive';
 
   @override
   String get settingsDriveBackupRestoreButton => 'Restore from Google Drive';
 
   @override
   String get settingsDriveBackupDisconnectedLabel =>
-      'Google account not linked';
+      'Google Account Not Linked';
 
   @override
-  String get settingsDriveBackupFallbackAccountLabel => 'Google account';
+  String get settingsDriveBackupFallbackAccountLabel => 'Google Account';
 
   @override
   String get settingsDriveBackupLinkSuccessEmpty =>
-      'Google account linked. You can back up or restore now.';
+      'Google Account linked. You can back up or restore now.';
 
   @override
   String settingsDriveBackupLinkSuccess(String accountLabel) {
-    return 'Google account linked: $accountLabel';
+    return 'Google Account linked: $accountLabel';
   }
 
   @override
   String get settingsDriveBackupSwitchAccountSuccessEmpty =>
-      'Google account switched.';
+      'Google Account switched.';
 
   @override
   String settingsDriveBackupSwitchAccountSuccess(String accountLabel) {
@@ -1279,11 +1277,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDriveBackupDisconnectSuccess =>
-      'Google account disconnected. Cloud backups are kept.';
+      'Google Account disconnected. Cloud backups are kept.';
 
   @override
   String get settingsDriveBackupDisconnectConfirmTitle =>
-      'Disconnect Google account?';
+      'Disconnect Google Account?';
 
   @override
   String get settingsDriveBackupDisconnectConfirmBody =>
@@ -1304,17 +1302,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'No backups on Google Drive yet. Create one first.';
 
   @override
-  String get settingsDriveBackupPickDialogTitle => 'Choose Google Drive backup';
+  String get settingsDriveBackupPickDialogTitle => 'Choose Google Drive Backup';
 
   @override
   String get settingsDriveBackupUnknownCreatedTime => 'Unknown creation time';
 
   @override
-  String get settingsDriveBackupDeleteBackupTooltip => 'Delete backup';
+  String get settingsDriveBackupDeleteBackupTooltip => 'Delete Backup';
 
   @override
   String get settingsDriveBackupDeleteConfirmTitle =>
-      'Delete Google Drive backup?';
+      'Delete Google Drive Backup?';
 
   @override
   String settingsDriveBackupDeleteBackupSuccess(String fileName) {
@@ -1332,7 +1330,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsRestoreDialogConfirmLocalTitle => 'Restore local backup?';
+  String get settingsRestoreDialogConfirmLocalTitle => 'Restore Local Backup?';
 
   @override
   String get settingsRestoreDialogConfirmDriveTitle =>
@@ -1345,7 +1343,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreDialogRecoveryKeyTitle =>
-      'Enter backup recovery key';
+      'Enter Backup Recovery Key';
 
   @override
   String get settingsRestoreDialogRecoveryKeyEmptyError =>
@@ -1357,7 +1355,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreDialogSubtitleRotatedBackup =>
-      'This backup was created before the recovery key was rotated. Enter the old key saved with that backup.';
+      'This backup was created before the recovery key was updated. Enter the old key saved when that backup was created, not the current new key.';
 
   @override
   String get settingsRestoreDialogSubtitleSameVaultManual =>
@@ -1369,7 +1367,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreBulletOverwriteWarning =>
-      'Backup contents will overwrite local diaries. Current data cannot be recovered.';
+      'Backup contents will overwrite local entries. Current data cannot be recovered.';
 
   @override
   String get settingsRestoreBulletRebuildIndex =>
@@ -1381,7 +1379,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreBulletRotatedBackup =>
-      'This backup was created before the recovery key rotation. After restore, enter the old recovery key saved with that backup.';
+      'This backup was created before the recovery key was updated. After restore, enter the old recovery key saved with that backup, not the current new key.';
 
   @override
   String get settingsRestoreBulletTrustedAutoUnlock =>
@@ -1408,7 +1406,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock to rebuild the search index.';
 
   @override
-  String get settingsIndexLinkDriveProgress => 'Linking Google account…';
+  String get settingsIndexLinkDriveProgress => 'Linking Google Account…';
 
   @override
   String get settingsIndexSwitchDriveAccountProgress => 'Switching account…';
@@ -1418,49 +1416,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsIndexRebuildCompleted(int entryCount, String finishedAt) {
-    return 'Last rebuild: $entryCount diary entries, $finishedAt.';
+    return 'Last rebuild: $entryCount entries, $finishedAt.';
   }
 
   @override
   String settingsIndexRebuildSuccess(int entryCount, String duration) {
-    return 'Search index rebuilt: $entryCount diary entries in $duration';
+    return 'Search index rebuilt: $entryCount entries in $duration';
   }
 
   @override
   String get settingsSupportNavButtonLabel => 'Support';
 
   @override
-  String get settingsSupportPageTitle => 'Support';
+  String get settingsSupportPageTitle => 'Support the Developer';
 
   @override
-  String get settingsSupportHeroTitle => 'Voluntary support';
+  String get settingsSupportHeroTitle => 'Support If You Like It';
 
   @override
   String get settingsSupportHeroBody =>
-      'Make a one-time support purchase through Google Play. It does not unlock extra features or affect diary access.';
+      'If Quill Diary has been helpful, you can make a one-time support purchase through Google Play. It does not unlock extra features or affect access to your entries.';
 
   @override
-  String get settingsSupportHeroChipNoExtraFeatures => 'No extra features';
+  String get settingsSupportHeroChipNoExtraFeatures => 'No Extra Features';
 
   @override
-  String get settingsSupportHeroChipRepeatablePurchase => 'Repeatable purchase';
+  String get settingsSupportHeroChipRepeatablePurchase =>
+      'Support Again Anytime';
 
   @override
-  String get settingsSupportHeroChipGooglePlayPayment => 'Google Play payment';
+  String get settingsSupportHeroChipGooglePlayPayment => 'Google Play Payment';
 
   @override
-  String get settingsSupportComplianceCardTitle => 'Payment and data';
+  String get settingsSupportComplianceCardTitle => 'Payment and Data';
 
   @override
   String get settingsSupportComplianceCardBody =>
-      'Payments are processed by Google Play as one-time support purchases, not subscriptions. The app does not store support records or read diary content.';
+      'Payments are processed by Google Play as one-time support purchases, not subscriptions or memberships. The app does not store support records or read entry content.';
 
   @override
-  String get settingsSupportProductsSectionTitle => 'Support options';
+  String get settingsSupportProductsSectionTitle => 'Support Options';
 
   @override
   String get settingsSupportProductsSectionBody =>
-      'Google Play shows the amount and currency based on your region. Every option can be purchased more than once.';
+      'Google Play shows the amount and currency for your region; each option can be chosen again anytime.';
 
   @override
   String get settingsSupportBuyButtonPrefix => 'Support';
@@ -1472,7 +1471,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportPendingMessage => 'Processing payment…';
 
   @override
-  String get settingsSupportThanksMessage => 'Thank you for your support.';
+  String get settingsSupportThanksMessage =>
+      'Thank you for your support—it helps keep Quill Diary moving.';
 
   @override
   String get settingsSupportErrorMessage =>
@@ -1484,14 +1484,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportProductLoadErrorTitle =>
-      'Unable to load support options';
+      'Unable to Load Support Options';
 
   @override
   String get settingsSupportProductLoadErrorBody => 'Please try again later.';
 
   @override
   String get settingsSupportProductsNotReadyTitle =>
-      'Support options are not ready';
+      'Support Options Are Not Ready';
 
   @override
   String get settingsSupportProductsNotReadyBody =>
@@ -1499,7 +1499,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportProductsQueryFailedTitle =>
-      'Cannot connect to Google Play';
+      'Cannot Connect to Google Play';
 
   @override
   String get settingsSupportProductsQueryFailedBody =>
@@ -1514,44 +1514,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportFooterNote =>
-      'Whether to support the project is entirely up to you.';
+      'Support is completely optional. Please choose what feels right for you.';
 
   @override
   String get settingsSupportTierSponsorCoffeeLabel =>
-      'Buy the developer a coffee';
+      'Buy the Developer a Coffee';
 
   @override
   String get settingsSupportTierSponsorCoffeeHint =>
-      'Support ongoing Quill Diary development and maintenance';
+      'Help keep Quill Diary maintained and improving';
 
   @override
   String get settingsSupportTierSponsorSnackLabel =>
-      'Buy the developer a snack';
+      'Buy the Developer a Snack';
 
   @override
   String get settingsSupportTierSponsorSnackHint =>
-      'Help Quill Diary keep improving steadily';
+      'Add a little energy to everyday improvements';
 
   @override
-  String get settingsSupportTierSponsorLunchLabel => 'Buy the developer lunch';
+  String get settingsSupportTierSponsorLunchLabel => 'Buy the Developer Lunch';
 
   @override
   String get settingsSupportTierSponsorLunchHint =>
-      'Help Quill Diary keep getting better';
+      'Support more focused development time';
 
   @override
-  String get settingsSupportTierSponsorBoostLabel => 'Strong support';
+  String get settingsSupportTierSponsorBoostLabel => 'Big Boost';
 
   @override
   String get settingsSupportTierSponsorBoostHint =>
-      'Support continuous development, maintenance, and improvement';
+      'Give ongoing development a strong push';
 
   @override
-  String get settingsSupportTierSponsorSuperLabel => 'Super strong support';
+  String get settingsSupportTierSponsorSuperLabel => 'Super Big Boost';
 
   @override
   String get settingsSupportTierSponsorSuperHint =>
-      'Help us invest in long-term development with more confidence';
+      'Help make long-term maintenance and improvements easier to sustain';
 
   @override
   String get sessionStartupNeedsRecoveryKeyMessage =>
@@ -1593,7 +1593,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionInvalidBackupFileMessage =>
-      'Unable to read the backup file. Make sure it is intact and a valid zip backup.';
+      'Unable to read the backup file. Make sure it is intact and a valid ZIP backup.';
 
   @override
   String get sessionRestoreSuccessUnlockedMessage =>
@@ -1656,103 +1656,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get legalBrandDisclaimer =>
-      'The Quill Diary name, icon, and Google Play listing are author branding and are not transferred with the code license.';
+      'The Quill Diary name, icon, and Google Play Store listing are author branding and are not transferred with the code license.';
 
   @override
   String get legalBillingVaultPrivacyNote =>
-      'The support flow does not read vault contents.';
+      'The support flow does not read diary vault content.';
 
   @override
   String get legalBillingPrivacyOneLiner =>
-      'Support payments are processed by Google Play as one-time purchases and unlock no extra features. The support flow does not read vault contents.';
+      'Support payments are processed by Google Play as one-time purchases and unlock no extra features. The support flow does not read diary vault content.';
 
   @override
   String get legalBillingSupportPageBody =>
-      'Payments are collected only through Google Play Billing as one-time support purchases. Google processes payments; the developer does not store support records. The support flow does not read vault contents.';
+      'Payments are collected only through Google Play Billing as one-time support purchases. Google processes payments; the developer does not store support records. The support flow does not read diary vault content.';
 
   @override
   String get legalExternalLinkUnavailableMessage =>
       'Unable to open the browser. Please try again later.';
 
   @override
-  String get settingsLegalSectionTitle => 'Legal and privacy';
+  String get settingsLegalSectionTitle => 'Legal & Privacy';
 
   @override
   String get settingsLegalSectionDescription =>
-      'View source code, privacy policy, and third-party notices on GitHub; contact us via Issues if you have questions.';
+      'View source code, privacy policy, and third-party notices on GitHub; open an Issue if you have questions.';
 
   @override
-  String get settingsLegalSourceCodeTitle => 'GitHub source code';
+  String get settingsLegalSourceCodeTitle => 'GitHub Source Code';
 
   @override
-  String get settingsLegalPrivacyPolicyTitle => 'Privacy policy';
+  String get settingsLegalPrivacyPolicyTitle => 'Privacy Policy';
 
   @override
-  String get settingsLegalThirdPartyNoticesTitle => 'Third-party notices';
+  String get settingsLegalThirdPartyNoticesTitle => 'Third-Party Notices';
 
   @override
-  String get settingsLegalContactAuthorTitle => 'Contact author';
+  String get settingsLegalContactAuthorTitle => 'Contact Author';
 
   @override
   String get aboutPageTitle => 'About';
 
   @override
-  String get aboutTabIntroLabel => 'Overview';
+  String get aboutTabIntroLabel => 'Intro';
 
   @override
   String get aboutTabIntroHeroTitle =>
-      'Keep your private diary in your own hands';
+      'Keep Your Private Diary in Your Own Hands';
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary is a local, encrypted diary app for personal journaling. Your data stays on your device by default; create backups or exports when needed.';
+      'Quill Diary is a local, encrypted diary app for personal journaling. Write safely, find entries quickly, and revisit them anytime. When needed, create a full backup or export readable content; unless you choose otherwise, your data stays on your device by default.';
 
   @override
-  String get aboutTabIntroChip0 => 'Data stays on device';
+  String get aboutTabIntroChip0 => 'Data Stays on Device';
 
   @override
-  String get aboutTabIntroChip1 => 'Markdown export';
+  String get aboutTabIntroChip1 => 'Markdown Export';
 
   @override
-  String get aboutTabIntroChip2 => 'Full-text search';
+  String get aboutTabIntroChip2 => 'Full-Text Search';
 
   @override
-  String get aboutTabIntroChip3 => 'Full encrypted backup';
+  String get aboutTabIntroChip3 => 'Full Encrypted Backup';
 
   @override
-  String get aboutTabIntroChip4 => 'Portable export';
+  String get aboutTabIntroChip4 => 'Portable Export';
 
   @override
-  String get aboutTabIntroSection0Title => 'Why it works well for journaling';
+  String get aboutTabIntroSection0Title => 'Why It Works Well for Journaling';
 
   @override
   String get aboutTabIntroSection0Subtitle =>
-      'It is not just cloud notes with a new name. Privacy protection and everyday use are designed together.';
+      'It is not cloud notes under another name. Privacy protection and everyday use are designed together.';
 
   @override
-  String get aboutTabIntroSection0Item0Title => 'Encrypted local storage';
+  String get aboutTabIntroSection0Item0Title => 'Encrypted Local Storage';
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      'Entries, attachments, drafts, and the search index stay on your device under encryption or session protection. Nothing leaves the phone unless you back up or export.';
+      'Entries, attachments, drafts, and the search index stay on your device, protected by encryption or by the current unlocked session. Nothing leaves the phone unless you back up or export.';
 
   @override
-  String get aboutTabIntroSection0Item1Title => 'Start without signing up';
+  String get aboutTabIntroSection0Item1Title => 'Start without Signing Up';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      'Daily writing works without accounts or remote servers. Use local diaries, search, and review without creating an account.';
+      'Daily writing works without accounts or remote servers. Use local entries, search, and review without creating an account.';
 
   @override
   String get aboutTabIntroSection0Item2Title =>
-      'Less collection, less distraction';
+      'Less Collection, Less Distraction';
 
   @override
   String get aboutTabIntroSection0Item2Body =>
-      'The app has no ads or tracking SDKs and does not upload diary plaintext to developer servers. Treat it as a private writing space focused on privacy.';
+      'The app has no ads or tracking SDKs and does not upload plaintext entry content to developer-controlled servers. Treat it as a private writing space built around privacy.';
 
   @override
-  String get aboutTabIntroSection1Title => 'How you can use it';
+  String get aboutTabIntroSection1Title => 'How You Can Use It';
 
   @override
   String get aboutTabIntroSection1Subtitle =>
@@ -1760,7 +1760,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item0Title =>
-      'Write what you want to remember';
+      'Write What You Want to Remember';
 
   @override
   String get aboutTabIntroSection1Item0Body =>
@@ -1768,14 +1768,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item1Title =>
-      'View your records from different angles';
+      'View Your Entries from Different Angles';
 
   @override
   String get aboutTabIntroSection1Item1Body =>
       'The home screen offers list, calendar, tag, and overview views. Browse by time, revisit by date, or organize your life through tags and stats.';
 
   @override
-  String get aboutTabIntroSection1Item2Title => 'Find what you wrote before';
+  String get aboutTabIntroSection1Item2Title => 'Find What You Wrote Before';
 
   @override
   String get aboutTabIntroSection1Item2Body =>
@@ -1783,14 +1783,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Title =>
-      'Turn reviews into shareable formats';
+      'Turn Reviews into Shareable Formats';
 
   @override
   String get aboutTabIntroSection1Item3Body =>
       'Create a full backup of the encrypted diary vault or export Markdown or HTML for reading, organizing, or moving content.';
 
   @override
-  String get aboutTabIntroSection2Title => 'You stay in control of your data';
+  String get aboutTabIntroSection2Title => 'You Stay in Control of Your Data';
 
   @override
   String get aboutTabIntroSection2Subtitle =>
@@ -1798,15 +1798,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item0Title =>
-      'Trusted device and recovery key';
+      'Trusted Device and Recovery Key';
 
   @override
   String get aboutTabIntroSection2Item0Body =>
-      'Use screen lock or biometrics for everyday access. When you change devices, restore, or lose trusted status, the recovery key is what restores access.';
+      'Use screen lock or biometrics for everyday access. When you change devices, restore, or lose trusted status, the recovery key is the key to regaining access.';
 
   @override
   String get aboutTabIntroSection2Item1Title =>
-      'Full backups preserve the encrypted vault';
+      'Full Backups Preserve the Encrypted Vault';
 
   @override
   String get aboutTabIntroSection2Item1Body =>
@@ -1814,54 +1814,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item2Title =>
-      'Protect exported content yourself';
+      'Protect Exported Content Yourself';
 
   @override
   String get aboutTabIntroSection2Item2Body =>
-      'Markdown and HTML exports are good for reading, organizing, and moving content, but they are readable documents and no longer carry the same in-app encryption.';
+      'Markdown and HTML exports are good for reading, organizing, and moving content, but they are readable documents and are no longer protected like in-app encrypted storage.';
 
   @override
-  String get aboutTabIntroSection3Title => 'Open source and branding';
+  String get aboutTabIntroSection3Title => 'Open Source and Branding';
 
   @override
   String get aboutTabIntroSection3Subtitle =>
       'Review the source code and license terms, and understand branding boundaries clearly.';
 
   @override
-  String get aboutTabIntroSection3Item0Title => 'Open source under AGPL-3.0';
+  String get aboutTabIntroSection3Item0Title => 'Open Source Under AGPL-3.0';
 
   @override
   String get aboutTabIntroSection3Item0Body =>
-      'Source code is released under GNU Affero General Public License v3.0, so product behavior and implementation can be publicly reviewed for transparency.';
+      'Source code is released under GNU Affero General Public License v3.0, so product behavior and implementation can be publicly reviewed for transparency and verifiability.';
 
   @override
-  String get aboutTabIntroSection3Item1Title => 'Quill Diary branding';
+  String get aboutTabIntroSection3Item1Title => 'Quill Diary Branding';
 
   @override
-  String get aboutTabUnlockSessionLabel => 'Unlock and session';
+  String get aboutTabUnlockSessionLabel => 'Unlock & State';
 
   @override
   String get aboutTabUnlockSessionHeroTitle =>
-      'Balance convenience and data protection';
+      'Balance Convenience and Data Protection';
 
   @override
   String get aboutTabUnlockSessionHeroBody =>
-      'Quill Diary does not make you repeat the heaviest verification every time you switch away and back, but it also does not leave an unlocked session open forever. This page explains unlock methods, auto-lock, and when a recovery key is required.';
+      'Quill Diary does not make you repeat the strongest verification every time you switch away and back, but it also does not leave an unlocked session open forever. This page explains unlock methods, auto-lock, and when a recovery key is required.';
 
   @override
   String get aboutTabUnlockSessionChip0 => 'Biometrics';
 
   @override
-  String get aboutTabUnlockSessionChip1 => 'Screen lock';
+  String get aboutTabUnlockSessionChip1 => 'Screen Lock';
 
   @override
-  String get aboutTabUnlockSessionChip2 => 'Auto-lock';
+  String get aboutTabUnlockSessionChip2 => 'Auto-Lock';
 
   @override
-  String get aboutTabUnlockSessionChip3 => 'Recovery key';
+  String get aboutTabUnlockSessionChip3 => 'Recovery Key';
 
   @override
-  String get aboutTabUnlockSessionSection0Title => 'Choosing an unlock method';
+  String get aboutTabUnlockSessionSection0Title => 'Choosing an Unlock Method';
 
   @override
   String get aboutTabUnlockSessionSection0Subtitle =>
@@ -1875,7 +1875,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'No extra verification after lock; the app resumes immediately. Suitable when no device screen lock is set, but offers the least protection.';
 
   @override
-  String get aboutTabUnlockSessionSection0Item1Title => 'Device screen lock';
+  String get aboutTabUnlockSessionSection0Item1Title => 'Device Screen Lock';
 
   @override
   String get aboutTabUnlockSessionSection0Item1Body =>
@@ -1883,14 +1883,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection0Item2Title =>
-      'Biometric verification';
+      'Biometric Verification';
 
   @override
   String get aboutTabUnlockSessionSection0Item2Body =>
       'Prefer fingerprint or face verification, with screen lock as fallback on cancel or failure. Usually the most convenient option for daily use.';
 
   @override
-  String get aboutTabUnlockSessionSection0Item3Title => 'Shared requirements';
+  String get aboutTabUnlockSessionSection0Item3Title => 'Shared Requirements';
 
   @override
   String get aboutTabUnlockSessionSection0Item3Body =>
@@ -1898,25 +1898,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Title =>
-      'When re-verification happens';
+      'When Re-Verification Happens';
 
   @override
   String get aboutTabUnlockSessionSection1Subtitle =>
-      'Diary entries, drafts, and the search index stay available only during a valid unlocked session.';
+      'Entries, drafts, and the search index stay available only during a valid unlocked session.';
 
   @override
-  String get aboutTabUnlockSessionSection1Item0Title => 'While unlocked';
+  String get aboutTabUnlockSessionSection1Item0Title => 'While Unlocked';
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      'While unlocked, you can read and write diaries, edit drafts, attach files, and use full-text search.';
+      'While unlocked, you can read and write entries, edit drafts, attach files, and use full-text search.';
 
   @override
-  String get aboutTabUnlockSessionSection1Item1Title => 'Background timeout';
+  String get aboutTabUnlockSessionSection1Item1Title => 'Background Timeout';
 
   @override
   String get aboutTabUnlockSessionSection1Item2Title =>
-      'When returning to the app';
+      'When Returning to the App';
 
   @override
   String get aboutTabUnlockSessionSection1Item2Body =>
@@ -1924,7 +1924,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item3Title =>
-      'After cancelled or failed verification';
+      'After Cancelled or Failed Verification';
 
   @override
   String get aboutTabUnlockSessionSection1Item3Body =>
@@ -1932,15 +1932,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Title =>
-      'Why a recovery key is still needed';
+      'Why a Recovery Key Is Still Needed';
 
   @override
   String get aboutTabUnlockSessionSection2Subtitle =>
-      'Trusted devices offer convenience, but the recovery key is what truly restores access across devices and states.';
+      'Trusted devices provide a convenient path, but the recovery key remains the basis for regaining access across devices and states.';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Title =>
-      'After device change or reset';
+      'After Device Change or Reset';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Body =>
@@ -1948,7 +1948,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Item1Title =>
-      'When trusted status expires';
+      'Trusted Status Expires';
 
   @override
   String get aboutTabUnlockSessionSection2Item1Body =>
@@ -1956,25 +1956,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Item2Title =>
-      'Ultimate access credential';
+      'Final Access Credential';
 
   @override
   String get aboutTabUnlockSessionSection2Item2Body =>
-      'The recovery key is not optional backup trivia. It is the required credential when changing devices, restoring, or losing trusted status. Keep it safe.';
+      'The recovery key is not an optional backup feature. It is the required credential when changing devices, restoring, or losing trusted status. Keep it safe.';
 
   @override
-  String get aboutTabEncryptionLabel => 'Encryption and decryption';
+  String get aboutTabEncryptionLabel => 'Encryption & Decryption';
 
   @override
   String get aboutTabEncryptionHeroTitle =>
-      'Data is stored encrypted by default';
+      'Data Is Stored Encrypted by Default';
 
   @override
   String get aboutTabEncryptionHeroBody =>
       'Quill Diary protects content before writing it into the diary vault. Entries, attachments, and other sensitive data use the LDJ2 format with AES-256-GCM encryption. Only the correct trusted-device or recovery-key path can open them.';
 
   @override
-  String get aboutTabEncryptionChip0 => 'Local encryption';
+  String get aboutTabEncryptionChip0 => 'Local Encryption';
 
   @override
   String get aboutTabEncryptionChip1 => 'LDJ2';
@@ -1986,30 +1986,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabEncryptionChip3 => 'Argon2id';
 
   @override
-  String get aboutTabEncryptionChip4 => 'Trusted device';
+  String get aboutTabEncryptionChip4 => 'Trusted Device';
 
   @override
   String get aboutTabEncryptionChip5 => 'Android Keystore';
 
   @override
   String get aboutTabEncryptionSection0Title =>
-      'What this protection does for you';
+      'What This Protection Does for You';
 
   @override
   String get aboutTabEncryptionSection0Subtitle =>
-      'The point is not jargon. It is knowing that stored and read data follows a clear, consistent protection flow.';
+      'The point is not jargon. It is knowing that saved data follows a clear, consistent protection flow when stored and read.';
 
   @override
   String get aboutTabEncryptionSection0Item0Title =>
-      'LDJ2 + AES-256-GCM content protection';
+      'LDJ2 + AES-256-GCM Content Protection';
 
   @override
   String get aboutTabEncryptionSection0Item0Body =>
-      'Diary entries and attachments are wrapped in LDJ2 and encrypted with AES-256-GCM. Even if you see the file itself, the content is not directly readable.';
+      'Entries and attachments are wrapped in LDJ2 and encrypted with AES-256-GCM. Even if you see the file itself, the content is not directly readable.';
 
   @override
-  String get aboutTabEncryptionSection0Item1Title =>
-      'Tampering should fail immediately';
+  String get aboutTabEncryptionSection0Item1Title => 'Tampering Fails Fast';
 
   @override
   String get aboutTabEncryptionSection0Item1Body =>
@@ -2017,43 +2016,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Item2Title =>
-      'Each file has its own key';
+      'Each File Has Its Own Key';
 
   @override
   String get aboutTabEncryptionSection0Item2Body =>
       'Each encrypted file gets its own random file key, then vault-level protection wraps it. Different content does not share the same file key.';
 
   @override
-  String get aboutTabEncryptionSection1Title => 'How you open your own data';
+  String get aboutTabEncryptionSection1Title => 'How You Open Your Own Data';
 
   @override
   String get aboutTabEncryptionSection1Subtitle =>
       'Everyday and emergency paths differ, but both end in the same decryption flow.';
 
   @override
-  String get aboutTabEncryptionSection1Item0Title => 'Trusted device';
+  String get aboutTabEncryptionSection1Item0Title => 'Trusted Device';
 
   @override
   String get aboutTabEncryptionSection1Item0Body =>
       'On a device with trusted status, daily access usually goes through screen lock or biometrics. Android Keystore protects important vault-layer keys on this path.';
 
   @override
-  String get aboutTabEncryptionSection1Item1Title => 'Recovery key';
+  String get aboutTabEncryptionSection1Item1Title => 'Recovery Key';
 
   @override
   String get aboutTabEncryptionSection1Item1Body =>
-      'When you change devices, restore a backup, or lose local trusted status, the recovery key restores access to the entire vault after Argon2id derivation.';
+      'When you change devices, restore a backup, or lose local trusted status, the recovery key restores access to the entire vault. It is first derived with Argon2id, then used in the decryption flow.';
 
   @override
   String get aboutTabEncryptionSection1Item2Title =>
-      'Verify the vault first, then open each file';
+      'Verify the Vault First, Then Open Each File';
 
   @override
   String get aboutTabEncryptionSection1Item2Body =>
       'The flow confirms current access can enter the vault correctly before opening individual files. This avoids mistaking wrong credentials for data corruption.';
 
   @override
-  String get aboutTabEncryptionSection2Title => 'Boundaries to understand';
+  String get aboutTabEncryptionSection2Title => 'Boundaries to Understand';
 
   @override
   String get aboutTabEncryptionSection2Subtitle =>
@@ -2061,7 +2060,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Item0Title =>
-      'Exports are no longer the same protection layer';
+      'Exports Use a Different Protection Layer';
 
   @override
   String get aboutTabEncryptionSection2Item0Body =>
@@ -2069,44 +2068,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Item1Title =>
-      'Keep your recovery key safe';
+      'Keep Your Recovery Key Safe';
 
   @override
   String get aboutTabEncryptionSection2Item1Body =>
       'The recovery key is essential for re-entering the vault. If it leaks, is lost, or is not stored safely, security and recoverability may be affected.';
 
   @override
-  String get aboutTabEncryptionSection2Item2Title => 'It protects data at rest';
+  String get aboutTabEncryptionSection2Item2Title => 'It Protects Data at Rest';
 
   @override
   String get aboutTabEncryptionSection2Item2Body =>
       'This design mainly protects encrypted data stored on the device. If the device is compromised or someone obtains an unlocked session, risk depends on more than file format alone.';
 
   @override
-  String get aboutTabSearchIndexLabel => 'Index and search';
+  String get aboutTabSearchIndexLabel => 'Index & Search';
 
   @override
   String get aboutTabSearchIndexHeroTitle =>
-      'Find what you wrote quickly after unlock';
+      'Find Past Entries Quickly After Unlock';
 
   @override
   String get aboutTabSearchIndexHeroBody =>
-      'Search does not reread every diary entry each time. It uses an encrypted index for faster lookup. The index opens only while unlocked so search and protection can coexist.';
+      'Search does not reread every entry each time. It uses an encrypted index for faster lookup. The index opens only while unlocked so search and protection can coexist.';
 
   @override
-  String get aboutTabSearchIndexChip0 => 'Title/body search';
+  String get aboutTabSearchIndexChip0 => 'Title/Body Search';
 
   @override
-  String get aboutTabSearchIndexChip1 => 'Encrypted index';
+  String get aboutTabSearchIndexChip1 => 'Encrypted Index';
 
   @override
-  String get aboutTabSearchIndexChip2 => 'Available while unlocked';
+  String get aboutTabSearchIndexChip2 => 'Available While Unlocked';
 
   @override
   String get aboutTabSearchIndexChip3 => 'Rebuildable';
 
   @override
-  String get aboutTabSearchIndexSection0Title => 'What search helps you find';
+  String get aboutTabSearchIndexSection0Title => 'What Search Helps You Find';
 
   @override
   String get aboutTabSearchIndexSection0Subtitle =>
@@ -2114,7 +2113,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection0Item0Title =>
-      'Search titles, tags, and body text';
+      'Search Titles, Tags, and Body Text';
 
   @override
   String get aboutTabSearchIndexSection0Item0Body =>
@@ -2122,15 +2121,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection0Item1Title =>
-      'Results come from saved entries';
+      'Results Come from Saved Entries';
 
   @override
   String get aboutTabSearchIndexSection0Item1Body =>
-      'Search shows content formally saved to the vault, not drafts still in the editor.';
+      'Search shows content already saved to the vault, not drafts still in the editor.';
 
   @override
   String get aboutTabSearchIndexSection0Item2Title =>
-      'The index itself is protected';
+      'The Index Itself Is Protected';
 
   @override
   String get aboutTabSearchIndexSection0Item2Body =>
@@ -2138,22 +2137,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Title =>
-      'Why search does not slow daily use';
+      'Why Search Does Not Slow Daily Use';
 
   @override
   String get aboutTabSearchIndexSection1Subtitle =>
       'Lookup work goes to the index layer instead of scanning every saved entry each time.';
 
   @override
-  String get aboutTabSearchIndexSection1Item0Title => 'Index for speed';
+  String get aboutTabSearchIndexSection1Item0Title => 'Index for Speed';
 
   @override
   String get aboutTabSearchIndexSection1Item0Body =>
       'When you type a keyword, the system queries the index instead of decrypting the whole vault entry by entry.';
 
   @override
-  String get aboutTabSearchIndexSection1Item1Title =>
-      'Updates only after formal save';
+  String get aboutTabSearchIndexSection1Item1Title => 'Updates Only After Save';
 
   @override
   String get aboutTabSearchIndexSection1Item1Body =>
@@ -2161,14 +2159,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Item2Title =>
-      'Can be rebuilt when needed';
+      'Can Be Rebuilt When Needed';
 
   @override
   String get aboutTabSearchIndexSection1Item2Body =>
       'The index is derived data. After format updates, backup restore, or incompatible state, it is deleted and rebuilt.';
 
   @override
-  String get aboutTabSearchIndexSection2Title => 'How it relates to security';
+  String get aboutTabSearchIndexSection2Title => 'How It Relates to Security';
 
   @override
   String get aboutTabSearchIndexSection2Subtitle =>
@@ -2176,7 +2174,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item0Title =>
-      'Available only while unlocked';
+      'Available Only While Unlocked';
 
   @override
   String get aboutTabSearchIndexSection2Item0Body =>
@@ -2184,7 +2182,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item1Title =>
-      'Drafts are not searchable';
+      'Drafts Are Not Searchable';
 
   @override
   String get aboutTabSearchIndexSection2Item1Body =>
@@ -2192,37 +2190,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item2Title =>
-      'The vault remains the source of truth';
+      'The Vault Remains the Source of Truth';
 
   @override
   String get aboutTabSearchIndexSection2Item2Body =>
       'The search index helps you find content faster. It does not replace the vault, which remains the authoritative source.';
 
   @override
-  String get aboutTabEditorLabel => 'Diary editor';
+  String get aboutTabEditorLabel => 'Entry Editor';
 
   @override
   String get aboutTabEditorHeroTitle =>
-      'Writing, drafts, and formal saves follow separate paths';
+      'Writing, Drafts, and Saved Entries Stay Separate';
 
   @override
   String get aboutTabEditorHeroBody =>
-      'The editor does not mix still writing with formally saved content. Changes go into encrypted drafts first, then update the saved entry and search index after you confirm save, making writing safer and easier to resume.';
+      'The editor does not mix “still writing” with saved content. It writes changes as encrypted drafts first, then updates the saved entry and search index after you confirm save, making writing safer and easier to resume.';
 
   @override
-  String get aboutTabEditorChip0 => 'Markdown export';
+  String get aboutTabEditorChip0 => 'Markdown Export';
 
   @override
-  String get aboutTabEditorChip1 => 'Image attachments';
+  String get aboutTabEditorChip1 => 'Image Attachments';
 
   @override
-  String get aboutTabEditorChip2 => 'Auto drafts';
+  String get aboutTabEditorChip2 => 'Auto Drafts';
 
   @override
-  String get aboutTabEditorChip3 => 'Unsaved reminders';
+  String get aboutTabEditorChip3 => 'Unsaved Reminders';
 
   @override
-  String get aboutTabEditorSection0Title => 'Everyday writing features';
+  String get aboutTabEditorSection0Title => 'Everyday Writing Features';
 
   @override
   String get aboutTabEditorSection0Subtitle =>
@@ -2230,7 +2228,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item0Title =>
-      'Create or edit existing entries';
+      'Create or Edit Existing Entries';
 
   @override
   String get aboutTabEditorSection0Item0Body =>
@@ -2238,92 +2236,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item1Title =>
-      'Content, title, date, and tags';
+      'Content, Title, Date, and Tags';
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      'Edit diary content while organizing title, date, time, and tags. Formal save checks required fields to avoid incomplete records. Export to Markdown when needed.';
+      'Edit entry content while organizing title, date, time, and tags. Saving checks required fields to avoid incomplete records. Export to Markdown when needed.';
 
   @override
   String get aboutTabEditorSection0Item2Title =>
-      'Images and general attachments';
+      'Images and General Attachments';
 
   @override
   String get aboutTabEditorSection0Item2Body =>
-      'Add multiple images or general files and reorder images. Diaries can preserve more than text by keeping context and materials from the moment.';
+      'Add multiple images or general files and reorder images. Entries can preserve more than text by keeping context and materials from the moment.';
 
   @override
-  String get aboutTabEditorSection1Title => 'Draft mechanism';
+  String get aboutTabEditorSection1Title => 'Draft System';
 
   @override
   String get aboutTabEditorSection1Subtitle =>
       'Drafts are not a minor extra. They are an important protection layer in the writing experience.';
 
   @override
-  String get aboutTabEditorSection1Item0Title => 'Changes auto-save';
+  String get aboutTabEditorSection1Item0Title => 'Changes Are Auto-Saved';
 
   @override
   String get aboutTabEditorSection1Item0Body =>
       'After entering edit mode, changes to title, date, tags, body, or attachments auto-save as encrypted drafts to reduce loss if interrupted.';
 
   @override
-  String get aboutTabEditorSection1Item1Title => 'Restore when reopening';
+  String get aboutTabEditorSection1Item1Title => 'Restore When Reopening';
 
   @override
   String get aboutTabEditorSection1Item1Body =>
       'When reopening the same entry or unfinished new content, if a local draft remains, the app asks whether to continue where you left off.';
 
   @override
-  String get aboutTabEditorSection1Item2Title =>
-      'Auto cleanup after formal save';
+  String get aboutTabEditorSection1Item2Title => 'Auto Cleanup After Save';
 
   @override
   String get aboutTabEditorSection1Item2Body =>
-      'After content is formally saved to the vault, drafts are cleared. If you cancel editing without new changes, old drafts do not pile up.';
+      'After content is saved to the vault, drafts are cleared. If you cancel editing without new changes, old drafts do not pile up.';
 
   @override
-  String get aboutTabEditorSection2Title => 'Relationship to other data';
+  String get aboutTabEditorSection2Title => 'Relationship to Other Data';
 
   @override
   String get aboutTabEditorSection2Subtitle =>
-      'Content being edited and formally saved content have clear boundaries.';
+      'Content being edited and saved content have clear boundaries so they are not mixed up.';
 
   @override
   String get aboutTabEditorSection2Item0Title =>
-      'Drafts are excluded from search';
+      'Drafts Are Excluded from Search';
 
   @override
   String get aboutTabEditorSection2Item0Body =>
-      'Search only covers formally saved vault content. Drafts do not appear in results.';
+      'Search only covers content saved to the vault. Drafts do not appear in results, so unfinished content is not mistaken for final records.';
 
   @override
   String get aboutTabEditorSection2Item1Title =>
-      'Drafts are excluded from full backup';
+      'Drafts Are Excluded from Full Backup';
 
   @override
   String get aboutTabEditorSection2Item1Body =>
-      'Full backups wrap only the formal vault, not `drafts/`. Backup and restore focus on saved data, not unfinished editing state.';
+      'Full backups wrap only the main vault, not `drafts/`. Backup and restore focus on saved data, not unfinished editing state.';
 
   @override
-  String get aboutTabEditorSection2Item2Title => 'Unsaved indicator';
+  String get aboutTabEditorSection2Item2Title => 'Unsaved Indicator';
 
   @override
   String get aboutTabEditorSection2Item2Body =>
-      'If an entry still has a local draft, list and view modes show an unsaved marker reminding you that content is not formally saved yet.';
+      'If an entry still has a local draft, list and view modes show an unsaved marker reminding you that the content has not been saved yet.';
 
   @override
-  String get aboutTabBackupRestoreLabel => 'Backup and restore';
+  String get aboutTabBackupRestoreLabel => 'Backup & Restore';
 
   @override
   String get aboutTabBackupRestoreHeroTitle =>
-      'Keep the whole vault or export readable content';
+      'Keep the Whole Vault or Export Readable Content';
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
       'Backup and export both move data out, but for different purposes. Full backup preserves the entire encrypted vault. Markdown and HTML turn content into readable, organizable, re-importable formats. Do not mix the two flows.';
 
   @override
-  String get aboutTabBackupRestoreChip0 => 'Full encrypted backup';
+  String get aboutTabBackupRestoreChip0 => 'Full Encrypted Backup';
 
   @override
   String get aboutTabBackupRestoreChip1 => 'Google Drive';
@@ -2335,30 +2332,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabBackupRestoreChip3 => 'HTML';
 
   @override
-  String get aboutTabBackupRestoreSection0Title => 'When full backup fits';
+  String get aboutTabBackupRestoreSection0Title => 'When to Use Full Backup';
 
   @override
   String get aboutTabBackupRestoreSection0Subtitle =>
-      'If you want to preserve the entire formal vault and restore it later as-is, use full backup.';
+      'If you want to preserve the entire main vault and restore it later as-is, use full backup.';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Title =>
-      'Preserve the entire encrypted vault';
+      'Preserve the Entire Encrypted Vault';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Body =>
-      '`backup_*.zip` wraps formal data in `vault/`, including entries, attachments, recovery settings, and tag directories. Content stays encrypted, not plaintext.';
+      '`backup_*.zip` wraps saved data in `vault/`, including entries, attachments, recovery settings, and tag directories. Content stays encrypted, not plaintext.';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Title =>
-      'Verified after creation';
+      'Verified After Creation';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Body =>
       'Full backups are structurally verified before delivery to local storage, external folders, or Google Drive.';
 
   @override
-  String get aboutTabBackupRestoreSection0Item2Title => 'Retention count';
+  String get aboutTabBackupRestoreSection0Item2Title => 'Retention Count';
 
   @override
   String aboutTabBackupRestoreSection0Item2Body(int retainCount) {
@@ -2367,38 +2364,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Title =>
-      'What happens during restore';
+      'What Happens During Restore';
 
   @override
   String get aboutTabBackupRestoreSection1Subtitle =>
-      'Restore does not patch missing entries. It replaces the current formal vault with the backup copy.';
+      'Restore does not patch missing entries. It replaces the current main vault with the backup copy.';
 
   @override
   String get aboutTabBackupRestoreSection1Item0Title =>
-      'The formal vault is overwritten';
+      'The Main Vault Is Overwritten';
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      'Whether from the in-app list or an external zip, restore overwrites the current `vault/` with backup contents.';
+      'Whether from the in-app list or an external ZIP, restore overwrites the current `vault/` with backup contents.';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title =>
-      'The search index is rebuilt';
+      'The Search Index Is Rebuilt';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Body =>
-      'During restore, the existing index is deleted and rebuilt from the new formal data. Re-verification may be required if trusted status cannot carry over.';
+      'During restore, the existing index is deleted and rebuilt from the new saved data. Re-verification may be required if trusted status cannot carry over.';
 
   @override
   String get aboutTabBackupRestoreSection1Item2Title =>
-      'Recovery key may be required';
+      'Recovery Key May Be Required';
 
   @override
   String get aboutTabBackupRestoreSection1Item2Body =>
       'If trusted status on this device cannot directly match that backup, the flow asks for the recovery key saved when the backup was created.';
 
   @override
-  String get aboutTabBackupRestoreSection2Title => 'When import and export fit';
+  String get aboutTabBackupRestoreSection2Title => 'When Import and Export Fit';
 
   @override
   String get aboutTabBackupRestoreSection2Subtitle =>
@@ -2409,7 +2406,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Item0Body =>
-      'Import from zip, Markdown, HTML, or folders. For zip files, the system first checks whether the backup format is supported.';
+      'Import from ZIP, Markdown, HTML, or folders. For ZIP files, the system first checks whether the backup format is supported.';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Title => 'Export';
@@ -2419,15 +2416,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Export `markdown_*.zip` from Settings, or export `html_*.html` from selected entries or overview on the home screen for readable formats.';
 
   @override
-  String get aboutTabBackupRestoreSection2Item2Title =>
-      'It is not a sync service';
+  String get aboutTabBackupRestoreSection2Item2Title => 'Not a Sync Service';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Body =>
-      'Google Drive here is an optional encrypted backup destination, not a cross-device real-time diary sync service.';
+      'Google Drive here is an optional encrypted backup destination, not a cross-device real-time entry sync service.';
 
   @override
-  String get aboutTabBackupRestoreSection3Title => 'Things to know before use';
+  String get aboutTabBackupRestoreSection3Title => 'Things to Know Before Use';
 
   @override
   String get aboutTabBackupRestoreSection3Subtitle =>
@@ -2435,15 +2431,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item0Title =>
-      'Full backup excludes drafts';
+      'Full Backup Excludes Drafts';
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      'Full backup covers only the formal vault, not `drafts/`. Content still being edited and not formally saved is not included.';
+      'Full backup covers only the main vault, not `drafts/`. Content still being edited and not yet saved is not included.';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title =>
-      'Protect readable exports yourself';
+      'Protect Readable Exports Yourself';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Body =>
@@ -2451,7 +2447,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item2Title =>
-      'Do not mix the two flows';
+      'Do Not Mix the Two Flows';
 
   @override
   String get aboutTabBackupRestoreSection3Item2Body =>
