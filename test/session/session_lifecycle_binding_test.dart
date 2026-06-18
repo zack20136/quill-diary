@@ -52,6 +52,7 @@ void main() {
   void armInactivityWatchdog(AppSessionController controller) {
     controller.inactivityWatchdog.foregroundSettleDelay = Duration.zero;
   }
+
   final UnlockedVaultSession sampleSession = UnlockedVaultSession(
     vaultId: 'vlt_binding_test',
     trustedDevice: true,

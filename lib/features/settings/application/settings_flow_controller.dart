@@ -24,7 +24,9 @@ import '../settings_messages.dart';
 import '../unlock_mode_change.dart';
 import 'settings_actions.dart';
 
-final settingsFlowControllerProvider = Provider<SettingsFlowController>((Ref ref) {
+final settingsFlowControllerProvider = Provider<SettingsFlowController>((
+  Ref ref,
+) {
   return SettingsFlowController(ref);
 });
 
@@ -105,10 +107,12 @@ class SettingsFlowController {
 
   Future<String> createRecoveryKey(AppLocalizations l10n) async {
     final RecoverySetupResult result = await _actions.setupRecoveryKey();
-    _ref.read(appSessionProvider.notifier).activateSession(
-      result.session,
-      message: sessionRecoverySetupSuccessMessage(l10n),
-    );
+    _ref
+        .read(appSessionProvider.notifier)
+        .activateSession(
+          result.session,
+          message: sessionRecoverySetupSuccessMessage(l10n),
+        );
     _ref.invalidate(recoveryMetadataProvider);
     _refreshCaches();
     return result.recoveryKey;
@@ -148,7 +152,9 @@ class SettingsFlowController {
     return prepareRestoreFile(File(backup.path));
   }
 
-  Future<PreparedRestoreRequest?> prepareExternalRestore(AppLocalizations l10n) async {
+  Future<PreparedRestoreRequest?> prepareExternalRestore(
+    AppLocalizations l10n,
+  ) async {
     final PickedBackupFile? backup = await _actions.pickLocalBackupFile(l10n);
     if (backup == null) {
       return null;
@@ -216,7 +222,8 @@ class SettingsFlowController {
   }
 
   Future<SettingsFlowFeedback> linkGoogleDrive(AppLocalizations l10n) async {
-    final DriveConnectionState connectionState = await _actions.linkGoogleDrive();
+    final DriveConnectionState connectionState = await _actions
+        .linkGoogleDrive();
     await _refreshDriveConnection();
     return SettingsFlowFeedback(
       settingsDriveLinkSuccess(l10n, connectionState.accountLabel(l10n)),
@@ -225,8 +232,8 @@ class SettingsFlowController {
   }
 
   Future<SettingsFlowFeedback> switchGoogleDrive(AppLocalizations l10n) async {
-    final DriveConnectionState connectionState =
-        await _actions.switchGoogleDrive();
+    final DriveConnectionState connectionState = await _actions
+        .switchGoogleDrive();
     await _refreshDriveConnection();
     return SettingsFlowFeedback(
       settingsDriveSwitchAccountSuccess(
@@ -295,10 +302,12 @@ class SettingsFlowController {
       final RecoverySetupResult result = await _actions.rotateRecoveryKey(
         session,
       );
-      _ref.read(appSessionProvider.notifier).activateSession(
-        result.session,
-        message: sessionRecoveryKeyRotatedMessage(l10n),
-      );
+      _ref
+          .read(appSessionProvider.notifier)
+          .activateSession(
+            result.session,
+            message: sessionRecoveryKeyRotatedMessage(l10n),
+          );
       _ref.invalidate(recoveryMetadataProvider);
       _refreshCaches();
       return result.recoveryKey;

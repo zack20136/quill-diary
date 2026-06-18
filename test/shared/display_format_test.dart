@@ -37,10 +37,7 @@ void main() {
     });
 
     test('formatDateTime 依語系輸出日期時間', () {
-      expect(
-        DisplayFormat.formatDateTime(zhTwL10n, local),
-        '2026年6月9日 14:30',
-      );
+      expect(DisplayFormat.formatDateTime(zhTwL10n, local), '2026年6月9日 14:30');
       expect(DisplayFormat.formatDateTime(enL10n, local), '2026/06/09 14:30');
     });
 

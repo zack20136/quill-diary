@@ -45,7 +45,9 @@ class EditorAttachmentStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool hasNonImageAttachments =
         savedNonImages.isNotEmpty || pendingNonImages.isNotEmpty;
-    if (savedImages.isEmpty && pendingImages.isEmpty && !hasNonImageAttachments) {
+    if (savedImages.isEmpty &&
+        pendingImages.isEmpty &&
+        !hasNonImageAttachments) {
       return const SizedBox.shrink();
     }
 
@@ -90,7 +92,8 @@ class EditorAttachmentStrip extends StatelessWidget {
           isDragPlaceholder: isDragPlaceholder,
         );
       }
-      final PendingAttachment attachment = pendingImages[index - savedImages.length];
+      final PendingAttachment attachment =
+          pendingImages[index - savedImages.length];
       return _pendingImageThumbnailTile(
         context,
         attachment,
@@ -181,7 +184,10 @@ class EditorAttachmentStrip extends StatelessWidget {
             animation: animation,
             builder: (BuildContext context, Widget? animatedChild) {
               final double t = Curves.easeOutCubic.transform(animation.value);
-              final double scale = Tween<double>(begin: 1, end: 1.08).transform(t);
+              final double scale = Tween<double>(
+                begin: 1,
+                end: 1.08,
+              ).transform(t);
               final double lift = Tween<double>(begin: 0, end: -4).transform(t);
               return Transform.translate(
                 offset: Offset(0, lift),
@@ -358,7 +364,10 @@ class EditorAttachmentStrip extends StatelessWidget {
     );
   }
 
-  Widget _editorImageDeleteBadge(ThemeData theme, {required VoidCallback onTap}) {
+  Widget _editorImageDeleteBadge(
+    ThemeData theme, {
+    required VoidCallback onTap,
+  }) {
     return Positioned(
       right: 0,
       top: 0,

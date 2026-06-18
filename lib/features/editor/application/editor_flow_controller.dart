@@ -197,7 +197,10 @@ class EditorFlowController {
     required DiaryEntry? existingEntry,
     required Future<bool?> Function(EditorDraftRecord record) decideRestore,
   }) async {
-    final EditorDraftRecord? record = await _actions.readDraft(draftKey, session);
+    final EditorDraftRecord? record = await _actions.readDraft(
+      draftKey,
+      session,
+    );
     if (record == null) {
       return const EditorDraftRestoreDecision.noDraft();
     }
@@ -215,11 +218,10 @@ class EditorFlowController {
     }
 
     final Map<String, String> absolutePaths = <String, String>{};
-    for (final EditorDraftPendingAttachment attachment in record.pendingAttachments) {
-      absolutePaths[attachment.relativePath] = await _actions.pendingAbsolutePath(
-        draftKey,
-        attachment.relativePath,
-      );
+    for (final EditorDraftPendingAttachment attachment
+        in record.pendingAttachments) {
+      absolutePaths[attachment.relativePath] = await _actions
+          .pendingAbsolutePath(draftKey, attachment.relativePath);
     }
     return EditorDraftRestoreDecision.restored(
       record: record,
@@ -253,7 +255,9 @@ class EditorFlowController {
     final DiaryEntry saved = await _actions.saveEntry(
       request.session,
       draft,
-      pendingAttachments: List<PendingAttachment>.from(request.pendingAttachments),
+      pendingAttachments: List<PendingAttachment>.from(
+        request.pendingAttachments,
+      ),
     );
     await discardDraft(request.draftKey);
     _refreshCaches(editedEntryId: saved.id);
@@ -308,7 +312,10 @@ class EditorFlowController {
     if (trimmed.isEmpty) {
       return null;
     }
-    final String relativePath = await _actions.stagePendingFile(draftKey, trimmed);
+    final String relativePath = await _actions.stagePendingFile(
+      draftKey,
+      trimmed,
+    );
     final String stagedPath = await _actions.pendingAbsolutePath(
       draftKey,
       relativePath,

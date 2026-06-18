@@ -198,10 +198,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   error: (Object error, StackTrace _) => HomeStateCard(
                     icon: Icons.error_outline,
                     title: context.l10n.commonReadFailureTitle,
-                    message: userFacingErrorMessage(
-                      error,
-                      l10n: context.l10n,
-                    ),
+                    message: userFacingErrorMessage(error, l10n: context.l10n),
                   ),
                 )
               : HomeBlockedEntriesPane(sessionState: sessionState),

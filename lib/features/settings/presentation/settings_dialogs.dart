@@ -98,7 +98,9 @@ Future<bool> showRestoreConfirmDialog(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   if (driveBackupName != null) ...<Widget>[
-                    Text(l10n.settingsRestoreDialogDriveFileLine(driveBackupName)),
+                    Text(
+                      l10n.settingsRestoreDialogDriveFileLine(driveBackupName),
+                    ),
                     const SizedBox(height: 12),
                   ],
                   for (final String bullet in bullets)

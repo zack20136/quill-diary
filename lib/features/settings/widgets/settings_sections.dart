@@ -433,12 +433,7 @@ class _UnlockModeChoiceBar extends StatelessWidget {
       choices: choices
           .map(
             (
-              ({
-                int flex,
-                IconData icon,
-                String label,
-                AppUnlockMode mode,
-              })
+              ({int flex, IconData icon, String label, AppUnlockMode mode})
               choice,
             ) => SettingsSegmentChoice<AppUnlockMode>(
               value: choice.mode,

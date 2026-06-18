@@ -41,9 +41,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           Divider(height: 1, color: PageStyle.outlineSide(cs).color),
           _SettingsLegalRow(
             title: l10n.settingsLegalThirdPartyNoticesTitle,
-            onTap: () => unawaited(
-              _openLegalLink(AppIdentifiers.thirdPartyNoticesUrl),
-            ),
+            onTap: () =>
+                unawaited(_openLegalLink(AppIdentifiers.thirdPartyNoticesUrl)),
             colorScheme: cs,
           ),
           Divider(height: 1, color: PageStyle.outlineSide(cs).color),
@@ -67,7 +66,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final bool hasUnlockedSession =
         sessionState?.isUnlocked == true && sessionState?.session != null;
-    final AppUnlockMode mode = unlockModeAsync.asData?.value ?? AppUnlockMode.none;
+    final AppUnlockMode mode =
+        unlockModeAsync.asData?.value ?? AppUnlockMode.none;
     final AppLocalizations l10n = context.l10n;
     return SettingsSectionCard(
       icon: Icons.health_and_safety_outlined,
@@ -155,7 +155,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     );
   }
 
-  Future<LocalBackupFile?> _pickLocalBackup(List<LocalBackupFile> backups) async {
+  Future<LocalBackupFile?> _pickLocalBackup(
+    List<LocalBackupFile> backups,
+  ) async {
     final AppLocalizations l10n = context.l10n;
     if (backups.isEmpty) {
       _showFeedback(SettingsFlowFeedback(l10n.settingsLocalBackupNoBackups));
@@ -185,9 +187,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
               fileName: backup.name,
               sizeLabel: _formatBytes(backup.sizeBytes),
               onDelete: () async {
-                await ref.read(settingsActionsProvider).deleteAppLocalBackup(
-                  backup,
-                );
+                await ref
+                    .read(settingsActionsProvider)
+                    .deleteAppLocalBackup(backup);
                 _showFeedback(
                   SettingsFlowFeedback(
                     l10n.settingsLocalBackupDeleteBackupSuccess(backup.name),
@@ -236,7 +238,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                   ? null
                   : _formatBytes(backup.sizeBytes!),
               onDelete: () async {
-                await ref.read(settingsActionsProvider).deleteDriveBackup(backup);
+                await ref
+                    .read(settingsActionsProvider)
+                    .deleteDriveBackup(backup);
                 _showFeedback(
                   SettingsFlowFeedback(
                     l10n.settingsDriveBackupDeleteBackupSuccess(backup.name),
@@ -296,7 +300,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     );
     _showBackupPersistResult(
       result,
-      onSuccess: (String path) => l10n.settingsLocalBackupBackupSuccessInApp(path),
+      onSuccess: (String path) =>
+          l10n.settingsLocalBackupBackupSuccessInApp(path),
     );
   }
 
@@ -310,7 +315,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     );
     _showBackupPersistResult(
       result,
-      onSuccess: (String path) => l10n.settingsLocalBackupBackupExportSuccess(path),
+      onSuccess: (String path) =>
+          l10n.settingsLocalBackupBackupExportSuccess(path),
     );
   }
 
@@ -370,8 +376,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _runRestoreFromLocalBackup() async {
     final AppLocalizations l10n = context.l10n;
     try {
-      final PreparedRestoreRequest? request =
-          await _settingsFlow.prepareExternalRestore(l10n);
+      final PreparedRestoreRequest? request = await _settingsFlow
+          .prepareExternalRestore(l10n);
       if (request == null) {
         return;
       }
@@ -389,13 +395,16 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _runRestoreFromGoogleDrive() async {
     final AppLocalizations l10n = context.l10n;
     try {
-      final List<DriveBackupFile> backups = await _settingsFlow.listDriveBackups();
+      final List<DriveBackupFile> backups = await _settingsFlow
+          .listDriveBackups();
       final DriveBackupFile? backup = await _pickDriveBackup(backups);
       if (backup == null) {
         return;
       }
       PreparedRestoreRequest? request;
-      await _runWithBackupProgress((BackupTaskProgressListener reportProgress) async {
+      await _runWithBackupProgress((
+        BackupTaskProgressListener reportProgress,
+      ) async {
         request = await _settingsFlow.prepareDriveRestore(
           pickBackup: (List<DriveBackupFile> _) async => backup,
           onProgress: reportProgress,
@@ -458,12 +467,15 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       if (prepared == null) {
         return;
       }
-      await _runWithBackupProgress((BackupTaskProgressListener reportProgress) async {
-        final AppSessionState sessionState = await flow.executeRestoreAndFinishSession(
-          backupFile: request.backupFile,
-          prepared: prepared,
-          onProgress: reportProgress,
-        );
+      await _runWithBackupProgress((
+        BackupTaskProgressListener reportProgress,
+      ) async {
+        final AppSessionState sessionState = await flow
+            .executeRestoreAndFinishSession(
+              backupFile: request.backupFile,
+              prepared: prepared,
+              onProgress: reportProgress,
+            );
         await _presentRestoreSuccess(
           sessionState: sessionState,
           prepared: prepared,

@@ -70,7 +70,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isSupportedPlatform = ref.watch(sessionSupportedPlatformProvider);
+    final bool isSupportedPlatform = ref.watch(
+      sessionSupportedPlatformProvider,
+    );
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
       effectiveAppSessionProvider,
     );
@@ -170,7 +172,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             error: (Object error, StackTrace _) =>
                                 SettingsInfoBanner(
                                   icon: Icons.error_outline_rounded,
-                                  message: userFacingErrorMessage(error, l10n: l10n),
+                                  message: userFacingErrorMessage(
+                                    error,
+                                    l10n: l10n,
+                                  ),
                                   tone: SettingsBannerTone.error,
                                 ),
                           ),
@@ -180,8 +185,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.swap_horiz_rounded,
                           title: l10n.settingsImportExportSectionTitle,
                           description: transferAccess.canBackup
-                              ? l10n
-                                    .settingsImportExportSectionDescriptionEnabled
+                              ? l10n.settingsImportExportSectionDescriptionEnabled
                               : transferAccess.backupDisabledReason ??
                                     l10n.vaultTransferNeedsUnlockForBackup,
                           child: SettingsActionGroup(

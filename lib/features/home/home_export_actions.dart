@@ -80,9 +80,7 @@ Future<void> exportEntriesAsHtml(
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
       ),
@@ -91,9 +89,7 @@ Future<void> exportEntriesAsHtml(
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
       ),

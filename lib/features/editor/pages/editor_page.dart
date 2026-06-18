@@ -268,8 +268,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
           session: session,
           createdAt: _draftCreatedAt ?? DateTime.now(),
-          provisionalEntryId:
-              _provisionalEntryId ??= widget.entryId ?? generateEntryId(),
+          provisionalEntryId: _provisionalEntryId ??=
+              widget.entryId ?? generateEntryId(),
           existingEntryId: widget.entryId,
         ),
       );
@@ -389,14 +389,12 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     _handlingDraftRestore = true;
     final EditorDraftRestoreDecision decision = await _editorFlow
         .restoreDraftIfNeeded(
-      draftKey: _draftKey,
-      session: session,
-      existingEntry: entry,
-      decideRestore: (EditorDraftRecord record) => _showRestoreDraftDialog(
-        record,
-        hasExistingEntry: entry != null,
-      ),
-    );
+          draftKey: _draftKey,
+          session: session,
+          existingEntry: entry,
+          decideRestore: (EditorDraftRecord record) =>
+              _showRestoreDraftDialog(record, hasExistingEntry: entry != null),
+        );
     _handlingDraftRestore = false;
     if (!mounted) {
       return;
@@ -437,7 +435,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isSupportedPlatform = ref.watch(sessionSupportedPlatformProvider);
+    final bool isSupportedPlatform = ref.watch(
+      sessionSupportedPlatformProvider,
+    );
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
       effectiveAppSessionProvider,
     );
@@ -566,10 +566,10 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                           onEditTags: _showTagsEditorDialog,
                           onPickImage: () => unawaited(_pickImage()),
                           onPickFile: () => unawaited(_pickFile()),
-                          onSave: () => unawaited(
-                            _saveCurrentEntry(session, entry),
-                          ),
-                          onDelete: () => unawaited(_deleteCurrentEntry(session)),
+                          onSave: () =>
+                              unawaited(_saveCurrentEntry(session, entry)),
+                          onDelete: () =>
+                              unawaited(_deleteCurrentEntry(session)),
                           onEnterEditMode: _enterEditMode,
                         ),
                         Expanded(
@@ -578,7 +578,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                             child: Builder(
                               builder: (BuildContext context) {
                                 final bool keyboardVisible =
-                                    MediaQuery.viewInsetsOf(this.context).bottom >
+                                    MediaQuery.viewInsetsOf(
+                                      this.context,
+                                    ).bottom >
                                     0;
                                 final bool hideEditorChromeForKeyboard =
                                     _isEditing && keyboardVisible;
@@ -610,66 +612,62 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                                         onReorder:
                                             (int oldIndex, int newIndex) =>
                                                 _reorderEditorImages(
-                                                  allSaved:
-                                                      allSavedAttachments,
+                                                  allSaved: allSavedAttachments,
                                                   oldIndex: oldIndex,
                                                   newIndex: newIndex,
                                                 ),
-                                        onDragStart:
-                                            (int index) => setState(
-                                              () =>
-                                                  _draggingEditorImageIndex =
-                                                      index,
-                                            ),
+                                        onDragStart: (int index) => setState(
+                                          () =>
+                                              _draggingEditorImageIndex = index,
+                                        ),
                                         onDragEnd: (int index) {
                                           if (_draggingEditorImageIndex !=
                                               null) {
                                             setState(
-                                              () =>
-                                                  _draggingEditorImageIndex =
-                                                      null,
+                                              () => _draggingEditorImageIndex =
+                                                  null,
                                             );
                                           }
                                         },
                                       ),
                                   ],
                                 );
-                                final Widget animatedAttachmentArea =
-                                    AnimatedSwitcher(
-                                      duration:
-                                          _attachmentVisibilityAnimationDuration,
-                                      switchInCurve: Curves.easeOut,
-                                      switchOutCurve: Curves.easeIn,
-                                      transitionBuilder:
-                                          (
-                                            Widget child,
-                                            Animation<double> animation,
-                                          ) {
-                                            return FadeTransition(
-                                              opacity: animation,
-                                              child: SizeTransition(
-                                                sizeFactor: animation,
-                                                alignment:
-                                                    const AlignmentDirectional(
-                                                      -1,
-                                                      -1,
-                                                    ),
-                                                child: child,
-                                              ),
-                                            );
-                                          },
-                                      child: shouldShowSidebarAttachments
-                                          ? Padding(
-                                              key: _attachmentAreaVisibleKey,
-                                              padding: const EdgeInsets.only(
-                                                bottom: _editorSectionGap,
-                                              ),
-                                              child: sidebar,
-                                            )
-                                          : const SizedBox.shrink(
-                                              key: _attachmentAreaHiddenKey,
-                                            ),
-                                    );
+                                final Widget
+                                animatedAttachmentArea = AnimatedSwitcher(
+                                  duration:
+                                      _attachmentVisibilityAnimationDuration,
+                                  switchInCurve: Curves.easeOut,
+                                  switchOutCurve: Curves.easeIn,
+                                  transitionBuilder:
+                                      (
+                                        Widget child,
+                                        Animation<double> animation,
+                                      ) {
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: SizeTransition(
+                                            sizeFactor: animation,
+                                            alignment:
+                                                const AlignmentDirectional(
+                                                  -1,
+                                                  -1,
+                                                ),
+                                            child: child,
+                                          ),
+                                        );
+                                      },
+                                  child: shouldShowSidebarAttachments
+                                      ? Padding(
+                                          key: _attachmentAreaVisibleKey,
+                                          padding: const EdgeInsets.only(
+                                            bottom: _editorSectionGap,
+                                          ),
+                                          child: sidebar,
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: _attachmentAreaHiddenKey,
+                                        ),
+                                );
                                 final Widget editorPane = Column(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
@@ -693,8 +691,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                                         padding: EdgeInsets.only(
                                           bottom:
                                               8 +
-                                              MediaQuery.paddingOf(context)
-                                                  .bottom,
+                                              MediaQuery.paddingOf(
+                                                context,
+                                              ).bottom,
                                         ),
                                         child: EditorBodySection(
                                           previewMode: _previewMode,
@@ -735,9 +734,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                                         tagAccentArgbMap:
                                             _watchedTagAccentArgbMap(),
                                       ),
-                                      const SizedBox(
-                                        height: _editorSectionGap,
-                                      ),
+                                      const SizedBox(height: _editorSectionGap),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -992,8 +989,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           markdownBodyRaw: _bodyController.text,
           keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
           pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
-          provisionalEntryId:
-              _provisionalEntryId ??= widget.entryId ?? generateEntryId(),
+          provisionalEntryId: _provisionalEntryId ??=
+              widget.entryId ?? generateEntryId(),
           switchToPreview: true,
         ),
       );
@@ -1076,8 +1073,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     required int newIndex,
   }) {
     final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
-    final List<PendingAttachment> pendingImages =
-        _pendingImageAttachments.toList();
+    final List<PendingAttachment> pendingImages = _pendingImageAttachments
+        .toList();
     final List<Object> slots = <Object>[
       ...savedImages.map((AssetAttachment attachment) => attachment.id),
       ...pendingImages,
@@ -1112,8 +1109,8 @@ class _EditorPageState extends ConsumerState<EditorPage> {
       final AssetAttachment? attachment = byId[id];
       return attachment != null && !attachment.mimeType.startsWith('image/');
     }).toList();
-    final List<PendingAttachment> nonImagePending =
-        _pendingNonImageAttachments.toList();
+    final List<PendingAttachment> nonImagePending = _pendingNonImageAttachments
+        .toList();
 
     setState(() {
       _draggingEditorImageIndex = null;
@@ -1135,11 +1132,11 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   }) async {
     final PreparedEditorGallery gallery = await _editorFlow
         .preparePreviewGalleryItems(
-      dateValue: _dateController.text,
-      savedImages: savedImages,
-      pendingImages: pendingImages,
-      initialIndex: initialIndex,
-    );
+          dateValue: _dateController.text,
+          savedImages: savedImages,
+          pendingImages: pendingImages,
+          initialIndex: initialIndex,
+        );
     if (!mounted || gallery.items.isEmpty) {
       return;
     }
@@ -1241,8 +1238,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
     }
 
     final List<PendingAttachment> staged = await _editorFlow.stagePickedImages(
-      preset:
-          watchPersonalizationPreferences(ref).imageCompressPreset,
+      preset: watchPersonalizationPreferences(ref).imageCompressPreset,
       draftKey: _draftKey,
       sourcePaths: files.map((XFile file) => file.path),
     );

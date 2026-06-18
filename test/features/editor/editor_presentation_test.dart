@@ -88,9 +88,7 @@ void main() {
     );
   }
 
-  testWidgets('預覽工具列在 saving 時保留 edit 並停用 close', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('預覽工具列在 saving 時保留 edit 並停用 close', (WidgetTester tester) async {
     await tester.pumpWidget(
       buildApp(
         const EditorTopBar(
@@ -198,7 +196,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
 
-    expect(find.byKey(const Key('editor-attachment-area-visible')), findsNothing);
+    expect(
+      find.byKey(const Key('editor-attachment-area-visible')),
+      findsNothing,
+    );
     expect(
       find.byKey(const Key('editor-attachment-area-hidden')),
       findsOneWidget,
@@ -245,7 +246,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byKey(const Key('editor-attachment-area-visible')), findsNothing);
+    expect(
+      find.byKey(const Key('editor-attachment-area-visible')),
+      findsNothing,
+    );
     expect(
       find.byKey(const Key('editor-attachment-area-hidden')),
       findsOneWidget,
@@ -321,12 +325,16 @@ class _FakeEditorActions implements EditorActionPort {
   ) async => _entry;
 
   @override
-  Future<String> pendingAbsolutePath(String draftKey, String relativePath) async =>
-      'C:/drafts/$relativePath';
+  Future<String> pendingAbsolutePath(
+    String draftKey,
+    String relativePath,
+  ) async => 'C:/drafts/$relativePath';
 
   @override
-  Future<String> pendingRelativePath(String draftKey, String sourcePath) async =>
-      'pending/file';
+  Future<String> pendingRelativePath(
+    String draftKey,
+    String sourcePath,
+  ) async => 'pending/file';
 
   @override
   Future<EditorDraftRecord?> readDraft(

@@ -25,14 +25,12 @@ String stripLocalPathsFromMessage(
     RegExp(
       r'''(^|[\s([{<"':：；，。！？「『])([A-Za-z]:[\\/][^\s)\]}>,"'`：；，。！？「』】）]+)''',
     ),
-    (Match match) =>
-        '${match.group(1)}${l10n.userFacingErrorLocalPathLabel}',
+    (Match match) => '${match.group(1)}${l10n.userFacingErrorLocalPathLabel}',
   );
   return maskedWindows.replaceAllMapped(
     RegExp(
       r'''(^|[\s([{<"':：；，。！？「『])(/(?:[^/\s]+/)+[^/\s/)\]}>,"'`：；，。！？「』】）]+/?)''',
     ),
-    (Match match) =>
-        '${match.group(1)}${l10n.userFacingErrorLocalPathLabel}',
+    (Match match) => '${match.group(1)}${l10n.userFacingErrorLocalPathLabel}',
   );
 }

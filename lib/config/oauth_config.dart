@@ -77,9 +77,7 @@ class OAuthConfig {
         final String? fromXml = await resolver();
         return fromXml?.trim() ?? '';
       } on Object catch (error, stackTrace) {
-        debugPrint(
-          'OAuthConfig.resolveServerClientId fallback failed: $error',
-        );
+        debugPrint('OAuthConfig.resolveServerClientId fallback failed: $error');
         debugPrintStack(
           stackTrace: stackTrace,
           label: 'OAuthConfig.resolveServerClientId',

@@ -51,16 +51,14 @@ class UnlockModeChangeService {
     final UnlockModeCapabilityFailure? capabilityFailure =
         await precheckUnlockModeChange(appLock: _appLock, mode: mode);
     if (capabilityFailure != null) {
-      return UnlockModeChangeMessage(
-        switch (capabilityFailure) {
-          UnlockModeCapabilityFailure.requiresUnlockedSession =>
-            UnlockModeChangeMessageKind.requiresUnlockedSession,
-          UnlockModeCapabilityFailure.requiresDeviceLock =>
-            UnlockModeChangeMessageKind.requiresDeviceLock,
-          UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
-            UnlockModeChangeMessageKind.requiresBiometricEnrollment,
-        },
-      );
+      return UnlockModeChangeMessage(switch (capabilityFailure) {
+        UnlockModeCapabilityFailure.requiresUnlockedSession =>
+          UnlockModeChangeMessageKind.requiresUnlockedSession,
+        UnlockModeCapabilityFailure.requiresDeviceLock =>
+          UnlockModeChangeMessageKind.requiresDeviceLock,
+        UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
+          UnlockModeChangeMessageKind.requiresBiometricEnrollment,
+      });
     }
 
     try {

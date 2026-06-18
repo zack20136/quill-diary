@@ -136,10 +136,7 @@ void main() {
         expect(state.isConnected, isTrue);
         expect(state.email, 'writer@example.com');
         expect(state.displayName, 'Writer');
-        expect(
-          state.accountLabel(zhTwL10n),
-          'Writer · writer@example.com',
-        );
+        expect(state.accountLabel(zhTwL10n), 'Writer · writer@example.com');
       },
     );
 

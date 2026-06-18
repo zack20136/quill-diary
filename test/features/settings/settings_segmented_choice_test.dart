@@ -47,7 +47,9 @@ void main() {
       }
     });
 
-    testWidgets('unlock mode busy 時 segmented choice 會停用點擊', (WidgetTester tester) async {
+    testWidgets('unlock mode busy 時 segmented choice 會停用點擊', (
+      WidgetTester tester,
+    ) async {
       Future<void> onSelected(AppUnlockMode _) async {}
 
       await tester.pumpWidget(
@@ -64,9 +66,9 @@ void main() {
       );
       await tester.pump();
 
-      final List<InkWell> inkWells = tester.widgetList<InkWell>(
-        find.byType(InkWell),
-      ).toList(growable: false);
+      final List<InkWell> inkWells = tester
+          .widgetList<InkWell>(find.byType(InkWell))
+          .toList(growable: false);
       expect(inkWells, isNotEmpty);
       expect(inkWells.every((InkWell widget) => widget.onTap == null), isTrue);
     });
@@ -92,7 +94,9 @@ void main() {
       }
     });
 
-    testWidgets('timeout segmented choice 在小畫面下不 overflow', (WidgetTester tester) async {
+    testWidgets('timeout segmented choice 在小畫面下不 overflow', (
+      WidgetTester tester,
+    ) async {
       Future<void> onSelected(SessionBackgroundTimeoutMinutes _) async {}
 
       await tester.pumpWidget(

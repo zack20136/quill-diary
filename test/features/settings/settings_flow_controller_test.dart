@@ -41,9 +41,8 @@ void main() {
     final SettingsFlowController controller = container.read(
       settingsFlowControllerProvider,
     );
-    final SettingsFlowFeedback feedback = await controller.disconnectGoogleDrive(
-      testL10n,
-    );
+    final SettingsFlowFeedback feedback = await controller
+        .disconnectGoogleDrive(testL10n);
     final DriveConnectionState state = await container.read(
       settingsDriveConnectionProvider.future,
     );
@@ -83,9 +82,10 @@ void main() {
       settingsFlowControllerProvider,
     );
 
-    final PreparedRestoreRequest? request = await controller.prepareDriveRestore(
-      pickBackup: (List<DriveBackupFile> backups) async => backups.first,
-    );
+    final PreparedRestoreRequest? request = await controller
+        .prepareDriveRestore(
+          pickBackup: (List<DriveBackupFile> backups) async => backups.first,
+        );
 
     expect(request, isNotNull);
     expect(request!.driveBackupName, 'vault-backup.zip');
@@ -187,21 +187,12 @@ void main() {
       repository: repository,
     );
 
-    expect(
-      await container.read(trustedDeviceAccessProvider.future),
-      isTrue,
-    );
-    expect(
-      await container.read(trustedDeviceAccessProvider.future),
-      isTrue,
-    );
+    expect(await container.read(trustedDeviceAccessProvider.future), isTrue);
+    expect(await container.read(trustedDeviceAccessProvider.future), isTrue);
     expect(repository.hasTrustedDeviceAccessCalls, 1);
 
     container.invalidate(trustedDeviceAccessProvider);
-    expect(
-      await container.read(trustedDeviceAccessProvider.future),
-      isTrue,
-    );
+    expect(await container.read(trustedDeviceAccessProvider.future), isTrue);
     expect(repository.hasTrustedDeviceAccessCalls, 2);
   });
 }

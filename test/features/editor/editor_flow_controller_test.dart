@@ -50,25 +50,28 @@ void main() {
     );
     final FakeEditorActionPort actions = FakeEditorActionPort(
       draftRecord: record,
-      pendingAbsolutePathBuilder:
-          (String _, String relativePath) => 'C:/drafts/$relativePath',
+      pendingAbsolutePathBuilder: (String _, String relativePath) =>
+          'C:/drafts/$relativePath',
     );
     final ProviderContainer container = buildContainer(actions);
     final EditorFlowController controller = container.read(
       editorFlowControllerProvider,
     );
 
-    final EditorDraftRestoreDecision decision =
-        await controller.restoreDraftIfNeeded(
-      draftKey: 'entry_draft',
-      session: session,
-      existingEntry: null,
-      decideRestore: (_) async => true,
-    );
+    final EditorDraftRestoreDecision decision = await controller
+        .restoreDraftIfNeeded(
+          draftKey: 'entry_draft',
+          session: session,
+          existingEntry: null,
+          decideRestore: (_) async => true,
+        );
 
     expect(decision.kind, EditorDraftRestoreKind.restored);
     expect(decision.record, same(record));
-    expect(decision.pendingAttachments.single.sourcePath, 'C:/drafts/pending/photo.jpg');
+    expect(
+      decision.pendingAttachments.single.sourcePath,
+      'C:/drafts/pending/photo.jpg',
+    );
     expect(actions.deletedDraftKeys, isEmpty);
   });
 
@@ -124,8 +127,8 @@ void main() {
         originalFilename: path.split('/').last,
       ),
       stagedFileRelativePath: 'pending/file.md',
-      pendingAbsolutePathBuilder:
-          (String _, String relativePath) => 'C:/drafts/$relativePath',
+      pendingAbsolutePathBuilder: (String _, String relativePath) =>
+          'C:/drafts/$relativePath',
     );
     final ProviderContainer container = buildContainer(actions);
     final EditorFlowController controller = container.read(
@@ -148,7 +151,10 @@ void main() {
     );
 
     expect(images, hasLength(2));
-    expect(actions.stagedImagePaths, <String>['C:/images/a.jpg', 'C:/images/b.jpg']);
+    expect(actions.stagedImagePaths, <String>[
+      'C:/images/a.jpg',
+      'C:/images/b.jpg',
+    ]);
     expect(file, isNotNull);
     expect(file!.sourcePath, 'C:/drafts/pending/file.md');
     expect(file.mimeType, 'text/markdown');
@@ -189,7 +195,10 @@ class FakeEditorActionPort implements EditorActionPort {
   }
 
   @override
-  Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) async {}
+  Future<void> deleteEntry(
+    UnlockedVaultSession session,
+    EntryId entryId,
+  ) async {}
 
   @override
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) async {
@@ -208,7 +217,10 @@ class FakeEditorActionPort implements EditorActionPort {
   Future<Set<String>> listDraftKeys() async => <String>{};
 
   @override
-  Future<String> pendingAbsolutePath(String draftKey, String relativePath) async {
+  Future<String> pendingAbsolutePath(
+    String draftKey,
+    String relativePath,
+  ) async {
     return pendingAbsolutePathBuilder?.call(draftKey, relativePath) ??
         'C:/drafts/$relativePath';
   }

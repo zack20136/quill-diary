@@ -20,10 +20,12 @@ void showSettingsFlowFeedback(
       content: Text(
         feedback.message,
         style: switch (feedback.tone) {
-          SettingsFlowFeedbackTone.error =>
-            TextStyle(color: colorScheme.onError),
-          SettingsFlowFeedbackTone.success =>
-            TextStyle(color: colorScheme.onPrimaryContainer),
+          SettingsFlowFeedbackTone.error => TextStyle(
+            color: colorScheme.onError,
+          ),
+          SettingsFlowFeedbackTone.success => TextStyle(
+            color: colorScheme.onPrimaryContainer,
+          ),
           SettingsFlowFeedbackTone.info => null,
         },
       ),

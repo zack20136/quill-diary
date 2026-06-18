@@ -144,30 +144,33 @@ Imported from zip.
     expect(await harness.repository.listEntries(), isEmpty);
   });
 
-  test('uniqueImportedDocumentFileName keeps extensions and avoids collisions', () {
-    expect(
-      VaultTransferService.uniqueImportedDocumentFileName(
-        sourceName: '2026-05-20.md',
-        extension: '.md',
-        index: 0,
-      ),
-      '0001_2026-05-20.md',
-    );
-    expect(
-      VaultTransferService.uniqueImportedDocumentFileName(
-        sourceName: '2026-05-20.md',
-        extension: '.md',
-        index: 1,
-      ),
-      '0002_2026-05-20.md',
-    );
-    expect(
-      VaultTransferService.uniqueImportedDocumentFileName(
-        sourceName: '',
-        extension: '.html',
-        index: 2,
-      ),
-      '0003_imported_entry2.html',
-    );
-  });
+  test(
+    'uniqueImportedDocumentFileName keeps extensions and avoids collisions',
+    () {
+      expect(
+        VaultTransferService.uniqueImportedDocumentFileName(
+          sourceName: '2026-05-20.md',
+          extension: '.md',
+          index: 0,
+        ),
+        '0001_2026-05-20.md',
+      );
+      expect(
+        VaultTransferService.uniqueImportedDocumentFileName(
+          sourceName: '2026-05-20.md',
+          extension: '.md',
+          index: 1,
+        ),
+        '0002_2026-05-20.md',
+      );
+      expect(
+        VaultTransferService.uniqueImportedDocumentFileName(
+          sourceName: '',
+          extension: '.html',
+          index: 2,
+        ),
+        '0003_imported_entry2.html',
+      );
+    },
+  );
 }

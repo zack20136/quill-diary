@@ -105,7 +105,10 @@ Future<KeystoreAuthKind> requireKeystoreAuthKindForMode({
   return keystoreAuthFor(mode);
 }
 
-String lockedResumeMessageFor(AppUnlockMode mode, {required AppLocalizations l10n}) {
+String lockedResumeMessageFor(
+  AppUnlockMode mode, {
+  required AppLocalizations l10n,
+}) {
   return switch (mode) {
     AppUnlockMode.none => l10n.sessionUseDeviceLockToUnlockMessage,
     AppUnlockMode.deviceLock => l10n.sessionUseDeviceLockToUnlockMessage,

@@ -169,11 +169,9 @@ class EditorActions implements EditorActionPort {
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
   }) {
-    return _ref.read(vaultRepositoryProvider).saveEntry(
-      session,
-      draft,
-      pendingAttachments: pendingAttachments,
-    );
+    return _ref
+        .read(vaultRepositoryProvider)
+        .saveEntry(session, draft, pendingAttachments: pendingAttachments);
   }
 
   @override
@@ -185,10 +183,8 @@ class EditorActions implements EditorActionPort {
     if (ext.isEmpty) {
       ext = 'bin';
     }
-    return _ref.read(vaultPathStrategyProvider).assetAbsolutePath(
-      date: date,
-      assetId: attachment.id,
-      extension: ext,
-    );
+    return _ref
+        .read(vaultPathStrategyProvider)
+        .assetAbsolutePath(date: date, assetId: attachment.id, extension: ext);
   }
 }

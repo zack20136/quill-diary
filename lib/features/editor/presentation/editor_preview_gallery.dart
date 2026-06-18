@@ -32,7 +32,10 @@ class EditorPreviewGallery extends StatelessWidget {
         final double maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : 360;
-        final double thumbSide = (((maxWidth - 12) / 2) - 22).clamp(108.0, 320.0);
+        final double thumbSide = (((maxWidth - 12) / 2) - 22).clamp(
+          108.0,
+          320.0,
+        );
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),

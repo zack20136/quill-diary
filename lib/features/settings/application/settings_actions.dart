@@ -58,19 +58,18 @@ class SettingsActions {
   Future<BackupPersistResult> saveBackupToAppLocal({
     BackupTaskProgressListener? onProgress,
   }) {
-    return _ref.read(vaultTransferServiceProvider).saveBackupToAppLocal(
-      onProgress: onProgress,
-    );
+    return _ref
+        .read(vaultTransferServiceProvider)
+        .saveBackupToAppLocal(onProgress: onProgress);
   }
 
   Future<BackupPersistResult> saveBackupToExternalDirectory({
     required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
   }) {
-    return _ref.read(vaultTransferServiceProvider).saveBackupToExternalDirectory(
-      l10n: l10n,
-      onProgress: onProgress,
-    );
+    return _ref
+        .read(vaultTransferServiceProvider)
+        .saveBackupToExternalDirectory(l10n: l10n, onProgress: onProgress);
   }
 
   Future<BackupPersistResult> uploadBackupToDrive({
