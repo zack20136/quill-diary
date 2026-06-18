@@ -763,7 +763,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
                   error: (Object error, StackTrace _) => Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(userFacingErrorMessage(error)),
+                      child: Text(
+                        userFacingErrorMessage(error, l10n: context.l10n),
+                      ),
                     ),
                   ),
                 ),
@@ -774,7 +776,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
               const Scaffold(body: Center(child: CircularProgressIndicator())),
           error: (Object error, StackTrace _) => Scaffold(
             appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
-            body: Center(child: Text(userFacingErrorMessage(error))),
+            body: Center(
+              child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+            ),
           ),
         );
       },
@@ -782,7 +786,9 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
-        body: Center(child: Text(userFacingErrorMessage(error))),
+        body: Center(
+          child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+        ),
       ),
     );
   }

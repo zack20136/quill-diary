@@ -79,10 +79,8 @@ class SettingsFlowController {
 
   SettingsActions get _actions => _ref.read(settingsActionsProvider);
 
-  Future<bool> hasTrustedDeviceAccess() => _actions.hasTrustedDeviceAccess();
-
   Future<SettingsFlowFeedback?> importDocuments(AppLocalizations l10n) async {
-    final PortableImportResult? result = await _actions.importDocuments();
+    final PortableImportResult? result = await _actions.importDocuments(l10n);
     if (result == null) {
       return null;
     }
@@ -150,12 +148,15 @@ class SettingsFlowController {
     return prepareRestoreFile(File(backup.path));
   }
 
-  Future<PreparedRestoreRequest?> prepareExternalRestore() async {
-    final File? backupFile = await _actions.pickLocalBackupFile();
-    if (backupFile == null) {
+  Future<PreparedRestoreRequest?> prepareExternalRestore(AppLocalizations l10n) async {
+    final PickedBackupFile? backup = await _actions.pickLocalBackupFile(l10n);
+    if (backup == null) {
       return null;
     }
-    return prepareRestoreFile(backupFile);
+    return prepareRestoreFile(
+      backup.file,
+      tempFileToDelete: backup.shouldDeleteAfterUse ? backup.file : null,
+    );
   }
 
   Future<PreparedRestoreRequest?> prepareDriveRestore({
@@ -280,8 +281,10 @@ class SettingsFlowController {
       mode: mode,
     );
     if (outcome is! UnlockModeChangeMessage) {
+      _ref.invalidate(trustedDeviceAccessProvider);
       return null;
     }
+    _ref.invalidate(trustedDeviceAccessProvider);
     return SettingsFlowFeedback(unlockModeChangeMessage(l10n, outcome.kind));
   }
 
@@ -314,7 +317,8 @@ class SettingsFlowController {
       ..invalidate(calendarMonthEntriesProvider)
       ..invalidate(calendarEntriesProvider)
       ..invalidate(allEntryIndexRecordsProvider)
-      ..invalidate(tagCatalogProvider);
+      ..invalidate(tagCatalogProvider)
+      ..invalidate(trustedDeviceAccessProvider);
     _ref.read(entryIndexRevisionProvider.notifier).bump();
     final String? id = editedEntryId?.trim();
     if (id != null && id.isNotEmpty) {

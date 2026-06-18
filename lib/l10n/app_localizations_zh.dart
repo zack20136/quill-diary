@@ -66,6 +66,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonUnitSeconds => '秒';
 
   @override
+  String get userFacingErrorDefaultMessage => '操作失敗，請稍後再試。';
+
+  @override
+  String get userFacingErrorLocalPathLabel => '本機路徑';
+
+  @override
   String commonGoogleAccountLabel(String name, String email) {
     return '$name · $email';
   }
@@ -743,6 +749,29 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get vaultTransferRestoreUnlockFailed =>
       '備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。';
+
+  @override
+  String get vaultTransferPickBackupFileTitle => '選擇備份 ZIP';
+
+  @override
+  String get vaultTransferPickBackupDirectoryTitle => '選擇匯出備份的資料夾';
+
+  @override
+  String get vaultTransferPickMarkdownDirectoryTitle => '選擇匯出日記的資料夾';
+
+  @override
+  String get vaultTransferPickHtmlDirectoryTitle => '選擇匯出 HTML 的資料夾';
+
+  @override
+  String get vaultTransferImportDocumentsDirectoryPrompt =>
+      '選擇包含要匯入之 App Markdown 或 HTML 的資料夾';
+
+  @override
+  String get vaultTransferImportDocumentsFileTitle =>
+      '選擇 ZIP、Markdown 或 HTML 以匯入';
+
+  @override
+  String get vaultTransferBackupOutsideExpectedDirectory => '備份檔案不在預期目錄內';
 
   @override
   String get androidSafWriteFailed => '無法將檔案寫入選擇的資料夾。';

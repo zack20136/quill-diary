@@ -66,6 +66,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnitSeconds => 'sec';
 
   @override
+  String get userFacingErrorDefaultMessage =>
+      'The operation failed. Please try again later.';
+
+  @override
+  String get userFacingErrorLocalPathLabel => 'local path';
+
+  @override
   String commonGoogleAccountLabel(String name, String email) {
     return '$name · $email';
   }
@@ -765,6 +772,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vaultTransferRestoreUnlockFailed =>
       'The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.';
+
+  @override
+  String get vaultTransferPickBackupFileTitle => 'Choose Backup ZIP';
+
+  @override
+  String get vaultTransferPickBackupDirectoryTitle =>
+      'Choose a Folder for the Backup Export';
+
+  @override
+  String get vaultTransferPickMarkdownDirectoryTitle =>
+      'Choose a Folder for the Markdown Export';
+
+  @override
+  String get vaultTransferPickHtmlDirectoryTitle =>
+      'Choose a Folder for the HTML Export';
+
+  @override
+  String get vaultTransferImportDocumentsDirectoryPrompt =>
+      'Choose a folder containing App Markdown or HTML files to import';
+
+  @override
+  String get vaultTransferImportDocumentsFileTitle =>
+      'Choose ZIP, Markdown, or HTML to Import';
+
+  @override
+  String get vaultTransferBackupOutsideExpectedDirectory =>
+      'The backup file is outside the expected directory.';
 
   @override
   String get androidSafWriteFailed =>

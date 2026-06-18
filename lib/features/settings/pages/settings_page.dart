@@ -77,6 +77,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(
       recoveryMetadataProvider,
     );
+    final AsyncValue<bool> trustedDeviceAccessAsync = ref.watch(
+      trustedDeviceAccessProvider,
+    );
     final AsyncValue<AppUnlockMode> unlockModeAsync = ref.watch(
       unlockModeProvider,
     );
@@ -87,7 +90,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         sessionState?.isUnlocked == true && sessionState?.session != null;
     final bool hasRecoveryKey = recoveryMetadata != null;
     final VaultTransferAccess transferAccess = VaultTransferAccess.fromContext(
-      l10n: context.l10n,
+      l10n: l10n,
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState?.status ?? AppLockStatus.uninitialized,
@@ -138,6 +141,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           sessionAsync: sessionAsync,
                           recoveryMetadata: recoveryMetadata,
                           canVaultBackup: transferAccess.canBackup,
+                          trustedDeviceAccessAsync: trustedDeviceAccessAsync,
                           unlockModeAsync: unlockModeAsync,
                         ),
                         const SizedBox(height: 16),
@@ -166,7 +170,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             error: (Object error, StackTrace _) =>
                                 SettingsInfoBanner(
                                   icon: Icons.error_outline_rounded,
-                                  message: userFacingErrorMessage(error),
+                                  message: userFacingErrorMessage(error, l10n: l10n),
                                   tone: SettingsBannerTone.error,
                                 ),
                           ),

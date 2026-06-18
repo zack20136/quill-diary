@@ -19,6 +19,8 @@
   "commonUnitCharacters": "字",
   "commonUnitMilliseconds": "毫秒",
   "commonUnitSeconds": "秒",
+  "userFacingErrorDefaultMessage": "操作失敗，請稍後再試。",
+  "userFacingErrorLocalPathLabel": "本機路徑",
   "commonGoogleAccountLabel": "{name} · {email}",
   "@commonGoogleAccountLabel": {
     "placeholders": {
@@ -488,6 +490,13 @@
   "vaultTransferDriveSectionDescriptionBackupLocked": "備份到 Google Drive 需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接從 Google Drive 還原。",
   "vaultTransferDriveBackupActionsLockedHint": "請先解鎖日記庫並建立復原金鑰，才能備份到 Google Drive。",
   "vaultTransferRestoreUnlockFailed": "備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。",
+  "vaultTransferPickBackupFileTitle": "選擇備份 ZIP",
+  "vaultTransferPickBackupDirectoryTitle": "選擇匯出備份的資料夾",
+  "vaultTransferPickMarkdownDirectoryTitle": "選擇匯出日記的資料夾",
+  "vaultTransferPickHtmlDirectoryTitle": "選擇匯出 HTML 的資料夾",
+  "vaultTransferImportDocumentsDirectoryPrompt": "選擇包含要匯入之 App Markdown 或 HTML 的資料夾",
+  "vaultTransferImportDocumentsFileTitle": "選擇 ZIP、Markdown 或 HTML 以匯入",
+  "vaultTransferBackupOutsideExpectedDirectory": "備份檔案不在預期目錄內",
   "androidSafWriteFailed": "無法將檔案寫入選擇的資料夾。",
   "androidSafWriteFailedWithCode": "無法將檔案寫入選擇的資料夾（{code}）。",
   "@androidSafWriteFailedWithCode": {

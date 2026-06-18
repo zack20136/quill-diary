@@ -82,14 +82,22 @@ Future<void> exportEntriesAsHtml(
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(userFacingErrorMessage(error))));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+      ),
+    );
   } catch (error) {
     if (!context.mounted) {
       return;
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(userFacingErrorMessage(error))));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+      ),
+    );
   }
 }
 

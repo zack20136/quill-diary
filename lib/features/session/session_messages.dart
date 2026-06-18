@@ -131,7 +131,7 @@ String friendlySessionErrorMessage(
       return sessionTrustedUnlockFailedAfterRestoreMessage(l10n);
     }
     if (_looksLikeUserFacingText(message)) {
-      return stripLocalPathsFromMessage(message);
+      return stripLocalPathsFromMessage(message, l10n: l10n);
     }
     return sessionUnlockFailedMessage(l10n);
   }

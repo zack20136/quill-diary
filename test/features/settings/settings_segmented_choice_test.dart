@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/settings/widgets/personalization_sections.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 

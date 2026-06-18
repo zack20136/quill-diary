@@ -19,6 +19,7 @@ class FakeVaultTransferService extends VaultTransferService {
     this.connectionStates,
     this.driveBackups = const <DriveBackupFile>[],
     this.downloadToTemp,
+    this.pickedBackupFile,
     this.precheckRestoreError,
     this.precheckRestoreResult,
   }) : super(
@@ -43,6 +44,7 @@ class FakeVaultTransferService extends VaultTransferService {
   final List<DriveConnectionState>? connectionStates;
   List<DriveBackupFile> driveBackups;
   File Function(DriveBackupFile backup)? downloadToTemp;
+  PickedBackupFile? pickedBackupFile;
   Object? precheckRestoreError;
   RestorePrecheck? precheckRestoreResult;
 
@@ -56,6 +58,7 @@ class FakeVaultTransferService extends VaultTransferService {
   int uploadBackupToDriveCalls = 0;
   int listDriveBackupsCalls = 0;
   int downloadDriveBackupToTempFileCalls = 0;
+  int pickLocalBackupFileCalls = 0;
   int precheckRestoreCalls = 0;
 
   @override
@@ -137,6 +140,12 @@ class FakeVaultTransferService extends VaultTransferService {
       return downloadToTemp!(backup);
     }
     throw UnimplementedError('downloadToTemp not configured');
+  }
+
+  @override
+  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) async {
+    pickLocalBackupFileCalls++;
+    return pickedBackupFile;
   }
 
   @override

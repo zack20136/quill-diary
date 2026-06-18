@@ -7,21 +7,20 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
-import '../../domain/shared/vault_backup_policy.dart';
 import '../../domain/shared/value_objects.dart';
+import '../../domain/shared/vault_backup_policy.dart';
 import '../../l10n/l10n.dart';
 import '../drive/drive_backup_service.dart';
+import 'backup_task_progress.dart';
 import 'external_directory_store.dart';
 import 'restore_precheck.dart';
 import 'shared/archive_extract.dart';
 import 'shared/external_directory_picker.dart';
 import 'shared/external_file_delivery.dart';
-import 'backup_task_progress.dart';
 import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
-/// 完整備份建立並交付後的結果。
 enum BackupPersistStatus { success, inspectFailed, cancelled }
 
 final class BackupPersistResult {
@@ -32,14 +31,21 @@ final class BackupPersistResult {
   });
 
   final BackupPersistStatus status;
-
-  /// 本機/外部路徑，或 Drive fileId。
   final String? savedPath;
   final String message;
 }
 
-/// 保留於應用支援目錄的 App 管理本機備份中繼資料。
-class LocalBackupFile {
+final class PickedBackupFile {
+  const PickedBackupFile({
+    required this.file,
+    required this.shouldDeleteAfterUse,
+  });
+
+  final File file;
+  final bool shouldDeleteAfterUse;
+}
+
+final class LocalBackupFile {
   const LocalBackupFile({
     required this.name,
     required this.path,
@@ -53,7 +59,6 @@ class LocalBackupFile {
   final int sizeBytes;
 }
 
-/// 協調備份、還原、可攜式匯入／匯出與 Google Drive 的使用者流程。
 class VaultTransferService {
   VaultTransferService({
     required VaultArchiveIo archiveIo,
@@ -91,7 +96,6 @@ class VaultTransferService {
     return _driveBackupService.disconnect();
   }
 
-  /// 建立備份並寫入 App 內本機目錄。
   Future<BackupPersistResult> saveBackupToAppLocal({
     BackupTaskProgressListener? onProgress,
   }) {
@@ -122,7 +126,6 @@ class VaultTransferService {
     );
   }
 
-  /// 建立備份並複製到使用者選擇的外部資料夾。
   Future<BackupPersistResult> saveBackupToExternalDirectory({
     required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
@@ -136,7 +139,7 @@ class VaultTransferService {
             BackupTaskProgressListener? deliverProgress,
           ) {
             return deliverToExternalDirectory(
-              dialogTitle: VaultBackupPolicy.pickBackupDirectoryTitle,
+              dialogTitle: l10n.vaultTransferPickBackupDirectoryTitle,
               fileName: fileName,
               sourceFile: stagingZip,
               l10n: l10n,
@@ -149,7 +152,6 @@ class VaultTransferService {
     );
   }
 
-  /// 建立備份並上傳至 Google Drive。
   Future<BackupPersistResult> uploadBackupToDrive({
     BackupTaskProgressListener? onProgress,
   }) {
@@ -177,56 +179,6 @@ class VaultTransferService {
     final List<LocalBackupFile> backups = await _loadAppLocalBackups();
     await _pruneExcessAppLocalBackupsFromSorted(backups);
     return backups;
-  }
-
-  Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
-    final Directory backupsDirectory = await _pathStrategy
-        .localBackupsDirectory();
-    if (!backupsDirectory.existsSync()) {
-      return <LocalBackupFile>[];
-    }
-    final List<LocalBackupFile> backups = <LocalBackupFile>[];
-    await for (final FileSystemEntity entity in backupsDirectory.list(
-      followLinks: false,
-    )) {
-      if (entity is! File ||
-          !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
-        continue;
-      }
-      backups.add(
-        LocalBackupFile(
-          name: p.basename(entity.path),
-          path: entity.path,
-          createdAt: await entity.lastModified(),
-          sizeBytes: await entity.length(),
-        ),
-      );
-    }
-    backups.sort(_compareLocalBackupsNewestFirst);
-    return backups;
-  }
-
-  int _compareLocalBackupsNewestFirst(LocalBackupFile a, LocalBackupFile b) {
-    final int createdOrder = b.createdAt.compareTo(a.createdAt);
-    if (createdOrder != 0) {
-      return createdOrder;
-    }
-    return b.name.compareTo(a.name);
-  }
-
-  Future<void> _pruneExcessAppLocalBackupsFromSorted(
-    List<LocalBackupFile> sortedNewestFirst,
-  ) async {
-    if (sortedNewestFirst.length <= backupRetainCount) {
-      return;
-    }
-    final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
-      backupRetainCount,
-    );
-    for (final LocalBackupFile backup in stale) {
-      await deleteAppLocalBackup(backup);
-    }
-    sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
   }
 
   Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
@@ -259,11 +211,12 @@ class VaultTransferService {
       DateTime.now(),
     );
     return _writeTempAndDeliver(
-      dialogTitle: VaultBackupPolicy.pickMarkdownDirectoryTitle,
+      dialogTitle: l10n.vaultTransferPickMarkdownDirectoryTitle,
       fileName: fileName,
       l10n: l10n,
-      writeTarget: (File target) =>
-          _archiveIo.writeMarkdownZip(session: session, target: target),
+      writeTarget: (File target) {
+        return _archiveIo.writeMarkdownZip(session: session, target: target);
+      },
     );
   }
 
@@ -280,22 +233,26 @@ class VaultTransferService {
       DateTime.now(),
     );
     return _writeTempAndDeliver(
-      dialogTitle: VaultBackupPolicy.pickHtmlDirectoryTitle,
+      dialogTitle: l10n.vaultTransferPickHtmlDirectoryTitle,
       fileName: fileName,
       l10n: l10n,
-      writeTarget: (File target) => _archiveIo.writeSelectedHtmlExport(
-        session: session,
-        entryIds: entryIds,
-        target: target,
-      ),
+      writeTarget: (File target) {
+        return _archiveIo.writeSelectedHtmlExport(
+          session: session,
+          entryIds: entryIds,
+          target: target,
+        );
+      },
     );
   }
 
   Future<PortableImportResult?> importDocumentsWithPicker(
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    required AppLocalizations l10n,
+  }) async {
     final PortableImportResult? pickedResult = await _tryImportFromPickedFiles(
       session,
+      l10n: l10n,
     );
     if (pickedResult != null) {
       return pickedResult;
@@ -303,7 +260,7 @@ class VaultTransferService {
 
     final String? sourceDirectory =
         await ExternalDirectoryPicker.pickExternalDirectory(
-          prompt: '選擇要匯入的資料夾（本 App Markdown 或 HTML）',
+          prompt: l10n.vaultTransferImportDocumentsDirectoryPrompt,
           initialDirectory: await _externalDirectoryStore
               .resolveInitialDirectory(),
         );
@@ -319,10 +276,9 @@ class VaultTransferService {
     );
   }
 
-  /// 讓使用者選取完整 vault 備份 zip，並解析為可讀取的 [File]。
-  Future<File?> pickLocalBackupFile() async {
+  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) async {
     final PlatformFile? picked = await FilePicker.pickFile(
-      dialogTitle: VaultBackupPolicy.pickBackupFileDialogTitle,
+      dialogTitle: l10n.vaultTransferPickBackupFileTitle,
       type: FileType.custom,
       allowedExtensions: const <String>[VaultBackupPolicy.fileExtension],
     );
@@ -368,29 +324,6 @@ class VaultTransferService {
     );
   }
 
-  Future<File?> _resolvePickedBackupFile(PlatformFile file) async {
-    final String? path = file.path;
-    if (path != null && path.isNotEmpty) {
-      try {
-        if (File(path).existsSync()) {
-          return File(path);
-        }
-      } on Object {
-        // 某些平台會回傳內容 URI，無法直接用 dart:io 開啟。
-      }
-    }
-    final Uint8List? bytes = await _readPlatformFileBytes(file);
-    if (bytes == null) {
-      return null;
-    }
-    final String baseName = file.name.isNotEmpty
-        ? file.name
-        : 'restore.${VaultBackupPolicy.fileExtension}';
-    final File tempBackup = await _createTempFile(baseName);
-    await tempBackup.writeAsBytes(bytes, flush: true);
-    return tempBackup;
-  }
-
   Future<List<DriveBackupFile>> listDriveBackups() async {
     return _driveBackupService.listBackups();
   }
@@ -416,21 +349,108 @@ class VaultTransferService {
     await restoreFromBackupFile(backupFile);
   }
 
-  Future<void> _ensureFileInsideLocalBackupsDirectory(File file) async {
+  Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
+    final Directory backupsDirectory = await _pathStrategy
+        .localBackupsDirectory();
+    if (!backupsDirectory.existsSync()) {
+      return <LocalBackupFile>[];
+    }
+
+    final List<LocalBackupFile> backups = <LocalBackupFile>[];
+    await for (final FileSystemEntity entity in backupsDirectory.list(
+      followLinks: false,
+    )) {
+      if (entity is! File ||
+          !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
+        continue;
+      }
+      backups.add(
+        LocalBackupFile(
+          name: p.basename(entity.path),
+          path: entity.path,
+          createdAt: await entity.lastModified(),
+          sizeBytes: await entity.length(),
+        ),
+      );
+    }
+
+    backups.sort(_compareLocalBackupsNewestFirst);
+    return backups;
+  }
+
+  int _compareLocalBackupsNewestFirst(LocalBackupFile a, LocalBackupFile b) {
+    final int createdOrder = b.createdAt.compareTo(a.createdAt);
+    if (createdOrder != 0) {
+      return createdOrder;
+    }
+    return b.name.compareTo(a.name);
+  }
+
+  Future<void> _pruneExcessAppLocalBackupsFromSorted(
+    List<LocalBackupFile> sortedNewestFirst,
+  ) async {
+    if (sortedNewestFirst.length <= backupRetainCount) {
+      return;
+    }
+    final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
+      backupRetainCount,
+    );
+    for (final LocalBackupFile backup in stale) {
+      await deleteAppLocalBackup(backup);
+    }
+    sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
+  }
+
+  Future<PickedBackupFile?> _resolvePickedBackupFile(PlatformFile file) async {
+    final String? path = file.path;
+    if (path != null && path.isNotEmpty) {
+      try {
+        if (File(path).existsSync()) {
+          return PickedBackupFile(
+            file: File(path),
+            shouldDeleteAfterUse: false,
+          );
+        }
+      } on Object {
+        // Ignore unsupported URI-style paths and try the bytes fallback.
+      }
+    }
+
+    final Uint8List? bytes = await _readPlatformFileBytes(file);
+    if (bytes == null) {
+      return null;
+    }
+
+    final String baseName = file.name.isNotEmpty
+        ? file.name
+        : 'restore.${VaultBackupPolicy.fileExtension}';
+    final File tempBackup = await _createTempFile(baseName);
+    await tempBackup.writeAsBytes(bytes, flush: true);
+    return PickedBackupFile(file: tempBackup, shouldDeleteAfterUse: true);
+  }
+
+  Future<void> _ensureFileInsideLocalBackupsDirectory(
+    File file, {
+    AppLocalizations? l10n,
+  }) async {
     final Directory backupsDirectory = await _pathStrategy
         .localBackupsDirectory();
     final String root = p.normalize(backupsDirectory.absolute.path);
     final String target = p.normalize(file.absolute.path);
     if (target == root || !p.isWithin(root, target)) {
-      throw StateError('本機備份路徑無效。');
+      throw StateError(
+        l10n?.vaultTransferBackupOutsideExpectedDirectory ??
+            'Backup file is outside the expected directory.',
+      );
     }
   }
 
   Future<PortableImportResult?> _tryImportFromPickedFiles(
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    required AppLocalizations l10n,
+  }) async {
     final FilePickerResult? picked = await FilePicker.pickFiles(
-      dialogTitle: '選擇 zip、Markdown 或 HTML，或取消後改選資料夾',
+      dialogTitle: l10n.vaultTransferImportDocumentsFileTitle,
       type: FileType.custom,
       allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
     );
@@ -466,13 +486,13 @@ class VaultTransferService {
     if (path != null && path.isNotEmpty) {
       try {
         if (File(path).existsSync()) {
-          return await _archiveIo.importDocumentsFromZip(
+          return _archiveIo.importDocumentsFromZip(
             session: session,
             zipFile: File(path),
           );
         }
       } on Object {
-        // 某些平台會回傳內容 URI，改走暫存檔。
+        // Ignore unsupported URI-style paths and try the bytes fallback.
       }
     }
 
@@ -508,9 +528,11 @@ class VaultTransferService {
           continue;
         }
 
-        final String fileName = file.name.trim().isNotEmpty
-            ? p.basename(file.name)
-            : 'imported_entry$copiedFiles$extension';
+        final String fileName = uniqueImportedDocumentFileName(
+          sourceName: file.name,
+          extension: extension,
+          index: copiedFiles,
+        );
         final File destination = File(p.join(tempRoot.path, fileName));
 
         final String? path = file.path;
@@ -522,7 +544,7 @@ class VaultTransferService {
               continue;
             }
           } on Object {
-            // 某些平台會回傳內容 URI，改走位元組。
+            // Ignore unsupported URI-style paths and try the bytes fallback.
           }
         }
 
@@ -538,7 +560,7 @@ class VaultTransferService {
         return null;
       }
 
-      return await _archiveIo.importDocuments(
+      return _archiveIo.importDocuments(
         session: session,
         rootDirectory: tempRoot,
       );
@@ -575,6 +597,24 @@ class VaultTransferService {
 
   bool _isPortableDocumentExtension(String extension) {
     return extension == '.md' || extension == '.html' || extension == '.htm';
+  }
+
+  @visibleForTesting
+  static String uniqueImportedDocumentFileName({
+    required String sourceName,
+    required String extension,
+    required int index,
+  }) {
+    final String normalizedExtension = extension.isNotEmpty
+        ? extension
+        : p.extension(sourceName).toLowerCase();
+    final String fallbackName = normalizedExtension.isNotEmpty
+        ? 'imported_entry$index$normalizedExtension'
+        : 'imported_entry$index';
+    final String baseName = sourceName.trim().isNotEmpty
+        ? p.basename(sourceName.trim())
+        : fallbackName;
+    return '${(index + 1).toString().padLeft(4, '0')}_$baseName';
   }
 
   Future<Directory> _createTempDirectory(String prefix) async {
@@ -664,7 +704,6 @@ class VaultTransferService {
     );
   }
 
-  /// 在暫存檔寫入內容後，交付至使用者選擇的外部資料夾。
   Future<String?> _writeTempAndDeliver({
     required String dialogTitle,
     required String fileName,

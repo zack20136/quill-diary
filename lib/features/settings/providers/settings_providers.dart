@@ -32,3 +32,10 @@ final settingsDriveConnectionProvider =
 final unlockModeProvider = FutureProvider<AppUnlockMode>((Ref ref) async {
   return ref.read(appLockServiceProvider).getUnlockMode();
 });
+
+final trustedDeviceAccessProvider = FutureProvider<bool>((Ref ref) async {
+  if (!ref.watch(supportedPlatformProvider)) {
+    return false;
+  }
+  return ref.read(vaultRepositoryProvider).hasTrustedDeviceAccess();
+});

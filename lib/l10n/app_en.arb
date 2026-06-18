@@ -19,6 +19,8 @@
   "commonUnitCharacters": "chars",
   "commonUnitMilliseconds": "ms",
   "commonUnitSeconds": "sec",
+  "userFacingErrorDefaultMessage": "The operation failed. Please try again later.",
+  "userFacingErrorLocalPathLabel": "local path",
   "commonGoogleAccountLabel": "{name} · {email}",
   "@commonGoogleAccountLabel": {
     "placeholders": {
@@ -488,6 +490,13 @@
   "vaultTransferDriveSectionDescriptionBackupLocked": "Google Drive backup requires an unlocked vault and a recovery key. If none exists or you forgot it, you can still restore from Google Drive.",
   "vaultTransferDriveBackupActionsLockedHint": "Unlock the diary vault and create a recovery key before backing up to Google Drive.",
   "vaultTransferRestoreUnlockFailed": "The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.",
+  "vaultTransferPickBackupFileTitle": "Choose Backup ZIP",
+  "vaultTransferPickBackupDirectoryTitle": "Choose a Folder for the Backup Export",
+  "vaultTransferPickMarkdownDirectoryTitle": "Choose a Folder for the Markdown Export",
+  "vaultTransferPickHtmlDirectoryTitle": "Choose a Folder for the HTML Export",
+  "vaultTransferImportDocumentsDirectoryPrompt": "Choose a folder containing App Markdown or HTML files to import",
+  "vaultTransferImportDocumentsFileTitle": "Choose ZIP, Markdown, or HTML to Import",
+  "vaultTransferBackupOutsideExpectedDirectory": "The backup file is outside the expected directory.",
   "androidSafWriteFailed": "Unable to write the file to the selected folder.",
   "androidSafWriteFailedWithCode": "Unable to write the file to the selected folder ({code}).",
   "@androidSafWriteFailedWithCode": {

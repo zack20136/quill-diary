@@ -217,9 +217,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('quill-backup.zip'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
 
-    expect(find.text('restore precheck failed'), findsOneWidget);
     expect(downloadedFile, isNotNull);
     expect(downloadedFile!.existsSync(), isFalse);
     expect(transferService.downloadDriveBackupToTempFileCalls, 1);

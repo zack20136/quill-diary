@@ -93,7 +93,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(userFacingErrorMessage(error))),
+        body: Center(
+          child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+        ),
       ),
     );
   }

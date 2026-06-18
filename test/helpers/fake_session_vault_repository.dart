@@ -49,6 +49,7 @@ class FakeSessionVaultRepository extends VaultRepository {
   int clearTrustedDeviceAccessCalls = 0;
   int closeUnlockedResourcesCalls = 0;
   int ensureIndexReadyCalls = 0;
+  int hasTrustedDeviceAccessCalls = 0;
   int openTrustedSessionCalls = 0;
   int resumeUnlockedSessionAfterRestoreCalls = 0;
   List<Object?>? _openTrustedSessionResults;
@@ -64,7 +65,10 @@ class FakeSessionVaultRepository extends VaultRepository {
   Future<RecoveryMetadata?> readRecoveryMetadata() async => metadata;
 
   @override
-  Future<bool> hasTrustedDeviceAccess() async => hasTrustedDevice;
+  Future<bool> hasTrustedDeviceAccess() async {
+    hasTrustedDeviceAccessCalls++;
+    return hasTrustedDevice;
+  }
 
   @override
   Future<UnlockedVaultSession> openTrustedSession() async {

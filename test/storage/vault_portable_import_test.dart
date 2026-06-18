@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 
 import '../helpers/vault_test_harness.dart';
 
@@ -21,7 +22,7 @@ void main() {
     await harness.dispose();
   });
 
-  test('可匯入單篇 Markdown 與同資料夾附件', () async {
+  test('imports markdown exports with attachments', () async {
     final setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_md'),
@@ -70,7 +71,7 @@ Imported from markdown.
     expect(attachments.single.safeFilename, 'image.png');
   });
 
-  test('可從 zip 匯入 Markdown 與附件', () async {
+  test('imports markdown exports from zip archives', () async {
     final setup = await harness.repository.setupRecoveryKey();
     final File zipFile = File(
       p.join(harness.tempDir.path, 'portable_import.zip'),
@@ -120,7 +121,7 @@ Imported from zip.
     expect(attachments.single.safeFilename, 'photo.png');
   });
 
-  test('非本 App 的 Easy Diary 匯出 HTML 會略過', () async {
+  test('skips html files that are not Quill Diary exports', () async {
     final setup = await harness.repository.setupRecoveryKey();
     final Directory importRoot = Directory(
       p.join(harness.tempDir.path, 'import_ed_html_skip'),
@@ -141,5 +142,32 @@ Imported from zip.
     expect(result.importedEntries, 0);
     expect(result.skippedFiles, 1);
     expect(await harness.repository.listEntries(), isEmpty);
+  });
+
+  test('uniqueImportedDocumentFileName keeps extensions and avoids collisions', () {
+    expect(
+      VaultTransferService.uniqueImportedDocumentFileName(
+        sourceName: '2026-05-20.md',
+        extension: '.md',
+        index: 0,
+      ),
+      '0001_2026-05-20.md',
+    );
+    expect(
+      VaultTransferService.uniqueImportedDocumentFileName(
+        sourceName: '2026-05-20.md',
+        extension: '.md',
+        index: 1,
+      ),
+      '0002_2026-05-20.md',
+    );
+    expect(
+      VaultTransferService.uniqueImportedDocumentFileName(
+        sourceName: '',
+        extension: '.html',
+        index: 2,
+      ),
+      '0003_imported_entry2.html',
+    );
   });
 }

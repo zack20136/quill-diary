@@ -212,6 +212,18 @@ abstract class AppLocalizations {
   /// **'秒'**
   String get commonUnitSeconds;
 
+  /// No description provided for @userFacingErrorDefaultMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失敗，請稍後再試。'**
+  String get userFacingErrorDefaultMessage;
+
+  /// No description provided for @userFacingErrorLocalPathLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'本機路徑'**
+  String get userFacingErrorLocalPathLabel;
+
   /// No description provided for @commonGoogleAccountLabel.
   ///
   /// In zh, this message translates to:
@@ -1396,6 +1408,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。'**
   String get vaultTransferRestoreUnlockFailed;
+
+  /// No description provided for @vaultTransferPickBackupFileTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇備份 ZIP'**
+  String get vaultTransferPickBackupFileTitle;
+
+  /// No description provided for @vaultTransferPickBackupDirectoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇匯出備份的資料夾'**
+  String get vaultTransferPickBackupDirectoryTitle;
+
+  /// No description provided for @vaultTransferPickMarkdownDirectoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇匯出日記的資料夾'**
+  String get vaultTransferPickMarkdownDirectoryTitle;
+
+  /// No description provided for @vaultTransferPickHtmlDirectoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇匯出 HTML 的資料夾'**
+  String get vaultTransferPickHtmlDirectoryTitle;
+
+  /// No description provided for @vaultTransferImportDocumentsDirectoryPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇包含要匯入之 App Markdown 或 HTML 的資料夾'**
+  String get vaultTransferImportDocumentsDirectoryPrompt;
+
+  /// No description provided for @vaultTransferImportDocumentsFileTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇 ZIP、Markdown 或 HTML 以匯入'**
+  String get vaultTransferImportDocumentsFileTitle;
+
+  /// No description provided for @vaultTransferBackupOutsideExpectedDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'備份檔案不在預期目錄內'**
+  String get vaultTransferBackupOutsideExpectedDirectory;
 
   /// No description provided for @androidSafWriteFailed.
   ///

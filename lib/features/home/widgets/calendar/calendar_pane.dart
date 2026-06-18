@@ -113,7 +113,10 @@ class CalendarPane extends ConsumerWidget {
       return HomeStateCard(
         icon: Icons.error_outline,
         title: context.l10n.commonReadFailureTitle,
-        message: userFacingErrorMessage(monthEntriesAsync.error!),
+        message: userFacingErrorMessage(
+          monthEntriesAsync.error!,
+          l10n: context.l10n,
+        ),
       );
     }
 
@@ -485,7 +488,9 @@ class CalendarPane extends ConsumerWidget {
                 return HomeDiaryListSectionCard(
                   title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
                   stripeColor: cs.primary,
-                  child: Text(userFacingErrorMessage(error)),
+                  child: Text(
+                    userFacingErrorMessage(error, l10n: context.l10n),
+                  ),
                 );
               },
             ),

@@ -23,17 +23,13 @@ class SettingsActions {
 
   final Ref _ref;
 
-  Future<bool> hasTrustedDeviceAccess() {
-    return _ref.read(vaultRepositoryProvider).hasTrustedDeviceAccess();
-  }
-
-  Future<PortableImportResult?> importDocuments() {
+  Future<PortableImportResult?> importDocuments(AppLocalizations l10n) {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) {
       return _ref
           .read(vaultTransferServiceProvider)
-          .importDocumentsWithPicker(session);
+          .importDocumentsWithPicker(session, l10n: l10n);
     });
   }
 
@@ -97,8 +93,8 @@ class SettingsActions {
     });
   }
 
-  Future<File?> pickLocalBackupFile() {
-    return _ref.read(vaultTransferServiceProvider).pickLocalBackupFile();
+  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) {
+    return _ref.read(vaultTransferServiceProvider).pickLocalBackupFile(l10n);
   }
 
   Future<List<DriveBackupFile>> listDriveBackups() {

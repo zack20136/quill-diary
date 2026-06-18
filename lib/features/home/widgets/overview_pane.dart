@@ -442,7 +442,7 @@ class OverviewPane extends ConsumerWidget {
       error: (Object error, StackTrace _) => HomeStateCard(
         icon: Icons.error_outline,
         title: context.l10n.commonReadFailureTitle,
-        message: userFacingErrorMessage(error),
+        message: userFacingErrorMessage(error, l10n: context.l10n),
       ),
     );
   }
@@ -531,7 +531,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
         ),
         error: (Object error, StackTrace _) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Text(userFacingErrorMessage(error)),
+          child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
         ),
       ),
     );
@@ -647,7 +647,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
             child: Center(child: CircularProgressIndicator()),
           ),
           error: (Object error, StackTrace _) =>
-              Text(userFacingErrorMessage(error)),
+              Text(userFacingErrorMessage(error, l10n: context.l10n)),
         );
   }
 }

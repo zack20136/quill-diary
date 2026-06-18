@@ -92,7 +92,9 @@ class _TagAccentComposerDialogState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.tagSaveFailure(userFacingErrorMessage(error))),
+            content: Text(
+              l10n.tagSaveFailure(userFacingErrorMessage(error, l10n: l10n)),
+            ),
           ),
         );
       }
@@ -118,7 +120,9 @@ class _TagAccentComposerDialogState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.tagDeleteFailure(userFacingErrorMessage(error))),
+            content: Text(
+              l10n.tagDeleteFailure(userFacingErrorMessage(error, l10n: l10n)),
+            ),
           ),
         );
       }

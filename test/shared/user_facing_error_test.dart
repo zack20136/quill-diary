@@ -1,47 +1,92 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
+import '../helpers/test_l10n.dart';
+
 void main() {
   group('userFacingErrorMessage', () {
-    test('StateError 回傳 message', () {
-      expect(userFacingErrorMessage(StateError('無法讀取備份檔')), '無法讀取備份檔');
-    });
-
-    test('FormatException 回傳 message', () {
+    test('returns StateError message when present', () {
       expect(
-        userFacingErrorMessage(const FormatException('草稿格式不正確。')),
-        '草稿格式不正確。',
+        userFacingErrorMessage(StateError('無法讀取資料'), l10n: testZhL10n),
+        '無法讀取資料',
       );
     });
 
-    test('空 message 使用 fallback', () {
-      expect(userFacingErrorMessage(StateError('   ')), '操作失敗，請稍後再試。');
+    test('returns FormatException message when present', () {
+      expect(
+        userFacingErrorMessage(
+          const FormatException('草稿內容格式錯誤'),
+          l10n: testZhL10n,
+        ),
+        '草稿內容格式錯誤',
+      );
     });
 
-    test('其他型別使用 fallback', () {
-      expect(userFacingErrorMessage(Exception('internal')), '操作失敗，請稍後再試。');
+    test('falls back to localized default when message is blank', () {
       expect(
-        userFacingErrorMessage(Exception('internal'), fallback: '自訂錯誤'),
-        '自訂錯誤',
+        userFacingErrorMessage(StateError('   '), l10n: testZhL10n),
+        testZhL10n.userFacingErrorDefaultMessage,
+      );
+    });
+
+    test('falls back to localized default for non-user-facing errors', () {
+      expect(
+        userFacingErrorMessage(Exception('internal'), l10n: testZhL10n),
+        testZhL10n.userFacingErrorDefaultMessage,
+      );
+    });
+
+    test('uses caller fallback override when provided', () {
+      expect(
+        userFacingErrorMessage(
+          Exception('internal'),
+          l10n: testZhL10n,
+          fallback: '請稍後重試',
+        ),
+        '請稍後重試',
       );
     });
   });
 
   group('stripLocalPathsFromMessage', () {
-    test('Windows 路徑替換為本機檔案', () {
+    test('replaces Windows paths with localized label', () {
       expect(
-        stripLocalPathsFromMessage('無法開啟 C:\\Users\\me\\secret.md'),
-        '無法開啟 本機檔案',
+        stripLocalPathsFromMessage(
+          '無法開啟 C:\\Users\\me\\secret.md',
+          l10n: testZhL10n,
+        ),
+        '無法開啟 本機路徑',
       );
     });
 
-    test('Unix 風格路徑替換為本機檔案', () {
-      expect(stripLocalPathsFromMessage('無法開啟 D:/data/secret.md'), '無法開啟 本機檔案');
+    test('replaces POSIX paths with localized label', () {
+      expect(
+        stripLocalPathsFromMessage(
+          '無法讀取 /data/user/0/com.example/files/secret.md',
+          l10n: testZhL10n,
+        ),
+        '無法讀取 本機路徑',
+      );
     });
 
-    test('一般文字不被誤改', () {
-      const String message = '復原金鑰與此備份不相符。';
-      expect(stripLocalPathsFromMessage(message), message);
+    test('replaces macOS style paths with localized label', () {
+      expect(
+        stripLocalPathsFromMessage(
+          '錯誤位置：/Users/me/Documents/private/diary.md。',
+          l10n: testZhL10n,
+        ),
+        '錯誤位置：本機路徑。',
+      );
+    });
+
+    test('does not rewrite urls', () {
+      const String message = '請參考 https://example.com/docs/path';
+      expect(stripLocalPathsFromMessage(message, l10n: testZhL10n), message);
+    });
+
+    test('keeps ordinary slash text unchanged', () {
+      const String message = '格式應為 標題/分類/日期';
+      expect(stripLocalPathsFromMessage(message, l10n: testZhL10n), message);
     });
   });
 }
