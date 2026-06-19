@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
@@ -13,7 +14,7 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
     super.key,
     this.initialDisplayLabel,
     this.initialAccentArgb,
-    this.lockLabel = false,
+    this.sessionForRename,
     this.titleText,
     this.descriptionText,
     this.primaryButtonLabel,
@@ -22,7 +23,7 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
 
   final String? initialDisplayLabel;
   final int? initialAccentArgb;
-  final bool lockLabel;
+  final UnlockedVaultSession? sessionForRename;
   final String? titleText;
   final String? descriptionText;
   final String? primaryButtonLabel;
@@ -80,9 +81,18 @@ class _TagAccentComposerDialogState
 
     setState(() => _saving = true);
     try {
-      await ref
-          .read(vaultRepositoryProvider)
-          .upsertTagAccentArgb(name, colorArgb32(_accent));
+      final vaultRepository = ref.read(vaultRepositoryProvider);
+      final String? originalLabel = widget.initialDisplayLabel;
+      if (widget.sessionForRename != null && originalLabel != null) {
+        await vaultRepository.renameTagCatalogItem(
+          widget.sessionForRename!,
+          fromLabel: originalLabel,
+          toLabel: name,
+          accentArgb: colorArgb32(_accent),
+        );
+      } else {
+        await vaultRepository.upsertTagAccentArgb(name, colorArgb32(_accent));
+      }
       ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
       if (mounted) {
@@ -217,69 +227,27 @@ class _TagAccentComposerDialogState
                   ),
                   const SizedBox(height: 6),
                 ] else ...<Widget>[const SizedBox(height: 22)],
-                if (widget.lockLabel) ...<Widget>[
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: cs.surface.withValues(alpha: 0.94),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.42),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.sell_rounded,
-                              color: cs.primary.withValues(alpha: 0.9),
-                              size: 22,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                previewText.isEmpty
-                                    ? l10n.tagUnnamedPreview
-                                    : previewText,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                TextField(
+                  controller: _nameCtrl,
+                  enabled: !busy,
+                  textInputAction: TextInputAction.done,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: l10n.tagNameHint,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
+                    filled: true,
+                    fillColor: cs.surface.withValues(alpha: 0.95),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                ] else ...<Widget>[
-                  TextField(
-                    controller: _nameCtrl,
-                    enabled: !busy,
-                    textInputAction: TextInputAction.done,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: l10n.tagNameHint,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 16,
-                      ),
-                      filled: true,
-                      fillColor: cs.surface.withValues(alpha: 0.95),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onSubmitted: (_) => _save(),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                  onSubmitted: (_) => _save(),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   l10n.tagDefaultColorLabel,
                   style: theme.textTheme.labelLarge?.copyWith(

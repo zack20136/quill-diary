@@ -586,6 +586,119 @@ class VaultRepository {
     await deleteTagCatalogItem(tag);
   }
 
+  /// 重新命名標籤並同步更新 catalog、索引與所有日記條目。
+  /// 若 [toLabel] 的正規化鍵已存在，會合併到該標籤。
+  Future<int> renameTagCatalogItem(
+    UnlockedVaultSession session, {
+    required String fromLabel,
+    required String toLabel,
+    int? accentArgb,
+  }) async {
+    final String fromDisplay = fromLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final String toDisplay = toLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final String fromNorm = normalizeText(fromDisplay);
+    final String toNorm = normalizeText(toDisplay);
+    if (fromNorm.isEmpty || toNorm.isEmpty) {
+      throw ArgumentError.value(toLabel, 'toLabel', '標籤名稱不可為空白');
+    }
+
+    final List<TagCatalogItem> catalog = await listTagCatalog();
+    int? resolvedAccent = accentArgb;
+    for (final TagCatalogItem item in catalog) {
+      if (resolvedAccent != null) {
+        break;
+      }
+      if (item.normalized == fromNorm || item.normalized == toNorm) {
+        resolvedAccent = item.accentArgb;
+      }
+    }
+
+    final int updatedCount =
+        fromNorm != toNorm || fromDisplay != toDisplay
+        ? await _rewriteTagInAllEntries(
+            session,
+            fromNorm: fromNorm,
+            toDisplay: toDisplay,
+          )
+        : 0;
+
+    final List<TagCatalogItem> base = catalog
+        .where((TagCatalogItem item) => item.normalized != fromNorm)
+        .toList(growable: false);
+    final List<TagCatalogItem> merged = TagStylesStore.merge(
+      base,
+      <TagCatalogItem>[
+        TagCatalogItem(label: toDisplay, accentArgb: resolvedAccent),
+      ],
+    );
+    await _persistTagCatalogToVault(merged);
+
+    final IndexDatabase indexDb = _requireOpenIndex();
+    if (fromNorm != toNorm) {
+      await indexDb.deleteTagAccentArgb(fromDisplay);
+    }
+    if (resolvedAccent != null) {
+      await indexDb.upsertTagAccentArgb(toDisplay, resolvedAccent);
+    }
+
+    return updatedCount;
+  }
+
+  Future<int> _rewriteTagInAllEntries(
+    UnlockedVaultSession session, {
+    required String fromNorm,
+    required String toDisplay,
+  }) async {
+    final String toNorm = normalizeText(toDisplay);
+    final List<EntryIndexRecord> records = await listEntries();
+    int updatedCount = 0;
+    for (final EntryIndexRecord record in records) {
+      if (!record.tags.any((String t) => normalizeText(t) == fromNorm)) {
+        continue;
+      }
+
+      final DiaryEntry? entry = await loadEntry(session, record.id);
+      if (entry == null) {
+        continue;
+      }
+
+      final List<String> nextTags = <String>[];
+      final Set<String> seenNorm = <String>{};
+      for (final String tag in entry.tags) {
+        final String norm = normalizeText(tag);
+        if (norm == fromNorm) {
+          if (seenNorm.add(toNorm)) {
+            nextTags.add(toDisplay);
+          }
+          continue;
+        }
+        if (seenNorm.add(norm)) {
+          nextTags.add(tag);
+        }
+      }
+
+      if (_entryTagsEqual(entry.tags, nextTags)) {
+        continue;
+      }
+
+      await saveEntry(session, entry.copyWith(tags: nextTags));
+      updatedCount++;
+    }
+    return updatedCount;
+  }
+
+  bool _entryTagsEqual(List<String> left, List<String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (int i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// 從所有日記條目移除 [tag]，並清除已儲存的強調色。
   Future<int> removeTagFromAllEntries(
     UnlockedVaultSession session,

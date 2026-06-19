@@ -1475,17 +1475,41 @@ abstract class AppLocalizations {
   /// **'心情'**
   String get defaultTagMood;
 
+  /// No description provided for @defaultTagTakeaways.
+  ///
+  /// In zh, this message translates to:
+  /// **'心得'**
+  String get defaultTagTakeaways;
+
+  /// No description provided for @defaultTagNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'筆記'**
+  String get defaultTagNotes;
+
   /// No description provided for @defaultTagReflection.
   ///
   /// In zh, this message translates to:
   /// **'反思'**
   String get defaultTagReflection;
 
-  /// No description provided for @defaultTagPlanning.
+  /// No description provided for @defaultTagIdeas.
+  ///
+  /// In zh, this message translates to:
+  /// **'靈感'**
+  String get defaultTagIdeas;
+
+  /// No description provided for @defaultTagPlans.
   ///
   /// In zh, this message translates to:
   /// **'計畫'**
-  String get defaultTagPlanning;
+  String get defaultTagPlans;
+
+  /// No description provided for @defaultTagGoals.
+  ///
+  /// In zh, this message translates to:
+  /// **'目標'**
+  String get defaultTagGoals;
 
   /// No description provided for @defaultTagWork.
   ///
@@ -1493,11 +1517,17 @@ abstract class AppLocalizations {
   /// **'工作'**
   String get defaultTagWork;
 
-  /// No description provided for @defaultTagStudy.
+  /// No description provided for @defaultTagLearning.
   ///
   /// In zh, this message translates to:
   /// **'學習'**
-  String get defaultTagStudy;
+  String get defaultTagLearning;
+
+  /// No description provided for @defaultTagRelationships.
+  ///
+  /// In zh, this message translates to:
+  /// **'人際'**
+  String get defaultTagRelationships;
 
   /// No description provided for @defaultTagFamily.
   ///
@@ -1505,47 +1535,17 @@ abstract class AppLocalizations {
   /// **'家庭'**
   String get defaultTagFamily;
 
-  /// No description provided for @defaultTagFriends.
-  ///
-  /// In zh, this message translates to:
-  /// **'朋友'**
-  String get defaultTagFriends;
-
-  /// No description provided for @defaultTagTravel.
-  ///
-  /// In zh, this message translates to:
-  /// **'旅遊'**
-  String get defaultTagTravel;
-
-  /// No description provided for @defaultTagFood.
-  ///
-  /// In zh, this message translates to:
-  /// **'美食'**
-  String get defaultTagFood;
-
-  /// No description provided for @defaultTagEntertainment.
-  ///
-  /// In zh, this message translates to:
-  /// **'娛樂'**
-  String get defaultTagEntertainment;
-
-  /// No description provided for @defaultTagExercise.
-  ///
-  /// In zh, this message translates to:
-  /// **'運動'**
-  String get defaultTagExercise;
-
   /// No description provided for @defaultTagHealth.
   ///
   /// In zh, this message translates to:
   /// **'健康'**
   String get defaultTagHealth;
 
-  /// No description provided for @defaultTagShopping.
+  /// No description provided for @defaultTagGratitude.
   ///
   /// In zh, this message translates to:
-  /// **'購物'**
-  String get defaultTagShopping;
+  /// **'感謝'**
+  String get defaultTagGratitude;
 
   /// No description provided for @settingsActionConfirm.
   ///

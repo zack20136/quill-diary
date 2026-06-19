@@ -59,7 +59,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     final int? initialArgb = existingLabel == null
         ? null
         : accentMap[normalizeText(existingLabel)];
-    await showDialog<String>(
+    final String? savedLabel = await showDialog<String>(
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black45,
@@ -81,7 +81,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                     ? ctx.l10n.tagAddTitle
                     : ctx.l10n.tagEditTitle,
                 initialDisplayLabel: existingLabel,
-                lockLabel: existingLabel != null,
+                sessionForRename: existingLabel == null ? null : session,
                 initialAccentArgb: initialArgb,
                 primaryButtonLabel: ctx.l10n.tagSaveButton,
                 onDelete: existingLabel == null || session == null
@@ -93,6 +93,17 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
         );
       },
     );
+    if (!mounted || savedLabel == null) {
+      return;
+    }
+
+    if (existingLabel != null) {
+      await refreshHomeIndexCaches(ref);
+      if (_selectedTagLabel != null &&
+          normalizeText(_selectedTagLabel!) == normalizeText(existingLabel)) {
+        setState(() => _selectedTagLabel = savedLabel);
+      }
+    }
   }
 
   Future<void> _deleteTag(

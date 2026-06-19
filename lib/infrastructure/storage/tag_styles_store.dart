@@ -56,16 +56,16 @@ const List<int> kDefaultTagAccents = <int>[
   0xFFD6336C,
   0xFF7950F2,
   0xFF4C6EF5,
+  0xFF7048E8,
+  0xFFA855F7,
   0xFF339AF0,
   0xFF15AABF,
-  0xFFFF922B,
-  0xFFF783AC,
+  0xFF228BE6,
   0xFF20C997,
-  0xFFFCC419,
-  0xFFA855F7,
+  0xFFF783AC,
+  0xFFFF922B,
   0xFF51CF66,
-  0xFF69DB7C,
-  0xFFFF6B6B,
+  0xFFFCC419,
 ];
 
 List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {

@@ -816,40 +816,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultTagMood => 'Mood';
 
   @override
+  String get defaultTagTakeaways => 'Takeaways';
+
+  @override
+  String get defaultTagNotes => 'Notes';
+
+  @override
   String get defaultTagReflection => 'Reflection';
 
   @override
-  String get defaultTagPlanning => 'Plan';
+  String get defaultTagIdeas => 'Ideas';
+
+  @override
+  String get defaultTagPlans => 'Plans';
+
+  @override
+  String get defaultTagGoals => 'Goals';
 
   @override
   String get defaultTagWork => 'Work';
 
   @override
-  String get defaultTagStudy => 'Study';
+  String get defaultTagLearning => 'Learning';
+
+  @override
+  String get defaultTagRelationships => 'Relationships';
 
   @override
   String get defaultTagFamily => 'Family';
 
   @override
-  String get defaultTagFriends => 'Friends';
-
-  @override
-  String get defaultTagTravel => 'Travel';
-
-  @override
-  String get defaultTagFood => 'Food';
-
-  @override
-  String get defaultTagEntertainment => 'Entertainment';
-
-  @override
-  String get defaultTagExercise => 'Exercise';
-
-  @override
   String get defaultTagHealth => 'Health';
 
   @override
-  String get defaultTagShopping => 'Shopping';
+  String get defaultTagGratitude => 'Gratitude';
 
   @override
   String get settingsActionConfirm => 'Confirm Restore';

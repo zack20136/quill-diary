@@ -788,40 +788,40 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultTagMood => '心情';
 
   @override
+  String get defaultTagTakeaways => '心得';
+
+  @override
+  String get defaultTagNotes => '筆記';
+
+  @override
   String get defaultTagReflection => '反思';
 
   @override
-  String get defaultTagPlanning => '計畫';
+  String get defaultTagIdeas => '靈感';
+
+  @override
+  String get defaultTagPlans => '計畫';
+
+  @override
+  String get defaultTagGoals => '目標';
 
   @override
   String get defaultTagWork => '工作';
 
   @override
-  String get defaultTagStudy => '學習';
+  String get defaultTagLearning => '學習';
+
+  @override
+  String get defaultTagRelationships => '人際';
 
   @override
   String get defaultTagFamily => '家庭';
 
   @override
-  String get defaultTagFriends => '朋友';
-
-  @override
-  String get defaultTagTravel => '旅遊';
-
-  @override
-  String get defaultTagFood => '美食';
-
-  @override
-  String get defaultTagEntertainment => '娛樂';
-
-  @override
-  String get defaultTagExercise => '運動';
-
-  @override
   String get defaultTagHealth => '健康';
 
   @override
-  String get defaultTagShopping => '購物';
+  String get defaultTagGratitude => '感謝';
 
   @override
   String get settingsActionConfirm => '確認還原';
