@@ -18,8 +18,7 @@ class EditorTitleSection extends StatelessWidget {
     required this.typography,
     required this.formattedDisplayDate,
     required this.formattedEntryTime,
-    required this.showTitleRequired,
-    required this.hasTitle,
+    required this.showEntryRequiredHint,
     required this.showUnsavedTag,
     required this.showMetadataTags,
     required this.tagAccentArgbMap,
@@ -32,8 +31,7 @@ class EditorTitleSection extends StatelessWidget {
   final EditorTypographyPreferences typography;
   final String formattedDisplayDate;
   final String formattedEntryTime;
-  final bool showTitleRequired;
-  final bool hasTitle;
+  final bool showEntryRequiredHint;
   final bool showUnsavedTag;
   final bool showMetadataTags;
   final Map<String, int> tagAccentArgbMap;
@@ -106,8 +104,8 @@ class EditorTitleSection extends StatelessWidget {
             hintText: context.l10n.editorTitleHint,
             filled: false,
             fillColor: Colors.transparent,
-            errorText: showTitleRequired && !hasTitle
-                ? context.l10n.editorTitleRequiredError
+            errorText: showEntryRequiredHint
+                ? context.l10n.editorEntryRequiredError
                 : null,
             hintStyle: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,

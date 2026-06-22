@@ -7,7 +7,7 @@ class EditorTopBar extends StatelessWidget {
     super.key,
     required this.previewMode,
     required this.saving,
-    required this.hasTitle,
+    required this.canSaveEntry,
     required this.canDelete,
     required this.previewTimestampLabel,
     required this.onClose,
@@ -23,7 +23,7 @@ class EditorTopBar extends StatelessWidget {
 
   final bool previewMode;
   final bool saving;
-  final bool hasTitle;
+  final bool canSaveEntry;
   final bool canDelete;
   final String previewTimestampLabel;
   final VoidCallback? onClose;
@@ -42,7 +42,7 @@ class EditorTopBar extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
     final Color saveButtonColor = barTheme.colorScheme.primary;
     final Color deleteButtonColor = barTheme.colorScheme.error;
-    final bool canSave = !saving && hasTitle;
+    final bool canSave = !saving && canSaveEntry;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -100,7 +100,7 @@ class EditorTopBar extends StatelessWidget {
                     key: const Key('editor-top-bar-save'),
                     tooltip: canSave
                         ? l10n.editorTooltipSave
-                        : l10n.editorTooltipSaveNeedsTitle,
+                        : l10n.editorTooltipSaveNeedsEntry,
                     onPressed: saving ? null : onSave,
                     style: IconButton.styleFrom(
                       foregroundColor: canSave

@@ -112,6 +112,7 @@ void main() {
         overrides: flowOverrides(),
         child: MaterialApp(
           locale: appZhLocale,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: _RestoreFlowHost(

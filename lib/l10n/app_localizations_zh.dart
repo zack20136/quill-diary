@@ -289,7 +289,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTitleHint => '輸入標題';
 
   @override
-  String get editorTitleRequiredError => '請輸入標題';
+  String get editorEntryRequiredError => '請輸入標題或內容';
 
   @override
   String get editorBodyHint => '在這裡輸入內容…';
@@ -304,7 +304,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorSessionLockedFallback => '請先重新解鎖日記庫後再繼續。';
 
   @override
-  String get editorSaveNeedsTitleMessage => '請輸入標題才能儲存';
+  String get editorSaveNeedsEntryMessage => '請輸入標題或內容才能儲存';
 
   @override
   String get editorUnsavedDraftLabel => '未儲存';
@@ -349,7 +349,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTooltipSave => '儲存';
 
   @override
-  String get editorTooltipSaveNeedsTitle => '請先輸入標題';
+  String get editorTooltipSaveNeedsEntry => '請先輸入標題或內容';
 
   @override
   String get editorTooltipDate => '日期';

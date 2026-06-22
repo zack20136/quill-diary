@@ -65,6 +65,7 @@ Future<void> pumpSettingsPage(
       transferService: transferService,
       recoveryMetadata: recoveryMetadata,
       child: MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SettingsPage(),

@@ -47,6 +47,7 @@ void main() {
     return ProviderScope(
       child: MaterialApp(
         locale: appZhLocale,
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         supportedLocales: appSupportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         home: MediaQuery(
@@ -78,6 +79,7 @@ void main() {
       ],
       child: MaterialApp(
         locale: appZhLocale,
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         supportedLocales: appSupportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         home: MediaQuery(
@@ -94,7 +96,7 @@ void main() {
         const EditorTopBar(
           previewMode: true,
           saving: true,
-          hasTitle: true,
+          canSaveEntry: true,
           canDelete: true,
           previewTimestampLabel: '2026/06/17 14:20',
           onClose: null,
@@ -256,9 +258,89 @@ void main() {
     );
     expect(find.byType(EditorAttachmentStrip), findsNothing);
   });
+
+  testWidgets('只有內容也可以儲存', (WidgetTester tester) async {
+    final _FakeEditorActions actions = _FakeEditorActions(
+      existingEntry: DiaryEntry(
+        id: 'entry-1',
+        vaultId: 'vault-1',
+        title: null,
+        date: DateOnly.parse('2026-06-18'),
+        createdAt: DateTime(2026, 6, 18, 8),
+        updatedAt: DateTime(2026, 6, 18, 9),
+        markdownBody: '',
+      ),
+    );
+    await tester.pumpWidget(
+      buildEditorPageApp(
+        child: const EditorPage(entryId: 'entry-1', startInEditMode: true),
+        session: session,
+        recoveryMetadata: recoveryMetadata,
+        actions: actions,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).at(1), '只有內文');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.byKey(const Key('editor-top-bar-save')));
+    await tester.pump();
+
+    expect(actions.savedDraft, isNotNull);
+    expect(actions.savedDraft!.title, isNull);
+    expect(actions.savedDraft!.markdownBody, '只有內文');
+  });
+
+  testWidgets('標題與內容都空時不可儲存並顯示提示', (WidgetTester tester) async {
+    final _FakeEditorActions actions = _FakeEditorActions();
+    await tester.pumpWidget(
+      buildEditorPageApp(
+        child: const EditorPage(),
+        session: session,
+        recoveryMetadata: recoveryMetadata,
+        actions: actions,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('editor-top-bar-save')));
+    await tester.pump();
+
+    expect(actions.savedDraft, isNull);
+    expect(find.text('請輸入標題或內容才能儲存'), findsOneWidget);
+  });
+
+  testWidgets('文字輸入會在 300ms 後才寫草稿', (WidgetTester tester) async {
+    final _FakeEditorActions actions = _FakeEditorActions();
+    await tester.pumpWidget(
+      buildEditorPageApp(
+        child: const EditorPage(),
+        session: session,
+        recoveryMetadata: recoveryMetadata,
+        actions: actions,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).at(1), 'a');
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(actions.writeDraftCount, 0);
+
+    await tester.enterText(find.byType(TextField).at(1), 'ab');
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(actions.writeDraftCount, 0);
+
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(actions.writeDraftCount, 1);
+  });
 }
 
 class _FakeEditorActions implements EditorActionPort {
+  _FakeEditorActions({this.existingEntry});
+
   static final DiaryEntry _entry = DiaryEntry(
     id: 'entry-1',
     vaultId: 'vault-1',
@@ -296,6 +378,10 @@ class _FakeEditorActions implements EditorActionPort {
     ),
   ];
 
+  final DiaryEntry? existingEntry;
+  int writeDraftCount = 0;
+  DiaryEntry? savedDraft;
+
   @override
   Future<String> assetAbsolutePath({
     required DateOnly date,
@@ -322,7 +408,7 @@ class _FakeEditorActions implements EditorActionPort {
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,
     EntryId entryId,
-  ) async => _entry;
+  ) async => existingEntry ?? _entry;
 
   @override
   Future<String> pendingAbsolutePath(
@@ -353,7 +439,10 @@ class _FakeEditorActions implements EditorActionPort {
     UnlockedVaultSession session,
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
-  }) async => draft;
+  }) async {
+    savedDraft = draft;
+    return draft;
+  }
 
   @override
   Future<PendingAttachment?> stagePickedImage({
@@ -372,5 +461,7 @@ class _FakeEditorActions implements EditorActionPort {
     String draftKey,
     EditorDraftRecord record,
     UnlockedVaultSession session,
-  ) async {}
+  ) async {
+    writeDraftCount++;
+  }
 }

@@ -71,6 +71,7 @@ void main() {
         container: container,
         child: MaterialApp(
           locale: appZhLocale,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const HomePage(),

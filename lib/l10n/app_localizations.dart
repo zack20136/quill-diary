@@ -608,11 +608,11 @@ abstract class AppLocalizations {
   /// **'輸入標題'**
   String get editorTitleHint;
 
-  /// No description provided for @editorTitleRequiredError.
+  /// No description provided for @editorEntryRequiredError.
   ///
   /// In zh, this message translates to:
-  /// **'請輸入標題'**
-  String get editorTitleRequiredError;
+  /// **'請輸入標題或內容'**
+  String get editorEntryRequiredError;
 
   /// No description provided for @editorBodyHint.
   ///
@@ -638,11 +638,11 @@ abstract class AppLocalizations {
   /// **'請先重新解鎖日記庫後再繼續。'**
   String get editorSessionLockedFallback;
 
-  /// No description provided for @editorSaveNeedsTitleMessage.
+  /// No description provided for @editorSaveNeedsEntryMessage.
   ///
   /// In zh, this message translates to:
-  /// **'請輸入標題才能儲存'**
-  String get editorSaveNeedsTitleMessage;
+  /// **'請輸入標題或內容才能儲存'**
+  String get editorSaveNeedsEntryMessage;
 
   /// No description provided for @editorUnsavedDraftLabel.
   ///
@@ -728,11 +728,11 @@ abstract class AppLocalizations {
   /// **'儲存'**
   String get editorTooltipSave;
 
-  /// No description provided for @editorTooltipSaveNeedsTitle.
+  /// No description provided for @editorTooltipSaveNeedsEntry.
   ///
   /// In zh, this message translates to:
-  /// **'請先輸入標題'**
-  String get editorTooltipSaveNeedsTitle;
+  /// **'請先輸入標題或內容'**
+  String get editorTooltipSaveNeedsEntry;
 
   /// No description provided for @editorTooltipDate.
   ///

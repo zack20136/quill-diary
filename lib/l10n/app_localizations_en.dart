@@ -298,7 +298,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTitleHint => 'Enter a title';
 
   @override
-  String get editorTitleRequiredError => 'Please enter a title';
+  String get editorEntryRequiredError => 'Please enter a title or body';
 
   @override
   String get editorBodyHint => 'Write here…';
@@ -315,7 +315,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock the diary vault again to continue.';
 
   @override
-  String get editorSaveNeedsTitleMessage => 'Enter a title before saving';
+  String get editorSaveNeedsEntryMessage => 'Enter a title or body before saving';
 
   @override
   String get editorUnsavedDraftLabel => 'Unsaved';
@@ -363,7 +363,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipSave => 'Save';
 
   @override
-  String get editorTooltipSaveNeedsTitle => 'Enter a Title First';
+  String get editorTooltipSaveNeedsEntry => 'Enter a Title or Body First';
 
   @override
   String get editorTooltipDate => 'Date';

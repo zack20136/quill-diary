@@ -19,6 +19,7 @@ void main() {
       _settingsScope(
         MaterialApp(
           locale: appZhLocale,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SettingsPage(),
