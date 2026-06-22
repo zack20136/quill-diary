@@ -11,6 +11,7 @@ import '../home_export_actions.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
 import 'entry_widgets.dart';
+import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
 
@@ -25,6 +26,7 @@ class HomeTimelinePane extends ConsumerStatefulWidget {
 
 class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
   ProviderSubscription<String>? _searchQuerySubscription;
   bool _syncingController = false;
 
@@ -34,6 +36,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     _searchController = TextEditingController(
       text: ref.read(homeSearchQueryProvider),
     );
+    _scrollController = ScrollController();
     _searchQuerySubscription = ref.listenManual<String>(
       homeSearchQueryProvider,
       (String? previous, String next) {
@@ -77,6 +80,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   void dispose() {
     _searchQuerySubscription?.close();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -182,23 +186,32 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         const SizedBox(height: 12),
         Expanded(
           child: canReadEntries
-              ? entriesAsync.when(
-                  data: (List<EntryIndexRecord> loadedEntries) {
-                    if (loadedEntries.isEmpty) {
-                      return HomeStateCard(
-                        icon: Icons.auto_stories_outlined,
-                        title: context.l10n.homeEmptyDiaryTitle,
-                        message: context.l10n.homeEmptyDiaryMessage,
+              ? HomeScrollAffordance(
+                  controller: _scrollController,
+                  child: entriesAsync.when(
+                    data: (List<EntryIndexRecord> loadedEntries) {
+                      if (loadedEntries.isEmpty) {
+                        return HomeStateCard(
+                          icon: Icons.auto_stories_outlined,
+                          title: context.l10n.homeEmptyDiaryTitle,
+                          message: context.l10n.homeEmptyDiaryMessage,
+                        );
+                      }
+                      return HomeEntryList(
+                        entries: loadedEntries,
+                        controller: _scrollController,
                       );
-                    }
-                    return HomeEntryList(entries: loadedEntries);
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (Object error, StackTrace _) => HomeStateCard(
-                    icon: Icons.error_outline,
-                    title: context.l10n.commonReadFailureTitle,
-                    message: userFacingErrorMessage(error, l10n: context.l10n),
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (Object error, StackTrace _) => HomeStateCard(
+                      icon: Icons.error_outline,
+                      title: context.l10n.commonReadFailureTitle,
+                      message: userFacingErrorMessage(
+                        error,
+                        l10n: context.l10n,
+                      ),
+                    ),
                   ),
                 )
               : HomeBlockedEntriesPane(sessionState: sessionState),

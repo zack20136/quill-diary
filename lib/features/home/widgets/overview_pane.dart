@@ -22,6 +22,7 @@ import '../overview_export.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
 import 'entry_widgets.dart';
+import 'home_scroll_affordance.dart';
 import 'home_shared_widgets.dart';
 
 const double kOverviewScopeControlHeight = 40;
@@ -152,15 +153,34 @@ List<Widget> overviewDiarySectionSlivers({
   ];
 }
 
-class OverviewPane extends ConsumerWidget {
+class OverviewPane extends ConsumerStatefulWidget {
   const OverviewPane({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OverviewPane> createState() => _OverviewPaneState();
+}
+
+class _OverviewPaneState extends ConsumerState<OverviewPane> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bool canReadEntries =
-        sessionState.isUnlocked && sessionState.session != null;
+        widget.sessionState.isUnlocked && widget.sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> allEntriesAsync = ref.watch(
       allEntryIndexRecordsProvider,
     );
@@ -171,7 +191,7 @@ class OverviewPane extends ConsumerWidget {
     final MemoryScope scope = ref.watch(memoryScopeProvider);
 
     if (!canReadEntries) {
-      return HomeBlockedEntriesPane(sessionState: sessionState);
+      return HomeBlockedEntriesPane(sessionState: widget.sessionState);
     }
 
     return allEntriesAsync.when(
@@ -260,14 +280,17 @@ class OverviewPane extends ConsumerWidget {
               ),
             );
 
-            return NotificationListener<OverscrollIndicatorNotification>(
-              onNotification: (OverscrollIndicatorNotification notification) {
-                notification.disallowIndicator();
-                return false;
-              },
-              child: CustomScrollView(
-                scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                slivers: <Widget>[
+            return HomeScrollAffordance(
+              controller: _scrollController,
+              child: NotificationListener<OverscrollIndicatorNotification>(
+                onNotification: (OverscrollIndicatorNotification notification) {
+                  notification.disallowIndicator();
+                  return false;
+                },
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                  slivers: <Widget>[
                   SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -360,18 +383,22 @@ class OverviewPane extends ConsumerWidget {
                     diaryLoading: false,
                     titleTrail: diarySectionTitleTrail,
                   ),
-                ],
+                  ],
+                ),
               ),
             );
           },
-          loading: () => NotificationListener<OverscrollIndicatorNotification>(
-            onNotification: (OverscrollIndicatorNotification notification) {
-              notification.disallowIndicator();
-              return false;
-            },
-            child: CustomScrollView(
-              scrollCacheExtent: HomeLayout.entryListCacheExtent,
-              slivers: <Widget>[
+          loading: () => HomeScrollAffordance(
+            controller: _scrollController,
+            child: NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (OverscrollIndicatorNotification notification) {
+                notification.disallowIndicator();
+                return false;
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                slivers: <Widget>[
                 SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -396,18 +423,24 @@ class OverviewPane extends ConsumerWidget {
                   diaryLoading: true,
                   titleTrail: diarySectionTitleTrail,
                 ),
-              ],
+                ],
+              ),
             ),
           ),
           error: (Object error, StackTrace _) =>
-              NotificationListener<OverscrollIndicatorNotification>(
-                onNotification: (OverscrollIndicatorNotification notification) {
-                  notification.disallowIndicator();
-                  return false;
-                },
-                child: CustomScrollView(
-                  scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                  slivers: <Widget>[
+              HomeScrollAffordance(
+                controller: _scrollController,
+                child: NotificationListener<OverscrollIndicatorNotification>(
+                  onNotification: (
+                    OverscrollIndicatorNotification notification,
+                  ) {
+                    notification.disallowIndicator();
+                    return false;
+                  },
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                    slivers: <Widget>[
                     SliverToBoxAdapter(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -433,7 +466,8 @@ class OverviewPane extends ConsumerWidget {
                       diaryError: error,
                       titleTrail: diarySectionTitleTrail,
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
         );

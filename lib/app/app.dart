@@ -57,6 +57,9 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
         builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
           return MaterialApp.router(
             onGenerateTitle: (BuildContext context) => context.l10n.appTitle,
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              scrollbars: false,
+            ),
             theme: buildAppTheme(dynamicScheme: lightDynamic),
             darkTheme: buildAppTheme(
               dynamicScheme: darkDynamic,

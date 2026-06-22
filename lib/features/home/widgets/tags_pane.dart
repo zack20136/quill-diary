@@ -19,6 +19,7 @@ import '../../session/state/app_session_state.dart';
 import '../home_layout.dart';
 import '../providers/home_providers.dart';
 import 'entry_widgets.dart';
+import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
 
@@ -33,6 +34,7 @@ class TagsManagePane extends ConsumerStatefulWidget {
 
 class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _pageScrollController = ScrollController();
   final ScrollController _tagListScrollController = ScrollController();
 
   /// 用於預覽：已選標籤的顯示字串（見 [normalizeText] 比對實際日記）。
@@ -47,6 +49,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _pageScrollController.dispose();
     _tagListScrollController.dispose();
     super.dispose();
   }
@@ -475,30 +478,31 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 ],
               ];
 
-              return NotificationListener<OverscrollIndicatorNotification>(
-                onNotification: (OverscrollIndicatorNotification notification) {
-                  notification.disallowIndicator();
-                  return false;
-                },
-                child: CustomScrollView(
-                  scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                  slivers: <Widget>[
+              return HomeScrollAffordance(
+                controller: _pageScrollController,
+                child: NotificationListener<OverscrollIndicatorNotification>(
+                  onNotification: (
+                    OverscrollIndicatorNotification notification,
+                  ) {
+                    notification.disallowIndicator();
+                    return false;
+                  },
+                  child: CustomScrollView(
+                    controller: _pageScrollController,
+                    scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                    slivers: <Widget>[
                     SliverToBoxAdapter(
                       child: HomeSectionCard(
                         title: context.l10n.homeNavTags,
                         stripeColor: cs.secondary,
                         child: SizedBox(
                           height: HomeLayout.tagListSectionHeight,
-                          child: Scrollbar(
+                          child: SingleChildScrollView(
                             controller: _tagListScrollController,
-                            thumbVisibility: true,
-                            child: SingleChildScrollView(
-                              controller: _tagListScrollController,
-                              padding: const EdgeInsets.only(right: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: tagTiles,
-                              ),
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: tagTiles,
                             ),
                           ),
                         ),
@@ -511,7 +515,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                       child: _tagDiaryPreviewPanel(records, theme, cs),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

@@ -315,7 +315,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock the diary vault again to continue.';
 
   @override
-  String get editorSaveNeedsEntryMessage => 'Enter a title or body before saving';
+  String get editorSaveNeedsEntryMessage =>
+      'Enter a title or body before saving';
 
   @override
   String get editorUnsavedDraftLabel => 'Unsaved';
@@ -471,6 +472,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeTooltipDeleteTag => 'Delete Tag';
+
+  @override
+  String get homeTooltipBackToTop => 'Back to Top';
 
   @override
   String get homeTooltipDeselectTag => 'Clear Selection';
@@ -1127,6 +1131,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsImportExportImportAllSkippedMessage =>
       'None of the selected files could be imported (unsupported format, empty content, or encrypted Easy Diary entries).';
+
+  @override
+  String get settingsImportExportFailureSelectedFilesUnreadable =>
+      'The selected files could not be read. Try choosing a local file again.';
 
   @override
   String get settingsImportExportFailureZipNoEntries =>

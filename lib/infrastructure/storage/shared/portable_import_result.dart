@@ -1,5 +1,6 @@
 /// 可攜式匯入失敗原因（穩定識別碼，UI 文案見 AppLocalizations settingsImportExport*）。
 abstract final class PortableImportFailureCode {
+  static const String selectedFilesUnreadable = 'selected_files_unreadable';
   static const String zipNoEntries = 'zip_no_entries';
   static const String easyDiaryUnsupportedPlatform =
       'easy_diary_unsupported_platform';

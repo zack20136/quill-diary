@@ -21,6 +21,13 @@ import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
+typedef PickPortableFiles = Future<FilePickerResult?> Function({
+  required String dialogTitle,
+  required List<String> allowedExtensions,
+});
+
+typedef ReadPlatformFileBytes = Future<Uint8List?> Function(PlatformFile file);
+
 enum BackupPersistStatus { success, inspectFailed, cancelled }
 
 final class BackupPersistResult {
@@ -66,17 +73,23 @@ class VaultTransferService {
     required VaultRepository vaultRepository,
     required ExternalDirectoryStore externalDirectoryStore,
     required VaultPathStrategy pathStrategy,
+    PickPortableFiles? pickPortableFiles,
+    ReadPlatformFileBytes? readPlatformFileBytes,
   }) : _archiveIo = archiveIo,
        _driveBackupService = driveBackupService,
        _vaultRepository = vaultRepository,
        _externalDirectoryStore = externalDirectoryStore,
-       _pathStrategy = pathStrategy;
+       _pathStrategy = pathStrategy,
+       _pickPortableFiles = pickPortableFiles,
+       _readPlatformFileBytesOverride = readPlatformFileBytes;
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
   final VaultRepository _vaultRepository;
   final ExternalDirectoryStore _externalDirectoryStore;
   final VaultPathStrategy _pathStrategy;
+  final PickPortableFiles? _pickPortableFiles;
+  final ReadPlatformFileBytes? _readPlatformFileBytesOverride;
 
   static const int backupRetainCount = VaultBackupPolicy.retainCount;
 
@@ -449,11 +462,11 @@ class VaultTransferService {
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
   }) async {
-    final FilePickerResult? picked = await FilePicker.pickFiles(
-      dialogTitle: l10n.vaultTransferImportDocumentsFileTitle,
-      type: FileType.custom,
-      allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
-    );
+    final FilePickerResult? picked =
+        await (_pickPortableFiles ?? _pickPortableFilesFromSystem)(
+          dialogTitle: l10n.vaultTransferImportDocumentsFileTitle,
+          allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
+        );
     if (picked == null || picked.files.isEmpty) {
       return null;
     }
@@ -478,6 +491,17 @@ class VaultTransferService {
     return _importPickedDocumentFiles(session, documentFiles);
   }
 
+  Future<FilePickerResult?> _pickPortableFilesFromSystem({
+    required String dialogTitle,
+    required List<String> allowedExtensions,
+  }) {
+    return FilePicker.pickFiles(
+      dialogTitle: dialogTitle,
+      type: FileType.custom,
+      allowedExtensions: allowedExtensions,
+    );
+  }
+
   Future<PortableImportResult?> _importZipFile(
     UnlockedVaultSession session,
     PlatformFile zipFile,
@@ -498,7 +522,11 @@ class VaultTransferService {
 
     final Uint8List? bytes = await _readPlatformFileBytes(zipFile);
     if (bytes == null) {
-      return null;
+      return const PortableImportResult(
+        importedEntries: 0,
+        skippedFiles: 0,
+        failureCode: PortableImportFailureCode.selectedFilesUnreadable,
+      );
     }
 
     final File tempZip = await _createTempFile(
@@ -557,10 +585,14 @@ class VaultTransferService {
       }
 
       if (copiedFiles == 0) {
-        return null;
+        return const PortableImportResult(
+          importedEntries: 0,
+          skippedFiles: 0,
+          failureCode: PortableImportFailureCode.selectedFilesUnreadable,
+        );
       }
 
-      return _archiveIo.importDocuments(
+      return await _archiveIo.importDocuments(
         session: session,
         rootDirectory: tempRoot,
       );
@@ -572,6 +604,11 @@ class VaultTransferService {
   }
 
   Future<Uint8List?> _readPlatformFileBytes(PlatformFile file) async {
+    final ReadPlatformFileBytes? override = _readPlatformFileBytesOverride;
+    if (override != null) {
+      return override(file);
+    }
+
     try {
       final Uint8List bytes = await file.readAsBytes();
       if (bytes.isEmpty) {

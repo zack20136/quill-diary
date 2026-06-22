@@ -100,6 +100,8 @@ String settingsImportExportMessageForFailureCode(
   String? failureCode,
 ) {
   return switch (failureCode) {
+    PortableImportFailureCode.selectedFilesUnreadable =>
+      l10n.settingsImportExportFailureSelectedFilesUnreadable,
     PortableImportFailureCode.zipNoEntries =>
       l10n.settingsImportExportFailureZipNoEntries,
     PortableImportFailureCode.easyDiaryUnsupportedPlatform =>

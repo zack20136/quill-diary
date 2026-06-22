@@ -932,6 +932,12 @@ abstract class AppLocalizations {
   /// **'刪除標籤'**
   String get homeTooltipDeleteTag;
 
+  /// No description provided for @homeTooltipBackToTop.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回頂部'**
+  String get homeTooltipBackToTop;
+
   /// No description provided for @homeTooltipDeselectTag.
   ///
   /// In zh, this message translates to:
@@ -2010,6 +2016,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。'**
   String get settingsImportExportImportAllSkippedMessage;
+
+  /// No description provided for @settingsImportExportFailureSelectedFilesUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'所選檔案無法讀取，請改用本機檔案或重新選取。'**
+  String get settingsImportExportFailureSelectedFilesUnreadable;
 
   /// No description provided for @settingsImportExportFailureZipNoEntries.
   ///

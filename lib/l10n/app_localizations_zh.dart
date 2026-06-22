@@ -457,6 +457,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeTooltipDeleteTag => '刪除標籤';
 
   @override
+  String get homeTooltipBackToTop => '返回頂部';
+
+  @override
   String get homeTooltipDeselectTag => '取消選取';
 
   @override
@@ -1075,6 +1078,10 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsImportExportImportAllSkippedMessage =>
       '所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。';
+
+  @override
+  String get settingsImportExportFailureSelectedFilesUnreadable =>
+      '所選檔案無法讀取，請改用本機檔案或重新選取。';
 
   @override
   String get settingsImportExportFailureZipNoEntries =>

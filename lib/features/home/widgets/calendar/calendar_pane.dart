@@ -14,6 +14,7 @@ import '../../providers/home_providers.dart';
 import '../../../session/state/app_session_state.dart';
 import '../../state/home_state.dart';
 import '../entry_widgets.dart';
+import '../home_scroll_affordance.dart';
 import '../home_shared_widgets.dart';
 import 'calendar_day_cell.dart';
 import 'calendar_helpers.dart';
@@ -52,10 +53,29 @@ class CalendarSectionShell extends StatelessWidget {
   }
 }
 
-class CalendarPane extends ConsumerWidget {
+class CalendarPane extends ConsumerStatefulWidget {
   const CalendarPane({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
+
+  @override
+  ConsumerState<CalendarPane> createState() => _CalendarPaneState();
+}
+
+class _CalendarPaneState extends ConsumerState<CalendarPane> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Widget _buildDayCell({
     required DateTime day,
@@ -82,9 +102,9 @@ class CalendarPane extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final bool canReadEntries =
-        sessionState.isUnlocked && sessionState.session != null;
+        widget.sessionState.isUnlocked && widget.sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> monthEntriesAsync = ref.watch(
       calendarMonthEntriesProvider,
     );
@@ -106,7 +126,7 @@ class CalendarPane extends ConsumerWidget {
     final DateTime today = DateTime.now();
 
     if (!canReadEntries) {
-      return HomeBlockedEntriesPane(sessionState: sessionState);
+      return HomeBlockedEntriesPane(sessionState: widget.sessionState);
     }
 
     if (monthEntriesAsync.hasError && !monthEntriesAsync.hasValue) {
@@ -133,14 +153,17 @@ class CalendarPane extends ConsumerWidget {
           .add(entry);
     }
 
-    return NotificationListener<OverscrollIndicatorNotification>(
-      onNotification: (OverscrollIndicatorNotification notification) {
-        notification.disallowIndicator();
-        return false;
-      },
-      child: CustomScrollView(
-        scrollCacheExtent: HomeLayout.entryListCacheExtent,
-        slivers: <Widget>[
+    return HomeScrollAffordance(
+      controller: _scrollController,
+      child: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: (OverscrollIndicatorNotification notification) {
+          notification.disallowIndicator();
+          return false;
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          scrollCacheExtent: HomeLayout.entryListCacheExtent,
+          slivers: <Widget>[
           SliverToBoxAdapter(
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints _) {
@@ -496,7 +519,8 @@ class CalendarPane extends ConsumerWidget {
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+          ],
+        ),
       ),
     );
   }

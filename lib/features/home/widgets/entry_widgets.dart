@@ -57,9 +57,14 @@ class HomeTimelineEntryShell extends StatelessWidget {
 }
 
 class HomeEntryList extends ConsumerWidget {
-  const HomeEntryList({required this.entries, super.key});
+  const HomeEntryList({
+    required this.entries,
+    this.controller,
+    super.key,
+  });
 
   final List<EntryIndexRecord> entries;
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -92,6 +97,8 @@ class HomeEntryList extends ConsumerWidget {
       child: ColoredBox(
         color: pageBackground,
         child: ListView.separated(
+          controller: controller,
+          primary: controller == null,
           padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
           scrollCacheExtent: HomeLayout.entryListCacheExtent,
           itemCount: entries.length,
