@@ -15,7 +15,7 @@ import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 
-import '../helpers/vault_test_harness.dart';
+import '../helpers/vault/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;

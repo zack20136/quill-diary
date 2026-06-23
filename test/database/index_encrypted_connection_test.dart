@@ -7,7 +7,7 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
-import '../helpers/test_vault_path_strategy.dart';
+import '../helpers/vault/test_vault_path_strategy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

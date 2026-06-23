@@ -419,7 +419,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     try {
       if (await repository.needsKeystoreMigrationForVault()) {
         final String migrationMessage =
-            '${kKeystoreMigrationInProgressMessage} '
+            '$kKeystoreMigrationInProgressMessage '
             '${l10n.sessionKeystoreMigrationMayReverifyMessage}';
         state = state.copyWith(message: migrationMessage);
       }

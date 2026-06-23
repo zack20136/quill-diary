@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,7 +51,7 @@ class HomeBottomChromeSnackBarLift {
   bool _released = false;
 
   void bind(ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller) {
-    controller.closed.whenComplete(_release);
+    unawaited(controller.closed.whenComplete(_release));
   }
 
   void _release() {
