@@ -116,6 +116,10 @@ void main() {
     );
     expect(state.status, AppLockStatus.recoveryRequired);
     expect(state.message, sessionStartupNeedsTrustedDeviceMessage(testL10n));
+    expect(
+      container.read(appSessionProvider).status,
+      AppLockStatus.recoveryRequired,
+    );
   });
 
   test('trusted session 還原成功時進入 unlocked', () async {

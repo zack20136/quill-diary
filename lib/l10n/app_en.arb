@@ -613,7 +613,6 @@
       }
     }
   },
-  "settingsUnlockMethodNeedsRecoveryKeyBanner": "Create a recovery key before configuring an unlock method.",
   "settingsUnlockMethodSegmentNone": "None",
   "settingsUnlockMethodSegmentDeviceLock": "Screen Lock",
   "settingsUnlockMethodSegmentBiometric": "Biometric",
@@ -858,6 +857,7 @@
   "settingsRestoreBulletRewrapNote": "The first unlock after restore may take longer. Keep the app open.",
   "settingsRepairVaultReadyMessage": "You can repair anytime to restore vault data and search.",
   "settingsRepairVaultLockedMessage": "Unlock to repair the vault.",
+  "settingsUnlockRequiredToChangeSettingMessage": "Unlock the diary vault to change this setting.",
   "settingsIndexLinkDriveProgress": "Linking Google Account…",
   "settingsIndexSwitchDriveAccountProgress": "Switching account…",
   "settingsIndexDisconnectDriveProgress": "Disconnecting…",
@@ -959,6 +959,8 @@
   "sessionUnlockModeChangeNeedsUnlockMessage": "Unlock the diary vault before changing the unlock method.",
   "sessionBiometricNotEnrolledSwitchModeMessage": "No fingerprint or face enrolled on this device. Set up biometrics in system settings, or use device screen lock instead.",
   "sessionUseDeviceLockToUnlockMessage": "Unlock with device screen lock.",
+  "sessionNoneModeLockedMessage": "Session timed out in background. Restoring access…",
+  "sessionKeystoreMigrationMayReverifyMessage": "Complete verification again if prompted to update unlock settings.",
   "sessionStartupNeedsBiometricMessage": "Complete biometric verification first.",
   "legalPrivacyEffectiveDateLabel": "Effective date: June 6, 2026",
   "legalChildrenPrivacyOneLiner": "This app is not designed for children aged 13 or under and does not knowingly collect children's personal data.",

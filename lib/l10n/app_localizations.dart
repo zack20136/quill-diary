@@ -1939,12 +1939,6 @@ abstract class AppLocalizations {
   /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方方式重新驗證。'**
   String settingsUnlockMethodSectionDescription(String timeoutLabel);
 
-  /// No description provided for @settingsUnlockMethodNeedsRecoveryKeyBanner.
-  ///
-  /// In zh, this message translates to:
-  /// **'請先建立復原金鑰，才能設定解鎖方式。'**
-  String get settingsUnlockMethodNeedsRecoveryKeyBanner;
-
   /// No description provided for @settingsUnlockMethodSegmentNone.
   ///
   /// In zh, this message translates to:
@@ -2507,6 +2501,12 @@ abstract class AppLocalizations {
   /// **'解鎖後可修復日記庫。'**
   String get settingsRepairVaultLockedMessage;
 
+  /// No description provided for @settingsUnlockRequiredToChangeSettingMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'解鎖後可調整此設定。'**
+  String get settingsUnlockRequiredToChangeSettingMessage;
+
   /// No description provided for @settingsIndexLinkDriveProgress.
   ///
   /// In zh, this message translates to:
@@ -2901,6 +2901,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'請使用裝置螢幕鎖解鎖。'**
   String get sessionUseDeviceLockToUnlockMessage;
+
+  /// No description provided for @sessionNoneModeLockedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'背景逾時，正在重新解鎖日記庫…'**
+  String get sessionNoneModeLockedMessage;
+
+  /// No description provided for @sessionKeystoreMigrationMayReverifyMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'若系統再次要求驗證，請完成以更新解鎖設定。'**
+  String get sessionKeystoreMigrationMayReverifyMessage;
 
   /// No description provided for @sessionStartupNeedsBiometricMessage.
   ///

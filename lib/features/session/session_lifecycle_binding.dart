@@ -16,6 +16,7 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
   final Duration resumeUnlockDelay;
   bool _attached = false;
   bool _isForeground = true;
+  bool _wasBackgrounded = false;
   int _resumeUnlockToken = 0;
 
   void attach() {
@@ -52,15 +53,17 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _isForeground = false;
+        _wasBackgrounded = true;
         _cancelPendingResumeUnlock();
         controller.notifyAppBackground();
         break;
       case AppLifecycleState.resumed:
         _isForeground = true;
-        await controller.notifyAppForegroundResumed(
-          onForegroundSettled: () => _scheduleResumeUnlockIfNeeded(controller),
-        );
-        if (controller.shouldUnlockOnResume) {
+        await controller.notifyAppForegroundResumed();
+        final bool shouldScheduleResumeUnlock =
+            _wasBackgrounded && controller.shouldUnlockOnResume;
+        _wasBackgrounded = false;
+        if (shouldScheduleResumeUnlock) {
           _scheduleResumeUnlockIfNeeded(controller);
         }
         break;

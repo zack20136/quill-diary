@@ -45,14 +45,15 @@ void main() {
     deviceSlotId: 'dev_slot',
   );
 
-  final File preferencesFile = File(
-    '${Directory.systemTemp.path}/app_session_controller_test_prefs.json',
-  );
+  int _preferencesFileSerial = 0;
 
   ProviderContainer buildContainer(
     FakeSessionVaultRepository repository, {
     FakeAppLockService? appLock,
   }) {
+    final File preferencesFile = File(
+      '${Directory.systemTemp.path}/app_session_controller_test_${_preferencesFileSerial++}.json',
+    );
     final ProviderContainer container = ProviderContainer(
       overrides: [
         vaultRepositoryProvider.overrideWithValue(repository),
@@ -218,6 +219,53 @@ void main() {
     expect(state.session, isNull);
     expect(state.message, sessionAppLockedMessage(testL10n));
     expect(repository.closeUnlockedResourcesCalls, 1);
+    expect(controller.shouldUnlockOnResume, isFalse);
+  });
+
+  test('手動重新驗證若被取消且先前為 inactivity，保留 inactivity', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: const DeviceKeyUserCancelledException(),
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.deviceLock,
+    );
+    final ProviderContainer container = buildContainer(
+      repository,
+      appLock: appLock,
+    );
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+
+    controller.activateSession(sampleSession);
+    await controller.expireFromInactivity();
+
+    final UnlockOutcome outcome = await controller.unlock();
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(outcome, UnlockOutcome.failed);
+    expect(state.lockReason, SessionLockReason.inactivity);
+    expect(state.message, kUseDeviceLockToUnlockMessage);
+  });
+
+  test('並行 unlock 僅觸發一次 openTrustedSession', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    )..openTrustedSessionDelay = const Duration(milliseconds: 50);
+    final ProviderContainer container = buildContainer(repository);
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+
+    final Future<UnlockOutcome> first = controller.unlock();
+    final Future<UnlockOutcome> second = controller.unlock();
+
+    final List<UnlockOutcome> outcomes = await Future.wait(<Future<UnlockOutcome>>[
+      first,
+      second,
+    ]);
+    expect(outcomes, <UnlockOutcome>[UnlockOutcome.success, UnlockOutcome.success]);
+    expect(repository.openTrustedSessionCalls, 1);
   });
 
   test('unlockWithRecovery 成功時進入 unlocked', () async {
@@ -531,12 +579,53 @@ void main() {
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
   });
 
+  test('變更個人化逾時設定會即時更新背景鎖定計時', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    final FakeAppLockService appLock = FakeAppLockService(
+      unlockMode: AppUnlockMode.deviceLock,
+    );
+    final ProviderContainer container = buildContainer(
+      repository,
+      appLock: appLock,
+    );
+
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+    await container.read(personalizationPreferencesProvider.future);
+
+    controller.activateSession(sampleSession);
+    armControllerClock(controller, DateTime.utc(2026, 5, 19, 12, 0));
+
+    controller.notifyAppBackground();
+    advanceClock(controller, const Duration(minutes: 2));
+    await controller.notifyAppForegroundResumed();
+    expect(container.read(appSessionProvider).isUnlocked, isTrue);
+
+    await container
+        .read(personalizationPreferencesProvider.notifier)
+        .setSessionTimeoutMinutes(SessionBackgroundTimeoutMinutes.one);
+
+    controller.notifyAppBackground();
+    advanceClock(controller, const Duration(minutes: 1, seconds: 1));
+    await controller.expireFromInactivity();
+
+    final AppSessionState state = container.read(appSessionProvider);
+    expect(state.status, AppLockStatus.locked);
+    expect(state.lockReason, SessionLockReason.inactivity);
+  });
+
   test('個人化 1 分鐘逾時設定會套用至背景鎖定', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResult: sampleSession,
     );
     final FakeAppLockService appLock = FakeAppLockService(
       unlockMode: AppUnlockMode.deviceLock,
+    );
+    final File preferencesFile = File(
+      '${Directory.systemTemp.path}/app_session_controller_test_one_minute.json',
     );
     final ProviderContainer container = ProviderContainer(
       overrides: [

@@ -258,6 +258,48 @@ class VaultRepository {
     );
   }
 
+  /// 在 unwrap 前比對 Keystore 與解鎖模式是否一致（不需 [UnlockedVaultSession]）。
+  Future<bool> needsKeystoreMigrationForVault() async {
+    final RecoveryMetadata? metadata = await readRecoveryMetadata();
+    if (metadata == null) {
+      return false;
+    }
+    final WrappedRecoveryKeyRecord? wrappedRecord = await _deviceKeyManager
+        .readWrappedRecoveryKey(metadata.vaultId);
+    if (wrappedRecord == null) {
+      return true;
+    }
+    final KeystoreAuthKind expected = await _requireCurrentKeystoreAuthKind();
+    String? syncedSuffix;
+    try {
+      syncedSuffix = await _requireOpenIndex().getAppValue(
+        kKeystoreWrapModeKey,
+      );
+    } on StateError {
+      return true;
+    }
+    final UnlockedVaultSession probe = UnlockedVaultSession(
+      vaultId: metadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: const <int>[],
+      deviceSlotId: wrappedRecord.slotId,
+    );
+    return !trustedProtectionMatches(
+      session: probe,
+      expected: expected,
+      syncedSuffix: syncedSuffix,
+      wrappedRecord: wrappedRecord,
+    );
+  }
+
+  /// 可信裝置解鎖並同步 Keystore、準備索引。
+  Future<UnlockedVaultSession> openTrustedSessionEnsuringKeystore() async {
+    UnlockedVaultSession session = await openTrustedSession();
+    session = await ensureKeystoreMatchesUnlockMode(session);
+    await ensureIndexReady(session);
+    return session;
+  }
+
   /// 還原同 vault 後沿用還原前 session 的包裝金鑰，不再觸發裝置驗證。
   Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
     UnlockedVaultSession priorSession,

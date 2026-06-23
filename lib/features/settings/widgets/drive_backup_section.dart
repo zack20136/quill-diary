@@ -13,6 +13,8 @@ import 'settings_sections.dart';
 class DriveBackupSection extends ConsumerWidget {
   const DriveBackupSection({
     required this.access,
+    required this.canManageDriveAccount,
+    required this.accountLockedMessage,
     required this.isGoogleDriveConfigured,
     required this.busy,
     required this.onLink,
@@ -24,6 +26,8 @@ class DriveBackupSection extends ConsumerWidget {
   });
 
   final VaultTransferAccess access;
+  final bool canManageDriveAccount;
+  final String accountLockedMessage;
   final bool isGoogleDriveConfigured;
   final bool busy;
   final VoidCallback onLink;
@@ -58,6 +62,8 @@ class DriveBackupSection extends ConsumerWidget {
                   error: (_, _) => _DriveBackupContent(
                     connectionState: const DriveConnectionState.disconnected(),
                     access: access,
+                    canManageDriveAccount: canManageDriveAccount,
+                    accountLockedMessage: accountLockedMessage,
                     busy: busy,
                     onLink: onLink,
                     onSwitchAccount: onSwitchAccount,
@@ -69,6 +75,8 @@ class DriveBackupSection extends ConsumerWidget {
                       _DriveBackupContent(
                         connectionState: connectionState,
                         access: access,
+                        canManageDriveAccount: canManageDriveAccount,
+                        accountLockedMessage: accountLockedMessage,
                         busy: busy,
                         onLink: onLink,
                         onSwitchAccount: onSwitchAccount,
@@ -85,6 +93,8 @@ class _DriveBackupContent extends StatelessWidget {
   const _DriveBackupContent({
     required this.connectionState,
     required this.access,
+    required this.canManageDriveAccount,
+    required this.accountLockedMessage,
     required this.busy,
     required this.onLink,
     required this.onSwitchAccount,
@@ -95,6 +105,8 @@ class _DriveBackupContent extends StatelessWidget {
 
   final DriveConnectionState connectionState;
   final VaultTransferAccess access;
+  final bool canManageDriveAccount;
+  final String accountLockedMessage;
   final bool busy;
   final VoidCallback onLink;
   final VoidCallback onSwitchAccount;
@@ -106,6 +118,7 @@ class _DriveBackupContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final bool isConnected = connectionState.isConnected;
+    final bool canUseAccountActions = !busy && canManageDriveAccount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,7 +136,7 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.link_rounded,
                 appearance: SettingsActionButtonAppearance.filled,
                 fullWidth: true,
-                onPressed: busy ? null : onLink,
+                onPressed: canUseAccountActions ? onLink : null,
               ),
             if (isConnected) ...<SettingsActionButton>[
               SettingsActionButton(
@@ -145,19 +158,19 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.swap_horiz_rounded,
                 appearance: SettingsActionButtonAppearance.outlined,
                 fullWidth: true,
-                onPressed: busy ? null : onSwitchAccount,
+                onPressed: canUseAccountActions ? onSwitchAccount : null,
               ),
               SettingsActionButton(
                 label: l10n.settingsDriveBackupDisconnectButton,
                 icon: Icons.link_off_rounded,
                 appearance: SettingsActionButtonAppearance.destructive,
                 fullWidth: true,
-                onPressed: busy ? null : onDisconnect,
+                onPressed: canUseAccountActions ? onDisconnect : null,
               ),
             ],
           ],
         ),
-        if (isConnected && _lockedBannerMessage(l10n) != null) ...<Widget>[
+        if (_lockedBannerMessage(l10n) != null) ...<Widget>[
           const SizedBox(height: 12),
           SettingsInfoBanner(
             icon: Icons.lock_outline_rounded,
@@ -169,6 +182,9 @@ class _DriveBackupContent extends StatelessWidget {
   }
 
   String? _lockedBannerMessage(AppLocalizations l10n) {
+    if (!canManageDriveAccount) {
+      return accountLockedMessage;
+    }
     if (!access.canBackup && !access.canRestore) {
       return access.restoreDisabledReason ?? access.backupDisabledReason;
     }

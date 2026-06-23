@@ -110,7 +110,7 @@ String lockedResumeMessageFor(
   required AppLocalizations l10n,
 }) {
   return switch (mode) {
-    AppUnlockMode.none => l10n.sessionUseDeviceLockToUnlockMessage,
+    AppUnlockMode.none => l10n.sessionNoneModeLockedMessage,
     AppUnlockMode.deviceLock => l10n.sessionUseDeviceLockToUnlockMessage,
     AppUnlockMode.biometric => l10n.sessionStartupNeedsBiometricMessage,
   };

@@ -1082,10 +1082,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsUnlockMethodNeedsRecoveryKeyBanner =>
-      'Create a recovery key before configuring an unlock method.';
-
-  @override
   String get settingsUnlockMethodSegmentNone => 'None';
 
   @override
@@ -1458,6 +1454,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRepairVaultLockedMessage => 'Unlock to repair the vault.';
 
   @override
+  String get settingsUnlockRequiredToChangeSettingMessage =>
+      'Unlock the diary vault to change this setting.';
+
+  @override
   String get settingsIndexLinkDriveProgress => 'Linking Google Account…';
 
   @override
@@ -1704,6 +1704,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionUseDeviceLockToUnlockMessage =>
       'Unlock with device screen lock.';
+
+  @override
+  String get sessionNoneModeLockedMessage =>
+      'Session timed out in background. Restoring access…';
+
+  @override
+  String get sessionKeystoreMigrationMayReverifyMessage =>
+      'Complete verification again if prompted to update unlock settings.';
 
   @override
   String get sessionStartupNeedsBiometricMessage =>

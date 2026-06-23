@@ -187,6 +187,46 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('手動驗證取消後不因 inactive/resumed 立刻重試', (
+    WidgetTester tester,
+  ) async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: const DeviceKeyUserCancelledException(),
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
+        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
+
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+    controller.activateSession(sampleSession);
+    await controller.expireFromInactivity();
+
+    final Future<UnlockOutcome> unlockFuture = controller.unlock();
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await unlockFuture;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.locked);
+    expect(repository.openTrustedSessionCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('authFailed 狀態 resumed 時仍會再次主動驗證', (WidgetTester tester) async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       openTrustedSessionResults: <Object?>[
@@ -228,6 +268,42 @@ void main() {
 
     expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
     expect(repository.openTrustedSessionCalls, 2);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('manual 鎖定後 resumed 不觸發 openTrustedSession', (
+    WidgetTester tester,
+  ) async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: sampleSession,
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.none),
+        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
+
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+    controller.activateSession(sampleSession);
+    await controller.lock();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.locked);
+    expect(repository.openTrustedSessionCalls, 0);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

@@ -6,6 +6,7 @@ import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
 import '../../../l10n/l10n.dart';
 import '../settings_messages.dart';
+import '../../session/presentation/session_locked_pane.dart';
 import '../../session/state/app_session_state.dart';
 import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/page_style.dart';
@@ -134,8 +135,8 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.bannerTone,
     required this.onUnlockWithRecovery,
     this.recoveryKeyHint,
-    this.onRetryTrustedUnlock,
     this.onCancelUnlock,
+    this.showBanner = true,
     super.key,
   });
 
@@ -147,27 +148,27 @@ class SettingsStatusPanel extends StatelessWidget {
   final String bannerMessage;
   final SettingsBannerTone bannerTone;
   final VoidCallback? onUnlockWithRecovery;
-  final VoidCallback? onRetryTrustedUnlock;
   final VoidCallback? onCancelUnlock;
+  final bool showBanner;
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final bool isUnlocking = sessionState.status == AppLockStatus.unlocking;
-    final bool isLocked = sessionState.status == AppLockStatus.locked;
     final bool needsRecovery =
         sessionState.status == AppLockStatus.recoveryRequired;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsInfoBanner(
-          icon: bannerIcon,
-          message: bannerMessage,
-          tone: bannerTone,
-        ),
+        if (showBanner)
+          SettingsInfoBanner(
+            icon: bannerIcon,
+            message: bannerMessage,
+            tone: bannerTone,
+          ),
         if (isUnlocking) ...<Widget>[
-          const SizedBox(height: 12),
+          if (showBanner) const SizedBox(height: 12),
           Text(
             l10n.settingsSecurityLockUnlockingWaitHint,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -186,19 +187,8 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
           ],
         ],
-        if (isLocked) ...<Widget>[
-          if (onRetryTrustedUnlock != null) ...<Widget>[
-            const SizedBox(height: 10),
-            SettingsActionButton(
-              label: l10n.settingsSecurityLockRetryVerificationButton,
-              icon: Icons.lock_open_rounded,
-              appearance: SettingsActionButtonAppearance.filled,
-              onPressed: busy ? null : onRetryTrustedUnlock,
-            ),
-          ],
-        ],
         if (needsRecovery) ...<Widget>[
-          const SizedBox(height: 16),
+          if (showBanner || isUnlocking) const SizedBox(height: 16),
           if (recoveryKeyHint != null &&
               recoveryKeyHint!.isNotEmpty) ...<Widget>[
             Text(
@@ -344,16 +334,16 @@ class UnlockMethodSectionBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     if (!enabled) {
-      return SettingsInfoBanner(
-        icon: Icons.lock_outline,
-        message: l10n.settingsUnlockMethodNeedsRecoveryKeyBanner,
-        tone: SettingsBannerTone.warning,
+      return _UnlockModeChoiceBar(
+        selected: unlockMode,
+        busy: true,
+        onSelected: onModeSelected,
       );
     }
 
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -752,6 +742,7 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
     required this.onRepairVault,
+    this.onRetryTrustedUnlock,
     required this.lockPanel,
     super.key,
   });
@@ -766,6 +757,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
   final VoidCallback? onRepairVault;
+  final VoidCallback? onRetryTrustedUnlock;
   final Widget? lockPanel;
 
   @override
@@ -855,6 +847,13 @@ class SettingsSecurityOverview extends StatelessWidget {
               appearance: SettingsActionButtonAppearance.outlined,
               onPressed: busy ? null : onRepairVault,
             ),
+            if (onRetryTrustedUnlock != null)
+              SettingsActionButton(
+                label: l10n.settingsSecurityLockRetryVerificationButton,
+                icon: kSessionRetryVerificationIcon,
+                appearance: SettingsActionButtonAppearance.filled,
+                onPressed: busy ? null : onRetryTrustedUnlock,
+              ),
           ],
         ),
         if (lockPanel != null) ...<Widget>[

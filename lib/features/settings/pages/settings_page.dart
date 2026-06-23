@@ -34,6 +34,7 @@ import '../presentation/settings_feedback.dart';
 import '../providers/personalization_providers.dart';
 import '../providers/settings_providers.dart';
 import '../settings_messages.dart';
+import '../settings_page_access.dart';
 import '../vault_transfer_access.dart';
 import '../widgets/drive_backup_section.dart';
 import '../widgets/local_backup_section.dart';
@@ -88,15 +89,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final RecoveryMetadata? recoveryMetadata =
         recoveryMetadataAsync.asData?.value;
-    final bool hasUnlockedSession =
-        sessionState?.isUnlocked == true && sessionState?.session != null;
-    final bool hasRecoveryKey = recoveryMetadata != null;
-    final VaultTransferAccess transferAccess = VaultTransferAccess.fromContext(
+    final SettingsPageAccess pageAccess = SettingsPageAccess.fromSession(
       l10n: l10n,
-      hasUnlockedSession: hasUnlockedSession,
-      hasRecoveryKey: hasRecoveryKey,
-      lockStatus: sessionState?.status ?? AppLockStatus.uninitialized,
+      sessionState: sessionState,
+      hasRecoveryKey: recoveryMetadata != null,
     );
+    final VaultTransferAccess transferAccess = pageAccess.vaultTransfer;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
 
@@ -142,7 +140,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         _buildSecurityStatusSection(
                           sessionAsync: sessionAsync,
                           recoveryMetadata: recoveryMetadata,
-                          canVaultBackup: transferAccess.canBackup,
+                          pageAccess: pageAccess,
                           trustedDeviceAccessAsync: trustedDeviceAccessAsync,
                           unlockModeAsync: unlockModeAsync,
                         ),
@@ -160,7 +158,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   enabled:
                                       recoveryMetadataAsync.asData?.value !=
                                       null,
-                                  changeAllowed: hasUnlockedSession,
+                                  changeAllowed: pageAccess.hasUnlockedSession,
                                   busy: _busy,
                                   unlockMode: unlockMode,
                                   onModeSelected: (AppUnlockMode selected) =>
@@ -235,6 +233,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         const SizedBox(height: 16),
                         DriveBackupSection(
                           access: transferAccess,
+                          canManageDriveAccount: pageAccess.canManageDriveAccount,
+                          accountLockedMessage:
+                              pageAccess.lockedSettingMessage(l10n),
                           isGoogleDriveConfigured: isGoogleDriveConfigured,
                           busy: _busy,
                           onLink: () => _runBusy(

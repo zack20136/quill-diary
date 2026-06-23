@@ -17,11 +17,12 @@ import '../../../shared/providers/core_providers.dart';
 import '../../settings/providers/personalization_providers.dart';
 import '../session_inactivity_watchdog.dart';
 import '../session_messages.dart';
+import '../session_route_preservation.dart';
 import '../state/app_session_state.dart';
 import '../state/session_lock_reason.dart';
 import '../state/unlock_result.dart';
 
-enum UnlockRequestSource { manual, lifecycleResume }
+export '../state/unlock_result.dart';
 
 AppLocalizations _sessionL10n(Ref ref) {
   final Locale locale = ref
@@ -56,13 +57,54 @@ class AppSessionController extends Notifier<AppSessionState> {
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
   bool _isInForeground = true;
+  Future<UnlockOutcome>? _trustedUnlockInFlight;
+  CompletedUnlockSnapshot? _completedUnlockSnapshot;
 
   @visibleForTesting
   SessionInactivityWatchdog get inactivityWatchdog => _inactivityWatchdog;
 
+  @visibleForTesting
+  CompletedUnlockSnapshot? get completedUnlockSnapshot =>
+      _completedUnlockSnapshot;
+
+  CompletedUnlockSnapshot? consumeCompletedUnlockSnapshot() {
+    final CompletedUnlockSnapshot? snapshot = _completedUnlockSnapshot;
+    _completedUnlockSnapshot = null;
+    return snapshot;
+  }
+
+  void _recordCompletedUnlock({
+    required UnlockRequestSource source,
+    required UnlockOutcome outcome,
+    bool recoverable = false,
+  }) {
+    _completedUnlockSnapshot = CompletedUnlockSnapshot(
+      source: source,
+      outcome: outcome,
+      recoverable: recoverable,
+    );
+  }
+
   @override
   AppSessionState build() {
     ref.onDispose(_inactivityWatchdog.disarm);
+    ref.listen<AsyncValue<PersonalizationPreferences>>(
+      personalizationPreferencesProvider,
+      (AsyncValue<PersonalizationPreferences>? previous, next) {
+        final PersonalizationPreferences? nextPrefs = next.asData?.value;
+        if (nextPrefs == null) {
+          return;
+        }
+        final SessionBackgroundTimeoutMinutes? previousTimeout = previous
+            ?.asData
+            ?.value
+            .sessionTimeoutMinutes;
+        if (previousTimeout == nextPrefs.sessionTimeoutMinutes) {
+          return;
+        }
+        onSessionUnlocked();
+      },
+    );
     return const AppSessionState(status: AppLockStatus.uninitialized);
   }
 
@@ -72,7 +114,22 @@ class AppSessionController extends Notifier<AppSessionState> {
     bool afterRestore = false,
     UnlockRequestSource source = UnlockRequestSource.manual,
   }) async {
-    return _restoreTrustedSession(afterRestore: afterRestore, source: source);
+    final Future<UnlockOutcome>? inFlight = _trustedUnlockInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final Future<UnlockOutcome> future = _restoreTrustedSession(
+      afterRestore: afterRestore,
+      source: source,
+    );
+    _trustedUnlockInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_trustedUnlockInFlight, future)) {
+        _trustedUnlockInFlight = null;
+      }
+    }
   }
 
   Future<void> unlockWithRecovery(String recoveryKey) async {
@@ -131,8 +188,18 @@ class AppSessionController extends Notifier<AppSessionState> {
     _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
+    _trustedUnlockInFlight = null;
+    _completedUnlockSnapshot = null;
     state = const AppSessionState(status: AppLockStatus.uninitialized);
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
+  }
+
+  void adoptBootstrapState(AppSessionState next) {
+    _inactivityWatchdog.disarm();
+    state = next;
+    if (next.isUnlocked && next.session != null) {
+      onSessionUnlocked();
+    }
   }
 
   /// 還原覆寫 vault 後進入啟動流程，避免與 [appStartupProvider] 並行解鎖。
@@ -150,6 +217,9 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   void notifyAppBackground() {
     _isInForeground = false;
+    if (state.isUnlocked) {
+      ref.read(sessionRoutePreservationProvider.notifier).savePreBackgroundLocation();
+    }
     if (!_shouldWatchInactivity) {
       return;
     }
@@ -157,11 +227,11 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   Future<ForegroundResumeResult> notifyAppForegroundResumed({
-    required VoidCallback onForegroundSettled,
+    VoidCallback? onForegroundSettled,
   }) {
     _isInForeground = true;
     return _inactivityWatchdog.notifyForegroundResumed(
-      onForegroundSettled: onForegroundSettled,
+      onForegroundSettled: onForegroundSettled ?? () {},
     );
   }
 
@@ -188,7 +258,7 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   void onSessionUnlocked() {
     _inactivityWatchdog.disarm();
-    if (!state.isUnlocked) {
+    if (!state.isUnlocked || !_shouldWatchInactivity) {
       return;
     }
     _inactivityWatchdog.arm(
@@ -237,9 +307,6 @@ class AppSessionController extends Notifier<AppSessionState> {
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
     final String? priorMessage = state.message;
     final SessionLockReason? priorLockReason = state.lockReason;
-    final bool shouldPreserveLockState =
-        source == UnlockRequestSource.lifecycleResume &&
-        state.shouldUnlockOnResume;
     final AppLocalizations l10n = await _loadSessionL10n(ref);
 
     _inactivityWatchdog.disarm();
@@ -248,20 +315,22 @@ class AppSessionController extends Notifier<AppSessionState> {
       message: sessionTrustedUnlockInProgressMessage(l10n),
     );
     try {
-      UnlockedVaultSession session = await repository.openTrustedSession();
-      if (await repository.needsKeystoreMigration(session)) {
-        state = state.copyWith(message: kKeystoreMigrationInProgressMessage);
+      if (await repository.needsKeystoreMigrationForVault()) {
+        final String migrationMessage =
+            '${kKeystoreMigrationInProgressMessage} '
+            '${l10n.sessionKeystoreMigrationMayReverifyMessage}';
+        state = state.copyWith(message: migrationMessage);
       }
-      session = await repository.ensureKeystoreMatchesUnlockMode(session);
-      await repository.ensureIndexReady(session);
+      final UnlockedVaultSession session =
+          await repository.openTrustedSessionEnsuringKeystore();
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
       onSessionUnlocked();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.success);
       return UnlockOutcome.success;
     } on DeviceKeyUserCancelledException {
       return _handleTrustedDeviceFailure(
         source: source,
         recoverable: true,
-        preserveLockState: shouldPreserveLockState,
         preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
@@ -269,7 +338,6 @@ class AppSessionController extends Notifier<AppSessionState> {
       return _handleTrustedDeviceFailure(
         source: source,
         recoverable: true,
-        preserveLockState: shouldPreserveLockState,
         preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
@@ -280,6 +348,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: error.message,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } on DeviceKeyNoDeviceCredentialException catch (error) {
       state = AppSessionState(
@@ -288,11 +357,11 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: error.message,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } on DeviceKeyAuthFailedException {
       return _handleTrustedDeviceFailure(
         source: source,
-        preserveLockState: shouldPreserveLockState,
         preservedLockReason: priorLockReason,
         preservedMessage: priorMessage,
       );
@@ -303,6 +372,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: _sessionL10n(ref).sessionBiometricNotEnrolledSwitchModeMessage,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } on DeviceKeyUnsupportedFormatException catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -311,6 +381,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: error.message,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } on DeviceKeyInvalidatedException catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -319,6 +390,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: error.message,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } on StateError catch (error) {
       await repository.clearTrustedDeviceAccess();
@@ -331,6 +403,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         ),
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     } catch (error) {
       final String message = friendlySessionErrorMessage(
@@ -346,6 +419,7 @@ class AppSessionController extends Notifier<AppSessionState> {
           message: message,
         );
         _inactivityWatchdog.disarm();
+        _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
         return UnlockOutcome.failed;
       }
       state = AppSessionState(
@@ -353,6 +427,7 @@ class AppSessionController extends Notifier<AppSessionState> {
         message: message,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
       return UnlockOutcome.failed;
     }
   }
@@ -360,19 +435,21 @@ class AppSessionController extends Notifier<AppSessionState> {
   Future<UnlockOutcome> _handleTrustedDeviceFailure({
     required UnlockRequestSource source,
     bool recoverable = false,
-    bool preserveLockState = false,
     SessionLockReason? preservedLockReason,
     String? preservedMessage,
   }) async {
-    if (source == UnlockRequestSource.lifecycleResume &&
-        recoverable &&
-        preserveLockState) {
+    if (recoverable && preservedLockReason != null) {
       state = AppSessionState(
         status: AppLockStatus.locked,
         lockReason: preservedLockReason,
         message: preservedMessage,
       );
       _inactivityWatchdog.disarm();
+      _recordCompletedUnlock(
+        source: source,
+        outcome: UnlockOutcome.failed,
+        recoverable: true,
+      );
       return UnlockOutcome.failed;
     }
     state = AppSessionState(
@@ -383,6 +460,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       ),
     );
     _inactivityWatchdog.disarm();
+    _recordCompletedUnlock(source: source, outcome: UnlockOutcome.failed);
     return UnlockOutcome.failed;
   }
 
@@ -390,6 +468,9 @@ class AppSessionController extends Notifier<AppSessionState> {
     required SessionLockReason lockReason,
     required String message,
   }) async {
+    if (lockReason == SessionLockReason.inactivity) {
+      ref.read(sessionRoutePreservationProvider.notifier).onInactivityLock();
+    }
     state = AppSessionState(
       status: AppLockStatus.locked,
       lockReason: lockReason,
@@ -498,33 +579,39 @@ final sessionSupportedPlatformProvider = Provider<bool>((Ref ref) {
 /// 冷啟動或還原後重新建立應用 session（請在還原流程直接呼叫，避免與 provider 並行）。
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   final AppLocalizations l10n = await _loadSessionL10n(ref);
+  final AppSessionController controller = ref.read(appSessionProvider.notifier);
   if (!ref.read(supportedPlatformProvider)) {
-    return AppSessionState(
+    final AppSessionState next = AppSessionState(
       status: AppLockStatus.fatalError,
       message: sessionAndroidOnlyMessage(l10n),
     );
+    controller.adoptBootstrapState(next);
+    return next;
   }
 
   final VaultRepository repository = ref.read(vaultRepositoryProvider);
-  final AppSessionController controller = ref.read(appSessionProvider.notifier);
 
   try {
     await repository.initialize();
 
     final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
     if (metadata == null) {
-      return AppSessionState(
+      final AppSessionState next = AppSessionState(
         status: AppLockStatus.unlocked,
         message: sessionStartupNeedsRecoveryKeyMessage(l10n),
       );
+      controller.adoptBootstrapState(next);
+      return next;
     }
 
     final bool hasTrustedDevice = await repository.hasTrustedDeviceAccess();
     if (!hasTrustedDevice) {
-      return AppSessionState(
+      final AppSessionState next = AppSessionState(
         status: AppLockStatus.recoveryRequired,
         message: sessionStartupNeedsTrustedDeviceMessage(l10n),
       );
+      controller.adoptBootstrapState(next);
+      return next;
     }
 
     final UnlockOutcome outcome = await controller.unlock();
@@ -534,15 +621,19 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
     return ref.read(appSessionProvider);
   } catch (error) {
     final String message = friendlySessionErrorMessage(l10n, error);
+    final AppSessionState next;
     if (error is SecretBoxAuthenticationError ||
         isUnreadableEncryptedIndexError(error)) {
       await repository.clearTrustedDeviceAccess();
-      return AppSessionState(
+      next = AppSessionState(
         status: AppLockStatus.recoveryRequired,
         message: message,
       );
+    } else {
+      next = AppSessionState(status: AppLockStatus.fatalError, message: message);
     }
-    return AppSessionState(status: AppLockStatus.fatalError, message: message);
+    controller.adoptBootstrapState(next);
+    return next;
   }
 }
 

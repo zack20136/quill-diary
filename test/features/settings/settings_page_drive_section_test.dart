@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
@@ -16,10 +18,13 @@ import '../../helpers/settings_test_scope.dart';
 import '../../helpers/test_l10n.dart';
 
 void main() {
+  const String lockedSettingMessage = '解鎖後可調整此設定。';
+
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
     required VaultTransferAccess access,
+    bool canManageDriveAccount = false,
     bool busy = false,
   }) async {
     await tester.pumpWidget(
@@ -36,6 +41,8 @@ void main() {
           home: Scaffold(
             body: DriveBackupSection(
               access: access,
+              canManageDriveAccount: canManageDriveAccount,
+              accountLockedMessage: lockedSettingMessage,
               isGoogleDriveConfigured: true,
               busy: busy,
               onLink: () {},
@@ -60,7 +67,7 @@ void main() {
     );
   }
 
-  testWidgets('disconnected state can link Google account', (
+  testWidgets('disconnected state disables Drive link while locked', (
     WidgetTester tester,
   ) async {
     await pumpDriveSection(
@@ -78,8 +85,9 @@ void main() {
         tester,
         testL10n.settingsDriveBackupLinkButton,
       ).onPressed,
-      isNotNull,
+      isNull,
     );
+    expect(find.text(lockedSettingMessage), findsOneWidget);
   });
 
   testWidgets('locked without recovery key keeps Drive restore available', (
@@ -137,7 +145,7 @@ void main() {
     );
   });
 
-  testWidgets('connected state shows account label and account actions', (
+  testWidgets('connected state disables account actions while locked', (
     WidgetTester tester,
   ) async {
     const DriveConnectionState connectedState = DriveConnectionState(
@@ -160,15 +168,16 @@ void main() {
         tester,
         testL10n.settingsDriveBackupSwitchAccountButton,
       ).onPressed,
-      isNotNull,
+      isNull,
     );
     expect(
       readSettingsActionButton(
         tester,
         testL10n.settingsDriveBackupDisconnectButton,
       ).onPressed,
-      isNotNull,
+      isNull,
     );
+    expect(find.text(lockedSettingMessage), findsOneWidget);
   });
 
   testWidgets(
@@ -247,6 +256,72 @@ void main() {
     expect(
       find.text(testL10n.settingsSecurityOverviewUnlockStatusTitle),
       findsNothing,
+    );
+  });
+
+  testWidgets('locked without recovery key keeps create recovery key available', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      settingsTestScope(
+        sessionState: const AppSessionState(status: AppLockStatus.locked),
+        transferService: FakeVaultTransferService(
+          connectionState: const DriveConnectionState.disconnected(),
+        ),
+        child: MaterialApp(
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SettingsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsSecurityOverviewCreateRecoveryKeyButton,
+      ).onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('locked with recovery key disables create recovery key', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      settingsTestScope(
+        sessionState: const AppSessionState(status: AppLockStatus.locked),
+        recoveryMetadata: RecoveryMetadata(
+          vaultId: 'vlt_test',
+          recoveryEnabled: true,
+          recoveryKeyVersion: 1,
+          recoveryKeyHint: 'ABCD',
+          createdAt: DateTime.utc(2026, 1, 1),
+          kdf: KdfDescriptor.argon2idRecovery(
+            saltBytes: List<int>.filled(16, 1),
+          ),
+        ),
+        transferService: FakeVaultTransferService(
+          connectionState: const DriveConnectionState.disconnected(),
+        ),
+        child: MaterialApp(
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: const SettingsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsSecurityOverviewRotateRecoveryKeyButton,
+      ).onPressed,
+      isNull,
     );
   });
 }

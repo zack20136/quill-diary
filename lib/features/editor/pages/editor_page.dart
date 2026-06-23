@@ -27,6 +27,7 @@ import '../../../shared/utils/diary_presence_tag_counts.dart';
 import '../../../shared/utils/tag_catalog_merge.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../home/providers/home_providers.dart';
+import '../../session/presentation/session_locked_pane.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
@@ -85,6 +86,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   int? _draggingEditorImageIndex;
   bool _didOfferDraftRestore = false;
   bool _handlingDraftRestore = false;
+  bool _preservesEditorOnLock = false;
   bool _draftPersistInFlight = false;
   bool _draftPersistQueued = false;
   bool _suppressTagDraftListener = false;
@@ -147,9 +149,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
       effectiveAppSessionProvider,
       (_, AsyncValue<AppSessionState> next) {
         next.whenData((AppSessionState sessionState) {
-          if (!sessionState.isUnlocked || sessionState.session == null) {
-            unawaited(_flushDraftBeforeSensitiveClear());
+          if (sessionState.status != AppLockStatus.locked) {
+            return;
           }
+          _onSessionLocked();
         });
       },
     );
@@ -414,8 +417,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
           draftKey: _draftKey,
           session: session,
           existingEntry: entry,
-          decideRestore: (EditorDraftRecord record) =>
-              _showRestoreDraftDialog(record, hasExistingEntry: entry != null),
+          decideRestore: (EditorDraftRecord record) => _showRestoreDraftDialog(
+            record,
+            hasExistingEntry: entry != null,
+          ),
         );
     _handlingDraftRestore = false;
     if (!mounted) {
@@ -428,6 +433,27 @@ class _EditorPageState extends ConsumerState<EditorPage>
     if (decision.kind == EditorDraftRestoreKind.discarded && entry != null) {
       _applyEntryToControllers(entry);
       setState(() {});
+    }
+  }
+
+  void _onSessionLocked() {
+    if (_isEditing && _activeSession != null) {
+      _preservesEditorOnLock = true;
+      _didOfferDraftRestore = true;
+    }
+    unawaited(_persistDraftAndMaybeClear());
+  }
+
+  Future<void> _persistDraftAndMaybeClear() async {
+    if (_isEditing &&
+        !_saving &&
+        !_handlingDraftRestore &&
+        _activeSession != null &&
+        mounted) {
+      await _persistDraftNow();
+    }
+    if (mounted && !_preservesEditorOnLock) {
+      _clearSensitiveLocalState();
     }
   }
 
@@ -452,19 +478,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _draftCreatedAt = DateTime.now();
     if (mounted) {
       setState(() {});
-    }
-  }
-
-  Future<void> _flushDraftBeforeSensitiveClear() async {
-    if (_isEditing &&
-        !_saving &&
-        !_handlingDraftRestore &&
-        _activeSession != null &&
-        mounted) {
-      await _persistDraftNow();
-    }
-    if (mounted) {
-      _clearSensitiveLocalState();
     }
   }
 
@@ -509,22 +522,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(switch (sessionState.status) {
-                  AppLockStatus.recoveryRequired =>
-                    sessionState.message ??
-                        sessionRecoveryRequiredAfterRestoreMessage(
-                          context.l10n,
-                        ),
-                  AppLockStatus.unlocking =>
-                    sessionState.message ??
-                        sessionTrustedUnlockInProgressMessage(context.l10n),
-                  AppLockStatus.locked =>
-                    sessionState.message ??
-                        sessionLockedRetryVerificationMessage(context.l10n),
-                  _ =>
-                    sessionState.message ??
-                        context.l10n.editorSessionLockedFallback,
-                }),
+                child: SessionBlockedPane(sessionState: sessionState),
               ),
             ),
           );
@@ -535,6 +533,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
             _loadExistingEntryIfNeeded(entry);
             _activeSession = session;
             _activeEntry = entry;
+            if (_preservesEditorOnLock) {
+              _preservesEditorOnLock = false;
+            }
             if (!_didOfferDraftRestore) {
               _didOfferDraftRestore = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {

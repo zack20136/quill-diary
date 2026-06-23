@@ -59,13 +59,12 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Widget _buildSecurityStatusSection({
     required AsyncValue<AppSessionState> sessionAsync,
     required RecoveryMetadata? recoveryMetadata,
-    required bool canVaultBackup,
+    required SettingsPageAccess pageAccess,
     required AsyncValue<bool> trustedDeviceAccessAsync,
     required AsyncValue<AppUnlockMode> unlockModeAsync,
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
-    final bool hasUnlockedSession =
-        sessionState?.isUnlocked == true && sessionState?.session != null;
+    final bool hasUnlockedSession = pageAccess.hasUnlockedSession;
     final AppUnlockMode mode =
         unlockModeAsync.asData?.value ?? AppUnlockMode.none;
     final AppLocalizations l10n = context.l10n;
@@ -82,16 +81,23 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           unlockModeLabel: mode.fullLabel(l10n),
           indexMessage: _indexStatusMessage(l10n, hasUnlockedSession),
           busy: _busy,
-          onCreateRecoveryKey: recoveryMetadata == null
+          onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
               ? () => _runBusy(_createRecoveryKey)
               : null,
-          onRotateRecoveryKey: recoveryMetadata != null && canVaultBackup
+          onRotateRecoveryKey: recoveryMetadata != null &&
+                  pageAccess.vaultTransfer.canBackup
               ? () => _runBusy(_rotateRecoveryKey)
               : null,
           onRepairVault: hasUnlockedSession
               ? () => _runBusy(_repairVault)
               : null,
-          lockPanel: sessionState?.status == AppLockStatus.unlocked
+          onRetryTrustedUnlock:
+              sessionState?.status == AppLockStatus.locked
+              ? () => _runBusy(_retryTrustedUnlock)
+              : null,
+          lockPanel:
+              sessionState?.status == AppLockStatus.unlocked ||
+                  sessionState?.status == AppLockStatus.locked
               ? null
               : sessionAsync.when(
                   data: (AppSessionState sessionState) => SettingsStatusPanel(
@@ -113,11 +119,6 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                             await refreshEntryIndexCaches(ref);
                             ref.invalidate(trustedDeviceAccessProvider);
                           })
-                        : null,
-                    onRetryTrustedUnlock:
-                        sessionState.status == AppLockStatus.locked ||
-                            sessionState.status == AppLockStatus.unlocking
-                        ? () => _runBusy(_retryTrustedUnlock)
                         : null,
                     onCancelUnlock:
                         sessionState.status == AppLockStatus.unlocking

@@ -1034,9 +1034,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get settingsUnlockMethodNeedsRecoveryKeyBanner => '請先建立復原金鑰，才能設定解鎖方式。';
-
-  @override
   String get settingsUnlockMethodSegmentNone => '無';
 
   @override
@@ -1389,6 +1386,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRepairVaultLockedMessage => '解鎖後可修復日記庫。';
 
   @override
+  String get settingsUnlockRequiredToChangeSettingMessage => '解鎖後可調整此設定。';
+
+  @override
   String get settingsIndexLinkDriveProgress => '正在連結 Google 帳戶…';
 
   @override
@@ -1608,6 +1608,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUseDeviceLockToUnlockMessage => '請使用裝置螢幕鎖解鎖。';
+
+  @override
+  String get sessionNoneModeLockedMessage => '背景逾時，正在重新解鎖日記庫…';
+
+  @override
+  String get sessionKeystoreMigrationMayReverifyMessage =>
+      '若系統再次要求驗證，請完成以更新解鎖設定。';
 
   @override
   String get sessionStartupNeedsBiometricMessage => '請先完成生物驗證。';

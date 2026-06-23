@@ -18,6 +18,28 @@ void main() {
     await harness.dispose();
   });
 
+  test('needsKeystoreMigrationForVault 在 plain 切換 deviceLock 時為 true', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+
+    expect(await harness.repository.needsKeystoreMigrationForVault(), isFalse);
+
+    await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
+    expect(await harness.repository.needsKeystoreMigrationForVault(), isTrue);
+  });
+
+  test('openTrustedSessionEnsuringKeystore 完成 unwrap 與索引準備', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.appLockService.setUnlockMode(AppUnlockMode.none);
+
+    final UnlockedVaultSession session = await harness.repository
+        .openTrustedSessionEnsuringKeystore();
+
+    expect(session.vaultId, setup.session.vaultId);
+    expect(await harness.repository.needsKeystoreMigration(session), isFalse);
+  });
+
   test('needsKeystoreMigration 在 plain 模式下切換至 deviceLock 時為 true', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();

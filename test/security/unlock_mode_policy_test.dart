@@ -118,6 +118,10 @@ void main() {
   test('lockedResumeMessageFor 依模式回傳提示', () {
     final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
     expect(
+      lockedResumeMessageFor(AppUnlockMode.none, l10n: zhL10n),
+      zhL10n.sessionNoneModeLockedMessage,
+    );
+    expect(
       lockedResumeMessageFor(AppUnlockMode.deviceLock, l10n: zhL10n),
       zhL10n.sessionUseDeviceLockToUnlockMessage,
     );

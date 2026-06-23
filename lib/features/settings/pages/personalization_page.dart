@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/preferences/personalization_preferences.dart';
+import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
+import '../../session/providers/session_providers.dart';
+import '../../session/state/app_session_state.dart';
 import '../providers/personalization_providers.dart';
+import '../providers/settings_providers.dart';
+import '../settings_page_access.dart';
 import '../widgets/personalization_sections.dart';
 import '../widgets/settings_sections.dart';
 
@@ -20,6 +25,24 @@ class PersonalizationPage extends ConsumerWidget {
     final AsyncValue<PersonalizationPreferences> prefsAsync = ref.watch(
       personalizationPreferencesProvider,
     );
+    final AsyncValue<AppSessionState> sessionAsync = ref.watch(
+      effectiveAppSessionProvider,
+    );
+    final AsyncValue<RecoveryMetadata?> recoveryMetadataAsync = ref.watch(
+      recoveryMetadataProvider,
+    );
+    final AppSessionState? sessionState = sessionAsync.asData?.value;
+    final SettingsPageAccess pageAccess = SettingsPageAccess.fromSession(
+      l10n: context.l10n,
+      sessionState: sessionState,
+      hasRecoveryKey: recoveryMetadataAsync.asData?.value != null,
+    );
+    final String? sessionTimeoutLockedMessage =
+        pageAccess.canChangeSessionTimeout
+        ? null
+        : pageAccess.hasRecoveryKey
+        ? pageAccess.lockedSettingMessage(context.l10n)
+        : null;
 
     return Scaffold(
       backgroundColor: pageBackground,
@@ -62,6 +85,8 @@ class PersonalizationPage extends ConsumerWidget {
                       .personalizationSessionTimeoutSectionDescription,
                   child: PersonalizationSessionTimeoutSectionBody(
                     selected: prefs.sessionTimeoutMinutes,
+                    enabled: pageAccess.canChangeSessionTimeout,
+                    lockedMessage: sessionTimeoutLockedMessage,
                     onSelected: controller.setSessionTimeoutMinutes,
                   ),
                 ),

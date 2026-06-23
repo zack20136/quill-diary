@@ -52,42 +52,60 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
   const PersonalizationSessionTimeoutSectionBody({
     required this.selected,
     required this.onSelected,
+    this.enabled = true,
+    this.lockedMessage,
     super.key,
   });
 
   final SessionBackgroundTimeoutMinutes selected;
   final Future<void> Function(SessionBackgroundTimeoutMinutes value) onSelected;
+  final bool enabled;
+  final String? lockedMessage;
 
   static const List<SessionBackgroundTimeoutMinutes> _options =
       SessionBackgroundTimeoutMinutes.choices;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Expanded(
-          child: SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
-            choices: _options
-                .map(
-                  (SessionBackgroundTimeoutMinutes value) =>
-                      SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
-                        value: value,
-                        label: '${value.minutes}',
-                        icon: null,
-                        flex: 1,
-                      ),
-                )
-                .toList(growable: false),
-            selected: selected,
-            onSelected: onSelected,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            Expanded(
+              child:
+                  SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
+                choices: _options
+                    .map(
+                      (SessionBackgroundTimeoutMinutes value) =>
+                          SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
+                            value: value,
+                            label: '${value.minutes}',
+                            icon: null,
+                            flex: 1,
+                            enabled: enabled,
+                          ),
+                    )
+                    .toList(growable: false),
+                selected: selected,
+                onSelected: onSelected,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              context.l10n.personalizationSessionTimeoutUnitLabel,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        if (!enabled && lockedMessage != null) ...<Widget>[
+          const SizedBox(height: 12),
+          SettingsInfoBanner(
+            icon: Icons.lock_outline_rounded,
+            message: lockedMessage!,
           ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          context.l10n.personalizationSessionTimeoutUnitLabel,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+        ],
       ],
     );
   }

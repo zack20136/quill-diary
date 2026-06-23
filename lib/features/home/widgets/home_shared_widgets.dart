@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
+import '../../session/presentation/session_locked_pane.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
@@ -58,6 +59,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
             ? sessionState.message!
             : l10n.sessionBlockedLockedSubtitle,
         actionLabel: context.l10n.homeRetryVerification,
+        actionIcon: kSessionRetryVerificationIcon,
         onAction: () => unawaited(
           ProviderScope.containerOf(
             context,
@@ -89,6 +91,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
       title: blockedTitle,
       message: blockedSubtitle,
       actionLabel: offerSettings ? context.l10n.homeGoToSettings : null,
+      actionIcon: Icons.settings_outlined,
       onAction: offerSettings
           ? () => unawaited(context.push(AppRouter.settingsRoute))
           : null,
@@ -262,6 +265,8 @@ class HomeStateCard extends StatelessWidget {
     required this.title,
     required this.message,
     this.actionLabel,
+    this.actionIcon,
+    this.actionOutlined = false,
     this.onAction,
     super.key,
   });
@@ -270,6 +275,8 @@ class HomeStateCard extends StatelessWidget {
   final String title;
   final String message;
   final String? actionLabel;
+  final IconData? actionIcon;
+  final bool actionOutlined;
   final VoidCallback? onAction;
 
   @override
@@ -307,11 +314,21 @@ class HomeStateCard extends StatelessWidget {
               ),
               if (actionLabel != null && onAction != null) ...<Widget>[
                 const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: onAction,
-                  icon: const Icon(Icons.settings_outlined),
-                  label: Text(actionLabel!),
-                ),
+                actionOutlined
+                    ? OutlinedButton.icon(
+                        onPressed: onAction,
+                        icon: Icon(
+                          actionIcon ?? kSessionRetryVerificationIcon,
+                        ),
+                        label: Text(actionLabel!),
+                      )
+                    : FilledButton.icon(
+                        onPressed: onAction,
+                        icon: Icon(
+                          actionIcon ?? Icons.settings_outlined,
+                        ),
+                        label: Text(actionLabel!),
+                      ),
               ],
             ],
           ),

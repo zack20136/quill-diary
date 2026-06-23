@@ -47,6 +47,7 @@ class FakeSessionVaultRepository extends VaultRepository {
   int openTrustedSessionCalls = 0;
   int resumeUnlockedSessionAfterRestoreCalls = 0;
   List<Object?>? _openTrustedSessionResults;
+  Duration openTrustedSessionDelay = Duration.zero;
 
   @override
   Future<void> initialize() async {
@@ -66,6 +67,9 @@ class FakeSessionVaultRepository extends VaultRepository {
 
   @override
   Future<UnlockedVaultSession> openTrustedSession() async {
+    if (openTrustedSessionDelay > Duration.zero) {
+      await Future<void>.delayed(openTrustedSessionDelay);
+    }
     openTrustedSessionCalls++;
     final Object? result;
     final List<Object?>? queuedResults = _openTrustedSessionResults;
@@ -128,6 +132,16 @@ class FakeSessionVaultRepository extends VaultRepository {
   @override
   Future<bool> needsKeystoreMigration(UnlockedVaultSession session) async =>
       false;
+
+  @override
+  Future<bool> needsKeystoreMigrationForVault() async => false;
+
+  @override
+  Future<UnlockedVaultSession> openTrustedSessionEnsuringKeystore() async {
+    final UnlockedVaultSession session = await openTrustedSession();
+    await ensureIndexReady(session);
+    return session;
+  }
 
   @override
   Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
