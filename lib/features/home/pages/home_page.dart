@@ -13,7 +13,9 @@ import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../home_layout.dart';
+import '../providers/home_bottom_chrome_provider.dart';
 import '../state/home_state.dart';
+import '../widgets/home_circle_action_button.dart';
 import '../widgets/home_selection_toolbar.dart';
 import '../widgets/home_shared_widgets.dart';
 import '../widgets/home_tab_stack.dart';
@@ -51,6 +53,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
         final HomeTab activeTab = ref.watch(homeTabProvider);
         final bool showFab = activeTab == HomeTab.home && !selection.isActive;
+        final bool snackBarLifted = homeBottomChromeLifted(ref);
+        final double addButtonBottom =
+            HomeLayout.bottomActionsInsetFor(snackBarVisible: snackBarLifted) +
+            HomeLayout.bodyPadding.bottom;
 
         return PopScope(
           canPop: !selection.isActive,
@@ -65,27 +71,39 @@ class _HomePageState extends ConsumerState<HomePage> {
               preferredSize: Size.fromHeight(76),
               child: HomeHeader(),
             ),
-            body: ColoredBox(
-              color: PageStyle.scaffoldWash(cs),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: HomeLayout.bodyPadding,
-                  child: HomeTabStack(sessionState: sessionState),
+            body: Stack(
+              children: <Widget>[
+                ColoredBox(
+                  color: PageStyle.scaffoldWash(cs),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: HomeLayout.bodyPadding,
+                      child: HomeTabStack(sessionState: sessionState),
+                    ),
+                  ),
                 ),
-              ),
+                if (showFab)
+                  AnimatedPositioned(
+                    duration: HomeLayout.bottomChromeAnimationDuration,
+                    curve: HomeLayout.bottomChromeAnimationCurve,
+                    right: HomeLayout.circleActionHorizontalInset,
+                    bottom: addButtonBottom,
+                    child: SafeArea(
+                      top: false,
+                      child: HomeCircleActionButton(
+                        tooltip: context.l10n.homeTooltipNewEntry,
+                        icon: Icons.add_rounded,
+                        onPressed: canCreate
+                            ? () => unawaited(
+                                context.push(AppRouter.editorRoute),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            floatingActionButton: showFab
-                ? FloatingActionButton(
-                    tooltip: context.l10n.homeTooltipNewEntry,
-                    backgroundColor: cs.secondaryContainer,
-                    foregroundColor: cs.onSecondaryContainer,
-                    onPressed: canCreate
-                        ? () => unawaited(context.push(AppRouter.editorRoute))
-                        : null,
-                    child: const Icon(Icons.add_rounded),
-                  )
-                : null,
           ),
         );
       },

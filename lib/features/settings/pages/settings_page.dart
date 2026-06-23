@@ -16,6 +16,7 @@ import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/utils/external_url.dart';
@@ -131,7 +132,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         SettingsSectionCard(
                           title: l10n.settingsPlatformSectionTitle,
                           description: l10n.settingsPlatformSectionDescription,
-                          child: SettingsInfoBanner(
+                          child: AppFeedbackBanner(
                             icon: Icons.phone_android_rounded,
                             message: sessionAndroidOnlyMessage(l10n),
                           ),
@@ -168,13 +169,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 ),
                             loading: () => const SettingsSectionLoading(),
                             error: (Object error, StackTrace _) =>
-                                SettingsInfoBanner(
+                                AppFeedbackBanner(
                                   icon: Icons.error_outline_rounded,
                                   message: userFacingErrorMessage(
                                     error,
                                     l10n: l10n,
                                   ),
-                                  tone: SettingsBannerTone.error,
+                                  tone: AppFeedbackTone.error,
                                 ),
                           ),
                         ),

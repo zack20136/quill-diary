@@ -6,6 +6,7 @@ import '../../../l10n/l10n.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
+import '../app_feedback.dart';
 import '../tag_visual.dart';
 
 /// 建立或編輯標籤名稱與強調色的對話框。
@@ -73,9 +74,7 @@ class _TagAccentComposerDialogState
     final AppLocalizations l10n = context.l10n;
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.tagNameRequiredMessage)));
+      showAppFeedbackSnackBar(context, l10n.tagNameRequiredMessage);
       return;
     }
 
@@ -100,12 +99,10 @@ class _TagAccentComposerDialogState
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              l10n.tagSaveFailure(userFacingErrorMessage(error, l10n: l10n)),
-            ),
-          ),
+        showAppFeedbackSnackBar(
+          context,
+          l10n.tagSaveFailure(userFacingErrorMessage(error, l10n: l10n)),
+          tone: AppFeedbackTone.error,
         );
       }
     } finally {
@@ -128,12 +125,10 @@ class _TagAccentComposerDialogState
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              l10n.tagDeleteFailure(userFacingErrorMessage(error, l10n: l10n)),
-            ),
-          ),
+        showAppFeedbackSnackBar(
+          context,
+          l10n.tagDeleteFailure(userFacingErrorMessage(error, l10n: l10n)),
+          tone: AppFeedbackTone.error,
         );
       }
     } finally {

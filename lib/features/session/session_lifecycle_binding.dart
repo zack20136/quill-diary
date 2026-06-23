@@ -18,6 +18,7 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
   bool _isForeground = true;
   bool _wasBackgrounded = false;
   int _resumeUnlockToken = 0;
+  int _lastStartupCycleId = 0;
 
   void attach() {
     if (_attached) {
@@ -31,9 +32,24 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     if (!_attached) {
       return;
     }
-    _cancelPendingResumeUnlock();
+    clearStaleLifecycleState();
     WidgetsBinding.instance.removeObserver(this);
     _attached = false;
+  }
+
+  /// bootstrap 週期結束時清掉同次啟動累積的 stale 背景狀態。
+  void clearStaleLifecycleState() {
+    _wasBackgrounded = false;
+    _cancelPendingResumeUnlock();
+  }
+
+  void _syncStartupCycle(AppSessionController controller) {
+    final int cycleId = controller.startupCycleId;
+    if (cycleId == _lastStartupCycleId) {
+      return;
+    }
+    _lastStartupCycleId = cycleId;
+    clearStaleLifecycleState();
   }
 
   @override
@@ -49,11 +65,15 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     final AppSessionController controller = ref.read(
       appSessionProvider.notifier,
     );
+    _syncStartupCycle(controller);
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         _isForeground = false;
-        _wasBackgrounded = true;
+        if (controller.canRecordLifecycleBackground) {
+          controller.recordFirstLifecycleBackground();
+          _wasBackgrounded = true;
+        }
         _cancelPendingResumeUnlock();
         controller.notifyAppBackground();
         break;
@@ -61,7 +81,9 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
         _isForeground = true;
         await controller.notifyAppForegroundResumed();
         final bool shouldScheduleResumeUnlock =
-            _wasBackgrounded && controller.shouldUnlockOnResume;
+            controller.canScheduleLifecycleResumeUnlock &&
+            _wasBackgrounded &&
+            controller.shouldUnlockOnResume;
         _wasBackgrounded = false;
         if (shouldScheduleResumeUnlock) {
           _scheduleResumeUnlockIfNeeded(controller);
@@ -74,7 +96,10 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
   }
 
   void _scheduleResumeUnlockIfNeeded(AppSessionController controller) {
-    if (!_attached || !_isForeground || !controller.shouldUnlockOnResume) {
+    if (!_attached ||
+        !_isForeground ||
+        !controller.canScheduleLifecycleResumeUnlock ||
+        !controller.shouldUnlockOnResume) {
       return;
     }
     final int token = ++_resumeUnlockToken;
@@ -102,6 +127,7 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     return _attached &&
         _isForeground &&
         token == _resumeUnlockToken &&
+        controller.canScheduleLifecycleResumeUnlock &&
         controller.shouldUnlockOnResume;
   }
 

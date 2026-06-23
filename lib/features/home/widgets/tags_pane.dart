@@ -7,6 +7,7 @@ import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/tag_styles_store.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
@@ -159,14 +160,11 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       setState(() => _selectedTagLabel = null);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          entryCount == 0
-              ? context.l10n.homeTagDeleted(label)
-              : homeTagRemovedFromEntries(context.l10n, entryCount, label),
-        ),
-      ),
+    showAppFeedbackSnackBar(
+      context,
+      entryCount == 0
+          ? context.l10n.homeTagDeleted(label)
+          : homeTagRemovedFromEntries(context.l10n, entryCount, label),
     );
   }
 
@@ -213,8 +211,9 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
         return;
       }
       if (created) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.homeCreateDefaultTagsButton)),
+        showAppFeedbackSnackBar(
+          context,
+          context.l10n.homeCreateDefaultTagsButton,
         );
       }
     } finally {

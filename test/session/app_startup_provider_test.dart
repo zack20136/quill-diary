@@ -71,6 +71,60 @@ void main() {
     return container;
   }
 
+  test('bootstrap 完成後標記 trustedUnlockBootstrapFinished', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      metadata: metadata,
+      hasTrustedDevice: true,
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(
+      supportedPlatform: true,
+      repository: repository,
+    );
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+
+    expect(controller.trustedUnlockBootstrapFinished, isFalse);
+    expect(controller.trustedUnlockBootstrapActive, isTrue);
+    expect(controller.startupPhase, TrustedUnlockStartupPhase.bootstrapping);
+    expect(controller.canScheduleLifecycleResumeUnlock, isFalse);
+    await container.read(appStartupProvider.future);
+    expect(controller.trustedUnlockBootstrapFinished, isTrue);
+    expect(controller.trustedUnlockBootstrapActive, isFalse);
+    expect(
+      controller.startupPhase,
+      TrustedUnlockStartupPhase.awaitingFirstBackground,
+    );
+    expect(controller.canScheduleLifecycleResumeUnlock, isFalse);
+    expect(controller.startupCycleId, 1);
+  });
+
+  test('bootstrap 結束後第一次背景才允許 lifecycle resume unlock', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      metadata: metadata,
+      hasTrustedDevice: true,
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(
+      supportedPlatform: true,
+      repository: repository,
+    );
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+
+    await container.read(appStartupProvider.future);
+    expect(controller.canScheduleLifecycleResumeUnlock, isFalse);
+
+    controller.recordFirstLifecycleBackground();
+    expect(
+      controller.startupPhase,
+      TrustedUnlockStartupPhase.lifecycleResumeArmed,
+    );
+    expect(controller.canScheduleLifecycleResumeUnlock, isTrue);
+  });
+
   test('非 Android 平台回傳 fatalError', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository();
     final ProviderContainer container = buildContainer(

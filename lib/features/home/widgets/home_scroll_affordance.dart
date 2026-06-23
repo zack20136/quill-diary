@@ -1,29 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n.dart';
+import '../home_layout.dart';
+import '../providers/home_bottom_chrome_provider.dart';
+import 'home_circle_action_button.dart';
 
 const double _kBackToTopVisibilityOffset = 240;
 const Duration _kBackToTopScrollDuration = Duration(milliseconds: 240);
 const Duration _kBackToTopAnimationDuration = Duration(milliseconds: 180);
 
-class HomeScrollAffordance extends StatefulWidget {
+class HomeScrollAffordance extends ConsumerStatefulWidget {
   const HomeScrollAffordance({
     required this.controller,
     required this.child,
-    this.backToTopPadding = const EdgeInsets.only(left: 8, bottom: 16),
+    this.backToTopLeftPadding = HomeLayout.circleActionSideInset,
     super.key,
   });
 
   final ScrollController controller;
   final Widget child;
-  final EdgeInsets backToTopPadding;
+  final double backToTopLeftPadding;
 
   @override
-  State<HomeScrollAffordance> createState() => _HomeScrollAffordanceState();
+  ConsumerState<HomeScrollAffordance> createState() =>
+      _HomeScrollAffordanceState();
 }
 
-class _HomeScrollAffordanceState extends State<HomeScrollAffordance> {
+class _HomeScrollAffordanceState extends ConsumerState<HomeScrollAffordance> {
   bool _showBackToTop = false;
   bool _attachCheckScheduled = false;
 
@@ -90,7 +95,10 @@ class _HomeScrollAffordanceState extends State<HomeScrollAffordance> {
       TargetPlatform.windows => true,
       _ => kIsWeb,
     };
-    final ColorScheme cs = Theme.of(context).colorScheme;
+    final bool snackBarLifted = homeBottomChromeLifted(ref);
+    final double backToTopBottom = HomeLayout.bottomActionsInsetFor(
+      snackBarVisible: snackBarLifted,
+    );
     return Stack(
       children: <Widget>[
         Positioned.fill(
@@ -105,8 +113,13 @@ class _HomeScrollAffordanceState extends State<HomeScrollAffordance> {
           child: IgnorePointer(
             ignoring: !_showBackToTop,
             child: SafeArea(
-              child: Padding(
-                padding: widget.backToTopPadding,
+              child: AnimatedPadding(
+                duration: HomeLayout.bottomChromeAnimationDuration,
+                curve: HomeLayout.bottomChromeAnimationCurve,
+                padding: EdgeInsets.only(
+                  left: widget.backToTopLeftPadding,
+                  bottom: backToTopBottom,
+                ),
                 child: Align(
                   alignment: Alignment.bottomLeft,
                   child: AnimatedSlide(
@@ -119,32 +132,10 @@ class _HomeScrollAffordanceState extends State<HomeScrollAffordance> {
                       duration: _kBackToTopAnimationDuration,
                       curve: Curves.easeOut,
                       opacity: _showBackToTop ? 1 : 0,
-                      child: Semantics(
-                        button: true,
-                        label: context.l10n.homeTooltipBackToTop,
-                        child: Tooltip(
-                          message: context.l10n.homeTooltipBackToTop,
-                          child: Material(
-                            color: cs.secondaryContainer,
-                            elevation: 3,
-                            shadowColor: cs.shadow.withValues(alpha: 0.18),
-                            shape: const CircleBorder(),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: _scrollToTop,
-                              customBorder: const CircleBorder(),
-                              child: SizedBox(
-                                width: 44,
-                                height: 44,
-                                child: Icon(
-                                  Icons.keyboard_arrow_up_rounded,
-                                  color: cs.onSecondaryContainer,
-                                  size: 26,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      child: HomeCircleActionButton(
+                        tooltip: context.l10n.homeTooltipBackToTop,
+                        icon: Icons.keyboard_arrow_up_rounded,
+                        onPressed: _scrollToTop,
                       ),
                     ),
                   ),

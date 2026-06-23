@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
-
 import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../application/settings_flow_controller.dart';
 
@@ -12,30 +11,14 @@ void showSettingsFlowFeedback(
   if (!context.mounted || feedback == null) {
     return;
   }
-  final ColorScheme colorScheme = Theme.of(context).colorScheme;
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-  messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        feedback.message,
-        style: switch (feedback.tone) {
-          SettingsFlowFeedbackTone.error => TextStyle(
-            color: colorScheme.onError,
-          ),
-          SettingsFlowFeedbackTone.success => TextStyle(
-            color: colorScheme.onPrimaryContainer,
-          ),
-          SettingsFlowFeedbackTone.info => null,
-        },
-      ),
-      backgroundColor: switch (feedback.tone) {
-        SettingsFlowFeedbackTone.error => colorScheme.error,
-        SettingsFlowFeedbackTone.success => colorScheme.primaryContainer,
-        SettingsFlowFeedbackTone.info => null,
-      },
-      behavior: SnackBarBehavior.floating,
-    ),
+  showAppFeedbackSnackBar(
+    context,
+    feedback.message,
+    tone: switch (feedback.tone) {
+      SettingsFlowFeedbackTone.info => AppFeedbackTone.info,
+      SettingsFlowFeedbackTone.success => AppFeedbackTone.info,
+      SettingsFlowFeedbackTone.error => AppFeedbackTone.error,
+    },
   );
 }
 

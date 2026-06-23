@@ -6,6 +6,7 @@ import '../../domain/shared/value_objects.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_repository.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/presentation/app_feedback.dart';
 import '../../shared/presentation/display_format.dart';
 import '../../shared/providers/core_providers.dart';
 import '../../shared/utils/user_facing_error.dart';
@@ -67,32 +68,29 @@ Future<void> exportEntriesAsHtml(
     if (savedPath == null || !context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          context.l10n.homeHtmlExportSuccess(
-            DisplayFormat.formatSavedFileNameForDisplay(savedPath),
-          ),
-        ),
+    showAppFeedbackSnackBar(
+      context,
+      context.l10n.homeHtmlExportSuccess(
+        DisplayFormat.formatSavedFileNameForDisplay(savedPath),
       ),
     );
   } on StateError catch (error) {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
-      ),
+    showAppFeedbackSnackBar(
+      context,
+      userFacingErrorMessage(error, l10n: context.l10n),
+      tone: AppFeedbackTone.error,
     );
   } catch (error) {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(userFacingErrorMessage(error, l10n: context.l10n)),
-      ),
+    showAppFeedbackSnackBar(
+      context,
+      userFacingErrorMessage(error, l10n: context.l10n),
+      tone: AppFeedbackTone.error,
     );
   }
 }

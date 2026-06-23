@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/billing_providers.dart';
 import '../settings_messages.dart';
@@ -42,11 +43,9 @@ class _SupportPageState extends ConsumerState<SupportPage> {
       SponsorBillingState next,
     ) {
       if (next.purchasePhase == SponsorPurchasePhase.thanks) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.settingsSupportThanksMessage),
-            behavior: SnackBarBehavior.floating,
-          ),
+        showAppFeedbackSnackBar(
+          context,
+          l10n.settingsSupportThanksMessage,
         );
       }
     });

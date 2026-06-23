@@ -81,6 +81,23 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('home tab uses circle add button instead of scaffold FAB', (
+    WidgetTester tester,
+  ) async {
+    final ProviderContainer container = buildContainer(
+      FakeEntryIndexVaultRepository(
+        allEntries: <EntryIndexRecord>[
+          buildEntryIndexRecord(id: 'jrn_1', title: 'entry one'),
+        ],
+      ),
+    );
+
+    await pumpHomePage(tester, container);
+
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byIcon(Icons.add_rounded), findsOneWidget);
+  });
+
   testWidgets('overview export stays enabled for all scope', (
     WidgetTester tester,
   ) async {

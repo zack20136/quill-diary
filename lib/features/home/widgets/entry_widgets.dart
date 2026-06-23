@@ -99,7 +99,7 @@ class HomeEntryList extends ConsumerWidget {
         child: ListView.separated(
           controller: controller,
           primary: controller == null,
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+          padding: const EdgeInsets.only(bottom: 16),
           scrollCacheExtent: HomeLayout.entryListCacheExtent,
           itemCount: entries.length,
           separatorBuilder: (_, _) => const SizedBox(height: 14),

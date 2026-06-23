@@ -195,12 +195,12 @@ IconData _sessionIcon(AppLockStatus status) {
   };
 }
 
-SettingsBannerTone _sessionTone(AppLockStatus status) {
+AppFeedbackTone _sessionTone(AppLockStatus status) {
   return switch (status) {
-    AppLockStatus.uninitialized => SettingsBannerTone.neutral,
-    AppLockStatus.unlocking => SettingsBannerTone.neutral,
-    AppLockStatus.recoveryRequired => SettingsBannerTone.warning,
-    AppLockStatus.fatalError => SettingsBannerTone.error,
-    _ => SettingsBannerTone.neutral,
+    AppLockStatus.uninitialized => AppFeedbackTone.info,
+    AppLockStatus.unlocking => AppFeedbackTone.info,
+    AppLockStatus.recoveryRequired => AppFeedbackTone.warning,
+    AppLockStatus.fatalError => AppFeedbackTone.error,
+    _ => AppFeedbackTone.info,
   };
 }

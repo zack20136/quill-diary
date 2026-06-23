@@ -128,18 +128,18 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                         : null,
                   ),
                   loading: () => const SettingsSectionLoading(),
-                  error: (Object error, StackTrace _) => SettingsInfoBanner(
+                  error: (Object error, StackTrace _) => AppFeedbackBanner(
                     icon: Icons.error_outline_rounded,
                     message: userFacingErrorMessage(error, l10n: l10n),
-                    tone: SettingsBannerTone.error,
+                    tone: AppFeedbackTone.error,
                   ),
                 ),
         ),
         loading: () => const SettingsSectionLoading(),
-        error: (Object error, StackTrace _) => SettingsInfoBanner(
+        error: (Object error, StackTrace _) => AppFeedbackBanner(
           icon: Icons.error_outline_rounded,
           message: userFacingErrorMessage(error, l10n: l10n),
-          tone: SettingsBannerTone.error,
+          tone: AppFeedbackTone.error,
         ),
       ),
     );

@@ -65,7 +65,12 @@ void main() {
         ),
       ],
     );
-    addTearDown(container.dispose);
+    addTearDown(() async {
+      container.dispose();
+      if (preferencesFile.existsSync()) {
+        await preferencesFile.delete();
+      }
+    });
     return container;
   }
 
@@ -586,10 +591,30 @@ void main() {
     final FakeAppLockService appLock = FakeAppLockService(
       unlockMode: AppUnlockMode.deviceLock,
     );
-    final ProviderContainer container = buildContainer(
-      repository,
-      appLock: appLock,
+    final File preferencesFile = File(
+      '${Directory.systemTemp.path}/app_session_controller_test_timeout_update.json',
     );
+    if (preferencesFile.existsSync()) {
+      preferencesFile.deleteSync();
+    }
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        vaultRepositoryProvider.overrideWithValue(repository),
+        appLockServiceProvider.overrideWithValue(appLock),
+        userPreferencesProvider.overrideWithValue(
+          UserPreferences(storageFile: preferencesFile),
+        ),
+        personalizationPreferencesProvider.overrideWith(
+          _ThreeMinuteSessionTimeoutController.new,
+        ),
+      ],
+    );
+    addTearDown(() async {
+      container.dispose();
+      if (preferencesFile.existsSync()) {
+        await preferencesFile.delete();
+      }
+    });
 
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
@@ -601,7 +626,7 @@ void main() {
 
     controller.notifyAppBackground();
     advanceClock(controller, const Duration(minutes: 2));
-    await controller.notifyAppForegroundResumed();
+    await controller.notifyAppForegroundResumed(onForegroundSettled: () {});
     expect(container.read(appSessionProvider).isUnlocked, isTrue);
 
     await container
@@ -665,6 +690,16 @@ class _OneMinuteSessionTimeoutController
   Future<PersonalizationPreferences> build() async {
     return PersonalizationPreferences.defaults.copyWith(
       sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.one,
+    );
+  }
+}
+
+class _ThreeMinuteSessionTimeoutController
+    extends PersonalizationPreferencesController {
+  @override
+  Future<PersonalizationPreferences> build() async {
+    return PersonalizationPreferences.defaults.copyWith(
+      sessionTimeoutMinutes: SessionBackgroundTimeoutMinutes.three,
     );
   }
 }

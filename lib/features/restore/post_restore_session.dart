@@ -38,6 +38,7 @@ Future<AppSessionState> finishRestoreSession(
     }
     return sessionState;
   } finally {
+    ref.read(appSessionProvider.notifier).endTrustedUnlockBootstrap();
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
   }

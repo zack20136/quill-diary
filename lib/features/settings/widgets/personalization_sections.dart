@@ -6,6 +6,7 @@ import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../infrastructure/preferences/personalization_preferences.dart';
 import '../../../infrastructure/preferences/user_preferences.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/personalization_providers.dart';
 import 'settings_sections.dart';
@@ -101,9 +102,10 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
         ),
         if (!enabled && lockedMessage != null) ...<Widget>[
           const SizedBox(height: 12),
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: Icons.lock_outline_rounded,
             message: lockedMessage!,
+            tone: AppFeedbackTone.warning,
           ),
         ],
       ],
@@ -420,8 +422,9 @@ Future<void> confirmAndResetTypography({
   if (!context.mounted) {
     return;
   }
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(context.l10n.personalizationTypographyResetSuccess)),
+  showAppFeedbackSnackBar(
+    context,
+    context.l10n.personalizationTypographyResetSuccess,
   );
 }
 

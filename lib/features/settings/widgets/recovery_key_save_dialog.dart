@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_typography.dart';
 
 /// 建立或更新復原金鑰後，顯示金鑰並提供複製操作。
@@ -32,9 +33,9 @@ class RecoveryKeySaveDialog extends StatelessWidget {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.settingsRecoveryKeyCopiedMessage)),
+    showAppFeedbackSnackBar(
+      context,
+      context.l10n.settingsRecoveryKeyCopiedMessage,
     );
   }
 

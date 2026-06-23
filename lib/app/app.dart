@@ -104,10 +104,7 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AppSessionState>(
-      appSessionProvider,
-      _handleSessionRouteTransition,
-    );
+    ref.listen<AppSessionState>(appSessionProvider, _handleSessionRouteTransition);
 
     ref.watch(sponsorBillingLifecycleProvider);
     final Locale locale = ref

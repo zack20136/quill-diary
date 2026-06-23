@@ -25,8 +25,8 @@ class _ProductsSection extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final bool buttonsEnabled = billing.isAvailable && !billing.isPurchaseBusy;
-    final _PurchaseStatusBanner? statusBanner =
-        _PurchaseStatusBanner.fromBilling(l10n, billing);
+    final AppFeedbackBanner? statusBanner =
+        _purchaseStatusBanner(l10n, billing);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -165,76 +165,26 @@ class _ProductsSection extends StatelessWidget {
   }
 }
 
-class _PurchaseStatusBanner extends StatelessWidget {
-  const _PurchaseStatusBanner({
-    required this.icon,
-    required this.message,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String message;
-  final Color color;
-
-  static _PurchaseStatusBanner? fromBilling(
-    AppLocalizations l10n,
-    SponsorBillingState billing,
-  ) {
-    return switch (billing.purchasePhase) {
-      SponsorPurchasePhase.pending => _PurchaseStatusBanner(
-        icon: Icons.hourglass_top_rounded,
-        message: l10n.settingsSupportPendingMessage,
-        color: const Color(0xFF5C6BC0),
-      ),
-      SponsorPurchasePhase.error => _PurchaseStatusBanner(
-        icon: Icons.info_outline_rounded,
-        message: l10n.settingsSupportErrorMessage,
-        color: const Color(0xFFC62828),
-      ),
-      SponsorPurchasePhase.thanks => _PurchaseStatusBanner(
-        icon: Icons.check_circle_rounded,
-        message: l10n.settingsSupportThanksMessage,
-        color: const Color(0xFF2E7D32),
-      ),
-      _ => null,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          color.withValues(alpha: 0.10),
-          cs.surfaceContainerLow,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurface,
-                  height: 1.4,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+AppFeedbackBanner? _purchaseStatusBanner(
+  AppLocalizations l10n,
+  SponsorBillingState billing,
+) {
+  return switch (billing.purchasePhase) {
+    SponsorPurchasePhase.pending => AppFeedbackBanner(
+      icon: Icons.hourglass_top_rounded,
+      message: l10n.settingsSupportPendingMessage,
+    ),
+    SponsorPurchasePhase.error => AppFeedbackBanner(
+      icon: Icons.info_outline_rounded,
+      message: l10n.settingsSupportErrorMessage,
+      tone: AppFeedbackTone.error,
+    ),
+    SponsorPurchasePhase.thanks => AppFeedbackBanner(
+      icon: Icons.check_circle_rounded,
+      message: l10n.settingsSupportThanksMessage,
+    ),
+    _ => null,
+  };
 }
 
 class _SponsorProductTile extends StatelessWidget {

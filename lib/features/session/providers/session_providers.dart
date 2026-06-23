@@ -24,6 +24,18 @@ import '../state/unlock_result.dart';
 
 export '../state/unlock_result.dart';
 
+/// 冷啟動／還原後的 trusted unlock 週期，用來隔離 bootstrap 與 lifecycle resume。
+enum TrustedUnlockStartupPhase {
+  /// bootstrap 進行中；lifecycle 背景事件視為無效。
+  bootstrapping,
+
+  /// bootstrap 已結束，但尚未發生真實背景切換；resumed 不得再排 unlock。
+  awaitingFirstBackground,
+
+  /// 已發生 bootstrap 後第一次有效背景；resumed 可依鎖定狀態自動解鎖。
+  lifecycleResumeArmed,
+}
+
 AppLocalizations _sessionL10n(Ref ref) {
   final Locale locale = ref
       .read(personalizationPreferencesProvider)
@@ -57,6 +69,9 @@ class AppSessionController extends Notifier<AppSessionState> {
   int _activeSensitiveTasks = 0;
   bool _pendingResourceCleanup = false;
   bool _isInForeground = true;
+  TrustedUnlockStartupPhase _startupPhase =
+      TrustedUnlockStartupPhase.bootstrapping;
+  int _startupCycleId = 0;
   Future<UnlockOutcome>? _trustedUnlockInFlight;
   CompletedUnlockSnapshot? _completedUnlockSnapshot;
 
@@ -109,6 +124,57 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   bool get shouldUnlockOnResume => state.shouldUnlockOnResume;
+
+  bool get trustedUnlockBootstrapFinished =>
+      _startupPhase != TrustedUnlockStartupPhase.bootstrapping;
+
+  bool get trustedUnlockBootstrapActive =>
+      _startupPhase == TrustedUnlockStartupPhase.bootstrapping;
+
+  @visibleForTesting
+  TrustedUnlockStartupPhase get startupPhase => _startupPhase;
+
+  int get startupCycleId => _startupCycleId;
+
+  /// bootstrap 結束後、尚未進入一般 lifecycle 流程前，session 是否可參與背景逾時等行為。
+  bool get canParticipateInLifecycleResumeUnlock =>
+      _startupPhase != TrustedUnlockStartupPhase.bootstrapping &&
+      state.status != AppLockStatus.unlocking &&
+      _trustedUnlockInFlight == null;
+
+  /// 是否可將 paused/hidden 記成後續 resumed 的背景依據。
+  bool get canRecordLifecycleBackground =>
+      canParticipateInLifecycleResumeUnlock &&
+      (_startupPhase == TrustedUnlockStartupPhase.awaitingFirstBackground ||
+          _startupPhase == TrustedUnlockStartupPhase.lifecycleResumeArmed);
+
+  /// resumed 是否可排程 lifecycle 自動解鎖。
+  bool get canScheduleLifecycleResumeUnlock =>
+      canParticipateInLifecycleResumeUnlock &&
+      _startupPhase == TrustedUnlockStartupPhase.lifecycleResumeArmed;
+
+  @visibleForTesting
+  void markTrustedUnlockBootstrapFinished() {
+    endTrustedUnlockBootstrap();
+  }
+
+  void endTrustedUnlockBootstrap() {
+    if (_startupPhase != TrustedUnlockStartupPhase.bootstrapping) {
+      return;
+    }
+    _startupCycleId++;
+    _startupPhase = TrustedUnlockStartupPhase.awaitingFirstBackground;
+  }
+
+  void recordFirstLifecycleBackground() {
+    if (_startupPhase == TrustedUnlockStartupPhase.awaitingFirstBackground) {
+      _startupPhase = TrustedUnlockStartupPhase.lifecycleResumeArmed;
+    }
+  }
+
+  void _beginTrustedUnlockStartupCycle() {
+    _startupPhase = TrustedUnlockStartupPhase.bootstrapping;
+  }
 
   Future<UnlockOutcome> unlock({
     bool afterRestore = false,
@@ -190,6 +256,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     _pendingResourceCleanup = false;
     _trustedUnlockInFlight = null;
     _completedUnlockSnapshot = null;
+    _beginTrustedUnlockStartupCycle();
     state = const AppSessionState(status: AppLockStatus.uninitialized);
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
   }
@@ -207,6 +274,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
+    _beginTrustedUnlockStartupCycle();
     final AppLocalizations l10n = await _loadSessionL10n(ref);
     state = AppSessionState(
       status: AppLockStatus.unlocking,
@@ -580,60 +648,64 @@ final sessionSupportedPlatformProvider = Provider<bool>((Ref ref) {
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   final AppLocalizations l10n = await _loadSessionL10n(ref);
   final AppSessionController controller = ref.read(appSessionProvider.notifier);
-  if (!ref.read(supportedPlatformProvider)) {
-    final AppSessionState next = AppSessionState(
-      status: AppLockStatus.fatalError,
-      message: sessionAndroidOnlyMessage(l10n),
-    );
-    controller.adoptBootstrapState(next);
-    return next;
-  }
-
-  final VaultRepository repository = ref.read(vaultRepositoryProvider);
-
   try {
-    await repository.initialize();
-
-    final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
-    if (metadata == null) {
+    if (!ref.read(supportedPlatformProvider)) {
       final AppSessionState next = AppSessionState(
-        status: AppLockStatus.unlocked,
-        message: sessionStartupNeedsRecoveryKeyMessage(l10n),
+        status: AppLockStatus.fatalError,
+        message: sessionAndroidOnlyMessage(l10n),
       );
       controller.adoptBootstrapState(next);
       return next;
     }
 
-    final bool hasTrustedDevice = await repository.hasTrustedDeviceAccess();
-    if (!hasTrustedDevice) {
-      final AppSessionState next = AppSessionState(
-        status: AppLockStatus.recoveryRequired,
-        message: sessionStartupNeedsTrustedDeviceMessage(l10n),
-      );
-      controller.adoptBootstrapState(next);
-      return next;
-    }
+    final VaultRepository repository = ref.read(vaultRepositoryProvider);
 
-    final UnlockOutcome outcome = await controller.unlock();
-    if (outcome != UnlockOutcome.success) {
+    try {
+      await repository.initialize();
+
+      final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
+      if (metadata == null) {
+        final AppSessionState next = AppSessionState(
+          status: AppLockStatus.unlocked,
+          message: sessionStartupNeedsRecoveryKeyMessage(l10n),
+        );
+        controller.adoptBootstrapState(next);
+        return next;
+      }
+
+      final bool hasTrustedDevice = await repository.hasTrustedDeviceAccess();
+      if (!hasTrustedDevice) {
+        final AppSessionState next = AppSessionState(
+          status: AppLockStatus.recoveryRequired,
+          message: sessionStartupNeedsTrustedDeviceMessage(l10n),
+        );
+        controller.adoptBootstrapState(next);
+        return next;
+      }
+
+      final UnlockOutcome outcome = await controller.unlock();
+      if (outcome != UnlockOutcome.success) {
+        return ref.read(appSessionProvider);
+      }
       return ref.read(appSessionProvider);
+    } catch (error) {
+      final String message = friendlySessionErrorMessage(l10n, error);
+      final AppSessionState next;
+      if (error is SecretBoxAuthenticationError ||
+          isUnreadableEncryptedIndexError(error)) {
+        await repository.clearTrustedDeviceAccess();
+        next = AppSessionState(
+          status: AppLockStatus.recoveryRequired,
+          message: message,
+        );
+      } else {
+        next = AppSessionState(status: AppLockStatus.fatalError, message: message);
+      }
+      controller.adoptBootstrapState(next);
+      return next;
     }
-    return ref.read(appSessionProvider);
-  } catch (error) {
-    final String message = friendlySessionErrorMessage(l10n, error);
-    final AppSessionState next;
-    if (error is SecretBoxAuthenticationError ||
-        isUnreadableEncryptedIndexError(error)) {
-      await repository.clearTrustedDeviceAccess();
-      next = AppSessionState(
-        status: AppLockStatus.recoveryRequired,
-        message: message,
-      );
-    } else {
-      next = AppSessionState(status: AppLockStatus.fatalError, message: message);
-    }
-    controller.adoptBootstrapState(next);
-    return next;
+  } finally {
+    controller.endTrustedUnlockBootstrap();
   }
 }
 

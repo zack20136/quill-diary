@@ -8,11 +8,9 @@ import '../../../l10n/l10n.dart';
 import '../settings_messages.dart';
 import '../../session/presentation/session_locked_pane.dart';
 import '../../session/state/app_session_state.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/page_style.dart';
-
-/// 設定頁可重用的提示色系。
-enum SettingsBannerTone { neutral, warning, error }
 
 /// 設定頁的標準卡片容器，統一標題、說明與外框風格。
 class SettingsSectionCard extends StatelessWidget {
@@ -146,7 +144,7 @@ class SettingsStatusPanel extends StatelessWidget {
   final String? recoveryKeyHint;
   final IconData bannerIcon;
   final String bannerMessage;
-  final SettingsBannerTone bannerTone;
+  final AppFeedbackTone bannerTone;
   final VoidCallback? onUnlockWithRecovery;
   final VoidCallback? onCancelUnlock;
   final bool showBanner;
@@ -162,7 +160,7 @@ class SettingsStatusPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         if (showBanner)
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: bannerIcon,
             message: bannerMessage,
             tone: bannerTone,
@@ -252,10 +250,10 @@ class RecoveryKeySectionBody extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: Icons.key_off_outlined,
             message: l10n.settingsRecoveryKeyNotSetupBanner,
-            tone: SettingsBannerTone.warning,
+            tone: AppFeedbackTone.warning,
           ),
           if (showActions) ...<Widget>[
             const SizedBox(height: 14),
@@ -273,7 +271,7 @@ class RecoveryKeySectionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsInfoBanner(
+        AppFeedbackBanner(
           icon: Icons.verified_user_outlined,
           message: l10n.settingsRecoveryKeySetupBanner,
         ),
@@ -354,10 +352,9 @@ class UnlockMethodSectionBody extends StatelessWidget {
         ),
         if (!changeAllowed) ...<Widget>[
           const SizedBox(height: 10),
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: Icons.info_outline_rounded,
             message: l10n.sessionUnlockModeChangeNeedsUnlockMessage,
-            tone: SettingsBannerTone.neutral,
           ),
         ],
         const SizedBox(height: 12),
@@ -370,10 +367,9 @@ class UnlockMethodSectionBody extends StatelessWidget {
         ),
         if (unlockMode == AppUnlockMode.biometric) ...<Widget>[
           const SizedBox(height: 10),
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: Icons.info_outline_rounded,
             message: l10n.settingsUnlockMethodBiometricNeedsDeviceLockHint,
-            tone: SettingsBannerTone.neutral,
           ),
         ],
       ],
@@ -630,58 +626,6 @@ class SettingsActionButton extends StatelessWidget {
       return button;
     }
     return SizedBox(width: double.infinity, child: button);
-  }
-}
-
-/// 顯示中性、警告或錯誤訊息的設定頁橫幅。
-class SettingsInfoBanner extends StatelessWidget {
-  const SettingsInfoBanner({
-    required this.icon,
-    required this.message,
-    this.tone = SettingsBannerTone.neutral,
-    super.key,
-  });
-
-  final IconData icon;
-  final String message;
-  final SettingsBannerTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final Color background = switch (tone) {
-      SettingsBannerTone.neutral => theme.colorScheme.surfaceContainerLow,
-      SettingsBannerTone.warning => theme.colorScheme.secondaryContainer,
-      SettingsBannerTone.error => theme.colorScheme.errorContainer,
-    };
-    final Color foreground = switch (tone) {
-      SettingsBannerTone.neutral => theme.colorScheme.onSurface,
-      SettingsBannerTone.warning => theme.colorScheme.onSecondaryContainer,
-      SettingsBannerTone.error => theme.colorScheme.onErrorContainer,
-    };
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(icon, color: foreground),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(color: foreground),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

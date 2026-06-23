@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../providers/settings_providers.dart';
 import '../settings_messages.dart';
 import '../vault_transfer_access.dart';
@@ -50,7 +51,7 @@ class DriveBackupSection extends ConsumerWidget {
       title: l10n.settingsDriveBackupSectionTitle,
       description: description,
       child: !isGoogleDriveConfigured
-          ? SettingsInfoBanner(
+          ? AppFeedbackBanner(
               icon: Icons.cloud_off_rounded,
               message:
                   l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured,
@@ -172,9 +173,10 @@ class _DriveBackupContent extends StatelessWidget {
         ),
         if (_lockedBannerMessage(l10n) != null) ...<Widget>[
           const SizedBox(height: 12),
-          SettingsInfoBanner(
+          AppFeedbackBanner(
             icon: Icons.lock_outline_rounded,
             message: _lockedBannerMessage(l10n)!,
+            tone: AppFeedbackTone.warning,
           ),
         ],
       ],

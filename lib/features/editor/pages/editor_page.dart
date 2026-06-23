@@ -18,6 +18,7 @@ import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
@@ -205,9 +206,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     setState(() => _showEntryRequiredHint = true);
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.editorSaveNeedsEntryMessage)),
+    showAppFeedbackSnackBar(
+      context,
+      context.l10n.editorSaveNeedsEntryMessage,
     );
   }
 

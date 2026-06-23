@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../infrastructure/storage/media_store_export.dart';
 import '../../infrastructure/storage/user_export_paths.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/presentation/app_feedback.dart';
 import '../../shared/providers/core_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/state/app_session_state.dart';
@@ -101,17 +102,10 @@ Future<String?> saveGalleryImageToPictures({
 
 void showGalleryDownloadSnackBar(
   BuildContext scaffoldMessengerContext,
-  String message,
-) {
-  if (!scaffoldMessengerContext.mounted) {
-    return;
-  }
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
-    scaffoldMessengerContext,
-  );
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+  String message, {
+  AppFeedbackTone tone = AppFeedbackTone.info,
+}) {
+  showAppFeedbackSnackBar(scaffoldMessengerContext, message, tone: tone);
 }
 
 Future<void> downloadGalleryImage({
@@ -127,6 +121,7 @@ Future<void> downloadGalleryImage({
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
       scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
+      tone: AppFeedbackTone.error,
     );
     return;
   }
@@ -142,6 +137,7 @@ Future<void> downloadGalleryImage({
     showGalleryDownloadSnackBar(
       scaffoldMessengerContext,
       scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
+      tone: AppFeedbackTone.error,
     );
     return;
   }

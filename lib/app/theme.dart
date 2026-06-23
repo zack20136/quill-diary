@@ -101,5 +101,11 @@ ThemeData buildAppTheme({
         borderSide: BorderSide(color: scheme.primary, width: 1.5),
       ),
     ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+      ),
+    ),
   );
 }

@@ -81,6 +81,9 @@ class FakeSessionVaultRepository extends VaultRepository {
     if (result == null) {
       throw StateError('openTrustedSessionResult not configured');
     }
+    if (result is Future<UnlockedVaultSession>) {
+      return await result;
+    }
     if (result is UnlockedVaultSession) {
       return result;
     }

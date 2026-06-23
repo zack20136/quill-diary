@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
 import 'package:quill_diary/features/session/session_lifecycle_binding.dart';
@@ -33,8 +37,10 @@ void main() {
   bindingOverrides({
     required FakeSessionVaultRepository repository,
     required FakeAppLockService appLock,
+    bool supportedPlatform = true,
   }) {
     return [
+      supportedPlatformProvider.overrideWithValue(supportedPlatform),
       vaultRepositoryProvider.overrideWithValue(repository),
       appLockServiceProvider.overrideWithValue(appLock),
       userPreferencesProvider.overrideWithValue(
@@ -53,12 +59,146 @@ void main() {
     controller.inactivityWatchdog.foregroundSettleDelay = Duration.zero;
   }
 
+  void primeUnlockedSession(
+    AppSessionController controller,
+    UnlockedVaultSession session,
+  ) {
+    controller.activateSession(session);
+    controller.markTrustedUnlockBootstrapFinished();
+  }
+
   final UnlockedVaultSession sampleSession = UnlockedVaultSession(
     vaultId: 'vlt_binding_test',
     trustedDevice: true,
     recoveryWrapKey: List<int>.filled(32, 9),
     deviceSlotId: 'dev_slot',
   );
+
+  final RecoveryMetadata coldStartMetadata = RecoveryMetadata(
+    vaultId: 'vlt_binding_cold_start',
+    recoveryEnabled: true,
+    recoveryKeyVersion: 1,
+    recoveryKeyHint: 'UVWX',
+    createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
+    kdf: KdfDescriptor.argon2idRecovery(
+      saltBytes: Uint8List.fromList(List<int>.filled(16, 7)),
+    ),
+  );
+
+  final UnlockedVaultSession coldStartSession = UnlockedVaultSession(
+    vaultId: coldStartMetadata.vaultId,
+    trustedDevice: true,
+    recoveryWrapKey: List<int>.filled(32, 3),
+    deviceSlotId:
+        'dev_android_keystore_deviceCredential_${coldStartMetadata.vaultId}',
+  );
+
+  testWidgets('冷啟動 appStartupProvider 與 lifecycle 競態只 unlock 一次', (
+    WidgetTester tester,
+  ) async {
+    final Completer<UnlockedVaultSession> unlockGate =
+        Completer<UnlockedVaultSession>();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      metadata: coldStartMetadata,
+      hasTrustedDevice: true,
+      openTrustedSessionResult: unlockGate.future,
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
+        ),
+        child: const _ColdStartBindingHost(resumeUnlockDelay: Duration.zero),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_ColdStartBindingHost)),
+    );
+
+    final Future<AppSessionState> startupFuture = container.read(
+      appStartupProvider.future,
+    );
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+
+    unlockGate.complete(coldStartSession);
+    await startupFuture;
+    await flushAsyncLifecycleWork(tester);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(repository.openTrustedSessionCalls, 1);
+    expect(
+      container.read(appSessionProvider.notifier).startupPhase,
+      TrustedUnlockStartupPhase.lifecycleResumeArmed,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('bootstrap 期間 paused/resumed 不觸發第二次 unlock', (
+    WidgetTester tester,
+  ) async {
+    final Completer<UnlockedVaultSession> unlockGate =
+        Completer<UnlockedVaultSession>();
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      openTrustedSessionResult: unlockGate.future,
+    );
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: bindingOverrides(
+          repository: repository,
+          appLock: FakeAppLockService(unlockMode: AppUnlockMode.deviceLock),
+        ),
+        child: const _BindingHost(resumeUnlockDelay: Duration.zero),
+      ),
+    );
+    await tester.pump();
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(_BindingHost)),
+    );
+
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+    expect(controller.trustedUnlockBootstrapActive, isTrue);
+
+    final Future<UnlockOutcome> bootstrapUnlock = controller.unlock();
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+
+    unlockGate.complete(sampleSession);
+    await bootstrapUnlock;
+    controller.endTrustedUnlockBootstrap();
+    await tester.pump();
+
+    expect(
+      controller.startupPhase,
+      TrustedUnlockStartupPhase.awaitingFirstBackground,
+    );
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await flushAsyncLifecycleWork(tester);
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(repository.openTrustedSessionCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('背景逾時後 resumed 會 post-frame 觸發 unlock', (
     WidgetTester tester,
@@ -84,7 +224,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     armInactivityWatchdog(controller);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
@@ -124,7 +264,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     armInactivityWatchdog(controller);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
@@ -168,7 +308,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     armInactivityWatchdog(controller);
 
     DateTime fakeNow = DateTime.utc(2026, 5, 19, 12, 0);
@@ -211,7 +351,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     await controller.expireFromInactivity();
 
     final Future<UnlockOutcome> unlockFuture = controller.unlock();
@@ -252,7 +392,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     armInactivityWatchdog(controller);
     await controller.expireFromInactivity();
     await controller.unlock(source: UnlockRequestSource.lifecycleResume);
@@ -296,7 +436,7 @@ void main() {
     final AppSessionController controller = container.read(
       appSessionProvider.notifier,
     );
-    controller.activateSession(sampleSession);
+    primeUnlockedSession(controller, sampleSession);
     await controller.lock();
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -310,12 +450,57 @@ void main() {
 }
 
 class _BindingHost extends ConsumerStatefulWidget {
-  const _BindingHost({this.resumeUnlockDelay = Duration.zero});
+  const _BindingHost({
+    this.resumeUnlockDelay = Duration.zero,
+  });
 
   final Duration resumeUnlockDelay;
 
   @override
   ConsumerState<_BindingHost> createState() => _BindingHostState();
+}
+
+class _ColdStartBindingHost extends ConsumerStatefulWidget {
+  const _ColdStartBindingHost({
+    this.resumeUnlockDelay = Duration.zero,
+  });
+
+  final Duration resumeUnlockDelay;
+
+  @override
+  ConsumerState<_ColdStartBindingHost> createState() =>
+      _ColdStartBindingHostState();
+}
+
+class _ColdStartBindingHostState extends ConsumerState<_ColdStartBindingHost> {
+  late final SessionLifecycleBinding binding;
+
+  @override
+  void initState() {
+    super.initState();
+    binding = SessionLifecycleBinding(
+      ref,
+      resumeUnlockDelay: widget.resumeUnlockDelay,
+    );
+    binding.attach();
+    Future<void>.microtask(() {
+      if (!mounted) {
+        return;
+      }
+      ref.read(appStartupProvider.future);
+    });
+  }
+
+  @override
+  void dispose() {
+    binding.detach();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return binding.wrap(const MaterialApp(home: SizedBox.shrink()));
+  }
 }
 
 class _BindingHostState extends ConsumerState<_BindingHost> {
