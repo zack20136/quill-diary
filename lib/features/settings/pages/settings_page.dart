@@ -18,6 +18,7 @@ import '../../../infrastructure/storage/vault_transfer_service.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/utils/external_url.dart';
 import '../../../shared/utils/user_facing_error.dart';
@@ -123,7 +124,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 },
                 child: ColoredBox(
                   color: pageBackground,
-                  child: ListView(
+                  child: ListViewWithScrollbar(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: <Widget>[
                       const _SettingsTopNavSection(),

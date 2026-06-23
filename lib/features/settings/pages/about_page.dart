@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../l10n/l10n.dart';
 import '../about_content.dart';
@@ -56,7 +57,7 @@ class _AboutTabBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: ListView(
+      child: ListViewWithScrollbar(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: <Widget>[
           SettingsGradientHeroCard(

@@ -39,6 +39,7 @@ import '../application/editor_flow_controller.dart';
 import '../gallery_image_download.dart';
 import '../presentation/editor_attachment_strip.dart';
 import '../presentation/editor_form_sections.dart';
+import '../presentation/editor_keyboard_chrome.dart';
 import '../presentation/editor_preview_gallery.dart';
 import '../presentation/editor_top_bar.dart';
 import '../providers/editor_draft_providers.dart';
@@ -58,16 +59,7 @@ class EditorPage extends ConsumerStatefulWidget {
 
 class _EditorPageState extends ConsumerState<EditorPage>
     with WidgetsBindingObserver {
-  static const Duration _attachmentVisibilityAnimationDuration = Duration(
-    milliseconds: 100,
-  );
   static const double _editorSectionGap = 8;
-  static const Key _attachmentAreaVisibleKey = Key(
-    'editor-attachment-area-visible',
-  );
-  static const Key _attachmentAreaHiddenKey = Key(
-    'editor-attachment-area-hidden',
-  );
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _dateController = TextEditingController(
     text: DateOnly.fromDateTime(DateTime.now()).value,
@@ -681,38 +673,22 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 );
                                 final Widget
                                 animatedAttachmentArea = AnimatedSwitcher(
-                                  duration:
-                                      _attachmentVisibilityAnimationDuration,
-                                  switchInCurve: Curves.easeOut,
-                                  switchOutCurve: Curves.easeIn,
+                                  duration: kEditorChromeEnterDuration,
+                                  reverseDuration: kEditorChromeExitDuration,
+                                  switchInCurve: Curves.easeOutCubic,
+                                  switchOutCurve: Curves.easeInCubic,
                                   transitionBuilder:
-                                      (
-                                        Widget child,
-                                        Animation<double> animation,
-                                      ) {
-                                        return FadeTransition(
-                                          opacity: animation,
-                                          child: SizeTransition(
-                                            sizeFactor: animation,
-                                            alignment:
-                                                const AlignmentDirectional(
-                                                  -1,
-                                                  -1,
-                                                ),
-                                            child: child,
-                                          ),
-                                        );
-                                      },
+                                      editorKeyboardChromeTransition,
                                   child: shouldShowSidebarAttachments
                                       ? Padding(
-                                          key: _attachmentAreaVisibleKey,
+                                          key: kEditorAttachmentAreaVisibleKey,
                                           padding: const EdgeInsets.only(
                                             bottom: _editorSectionGap,
                                           ),
                                           child: sidebar,
                                         )
                                       : const SizedBox.shrink(
-                                          key: _attachmentAreaHiddenKey,
+                                          key: kEditorAttachmentAreaHiddenKey,
                                         ),
                                 );
                                 final Widget editorPane = Column(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n.dart';
@@ -7,9 +6,11 @@ import '../home_layout.dart';
 import '../providers/home_bottom_chrome_provider.dart';
 import 'home_circle_action_button.dart';
 
-const double _kBackToTopVisibilityOffset = 240;
+const double _kBackToTopShowOffset = 160;
+const double _kBackToTopHideOffset = 72;
 const Duration _kBackToTopScrollDuration = Duration(milliseconds: 240);
-const Duration _kBackToTopAnimationDuration = Duration(milliseconds: 180);
+const Duration _kBackToTopEnterDuration = Duration(milliseconds: 260);
+const Duration _kBackToTopExitDuration = Duration(milliseconds: 180);
 
 class HomeScrollAffordance extends ConsumerStatefulWidget {
   const HomeScrollAffordance({
@@ -63,8 +64,10 @@ class _HomeScrollAffordanceState extends ConsumerState<HomeScrollAffordance> {
       return;
     }
 
-    final bool shouldShow =
-        widget.controller.offset > _kBackToTopVisibilityOffset;
+    final double offset = widget.controller.offset;
+    final bool shouldShow = _showBackToTop
+        ? offset > _kBackToTopHideOffset
+        : offset > _kBackToTopShowOffset;
     if (shouldShow == _showBackToTop) {
       return;
     }
@@ -88,49 +91,52 @@ class _HomeScrollAffordanceState extends ConsumerState<HomeScrollAffordance> {
     if (!hasScrollPosition) {
       _scheduleAttachmentCheck();
     }
-    final TargetPlatform platform = Theme.of(context).platform;
-    final bool desktopLike = switch (platform) {
-      TargetPlatform.macOS ||
-      TargetPlatform.linux ||
-      TargetPlatform.windows => true,
-      _ => kIsWeb,
-    };
     final bool snackBarLifted = homeBottomChromeLifted(ref);
     final double backToTopBottom = HomeLayout.bottomActionsInsetFor(
       snackBarVisible: snackBarLifted,
     );
+    final Duration backToTopAnimDuration = _showBackToTop
+        ? _kBackToTopEnterDuration
+        : _kBackToTopExitDuration;
+    final Curve backToTopAnimCurve = _showBackToTop
+        ? Curves.easeOutCubic
+        : Curves.easeInCubic;
+
     return Stack(
+      clipBehavior: Clip.none,
       children: <Widget>[
         Positioned.fill(
           child: Scrollbar(
             controller: widget.controller,
-            thumbVisibility: hasScrollPosition && desktopLike,
-            interactive: hasScrollPosition && desktopLike,
             child: widget.child,
           ),
         ),
         Positioned.fill(
           child: IgnorePointer(
             ignoring: !_showBackToTop,
-            child: SafeArea(
-              child: AnimatedPadding(
-                duration: HomeLayout.bottomChromeAnimationDuration,
-                curve: HomeLayout.bottomChromeAnimationCurve,
-                padding: EdgeInsets.only(
-                  left: widget.backToTopLeftPadding,
-                  bottom: backToTopBottom,
-                ),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: AnimatedSlide(
-                    duration: _kBackToTopAnimationDuration,
-                    curve: Curves.easeOut,
-                    offset: _showBackToTop
-                        ? Offset.zero
-                        : const Offset(0, 0.2),
+            child: AnimatedPadding(
+              duration: HomeLayout.bottomChromeAnimationDuration,
+              curve: HomeLayout.bottomChromeAnimationCurve,
+              padding: EdgeInsets.only(
+                left: widget.backToTopLeftPadding,
+                bottom: backToTopBottom,
+              ),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: AnimatedSlide(
+                  duration: backToTopAnimDuration,
+                  curve: backToTopAnimCurve,
+                  offset: _showBackToTop
+                      ? Offset.zero
+                      : const Offset(0, 0.45),
+                  child: AnimatedScale(
+                    duration: backToTopAnimDuration,
+                    curve: backToTopAnimCurve,
+                    scale: _showBackToTop ? 1 : 0.72,
+                    alignment: Alignment.bottomLeft,
                     child: AnimatedOpacity(
-                      duration: _kBackToTopAnimationDuration,
-                      curve: Curves.easeOut,
+                      duration: backToTopAnimDuration,
+                      curve: backToTopAnimCurve,
                       opacity: _showBackToTop ? 1 : 0,
                       child: HomeCircleActionButton(
                         tooltip: context.l10n.homeTooltipBackToTop,

@@ -217,7 +217,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(
       find.byKey(const Key('editor-attachment-area-visible')),
@@ -267,7 +267,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(
       find.byKey(const Key('editor-attachment-area-visible')),

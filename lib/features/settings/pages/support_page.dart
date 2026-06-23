@@ -6,6 +6,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/billing_providers.dart';
 import '../settings_messages.dart';
@@ -60,7 +61,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
         scrolledUnderElevation: 0,
       ),
       body: SafeArea(
-        child: ListView(
+        child: ListViewWithScrollbar(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: <Widget>[
             SettingsGradientHeroCard(

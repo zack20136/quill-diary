@@ -1,6 +1,7 @@
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 
+import '../shared/presentation/app_scrollbar.dart';
 import '../shared/presentation/app_typography.dart';
 import '../shared/presentation/page_style.dart';
 
@@ -107,5 +108,6 @@ ThemeData buildAppTheme({
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
     ),
+    scrollbarTheme: kAppScrollbarTheme,
   );
 }

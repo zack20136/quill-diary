@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../infrastructure/preferences/personalization_preferences.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';
@@ -63,7 +64,7 @@ class PersonalizationPage extends ConsumerWidget {
               personalizationPreferencesProvider.notifier,
             );
 
-            return ListView(
+            return ListViewWithScrollbar(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               children: <Widget>[
                 SettingsSectionCard(

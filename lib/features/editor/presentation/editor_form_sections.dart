@@ -6,6 +6,7 @@ import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
+import 'editor_keyboard_chrome.dart';
 import 'editor_markdown_preview.dart';
 
 class EditorTitleSection extends StatelessWidget {
@@ -61,17 +62,34 @@ class EditorTitleSection extends StatelessWidget {
                   : null,
             ),
           ),
-          if (showTagsRow) ...<Widget>[
-            const SizedBox(height: 10),
-            _TagsWrap(
-              theme: theme,
-              tagsCsv: tagsController.text,
-              bodyCharCount: bodyCharCount,
-              showCharCount: true,
-              showUnsavedTag: showUnsavedTag,
-              tagAccentArgbMap: tagAccentArgbMap,
-            ),
-          ],
+          AnimatedSize(
+            duration: kEditorChromeEnterDuration,
+            reverseDuration: kEditorChromeExitDuration,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topLeft,
+            clipBehavior: Clip.hardEdge,
+            child: showTagsRow
+                ? Column(
+                    key: const ValueKey<String>('editor-title-tags-visible'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const SizedBox(height: 10),
+                      _TagsWrap(
+                        theme: theme,
+                        tagsCsv: tagsController.text,
+                        bodyCharCount: bodyCharCount,
+                        showCharCount: true,
+                        showUnsavedTag: showUnsavedTag,
+                        tagAccentArgbMap: tagAccentArgbMap,
+                      ),
+                    ],
+                  )
+                : const SizedBox(
+                    key: ValueKey<String>('editor-title-tags-hidden'),
+                    width: double.infinity,
+                  ),
+          ),
         ],
       );
     }
@@ -125,17 +143,34 @@ class EditorTitleSection extends StatelessWidget {
             isDense: true,
           ),
         ),
-        if (showTagsRow) ...<Widget>[
-          const SizedBox(height: 10),
-          _TagsWrap(
-            theme: theme,
-            tagsCsv: tagsController.text,
-            bodyCharCount: bodyCharCount,
-            showCharCount: true,
-            showUnsavedTag: false,
-            tagAccentArgbMap: tagAccentArgbMap,
-          ),
-        ],
+        AnimatedSize(
+          duration: kEditorChromeEnterDuration,
+          reverseDuration: kEditorChromeExitDuration,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          clipBehavior: Clip.hardEdge,
+          child: showTagsRow
+              ? Column(
+                  key: const ValueKey<String>('editor-edit-tags-visible'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const SizedBox(height: 10),
+                    _TagsWrap(
+                      theme: theme,
+                      tagsCsv: tagsController.text,
+                      bodyCharCount: bodyCharCount,
+                      showCharCount: true,
+                      showUnsavedTag: false,
+                      tagAccentArgbMap: tagAccentArgbMap,
+                    ),
+                  ],
+                )
+              : const SizedBox(
+                  key: ValueKey<String>('editor-edit-tags-hidden'),
+                  width: double.infinity,
+                ),
+        ),
       ],
     );
   }

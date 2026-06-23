@@ -8,6 +8,7 @@ import '../../../infrastructure/database/index_database.dart';
 import '../../../infrastructure/storage/tag_styles_store.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
@@ -530,9 +531,9 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                         stripeColor: cs.secondary,
                         child: SizedBox(
                           height: HomeLayout.tagListSectionHeight,
-                          child: SingleChildScrollView(
+                          child: NestedPanelScrollbar(
                             controller: _tagListScrollController,
-                            padding: const EdgeInsets.only(right: 12),
+                            contentPadding: const EdgeInsets.only(right: 8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: tagTiles,

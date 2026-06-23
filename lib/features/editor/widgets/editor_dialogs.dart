@@ -305,8 +305,6 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                     ),
                   ),
                   child: Scrollbar(
-                    thumbVisibility: true,
-                    thickness: 4,
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Wrap(
