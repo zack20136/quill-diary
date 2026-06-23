@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
@@ -64,7 +65,13 @@ void main() {
     required UnlockedVaultSession session,
     required RecoveryMetadata recoveryMetadata,
     EdgeInsets viewInsets = EdgeInsets.zero,
+    bool useRouter = false,
   }) {
+    final Widget wrappedChild = MediaQuery(
+      data: MediaQueryData(viewInsets: viewInsets),
+      child: child,
+    );
+
     return ProviderScope(
       overrides: [
         sessionSupportedPlatformProvider.overrideWith((Ref ref) => true),
@@ -77,20 +84,36 @@ void main() {
         ),
         editorActionsProvider.overrideWith((Ref ref) => actions),
       ],
-      child: MaterialApp(
-        locale: appZhLocale,
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: MediaQuery(
-          data: MediaQueryData(viewInsets: viewInsets),
-          child: child,
-        ),
-      ),
+      child: useRouter
+          ? MaterialApp.router(
+              locale: appZhLocale,
+              theme: ThemeData(splashFactory: NoSplash.splashFactory),
+              supportedLocales: appSupportedLocales,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              routerConfig: GoRouter(
+                initialLocation: '/',
+                routes: <RouteBase>[
+                  GoRoute(path: '/', builder: (_, _) => wrappedChild),
+                  GoRoute(
+                    path: '/editor/:entryId',
+                    builder: (_, _) => wrappedChild,
+                  ),
+                ],
+              ),
+            )
+          : MaterialApp(
+              locale: appZhLocale,
+              theme: ThemeData(splashFactory: NoSplash.splashFactory),
+              supportedLocales: appSupportedLocales,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              home: wrappedChild,
+            ),
     );
   }
 
-  testWidgets('預覽工具列在 saving 時保留 edit 並停用 close', (WidgetTester tester) async {
+  testWidgets('預覽工具列在 saving 時保留 edit 並停用 close', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       buildApp(
         const EditorTopBar(
@@ -167,7 +190,7 @@ void main() {
       find.byKey(const Key('editor-attachment-area-visible')),
       findsOneWidget,
     );
-    expect(find.text('旅行'), findsOneWidget);
+    expect(find.text('標籤'), findsOneWidget);
   });
 
   testWidgets('編輯模式鍵盤開啟時收起附件區', (WidgetTester tester) async {
@@ -206,7 +229,7 @@ void main() {
       find.byKey(const Key('editor-attachment-area-hidden')),
       findsOneWidget,
     );
-    expect(find.text('旅行'), findsNothing);
+    expect(find.text('標籤'), findsNothing);
   });
 
   testWidgets('唯讀模式即使鍵盤開啟也不收起附件區', (WidgetTester tester) async {
@@ -228,7 +251,7 @@ void main() {
 
     expect(find.byKey(const Key('editor-preview-gallery')), findsOneWidget);
     expect(find.byType(EditorAttachmentStrip), findsOneWidget);
-    expect(find.text('旅行'), findsOneWidget);
+    expect(find.text('標籤'), findsOneWidget);
   });
 
   testWidgets('大畫面編輯模式鍵盤開啟時也收起附件區', (WidgetTester tester) async {
@@ -259,7 +282,7 @@ void main() {
     expect(find.byType(EditorAttachmentStrip), findsNothing);
   });
 
-  testWidgets('只有內容也可以儲存', (WidgetTester tester) async {
+  testWidgets('只有內文也可以儲存', (WidgetTester tester) async {
     final _FakeEditorActions actions = _FakeEditorActions(
       existingEntry: DiaryEntry(
         id: 'entry-1',
@@ -283,13 +306,14 @@ void main() {
     await tester.pump();
 
     await tester.enterText(find.byType(TextField).at(1), '只有內文');
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('editor-top-bar-save')));
     await tester.pump();
 
-    expect(actions.savedDraft, isNotNull);
-    expect(actions.savedDraft!.title, isNull);
-    expect(actions.savedDraft!.markdownBody, '只有內文');
+    expect(actions.saveEntryCallCount, 1);
+    expect(actions.savedEntryDraft, isNotNull);
+    expect(actions.savedEntryDraft!.title, isNull);
+    expect(actions.savedEntryDraft!.markdownBody, '只有內文');
   });
 
   testWidgets('標題與內容都空時不可儲存並顯示提示', (WidgetTester tester) async {
@@ -308,11 +332,15 @@ void main() {
     await tester.tap(find.byKey(const Key('editor-top-bar-save')));
     await tester.pump();
 
-    expect(actions.savedDraft, isNull);
-    expect(find.text('請輸入標題或內容才能儲存'), findsOneWidget);
+    expect(actions.savedEntryDraft, isNull);
+    final BuildContext context = tester.element(find.byType(EditorPage));
+    expect(
+      find.text(AppLocalizations.of(context)!.editorSaveNeedsEntryMessage),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('文字輸入會在 300ms 後才寫草稿', (WidgetTester tester) async {
+  testWidgets('文字輸入後會立即觸發草稿寫入', (WidgetTester tester) async {
     final _FakeEditorActions actions = _FakeEditorActions();
     await tester.pumpWidget(
       buildEditorPageApp(
@@ -326,15 +354,33 @@ void main() {
     await tester.pump();
 
     await tester.enterText(find.byType(TextField).at(1), 'a');
-    await tester.pump(const Duration(milliseconds: 150));
-    expect(actions.writeDraftCount, 0);
+    await tester.pump();
 
-    await tester.enterText(find.byType(TextField).at(1), 'ab');
-    await tester.pump(const Duration(milliseconds: 150));
-    expect(actions.writeDraftCount, 0);
-
-    await tester.pump(const Duration(milliseconds: 200));
     expect(actions.writeDraftCount, 1);
+  });
+
+  testWidgets('新建日記輸入後立即儲存會呼叫正式 saveEntry', (WidgetTester tester) async {
+    final _FakeEditorActions actions = _FakeEditorActions();
+    await tester.pumpWidget(
+      buildEditorPageApp(
+        child: const EditorPage(),
+        session: session,
+        recoveryMetadata: recoveryMetadata,
+        actions: actions,
+        useRouter: true,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).at(1), '立即儲存內容');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('editor-top-bar-save')));
+    await tester.pump();
+
+    expect(actions.saveEntryCallCount, 1);
+    expect(actions.savedEntryDraft, isNotNull);
+    expect(actions.savedEntryDraft!.markdownBody, '立即儲存內容');
   });
 }
 
@@ -344,12 +390,12 @@ class _FakeEditorActions implements EditorActionPort {
   static final DiaryEntry _entry = DiaryEntry(
     id: 'entry-1',
     vaultId: 'vault-1',
-    title: '測試日記',
+    title: '測試標題',
     date: DateOnly.parse('2026-06-18'),
     createdAt: DateTime(2026, 6, 18, 8),
     updatedAt: DateTime(2026, 6, 18, 9),
     markdownBody: '內文',
-    tags: const <String>['旅行'],
+    tags: const <String>['標籤'],
     attachmentIds: const <AssetId>['image-1', 'file-1'],
   );
 
@@ -380,7 +426,8 @@ class _FakeEditorActions implements EditorActionPort {
 
   final DiaryEntry? existingEntry;
   int writeDraftCount = 0;
-  DiaryEntry? savedDraft;
+  int saveEntryCallCount = 0;
+  DiaryEntry? savedEntryDraft;
 
   @override
   Future<String> assetAbsolutePath({
@@ -440,7 +487,8 @@ class _FakeEditorActions implements EditorActionPort {
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
   }) async {
-    savedDraft = draft;
+    saveEntryCallCount++;
+    savedEntryDraft = draft;
     return draft;
   }
 

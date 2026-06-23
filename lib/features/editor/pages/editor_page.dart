@@ -59,7 +59,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
   static const Duration _attachmentVisibilityAnimationDuration = Duration(
     milliseconds: 100,
   );
-  static const Duration _textDraftPersistDebounce = Duration(milliseconds: 300);
   static const double _editorSectionGap = 8;
   static const Key _attachmentAreaVisibleKey = Key(
     'editor-attachment-area-visible',
@@ -88,10 +87,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool _handlingDraftRestore = false;
   bool _draftPersistInFlight = false;
   bool _draftPersistQueued = false;
-  bool _draftPersistQueuedImmediate = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
-  Timer? _textDraftPersistTimer;
   late final ProviderSubscription<AsyncValue<AppSessionState>>
   _sessionSubscription;
 
@@ -142,10 +139,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _provisionalEntryId = widget.entryId ?? generateEntryId();
     _draftCreatedAt = DateTime.now();
     _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
-    _tagsController.addListener(_onTagsChanged);
-    _titleController.addListener(_onTitleTextChanged);
-    _bodyController.addListener(_onBodyTextChanged);
-    _dateController.addListener(_onMetadataChanged);
+    _tagsController.addListener(_onDraftChanged);
+    _titleController.addListener(_onDraftChanged);
+    _bodyController.addListener(_onDraftChanged);
+    _dateController.addListener(_onDraftChanged);
     _sessionSubscription = ref.listenManual<AsyncValue<AppSessionState>>(
       effectiveAppSessionProvider,
       (_, AsyncValue<AppSessionState> next) {
@@ -163,14 +160,12 @@ class _EditorPageState extends ConsumerState<EditorPage>
     WidgetsBinding.instance.removeObserver(this);
     _sessionSubscription.close();
     _persistDraftBeforeDispose();
-    _textDraftPersistTimer?.cancel();
     _draftPersistQueued = false;
-    _draftPersistQueuedImmediate = false;
     _dateController.removeListener(_clearSavedAssetEncryptedPathFutures);
-    _dateController.removeListener(_onMetadataChanged);
-    _tagsController.removeListener(_onTagsChanged);
-    _titleController.removeListener(_onTitleTextChanged);
-    _bodyController.removeListener(_onBodyTextChanged);
+    _dateController.removeListener(_onDraftChanged);
+    _tagsController.removeListener(_onDraftChanged);
+    _titleController.removeListener(_onDraftChanged);
+    _bodyController.removeListener(_onDraftChanged);
     _titleController.dispose();
     _dateController.dispose();
     _tagsController.dispose();
@@ -187,23 +182,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
   }
 
-  void _onTagsChanged() {
+  void _onDraftChanged() {
     if (_suppressTagDraftListener || _previewMode || !mounted) {
       return;
     }
-    _onMetadataChanged();
-  }
-
-  void _onTitleTextChanged() {
-    _onTextFieldChanged();
-  }
-
-  void _onBodyTextChanged() {
-    _onTextFieldChanged();
-  }
-
-  void _onTextFieldChanged() {
-    if (_previewMode || !mounted || _suppressDraftListener) {
+    if (_suppressDraftListener) {
       return;
     }
     setState(() {
@@ -211,19 +194,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         _showEntryRequiredHint = false;
       }
     });
-    _scheduleTextDraftPersist();
-  }
-
-  void _onMetadataChanged() {
-    if (_previewMode || !mounted || _suppressDraftListener) {
-      return;
-    }
-    setState(() {
-      if (_showEntryRequiredHint && _canSaveEntry) {
-        _showEntryRequiredHint = false;
-      }
-    });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 
   void _notifyEntryRequired() {
@@ -275,32 +246,12 @@ class _EditorPageState extends ConsumerState<EditorPage>
     return false;
   }
 
-  void _scheduleTextDraftPersist() {
+  void _scheduleDraftPersist() {
     if (_previewMode) {
       return;
     }
-    _textDraftPersistTimer?.cancel();
-    _textDraftPersistTimer = Timer(_textDraftPersistDebounce, () {
-      if (!mounted) {
-        return;
-      }
-      _enqueueDraftPersist(immediate: false);
-    });
-  }
-
-  void _scheduleImmediateDraftPersist() {
-    if (_previewMode) {
-      return;
-    }
-    _textDraftPersistTimer?.cancel();
-    _enqueueDraftPersist(immediate: true);
-  }
-
-  void _enqueueDraftPersist({required bool immediate}) {
     if (_draftPersistInFlight) {
       _draftPersistQueued = true;
-      _draftPersistQueuedImmediate =
-          _draftPersistQueuedImmediate || immediate;
       return;
     }
     unawaited(_persistDraft());
@@ -337,23 +288,20 @@ class _EditorPageState extends ConsumerState<EditorPage>
     } finally {
       _draftPersistInFlight = false;
       if (_draftPersistQueued) {
-        final bool queuedImmediate = _draftPersistQueuedImmediate;
         _draftPersistQueued = false;
-        _draftPersistQueuedImmediate = false;
         if (!_previewMode) {
-          if (queuedImmediate) {
-            unawaited(_persistDraftNow());
-          } else {
-            unawaited(_persistDraft());
-          }
+          unawaited(_persistDraft());
         }
       }
     }
   }
 
   Future<void> _persistDraftNow() async {
-    _textDraftPersistTimer?.cancel();
-    _enqueueDraftPersist(immediate: true);
+    if (_draftPersistInFlight) {
+      _draftPersistQueued = true;
+    } else {
+      await _persistDraft();
+    }
     while (_draftPersistInFlight || _draftPersistQueued) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -402,9 +350,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _discardLocalDraft() async {
-    _textDraftPersistTimer?.cancel();
     _draftPersistQueued = false;
-    _draftPersistQueuedImmediate = false;
     await _editorFlow.discardDraft(_draftKey);
     _lastPersistedDraftSnapshot = null;
   }
@@ -486,7 +432,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   void _clearSensitiveLocalState() {
-    _textDraftPersistTimer?.cancel();
     _titleController.clear();
     _dateController.text = DateOnly.fromDateTime(DateTime.now()).value;
     _tagsController.clear();
@@ -501,7 +446,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _handlingDraftRestore = false;
     _draftPersistInFlight = false;
     _draftPersistQueued = false;
-    _draftPersistQueuedImmediate = false;
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _entryTime = TimeOfDay.now();
     _provisionalEntryId = widget.entryId ?? generateEntryId();
@@ -920,7 +864,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     setState(() {
       _dateController.text = DateOnly.fromDateTime(picked).value;
     });
-    _onMetadataChanged();
+    _onDraftChanged();
   }
 
   Future<void> _pickEntryTime() async {
@@ -952,7 +896,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     setState(() => _entryTime = picked);
-    _onMetadataChanged();
+    _onDraftChanged();
   }
 
   String _formattedDisplayDate(BuildContext context) {
@@ -994,7 +938,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     if (mounted && !_previewMode) {
       setState(() {});
     }
-    _onMetadataChanged();
+    _onDraftChanged();
   }
 
   void _enterEditMode() {
@@ -1077,7 +1021,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     _draftPersistQueued = false;
-    _draftPersistQueuedImmediate = false;
     setState(() => _saving = true);
     try {
       final EditorSaveResult result = await _editorFlow.saveEntry(
@@ -1130,7 +1073,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     setState(() {
       _pendingAttachments.remove(attachment);
     });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 
   void _removeSavedAttachment(AssetAttachment attachment) {
@@ -1140,7 +1083,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       );
       _keptExistingAttachmentIds.remove(attachment.id);
     });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 
   List<AssetAttachment> _orderedSavedImages(List<AssetAttachment> all) {
@@ -1225,7 +1168,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         ..clear()
         ..addAll(<PendingAttachment>[...newImagePending, ...nonImagePending]);
     });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 
   Future<void> _openImagePreviewGallery({
@@ -1352,7 +1295,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     setState(() {
       _pendingAttachments.addAll(staged);
     });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 
   Future<void> _pickFile() async {
@@ -1383,6 +1326,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     setState(() {
       _pendingAttachments.addAll(staged);
     });
-    _scheduleImmediateDraftPersist();
+    _scheduleDraftPersist();
   }
 }
