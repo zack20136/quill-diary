@@ -15,7 +15,6 @@ class DriveBackupSection extends ConsumerWidget {
   const DriveBackupSection({
     required this.access,
     required this.canManageDriveAccount,
-    required this.accountLockedMessage,
     required this.isGoogleDriveConfigured,
     required this.busy,
     required this.onLink,
@@ -28,7 +27,6 @@ class DriveBackupSection extends ConsumerWidget {
 
   final VaultTransferAccess access;
   final bool canManageDriveAccount;
-  final String accountLockedMessage;
   final bool isGoogleDriveConfigured;
   final bool busy;
   final VoidCallback onLink;
@@ -64,7 +62,6 @@ class DriveBackupSection extends ConsumerWidget {
                     connectionState: const DriveConnectionState.disconnected(),
                     access: access,
                     canManageDriveAccount: canManageDriveAccount,
-                    accountLockedMessage: accountLockedMessage,
                     busy: busy,
                     onLink: onLink,
                     onSwitchAccount: onSwitchAccount,
@@ -77,7 +74,6 @@ class DriveBackupSection extends ConsumerWidget {
                         connectionState: connectionState,
                         access: access,
                         canManageDriveAccount: canManageDriveAccount,
-                        accountLockedMessage: accountLockedMessage,
                         busy: busy,
                         onLink: onLink,
                         onSwitchAccount: onSwitchAccount,
@@ -95,7 +91,6 @@ class _DriveBackupContent extends StatelessWidget {
     required this.connectionState,
     required this.access,
     required this.canManageDriveAccount,
-    required this.accountLockedMessage,
     required this.busy,
     required this.onLink,
     required this.onSwitchAccount,
@@ -107,7 +102,6 @@ class _DriveBackupContent extends StatelessWidget {
   final DriveConnectionState connectionState;
   final VaultTransferAccess access;
   final bool canManageDriveAccount;
-  final String accountLockedMessage;
   final bool busy;
   final VoidCallback onLink;
   final VoidCallback onSwitchAccount;
@@ -184,9 +178,6 @@ class _DriveBackupContent extends StatelessWidget {
   }
 
   String? _lockedBannerMessage(AppLocalizations l10n) {
-    if (!canManageDriveAccount) {
-      return accountLockedMessage;
-    }
     if (!access.canBackup && !access.canRestore) {
       return access.restoreDisabledReason ?? access.backupDisabledReason;
     }

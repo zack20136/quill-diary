@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import 'session_timeout_policy.dart';
 
+/// 冷啟動 bootstrap 結束與背景回前景後，等待 UI 穩定再啟用 lifecycle 行為的延遲。
+const Duration kSessionForegroundSettleDelay = Duration(milliseconds: 500);
+
 enum ForegroundResumeResult { none, expired, waitingForSettle }
 
 /// 追蹤 App 進入背景後的 session 逾時；僅在 armed 且收到 [notifyBackground] 時計時。
@@ -12,7 +15,7 @@ class SessionInactivityWatchdog {
     : clock = clock ?? DateTime.now;
 
   DateTime Function() clock;
-  Duration foregroundSettleDelay = const Duration(milliseconds: 500);
+  Duration foregroundSettleDelay = kSessionForegroundSettleDelay;
 
   Duration _timeout = kDefaultSessionBackgroundTimeout;
   Future<void> Function()? _onExpired;

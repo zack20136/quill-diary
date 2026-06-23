@@ -30,6 +30,17 @@ class DeviceWrappedPayload {
   final String platform;
 }
 
+/// 單次驗證完成 unwrap + re-wrap 的結果。
+class RewrapTrustedRecoveryKeyResult {
+  const RewrapTrustedRecoveryKeyResult({
+    required this.recoveryWrapKey,
+    required this.payload,
+  });
+
+  final List<int> recoveryWrapKey;
+  final DeviceWrappedPayload payload;
+}
+
 /// 持久化的可信裝置 Recovery Key 包裝材料副本。
 ///
 /// 儲存於安全儲存區，並以 [formatVersion] 驗證。
@@ -155,6 +166,15 @@ abstract class DeviceKeyManager {
     required DeviceSlotId slotId,
     required String nonceBase64,
     required String ciphertextBase64,
+  });
+
+  /// 以單次裝置驗證將既有包裝金鑰遷移至目標 Keystore 策略。
+  Future<RewrapTrustedRecoveryKeyResult> rewrapTrustedRecoveryKey({
+    required VaultId vaultId,
+    required DeviceSlotId sourceSlotId,
+    required String nonceBase64,
+    required String ciphertextBase64,
+    required KeystoreAuthKind targetAuthKind,
   });
 
   Future<void> storeWrappedRecoveryKey({
@@ -298,6 +318,48 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     return WrappedRecoveryKeyRecord.fromJson(
       jsonDecode(encoded) as Map<Object?, Object?>,
     );
+  }
+
+  @override
+  Future<RewrapTrustedRecoveryKeyResult> rewrapTrustedRecoveryKey({
+    required VaultId vaultId,
+    required DeviceSlotId sourceSlotId,
+    required String nonceBase64,
+    required String ciphertextBase64,
+    required KeystoreAuthKind targetAuthKind,
+  }) async {
+    try {
+      final Map<Object?, Object?> result =
+          await _channel.invokeMapMethod<Object?, Object?>(
+            'rewrapTrustedRecoveryKey',
+            <String, Object?>{
+              'vaultId': vaultId,
+              'sourceSlotId': sourceSlotId,
+              'nonce': nonceBase64,
+              'ciphertext': ciphertextBase64,
+              'keystoreAuthKind': targetAuthKind.wireValue,
+            },
+          ) ??
+          <Object?, Object?>{};
+      final List<Object?>? recoveryWrapKey =
+          result['recoveryWrapKey'] as List<Object?>?;
+      if (recoveryWrapKey == null) {
+        throw const DeviceKeyInvalidatedException('無法遷移可信裝置金鑰。');
+      }
+      return RewrapTrustedRecoveryKeyResult(
+        recoveryWrapKey: recoveryWrapKey
+            .map((Object? item) => item as int)
+            .toList(growable: false),
+        payload: DeviceWrappedPayload(
+          slotId: '${result['slotId'] ?? ''}',
+          nonceBase64: '${result['nonce'] ?? ''}',
+          ciphertextBase64: '${result['ciphertext'] ?? ''}',
+          platform: '${result['platform'] ?? ''}',
+        ),
+      );
+    } on PlatformException catch (error) {
+      throw _mapPlatformException(error);
+    }
   }
 
   @override
@@ -450,6 +512,15 @@ class UnsupportedDeviceKeyManager implements DeviceKeyManager {
     required VaultId vaultId,
     required List<int> plaintextBytes,
     required KeystoreAuthKind authKind,
+  }) async => throw _error;
+
+  @override
+  Future<RewrapTrustedRecoveryKeyResult> rewrapTrustedRecoveryKey({
+    required VaultId vaultId,
+    required DeviceSlotId sourceSlotId,
+    required String nonceBase64,
+    required String ciphertextBase64,
+    required KeystoreAuthKind targetAuthKind,
   }) async => throw _error;
 
   @override

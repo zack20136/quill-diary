@@ -71,6 +71,7 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                     "wrapWithDeviceKey" -> wrapWithDeviceKey(call, result)
                     "unwrapWithDeviceKey" -> unwrapWithDeviceKey(call, result)
+                    "rewrapTrustedRecoveryKey" -> rewrapTrustedRecoveryKey(call, result)
                     "deleteKey" -> {
                         deleteKey(call)
                         result.success(null)
@@ -495,6 +496,104 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun rewrapTrustedRecoveryKey(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val vaultId = requireVaultId(call)
+            val sourceSlotId = call.argument<String>("sourceSlotId") ?: ""
+            val sourceKind = authKindFromSlotId(sourceSlotId, vaultId)
+            val targetKind = requireAuthKind(call)
+            val nonce = decode(requireString(call, "nonce"))
+            val ciphertext = decode(requireString(call, "ciphertext"))
+
+            val completeRewrap = { plaintext: ByteArray ->
+                try {
+                    deliverRewrapResult(
+                        vaultId = vaultId,
+                        targetKind = targetKind,
+                        plaintext = plaintext,
+                        result = result,
+                    )
+                } catch (error: Throwable) {
+                    completeDeviceKeyError(result, error)
+                }
+            }
+
+            if (sourceKind == AuthKind.PLAIN) {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    requireSecretKey(vaultId, sourceKind),
+                    GCMParameterSpec(GCM_TAG_BITS, nonce),
+                )
+                completeRewrap(cipher.doFinal(ciphertext))
+                return
+            }
+
+            val decryptCipher = Cipher.getInstance(TRANSFORMATION)
+            decryptCipher.init(
+                Cipher.DECRYPT_MODE,
+                requireSecretKey(vaultId, sourceKind),
+                GCMParameterSpec(GCM_TAG_BITS, nonce),
+            )
+            authenticateCipher(
+                cipher = decryptCipher,
+                kind = sourceKind,
+                reason = REWRAP_PROMPT_REASON,
+                result = result,
+                onSuccess = { authedCipher ->
+                    completeRewrap(authedCipher.doFinal(ciphertext))
+                },
+            )
+        } catch (error: Throwable) {
+            completeDeviceKeyError(result, error)
+        }
+    }
+
+    private fun deliverRewrapResult(
+        vaultId: String,
+        targetKind: AuthKind,
+        plaintext: ByteArray,
+        result: MethodChannel.Result,
+    ) {
+        ensureAlias(vaultId, targetKind)
+        val encryptCipher = Cipher.getInstance(TRANSFORMATION)
+        encryptCipher.init(Cipher.ENCRYPT_MODE, requireSecretKey(vaultId, targetKind))
+
+        if (targetKind == AuthKind.PLAIN) {
+            val newCiphertext = encryptCipher.doFinal(plaintext)
+            result.success(
+                mapOf(
+                    "recoveryWrapKey" to plaintext.map { byteValue -> byteValue.toInt() and 0xFF },
+                    "slotId" to slotIdFor(vaultId, targetKind),
+                    "nonce" to encode(encryptCipher.iv),
+                    "ciphertext" to encode(newCiphertext),
+                    "platform" to platformLabel(),
+                ),
+            )
+            return
+        }
+
+        val onSuccess = { authedCipher: Cipher ->
+            val newCiphertext = authedCipher.doFinal(plaintext)
+            result.success(
+                mapOf(
+                    "recoveryWrapKey" to plaintext.map { byteValue -> byteValue.toInt() and 0xFF },
+                    "slotId" to slotIdFor(vaultId, targetKind),
+                    "nonce" to encode(authedCipher.iv),
+                    "ciphertext" to encode(newCiphertext),
+                    "platform" to platformLabel(),
+                ),
+            )
+        }
+        authenticateCipher(
+            cipher = encryptCipher,
+            kind = targetKind,
+            reason = REWRAP_PROMPT_REASON,
+            result = result,
+            onSuccess = onSuccess,
+        )
+    }
+
     private fun deleteKey(call: MethodCall) {
         val vaultId = requireVaultId(call)
         val keyStore = loadKeyStore()
@@ -847,6 +946,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val GCM_TAG_BITS = 128
         private const val WRAP_PROMPT_REASON = "請驗證裝置身分以保護恢復金鑰"
         private const val UNWRAP_PROMPT_REASON = "請驗證裝置身分以解鎖恢復金鑰"
+        private const val REWRAP_PROMPT_REASON = "正在更新解鎖設定，請完成驗證"
         private const val DEVICE_CREDENTIAL_REQUIRED_MESSAGE =
             "請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。"
         private const val BIOMETRIC_ENROLLMENT_REQUIRED_MESSAGE =

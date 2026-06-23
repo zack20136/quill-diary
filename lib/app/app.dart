@@ -7,7 +7,6 @@ import '../features/session/providers/session_providers.dart';
 import '../features/session/session_lifecycle_binding.dart';
 import '../features/session/session_route_preservation.dart';
 import '../features/session/state/app_session_state.dart';
-import '../features/session/state/unlock_result.dart';
 import '../features/settings/providers/billing_providers.dart';
 import '../features/settings/providers/personalization_providers.dart';
 import '../infrastructure/preferences/personalization_preferences.dart';

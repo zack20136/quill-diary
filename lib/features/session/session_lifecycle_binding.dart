@@ -71,7 +71,6 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
       case AppLifecycleState.hidden:
         _isForeground = false;
         if (controller.canRecordLifecycleBackground) {
-          controller.recordFirstLifecycleBackground();
           _wasBackgrounded = true;
         }
         _cancelPendingResumeUnlock();

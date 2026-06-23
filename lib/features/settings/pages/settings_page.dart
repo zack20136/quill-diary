@@ -235,8 +235,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         DriveBackupSection(
                           access: transferAccess,
                           canManageDriveAccount: pageAccess.canManageDriveAccount,
-                          accountLockedMessage:
-                              pageAccess.lockedSettingMessage(l10n),
                           isGoogleDriveConfigured: isGoogleDriveConfigured,
                           busy: _busy,
                           onLink: () => _runBusy(

@@ -1,3 +1,5 @@
+import 'dart:async' show Timer;
+
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Locale;
@@ -29,10 +31,10 @@ enum TrustedUnlockStartupPhase {
   /// bootstrap 進行中；lifecycle 背景事件視為無效。
   bootstrapping,
 
-  /// bootstrap 已結束，但尚未發生真實背景切換；resumed 不得再排 unlock。
+  /// bootstrap 已結束，等待前景穩定期；尚未記錄背景或排 resumed 自動解鎖。
   awaitingFirstBackground,
 
-  /// 已發生 bootstrap 後第一次有效背景；resumed 可依鎖定狀態自動解鎖。
+  /// 前景穩定期已過；可記錄背景並在 resumed 時依鎖定狀態自動解鎖。
   lifecycleResumeArmed,
 }
 
@@ -74,6 +76,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   int _startupCycleId = 0;
   Future<UnlockOutcome>? _trustedUnlockInFlight;
   CompletedUnlockSnapshot? _completedUnlockSnapshot;
+  Timer? _lifecycleResumeArmTimer;
 
   @visibleForTesting
   SessionInactivityWatchdog get inactivityWatchdog => _inactivityWatchdog;
@@ -102,7 +105,10 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   @override
   AppSessionState build() {
-    ref.onDispose(_inactivityWatchdog.disarm);
+    ref.onDispose(() {
+      _inactivityWatchdog.disarm();
+      _cancelLifecycleResumeArmTimer();
+    });
     ref.listen<AsyncValue<PersonalizationPreferences>>(
       personalizationPreferencesProvider,
       (AsyncValue<PersonalizationPreferences>? previous, next) {
@@ -145,8 +151,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   /// 是否可將 paused/hidden 記成後續 resumed 的背景依據。
   bool get canRecordLifecycleBackground =>
       canParticipateInLifecycleResumeUnlock &&
-      (_startupPhase == TrustedUnlockStartupPhase.awaitingFirstBackground ||
-          _startupPhase == TrustedUnlockStartupPhase.lifecycleResumeArmed);
+      _startupPhase == TrustedUnlockStartupPhase.lifecycleResumeArmed;
 
   /// resumed 是否可排程 lifecycle 自動解鎖。
   bool get canScheduleLifecycleResumeUnlock =>
@@ -164,15 +169,44 @@ class AppSessionController extends Notifier<AppSessionState> {
     }
     _startupCycleId++;
     _startupPhase = TrustedUnlockStartupPhase.awaitingFirstBackground;
+    _scheduleLifecycleResumeArmAfterBootstrapSettle();
   }
 
-  void recordFirstLifecycleBackground() {
+  /// bootstrap 成功且前景穩定後，才允許記錄真實背景並排 resumed 自動解鎖。
+  void armLifecycleResumeUnlock() {
+    _cancelLifecycleResumeArmTimer();
     if (_startupPhase == TrustedUnlockStartupPhase.awaitingFirstBackground) {
       _startupPhase = TrustedUnlockStartupPhase.lifecycleResumeArmed;
     }
   }
 
+  void _scheduleLifecycleResumeArmAfterBootstrapSettle() {
+    _cancelLifecycleResumeArmTimer();
+    if (_startupPhase != TrustedUnlockStartupPhase.awaitingFirstBackground) {
+      return;
+    }
+    if (!state.isUnlocked || state.session == null) {
+      return;
+    }
+    _lifecycleResumeArmTimer = Timer(kSessionForegroundSettleDelay, () {
+      _lifecycleResumeArmTimer = null;
+      if (_startupPhase != TrustedUnlockStartupPhase.awaitingFirstBackground) {
+        return;
+      }
+      if (!state.isUnlocked || state.session == null) {
+        return;
+      }
+      armLifecycleResumeUnlock();
+    });
+  }
+
+  void _cancelLifecycleResumeArmTimer() {
+    _lifecycleResumeArmTimer?.cancel();
+    _lifecycleResumeArmTimer = null;
+  }
+
   void _beginTrustedUnlockStartupCycle() {
+    _cancelLifecycleResumeArmTimer();
     _startupPhase = TrustedUnlockStartupPhase.bootstrapping;
   }
 

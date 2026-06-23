@@ -9,6 +9,7 @@ import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/session_inactivity_watchdog.dart';
 import 'package:quill_diary/features/session/session_lifecycle_binding.dart';
 import 'package:quill_diary/features/session/session_timeout_policy.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
@@ -65,6 +66,7 @@ void main() {
   ) {
     controller.activateSession(session);
     controller.markTrustedUnlockBootstrapFinished();
+    controller.armLifecycleResumeUnlock();
   }
 
   final UnlockedVaultSession sampleSession = UnlockedVaultSession(
@@ -130,6 +132,7 @@ void main() {
     unlockGate.complete(coldStartSession);
     await startupFuture;
     await flushAsyncLifecycleWork(tester);
+    await tester.pump(kSessionForegroundSettleDelay);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);

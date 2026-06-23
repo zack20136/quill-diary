@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import '../../domain/attachment/asset_attachment.dart';
@@ -270,20 +271,24 @@ class VaultRepository {
       return true;
     }
     final KeystoreAuthKind expected = await _requireCurrentKeystoreAuthKind();
-    String? syncedSuffix;
-    try {
-      syncedSuffix = await _requireOpenIndex().getAppValue(
-        kKeystoreWrapModeKey,
-      );
-    } on StateError {
-      return true;
-    }
     final UnlockedVaultSession probe = UnlockedVaultSession(
       vaultId: metadata.vaultId,
       trustedDevice: true,
       recoveryWrapKey: const <int>[],
       deviceSlotId: wrappedRecord.slotId,
     );
+    String? syncedSuffix;
+    try {
+      syncedSuffix = await _requireOpenIndex().getAppValue(
+        kKeystoreWrapModeKey,
+      );
+    } on StateError {
+      return !keystoreSlotsMatchExpected(
+        session: probe,
+        expected: expected,
+        wrappedRecord: wrappedRecord,
+      );
+    }
     return !trustedProtectionMatches(
       session: probe,
       expected: expected,
@@ -294,9 +299,80 @@ class VaultRepository {
 
   /// 可信裝置解鎖並同步 Keystore、準備索引。
   Future<UnlockedVaultSession> openTrustedSessionEnsuringKeystore() async {
-    UnlockedVaultSession session = await openTrustedSession();
-    session = await ensureKeystoreMatchesUnlockMode(session);
+    final RecoveryMetadata metadata =
+        await readRecoveryMetadata() ?? (throw StateError('尚未建立復原金鑰。'));
+    final WrappedRecoveryKeyRecord record =
+        await _deviceKeyManager.readWrappedRecoveryKey(metadata.vaultId) ??
+        (throw StateError('找不到可信裝置的 Recovery 金鑰資料。'));
+    final KeystoreAuthKind expected = await _requireCurrentKeystoreAuthKind();
+    final UnlockedVaultSession probe = UnlockedVaultSession(
+      vaultId: metadata.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: const <int>[],
+      deviceSlotId: record.slotId,
+    );
+
+    final UnlockedVaultSession session;
+    if (keystoreSlotsMatchExpected(
+      session: probe,
+      expected: expected,
+      wrappedRecord: record,
+    )) {
+      session = await openTrustedSession();
+      await ensureKeystoreMatchesUnlockMode(session);
+    } else {
+      session = await _openTrustedSessionViaRewrap(
+        metadata: metadata,
+        record: record,
+        expected: expected,
+      );
+    }
     await ensureIndexReady(session);
+    return session;
+  }
+
+  /// 槽位與解鎖模式不一致時，以單次原生驗證完成 unwrap + re-wrap。
+  Future<UnlockedVaultSession> _openTrustedSessionViaRewrap({
+    required RecoveryMetadata metadata,
+    required WrappedRecoveryKeyRecord record,
+    required KeystoreAuthKind expected,
+  }) async {
+    final RewrapTrustedRecoveryKeyResult rewrap =
+        await _deviceKeyManager.rewrapTrustedRecoveryKey(
+          vaultId: metadata.vaultId,
+          sourceSlotId: record.slotId,
+          nonceBase64: record.nonceBase64,
+          ciphertextBase64: record.ciphertextBase64,
+          targetAuthKind: expected,
+        );
+    await _deviceKeyManager.storeWrappedRecoveryKey(
+      vaultId: metadata.vaultId,
+      record: WrappedRecoveryKeyRecord(
+        slotId: rewrap.payload.slotId,
+        nonceBase64: rewrap.payload.nonceBase64,
+        ciphertextBase64: rewrap.payload.ciphertextBase64,
+        wrappedAt: DateTime.now(),
+        formatVersion:
+            WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion,
+        platform: rewrap.payload.platform,
+      ),
+    );
+    await _deviceKeyManager.purgeInactiveDeviceKeys(
+      metadata.vaultId,
+      activeAuthKind: expected,
+    );
+    await _verifyRecoveryKey(metadata, rewrap.recoveryWrapKey);
+    final UnlockedVaultSession session = await _openVerifiedTrustedSession(
+      metadata: metadata,
+      recoveryWrapKey: rewrap.recoveryWrapKey,
+      trustedDevice: true,
+      deviceSlotId: rewrap.payload.slotId,
+    );
+    await _openIndexForSession(session);
+    await _requireOpenIndex().setAppValue(
+      kKeystoreWrapModeKey,
+      expected.storageSuffix,
+    );
     return session;
   }
 
@@ -2148,7 +2224,11 @@ class VaultRepository {
         kKeystoreWrapModeKey,
       );
     } on StateError {
-      return true;
+      return !keystoreSlotsMatchExpected(
+        session: session,
+        expected: expected,
+        wrappedRecord: wrappedRecord,
+      );
     }
     return !trustedProtectionMatches(
       session: session,
@@ -2196,6 +2276,18 @@ class VaultRepository {
     )) {
       return session;
     }
+    if (needsOnlyIndexSuffixSync(
+      session: session,
+      expected: expected,
+      syncedSuffix: syncedSuffix,
+      wrappedRecord: wrappedRecord,
+    )) {
+      await _requireOpenIndex().setAppValue(
+        kKeystoreWrapModeKey,
+        expected.storageSuffix,
+      );
+      return session;
+    }
     final UnlockedVaultSession refreshed =
         await refreshTrustedSessionProtection(session, authKind: expected);
     await _requireOpenIndex().setAppValue(
@@ -2236,6 +2328,12 @@ class VaultRepository {
     } else {
       await syncTagStylesBetweenVaultAndIndex();
     }
+  }
+
+  /// 測試用：清除索引中的 Keystore 後綴同步欄位。
+  @visibleForTesting
+  Future<void> deleteKeystoreWrapModeSuffixForTest() async {
+    await _requireOpenIndex().deleteAppValue(kKeystoreWrapModeKey);
   }
 
   Future<void> _openIndexForSession(UnlockedVaultSession session) {

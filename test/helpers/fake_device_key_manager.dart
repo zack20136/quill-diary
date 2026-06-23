@@ -97,6 +97,31 @@ class TestDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
+  Future<RewrapTrustedRecoveryKeyResult> rewrapTrustedRecoveryKey({
+    required String vaultId,
+    required String sourceSlotId,
+    required String nonceBase64,
+    required String ciphertextBase64,
+    required KeystoreAuthKind targetAuthKind,
+  }) async {
+    final List<int> recoveryWrapKey = await unwrapWithDeviceKey(
+      vaultId: vaultId,
+      slotId: sourceSlotId,
+      nonceBase64: nonceBase64,
+      ciphertextBase64: ciphertextBase64,
+    );
+    final DeviceWrappedPayload payload = await wrapWithDeviceKey(
+      vaultId: vaultId,
+      plaintextBytes: recoveryWrapKey,
+      authKind: targetAuthKind,
+    );
+    return RewrapTrustedRecoveryKeyResult(
+      recoveryWrapKey: recoveryWrapKey,
+      payload: payload,
+    );
+  }
+
+  @override
   Future<void> purgeInactiveDeviceKeys(
     String vaultId, {
     required KeystoreAuthKind activeAuthKind,
@@ -119,7 +144,11 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   KeystoreAuthKind? lastEnsureAuthKind;
   KeystoreAuthKind? lastWrapAuthKind;
   KeystoreAuthKind? lastPurgeAuthKind;
+  KeystoreAuthKind? lastRewrapTargetAuthKind;
   int purgeInactiveDeviceKeysCalls = 0;
+  int unwrapWithDeviceKeyCalls = 0;
+  int wrapWithDeviceKeyCalls = 0;
+  int rewrapTrustedRecoveryKeyCalls = 0;
 
   /// 測試用：直接寫入受信任裝置資料。
   void seedTrustedDevice({
@@ -174,6 +203,10 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     required WrappedRecoveryKeyRecord record,
   }) async {
     _wrappedRecords[vaultId] = record;
+    _deviceInfos[vaultId] = TrustedDeviceInfo(
+      slotId: record.slotId,
+      platform: record.platform,
+    );
   }
 
   @override
@@ -183,6 +216,7 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     required String nonceBase64,
     required String ciphertextBase64,
   }) async {
+    unwrapWithDeviceKeyCalls++;
     final List<int> encryptedBytes = base64Decode(ciphertextBase64);
     final SecretBox box = SecretBox(
       encryptedBytes.sublist(0, encryptedBytes.length - 16),
@@ -193,12 +227,44 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   }
 
   @override
+  Future<RewrapTrustedRecoveryKeyResult> rewrapTrustedRecoveryKey({
+    required String vaultId,
+    required String sourceSlotId,
+    required String nonceBase64,
+    required String ciphertextBase64,
+    required KeystoreAuthKind targetAuthKind,
+  }) async {
+    rewrapTrustedRecoveryKeyCalls++;
+    lastRewrapTargetAuthKind = targetAuthKind;
+    final List<int> encryptedBytes = base64Decode(ciphertextBase64);
+    final SecretBox box = SecretBox(
+      encryptedBytes.sublist(0, encryptedBytes.length - 16),
+      nonce: base64Decode(nonceBase64),
+      mac: Mac(encryptedBytes.sublist(encryptedBytes.length - 16)),
+    );
+    final List<int> recoveryWrapKey = await _cipher.decrypt(
+      box,
+      secretKey: SecretKey(_secretKeyBytes(sourceSlotId)),
+    );
+    final DeviceWrappedPayload payload = await wrapWithDeviceKey(
+      vaultId: vaultId,
+      plaintextBytes: recoveryWrapKey,
+      authKind: targetAuthKind,
+    );
+    return RewrapTrustedRecoveryKeyResult(
+      recoveryWrapKey: recoveryWrapKey,
+      payload: payload,
+    );
+  }
+
+  @override
   Future<DeviceWrappedPayload> wrapWithDeviceKey({
     required String vaultId,
     required List<int> plaintextBytes,
     required KeystoreAuthKind authKind,
   }) async {
     if (plaintextBytes.length == 32) {
+      wrapWithDeviceKeyCalls++;
       lastWrapAuthKind = authKind;
     }
     final SecretBox box = await _cipher.encrypt(

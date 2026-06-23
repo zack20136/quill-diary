@@ -116,23 +116,18 @@ String lockedResumeMessageFor(
   };
 }
 
-/// 比對 session、安全儲存區與索引是否皆符合目標 Keystore 策略。
-bool trustedProtectionMatches({
+/// 比對 Keystore slot 與 wrapped record 是否已符合目標策略（不含索引後綴）。
+bool keystoreSlotsMatchExpected({
   required UnlockedVaultSession session,
   required KeystoreAuthKind expected,
-  required String? syncedSuffix,
   WrappedRecoveryKeyRecord? wrappedRecord,
 }) {
-  if (syncedSuffix != expected.storageSuffix) {
+  if (wrappedRecord == null) {
     return false;
   }
 
   final KeystoreAuthKind? sessionSlotKind = _slotAuthKind(session.deviceSlotId);
   if (sessionSlotKind != expected) {
-    return false;
-  }
-
-  if (wrappedRecord == null) {
     return false;
   }
 
@@ -147,6 +142,46 @@ bool trustedProtectionMatches({
   }
 
   return true;
+}
+
+/// 僅索引 [kKeystoreWrapModeKey] 落後，Keystore slot 本身已正確。
+bool needsOnlyIndexSuffixSync({
+  required UnlockedVaultSession session,
+  required KeystoreAuthKind expected,
+  required String? syncedSuffix,
+  WrappedRecoveryKeyRecord? wrappedRecord,
+}) {
+  if (trustedProtectionMatches(
+    session: session,
+    expected: expected,
+    syncedSuffix: syncedSuffix,
+    wrappedRecord: wrappedRecord,
+  )) {
+    return false;
+  }
+  return keystoreSlotsMatchExpected(
+    session: session,
+    expected: expected,
+    wrappedRecord: wrappedRecord,
+  );
+}
+
+/// 比對 session、安全儲存區與索引是否皆符合目標 Keystore 策略。
+bool trustedProtectionMatches({
+  required UnlockedVaultSession session,
+  required KeystoreAuthKind expected,
+  required String? syncedSuffix,
+  WrappedRecoveryKeyRecord? wrappedRecord,
+}) {
+  if (syncedSuffix != expected.storageSuffix) {
+    return false;
+  }
+
+  return keystoreSlotsMatchExpected(
+    session: session,
+    expected: expected,
+    wrappedRecord: wrappedRecord,
+  );
 }
 
 KeystoreAuthKind? _slotAuthKind(String? slotId) {

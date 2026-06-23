@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/session_inactivity_watchdog.dart';
 import 'package:quill_diary/features/session/session_messages.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/session/state/session_lock_reason.dart';
@@ -100,7 +101,31 @@ void main() {
     expect(controller.startupCycleId, 1);
   });
 
-  test('bootstrap 結束後第一次背景才允許 lifecycle resume unlock', () async {
+  test('bootstrap 結束後前景穩定期過後自動 arm lifecycle resume', () async {
+    final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+      metadata: metadata,
+      hasTrustedDevice: true,
+      openTrustedSessionResult: sampleSession,
+    );
+    final ProviderContainer container = buildContainer(
+      supportedPlatform: true,
+      repository: repository,
+    );
+    final AppSessionController controller = container.read(
+      appSessionProvider.notifier,
+    );
+
+    await container.read(appStartupProvider.future);
+    expect(controller.canScheduleLifecycleResumeUnlock, isFalse);
+    await Future<void>.delayed(kSessionForegroundSettleDelay);
+    expect(
+      controller.startupPhase,
+      TrustedUnlockStartupPhase.lifecycleResumeArmed,
+    );
+    expect(controller.canScheduleLifecycleResumeUnlock, isTrue);
+  });
+
+  test('bootstrap 結束後可手動提前 arm lifecycle resume', () async {
     final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
       metadata: metadata,
       hasTrustedDevice: true,
@@ -117,7 +142,7 @@ void main() {
     await container.read(appStartupProvider.future);
     expect(controller.canScheduleLifecycleResumeUnlock, isFalse);
 
-    controller.recordFirstLifecycleBackground();
+    controller.armLifecycleResumeUnlock();
     expect(
       controller.startupPhase,
       TrustedUnlockStartupPhase.lifecycleResumeArmed,

@@ -18,8 +18,6 @@ import '../../helpers/settings_test_scope.dart';
 import '../../helpers/test_l10n.dart';
 
 void main() {
-  const String lockedSettingMessage = '解鎖後可調整此設定。';
-
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
@@ -42,7 +40,6 @@ void main() {
             body: DriveBackupSection(
               access: access,
               canManageDriveAccount: canManageDriveAccount,
-              accountLockedMessage: lockedSettingMessage,
               isGoogleDriveConfigured: true,
               busy: busy,
               onLink: () {},
@@ -87,7 +84,6 @@ void main() {
       ).onPressed,
       isNull,
     );
-    expect(find.text(lockedSettingMessage), findsOneWidget);
   });
 
   testWidgets('locked without recovery key keeps Drive restore available', (
@@ -177,7 +173,6 @@ void main() {
       ).onPressed,
       isNull,
     );
-    expect(find.text(lockedSettingMessage), findsOneWidget);
   });
 
   testWidgets(

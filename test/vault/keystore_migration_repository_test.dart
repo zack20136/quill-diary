@@ -40,6 +40,71 @@ void main() {
     expect(await harness.repository.needsKeystoreMigration(session), isFalse);
   });
 
+  test('索引後綴缺失但 slot 正確時 ensureKeystoreMatchesUnlockMode 不 wrap', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
+
+    final UnlockedVaultSession session = await harness.repository
+        .openTrustedSessionEnsuringKeystore();
+    await harness.repository.deleteKeystoreWrapModeSuffixForTest();
+
+    harness.deviceKeyManager.wrapWithDeviceKeyCalls = 0;
+    harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls = 0;
+
+    final UnlockedVaultSession synced = await harness.repository
+        .ensureKeystoreMatchesUnlockMode(session);
+
+    expect(synced.vaultId, setup.session.vaultId);
+    expect(harness.deviceKeyManager.wrapWithDeviceKeyCalls, 0);
+    expect(harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls, 0);
+    expect(await harness.repository.needsKeystoreMigration(synced), isFalse);
+  });
+
+  test('索引後綴缺失但 slot 正確時冷啟動僅 unwrap 一次', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
+
+    await harness.repository.openTrustedSessionEnsuringKeystore();
+    await harness.repository.deleteKeystoreWrapModeSuffixForTest();
+    await harness.repository.closeUnlockedResources();
+
+    harness.deviceKeyManager.unwrapWithDeviceKeyCalls = 0;
+    harness.deviceKeyManager.wrapWithDeviceKeyCalls = 0;
+    harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls = 0;
+
+    final UnlockedVaultSession session = await harness.repository
+        .openTrustedSessionEnsuringKeystore();
+
+    expect(session.vaultId, setup.session.vaultId);
+    expect(harness.deviceKeyManager.unwrapWithDeviceKeyCalls, 1);
+    expect(harness.deviceKeyManager.wrapWithDeviceKeyCalls, 0);
+    expect(harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls, 0);
+    expect(await harness.repository.needsKeystoreMigration(session), isFalse);
+  });
+
+  test('槽位需遷移時以單次 rewrap 開啟 trusted session', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.appLockService.setUnlockMode(AppUnlockMode.none);
+    await harness.repository.openTrustedSessionEnsuringKeystore();
+    await harness.repository.closeUnlockedResources();
+    await harness.appLockService.setUnlockMode(AppUnlockMode.deviceLock);
+
+    harness.deviceKeyManager.unwrapWithDeviceKeyCalls = 0;
+    harness.deviceKeyManager.wrapWithDeviceKeyCalls = 0;
+    harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls = 0;
+
+    final UnlockedVaultSession session = await harness.repository
+        .openTrustedSessionEnsuringKeystore();
+
+    expect(session.vaultId, setup.session.vaultId);
+    expect(harness.deviceKeyManager.unwrapWithDeviceKeyCalls, 0);
+    expect(harness.deviceKeyManager.rewrapTrustedRecoveryKeyCalls, 1);
+    expect(await harness.repository.needsKeystoreMigration(session), isFalse);
+  });
+
   test('needsKeystoreMigration 在 plain 模式下切換至 deviceLock 時為 true', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();

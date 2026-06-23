@@ -115,6 +115,40 @@ void main() {
     );
   });
 
+  test('needsOnlyIndexSuffixSync 在 slot 正確但索引後綴缺失時為 true', () {
+    const UnlockedVaultSession session = UnlockedVaultSession(
+      vaultId: 'vlt_a',
+      trustedDevice: true,
+      deviceSlotId: 'dev_android_keystore_deviceCredential_vlt_a',
+    );
+    final WrappedRecoveryKeyRecord record = WrappedRecoveryKeyRecord(
+      slotId: 'dev_android_keystore_deviceCredential_vlt_a',
+      nonceBase64: 'abc',
+      ciphertextBase64: 'def',
+      wrappedAt: DateTime.fromMillisecondsSinceEpoch(0),
+      formatVersion: WrappedRecoveryKeyRecord.kWrappedRecoveryKeyFormatVersion,
+      platform: 'android',
+    );
+
+    expect(
+      needsOnlyIndexSuffixSync(
+        session: session,
+        expected: KeystoreAuthKind.deviceCredential,
+        syncedSuffix: null,
+        wrappedRecord: record,
+      ),
+      isTrue,
+    );
+    expect(
+      keystoreSlotsMatchExpected(
+        session: session,
+        expected: KeystoreAuthKind.deviceCredential,
+        wrappedRecord: record,
+      ),
+      isTrue,
+    );
+  });
+
   test('lockedResumeMessageFor 依模式回傳提示', () {
     final AppLocalizations zhL10n = lookupAppLocalizations(appZhLocale);
     expect(
