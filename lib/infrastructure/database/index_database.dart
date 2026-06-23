@@ -46,7 +46,6 @@ class EntryIndexRecord {
     required this.createdAt,
     required this.updatedAt,
     required this.tags,
-    required this.mood,
     required this.wordCount,
     required this.charCount,
     required this.attachmentCount,
@@ -64,7 +63,6 @@ class EntryIndexRecord {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> tags;
-  final String? mood;
   final int wordCount;
   final int charCount;
   final int attachmentCount;
@@ -83,7 +81,6 @@ class EntryIndexRecord {
       createdAt: DateTime.parse(row.read<String>('created_at')),
       updatedAt: DateTime.parse(row.read<String>('updated_at')),
       tags: _parseTags(row.readNullable<String>('tags_joined')),
-      mood: row.readNullable<String>('mood'),
       wordCount: row.read<int>('word_count'),
       charCount: row.read<int>('char_count'),
       attachmentCount: row.read<int>('attachment_count'),
@@ -114,7 +111,7 @@ class EntryIndexRecord {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
-  static const int searchSchemaVersion = 1;
+  static const int indexGeneration = 1;
 
   @override
   int get schemaVersion => 1;
@@ -126,20 +123,6 @@ class IndexDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
       const <DatabaseSchemaEntity>[];
-
-  @override
-  MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (Migrator m) async => initialize(),
-    onUpgrade: (Migrator m, int from, int to) async {
-      await customStatement('DROP TABLE IF EXISTS entries_index;');
-      await customStatement('DROP TABLE IF EXISTS entry_attachments;');
-      await customStatement('DROP TABLE IF EXISTS entry_tags;');
-      await initialize();
-    },
-    beforeOpen: (OpeningDetails details) async {
-      await customStatement('PRAGMA foreign_keys = ON;');
-    },
-  );
 
   Future<void> initialize() async {
     await customStatement('''
@@ -154,12 +137,10 @@ class IndexDatabase extends GeneratedDatabase {
         date TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        mood TEXT,
         word_count INTEGER NOT NULL DEFAULT 0,
         char_count INTEGER NOT NULL DEFAULT 0,
         attachment_count INTEGER NOT NULL DEFAULT 0,
         has_attachments INTEGER NOT NULL DEFAULT 0,
-        schema_version INTEGER NOT NULL DEFAULT 1,
         encrypted_file_size INTEGER,
         encrypted_file_mtime TEXT,
         content_hash TEXT
@@ -230,10 +211,10 @@ class IndexDatabase extends GeneratedDatabase {
         INSERT INTO entries_index (
           id, vault_id, file_path, title, title_search_text, preview_text,
           body_search_text, date,
-          created_at, updated_at, mood, word_count, char_count, attachment_count,
-          has_attachments, schema_version, encrypted_file_size,
+          created_at, updated_at, word_count, char_count, attachment_count,
+          has_attachments, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
@@ -244,12 +225,10 @@ class IndexDatabase extends GeneratedDatabase {
           date = excluded.date,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
-          mood = excluded.mood,
           word_count = excluded.word_count,
           char_count = excluded.char_count,
           attachment_count = excluded.attachment_count,
           has_attachments = excluded.has_attachments,
-          schema_version = excluded.schema_version,
           encrypted_file_size = excluded.encrypted_file_size,
           encrypted_file_mtime = excluded.encrypted_file_mtime,
           content_hash = excluded.content_hash;
@@ -265,12 +244,10 @@ class IndexDatabase extends GeneratedDatabase {
         entry.date.value,
         entry.createdAt.toIso8601String(),
         entry.updatedAt.toIso8601String(),
-        entry.mood,
         _wordCount(entry.markdownBody),
         entry.markdownBody.runes.length,
         entry.attachmentIds.length,
         entry.attachmentIds.isEmpty ? 0 : 1,
-        1,
         encryptedFileSize,
         encryptedModifiedAt.toIso8601String(),
         contentHash,
@@ -547,6 +524,47 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[
       entryId,
     ]);
+  }
+
+  static const Set<String> _removedIndexColumns = <String>{
+    'mood',
+    'schema_version',
+  };
+
+  static const Set<String> _requiredIndexColumns = <String>{
+    'id',
+    'vault_id',
+    'file_path',
+    'title_search_text',
+    'body_search_text',
+    'date',
+    'created_at',
+    'updated_at',
+    'word_count',
+    'char_count',
+    'attachment_count',
+    'has_attachments',
+    'content_hash',
+  };
+
+  Future<bool> hasExpectedIndexSchema() async {
+    final List<QueryRow> rows = await customSelect(
+      'PRAGMA table_info(entries_index);',
+    ).get();
+    if (rows.isEmpty) {
+      return false;
+    }
+
+    final Set<String> columns = rows
+        .map((QueryRow row) => row.read<String>('name'))
+        .toSet();
+    if (_removedIndexColumns.any(columns.contains)) {
+      return false;
+    }
+    if (!_requiredIndexColumns.every(columns.contains)) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> rebuild() async {

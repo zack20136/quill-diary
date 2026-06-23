@@ -947,8 +947,8 @@ class VaultRepository {
         DateTime.now().toIso8601String(),
       );
       await indexDb.setAppValue(
-        kSearchSchemaVersionKey,
-        IndexDatabase.searchSchemaVersion.toString(),
+        kIndexGenerationKey,
+        IndexDatabase.indexGeneration.toString(),
       );
       return;
     }
@@ -1004,8 +1004,8 @@ class VaultRepository {
       DateTime.now().toIso8601String(),
     );
     await indexDb.setAppValue(
-      kSearchSchemaVersionKey,
-      IndexDatabase.searchSchemaVersion.toString(),
+      kIndexGenerationKey,
+      IndexDatabase.indexGeneration.toString(),
     );
     await syncTagStylesBetweenVaultAndIndex();
   }
@@ -1248,7 +1248,6 @@ class VaultRepository {
   ) async {
     final List<EntryIndexRecord> entries = await listEntries();
     final Map<String, Object?> manifest = <String, Object?>{
-      'schema_version': 1,
       'vault_id': metadata.vaultId,
       'entry_count': entries.length,
       'asset_count': 0,
@@ -1690,12 +1689,14 @@ class VaultRepository {
     await _seedDefaultTagCatalog();
     final IndexDatabase indexDb = _requireOpenIndex();
     final String? lastRebuildAt = await indexDb.getAppValue(kLastRebuildAtKey);
-    final String? searchSchemaVersion = await indexDb.getAppValue(
-      kSearchSchemaVersionKey,
+    final String? storedGeneration = await indexDb.getAppValue(
+      kIndexGenerationKey,
     );
-    final bool needsSearchSchemaRebuild =
-        searchSchemaVersion != IndexDatabase.searchSchemaVersion.toString();
-    if (lastRebuildAt == null || needsSearchSchemaRebuild) {
+    final bool needsRebuild =
+        lastRebuildAt == null ||
+        storedGeneration != IndexDatabase.indexGeneration.toString() ||
+        !await indexDb.hasExpectedIndexSchema();
+    if (needsRebuild) {
       await rebuildIndex(session);
     } else {
       await syncTagStylesBetweenVaultAndIndex();

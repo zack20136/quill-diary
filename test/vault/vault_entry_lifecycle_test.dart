@@ -221,7 +221,7 @@ void main() {
         "UPDATE entries_index SET body_search_text = '' WHERE id = ?;",
         <Object?>[saved.id],
       );
-      await manager.requireOpen().setAppValue(kSearchSchemaVersionKey, '0');
+      await manager.requireOpen().setAppValue(kIndexGenerationKey, '0');
       await manager.close();
 
       await harness.repository.ensureIndexReady(session);

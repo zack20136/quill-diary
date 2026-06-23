@@ -44,7 +44,6 @@ void main() {
         createdAt: DateTime.parse('2026-05-28T08:00:00Z'),
         updatedAt: DateTime.parse('2026-05-28T09:00:00Z'),
         tags: const <String>['分享', 'HTML'],
-        mood: '開心 & 安心',
         markdownBody: '# Heading\n\nHello <script>alert(1)</script>\n\n- item',
       ),
       pendingAttachments: <PendingAttachment>[
@@ -88,7 +87,6 @@ void main() {
     expect(estimate.imageBytes, 5);
     expect(estimate.estimatedHtmlBytes, greaterThan(5));
     expect(html, contains('HTML &lt;Export&gt;'));
-    expect(html, contains('開心 &amp; 安心'));
     expect(html, contains('<h1>Heading</h1>'));
     expect(html, contains('&lt;script&gt;alert(1)&lt;/script&gt;'));
     expect(html, contains('data:image/png;base64,AQIDBAU='));
@@ -115,7 +113,6 @@ void main() {
         createdAt: DateTime.parse('2026-05-28T08:00:00Z'),
         updatedAt: DateTime.parse('2026-05-28T09:00:00Z'),
         tags: const <String>['分享', 'HTML'],
-        mood: '開心 & 安心',
         markdownBody: '# Heading\n\nHello **world**\n\n- item',
       ),
       pendingAttachments: <PendingAttachment>[
@@ -162,7 +159,6 @@ void main() {
       DateTime.parse('2026-05-28T08:00:00Z').toLocal(),
     );
     expect(imported?.tags, const <String>['分享', 'HTML']);
-    expect(imported?.mood, '開心 & 安心');
     expect(imported?.markdownBody, contains('# Heading'));
     expect(imported?.markdownBody, contains('Hello **world**'));
     expect(imported?.markdownBody, contains('- item'));

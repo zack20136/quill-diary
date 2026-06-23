@@ -36,7 +36,6 @@ class FrontMatterCodec {
       'updated_at: "${entry.updatedAt.toIso8601String()}"',
       if (entry.tags.isEmpty) 'tags: []' else 'tags:',
       ...entry.tags.map((String tag) => '  - "${_escape(tag)}"'),
-      'mood: ${_encodeScalar(entry.mood)}',
       if (entry.attachmentIds.isEmpty)
         'attachment_ids: []'
       else
@@ -51,7 +50,6 @@ class FrontMatterCodec {
             '../assets/${entry.date.yearString}/${entry.date.monthPadded}/${asset.safeFilename}';
         return '  - "${_escape(path)}"';
       }),
-      'schema_version: 1',
       '---',
       '',
       entry.markdownBody.trimRight(),
@@ -85,7 +83,6 @@ class FrontMatterCodec {
             DateTime.tryParse('${frontMatter['updated_at'] ?? ''}') ??
             DateTime.fromMillisecondsSinceEpoch(0),
         tags: _stringList(frontMatter['tags']),
-        mood: _nullableString(frontMatter['mood']),
         markdownBody: parsed.body,
         attachmentIds: attachmentIds,
       ),

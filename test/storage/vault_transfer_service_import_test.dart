@@ -70,7 +70,6 @@ void main() {
         createdAt: DateTime.parse('2026-05-28T08:00:00Z'),
         updatedAt: DateTime.parse('2026-05-28T09:00:00Z'),
         tags: const <String>['分享', 'HTML'],
-        mood: '開心 & 安心',
         markdownBody: '# Heading\n\nHello **world**\n\n- item',
       ),
       pendingAttachments: <PendingAttachment>[
@@ -125,7 +124,6 @@ void main() {
     expect(imported?.title, 'HTML Picker Roundtrip');
     expect(imported?.date.value, '2026-05-28');
     expect(imported?.tags, const <String>['分享', 'HTML']);
-    expect(imported?.mood, '開心 & 安心');
     expect(imported?.markdownBody, contains('# Heading'));
     expect(imported?.markdownBody, contains('Hello **world**'));
     expect(imported?.markdownBody, contains('- item'));

@@ -335,7 +335,7 @@ void main() {
     expect(actions.savedEntryDraft, isNull);
     final BuildContext context = tester.element(find.byType(EditorPage));
     expect(
-      find.text(AppLocalizations.of(context)!.editorSaveNeedsEntryMessage),
+      find.text(AppLocalizations.of(context).editorSaveNeedsEntryMessage),
       findsOneWidget,
     );
   });

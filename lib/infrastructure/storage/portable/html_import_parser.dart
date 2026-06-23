@@ -43,20 +43,6 @@ String? extractBlockInnerHtml(String html, String tagName, String className) {
   return null;
 }
 
-String? extractQuillDiaryMetaValue(String entryMetaHtml, String label) {
-  final RegExp pattern = RegExp(
-    r'<span\b[^>]*>\s*' + RegExp.escape(label) + r'\s*[：:]\s*([^<]+)\s*</span>',
-    caseSensitive: false,
-  );
-  final Match? match = pattern.firstMatch(entryMetaHtml);
-  if (match == null) {
-    return null;
-  }
-
-  final String value = decodeHtmlEntities((match.group(1) ?? '').trim());
-  return value.isEmpty ? null : value;
-}
-
 List<String> extractQuillDiaryTags(String articleHtml) {
   final String? tagsHtml = extractBlockInnerHtml(articleHtml, 'ul', 'tags');
   if (tagsHtml == null) {

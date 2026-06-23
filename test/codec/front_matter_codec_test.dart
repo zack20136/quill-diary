@@ -16,7 +16,6 @@ void main() {
       createdAt: DateTime.parse('2026-05-13T20:30:12Z'),
       updatedAt: DateTime.parse('2026-05-13T21:02:44Z'),
       tags: const <String>['生活', '散步'],
-      mood: 'calm',
       markdownBody: '# 今天散步\n\n今天晚上去河邊走了一圈。',
       attachmentIds: const <String>['att_TEST0001'],
     );
@@ -40,7 +39,6 @@ void main() {
     expect(decoded.title, entry.title);
     expect(decoded.date.value, entry.date.value);
     expect(decoded.tags, entry.tags);
-    expect(decoded.mood, entry.mood);
     expect(decoded.markdownBody, entry.markdownBody);
     expect(decoded.attachmentIds, const <String>['att_TEST0001']);
     expect(document, contains('attachment_ids:'));

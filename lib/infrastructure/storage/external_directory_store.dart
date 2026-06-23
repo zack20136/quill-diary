@@ -14,8 +14,6 @@ class ExternalDirectoryStore {
 
   final VaultPathStrategy _pathStrategy;
 
-  static const int schemaVersion = 1;
-
   Future<String> _filePath() async {
     final Directory root = await _pathStrategy.appRootDirectory();
     return p.join(root.path, 'external_directory.json');
@@ -58,7 +56,6 @@ class ExternalDirectoryStore {
     await file.parent.create(recursive: true);
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(<String, Object?>{
-        'version': schemaVersion,
         'lastDirectory': trimmed,
       }),
       flush: true,

@@ -324,7 +324,6 @@ class PortableImportIo {
           : fallbackTime,
       markdownBody: body,
       tags: decoded.entry.tags,
-      mood: decoded.entry.mood,
     );
 
     return ParsedImportEntry(
@@ -382,14 +381,6 @@ class PortableImportIo {
       return null;
     }
 
-    final String? entryMetaHtml = extractBlockInnerHtml(
-      quillDiaryArticleHtml,
-      'div',
-      'entry-meta',
-    );
-    final String? mood = entryMetaHtml == null
-        ? null
-        : extractQuillDiaryMetaValue(entryMetaHtml, '心情');
     final List<String> tags = extractQuillDiaryTags(quillDiaryArticleHtml);
 
     final String attachmentSourceHtml =
@@ -426,7 +417,6 @@ class PortableImportIo {
       updatedAt: times.updatedAt,
       markdownBody: markdownBody,
       tags: tags,
-      mood: mood?.trim().isEmpty == true ? null : mood?.trim(),
     );
 
     return ParsedImportEntry(

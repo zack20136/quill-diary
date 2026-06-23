@@ -15,7 +15,6 @@ class DiaryEntry {
     this.title,
     this.tags = const <String>[],
     this.attachmentIds = const <AssetId>[],
-    this.mood,
   });
 
   final EntryId id;
@@ -25,7 +24,6 @@ class DiaryEntry {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> tags;
-  final String? mood;
   final String markdownBody;
   final List<AssetId> attachmentIds;
 
@@ -46,8 +44,6 @@ class DiaryEntry {
     DateTime? createdAt,
     DateTime? updatedAt,
     List<String>? tags,
-    String? mood,
-    bool clearMood = false,
     String? markdownBody,
     List<AssetId>? attachmentIds,
   }) {
@@ -59,7 +55,6 @@ class DiaryEntry {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
-      mood: clearMood ? null : (mood ?? this.mood),
       markdownBody: markdownBody ?? this.markdownBody,
       attachmentIds: attachmentIds ?? this.attachmentIds,
     );

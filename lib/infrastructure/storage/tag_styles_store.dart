@@ -91,8 +91,6 @@ class TagStylesStore {
 
   final VaultPathStrategy _pathStrategy;
 
-  static const int schemaVersion = 1;
-
   Future<String> _filePath() async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     return '${vaultRoot.path}${Platform.pathSeparator}tag_styles.json';
@@ -130,7 +128,6 @@ class TagStylesStore {
     await file.parent.create(recursive: true);
     final List<TagCatalogItem> normalized = _normalizeItems(items);
     final Map<String, Object?> payload = <String, Object?>{
-      'version': schemaVersion,
       'tags': normalized
           .map((TagCatalogItem item) => item.toJson())
           .toList(growable: false),

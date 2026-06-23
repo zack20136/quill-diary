@@ -149,14 +149,14 @@ class PortableExportIo {
       if (entry != null) {
         textBytes += utf8
             .encode(
-              '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.mood ?? ''}\n${entry.markdownBody}',
+              '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.markdownBody}',
             )
             .length;
       } else {
         final EntryIndexRecord record = document.record;
         textBytes += utf8
             .encode(
-              '${record.title ?? ''}\n${record.tags.join(',')}\n${record.mood ?? ''}\n${record.previewText}',
+              '${record.title ?? ''}\n${record.tags.join(',')}\n${record.previewText}',
             )
             .length;
       }
@@ -326,11 +326,6 @@ class PortableExportIo {
         '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
       body.writeln('<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>');
-      if (entry.mood?.trim().isNotEmpty == true) {
-        body.writeln('<div class="entry-meta">');
-        body.writeln('<span>心情：${_escapeHtml(entry.mood!.trim())}</span>');
-        body.writeln('</div>');
-      }
       if (entry.tags.isNotEmpty) {
         body.writeln('<ul class="tags">');
         for (final String tag in entry.tags) {
@@ -399,13 +394,6 @@ class PortableExportIo {
       letter-spacing: 0.02em;
     }
     .entry h2 { margin: 0 0 12px; font-size: 1.45rem; }
-    .entry-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
     .tags {
       display: flex;
       flex-wrap: wrap;
