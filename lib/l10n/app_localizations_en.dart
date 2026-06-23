@@ -1775,7 +1775,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary is a local, encrypted diary app for personal journaling. Write safely, find entries quickly, and revisit them anytime. When needed, create a full backup or export readable content; unless you choose otherwise, your data stays on your device by default.';
+      'Quill Diary is a local, encrypted diary app for personal journaling. Install without signing up, but create a recovery key before reading or writing entries. Write safely, find entries quickly, and revisit them anytime; unless you back up or export, your data stays on your device by default.';
 
   @override
   String get aboutTabIntroChip0 => 'Data Stays on Device';
@@ -1811,7 +1811,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      'Daily writing works without accounts or remote servers. Use local entries, search, and review without creating an account.';
+      'No account is required to install and browse. Set up a recovery key before reading, writing, backing up, or exporting.';
 
   @override
   String get aboutTabIntroSection0Item2Title =>
@@ -1902,7 +1902,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection3Item0Body =>
-      'Source code is released under GNU Affero General Public License v3.0, so product behavior and implementation can be publicly reviewed for transparency and verifiability.';
+      'Source code is released under AGPL-3.0 for public review. Currently available on Android only.';
 
   @override
   String get aboutTabIntroSection3Item1Title => 'Quill Diary Branding';
@@ -1979,7 +1979,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      'While unlocked, you can read and write entries, edit drafts, attach files, and use full-text search.';
+      'While unlocked, you can read and write entries, edit drafts, attach files, and use full-text search. Without a recovery key, content cannot be read or written even if you already see the home screen.';
 
   @override
   String get aboutTabUnlockSessionSection1Item1Title => 'Background Timeout';
@@ -1990,7 +1990,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item2Body =>
-      'A brief app switch usually does not trigger immediate re-verification. If the app stayed in the background longer than the timeout, your chosen mode decides whether it resumes directly or asks for system verification.';
+      'A brief app switch usually does not trigger immediate re-verification. After a longer background stay, your chosen mode decides whether to verify again. Locking only pauses access; it does not delete your entries.';
 
   @override
   String get aboutTabUnlockSessionSection1Item3Title =>
@@ -1998,7 +1998,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item3Body =>
-      'If verification is cancelled or fails, the app stays locked without repeatedly prompting. Retry manually when convenient.';
+      'If verification is cancelled, the app usually stays locked and you can retry later. If it fails, tap Re-verify manually. The app will not keep prompting.';
+
+  @override
+  String get aboutTabUnlockSessionSection1Item4Title => 'After Manual Lock';
+
+  @override
+  String get aboutTabUnlockSessionSection1Item4Body =>
+      'After manual lock from Settings, return to the app and tap Re-verify. It will not unlock automatically.';
 
   @override
   String get aboutTabUnlockSessionSection2Title =>
@@ -2022,7 +2029,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Item1Body =>
-      'If trusted status on the device expires or no longer matches the current vault state, local quick access alone is not enough.';
+      'If trusted status expires or no longer matches the vault, local quick access is not enough. Use the recovery key instead.';
 
   @override
   String get aboutTabUnlockSessionSection2Item2Title =>
@@ -2059,7 +2066,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabEncryptionChip4 => 'Trusted Device';
 
   @override
-  String get aboutTabEncryptionChip5 => 'Android Keystore';
+  String get aboutTabEncryptionChip5 => 'Device Secure Storage';
 
   @override
   String get aboutTabEncryptionSection0Title =>
@@ -2104,7 +2111,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item0Body =>
-      'On a device with trusted status, daily access usually goes through screen lock or biometrics. Android Keystore protects important vault-layer keys on this path.';
+      'Daily access usually goes through screen lock or biometrics. Vault keys are protected by built-in device security.';
 
   @override
   String get aboutTabEncryptionSection1Item1Title => 'Recovery Key';
@@ -2225,7 +2232,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Item1Body =>
-      'The index updates only after a successful save or import so results do not mix in uncertain drafts.';
+      'The index updates only after a successful save or import, so results do not mix in drafts.';
 
   @override
   String get aboutTabSearchIndexSection1Item2Title =>
@@ -2248,7 +2255,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item0Body =>
-      'The search index opens only during a valid unlocked session and closes when the app locks.';
+      'The index is built, updated, and used only while unlocked; it closes when the app locks.';
 
   @override
   String get aboutTabSearchIndexSection2Item1Title =>
@@ -2332,7 +2339,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection1Item0Body =>
-      'After entering edit mode, changes to title, date, tags, body, or attachments auto-save as encrypted drafts to reduce loss if interrupted.';
+      'After entering edit mode, changes auto-save as encrypted drafts to reduce loss if interrupted.';
 
   @override
   String get aboutTabEditorSection1Item1Title => 'Restore When Reopening';
@@ -2369,7 +2376,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection2Item1Body =>
-      'Full backups wrap only the main vault, not `drafts/`. Backup and restore focus on saved data, not unfinished editing state.';
+      'Full backups include only the main vault, not unpublished local drafts.';
 
   @override
   String get aboutTabEditorSection2Item2Title => 'Unsaved Indicator';
@@ -2454,7 +2461,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item1Body =>
-      'During restore, the existing index is deleted and rebuilt from the new saved data. Re-verification may be required if trusted status cannot carry over.';
+      'The index is rebuilt after restore. Re-verification may be needed; on the same device while still unlocked, you may sometimes continue without verifying again.';
 
   @override
   String get aboutTabBackupRestoreSection1Item2Title =>
@@ -2505,7 +2512,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      'Full backup covers only the main vault, not `drafts/`. Content still being edited and not yet saved is not included.';
+      'Full backup does not include local drafts still being edited and not yet saved.';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title =>

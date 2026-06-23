@@ -61,7 +61,8 @@ NT$2000  大大大大大力支持
 
 相關程式：
 
-- [`lib/services/google_billing_service.dart`](../../../lib/services/google_billing_service.dart)
+- [`lib/infrastructure/billing/google_billing_service.dart`](../../../lib/infrastructure/billing/google_billing_service.dart)
+- [`lib/features/settings/providers/billing_providers.dart`](../../../lib/features/settings/providers/billing_providers.dart)（App 層訂閱 `purchaseStream`）
 - [`lib/features/settings/pages/support_page.dart`](../../../lib/features/settings/pages/support_page.dart)
 - [`lib/config/billing_config.dart`](../../../lib/config/billing_config.dart)
 

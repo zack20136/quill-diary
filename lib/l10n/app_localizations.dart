@@ -3019,7 +3019,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。您可以安心寫、快速找、隨時回顧，也能在需要時建立完整備份或匯出可閱讀內容；除非您主動操作，資料預設留在裝置上。'**
+  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝，但讀寫日記前須先建立復原金鑰。您可以安心寫、快速找、隨時回顧；除非您主動備份或匯出，資料預設留在裝置上。'**
   String get aboutTabIntroHeroBody;
 
   /// No description provided for @aboutTabIntroChip0.
@@ -3085,7 +3085,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'日常寫作不依賴帳戶系統或遠端伺服器。您不需要先建立帳戶，才能使用本機日記、搜尋與回顧功能。'**
+  /// **'不需帳號即可安裝與瀏覽；讀寫日記、備份與匯出前，須先設定復原金鑰。'**
   String get aboutTabIntroSection0Item1Body;
 
   /// No description provided for @aboutTabIntroSection0Item2Title.
@@ -3229,7 +3229,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection3Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'原始碼以 GNU Affero General Public License v3.0 發布，讓產品行為與實作方式能被公開檢視，增加透明度與可驗證性。'**
+  /// **'原始碼以 AGPL-3.0 發布，可公開檢視產品行為與實作方式。目前僅提供 Android 版。'**
   String get aboutTabIntroSection3Item0Body;
 
   /// No description provided for @aboutTabIntroSection3Item1Title.
@@ -3361,7 +3361,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後，您可以正常讀寫日記、編輯草稿、附加檔案，並使用全文搜尋。'**
+  /// **'完成解鎖後，可正常讀寫日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。'**
   String get aboutTabUnlockSessionSection1Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item1Title.
@@ -3379,7 +3379,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果只是短暫切出去再回來，通常不會立刻要求重驗。若放在背景超過時間後才回來，就會依您選擇的模式決定是否直接恢復或跳出系統驗證。'**
+  /// **'短暫切出去再回來，通常不會立刻要求重驗；背景超過設定時間後才回來，則依您選擇的模式決定是否重新驗證。鎖定只會暫停存取，不會刪除日記。'**
   String get aboutTabUnlockSessionSection1Item2Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item3Title.
@@ -3391,8 +3391,20 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item3Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果這次驗證取消或沒有通過，App 會維持鎖定，不會一直反覆跳窗。您可以在方便時再手動重試。'**
+  /// **'取消驗證時通常維持鎖定，可稍後重試；驗證失敗則需手動按重新驗證。不會一直反覆跳窗。'**
   String get aboutTabUnlockSessionSection1Item3Body;
+
+  /// No description provided for @aboutTabUnlockSessionSection1Item4Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'手動鎖定時'**
+  String get aboutTabUnlockSessionSection1Item4Title;
+
+  /// No description provided for @aboutTabUnlockSessionSection1Item4Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'從設定手動鎖定後，切回 App 需自行按「重新驗證」，不會自動解鎖。'**
+  String get aboutTabUnlockSessionSection1Item4Body;
 
   /// No description provided for @aboutTabUnlockSessionSection2Title.
   ///
@@ -3427,7 +3439,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果裝置上的可信狀態失效，或與目前的日記庫狀態不再對應，就不能只靠本機快速進入。'**
+  /// **'可信狀態失效或與日記庫不符時，不能只靠本機快速進入，需改用復原金鑰。'**
   String get aboutTabUnlockSessionSection2Item1Body;
 
   /// No description provided for @aboutTabUnlockSessionSection2Item2Title.
@@ -3493,7 +3505,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionChip5.
   ///
   /// In zh, this message translates to:
-  /// **'Android Keystore'**
+  /// **'裝置安全儲存'**
   String get aboutTabEncryptionChip5;
 
   /// No description provided for @aboutTabEncryptionSection0Title.
@@ -3565,7 +3577,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'在同一台已建立可信狀態的裝置上，日常通常可透過螢幕鎖或生物辨識重新進入。這條路徑會由 Android Keystore 保護日記庫層的重要金鑰。'**
+  /// **'日常可透過螢幕鎖或生物辨識重新進入；日記庫金鑰由裝置內建安全機制保護。'**
   String get aboutTabEncryptionSection1Item0Body;
 
   /// No description provided for @aboutTabEncryptionSection1Item1Title.
@@ -3763,7 +3775,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'只有正式儲存成功或匯入完成後，索引才會同步更新；這樣搜尋結果才不會混入尚未確定的草稿內容。'**
+  /// **'正式儲存或匯入完成後才更新索引，避免結果混入草稿。'**
   String get aboutTabSearchIndexSection1Item1Body;
 
   /// No description provided for @aboutTabSearchIndexSection1Item2Title.
@@ -3799,7 +3811,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引只會在有效解鎖期間打開；App 鎖定後，索引也會跟著關閉。'**
+  /// **'索引只在解鎖期間建立、更新與使用；鎖定後會關閉。'**
   String get aboutTabSearchIndexSection2Item0Body;
 
   /// No description provided for @aboutTabSearchIndexSection2Item1Title.
@@ -3937,7 +3949,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'進入編輯後，只要標題、日期、標籤、內文或附件有變動，就會自動寫成加密草稿，降低中斷時遺失內容的風險。'**
+  /// **'進入編輯後，變更會自動寫成加密草稿，降低中斷時遺失內容的風險。'**
   String get aboutTabEditorSection1Item0Body;
 
   /// No description provided for @aboutTabEditorSection1Item1Title.
@@ -3997,7 +4009,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份只封裝正式日記庫，不包含 `drafts/`。這代表備份與還原的重點是正式資料，而不是尚未定稿的編輯狀態。'**
+  /// **'完整備份只含正式日記庫，不含尚未發佈的本地草稿。'**
   String get aboutTabEditorSection2Item1Body;
 
   /// No description provided for @aboutTabEditorSection2Item2Title.
@@ -4135,7 +4147,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'還原時現有索引會被刪除，之後再依新的正式資料重建。若目前可信狀態無法直接沿用，也可能需要重新驗證。'**
+  /// **'還原後索引會重建。有時需重新驗證；同裝置且仍處於有效解鎖時，則可能免再驗證。'**
   String get aboutTabBackupRestoreSection1Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection1Item2Title.
@@ -4219,7 +4231,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份只處理正式日記庫，不包含 `drafts/`。如果您還在編輯中的內容尚未正式儲存，它不會被一起封裝進去。'**
+  /// **'完整備份不含尚在編輯中、尚未正式儲存的本地草稿。'**
   String get aboutTabBackupRestoreSection3Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Item1Title.

@@ -211,6 +211,11 @@ List<AboutTab> buildAboutTabs(AppLocalizations l10n, Duration sessionTimeout) =>
                 title: l10n.aboutTabUnlockSessionSection1Item3Title,
                 body: l10n.aboutTabUnlockSessionSection1Item3Body,
               ),
+              AboutItem(
+                icon: Icons.lock_rounded,
+                title: l10n.aboutTabUnlockSessionSection1Item4Title,
+                body: l10n.aboutTabUnlockSessionSection1Item4Body,
+              ),
             ],
           ),
           AboutSection(
