@@ -13,6 +13,7 @@
   "commonCloseTooltip": "關閉",
   "commonClearSearchTooltip": "清除搜尋",
   "commonUnitEntries": "篇",
+  "commonUnitTags": "筆",
   "commonUnitImages": "張",
   "commonUnitAttachments": "個附件",
   "commonUnitDays": "天",
@@ -305,7 +306,16 @@
   },
   "homeTagSearchHint": "搜尋標籤…",
   "homeNoTagsTitle": "尚未有標籤",
-  "homeNoTagsMessage": "可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。",
+  "homeNoTagsMessage": "可點下方按鈕建立一組預設標籤，或使用右上角的「+」自行新增；即使尚未套用到日記也會保留在清單中。",
+  "homeCreateDefaultTagsButton": "建立預設標籤",
+  "homeTagsSectionTitle": "標籤（{countSummary}）",
+  "@homeTagsSectionTitle": {
+    "placeholders": {
+      "countSummary": {
+        "type": "String"
+      }
+    }
+  },
   "homeTagListGuide": "請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。",
   "homeTagPreviewTitle": "選取標籤以預覽日記",
   "homeTagDeleted": "「{label}」已刪除",

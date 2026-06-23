@@ -5,8 +5,10 @@ import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
@@ -162,6 +164,10 @@ void main() {
       repository: harness.repository,
       frontMatterCodec: const FrontMatterCodec(),
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
+      editorDraftStore: EditorDraftStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+      ),
     );
     final Directory importRoot = await Directory.systemTemp.createTemp(
       'qld_import_search_',

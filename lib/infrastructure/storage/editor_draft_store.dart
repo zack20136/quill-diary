@@ -97,6 +97,18 @@ class EditorDraftStore {
     await draftDir.delete(recursive: true);
   }
 
+  /// 刪除所有本地草稿與 pending 附件。
+  ///
+  /// 還原備份後應呼叫，避免舊草稿與還原後的正式日記庫不一致。
+  Future<void> deleteAll() async {
+    final Directory draftsRoot = await _pathStrategy
+        .editorDraftsRootDirectory();
+    if (!draftsRoot.existsSync()) {
+      return;
+    }
+    await draftsRoot.delete(recursive: true);
+  }
+
   /// 將來源檔複製到草稿 pending 目錄，回傳相對路徑。
   Future<String> stagePendingFile(String draftKey, String sourcePath) async {
     final String trimmed = sourcePath.trim();

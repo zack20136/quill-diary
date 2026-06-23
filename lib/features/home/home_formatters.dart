@@ -1,6 +1,12 @@
 import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 
+String homeTagsSectionTitle(AppLocalizations l10n, int count) {
+  return l10n.homeTagsSectionTitle(
+    DisplayFormat.formatCountUnit(count, l10n.commonUnitTags),
+  );
+}
+
 String homeTagRowEntryCount(AppLocalizations l10n, int count) {
   return l10n.homeTagRowEntryCount(
     DisplayFormat.formatCountUnit(count, l10n.commonUnitEntries),

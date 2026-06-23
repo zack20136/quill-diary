@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../shared/providers/core_providers.dart';
+import '../editor/providers/editor_draft_providers.dart';
 import '../editor/providers/editor_providers.dart';
 import '../home/providers/home_providers.dart';
 import '../session/providers/session_providers.dart';
@@ -20,6 +21,7 @@ Future<AppSessionState> finishRestoreSession(
   ref.invalidate(vaultArchiveIoProvider);
   ref.invalidate(vaultRepositoryProvider);
   ref.invalidate(indexDatabaseManagerProvider);
+  ref.invalidate(editorDraftKeysProvider);
   ref.invalidate(recoveryMetadataProvider);
   ref.invalidate(settingsDriveConnectionProvider);
   ref.invalidate(unlockModeProvider);

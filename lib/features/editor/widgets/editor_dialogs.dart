@@ -18,24 +18,26 @@ class _TagsStudioDialog extends ConsumerStatefulWidget {
 }
 
 class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
-  late final LinkedHashSet<String> _chosen;
+  late final LinkedHashMap<String, String> _chosenByNorm;
   late final TextEditingController _filterCtrl;
 
   String _norm(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
 
-  Set<String> get _chosenNormSet =>
-      _chosen.map((String s) => normalizeText(s)).toSet();
+  void _addChosen(String raw) {
+    final String display = _norm(raw);
+    if (display.isEmpty) {
+      return;
+    }
+    _chosenByNorm.putIfAbsent(normalizeText(display), () => display);
+  }
 
   @override
   void initState() {
     super.initState();
-    _chosen = LinkedHashSet<String>();
+    _chosenByNorm = LinkedHashMap<String, String>();
     _filterCtrl = TextEditingController();
     for (final String chunk in widget.initialCsv.split(',')) {
-      final String t = _norm(chunk);
-      if (t.isNotEmpty) {
-        _chosen.add(t);
-      }
+      _addChosen(chunk);
     }
     _filterCtrl.addListener(() => setState(() {}));
   }
@@ -76,11 +78,9 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     if (!mounted || createdTag == null || createdTag.trim().isEmpty) {
       return;
     }
-    final String t = _norm(createdTag);
-    if (t.isNotEmpty) {
-      _chosen.add(t);
-      setState(() {});
-    }
+    setState(() {
+      _addChosen(createdTag);
+    });
   }
 
   Widget _chosenTagChip(String tag, ThemeData theme, Map<String, int> accents) {
@@ -99,7 +99,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
         onDeleted: () {
-          _chosen.remove(tag);
+          _chosenByNorm.remove(normalizeText(tag));
           setState(() {});
         },
         deleteIconColor: fg.withValues(alpha: 0.82),
@@ -132,8 +132,9 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
         color: fg0,
       ),
       onPressed: () {
-        _chosen.add(label);
-        setState(() {});
+        setState(() {
+          _addChosen(label);
+        });
       },
       side: BorderSide(color: fg0.withValues(alpha: 0.28), width: 0.95),
       elevation: 0,
@@ -157,7 +158,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     final String qlow = _filterCtrl.text.trim().toLowerCase();
     final Iterable<TagCatalogUsageItem> pool = widget.suggestions.where(
       (TagCatalogUsageItem item) =>
-          !_chosenNormSet.contains(normalizeText(item.label)) &&
+          !_chosenByNorm.containsKey(normalizeText(item.label)) &&
           (qlow.isEmpty || item.label.toLowerCase().contains(qlow)),
     );
 
@@ -234,7 +235,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_chosen.isEmpty)
+                if (_chosenByNorm.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
@@ -257,7 +258,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                       spacing: 8,
                       runSpacing: 8,
                       children: <Widget>[
-                        for (final String t in _chosen)
+                        for (final String t in _chosenByNorm.values)
                           _chosenTagChip(t, theme, accentArgbByNorm),
                       ],
                     ),
@@ -346,7 +347,8 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                     ),
                     const Spacer(),
                     FilledButton(
-                      onPressed: () => widget.onApply(_chosen.join(',')),
+                      onPressed: () =>
+                          widget.onApply(_chosenByNorm.values.join(',')),
                       child: Text(context.l10n.commonActionApply),
                     ),
                   ],

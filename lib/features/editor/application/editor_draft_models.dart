@@ -152,11 +152,19 @@ class EditorDraftRecord {
 }
 
 List<String> parseEditorTagsCsv(String tagsRaw) {
-  return tagsRaw
-      .split(',')
-      .map((String tag) => tag.trim())
-      .where((String tag) => tag.isNotEmpty)
-      .toList();
+  final List<String> out = <String>[];
+  final Set<String> seen = <String>{};
+  for (final String chunk in tagsRaw.split(',')) {
+    final String display = chunk.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (display.isEmpty) {
+      continue;
+    }
+    final String norm = normalizeText(display);
+    if (seen.add(norm)) {
+      out.add(display);
+    }
+  }
+  return out;
 }
 
 String pendingAttachmentFingerprint(PendingAttachment attachment) {

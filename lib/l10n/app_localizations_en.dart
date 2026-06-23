@@ -48,6 +48,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnitEntries => 'entries';
 
   @override
+  String get commonUnitTags => 'tags';
+
+  @override
   String get commonUnitImages => 'images';
 
   @override
@@ -599,7 +602,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeNoTagsMessage =>
-      'Create your own tags or use the defaults. They stay in the list even if no entry uses them yet.';
+      'Tap the button below to create default tags, or use \"+\" to add your own. Unused tags stay in the list.';
+
+  @override
+  String get homeCreateDefaultTagsButton => 'Create Default Tags';
+
+  @override
+  String homeTagsSectionTitle(String countSummary) {
+    return 'Tags ($countSummary)';
+  }
 
   @override
   String get homeTagListGuide =>

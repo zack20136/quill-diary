@@ -4,6 +4,7 @@ import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
+import 'editor_draft_store.dart';
 import 'portable/portable_export_io.dart';
 import 'portable/portable_import_io.dart';
 import 'portable/vault_backup_io.dart';
@@ -28,11 +29,13 @@ class VaultArchiveIo {
     required VaultRepository repository,
     required FrontMatterCodec frontMatterCodec,
     required IndexDatabaseManager indexDatabaseManager,
+    required EditorDraftStore editorDraftStore,
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
   }) : _backup = VaultBackupIo(
          pathStrategy: pathStrategy,
          repository: repository,
          indexDatabaseManager: indexDatabaseManager,
+         editorDraftStore: editorDraftStore,
        ),
        _export = PortableExportIo(
          pathStrategy: pathStrategy,

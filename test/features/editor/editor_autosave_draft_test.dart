@@ -115,6 +115,13 @@ void main() {
       expect(parseEditorTagsCsv('a, b ,, c'), <String>['a', 'b', 'c']);
     });
 
+    test('以 normalizeText 去重並保留第一次出現的顯示字串', () {
+      expect(
+        parseEditorTagsCsv('工作, 工作 ,WORK'),
+        <String>['工作', 'WORK'],
+      );
+    });
+
     test('空字串回傳空列表', () {
       expect(parseEditorTagsCsv(''), isEmpty);
     });

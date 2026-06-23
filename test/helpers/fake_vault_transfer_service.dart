@@ -7,8 +7,10 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 
 import 'fake_session_vault_repository.dart';
 import 'test_vault_path_strategy.dart';
@@ -28,6 +30,10 @@ class FakeVaultTransferService extends VaultTransferService {
            repository: FakeSessionVaultRepository(),
            frontMatterCodec: const FrontMatterCodec(),
            indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
+           editorDraftStore: EditorDraftStore(
+             pathStrategy: DummyVaultPathStrategy(),
+             cryptoService: LocalCryptoService(),
+           ),
          ),
          driveBackupService: _UnusedDriveBackupService(),
          vaultRepository: FakeSessionVaultRepository(),

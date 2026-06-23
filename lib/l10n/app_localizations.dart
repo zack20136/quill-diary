@@ -176,6 +176,12 @@ abstract class AppLocalizations {
   /// **'篇'**
   String get commonUnitEntries;
 
+  /// No description provided for @commonUnitTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'筆'**
+  String get commonUnitTags;
+
   /// No description provided for @commonUnitImages.
   ///
   /// In zh, this message translates to:
@@ -1148,8 +1154,20 @@ abstract class AppLocalizations {
   /// No description provided for @homeNoTagsMessage.
   ///
   /// In zh, this message translates to:
-  /// **'可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。'**
+  /// **'可點下方按鈕建立一組預設標籤，或使用右上角的「+」自行新增；即使尚未套用到日記也會保留在清單中。'**
   String get homeNoTagsMessage;
+
+  /// No description provided for @homeCreateDefaultTagsButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立預設標籤'**
+  String get homeCreateDefaultTagsButton;
+
+  /// No description provided for @homeTagsSectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'標籤（{countSummary}）'**
+  String homeTagsSectionTitle(String countSummary);
 
   /// No description provided for @homeTagListGuide.
   ///

@@ -103,23 +103,31 @@ class TagStylesStore {
     }
     try {
       final Object? decoded = jsonDecode(await file.readAsString());
-      if (decoded is! Map<String, Object?>) {
+      if (decoded is! List<Object?>) {
+        await _deleteCatalogFile(file);
         return const <TagCatalogItem>[];
       }
 
-      final Object? rawTags = decoded['tags'];
-      if (rawTags is! List<Object?>) {
-        return const <TagCatalogItem>[];
-      }
-
-      return _normalizeItems(
-        rawTags
+      final List<TagCatalogItem> items = _normalizeItems(
+        decoded
             .map(TagCatalogItem.fromJson)
             .whereType<TagCatalogItem>()
             .toList(growable: false),
       );
+      if (items.isEmpty) {
+        await _deleteCatalogFile(file);
+        return const <TagCatalogItem>[];
+      }
+      return items;
     } on Object {
+      await _deleteCatalogFile(file);
       return const <TagCatalogItem>[];
+    }
+  }
+
+  Future<void> _deleteCatalogFile(File file) async {
+    if (file.existsSync()) {
+      await file.delete();
     }
   }
 
@@ -127,11 +135,9 @@ class TagStylesStore {
     final File file = File(await _filePath());
     await file.parent.create(recursive: true);
     final List<TagCatalogItem> normalized = _normalizeItems(items);
-    final Map<String, Object?> payload = <String, Object?>{
-      'tags': normalized
-          .map((TagCatalogItem item) => item.toJson())
-          .toList(growable: false),
-    };
+    final List<Map<String, Object?>> payload = normalized
+        .map((TagCatalogItem item) => item.toJson())
+        .toList(growable: false);
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(payload),
       flush: true,

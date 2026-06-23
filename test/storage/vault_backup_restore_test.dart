@@ -4,11 +4,14 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/features/editor/application/editor_draft_models.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 
@@ -199,6 +202,47 @@ void main() {
       entryId,
     );
     expect(restored?.title, 'Restore Me');
+  });
+
+  test('restoreBackupZip 會清除所有本地草稿', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Restore Me',
+      date: '2026-05-25',
+      markdownBody: 'restore body',
+    );
+
+    final EditorDraftStore draftStore = EditorDraftStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: LocalCryptoService(),
+    );
+    await draftStore.write(
+      '__new__',
+      EditorDraftRecord(
+        title: '未儲存草稿',
+        dateValue: '2026-05-25',
+        entryHour: 10,
+        entryMinute: 0,
+        tags: const <String>['草稿標籤'],
+        markdownBody: 'draft body',
+        keptAttachmentIds: const <String>[],
+        pendingAttachments: const <EditorDraftPendingAttachment>[],
+        provisionalEntryId: generateEntryId(),
+        createdAt: DateTime.parse('2026-05-25T10:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-25T10:00:00Z'),
+      ),
+      setup.session,
+    );
+    expect(await draftStore.listDraftKeys(), isNotEmpty);
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'draft_clear.zip'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.closeUnlockedResources();
+    await archiveIo.restoreBackupZip(backupFile);
+
+    expect(await draftStore.listDraftKeys(), isEmpty);
   });
 
   test('損壞的備份 zip 不應清空現有 vault', () async {

@@ -22,7 +22,6 @@ import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import '../security/unlock_mode_policy.dart';
-import '../preferences/user_preferences.dart';
 import 'restore_precheck.dart';
 import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
@@ -96,14 +95,12 @@ class VaultRepository {
     required IndexDatabaseManager indexDatabaseManager,
     required DeviceKeyManager deviceKeyManager,
     required AppLockService appLockService,
-    required UserPreferences userPreferences,
   }) : _pathStrategy = pathStrategy,
        _frontMatterCodec = frontMatterCodec,
        _cryptoService = cryptoService,
        _indexDatabaseManager = indexDatabaseManager,
        _deviceKeyManager = deviceKeyManager,
-       _appLockService = appLockService,
-       _userPreferences = userPreferences;
+       _appLockService = appLockService;
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
@@ -111,7 +108,6 @@ class VaultRepository {
   final IndexDatabaseManager _indexDatabaseManager;
   final DeviceKeyManager _deviceKeyManager;
   final AppLockService _appLockService;
-  final UserPreferences _userPreferences;
 
   RecoveryMetadata? _cachedRecoveryMetadata;
 
@@ -298,7 +294,6 @@ class VaultRepository {
       kKeystoreWrapModeKey,
       authKind.storageSuffix,
     );
-    await _seedDefaultTagCatalog();
 
     return RecoverySetupResult(recoveryKey: recoveryKey, session: session);
   }
@@ -942,6 +937,7 @@ class VaultRepository {
       p.join(vaultRoot.path, 'entries'),
     );
     if (!entriesDirectory.existsSync()) {
+      await listTagCatalog();
       await indexDb.setAppValue(
         kLastRebuildAtKey,
         DateTime.now().toIso8601String(),
@@ -950,8 +946,11 @@ class VaultRepository {
         kIndexGenerationKey,
         IndexDatabase.indexGeneration.toString(),
       );
+      await syncTagStylesBetweenVaultAndIndex();
       return;
     }
+
+    final Set<String> collectedTagLabels = <String>{};
 
     await for (final FileSystemEntity entity in entriesDirectory.list(
       recursive: true,
@@ -997,8 +996,13 @@ class VaultRepository {
                 .replaceFirst('.', ''),
           ),
       });
+      collectedTagLabels.addAll(entry.tags);
     }
 
+    await listTagCatalog();
+    if (collectedTagLabels.isNotEmpty) {
+      await ensureTagCatalogLabels(collectedTagLabels);
+    }
     await indexDb.setAppValue(
       kLastRebuildAtKey,
       DateTime.now().toIso8601String(),
@@ -1066,18 +1070,15 @@ class VaultRepository {
     }
   }
 
-  Future<void> _seedDefaultTagCatalog() async {
+  /// 僅在 catalog 為空時寫入預設標籤；已存在則 no-op。需 index 已開啟。
+  /// [locale] 應與目前 App 介面語系一致（例如 [Localizations.localeOf]）。
+  Future<bool> seedDefaultTagCatalogIfEmpty({required Locale locale}) async {
     final List<TagCatalogItem> existing = await listTagCatalog();
     if (existing.isNotEmpty) {
-      return;
+      return false;
     }
-    // Default tags are seeded once. Prefer an explicit app-language choice;
-    // only fall back to the device locale before any preference exists.
-    final Locale seedLocale =
-        (await _userPreferences.storedAppLocaleOrNull)?.materialLocale ??
-        PlatformDispatcher.instance.locale;
     final List<TagCatalogItem> defaultCatalog = defaultTagCatalogForLocale(
-      seedLocale,
+      locale,
     );
     await _persistTagCatalogToVault(defaultCatalog);
     final IndexDatabase indexDb = _requireOpenIndex();
@@ -1087,6 +1088,7 @@ class VaultRepository {
       }
       await indexDb.upsertTagAccentArgb(item.label, item.accentArgb!);
     }
+    return true;
   }
 
   Future<RecoveryMetadata> _requireMetadataForSession(
@@ -1686,7 +1688,6 @@ class VaultRepository {
 
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
-    await _seedDefaultTagCatalog();
     final IndexDatabase indexDb = _requireOpenIndex();
     final String? lastRebuildAt = await indexDb.getAppValue(kLastRebuildAtKey);
     final String? storedGeneration = await indexDb.getAppValue(

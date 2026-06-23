@@ -6,9 +6,9 @@ import 'package:path/path.dart' as p;
 
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../database/index_database_manager.dart';
+import '../editor_draft_store.dart';
 import '../restore_precheck.dart';
 import '../shared/archive_extract.dart';
-import '../tag_styles_store.dart';
 import '../backup_task_progress.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
@@ -23,13 +23,16 @@ class VaultBackupIo {
     required VaultPathStrategy pathStrategy,
     required VaultRepository repository,
     required IndexDatabaseManager indexDatabaseManager,
+    required EditorDraftStore editorDraftStore,
   }) : _pathStrategy = pathStrategy,
        _repository = repository,
-       _indexDatabaseManager = indexDatabaseManager;
+       _indexDatabaseManager = indexDatabaseManager,
+       _editorDraftStore = editorDraftStore;
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
   final IndexDatabaseManager _indexDatabaseManager;
+  final EditorDraftStore _editorDraftStore;
 
   Future<File> writeBackupZip(
     File target, {
@@ -236,16 +239,6 @@ class VaultBackupIo {
 
     _validateRestoredVaultPayload(tempRoot);
 
-    List<TagCatalogItem> localTagCatalog = const <TagCatalogItem>[];
-    try {
-      localTagCatalog = await _repository.listTagCatalog();
-    } on Object {
-      // repository 或索引可能已關閉；改從磁碟上的 vault 檔案讀取。
-    }
-    if (localTagCatalog.isEmpty) {
-      localTagCatalog = await TagStylesStore(_pathStrategy).read();
-    }
-
     final Directory incomingVault = Directory('${vaultRoot.path}.incoming');
     if (incomingVault.existsSync()) {
       await incomingVault.delete(recursive: true);
@@ -284,17 +277,9 @@ class VaultBackupIo {
       await strayVaultIndex.delete(recursive: true);
     }
 
-    if (localTagCatalog.isNotEmpty) {
-      final TagStylesStore tagStylesStore = TagStylesStore(_pathStrategy);
-      final List<TagCatalogItem> restoredVaultStyles = await tagStylesStore
-          .read();
-      await tagStylesStore.write(
-        TagStylesStore.merge(restoredVaultStyles, localTagCatalog),
-      );
-    }
-
     await _repository.closeUnlockedResources();
     await _indexDatabaseManager.deleteDatabaseFiles();
+    await _editorDraftStore.deleteAll();
     _repository.clearRecoveryMetadataCache();
     if (!preserveTrustedDeviceAccess) {
       await _repository.clearTrustedDeviceAccess();

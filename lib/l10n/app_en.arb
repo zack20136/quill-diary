@@ -13,6 +13,7 @@
   "commonCloseTooltip": "Close",
   "commonClearSearchTooltip": "Clear Search",
   "commonUnitEntries": "entries",
+  "commonUnitTags": "tags",
   "commonUnitImages": "images",
   "commonUnitAttachments": "attachments",
   "commonUnitDays": "days",
@@ -305,7 +306,16 @@
   },
   "homeTagSearchHint": "Search tags…",
   "homeNoTagsTitle": "No Tags Yet",
-  "homeNoTagsMessage": "Create your own tags or use the defaults. They stay in the list even if no entry uses them yet.",
+  "homeNoTagsMessage": "Tap the button below to create default tags, or use \"+\" to add your own. Unused tags stay in the list.",
+  "homeCreateDefaultTagsButton": "Create Default Tags",
+  "homeTagsSectionTitle": "Tags ({countSummary})",
+  "@homeTagsSectionTitle": {
+    "placeholders": {
+      "countSummary": {
+        "type": "String"
+      }
+    }
+  },
   "homeTagListGuide": "Tap a row in the tag list to preview entries filtered by that tag. Tap the same row again to clear the selection.",
   "homeTagPreviewTitle": "Select a Tag to Preview Entries",
   "homeTagDeleted": "\"{label}\" deleted",

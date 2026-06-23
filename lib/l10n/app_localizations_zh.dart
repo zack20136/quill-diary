@@ -48,6 +48,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonUnitEntries => '篇';
 
   @override
+  String get commonUnitTags => '筆';
+
+  @override
   String get commonUnitImages => '張';
 
   @override
@@ -579,7 +582,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeNoTagsTitle => '尚未有標籤';
 
   @override
-  String get homeNoTagsMessage => '可先建立標籤或使用預設標籤；即使尚未套用到日記也會保留在清單中。';
+  String get homeNoTagsMessage =>
+      '可點下方按鈕建立一組預設標籤，或使用右上角的「+」自行新增；即使尚未套用到日記也會保留在清單中。';
+
+  @override
+  String get homeCreateDefaultTagsButton => '建立預設標籤';
+
+  @override
+  String homeTagsSectionTitle(String countSummary) {
+    return '標籤（$countSummary）';
+  }
 
   @override
   String get homeTagListGuide => '請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。';

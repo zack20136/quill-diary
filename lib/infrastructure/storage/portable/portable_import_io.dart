@@ -90,6 +90,10 @@ class PortableImportIo {
       skippedAttachments += totals.skippedAttachments;
     }
 
+    if (importedEntries > 0) {
+      await _repository.syncTagStylesBetweenVaultAndIndex();
+    }
+
     return PortableImportResult(
       importedEntries: importedEntries,
       skippedFiles: skippedFiles,
@@ -123,6 +127,9 @@ class PortableImportIo {
             extractedRoot: tempRoot,
           );
       if (easyDiaryResult != null) {
+        if (easyDiaryResult.importedEntries > 0) {
+          await _repository.syncTagStylesBetweenVaultAndIndex();
+        }
         return easyDiaryResult;
       }
 
@@ -170,26 +177,11 @@ class PortableImportIo {
       skippedAttachments += parsedEntry.skippedAttachments;
     }
 
-    await _upsertImportedTagsToCatalog(parsedEntries);
-
     return ImportFileTotals(
       importedEntries: importedEntries,
       skippedFiles: skippedFiles,
       skippedAttachments: skippedAttachments,
     );
-  }
-
-  Future<void> _upsertImportedTagsToCatalog(
-    List<ParsedImportEntry> parsedEntries,
-  ) async {
-    final List<String> labels = <String>[];
-    for (final ParsedImportEntry parsedEntry in parsedEntries) {
-      if (parsedEntry.isEmpty) {
-        continue;
-      }
-      labels.addAll(parsedEntry.entry.tags);
-    }
-    await _repository.ensureTagCatalogLabels(labels);
   }
 
   Future<List<File>> _discoverImportFiles(Directory rootDirectory) async {

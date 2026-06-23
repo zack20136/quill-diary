@@ -59,6 +59,10 @@ void main() {
       TagStylesStore.toAccentMap(vaultStyles)[normalizeText('Work')],
       workColor,
     );
+    expect(
+      TagStylesStore.toAccentMap(vaultStyles).containsKey(normalizeText('Noise')),
+      isFalse,
+    );
 
     final UnlockedVaultSession session = await harness.repository
         .unlockWithRecoveryKey(setup.recoveryKey);
@@ -68,5 +72,50 @@ void main() {
       await harness.repository.listTagCatalog(),
     );
     expect(indexStyles[normalizeText('Work')], workColor);
+  });
+
+  test('還原無 tag_styles.json 時 rebuild 會從日記補齊 catalog', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        title: 'Tagged',
+        date: const DateOnly('2026-05-30'),
+        createdAt: DateTime.parse('2026-05-30T08:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-30T08:00:00Z'),
+        markdownBody: 'body',
+        tags: const <String>['FromEntry'],
+      ),
+    );
+
+    final File tagStylesFile = File(
+      p.join(
+        (await harness.pathStrategy.vaultRootDirectory()).path,
+        'tag_styles.json',
+      ),
+    );
+    if (tagStylesFile.existsSync()) {
+      await tagStylesFile.delete();
+    }
+
+    final File backupFile = File(p.join(harness.tempDir.path, 'no_tags.zip'));
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.closeUnlockedResources();
+    await archiveIo.restoreBackupZip(backupFile);
+
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
+    await harness.repository.ensureIndexReady(session);
+
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
+    expect(
+      catalog.any((TagCatalogItem item) => item.label == 'FromEntry'),
+      isTrue,
+    );
   });
 }

@@ -48,9 +48,28 @@ void main() {
     final File file = File(
       '${vaultRoot.path}${Platform.pathSeparator}tag_styles.json',
     );
-    final Map<String, Object?> decoded =
-        jsonDecode(await file.readAsString()) as Map<String, Object?>;
-    expect(decoded['tags'], isA<List<Object?>>());
+    final Object? decoded = jsonDecode(await file.readAsString());
+    expect(decoded, isA<List<Object?>>());
+  });
+
+  test('read 無效格式會刪除檔案並回傳空目錄', () async {
+    final Directory vaultRoot = Directory(
+      '${tempDir.path}${Platform.pathSeparator}vault',
+    );
+    await vaultRoot.create(recursive: true);
+    final File file = File(
+      '${vaultRoot.path}${Platform.pathSeparator}tag_styles.json',
+    );
+    await file.writeAsString(
+      jsonEncode(<String, Object?>{
+        'tags': <Map<String, Object?>>[
+          <String, Object?>{'label': '工作', 'accent_argb': 0xFF4C6EF5},
+        ],
+      }),
+    );
+
+    expect(await store.read(), isEmpty);
+    expect(file.existsSync(), isFalse);
   });
 
   test('merge 以 normalized key 覆蓋並保留順序', () {

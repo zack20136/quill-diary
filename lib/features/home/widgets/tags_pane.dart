@@ -39,6 +39,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
 
   /// 用於預覽：已選標籤的顯示字串（見 [normalizeText] 比對實際日記）。
   String? _selectedTagLabel;
+  bool _seedingDefaultTags = false;
 
   @override
   void initState() {
@@ -194,6 +195,35 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
   }
 
+  Future<void> _seedDefaultTags() async {
+    if (_seedingDefaultTags) {
+      return;
+    }
+    setState(() => _seedingDefaultTags = true);
+    try {
+      final bool created = await ref
+          .read(vaultRepositoryProvider)
+          .seedDefaultTagCatalogIfEmpty(
+            locale: Localizations.localeOf(context),
+          );
+      ref.invalidate(tagCatalogProvider);
+      ref.invalidate(tagAccentArgbMapProvider);
+      await refreshHomeIndexCaches(ref);
+      if (!mounted) {
+        return;
+      }
+      if (created) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.homeCreateDefaultTagsButton)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _seedingDefaultTags = false);
+      }
+    }
+  }
+
   Widget _tagDiaryPreviewPanel(
     List<EntryIndexRecord> records,
     ThemeData theme,
@@ -320,6 +350,10 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   icon: Icons.label_outline_rounded,
                   title: context.l10n.homeNoTagsTitle,
                   message: context.l10n.homeNoTagsMessage,
+                  actionLabel: _seedingDefaultTags
+                      ? null
+                      : context.l10n.homeCreateDefaultTagsButton,
+                  onAction: _seedingDefaultTags ? null : _seedDefaultTags,
                 );
               }
               final List<TagCatalogUsageItem> list = mergedTags
@@ -493,7 +527,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                     slivers: <Widget>[
                     SliverToBoxAdapter(
                       child: HomeSectionCard(
-                        title: context.l10n.homeNavTags,
+                        title: homeTagsSectionTitle(context.l10n, list.length),
                         stripeColor: cs.secondary,
                         child: SizedBox(
                           height: HomeLayout.tagListSectionHeight,

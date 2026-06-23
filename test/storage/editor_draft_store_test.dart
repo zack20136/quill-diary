@@ -129,6 +129,50 @@ void main() {
     );
   });
 
+  test('deleteAll 會移除所有草稿目錄', () async {
+    final EditorDraftRecord record = EditorDraftRecord(
+      title: '草稿 A',
+      dateValue: '2026-06-09',
+      entryHour: 9,
+      entryMinute: 30,
+      tags: const <String>[],
+      markdownBody: 'a',
+      keptAttachmentIds: const <String>[],
+      pendingAttachments: const <EditorDraftPendingAttachment>[],
+      provisionalEntryId: 'entry-a',
+      createdAt: DateTime(2026, 6, 9, 9, 30),
+      updatedAt: DateTime(2026, 6, 9, 10, 0),
+    );
+    await store.write('__new__', record, session);
+    await store.write(
+      'entry-b',
+      EditorDraftRecord(
+        title: '草稿 B',
+        dateValue: '2026-06-09',
+        entryHour: 9,
+        entryMinute: 30,
+        tags: const <String>[],
+        markdownBody: 'b',
+        keptAttachmentIds: const <String>[],
+        pendingAttachments: const <EditorDraftPendingAttachment>[],
+        provisionalEntryId: 'entry-b',
+        createdAt: DateTime(2026, 6, 9, 9, 30),
+        updatedAt: DateTime(2026, 6, 9, 10, 0),
+      ),
+      session,
+    );
+
+    expect(await store.listDraftKeys(), hasLength(2));
+
+    await store.deleteAll();
+
+    expect(await store.listDraftKeys(), isEmpty);
+    expect(
+      (await pathStrategy.editorDraftsRootDirectory()).existsSync(),
+      isFalse,
+    );
+  });
+
   test('read 檔案不存在時回傳 null', () async {
     final EditorDraftRecord? restored = await store.read('missing', session);
     expect(restored, isNull);

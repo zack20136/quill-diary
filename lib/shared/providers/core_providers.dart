@@ -75,7 +75,6 @@ final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
     indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
     deviceKeyManager: ref.watch(deviceKeyManagerProvider),
     appLockService: ref.watch(appLockServiceProvider),
-    userPreferences: ref.watch(userPreferencesProvider),
   );
 });
 
@@ -86,6 +85,7 @@ final vaultArchiveIoProvider = Provider<VaultArchiveIo>((Ref ref) {
     repository: ref.watch(vaultRepositoryProvider),
     frontMatterCodec: ref.watch(frontMatterCodecProvider),
     indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
+    editorDraftStore: ref.watch(editorDraftStoreProvider),
   );
 });
 

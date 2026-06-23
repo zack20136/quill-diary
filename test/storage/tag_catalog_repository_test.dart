@@ -9,6 +9,7 @@ import 'package:quill_diary/infrastructure/preferences/personalization_preferenc
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../helpers/vault_test_harness.dart';
 
@@ -30,9 +31,23 @@ void main() {
     await harness.dispose();
   });
 
-  test('setupRecoveryKey 後會 seed 預設標籤與語意色', () async {
+  test('setupRecoveryKey 後不會自動 seed 預設標籤', () async {
     await persistZhTwPreference();
     await harness.repository.setupRecoveryKey();
+
+    expect(await harness.repository.listTagCatalog(), isEmpty);
+  });
+
+  test('seedDefaultTagCatalogIfEmpty 會建立預設標籤與語意色', () async {
+    await persistZhTwPreference();
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.repository.ensureIndexReady(setup.session);
+
+    final bool created = await harness.repository.seedDefaultTagCatalogIfEmpty(
+      locale: appZhLocale,
+    );
+    expect(created, isTrue);
 
     final List<TagCatalogItem> catalog = await harness.repository
         .listTagCatalog();
@@ -56,9 +71,29 @@ void main() {
       TagStylesStore.toAccentMap(catalog)[normalizeText('學習')],
       0xFF20C997,
     );
+
+    expect(await harness.repository.seedDefaultTagCatalogIfEmpty(
+      locale: appZhLocale,
+    ), isFalse);
   });
 
-  test('ensureIndexReady 在空 catalog 時 seed 預設標籤', () async {
+  test('seedDefaultTagCatalogIfEmpty 依英文語系建立標籤', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    await harness.repository.ensureIndexReady(setup.session);
+
+    final bool created = await harness.repository.seedDefaultTagCatalogIfEmpty(
+      locale: appEnLocale,
+    );
+    expect(created, isTrue);
+
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
+    expect(catalog.first.label, 'Daily');
+    expect(catalog.map((TagCatalogItem item) => item.label), contains('Work'));
+  });
+
+  test('ensureIndexReady 在空 catalog 時不會 seed 預設標籤', () async {
     await persistZhTwPreference();
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
@@ -68,6 +103,9 @@ void main() {
         .unlockWithRecoveryKey(setup.recoveryKey);
     await harness.repository.ensureIndexReady(session);
 
+    expect(await harness.repository.listTagCatalog(), isEmpty);
+
+    await harness.repository.seedDefaultTagCatalogIfEmpty(locale: appZhLocale);
     final List<TagCatalogItem> catalog = await harness.repository
         .listTagCatalog();
     expect(catalog.map((TagCatalogItem item) => item.label), contains('日常'));
@@ -157,5 +195,42 @@ void main() {
     final List<TagCatalogItem> catalog = await harness.repository
         .listTagCatalog();
     expect(catalog.any((TagCatalogItem item) => item.label == '手打標籤'), isTrue);
+  });
+
+  test('rebuildIndex 會從日記補齊缺漏的 catalog 標籤', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+
+    await harness.repository.saveEntry(
+      setup.session,
+      DiaryEntry(
+        id: generateEntryId(),
+        vaultId: setup.session.vaultId,
+        date: const DateOnly('2026-06-01'),
+        createdAt: DateTime.parse('2026-06-01T10:00:00'),
+        updatedAt: DateTime.parse('2026-06-01T10:00:00'),
+        markdownBody: 'body',
+        tags: const <String>['掃描標籤'],
+      ),
+    );
+
+    final File tagStylesFile = File(
+      '${(await harness.pathStrategy.vaultRootDirectory()).path}${Platform.pathSeparator}tag_styles.json',
+    );
+    if (tagStylesFile.existsSync()) {
+      await tagStylesFile.delete();
+    }
+
+    await harness.repository.closeUnlockedResources();
+    final UnlockedVaultSession session = await harness.repository
+        .unlockWithRecoveryKey(setup.recoveryKey);
+    await harness.repository.rebuildIndex(session);
+
+    final List<TagCatalogItem> catalog = await harness.repository
+        .listTagCatalog();
+    expect(
+      catalog.any((TagCatalogItem item) => item.label == '掃描標籤'),
+      isTrue,
+    );
   });
 }
