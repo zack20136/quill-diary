@@ -594,10 +594,10 @@
       }
     }
   },
-  "settingsSecurityOverviewIndexTitle": "Search Index",
+  "settingsSecurityOverviewIndexTitle": "Vault",
   "settingsSecurityOverviewCreateRecoveryKeyButton": "Create Recovery Key",
   "settingsSecurityOverviewRotateRecoveryKeyButton": "Update Recovery Key",
-  "settingsSecurityOverviewRebuildIndexButton": "Rebuild Index",
+  "settingsSecurityOverviewRepairVaultButton": "Repair Vault",
   "settingsSecurityOverviewHealthLevelOk": "OK",
   "settingsSecurityOverviewHealthLevelWarning": "Needs Attention",
   "settingsSecurityOverviewHealthLevelError": "Error",
@@ -856,13 +856,13 @@
   "settingsRestoreBulletTrustedAutoUnlockFallback": "If auto-unlock fails, enter the recovery key saved when this backup was created.",
   "settingsRestoreBulletRecoveryKeyAfterRestore": "After restore, enter the recovery key saved when this backup was created.",
   "settingsRestoreBulletRewrapNote": "The first unlock after restore may take longer. Keep the app open.",
-  "settingsIndexReadyMessage": "You can rebuild anytime to restore search.",
-  "settingsIndexLockedMessage": "Unlock to rebuild the search index.",
+  "settingsRepairVaultReadyMessage": "You can repair anytime to restore vault data and search.",
+  "settingsRepairVaultLockedMessage": "Unlock to repair the vault.",
   "settingsIndexLinkDriveProgress": "Linking Google Account…",
   "settingsIndexSwitchDriveAccountProgress": "Switching account…",
   "settingsIndexDisconnectDriveProgress": "Disconnecting…",
-  "settingsIndexRebuildCompleted": "Last rebuild: {entryCount} entries, {finishedAt}.",
-  "@settingsIndexRebuildCompleted": {
+  "settingsRepairVaultCompleted": "Last repair: {entryCount} entries, {finishedAt}.",
+  "@settingsRepairVaultCompleted": {
     "placeholders": {
       "entryCount": {
         "type": "int"
@@ -872,14 +872,31 @@
       }
     }
   },
-  "settingsIndexRebuildSuccess": "Search index rebuilt: {entryCount} entries in {duration}",
-  "@settingsIndexRebuildSuccess": {
+  "settingsRepairVaultSuccess": "Vault repaired: {entryCount} entries in {duration}",
+  "@settingsRepairVaultSuccess": {
     "placeholders": {
       "entryCount": {
         "type": "int"
       },
       "duration": {
         "type": "String"
+      }
+    }
+  },
+  "settingsRepairVaultSuccessChanges": "(Moved {relocatedEntries} entries, removed {removedDuplicates} duplicate entry files and {removedOrphanAssets} orphan attachments; skipped {skippedCorruptEntries} corrupt files)",
+  "@settingsRepairVaultSuccessChanges": {
+    "placeholders": {
+      "relocatedEntries": {
+        "type": "int"
+      },
+      "removedDuplicates": {
+        "type": "int"
+      },
+      "removedOrphanAssets": {
+        "type": "int"
+      },
+      "skippedCorruptEntries": {
+        "type": "int"
       }
     }
   },

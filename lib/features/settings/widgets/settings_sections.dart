@@ -751,7 +751,7 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.busy,
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
-    required this.onRebuildIndex,
+    required this.onRepairVault,
     required this.lockPanel,
     super.key,
   });
@@ -765,7 +765,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
-  final VoidCallback? onRebuildIndex;
+  final VoidCallback? onRepairVault;
   final Widget? lockPanel;
 
   @override
@@ -813,7 +813,7 @@ class SettingsSecurityOverview extends StatelessWidget {
         title: l10n.settingsSecurityOverviewIndexTitle,
         message: hasUnlockedSession
             ? indexMessage
-            : l10n.settingsIndexLockedMessage,
+            : l10n.settingsRepairVaultLockedMessage,
         level: hasUnlockedSession
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
@@ -850,10 +850,10 @@ class SettingsSecurityOverview extends StatelessWidget {
                   : onCreateRecoveryKey,
             ),
             SettingsActionButton(
-              label: l10n.settingsSecurityOverviewRebuildIndexButton,
-              icon: Icons.manage_search_outlined,
+              label: l10n.settingsSecurityOverviewRepairVaultButton,
+              icon: Icons.build_outlined,
               appearance: SettingsActionButtonAppearance.outlined,
-              onPressed: busy ? null : onRebuildIndex,
+              onPressed: busy ? null : onRepairVault,
             ),
           ],
         ),

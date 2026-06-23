@@ -1870,7 +1870,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewIndexTitle.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引'**
+  /// **'日記庫'**
   String get settingsSecurityOverviewIndexTitle;
 
   /// No description provided for @settingsSecurityOverviewCreateRecoveryKeyButton.
@@ -1885,11 +1885,11 @@ abstract class AppLocalizations {
   /// **'更新復原金鑰'**
   String get settingsSecurityOverviewRotateRecoveryKeyButton;
 
-  /// No description provided for @settingsSecurityOverviewRebuildIndexButton.
+  /// No description provided for @settingsSecurityOverviewRepairVaultButton.
   ///
   /// In zh, this message translates to:
-  /// **'重建索引'**
-  String get settingsSecurityOverviewRebuildIndexButton;
+  /// **'修復日記庫'**
+  String get settingsSecurityOverviewRepairVaultButton;
 
   /// No description provided for @settingsSecurityOverviewHealthLevelOk.
   ///
@@ -2495,17 +2495,17 @@ abstract class AppLocalizations {
   /// **'還原後首次解鎖可能需要較久，請保持 App 開啟。'**
   String get settingsRestoreBulletRewrapNote;
 
-  /// No description provided for @settingsIndexReadyMessage.
+  /// No description provided for @settingsRepairVaultReadyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'可隨時重建，讓搜尋恢復正常。'**
-  String get settingsIndexReadyMessage;
+  /// **'可隨時修復，讓日記庫與搜尋恢復正常。'**
+  String get settingsRepairVaultReadyMessage;
 
-  /// No description provided for @settingsIndexLockedMessage.
+  /// No description provided for @settingsRepairVaultLockedMessage.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後可重建搜尋索引。'**
-  String get settingsIndexLockedMessage;
+  /// **'解鎖後可修復日記庫。'**
+  String get settingsRepairVaultLockedMessage;
 
   /// No description provided for @settingsIndexLinkDriveProgress.
   ///
@@ -2525,17 +2525,28 @@ abstract class AppLocalizations {
   /// **'正在中斷連線…'**
   String get settingsIndexDisconnectDriveProgress;
 
-  /// No description provided for @settingsIndexRebuildCompleted.
+  /// No description provided for @settingsRepairVaultCompleted.
   ///
   /// In zh, this message translates to:
-  /// **'最近重建完成：{entryCount} 篇日記，{finishedAt}。'**
-  String settingsIndexRebuildCompleted(int entryCount, String finishedAt);
+  /// **'最近修復完成：{entryCount} 篇日記，{finishedAt}。'**
+  String settingsRepairVaultCompleted(int entryCount, String finishedAt);
 
-  /// No description provided for @settingsIndexRebuildSuccess.
+  /// No description provided for @settingsRepairVaultSuccess.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引已重建：{entryCount} 篇日記，耗時 {duration}'**
-  String settingsIndexRebuildSuccess(int entryCount, String duration);
+  /// **'日記庫已修復：{entryCount} 篇日記，耗時 {duration}'**
+  String settingsRepairVaultSuccess(int entryCount, String duration);
+
+  /// No description provided for @settingsRepairVaultSuccessChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'（搬移 {relocatedEntries} 篇、刪除 {removedDuplicates} 個重複日記檔與 {removedOrphanAssets} 個孤立附件；跳過 {skippedCorruptEntries} 個損壞檔）'**
+  String settingsRepairVaultSuccessChanges(
+    int relocatedEntries,
+    int removedDuplicates,
+    int removedOrphanAssets,
+    int skippedCorruptEntries,
+  );
 
   /// No description provided for @settingsSupportNavButtonLabel.
   ///

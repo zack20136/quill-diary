@@ -42,13 +42,13 @@ class SettingsFlowFeedback {
   final SettingsFlowFeedbackTone tone;
 }
 
-class SettingsRebuildIndexResult {
-  const SettingsRebuildIndexResult({
+class SettingsRepairVaultResult {
+  const SettingsRepairVaultResult({
     required this.report,
     required this.feedback,
   });
 
-  final IndexRebuildReport report;
+  final VaultRepairReport report;
   final SettingsFlowFeedback feedback;
 }
 
@@ -255,19 +255,41 @@ class SettingsFlowController {
     );
   }
 
-  Future<SettingsRebuildIndexResult> rebuildIndex(AppLocalizations l10n) async {
-    final IndexRebuildReport report = await _actions.rebuildIndex();
+  Future<SettingsRepairVaultResult> repairVault(AppLocalizations l10n) async {
+    final VaultRepairReport report = await _actions.repairVault();
     _ref.read(entryIndexRevisionProvider.notifier).bump();
     _ref.invalidate(recoveryMetadataProvider);
-    return SettingsRebuildIndexResult(
+    _ref.invalidate(tagAccentArgbMapProvider);
+    return SettingsRepairVaultResult(
       report: report,
       feedback: SettingsFlowFeedback(
-        l10n.settingsIndexRebuildSuccess(
-          report.entryCount,
-          DisplayFormat.formatDurationMs(l10n, report.duration.inMilliseconds),
-        ),
+        _repairVaultSuccessMessage(l10n, report),
       ),
     );
+  }
+
+  String _repairVaultSuccessMessage(
+    AppLocalizations l10n,
+    VaultRepairReport report,
+  ) {
+    final String base = l10n.settingsRepairVaultSuccess(
+      report.entryCount,
+      DisplayFormat.formatDurationMs(l10n, report.duration.inMilliseconds),
+    );
+    final bool hasChanges =
+        report.relocatedEntries > 0 ||
+        report.removedDuplicateEntries > 0 ||
+        report.removedOrphanAssets > 0 ||
+        report.skippedCorruptEntries > 0;
+    if (!hasChanges) {
+      return base;
+    }
+    return '$base ${l10n.settingsRepairVaultSuccessChanges(
+      report.relocatedEntries,
+      report.removedDuplicateEntries,
+      report.removedOrphanAssets,
+      report.skippedCorruptEntries,
+    )}';
   }
 
   Future<void> retryTrustedUnlock() async {

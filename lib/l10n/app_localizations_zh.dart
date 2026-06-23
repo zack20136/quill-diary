@@ -996,7 +996,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get settingsSecurityOverviewIndexTitle => '搜尋索引';
+  String get settingsSecurityOverviewIndexTitle => '日記庫';
 
   @override
   String get settingsSecurityOverviewCreateRecoveryKeyButton => '建立復原金鑰';
@@ -1005,7 +1005,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSecurityOverviewRotateRecoveryKeyButton => '更新復原金鑰';
 
   @override
-  String get settingsSecurityOverviewRebuildIndexButton => '重建索引';
+  String get settingsSecurityOverviewRepairVaultButton => '修復日記庫';
 
   @override
   String get settingsSecurityOverviewHealthLevelOk => '正常';
@@ -1383,10 +1383,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreBulletRewrapNote => '還原後首次解鎖可能需要較久，請保持 App 開啟。';
 
   @override
-  String get settingsIndexReadyMessage => '可隨時重建，讓搜尋恢復正常。';
+  String get settingsRepairVaultReadyMessage => '可隨時修復，讓日記庫與搜尋恢復正常。';
 
   @override
-  String get settingsIndexLockedMessage => '解鎖後可重建搜尋索引。';
+  String get settingsRepairVaultLockedMessage => '解鎖後可修復日記庫。';
 
   @override
   String get settingsIndexLinkDriveProgress => '正在連結 Google 帳戶…';
@@ -1398,13 +1398,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsIndexDisconnectDriveProgress => '正在中斷連線…';
 
   @override
-  String settingsIndexRebuildCompleted(int entryCount, String finishedAt) {
-    return '最近重建完成：$entryCount 篇日記，$finishedAt。';
+  String settingsRepairVaultCompleted(int entryCount, String finishedAt) {
+    return '最近修復完成：$entryCount 篇日記，$finishedAt。';
   }
 
   @override
-  String settingsIndexRebuildSuccess(int entryCount, String duration) {
-    return '搜尋索引已重建：$entryCount 篇日記，耗時 $duration';
+  String settingsRepairVaultSuccess(int entryCount, String duration) {
+    return '日記庫已修復：$entryCount 篇日記，耗時 $duration';
+  }
+
+  @override
+  String settingsRepairVaultSuccessChanges(
+    int relocatedEntries,
+    int removedDuplicates,
+    int removedOrphanAssets,
+    int skippedCorruptEntries,
+  ) {
+    return '（搬移 $relocatedEntries 篇、刪除 $removedDuplicates 個重複日記檔與 $removedOrphanAssets 個孤立附件；跳過 $skippedCorruptEntries 個損壞檔）';
   }
 
   @override

@@ -56,7 +56,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _busy = false;
   String? _busyMessage;
   double? _busyProgress;
-  IndexRebuildReport? _lastIndexRebuildReport;
+  VaultRepairReport? _lastVaultRepairReport;
 
   SettingsFlowController get _settingsFlow =>
       ref.read(settingsFlowControllerProvider);

@@ -59,16 +59,30 @@ class RecoverySetupResult {
   final UnlockedVaultSession session;
 }
 
-class IndexRebuildReport {
-  const IndexRebuildReport({
+class VaultRepairReport {
+  const VaultRepairReport({
     required this.entryCount,
     required this.duration,
     required this.finishedAt,
+    required this.relocatedEntries,
+    required this.removedDuplicateEntries,
+    required this.skippedCorruptEntries,
+    required this.tagsAdded,
+    required this.relocatedAssets,
+    required this.removedOrphanAssets,
+    this.warnings = const <String>[],
   });
 
   final int entryCount;
   final Duration duration;
   final DateTime finishedAt;
+  final int relocatedEntries;
+  final int removedDuplicateEntries;
+  final int skippedCorruptEntries;
+  final int tagsAdded;
+  final int relocatedAssets;
+  final int removedOrphanAssets;
+  final List<String> warnings;
 }
 
 class _EntrySearchFields {
@@ -81,6 +95,76 @@ class _EntrySearchFields {
   final String previewText;
   final String titleSearchText;
   final String bodySearchText;
+}
+
+class _ScannedEntry {
+  const _ScannedEntry({
+    required this.entry,
+    required this.filePath,
+    required this.markdown,
+    required this.attachments,
+    required this.searchFields,
+    required this.encryptedFileSize,
+    required this.encryptedModifiedAt,
+  });
+
+  final DiaryEntry entry;
+  final String filePath;
+  final String markdown;
+  final List<AssetAttachment> attachments;
+  final _EntrySearchFields searchFields;
+  final int encryptedFileSize;
+  final DateTime encryptedModifiedAt;
+}
+
+class _RawScannedEntry {
+  const _RawScannedEntry({
+    required this.entry,
+    required this.filePath,
+    required this.markdown,
+    required this.attachments,
+    required this.searchFields,
+    required this.encryptedFileSize,
+    required this.encryptedModifiedAt,
+    required this.needsVaultIdRewrite,
+  });
+
+  final DiaryEntry entry;
+  final String filePath;
+  final String markdown;
+  final List<AssetAttachment> attachments;
+  final _EntrySearchFields searchFields;
+  final int encryptedFileSize;
+  final DateTime encryptedModifiedAt;
+  final bool needsVaultIdRewrite;
+}
+
+class _EntryRepairStats {
+  const _EntryRepairStats({
+    required this.scanned,
+    required this.relocatedEntries,
+    required this.removedDuplicateEntries,
+    required this.skippedCorruptEntries,
+    required this.warnings,
+  });
+
+  final List<_ScannedEntry> scanned;
+  final int relocatedEntries;
+  final int removedDuplicateEntries;
+  final int skippedCorruptEntries;
+  final List<String> warnings;
+}
+
+class _AssetRepairStats {
+  const _AssetRepairStats({
+    required this.relocatedAssets,
+    required this.removedOrphanAssets,
+    required this.warnings,
+  });
+
+  final int relocatedAssets;
+  final int removedOrphanAssets;
+  final List<String> warnings;
 }
 
 /// 加密 vault 儲存的主要協調層。
@@ -831,22 +915,11 @@ class VaultRepository {
           date: previousRecord.date,
           attachment: attachment,
         );
-        final String newPath = await _assetAbsolutePathFor(
+        await _relocateAssetFileIfNeeded(
           date: normalized.date,
           attachment: attachment,
+          currentPath: oldPath,
         );
-        if (oldPath == newPath) {
-          continue;
-        }
-        final File oldFile = File(oldPath);
-        if (!oldFile.existsSync()) {
-          continue;
-        }
-        final Directory newParent = File(newPath).parent;
-        if (!newParent.existsSync()) {
-          await newParent.create(recursive: true);
-        }
-        await oldFile.rename(newPath);
       }
     }
 
@@ -927,76 +1000,104 @@ class VaultRepository {
   }
 
   Future<void> rebuildIndex(UnlockedVaultSession session) async {
+    await _rebuildIndex(session);
+  }
+
+  Future<void> _rebuildIndex(
+    UnlockedVaultSession session, {
+    List<_ScannedEntry>? preScannedEntries,
+  }) async {
     await _openIndexForSession(session);
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final IndexDatabase indexDb = _requireOpenIndex();
     await indexDb.rebuild();
 
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory entriesDirectory = Directory(
-      p.join(vaultRoot.path, 'entries'),
-    );
-    if (!entriesDirectory.existsSync()) {
-      await listTagCatalog();
-      await indexDb.setAppValue(
-        kLastRebuildAtKey,
-        DateTime.now().toIso8601String(),
-      );
-      await indexDb.setAppValue(
-        kIndexGenerationKey,
-        IndexDatabase.indexGeneration.toString(),
-      );
-      await syncTagStylesBetweenVaultAndIndex();
-      return;
-    }
-
     final Set<String> collectedTagLabels = <String>{};
 
-    await for (final FileSystemEntity entity in entriesDirectory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      if (entity is! File || !entity.path.endsWith('.md.enc')) {
-        continue;
+    if (preScannedEntries != null) {
+      for (final _ScannedEntry scanned in preScannedEntries) {
+        await indexDb.upsertEntry(
+          entry: scanned.entry,
+          filePath: scanned.filePath,
+          previewText: scanned.searchFields.previewText,
+          titleSearchText: scanned.searchFields.titleSearchText,
+          bodySearchText: scanned.searchFields.bodySearchText,
+          contentHash: await _hashString(scanned.markdown),
+          encryptedFileSize: scanned.encryptedFileSize,
+          encryptedModifiedAt: scanned.encryptedModifiedAt,
+        );
+        await indexDb.replaceAttachments(
+          scanned.entry.id,
+          scanned.attachments,
+          <AssetId, String>{
+            for (final AssetAttachment attachment in scanned.attachments)
+              attachment.id: await _pathStrategy.assetAbsolutePath(
+                date: scanned.entry.date,
+                assetId: attachment.id,
+                extension: p
+                    .extension(attachment.safeFilename)
+                    .replaceFirst('.', ''),
+              ),
+          },
+        );
+        collectedTagLabels.addAll(scanned.entry.tags);
       }
+    } else {
+      final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+      final Directory entriesDirectory = Directory(
+        p.join(vaultRoot.path, 'entries'),
+      );
+      if (entriesDirectory.existsSync()) {
+        await for (final FileSystemEntity entity in entriesDirectory.list(
+          recursive: true,
+          followLinks: false,
+        )) {
+          if (entity is! File || !entity.path.endsWith('.md.enc')) {
+            continue;
+          }
 
-      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-        await entity.readAsBytes(),
-      );
-      final String markdown = await _cryptoService.decryptMarkdown(
-        headerBytes: parsed.headerBytes,
-        ciphertextBytes: parsed.ciphertextBytes,
-        context: _decryptionContext(session),
-      );
-      final DiaryEntry entry = _frontMatterCodec
-          .decode(markdown)
-          .copyWith(vaultId: metadata.vaultId);
-      final List<AssetAttachment> attachments = await _findAttachmentsForEntry(
-        entry,
-      );
-      final _EntrySearchFields searchFields = _buildEntrySearchFields(entry);
+          final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+            await entity.readAsBytes(),
+          );
+          final String markdown = await _cryptoService.decryptMarkdown(
+            headerBytes: parsed.headerBytes,
+            ciphertextBytes: parsed.ciphertextBytes,
+            context: _decryptionContext(session),
+          );
+          final DiaryEntry entry = _frontMatterCodec
+              .decode(markdown)
+              .copyWith(vaultId: metadata.vaultId);
+          final List<AssetAttachment> attachments =
+              await _findAttachmentsForEntry(entry);
+          final _EntrySearchFields searchFields = _buildEntrySearchFields(entry);
 
-      await indexDb.upsertEntry(
-        entry: entry,
-        filePath: entity.path,
-        previewText: searchFields.previewText,
-        titleSearchText: searchFields.titleSearchText,
-        bodySearchText: searchFields.bodySearchText,
-        contentHash: await _hashString(markdown),
-        encryptedFileSize: await entity.length(),
-        encryptedModifiedAt: await entity.lastModified(),
-      );
-      await indexDb.replaceAttachments(entry.id, attachments, <AssetId, String>{
-        for (final AssetAttachment attachment in attachments)
-          attachment.id: await _pathStrategy.assetAbsolutePath(
-            date: entry.date,
-            assetId: attachment.id,
-            extension: p
-                .extension(attachment.safeFilename)
-                .replaceFirst('.', ''),
-          ),
-      });
-      collectedTagLabels.addAll(entry.tags);
+          await indexDb.upsertEntry(
+            entry: entry,
+            filePath: entity.path,
+            previewText: searchFields.previewText,
+            titleSearchText: searchFields.titleSearchText,
+            bodySearchText: searchFields.bodySearchText,
+            contentHash: await _hashString(markdown),
+            encryptedFileSize: await entity.length(),
+            encryptedModifiedAt: await entity.lastModified(),
+          );
+          await indexDb.replaceAttachments(
+            entry.id,
+            attachments,
+            <AssetId, String>{
+              for (final AssetAttachment attachment in attachments)
+                attachment.id: await _pathStrategy.assetAbsolutePath(
+                  date: entry.date,
+                  assetId: attachment.id,
+                  extension: p
+                      .extension(attachment.safeFilename)
+                      .replaceFirst('.', ''),
+                ),
+            },
+          );
+          collectedTagLabels.addAll(entry.tags);
+        }
+      }
     }
 
     await listTagCatalog();
@@ -1014,18 +1115,409 @@ class VaultRepository {
     await syncTagStylesBetweenVaultAndIndex();
   }
 
-  Future<IndexRebuildReport> rebuildIndexWithReport(
+  Future<VaultRepairReport> repairVaultWithReport(
     UnlockedVaultSession session,
   ) async {
     final Stopwatch stopwatch = Stopwatch()..start();
-    await rebuildIndex(session);
-    final List<EntryIndexRecord> entries = await listEntries();
+    await _openIndexForSession(session);
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+
+    final _EntryRepairStats entryStats = await _scanAndRepairEntries(
+      session,
+      metadata,
+    );
+
+    await listTagCatalog();
+    final Set<String> catalogNorms = (await listTagCatalog())
+        .map((TagCatalogItem item) => item.normalized)
+        .toSet();
+    final Set<String> collectedTagLabels = <String>{};
+    for (final _ScannedEntry scanned in entryStats.scanned) {
+      collectedTagLabels.addAll(scanned.entry.tags);
+    }
+    var tagsAdded = 0;
+    for (final String raw in collectedTagLabels) {
+      final String displayLabel = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+      final String normalized = normalizeText(displayLabel);
+      if (normalized.isEmpty || catalogNorms.contains(normalized)) {
+        continue;
+      }
+      tagsAdded++;
+      catalogNorms.add(normalized);
+    }
+    if (collectedTagLabels.isNotEmpty) {
+      await ensureTagCatalogLabels(collectedTagLabels);
+    }
+
+    final _AssetRepairStats assetStats = await _repairAssets(
+      entryStats.scanned,
+    );
+
+    final List<_ScannedEntry> indexEntries = <_ScannedEntry>[];
+    for (final _ScannedEntry scanned in entryStats.scanned) {
+      final List<AssetAttachment> attachments = await _findAttachmentsForEntry(
+        scanned.entry,
+      );
+      indexEntries.add(
+        _ScannedEntry(
+          entry: scanned.entry,
+          filePath: scanned.filePath,
+          markdown: scanned.markdown,
+          attachments: attachments,
+          searchFields: scanned.searchFields,
+          encryptedFileSize: scanned.encryptedFileSize,
+          encryptedModifiedAt: scanned.encryptedModifiedAt,
+        ),
+      );
+    }
+
+    await _rebuildIndex(session, preScannedEntries: indexEntries);
+    await _writeEncryptedManifest(session, metadata);
+
     stopwatch.stop();
-    return IndexRebuildReport(
-      entryCount: entries.length,
+    return VaultRepairReport(
+      entryCount: indexEntries.length,
       duration: stopwatch.elapsed,
       finishedAt: DateTime.now(),
+      relocatedEntries: entryStats.relocatedEntries,
+      removedDuplicateEntries: entryStats.removedDuplicateEntries,
+      skippedCorruptEntries: entryStats.skippedCorruptEntries,
+      tagsAdded: tagsAdded,
+      relocatedAssets: assetStats.relocatedAssets,
+      removedOrphanAssets: assetStats.removedOrphanAssets,
+      warnings: <String>[
+        ...entryStats.warnings,
+        ...assetStats.warnings,
+      ],
     );
+  }
+
+  Future<_EntryRepairStats> _scanAndRepairEntries(
+    UnlockedVaultSession session,
+    RecoveryMetadata metadata,
+  ) async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final Directory entriesDirectory = Directory(
+      p.join(vaultRoot.path, 'entries'),
+    );
+    if (!entriesDirectory.existsSync()) {
+      return const _EntryRepairStats(
+        scanned: <_ScannedEntry>[],
+        relocatedEntries: 0,
+        removedDuplicateEntries: 0,
+        skippedCorruptEntries: 0,
+        warnings: <String>[],
+      );
+    }
+
+    final List<_RawScannedEntry> rawScans = <_RawScannedEntry>[];
+    final List<String> warnings = <String>[];
+    var skippedCorruptEntries = 0;
+
+    await for (final FileSystemEntity entity in entriesDirectory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File || !entity.path.endsWith('.md.enc')) {
+        continue;
+      }
+
+      try {
+        final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+          await entity.readAsBytes(),
+        );
+        final String markdown = await _cryptoService.decryptMarkdown(
+          headerBytes: parsed.headerBytes,
+          ciphertextBytes: parsed.ciphertextBytes,
+          context: _decryptionContext(session),
+        );
+        final DiaryEntry decoded = _frontMatterCodec.decode(markdown);
+        final DiaryEntry entry = decoded.copyWith(vaultId: metadata.vaultId);
+        final List<AssetAttachment> attachments = await _findAttachmentsForEntry(
+          entry,
+        );
+        rawScans.add(
+          _RawScannedEntry(
+            entry: entry,
+            filePath: entity.path,
+            markdown: markdown,
+            attachments: attachments,
+            searchFields: _buildEntrySearchFields(entry),
+            encryptedFileSize: await entity.length(),
+            encryptedModifiedAt: await entity.lastModified(),
+            needsVaultIdRewrite: decoded.vaultId != metadata.vaultId,
+          ),
+        );
+      } on Object {
+        skippedCorruptEntries++;
+        warnings.add(
+          p.relative(entity.path, from: vaultRoot.path).replaceAll('\\', '/'),
+        );
+      }
+    }
+
+    final Map<String, List<_RawScannedEntry>> entriesById =
+        <String, List<_RawScannedEntry>>{};
+    for (final _RawScannedEntry raw in rawScans) {
+      entriesById.putIfAbsent(raw.entry.id, () => <_RawScannedEntry>[]).add(
+        raw,
+      );
+    }
+
+    final List<String> pathsToDelete = <String>[];
+    var removedDuplicateEntries = 0;
+    final List<_RawScannedEntry> authoritative = <_RawScannedEntry>[];
+    for (final List<_RawScannedEntry> group in entriesById.values) {
+      group.sort(
+        (_RawScannedEntry a, _RawScannedEntry b) =>
+            b.entry.updatedAt.compareTo(a.entry.updatedAt),
+      );
+      authoritative.add(group.first);
+      for (var index = 1; index < group.length; index++) {
+        pathsToDelete.add(group[index].filePath);
+        removedDuplicateEntries++;
+      }
+    }
+
+    var relocatedEntries = 0;
+    final List<_ScannedEntry> scanned = <_ScannedEntry>[];
+    for (final _RawScannedEntry raw in authoritative) {
+      final String canonicalPath = await _pathStrategy.entryAbsolutePath(
+        date: raw.entry.date,
+        entryId: raw.entry.id,
+      );
+      final String currentPath = p.normalize(raw.filePath);
+      final String normalizedCanonical = p.normalize(canonicalPath);
+      var finalPath = currentPath;
+      var finalMarkdown = raw.markdown;
+      var finalSize = raw.encryptedFileSize;
+      var finalModified = raw.encryptedModifiedAt;
+
+      if (currentPath != normalizedCanonical || raw.needsVaultIdRewrite) {
+        if (!raw.needsVaultIdRewrite && currentPath != normalizedCanonical) {
+          final File sourceFile = File(currentPath);
+          if (sourceFile.existsSync()) {
+            final Directory parent = File(normalizedCanonical).parent;
+            await parent.create(recursive: true);
+            await sourceFile.rename(normalizedCanonical);
+            finalPath = normalizedCanonical;
+            finalSize = await File(finalPath).length();
+            finalModified = await File(finalPath).lastModified();
+            relocatedEntries++;
+          }
+        } else {
+          finalPath = await _persistEntryForRepair(
+            session: session,
+            metadata: metadata,
+            entry: raw.entry,
+            attachments: raw.attachments,
+            targetPath: normalizedCanonical,
+            deletePathAfter: currentPath != normalizedCanonical
+                ? currentPath
+                : null,
+          );
+          finalMarkdown = _frontMatterCodec.encode(
+            raw.entry,
+            attachments: raw.attachments,
+          );
+          final File repairedFile = File(finalPath);
+          finalSize = await repairedFile.length();
+          finalModified = await repairedFile.lastModified();
+          if (currentPath != normalizedCanonical) {
+            relocatedEntries++;
+          }
+        }
+      }
+
+      scanned.add(
+        _ScannedEntry(
+          entry: raw.entry,
+          filePath: finalPath,
+          markdown: finalMarkdown,
+          attachments: raw.attachments,
+          searchFields: raw.searchFields,
+          encryptedFileSize: finalSize,
+          encryptedModifiedAt: finalModified,
+        ),
+      );
+    }
+
+    for (final String path in pathsToDelete) {
+      await deleteFileIfExists(path);
+    }
+
+    return _EntryRepairStats(
+      scanned: scanned,
+      relocatedEntries: relocatedEntries,
+      removedDuplicateEntries: removedDuplicateEntries,
+      skippedCorruptEntries: skippedCorruptEntries,
+      warnings: warnings,
+    );
+  }
+
+  Future<String> _persistEntryForRepair({
+    required UnlockedVaultSession session,
+    required RecoveryMetadata metadata,
+    required DiaryEntry entry,
+    required List<AssetAttachment> attachments,
+    required String targetPath,
+    String? deletePathAfter,
+  }) async {
+    final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
+    final String markdown = _frontMatterCodec.encode(
+      entry,
+      attachments: attachments,
+    );
+    final EncryptionResult encryption = await _cryptoService.encryptMarkdown(
+      documentId: entry.id,
+      vaultId: metadata.vaultId,
+      markdown: markdown,
+      recoveryWrapKey: recoveryWrapKey,
+      recoverySlotKdf: metadata.kdf,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+    );
+    await _atomicWriteBytes(File(targetPath), encryption.toFileBytes());
+    if (deletePathAfter != null &&
+        p.normalize(deletePathAfter) != p.normalize(targetPath)) {
+      await deleteFileIfExists(deletePathAfter);
+    }
+    return targetPath;
+  }
+
+  Future<_AssetRepairStats> _repairAssets(List<_ScannedEntry> entries) async {
+    final Set<String> referencedAssetIds = <String>{};
+    final Map<String, DateOnly> assetDates = <String, DateOnly>{};
+    for (final _ScannedEntry scanned in entries) {
+      for (final AssetId assetId in scanned.entry.attachmentIds) {
+        referencedAssetIds.add(assetId);
+        assetDates[assetId] = scanned.entry.date;
+      }
+    }
+
+    final List<String> warnings = <String>[];
+    for (final String assetId in referencedAssetIds) {
+      final bool foundOnDisk = await _assetExistsAnywhere(assetId);
+      if (!foundOnDisk) {
+        warnings.add('missing_asset:$assetId');
+      }
+    }
+
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final Directory assetsDirectory = Directory(
+      p.join(vaultRoot.path, 'assets'),
+    );
+    if (!assetsDirectory.existsSync()) {
+      return _AssetRepairStats(
+        relocatedAssets: 0,
+        removedOrphanAssets: 0,
+        warnings: warnings,
+      );
+    }
+
+    var relocatedAssets = 0;
+    var removedOrphanAssets = 0;
+
+    await for (final FileSystemEntity entity in assetsDirectory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File || !entity.path.endsWith('.enc')) {
+        continue;
+      }
+
+      final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
+      final String assetId = p.basenameWithoutExtension(fileName);
+      if (!referencedAssetIds.contains(assetId)) {
+        await entity.delete();
+        removedOrphanAssets++;
+        continue;
+      }
+
+      final DateOnly? date = assetDates[assetId];
+      if (date == null) {
+        continue;
+      }
+
+      final String extension = p.extension(fileName).replaceFirst('.', '');
+      final String canonicalPath = await _pathStrategy.assetAbsolutePath(
+        date: date,
+        assetId: assetId,
+        extension: extension.isEmpty ? 'bin' : extension,
+      );
+      if (p.normalize(entity.path) == p.normalize(canonicalPath)) {
+        continue;
+      }
+
+      final bool moved = await _relocateAssetFileIfNeeded(
+        date: date,
+        attachment: AssetAttachment(
+          id: assetId,
+          entryId: '',
+          mimeType: mimeTypeFromExtension(extension),
+          safeFilename: fileName,
+          byteSize: await entity.length(),
+          createdAt: await entity.lastModified(),
+          sha256: '',
+        ),
+        currentPath: entity.path,
+      );
+      if (moved) {
+        relocatedAssets++;
+      }
+    }
+
+    return _AssetRepairStats(
+      relocatedAssets: relocatedAssets,
+      removedOrphanAssets: removedOrphanAssets,
+      warnings: warnings,
+    );
+  }
+
+  Future<bool> _assetExistsAnywhere(String assetId) async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final Directory assetsDirectory = Directory(
+      p.join(vaultRoot.path, 'assets'),
+    );
+    if (!assetsDirectory.existsSync()) {
+      return false;
+    }
+
+    await for (final FileSystemEntity entity in assetsDirectory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File || !entity.path.endsWith('.enc')) {
+        continue;
+      }
+      final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
+      if (p.basenameWithoutExtension(fileName) == assetId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<bool> _relocateAssetFileIfNeeded({
+    required DateOnly date,
+    required AssetAttachment attachment,
+    required String currentPath,
+  }) async {
+    final String newPath = await _assetAbsolutePathFor(
+      date: date,
+      attachment: attachment,
+    );
+    if (p.normalize(currentPath) == p.normalize(newPath)) {
+      return false;
+    }
+    final File oldFile = File(currentPath);
+    if (!oldFile.existsSync()) {
+      return false;
+    }
+    final Directory newParent = File(newPath).parent;
+    await newParent.create(recursive: true);
+    await oldFile.rename(newPath);
+    return true;
   }
 
   DecryptionContext _decryptionContext(UnlockedVaultSession session) {

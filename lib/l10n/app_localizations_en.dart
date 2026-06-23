@@ -1042,7 +1042,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsSecurityOverviewIndexTitle => 'Search Index';
+  String get settingsSecurityOverviewIndexTitle => 'Vault';
 
   @override
   String get settingsSecurityOverviewCreateRecoveryKeyButton =>
@@ -1053,7 +1053,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Update Recovery Key';
 
   @override
-  String get settingsSecurityOverviewRebuildIndexButton => 'Rebuild Index';
+  String get settingsSecurityOverviewRepairVaultButton => 'Repair Vault';
 
   @override
   String get settingsSecurityOverviewHealthLevelOk => 'OK';
@@ -1451,12 +1451,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'The first unlock after restore may take longer. Keep the app open.';
 
   @override
-  String get settingsIndexReadyMessage =>
-      'You can rebuild anytime to restore search.';
+  String get settingsRepairVaultReadyMessage =>
+      'You can repair anytime to restore vault data and search.';
 
   @override
-  String get settingsIndexLockedMessage =>
-      'Unlock to rebuild the search index.';
+  String get settingsRepairVaultLockedMessage => 'Unlock to repair the vault.';
 
   @override
   String get settingsIndexLinkDriveProgress => 'Linking Google Account…';
@@ -1468,13 +1467,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsIndexDisconnectDriveProgress => 'Disconnecting…';
 
   @override
-  String settingsIndexRebuildCompleted(int entryCount, String finishedAt) {
-    return 'Last rebuild: $entryCount entries, $finishedAt.';
+  String settingsRepairVaultCompleted(int entryCount, String finishedAt) {
+    return 'Last repair: $entryCount entries, $finishedAt.';
   }
 
   @override
-  String settingsIndexRebuildSuccess(int entryCount, String duration) {
-    return 'Search index rebuilt: $entryCount entries in $duration';
+  String settingsRepairVaultSuccess(int entryCount, String duration) {
+    return 'Vault repaired: $entryCount entries in $duration';
+  }
+
+  @override
+  String settingsRepairVaultSuccessChanges(
+    int relocatedEntries,
+    int removedDuplicates,
+    int removedOrphanAssets,
+    int skippedCorruptEntries,
+  ) {
+    return '(Moved $relocatedEntries entries, removed $removedDuplicates duplicate entry files and $removedOrphanAssets orphan attachments; skipped $skippedCorruptEntries corrupt files)';
   }
 
   @override

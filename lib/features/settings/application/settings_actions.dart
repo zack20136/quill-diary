@@ -84,11 +84,11 @@ class SettingsActions {
     return _ref.read(vaultTransferServiceProvider).listAppLocalBackups();
   }
 
-  Future<IndexRebuildReport> rebuildIndex() {
+  Future<VaultRepairReport> repairVault() {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) {
-      return _ref.read(vaultRepositoryProvider).rebuildIndexWithReport(session);
+      return _ref.read(vaultRepositoryProvider).repairVaultWithReport(session);
     });
   }
 

@@ -88,8 +88,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           onRotateRecoveryKey: recoveryMetadata != null && canVaultBackup
               ? () => _runBusy(_rotateRecoveryKey)
               : null,
-          onRebuildIndex: hasUnlockedSession
-              ? () => _runBusy(_rebuildIndex)
+          onRepairVault: hasUnlockedSession
+              ? () => _runBusy(_repairVault)
               : null,
           lockPanel: sessionState?.status == AppLockStatus.unlocked
               ? null
@@ -256,16 +256,16 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   String _indexStatusMessage(AppLocalizations l10n, bool hasUnlockedSession) {
-    final IndexRebuildReport? report = _lastIndexRebuildReport;
+    final VaultRepairReport? report = _lastVaultRepairReport;
     if (report != null) {
-      return l10n.settingsIndexRebuildCompleted(
+      return l10n.settingsRepairVaultCompleted(
         report.entryCount,
         DisplayFormat.formatDateTime(l10n, report.finishedAt),
       );
     }
     return hasUnlockedSession
-        ? l10n.settingsIndexReadyMessage
-        : l10n.settingsIndexLockedMessage;
+        ? l10n.settingsRepairVaultReadyMessage
+        : l10n.settingsRepairVaultLockedMessage;
   }
 
   Future<void> _importDocuments() async {
@@ -354,15 +354,15 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     }
   }
 
-  Future<void> _rebuildIndex() async {
+  Future<void> _repairVault() async {
     final AppLocalizations l10n = context.l10n;
-    final SettingsRebuildIndexResult result = await _settingsFlow.rebuildIndex(
+    final SettingsRepairVaultResult result = await _settingsFlow.repairVault(
       l10n,
     );
     if (!mounted) {
       return;
     }
-    setState(() => _lastIndexRebuildReport = result.report);
+    setState(() => _lastVaultRepairReport = result.report);
     _showFeedback(result.feedback);
   }
 
