@@ -13,7 +13,7 @@ abstract final class HomeLayout {
   static const double sectionGap = 12;
   static const double tagListSectionHeight = 350;
   static const ScrollCacheExtent entryListCacheExtent =
-      ScrollCacheExtent.pixels(600);
+      ScrollCacheExtent.pixels(1200);
 
   static const double circleActionSize = 44;
   static const double circleActionIconSize = 26;

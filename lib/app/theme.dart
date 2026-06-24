@@ -108,6 +108,6 @@ ThemeData buildAppTheme({
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
     ),
-    scrollbarTheme: kAppScrollbarTheme,
+    scrollbarTheme: kPrimaryScrollbarTheme,
   );
 }
