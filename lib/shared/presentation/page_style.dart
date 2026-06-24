@@ -13,16 +13,20 @@ abstract final class PageStyle {
   /// 全站頁面底色（介於 [ColorScheme.surface] 與 [ColorScheme.surfaceContainerLow] 之間）。
   static Color scaffoldWash(ColorScheme cs) {
     final bool isLight = cs.brightness == Brightness.light;
-    final Color base = isLight
-        ? Color.alphaBlend(
-            cs.surfaceContainerLow.withValues(alpha: 0.42),
-            cs.surface,
-          )
-        : Color.alphaBlend(cs.onSurface.withValues(alpha: 0.04), cs.surface);
-    return Color.alphaBlend(
-      cs.primary.withValues(alpha: isLight ? 0.095 : 0.08),
-      base,
+    if (!isLight) {
+      return Color.alphaBlend(
+        cs.primary.withValues(alpha: 0.04),
+        Color.alphaBlend(
+          cs.surfaceContainerLow.withValues(alpha: 0.55),
+          cs.surface,
+        ),
+      );
+    }
+    final Color base = Color.alphaBlend(
+      cs.surfaceContainerLow.withValues(alpha: 0.42),
+      cs.surface,
     );
+    return Color.alphaBlend(cs.primary.withValues(alpha: 0.095), base);
   }
 
   static List<Color> homeHeaderTabGradient(ColorScheme cs) => <Color>[

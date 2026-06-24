@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 /// 首頁概覽統計卡片的色票。
 abstract final class HomePalette {
   static Color metricTileFill(ColorScheme cs) {
+    if (cs.brightness == Brightness.dark) {
+      return Color.alphaBlend(
+        cs.primary.withValues(alpha: 0.06),
+        cs.surfaceContainerLow,
+      );
+    }
     final Color fillBase = Color.alphaBlend(
       cs.primary.withValues(alpha: 0.08),
       cs.surfaceContainerLow,

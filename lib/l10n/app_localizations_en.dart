@@ -54,7 +54,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnitImages => 'images';
 
   @override
-  String get commonUnitAttachments => 'attachments';
+  String get commonUnitAttachments => 'atts.';
 
   @override
   String get commonUnitDays => 'days';
@@ -640,7 +640,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeTagRowTapHint => 'Tap Row to Preview';
+  String get homeTagRowTapHint => 'Tap to preview';
 
   @override
   String homeDiarySectionTitleForDate(String dateLabel) {
@@ -689,7 +689,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeOverviewEntryStats(String entrySummary, String characterSummary) {
-    return '$entrySummary\n$characterSummary total';
+    return '$entrySummary\n$characterSummary';
   }
 
   @override
@@ -747,7 +747,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeOverviewAvgLengthValue(int charactersPerEntry) {
-    return '$charactersPerEntry chars/entry';
+    return '$charactersPerEntry / entry';
   }
 
   @override
@@ -757,7 +757,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String homeOverviewMostEntriesInSingleDay(String entrySummary) {
-    return 'Peak $entrySummary';
+    return 'Max $entrySummary';
   }
 
   @override

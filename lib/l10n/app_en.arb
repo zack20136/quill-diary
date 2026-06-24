@@ -15,7 +15,7 @@
   "commonUnitEntries": "entries",
   "commonUnitTags": "tags",
   "commonUnitImages": "images",
-  "commonUnitAttachments": "attachments",
+  "commonUnitAttachments": "atts.",
   "commonUnitDays": "days",
   "commonUnitCharacters": "chars",
   "commonUnitMilliseconds": "ms",
@@ -353,7 +353,7 @@
       }
     }
   },
-  "homeTagRowTapHint": "Tap Row to Preview",
+  "homeTagRowTapHint": "Tap to preview",
   "homeDiarySectionTitleForDate": "Entries · {dateLabel}",
   "@homeDiarySectionTitleForDate": {
     "placeholders": {
@@ -410,7 +410,7 @@
       }
     }
   },
-  "homeOverviewEntryStats": "{entrySummary}\n{characterSummary} total",
+  "homeOverviewEntryStats": "{entrySummary}\n{characterSummary}",
   "@homeOverviewEntryStats": {
     "placeholders": {
       "entrySummary": {
@@ -467,7 +467,7 @@
       }
     }
   },
-  "homeOverviewAvgLengthValue": "{charactersPerEntry} chars/entry",
+  "homeOverviewAvgLengthValue": "{charactersPerEntry} / entry",
   "@homeOverviewAvgLengthValue": {
     "placeholders": {
       "charactersPerEntry": {
@@ -486,7 +486,7 @@
       }
     }
   },
-  "homeOverviewMostEntriesInSingleDay": "Peak {entrySummary}",
+  "homeOverviewMostEntriesInSingleDay": "Max {entrySummary}",
   "@homeOverviewMostEntriesInSingleDay": {
     "placeholders": {
       "entrySummary": {

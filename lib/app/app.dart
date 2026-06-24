@@ -121,17 +121,14 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
 
     return _sessionLifecycle.wrap(
       DynamicColorBuilder(
-        builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        builder: (ColorScheme? lightDynamic, ColorScheme? _) {
           return MaterialApp.router(
             onGenerateTitle: (BuildContext context) => context.l10n.appTitle,
             scrollBehavior: const MaterialScrollBehavior().copyWith(
               scrollbars: false,
             ),
             theme: buildAppTheme(dynamicScheme: lightDynamic),
-            darkTheme: buildAppTheme(
-              dynamicScheme: darkDynamic,
-              brightness: Brightness.dark,
-            ),
+            darkTheme: buildAppTheme(brightness: Brightness.dark),
             themeMode: themeMode,
             locale: locale,
             supportedLocales: appSupportedLocales,
