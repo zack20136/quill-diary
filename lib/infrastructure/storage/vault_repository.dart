@@ -2311,22 +2311,17 @@ class VaultRepository {
     return session.copyWith(deviceSlotId: deviceInfo.slotId);
   }
 
+  /// 解鎖後 attach 搜尋索引：開啟連線、必要時重置損壞 schema、同步標籤樣式。
+  ///
+  /// 不會全量 [rebuildIndex]；vault 變更後的重建由還原、金鑰替換或手動修復觸發。
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
-    final IndexDatabase indexDb = _requireOpenIndex();
-    final String? lastRebuildAt = await indexDb.getAppValue(kLastRebuildAtKey);
-    final String? storedGeneration = await indexDb.getAppValue(
-      kIndexGenerationKey,
-    );
-    final bool needsRebuild =
-        lastRebuildAt == null ||
-        storedGeneration != IndexDatabase.indexGeneration.toString() ||
-        !await indexDb.hasExpectedIndexSchema();
-    if (needsRebuild) {
-      await rebuildIndex(session);
-    } else {
-      await syncTagStylesBetweenVaultAndIndex();
+    if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
+      await _indexDatabaseManager.deleteDatabaseFiles();
+      await _openIndexForSession(session);
+      return;
     }
+    await syncTagStylesBetweenVaultAndIndex();
   }
 
   /// 測試用：清除索引中的 Keystore 後綴同步欄位。

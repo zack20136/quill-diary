@@ -193,7 +193,6 @@ void main() {
 
     final UnlockedVaultSession session = await harness.repository
         .unlockWithRecoveryKey(setup.recoveryKey);
-    await harness.repository.rebuildIndex(session);
     final List<EntryIndexRecord> entries = await harness.repository
         .listEntries();
     expect(entries, hasLength(1));

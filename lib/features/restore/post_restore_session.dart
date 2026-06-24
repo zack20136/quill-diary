@@ -34,6 +34,13 @@ Future<AppSessionState> finishRestoreSession(
       livePriorSession: livePriorSession,
     );
     if (sessionState.isUnlocked && sessionState.session != null) {
+      final bool usedRecoveryKey =
+          prepared.backupRecoveryKey?.trim().isNotEmpty == true;
+      if (!usedRecoveryKey) {
+        await ref
+            .read(vaultRepositoryProvider)
+            .rebuildIndex(sessionState.session!);
+      }
       await refreshEntryIndexCaches(ref);
     }
     return sessionState;
