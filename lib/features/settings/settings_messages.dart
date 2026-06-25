@@ -212,20 +212,6 @@ class SupportNotice {
   final String body;
 }
 
-class SponsorTier {
-  const SponsorTier({
-    required this.productId,
-    required this.label,
-    required this.hint,
-    this.recommended = false,
-  });
-
-  final String productId;
-  final String label;
-  final String hint;
-  final bool recommended;
-}
-
 SupportNotice supportNoticeForProductLoadError(
   AppLocalizations l10n,
   String? errorCode,
@@ -234,6 +220,10 @@ SupportNotice supportNoticeForProductLoadError(
     'no_products' => SupportNotice(
       title: l10n.settingsSupportProductsNotReadyTitle,
       body: l10n.settingsSupportProductsNotReadyBody,
+    ),
+    'init_failed' => SupportNotice(
+      title: l10n.settingsSupportProductsInitFailedTitle,
+      body: l10n.settingsSupportProductsInitFailedBody,
     ),
     'query_failed' => SupportNotice(
       title: l10n.settingsSupportProductsQueryFailedTitle,
@@ -245,43 +235,6 @@ SupportNotice supportNoticeForProductLoadError(
     ),
   };
 }
-
-SponsorTier? sponsorTierForProduct(AppLocalizations l10n, String productId) {
-  for (final SponsorTier tier in sponsorTiers(l10n)) {
-    if (tier.productId == productId) {
-      return tier;
-    }
-  }
-  return null;
-}
-
-List<SponsorTier> sponsorTiers(AppLocalizations l10n) => <SponsorTier>[
-  SponsorTier(
-    productId: 'sponsor_coffee',
-    label: l10n.settingsSupportTierSponsorCoffeeLabel,
-    hint: l10n.settingsSupportTierSponsorCoffeeHint,
-  ),
-  SponsorTier(
-    productId: 'sponsor_snack',
-    label: l10n.settingsSupportTierSponsorSnackLabel,
-    hint: l10n.settingsSupportTierSponsorSnackHint,
-  ),
-  SponsorTier(
-    productId: 'sponsor_lunch',
-    label: l10n.settingsSupportTierSponsorLunchLabel,
-    hint: l10n.settingsSupportTierSponsorLunchHint,
-  ),
-  SponsorTier(
-    productId: 'sponsor_boost',
-    label: l10n.settingsSupportTierSponsorBoostLabel,
-    hint: l10n.settingsSupportTierSponsorBoostHint,
-  ),
-  SponsorTier(
-    productId: 'sponsor_super',
-    label: l10n.settingsSupportTierSponsorSuperLabel,
-    hint: l10n.settingsSupportTierSponsorSuperHint,
-  ),
-];
 
 List<String> settingsSupportHeroChips(AppLocalizations l10n) => <String>[
   l10n.settingsSupportHeroChipNoExtraFeatures,

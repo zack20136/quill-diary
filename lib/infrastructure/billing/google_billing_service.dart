@@ -14,6 +14,7 @@ class GoogleBillingService {
 
   final InAppPurchase _inAppPurchase;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  Future<void>? _initializationFuture;
 
   void Function(SponsorBillingState state)? onStateChanged;
 
@@ -27,31 +28,74 @@ class GoogleBillingService {
 
   /// 初始化 purchase stream 並同步既有購買狀態。
   Future<void> initialize() async {
-    if (_state.isInitialized) {
+    await _ensureInitialized();
+  }
+
+  Future<void> _ensureInitialized() {
+    final Future<void>? inFlight = _initializationFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    if (_state.isInitialized &&
+        _purchaseSubscription != null &&
+        _state.productLoadError == null) {
+      return Future<void>.value();
+    }
+
+    final Future<void> future = _initialize();
+    _initializationFuture = future;
+    return future.whenComplete(() {
+      if (identical(_initializationFuture, future)) {
+        _initializationFuture = null;
+      }
+    });
+  }
+
+  Future<void> _initialize() async {
+    final bool retryingInitFailed = _state.productLoadError == 'init_failed';
+    if (_state.isInitialized &&
+        _purchaseSubscription != null &&
+        !retryingInitFailed) {
       return;
     }
 
-    final bool available = await _inAppPurchase.isAvailable();
-    _emit(_state.copyWith(isInitialized: true, isAvailable: available));
-
-    if (!available) {
-      return;
+    if (retryingInitFailed) {
+      await _purchaseSubscription?.cancel();
+      _purchaseSubscription = null;
     }
 
-    await _purchaseSubscription?.cancel();
-    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
-      _onPurchaseUpdates,
-      onError: (Object error, StackTrace stackTrace) {
-        _emit(
-          _state.copyWith(
-            purchasePhase: SponsorPurchasePhase.error,
-            purchaseErrorMessage: error.toString(),
-          ),
-        );
-      },
-    );
+    try {
+      final bool available = await _inAppPurchase.isAvailable();
+      _emit(_state.copyWith(isInitialized: true, isAvailable: available));
 
-    await _inAppPurchase.restorePurchases();
+      if (!available) {
+        return;
+      }
+
+      await _purchaseSubscription?.cancel();
+      _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
+        _onPurchaseUpdates,
+        onError: (Object error, StackTrace stackTrace) {
+          _emit(
+            _state.copyWith(
+              purchasePhase: SponsorPurchasePhase.error,
+              purchaseErrorMessage: error.toString(),
+            ),
+          );
+        },
+      );
+      await _inAppPurchase.restorePurchases();
+    } catch (error) {
+      _emit(
+        _state.copyWith(
+          isInitialized: true,
+          isAvailable: false,
+          productLoadError: 'init_failed',
+          clearPurchaseErrorMessage: true,
+        ),
+      );
+    }
   }
 
   void dispose() {
@@ -61,39 +105,54 @@ class GoogleBillingService {
   }
 
   Future<void> loadProducts({bool isRetry = false}) async {
+    if (isRetry) {
+      _emit(_state.copyWith(isRefreshingProducts: true));
+    }
+
+    await _ensureInitialized();
     if (!_state.isAvailable) {
+      if (isRetry) {
+        _emit(_state.copyWith(isRefreshingProducts: false));
+      }
       return;
     }
 
-    if (isRetry) {
-      _emit(_state.copyWith(isRefreshingProducts: true));
-    } else {
+    if (!isRetry) {
       _emit(
         _state.copyWith(isLoadingProducts: true, clearProductLoadError: true),
       );
     }
 
-    final ProductDetailsResponse response = await _inAppPurchase
-        .queryProductDetails(BillingConfig.sponsorProductIds);
+    try {
+      final ProductDetailsResponse response = await _inAppPurchase
+          .queryProductDetails(BillingConfig.sponsorProductIds);
 
-    if (response.error != null) {
+      if (response.error != null) {
+        _emitProductLoadResult(
+          products: const <ProductDetails>[],
+          notFoundProductIds: const <String>[],
+          productLoadError: 'query_failed',
+        );
+        return;
+      }
+
+      final List<ProductDetails> sorted = _sortProducts(response.productDetails);
+      _emitProductLoadResult(
+        products: sorted,
+        notFoundProductIds: response.notFoundIDs.toList(growable: false),
+        productLoadError: sorted.isEmpty ? 'no_products' : null,
+      );
+    } catch (_) {
       _emitProductLoadResult(
         products: const <ProductDetails>[],
         notFoundProductIds: const <String>[],
         productLoadError: 'query_failed',
       );
-      return;
     }
-
-    final List<ProductDetails> sorted = _sortProducts(response.productDetails);
-    _emitProductLoadResult(
-      products: sorted,
-      notFoundProductIds: response.notFoundIDs.toList(growable: false),
-      productLoadError: sorted.isEmpty ? 'no_products' : null,
-    );
   }
 
   Future<bool> buySponsorProduct(ProductDetails product) async {
+    await _ensureInitialized();
     if (!_state.isAvailable || _state.isPurchaseBusy) {
       return false;
     }
@@ -105,15 +164,33 @@ class GoogleBillingService {
       ),
     );
 
-    final bool started = await _inAppPurchase.buyConsumable(
-      purchaseParam: PurchaseParam(productDetails: product),
-    );
+    try {
+      final bool started = await _inAppPurchase.buyConsumable(
+        purchaseParam: PurchaseParam(productDetails: product),
+        autoConsume: false,
+      );
 
-    if (!started) {
-      _emit(_state.copyWith(purchasePhase: SponsorPurchasePhase.idle));
+      if (!started) {
+        _emit(_state.copyWith(purchasePhase: SponsorPurchasePhase.idle));
+      }
+
+      return started;
+    } catch (error) {
+      _emit(
+        _state.copyWith(
+          purchasePhase: SponsorPurchasePhase.error,
+          purchaseErrorMessage: error.toString(),
+        ),
+      );
+      return false;
     }
+  }
 
-    return started;
+  void clearPurchaseSuccess() {
+    if (_state.purchasePhase != SponsorPurchasePhase.thanks) {
+      return;
+    }
+    _emit(_state.copyWith(purchasePhase: SponsorPurchasePhase.idle));
   }
 
   @visibleForTesting

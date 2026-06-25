@@ -1521,13 +1521,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportProductsSectionBody =>
-      'Google Play shows the amount and currency for your region; each option can be chosen again anytime.';
+      'Google Play shows the localized title, description, and price for each option in your region.';
 
   @override
   String get settingsSupportBuyButtonPrefix => 'Support';
-
-  @override
-  String get settingsSupportRecommendedTierBadge => 'Popular';
 
   @override
   String get settingsSupportPendingMessage => 'Processing payment…';
@@ -1560,6 +1557,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check your network connection. If the issue persists, update the app and try again.';
 
   @override
+  String get settingsSupportProductsInitFailedTitle =>
+      'Unable to Start Google Play Billing';
+
+  @override
+  String get settingsSupportProductsInitFailedBody =>
+      'Make sure Google Play services are working, then try again.';
+
+  @override
   String get settingsSupportProductsQueryFailedTitle =>
       'Cannot Connect to Google Play';
 
@@ -1577,43 +1582,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsSupportFooterNote =>
       'Support is completely optional. Please choose what feels right for you.';
-
-  @override
-  String get settingsSupportTierSponsorCoffeeLabel =>
-      'Buy the Developer a Coffee';
-
-  @override
-  String get settingsSupportTierSponsorCoffeeHint =>
-      'Help keep Quill Diary maintained and improving';
-
-  @override
-  String get settingsSupportTierSponsorSnackLabel =>
-      'Buy the Developer a Snack';
-
-  @override
-  String get settingsSupportTierSponsorSnackHint =>
-      'Add a little energy to everyday improvements';
-
-  @override
-  String get settingsSupportTierSponsorLunchLabel => 'Buy the Developer Lunch';
-
-  @override
-  String get settingsSupportTierSponsorLunchHint =>
-      'Support more focused development time';
-
-  @override
-  String get settingsSupportTierSponsorBoostLabel => 'Big Boost';
-
-  @override
-  String get settingsSupportTierSponsorBoostHint =>
-      'Give ongoing development a strong push';
-
-  @override
-  String get settingsSupportTierSponsorSuperLabel => 'Super Big Boost';
-
-  @override
-  String get settingsSupportTierSponsorSuperHint =>
-      'Help make long-term maintenance and improvements easier to sustain';
 
   @override
   String get sessionStartupNeedsRecoveryKeyMessage =>

@@ -2,15 +2,49 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-class FakeInAppPurchasePlatform extends Fake
+class FakeInAppPurchaseAndroidPlatformAddition extends Fake
     with MockPlatformInterfaceMixin
-    implements InAppPurchasePlatform {
-  FakeInAppPurchasePlatform({this.available = true});
+    implements InAppPurchaseAndroidPlatformAddition {
+  FakeInAppPurchaseAndroidPlatformAddition({this.consumeError});
+
+  final Object? consumeError;
+  bool consumePurchaseCalled = false;
+  final List<PurchaseDetails> consumedPurchases = <PurchaseDetails>[];
+
+  @override
+  Future<BillingResultWrapper> consumePurchase(PurchaseDetails purchase) async {
+    consumePurchaseCalled = true;
+    consumedPurchases.add(purchase);
+    if (consumeError != null) {
+      throw consumeError!;
+    }
+    return const BillingResultWrapper(responseCode: BillingResponse.ok);
+  }
+}
+
+class FakeInAppPurchase extends Fake
+    with MockPlatformInterfaceMixin
+    implements InAppPurchase {
+  FakeInAppPurchase({
+    this.available = true,
+    this.queryProductDetailsError,
+    this.buyConsumableError,
+    List<Object?>? restorePurchasesErrors,
+    this.androidAddition,
+  }) : restorePurchasesErrors = restorePurchasesErrors ?? <Object?>[];
 
   final bool available;
+  final Object? queryProductDetailsError;
+  final Object? buyConsumableError;
+  final List<Object?> restorePurchasesErrors;
+  final FakeInAppPurchaseAndroidPlatformAddition? androidAddition;
+
   final StreamController<List<PurchaseDetails>> purchaseController =
       StreamController<List<PurchaseDetails>>.broadcast();
 
@@ -31,6 +65,9 @@ class FakeInAppPurchasePlatform extends Fake
     Set<String> identifiers,
   ) async {
     log.add(MethodCall('queryProductDetails', identifiers.toList()));
+    if (queryProductDetailsError != null) {
+      throw queryProductDetailsError!;
+    }
     final List<ProductDetails> products = identifiers
         .map(
           (String id) => ProductDetails(
@@ -60,7 +97,20 @@ class FakeInAppPurchasePlatform extends Fake
         'autoConsume': autoConsume,
       }),
     );
+    if (buyConsumableError != null) {
+      throw buyConsumableError!;
+    }
     return true;
+  }
+
+  @override
+  Future<bool> buyNonConsumable({
+    required PurchaseParam purchaseParam,
+  }) async {
+    log.add(MethodCall('buyNonConsumable', <String, Object?>{
+      'purchaseParam': purchaseParam,
+    }));
+    return false;
   }
 
   @override
@@ -72,6 +122,26 @@ class FakeInAppPurchasePlatform extends Fake
   @override
   Future<void> restorePurchases({String? applicationUserName}) async {
     log.add(const MethodCall('restorePurchases'));
+    if (restorePurchasesErrors.isNotEmpty) {
+      final Object? error = restorePurchasesErrors.removeAt(0);
+      if (error != null) {
+        throw error;
+      }
+    }
+  }
+
+  @override
+  Future<String> countryCode() async {
+    return 'TW';
+  }
+
+  @override
+  T getPlatformAddition<T extends InAppPurchasePlatformAddition?>() {
+    final FakeInAppPurchaseAndroidPlatformAddition? addition = androidAddition;
+    if (addition == null) {
+      throw StateError('androidAddition is not set');
+    }
+    return addition as T;
   }
 
   void emitPurchases(List<PurchaseDetails> purchases) {

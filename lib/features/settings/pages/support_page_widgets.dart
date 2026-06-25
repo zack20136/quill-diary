@@ -1,13 +1,5 @@
 part of 'support_page.dart';
 
-const List<IconData> _sponsorTierIcons = <IconData>[
-  Icons.local_cafe_rounded,
-  Icons.cookie_rounded,
-  Icons.lunch_dining_rounded,
-  Icons.rocket_launch_rounded,
-  Icons.celebration_rounded,
-];
-
 class _ProductsSection extends StatelessWidget {
   const _ProductsSection({
     required this.billing,
@@ -106,56 +98,54 @@ class _ProductsSection extends StatelessWidget {
                   ),
                 ),
               )
-            else if (!billing.isAvailable)
+            else if (billing.productLoadError != null) ...<Widget>[
+              _ProductLoadNotice(
+                notice: supportNoticeForProductLoadError(
+                  l10n,
+                  billing.productLoadError,
+                ),
+                onRetry: onRetryLoad,
+                isRefreshing: billing.isRefreshingProducts,
+                isError: billing.productLoadError == 'query_failed' ||
+                    billing.productLoadError == 'init_failed',
+              ),
+              if (billing.products.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 12),
+                for (int index = 0; index < billing.products.length; index++)
+                  ...<Widget>[
+                    if (index > 0) const SizedBox(height: 10),
+                    _SponsorProductTile(
+                      product: billing.products[index],
+                      enabled: buttonsEnabled,
+                      onPressed: () => onBuy(billing.products[index].id),
+                    ),
+                  ],
+              ],
+            ] else if (!billing.isAvailable)
               _InlineMessage(
                 icon: Icons.storefront_outlined,
                 message: l10n.settingsSupportBillingUnavailableMessage,
                 color: cs.onSurfaceVariant,
               )
             else ...<Widget>[
-              if (billing.productLoadError != null) ...<Widget>[
-                _ProductLoadNotice(
-                  notice: supportNoticeForProductLoadError(
-                    l10n,
-                    billing.productLoadError,
+              if (billing.notFoundProductIds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _InlineMessage(
+                    icon: Icons.info_outline_rounded,
+                    message: l10n.settingsSupportProductsPartialMessage,
+                    color: cs.onSurfaceVariant,
                   ),
-                  onRetry: onRetryLoad,
-                  isRefreshing: billing.isRefreshingProducts,
-                  isError: billing.productLoadError == 'query_failed',
                 ),
-                const SizedBox(height: 12),
-                for (
-                  int index = 0;
-                  index < sponsorTiers(l10n).length;
-                  index++
-                ) ...<Widget>[
-                  if (index > 0) const SizedBox(height: 10),
-                  _SponsorTierPlaceholderTile(tier: sponsorTiers(l10n)[index]),
-                ],
-              ] else ...<Widget>[
-                if (billing.notFoundProductIds.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _InlineMessage(
-                      icon: Icons.info_outline_rounded,
-                      message: l10n.settingsSupportProductsPartialMessage,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                for (
-                  int index = 0;
-                  index < billing.products.length;
-                  index++
-                ) ...<Widget>[
-                  if (index > 0) const SizedBox(height: 10),
-                  _SponsorProductTile(
-                    product: billing.products[index],
-                    tierIndex: index,
-                    tierCount: billing.products.length,
-                    enabled: buttonsEnabled,
-                    onPressed: () => onBuy(billing.products[index].id),
-                  ),
-                ],
+              for (int index = 0; index < billing.products.length; index++) ...<
+                Widget
+              >[
+                if (index > 0) const SizedBox(height: 10),
+                _SponsorProductTile(
+                  product: billing.products[index],
+                  enabled: buttonsEnabled,
+                  onPressed: () => onBuy(billing.products[index].id),
+                ),
               ],
             ],
           ],
@@ -190,15 +180,11 @@ AppFeedbackBanner? _purchaseStatusBanner(
 class _SponsorProductTile extends StatelessWidget {
   const _SponsorProductTile({
     required this.product,
-    required this.tierIndex,
-    required this.tierCount,
     required this.enabled,
     required this.onPressed,
   });
 
   final ProductDetails product;
-  final int tierIndex;
-  final int tierCount;
   final bool enabled;
   final VoidCallback onPressed;
 
@@ -207,30 +193,19 @@ class _SponsorProductTile extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final SponsorTier? tier = sponsorTierForProduct(l10n, product.id);
-    final bool recommended = tier?.recommended ?? false;
-    final double tierProgress = tierCount <= 1
-        ? 0
-        : tierIndex / (tierCount - 1);
-    final Color accent =
-        Color.lerp(cs.secondary, cs.primary, tierProgress) ?? cs.secondary;
-    final IconData tierIcon =
-        _sponsorTierIcons[tierIndex.clamp(0, _sponsorTierIcons.length - 1)];
+    final String displayTitle = product.title.trim().isNotEmpty
+        ? product.title.trim()
+        : product.id;
+    final String displayDescription = product.description.trim();
+    final Color accent = cs.secondary;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: recommended
-            ? Color.alphaBlend(
-                accent.withValues(alpha: 0.06),
-                cs.surfaceContainerLow,
-              )
-            : cs.surfaceContainerLow,
+        color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: recommended
-              ? accent.withValues(alpha: 0.45)
-              : PageStyle.outlineSide(cs).color,
-          width: recommended ? 1.5 : 1,
+          color: PageStyle.outlineSide(cs).color,
+          width: 1,
         ),
       ),
       child: ClipRRect(
@@ -259,7 +234,11 @@ class _SponsorProductTile extends StatelessWidget {
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(7),
-                              child: Icon(tierIcon, color: accent, size: 18),
+                              child: Icon(
+                                Icons.volunteer_activism_rounded,
+                                color: accent,
+                                size: 18,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -267,31 +246,22 @@ class _SponsorProductTile extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: <Widget>[
-                                    if (tier != null)
-                                      Text(
-                                        tier.label,
-                                        style: theme.textTheme.titleSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                      ),
-                                    if (recommended)
-                                      _RecommendedBadge(color: accent),
-                                  ],
+                                Text(
+                                  displayTitle,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                if (tier != null) ...<Widget>[
+                                if (displayDescription.isNotEmpty) ...<Widget>[
                                   const SizedBox(height: 2),
                                   Text(
-                                    tier.hint,
+                                    displayDescription,
                                     style: theme.textTheme.labelSmall?.copyWith(
                                       color: cs.onSurfaceVariant,
                                       height: 1.3,
                                     ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ],
@@ -326,35 +296,6 @@ class _SponsorProductTile extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecommendedBadge extends StatelessWidget {
-  const _RecommendedBadge({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        child: Text(
-          context.l10n.settingsSupportRecommendedTierBadge,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -449,62 +390,6 @@ class _ProductLoadNotice extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SponsorTierPlaceholderTile extends StatelessWidget {
-  const _SponsorTierPlaceholderTile({required this.tier});
-
-  final SponsorTier tier;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.18)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: <Widget>[
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: cs.outline.withValues(alpha: 0.5),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    tier.label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  Text(
-                    tier.hint,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

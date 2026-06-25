@@ -57,6 +57,10 @@ class SponsorBillingController extends Notifier<SponsorBillingState> {
     return ref.read(googleBillingServiceProvider).buySponsorProduct(product);
   }
 
+  void clearPurchaseSuccess() {
+    ref.read(googleBillingServiceProvider).clearPurchaseSuccess();
+  }
+
   ProductDetails? _productById(String productId) {
     for (final ProductDetails candidate in state.products) {
       if (candidate.id == productId) {

@@ -1451,13 +1451,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSupportProductsSectionBody =>
-      'Google Play 會依所在地區顯示金額與幣別；每個選項都可再次支持。';
+      'Google Play 會依所在地區顯示每個選項的標題、說明與金額。';
 
   @override
   String get settingsSupportBuyButtonPrefix => '支持';
-
-  @override
-  String get settingsSupportRecommendedTierBadge => '常用';
 
   @override
   String get settingsSupportPendingMessage => '付款處理中，請稍候。';
@@ -1486,6 +1483,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '請確認網路連線正常；若問題持續，請更新本應用程式後再試。';
 
   @override
+  String get settingsSupportProductsInitFailedTitle => '無法啟動 Google Play 結帳';
+
+  @override
+  String get settingsSupportProductsInitFailedBody =>
+      '請確認 Google Play 服務正常後再試。';
+
+  @override
   String get settingsSupportProductsQueryFailedTitle => '目前無法連線至 Google Play';
 
   @override
@@ -1499,36 +1503,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSupportFooterNote => '支持完全自願，請依您的需求與意願決定。';
-
-  @override
-  String get settingsSupportTierSponsorCoffeeLabel => '請開發者喝杯咖啡';
-
-  @override
-  String get settingsSupportTierSponsorCoffeeHint => '讓 Quill Diary 持續被照顧與改進';
-
-  @override
-  String get settingsSupportTierSponsorSnackLabel => '請開發者吃點心';
-
-  @override
-  String get settingsSupportTierSponsorSnackHint => '為日常改進補充一點能量';
-
-  @override
-  String get settingsSupportTierSponsorLunchLabel => '請開發者吃午餐';
-
-  @override
-  String get settingsSupportTierSponsorLunchHint => '支持更多時間投入開發與維護';
-
-  @override
-  String get settingsSupportTierSponsorBoostLabel => '大力支持';
-
-  @override
-  String get settingsSupportTierSponsorBoostHint => '給持續開發一份有力鼓勵';
-
-  @override
-  String get settingsSupportTierSponsorSuperLabel => '大大大大大力支持';
-
-  @override
-  String get settingsSupportTierSponsorSuperHint => '幫助我們更安心投入長期維護與改進';
 
   @override
   String get sessionStartupNeedsRecoveryKeyMessage => '尚未建立復原金鑰。';

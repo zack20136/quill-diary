@@ -2611,7 +2611,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsSectionBody.
   ///
   /// In zh, this message translates to:
-  /// **'Google Play 會依所在地區顯示金額與幣別；每個選項都可再次支持。'**
+  /// **'Google Play 會依所在地區顯示每個選項的標題、說明與金額。'**
   String get settingsSupportProductsSectionBody;
 
   /// No description provided for @settingsSupportBuyButtonPrefix.
@@ -2619,12 +2619,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'支持'**
   String get settingsSupportBuyButtonPrefix;
-
-  /// No description provided for @settingsSupportRecommendedTierBadge.
-  ///
-  /// In zh, this message translates to:
-  /// **'常用'**
-  String get settingsSupportRecommendedTierBadge;
 
   /// No description provided for @settingsSupportPendingMessage.
   ///
@@ -2674,6 +2668,18 @@ abstract class AppLocalizations {
   /// **'請確認網路連線正常；若問題持續，請更新本應用程式後再試。'**
   String get settingsSupportProductsNotReadyBody;
 
+  /// No description provided for @settingsSupportProductsInitFailedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法啟動 Google Play 結帳'**
+  String get settingsSupportProductsInitFailedTitle;
+
+  /// No description provided for @settingsSupportProductsInitFailedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'請確認 Google Play 服務正常後再試。'**
+  String get settingsSupportProductsInitFailedBody;
+
   /// No description provided for @settingsSupportProductsQueryFailedTitle.
   ///
   /// In zh, this message translates to:
@@ -2703,66 +2709,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'支持完全自願，請依您的需求與意願決定。'**
   String get settingsSupportFooterNote;
-
-  /// No description provided for @settingsSupportTierSponsorCoffeeLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'請開發者喝杯咖啡'**
-  String get settingsSupportTierSponsorCoffeeLabel;
-
-  /// No description provided for @settingsSupportTierSponsorCoffeeHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'讓 Quill Diary 持續被照顧與改進'**
-  String get settingsSupportTierSponsorCoffeeHint;
-
-  /// No description provided for @settingsSupportTierSponsorSnackLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'請開發者吃點心'**
-  String get settingsSupportTierSponsorSnackLabel;
-
-  /// No description provided for @settingsSupportTierSponsorSnackHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'為日常改進補充一點能量'**
-  String get settingsSupportTierSponsorSnackHint;
-
-  /// No description provided for @settingsSupportTierSponsorLunchLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'請開發者吃午餐'**
-  String get settingsSupportTierSponsorLunchLabel;
-
-  /// No description provided for @settingsSupportTierSponsorLunchHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'支持更多時間投入開發與維護'**
-  String get settingsSupportTierSponsorLunchHint;
-
-  /// No description provided for @settingsSupportTierSponsorBoostLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'大力支持'**
-  String get settingsSupportTierSponsorBoostLabel;
-
-  /// No description provided for @settingsSupportTierSponsorBoostHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'給持續開發一份有力鼓勵'**
-  String get settingsSupportTierSponsorBoostHint;
-
-  /// No description provided for @settingsSupportTierSponsorSuperLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'大大大大大力支持'**
-  String get settingsSupportTierSponsorSuperLabel;
-
-  /// No description provided for @settingsSupportTierSponsorSuperHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'幫助我們更安心投入長期維護與改進'**
-  String get settingsSupportTierSponsorSuperHint;
 
   /// No description provided for @sessionStartupNeedsRecoveryKeyMessage.
   ///

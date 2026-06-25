@@ -1,18 +1,26 @@
 # Google Play Billing
 
-Quill Diary 的「贊助開發」採 **client-only Google Play Billing**：純贊助、無登入、無權益、無贊助紀錄、無後端驗證。
+這份文件整理 Quill Diary 的「支持開發者」如何接 Google Play Billing。這一套採 **client-only**：純支持、無登入、無權益、無支持紀錄、無後端驗證。
 
-## 產品決策
+## 目前結論
+
+- 支持頁直接顯示 Google Play 回傳的 localized `title` / `description` / `price`
+- App 不再自己拼商品文案
+- 商品使用 `One-time product`，屬於 **consumable**，可以重複購買
+- 支持流程不提供額外功能、會員或徽章
+
+## 商品設計
+
+### 目前採用
 
 - 收款方式：`Google Play Billing`
-- 商品類型：`One-time product`（**consumable**，可重複購買；App 端須 `buyConsumable` + `consumePurchase`）
-- 商品數量：**5 檔梯次**（由低到高：NT$50 / 100 / 300 / 1000 / 2000）
-- 回饋：**無**（不解鎖功能、不去廣告、無徽章/會員/特殊內容）
-- App **不寫死價格**；下表台灣價格僅供 Play Console 設定參考，實際以 `ProductDetails.price` 顯示
+- 商品數量：**5 檔梯次**，由低到高為 NT$50 / 100 / 300 / 1000 / 2000
+- App 端須使用 `buyConsumable(autoConsume: false)` + `consumePurchase`
+- App **不寫死價格**；台灣價格只供 Play Console 設定時參考，實際顯示以 `ProductDetails.price` 為準
 
 ### Play Console 單次產品欄位
 
-每個產品須填 **產品 ID、名稱、說明**（名稱與說明須準確、不得誤導使用者）。價格在 **購買選項** 裡設定，可為各區域設定不同價格。
+每個產品都要填 **產品 ID、名稱、說明**。名稱與說明要準確，不能誤導使用者。價格則在 **購買選項** 裡設定，可針對不同區域給不同價格。
 
 - **交易類型**：購買（非租借）
 - **數位內容或服務**：服務
@@ -39,6 +47,8 @@ NT$2000  大大大大大力支持
 
 ## 文案原則
 
+Play Console 的商品名稱與說明要保留原意，App 端只負責直接顯示，不再另外改寫。
+
 可以寫：
 
 - `支持開發者`
@@ -53,16 +63,16 @@ NT$2000  大大大大大力支持
 ## App 端流程
 
 1. App 啟動時訂閱 `purchaseStream`
-2. 贊助頁 `queryProductDetails` 載入五檔商品
-3. 使用者點「支持 {價格}」→ `buyConsumable`
+2. 贊助頁 `queryProductDetails` 載入五檔商品，直接使用 Play 回傳的 `title` / `description` / `price`
+3. 使用者點「支持 {價格}」→ `buyConsumable(autoConsume: false)`
 4. `pending` / `error` / `canceled` / `purchased` 依狀態顯示訊息
 5. `purchased` → 感謝 → `consumePurchase` → `completePurchase`（若需要）
-6. **不**在本機持久化「已贊助」狀態
+6. **不**在本機持久化「已支持」狀態
 
 相關程式：
 
 - [`lib/infrastructure/billing/google_billing_service.dart`](../../../lib/infrastructure/billing/google_billing_service.dart)
-- [`lib/features/settings/providers/billing_providers.dart`](../../../lib/features/settings/providers/billing_providers.dart)（App 層訂閱 `purchaseStream`）
+- [`lib/features/settings/providers/billing_providers.dart`](../../../lib/features/settings/providers/billing_providers.dart)
 - [`lib/features/settings/pages/support_page.dart`](../../../lib/features/settings/pages/support_page.dart)
 - [`lib/config/billing_config.dart`](../../../lib/config/billing_config.dart)
 
@@ -78,11 +88,13 @@ NT$2000  大大大大大力支持
 
 ## 自動化與手動驗證
 
-程式碼庫目前只自動驗證 `BillingConfig` 與 `GoogleBillingService` 的契約；商品建立、License testing、五檔商品查價、成功/取消/失敗/`pending`、`consumePurchase` 後可再次購買，以及 app 重開補抓未完成交易，仍需依 Play Console 與真機流程手動確認。這份文件中的 `TODO(manual:...)` 就是發布前必做的手動驗證清單，不是遺漏的產品需求。
+程式碼庫目前只自動驗證 `BillingConfig` 與 `GoogleBillingService` 的契約。商品建立、License testing、五檔商品查價、成功/取消/失敗/`pending`、`consumePurchase` 後可再次購買，以及 App 重開補抓未完成交易，仍要依 Play Console 與真機流程手動確認。
+
+這份文件中的 `TODO(manual:...)` 就是發布前必做的手動驗證清單，不是遺漏的產品需求。因為這個實作是 client-only，所以不做 backend verify / RTDN。
 
 ## 未來擴充（本次不做）
 
-若日後要提供權益或保存贊助紀錄，再補 Cloudflare Worker verify + D1。
+若日後要提供權益或保存支持紀錄，再補 Cloudflare Worker verify + D1。
 
 ## 官方參考
 
