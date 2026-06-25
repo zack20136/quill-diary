@@ -1,8 +1,14 @@
 # Agent 工作指引
 
-本檔整理本專案對不同代理工具的工作規範。
+本檔是給 `Cursor` 與 `Codex` 共同參考的規範。
 
-## 全域要遵守
+## 怎麼讀這份文件
+
+1. 先看 `所有代理都要遵守`。
+2. 再看你自己的專屬段落：`Cursor 專屬` 或 `Codex 專屬`。
+3. 若兩邊有衝突，以專屬段落優先。
+
+## 所有代理都要遵守
 
 ### 程式碼與架構
 
@@ -26,17 +32,17 @@
 - 重構後確保引用與測試同步更新；不要留下半套 rename 或 broken import。
 - 註解只解釋非 obvious 的業務邏輯；程式本身應能自我說明。
 
-## Cursor 要遵守
+## Cursor 專屬
 
-- 遵守以上全域規範。
+- 只需遵守 `所有代理都要遵守`。
+- 不另外套用 `Codex 專屬` 的 Flutter 指令限制。
 
-## Codex 要遵守
+## Codex 專屬
 
-- 遵守以上+以下全域規範。
+- 除了 `所有代理都要遵守` 之外，還要遵守下列 Flutter 規則。
+- 本專案中的 Flutter 指令不要直接呼叫 `flutter ...`。
 
 ### Flutter 指令
-
-本專案中的 Flutter 指令不要直接呼叫 `flutter ...`。
 
 原因：
 - 在這個 Windows / Codex 受管環境中，`flutter.bat` 容易殘留 `cmd.exe`、`dart.exe` 與 Flutter SDK cache lock 檔，造成後續指令卡住。

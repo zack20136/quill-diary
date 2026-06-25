@@ -6,6 +6,7 @@ import '../editor/providers/editor_draft_providers.dart';
 import '../editor/providers/editor_providers.dart';
 import '../home/providers/home_providers.dart';
 import '../session/providers/session_providers.dart';
+import '../session/session_route_preservation.dart';
 import '../session/state/app_session_state.dart';
 import '../settings/providers/settings_providers.dart';
 import 'restore_prepared_context.dart';
@@ -45,6 +46,7 @@ Future<AppSessionState> finishRestoreSession(
     }
     return sessionState;
   } finally {
+    ref.read(sessionRoutePreservationProvider.notifier).clear();
     ref.read(appSessionProvider.notifier).endTrustedUnlockBootstrap();
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);

@@ -235,6 +235,7 @@ class GoogleBillingService {
     switch (purchase.status) {
       case PurchaseStatus.pending:
         _emit(_state.copyWith(purchasePhase: SponsorPurchasePhase.pending));
+        return;
       case PurchaseStatus.error:
         _emit(
           _state.copyWith(
@@ -242,6 +243,7 @@ class GoogleBillingService {
             purchaseErrorMessage: purchase.error?.message ?? 'purchase_error',
           ),
         );
+        return;
       case PurchaseStatus.canceled:
         _emit(
           _state.copyWith(
@@ -249,9 +251,11 @@ class GoogleBillingService {
             clearPurchaseErrorMessage: true,
           ),
         );
+        return;
       case PurchaseStatus.purchased:
       case PurchaseStatus.restored:
         await _finalizePurchase(purchase);
+        return;
     }
   }
 
