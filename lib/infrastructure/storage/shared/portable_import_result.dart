@@ -2,8 +2,6 @@
 abstract final class PortableImportFailureCode {
   static const String selectedFilesUnreadable = 'selected_files_unreadable';
   static const String zipNoEntries = 'zip_no_entries';
-  static const String easyDiaryUnsupportedPlatform =
-      'easy_diary_unsupported_platform';
   static const String easyDiaryRealmReadFailed = 'easy_diary_realm_read_failed';
   static const String easyDiaryEmptyBackup = 'easy_diary_empty_backup';
   static const String easyDiaryAllEncrypted = 'easy_diary_all_encrypted';

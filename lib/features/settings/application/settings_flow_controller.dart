@@ -261,9 +261,7 @@ class SettingsFlowController {
     _ref.invalidate(tagAccentArgbMapProvider);
     return SettingsRepairVaultResult(
       report: report,
-      feedback: SettingsFlowFeedback(
-        _repairVaultSuccessMessage(l10n, report),
-      ),
+      feedback: SettingsFlowFeedback(_repairVaultSuccessMessage(l10n, report)),
     );
   }
 
@@ -283,12 +281,7 @@ class SettingsFlowController {
     if (!hasChanges) {
       return base;
     }
-    return '$base ${l10n.settingsRepairVaultSuccessChanges(
-      report.relocatedEntries,
-      report.removedDuplicateEntries,
-      report.removedOrphanAssets,
-      report.skippedCorruptEntries,
-    )}';
+    return '$base ${l10n.settingsRepairVaultSuccessChanges(report.relocatedEntries, report.removedDuplicateEntries, report.removedOrphanAssets, report.skippedCorruptEntries)}';
   }
 
   Future<void> retryTrustedUnlock() async {

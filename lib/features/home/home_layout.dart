@@ -17,6 +17,7 @@ abstract final class HomeLayout {
 
   static const double circleActionSize = 44;
   static const double circleActionIconSize = 26;
+
   /// 圓形按鈕距內容區左右內緣的額外間距（與 [bodyHorizontal] 相加為距螢幕邊）。
   static const double circleActionSideInset = 8;
   static const double circleActionHorizontalInset =

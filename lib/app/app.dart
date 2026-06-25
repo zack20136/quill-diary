@@ -34,9 +34,9 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
       if (!mounted) {
         return;
       }
-      ref.read(sessionRoutePreservationProvider.notifier).bindLocationResolver(
-        () => _router.state.uri.toString(),
-      );
+      ref
+          .read(sessionRoutePreservationProvider.notifier)
+          .bindLocationResolver(() => _router.state.uri.toString());
     });
   }
 
@@ -70,14 +70,15 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
       );
       final SessionRouteNavigationAction action =
           resolveLifecycleResumeRouteAction(
-        outcome: snapshot.outcome,
-        recoverable: snapshot.recoverable,
-        savedForInactivityLock: preservation.savedForInactivityLock,
-        pendingRestoreLocation: preservation.pendingRestoreLocation,
-        nextState: next,
-      );
+            outcome: snapshot.outcome,
+            recoverable: snapshot.recoverable,
+            savedForInactivityLock: preservation.savedForInactivityLock,
+            pendingRestoreLocation: preservation.pendingRestoreLocation,
+            nextState: next,
+          );
 
-      final String? restoreTarget = action == SessionRouteNavigationAction.restore
+      final String? restoreTarget =
+          action == SessionRouteNavigationAction.restore
           ? restoreTargetLocation(preservation)
           : null;
 
@@ -103,7 +104,10 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AppSessionState>(appSessionProvider, _handleSessionRouteTransition);
+    ref.listen<AppSessionState>(
+      appSessionProvider,
+      _handleSessionRouteTransition,
+    );
 
     ref.watch(sponsorBillingLifecycleProvider);
     final Locale locale = ref

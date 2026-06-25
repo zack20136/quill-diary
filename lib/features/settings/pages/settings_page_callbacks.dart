@@ -84,15 +84,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
               ? () => _runBusy(_createRecoveryKey)
               : null,
-          onRotateRecoveryKey: recoveryMetadata != null &&
-                  pageAccess.vaultTransfer.canBackup
+          onRotateRecoveryKey:
+              recoveryMetadata != null && pageAccess.vaultTransfer.canBackup
               ? () => _runBusy(_rotateRecoveryKey)
               : null,
           onRepairVault: hasUnlockedSession
               ? () => _runBusy(_repairVault)
               : null,
-          onRetryTrustedUnlock:
-              sessionState?.status == AppLockStatus.locked
+          onRetryTrustedUnlock: sessionState?.status == AppLockStatus.locked
               ? () => _runBusy(_retryTrustedUnlock)
               : null,
           lockPanel:

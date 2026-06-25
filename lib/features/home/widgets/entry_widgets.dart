@@ -57,11 +57,7 @@ class HomeTimelineEntryShell extends StatelessWidget {
 }
 
 class HomeEntryList extends ConsumerWidget {
-  const HomeEntryList({
-    required this.entries,
-    this.controller,
-    super.key,
-  });
+  const HomeEntryList({required this.entries, this.controller, super.key});
 
   final List<EntryIndexRecord> entries;
   final ScrollController? controller;

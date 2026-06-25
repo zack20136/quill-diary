@@ -55,9 +55,9 @@ class ExternalDirectoryStore {
     final File file = File(await _filePath());
     await file.parent.create(recursive: true);
     await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(<String, Object?>{
-        'lastDirectory': trimmed,
-      }),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert(<String, Object?>{'lastDirectory': trimmed}),
       flush: true,
     );
   }

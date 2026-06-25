@@ -21,6 +21,7 @@ import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 import '../../helpers/storage/fake_vault_transfer_service.dart';
@@ -75,36 +76,28 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('編輯器路由未帶 entryId 時會建立 EditorPage', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('編輯器路由未帶 entryId 時會建立 EditorPage', (WidgetTester tester) async {
     await pumpRoute(tester, AppRouter.editorRoute);
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, isNull);
     expect(page.startInEditMode, isFalse);
   });
 
-  testWidgets('編輯器詳細路由會傳遞 entryId', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('編輯器詳細路由會傳遞 entryId', (WidgetTester tester) async {
     await pumpRoute(tester, '/editor/abc');
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, 'abc');
     expect(page.startInEditMode, isFalse);
   });
 
-  testWidgets('編輯器詳細路由帶 edit=1 時會進入編輯模式', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('編輯器詳細路由帶 edit=1 時會進入編輯模式', (WidgetTester tester) async {
     await pumpRoute(tester, '/editor/abc?edit=1');
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, 'abc');
     expect(page.startInEditMode, isTrue);
   });
 
-  testWidgets('設定相關路由會建立對應頁面', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('設定相關路由會建立對應頁面', (WidgetTester tester) async {
     await pumpRoute(tester, AppRouter.settingsRoute);
     expect(find.byType(SettingsPage), findsOneWidget);
 
@@ -132,4 +125,3 @@ class _FixedPersonalizationPreferencesController
     );
   }
 }
-

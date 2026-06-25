@@ -295,6 +295,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check your setup or restart the app';
 
   @override
+  String get sessionUnsupportedRuntimeMessage =>
+      'Quill Diary currently supports Android only.';
+
+  @override
   String get editorPageTitle => 'Edit Entry';
 
   @override
@@ -908,13 +912,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Starting the restored diary vault…';
 
   @override
-  String get settingsPlatformSectionTitle => 'Platform Limitation';
-
-  @override
-  String get settingsPlatformSectionDescription =>
-      'Quill Diary currently supports Android only.';
-
-  @override
   String get settingsSecurityLockStatusPreparing => 'Preparing…';
 
   @override
@@ -1146,10 +1143,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsImportExportFailureZipNoEntries =>
       'The ZIP contains no importable Markdown, HTML, or full Easy Diary backup.';
-
-  @override
-  String get settingsImportExportFailureEasyDiaryUnsupportedPlatform =>
-      'Easy Diary backups can currently be imported on Android only.';
 
   @override
   String get settingsImportExportFailureEasyDiaryRealmReadFailed =>
@@ -1539,7 +1532,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportBillingUnavailableMessage =>
-      'Google Play billing is currently unavailable. Use an Android device with the Google Play Store installed.';
+      'Google Play billing is currently unavailable. Make sure Google Play services are working on this Android device.';
 
   @override
   String get settingsSupportProductLoadErrorTitle =>

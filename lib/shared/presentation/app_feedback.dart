@@ -108,23 +108,25 @@ void showAppFeedbackSnackBar(
   messenger.hideCurrentSnackBar();
   final ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller =
       messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(color: colors.foreground),
-      ),
-      backgroundColor: colors.background,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      margin: const EdgeInsets.fromLTRB(
-        HomeLayout.bodyHorizontal,
-        0,
-        HomeLayout.bodyHorizontal,
-        HomeLayout.snackBarBottomPadding,
-      ),
-    ),
-  );
+        SnackBar(
+          content: Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.foreground,
+            ),
+          ),
+          backgroundColor: colors.background,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          ),
+          margin: const EdgeInsets.fromLTRB(
+            HomeLayout.bodyHorizontal,
+            0,
+            HomeLayout.bodyHorizontal,
+            HomeLayout.snackBarBottomPadding,
+          ),
+        ),
+      );
   lift?.bind(controller);
 }

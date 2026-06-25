@@ -8,6 +8,7 @@ import 'package:quill_diary/features/settings/providers/settings_providers.dart'
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../../helpers/session/fake_session_vault_repository.dart';
 import '../../../helpers/storage/fake_vault_transfer_service.dart';
@@ -67,4 +68,3 @@ Widget _settingsScope(Widget child) {
     child: child,
   );
 }
-

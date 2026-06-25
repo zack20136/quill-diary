@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/app/app_color_scheme.dart';
 import 'package:quill_diary/app/theme.dart';
@@ -15,9 +15,7 @@ void main() {
         brightness: testCase.brightness,
       );
 
-      final ThemeData theme = buildAppTheme(
-        brightness: testCase.brightness,
-      );
+      final ThemeData theme = buildAppTheme(brightness: testCase.brightness);
 
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, testCase.brightness);

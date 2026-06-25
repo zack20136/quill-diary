@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../../infrastructure/billing/google_billing_service.dart';
-import '../../../shared/providers/core_providers.dart';
+import '../../../shared/platform/vault_platform_support.dart';
 import '../state/sponsor_billing_state.dart';
 
 final googleBillingServiceProvider = Provider<GoogleBillingService>((Ref ref) {

@@ -21,10 +21,11 @@ import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
-typedef PickPortableFiles = Future<FilePickerResult?> Function({
-  required String dialogTitle,
-  required List<String> allowedExtensions,
-});
+typedef PickPortableFiles =
+    Future<FilePickerResult?> Function({
+      required String dialogTitle,
+      required List<String> allowedExtensions,
+    });
 
 typedef ReadPlatformFileBytes = Future<Uint8List?> Function(PlatformFile file);
 

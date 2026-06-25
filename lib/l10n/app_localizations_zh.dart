@@ -286,6 +286,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionBlockedFatalErrorSubtitle => '請檢查設定或重新啟動應用程式';
 
   @override
+  String get sessionUnsupportedRuntimeMessage => 'Quill Diary 目前僅支援 Android。';
+
+  @override
   String get editorPageTitle => '編輯日記';
 
   @override
@@ -877,12 +880,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackupStartingAfterRestore => '正在啟動還原後的日記庫…';
 
   @override
-  String get settingsPlatformSectionTitle => '平台限制';
-
-  @override
-  String get settingsPlatformSectionDescription => 'Quill Diary 目前僅支援 Android。';
-
-  @override
   String get settingsSecurityLockStatusPreparing => '正在準備中…';
 
   @override
@@ -1095,10 +1092,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsImportExportFailureZipNoEntries =>
       'ZIP 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。';
-
-  @override
-  String get settingsImportExportFailureEasyDiaryUnsupportedPlatform =>
-      'Easy Diary 備份目前僅支援在 Android 上匯入。';
 
   @override
   String get settingsImportExportFailureEasyDiaryRealmReadFailed =>
@@ -1467,7 +1460,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSupportBillingUnavailableMessage =>
-      '目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。';
+      '目前無法使用 Google Play 結帳，請確認已安裝 Google Play 商店且 Google Play 服務運作正常。';
 
   @override
   String get settingsSupportProductLoadErrorTitle => '暫時無法載入支持選項';

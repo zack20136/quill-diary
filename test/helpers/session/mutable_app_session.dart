@@ -16,10 +16,7 @@ class MutableAppSessionNotifier extends Notifier<AppSessionState> {
       const AppSessionState(status: AppLockStatus.locked);
 
   void unlock(UnlockedVaultSession session) {
-    state = AppSessionState(
-      status: AppLockStatus.unlocked,
-      session: session,
-    );
+    state = AppSessionState(status: AppLockStatus.unlocked, session: session);
   }
 
   void lock() {
@@ -28,9 +25,7 @@ class MutableAppSessionNotifier extends Notifier<AppSessionState> {
 }
 
 /// 以 [mutableAppSessionProvider] 驅動 [effectiveAppSessionProvider] 的測試容器。
-ProviderContainer buildMutableAppSessionContainer({
-  required List overrides,
-}) {
+ProviderContainer buildMutableAppSessionContainer({required List overrides}) {
   return ProviderContainer(
     overrides: [
       effectiveAppSessionProvider.overrideWith(

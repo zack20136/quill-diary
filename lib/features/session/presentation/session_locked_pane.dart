@@ -50,8 +50,7 @@ class SessionBlockedPane extends ConsumerWidget {
           const CircularProgressIndicator(),
           const SizedBox(height: 20),
           Text(
-            sessionState.message ??
-                sessionTrustedUnlockInProgressMessage(l10n),
+            sessionState.message ?? sessionTrustedUnlockInProgressMessage(l10n),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -90,9 +89,8 @@ class SessionBlockedPane extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           SessionRetryVerificationButton(
-            onPressed: () => unawaited(
-              ref.read(appSessionProvider.notifier).unlock(),
-            ),
+            onPressed: () =>
+                unawaited(ref.read(appSessionProvider.notifier).unlock()),
           ),
         ],
       );
@@ -102,8 +100,7 @@ class SessionBlockedPane extends ConsumerWidget {
       AppLockStatus.recoveryRequired =>
         sessionState.message ??
             sessionRecoveryRequiredAfterRestoreMessage(l10n),
-      _ =>
-        sessionState.message ?? l10n.editorSessionLockedFallback,
+      _ => sessionState.message ?? l10n.editorSessionLockedFallback,
     };
 
     return Text(

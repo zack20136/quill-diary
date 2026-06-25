@@ -164,361 +164,385 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
           controller: _scrollController,
           scrollCacheExtent: HomeLayout.entryListCacheExtent,
           slivers: <Widget>[
-          SliverToBoxAdapter(
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints _) {
-                final double textScale = MediaQuery.textScalerOf(
-                  context,
-                ).scale(1);
-                final double viewportHeight =
-                    MediaQuery.sizeOf(context).height * 0.52;
-                final double rowHeight = calendarRowHeightForAvailableHeight(
-                  viewportHeight - kCalendarShellVerticalInset,
-                  textScale: textScale,
-                );
-                final double calendarHeight = calendarContentHeight(rowHeight);
+            SliverToBoxAdapter(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints _) {
+                  final double textScale = MediaQuery.textScalerOf(
+                    context,
+                  ).scale(1);
+                  final double viewportHeight =
+                      MediaQuery.sizeOf(context).height * 0.52;
+                  final double rowHeight = calendarRowHeightForAvailableHeight(
+                    viewportHeight - kCalendarShellVerticalInset,
+                    textScale: textScale,
+                  );
+                  final double calendarHeight = calendarContentHeight(
+                    rowHeight,
+                  );
 
-                return CalendarSectionShell(
-                  child: Stack(
-                    children: <Widget>[
-                      SizedBox(
-                        height: calendarHeight,
-                        child: IgnorePointer(
-                          ignoring: monthGridLoading,
-                          child: Opacity(
-                            opacity: monthGridLoading ? 0.45 : 1,
-                            child: TableCalendar<Object>(
-                              firstDay: DateTime(2020),
-                              lastDay: DateTime(2100),
-                              focusedDay: visibleMonth,
-                              calendarFormat: CalendarFormat.month,
-                              availableCalendarFormats:
-                                  <CalendarFormat, String>{
-                                    CalendarFormat.month: context
-                                        .l10n
-                                        .homeCalendarMonthFormatLabel,
-                                  },
-                              startingDayOfWeek: StartingDayOfWeek.sunday,
-                              sixWeekMonthsEnforced: true,
-                              headerStyle: HeaderStyle(
-                                titleCentered: true,
-                                formatButtonVisible: false,
-                                headerPadding: const EdgeInsets.only(bottom: 6),
-                                leftChevronPadding: const EdgeInsets.all(6),
-                                rightChevronPadding: const EdgeInsets.all(6),
-                                leftChevronMargin: const EdgeInsets.only(
-                                  left: 0,
-                                ),
-                                rightChevronMargin: const EdgeInsets.only(
-                                  right: 0,
-                                ),
-                                leftChevronIcon: Icon(
-                                  Icons.chevron_left_rounded,
-                                  color: cs.onSurfaceVariant,
-                                  size: 22,
-                                ),
-                                rightChevronIcon: Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: cs.onSurfaceVariant,
-                                  size: 22,
-                                ),
-                                titleTextStyle:
-                                    theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ) ??
-                                    const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                titleTextFormatter: (DateTime date, _) =>
-                                    calendarMonthTitle(context.l10n, date),
-                              ),
-                              daysOfWeekHeight: kCalendarDaysOfWeekHeight,
-                              rowHeight: rowHeight,
-                              calendarStyle: CalendarStyle(
-                                outsideDaysVisible: true,
-                                cellMargin: EdgeInsets.zero,
-                                tablePadding: EdgeInsets.zero,
-                                tableBorder: TableBorder(
-                                  top: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                  left: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                  right: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                  horizontalInside: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                  verticalInside: BorderSide(
-                                    color: calendarGridLineColor(cs),
-                                    width: 0.5,
-                                  ),
-                                ),
-                                defaultDecoration: const BoxDecoration(),
-                                selectedDecoration: const BoxDecoration(),
-                                todayDecoration: const BoxDecoration(),
-                                outsideDecoration: const BoxDecoration(),
-                                weekendDecoration: const BoxDecoration(),
-                                markerDecoration: const BoxDecoration(),
-                              ),
-                              daysOfWeekStyle: DaysOfWeekStyle(
-                                weekdayStyle:
-                                    theme.textTheme.labelSmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ) ??
-                                    TextStyle(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                weekendStyle:
-                                    theme.textTheme.labelSmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ) ??
-                                    TextStyle(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                              selectedDayPredicate: (DateTime day) =>
-                                  selectedDate.value ==
-                                  DateOnly.fromDateTime(day).value,
-                              onPageChanged: (DateTime focusedDay) {
-                                ref
-                                    .read(calendarVisibleMonthProvider.notifier)
-                                    .set(
-                                      DateTime(
-                                        focusedDay.year,
-                                        focusedDay.month,
-                                      ),
-                                    );
-                              },
-                              onDaySelected:
-                                  (DateTime selectedDay, DateTime focusedDay) {
-                                    ref
-                                        .read(
-                                          calendarVisibleMonthProvider.notifier,
-                                        )
-                                        .set(
-                                          DateTime(
-                                            focusedDay.year,
-                                            focusedDay.month,
-                                          ),
-                                        );
-                                    ref
-                                        .read(
-                                          calendarSelectedDateProvider.notifier,
-                                        )
-                                        .set(
-                                          DateOnly.fromDateTime(selectedDay),
-                                        );
-                                  },
-                              eventLoader: (_) => const <Object>[],
-                              calendarBuilders: CalendarBuilders<Object>(
-                                dowBuilder:
-                                    (BuildContext context, DateTime day) {
-                                      final bool isSun = calendarIsSunday(day);
-                                      final bool isSat = calendarIsSaturday(
-                                        day,
-                                      );
-                                      return DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: cs.surfaceContainerHigh
-                                              .withValues(alpha: 0.45),
-                                          border: Border(
-                                            bottom: BorderSide(
-                                              color: calendarGridLineColor(cs),
-                                              width: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            calendarWeekdayLabel(
-                                              context.l10n,
-                                              day,
-                                            ),
-                                            style: theme.textTheme.labelSmall
-                                                ?.copyWith(
-                                                  fontSize: 10.5,
-                                                  color: isSun
-                                                      ? cs.error.withValues(
-                                                          alpha: 0.78,
-                                                        )
-                                                      : isSat
-                                                      ? cs.primary.withValues(
-                                                          alpha: 0.72,
-                                                        )
-                                                      : cs.onSurfaceVariant,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                defaultBuilder:
-                                    (
-                                      BuildContext context,
-                                      DateTime day,
-                                      DateTime focusedDay,
-                                    ) {
-                                      return _buildDayCell(
-                                        day: day,
-                                        focusedDay: focusedDay,
-                                        entriesByDate: entriesByDate,
-                                        selectedDate: selectedDate,
-                                        isSelected: false,
-                                        isToday: calendarIsSameDay(day, today),
-                                        isOutside:
-                                            day.month != focusedDay.month,
-                                        rowHeight: rowHeight,
-                                        tagAccents: tagAccents,
-                                      );
-                                    },
-                                selectedBuilder:
-                                    (
-                                      BuildContext context,
-                                      DateTime day,
-                                      DateTime focusedDay,
-                                    ) {
-                                      return _buildDayCell(
-                                        day: day,
-                                        focusedDay: focusedDay,
-                                        entriesByDate: entriesByDate,
-                                        selectedDate: selectedDate,
-                                        isSelected: true,
-                                        isToday: calendarIsSameDay(day, today),
-                                        isOutside:
-                                            day.month != focusedDay.month,
-                                        rowHeight: rowHeight,
-                                        tagAccents: tagAccents,
-                                      );
-                                    },
-                                todayBuilder:
-                                    (
-                                      BuildContext context,
-                                      DateTime day,
-                                      DateTime focusedDay,
-                                    ) {
-                                      return _buildDayCell(
-                                        day: day,
-                                        focusedDay: focusedDay,
-                                        entriesByDate: entriesByDate,
-                                        selectedDate: selectedDate,
-                                        isSelected:
-                                            selectedDate.value ==
-                                            DateOnly.fromDateTime(day).value,
-                                        isToday: true,
-                                        isOutside:
-                                            day.month != focusedDay.month,
-                                        rowHeight: rowHeight,
-                                        tagAccents: tagAccents,
-                                      );
-                                    },
-                                outsideBuilder:
-                                    (
-                                      BuildContext context,
-                                      DateTime day,
-                                      DateTime focusedDay,
-                                    ) {
-                                      return _buildDayCell(
-                                        day: day,
-                                        focusedDay: focusedDay,
-                                        entriesByDate: entriesByDate,
-                                        selectedDate: selectedDate,
-                                        isSelected:
-                                            selectedDate.value ==
-                                            DateOnly.fromDateTime(day).value,
-                                        isToday: calendarIsSameDay(day, today),
-                                        isOutside: true,
-                                        rowHeight: rowHeight,
-                                        tagAccents: tagAccents,
-                                      );
-                                    },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (monthGridLoading)
+                  return CalendarSectionShell(
+                    child: Stack(
+                      children: <Widget>[
                         SizedBox(
                           height: calendarHeight,
-                          child: Center(
-                            child: SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: cs.primary,
+                          child: IgnorePointer(
+                            ignoring: monthGridLoading,
+                            child: Opacity(
+                              opacity: monthGridLoading ? 0.45 : 1,
+                              child: TableCalendar<Object>(
+                                firstDay: DateTime(2020),
+                                lastDay: DateTime(2100),
+                                focusedDay: visibleMonth,
+                                calendarFormat: CalendarFormat.month,
+                                availableCalendarFormats:
+                                    <CalendarFormat, String>{
+                                      CalendarFormat.month: context
+                                          .l10n
+                                          .homeCalendarMonthFormatLabel,
+                                    },
+                                startingDayOfWeek: StartingDayOfWeek.sunday,
+                                sixWeekMonthsEnforced: true,
+                                headerStyle: HeaderStyle(
+                                  titleCentered: true,
+                                  formatButtonVisible: false,
+                                  headerPadding: const EdgeInsets.only(
+                                    bottom: 6,
+                                  ),
+                                  leftChevronPadding: const EdgeInsets.all(6),
+                                  rightChevronPadding: const EdgeInsets.all(6),
+                                  leftChevronMargin: const EdgeInsets.only(
+                                    left: 0,
+                                  ),
+                                  rightChevronMargin: const EdgeInsets.only(
+                                    right: 0,
+                                  ),
+                                  leftChevronIcon: Icon(
+                                    Icons.chevron_left_rounded,
+                                    color: cs.onSurfaceVariant,
+                                    size: 22,
+                                  ),
+                                  rightChevronIcon: Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: cs.onSurfaceVariant,
+                                    size: 22,
+                                  ),
+                                  titleTextStyle:
+                                      theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                      ) ??
+                                      const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                  titleTextFormatter: (DateTime date, _) =>
+                                      calendarMonthTitle(context.l10n, date),
+                                ),
+                                daysOfWeekHeight: kCalendarDaysOfWeekHeight,
+                                rowHeight: rowHeight,
+                                calendarStyle: CalendarStyle(
+                                  outsideDaysVisible: true,
+                                  cellMargin: EdgeInsets.zero,
+                                  tablePadding: EdgeInsets.zero,
+                                  tableBorder: TableBorder(
+                                    top: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                    bottom: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                    left: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                    right: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                    horizontalInside: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                    verticalInside: BorderSide(
+                                      color: calendarGridLineColor(cs),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  defaultDecoration: const BoxDecoration(),
+                                  selectedDecoration: const BoxDecoration(),
+                                  todayDecoration: const BoxDecoration(),
+                                  outsideDecoration: const BoxDecoration(),
+                                  weekendDecoration: const BoxDecoration(),
+                                  markerDecoration: const BoxDecoration(),
+                                ),
+                                daysOfWeekStyle: DaysOfWeekStyle(
+                                  weekdayStyle:
+                                      theme.textTheme.labelSmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ) ??
+                                      TextStyle(
+                                        color: cs.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                  weekendStyle:
+                                      theme.textTheme.labelSmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ) ??
+                                      TextStyle(
+                                        color: cs.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                selectedDayPredicate: (DateTime day) =>
+                                    selectedDate.value ==
+                                    DateOnly.fromDateTime(day).value,
+                                onPageChanged: (DateTime focusedDay) {
+                                  ref
+                                      .read(
+                                        calendarVisibleMonthProvider.notifier,
+                                      )
+                                      .set(
+                                        DateTime(
+                                          focusedDay.year,
+                                          focusedDay.month,
+                                        ),
+                                      );
+                                },
+                                onDaySelected:
+                                    (
+                                      DateTime selectedDay,
+                                      DateTime focusedDay,
+                                    ) {
+                                      ref
+                                          .read(
+                                            calendarVisibleMonthProvider
+                                                .notifier,
+                                          )
+                                          .set(
+                                            DateTime(
+                                              focusedDay.year,
+                                              focusedDay.month,
+                                            ),
+                                          );
+                                      ref
+                                          .read(
+                                            calendarSelectedDateProvider
+                                                .notifier,
+                                          )
+                                          .set(
+                                            DateOnly.fromDateTime(selectedDay),
+                                          );
+                                    },
+                                eventLoader: (_) => const <Object>[],
+                                calendarBuilders: CalendarBuilders<Object>(
+                                  dowBuilder:
+                                      (BuildContext context, DateTime day) {
+                                        final bool isSun = calendarIsSunday(
+                                          day,
+                                        );
+                                        final bool isSat = calendarIsSaturday(
+                                          day,
+                                        );
+                                        return DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: cs.surfaceContainerHigh
+                                                .withValues(alpha: 0.45),
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: calendarGridLineColor(
+                                                  cs,
+                                                ),
+                                                width: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              calendarWeekdayLabel(
+                                                context.l10n,
+                                                day,
+                                              ),
+                                              style: theme.textTheme.labelSmall
+                                                  ?.copyWith(
+                                                    fontSize: 10.5,
+                                                    color: isSun
+                                                        ? cs.error.withValues(
+                                                            alpha: 0.78,
+                                                          )
+                                                        : isSat
+                                                        ? cs.primary.withValues(
+                                                            alpha: 0.72,
+                                                          )
+                                                        : cs.onSurfaceVariant,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                  defaultBuilder:
+                                      (
+                                        BuildContext context,
+                                        DateTime day,
+                                        DateTime focusedDay,
+                                      ) {
+                                        return _buildDayCell(
+                                          day: day,
+                                          focusedDay: focusedDay,
+                                          entriesByDate: entriesByDate,
+                                          selectedDate: selectedDate,
+                                          isSelected: false,
+                                          isToday: calendarIsSameDay(
+                                            day,
+                                            today,
+                                          ),
+                                          isOutside:
+                                              day.month != focusedDay.month,
+                                          rowHeight: rowHeight,
+                                          tagAccents: tagAccents,
+                                        );
+                                      },
+                                  selectedBuilder:
+                                      (
+                                        BuildContext context,
+                                        DateTime day,
+                                        DateTime focusedDay,
+                                      ) {
+                                        return _buildDayCell(
+                                          day: day,
+                                          focusedDay: focusedDay,
+                                          entriesByDate: entriesByDate,
+                                          selectedDate: selectedDate,
+                                          isSelected: true,
+                                          isToday: calendarIsSameDay(
+                                            day,
+                                            today,
+                                          ),
+                                          isOutside:
+                                              day.month != focusedDay.month,
+                                          rowHeight: rowHeight,
+                                          tagAccents: tagAccents,
+                                        );
+                                      },
+                                  todayBuilder:
+                                      (
+                                        BuildContext context,
+                                        DateTime day,
+                                        DateTime focusedDay,
+                                      ) {
+                                        return _buildDayCell(
+                                          day: day,
+                                          focusedDay: focusedDay,
+                                          entriesByDate: entriesByDate,
+                                          selectedDate: selectedDate,
+                                          isSelected:
+                                              selectedDate.value ==
+                                              DateOnly.fromDateTime(day).value,
+                                          isToday: true,
+                                          isOutside:
+                                              day.month != focusedDay.month,
+                                          rowHeight: rowHeight,
+                                          tagAccents: tagAccents,
+                                        );
+                                      },
+                                  outsideBuilder:
+                                      (
+                                        BuildContext context,
+                                        DateTime day,
+                                        DateTime focusedDay,
+                                      ) {
+                                        return _buildDayCell(
+                                          day: day,
+                                          focusedDay: focusedDay,
+                                          entriesByDate: entriesByDate,
+                                          selectedDate: selectedDate,
+                                          isSelected:
+                                              selectedDate.value ==
+                                              DateOnly.fromDateTime(day).value,
+                                          isToday: calendarIsSameDay(
+                                            day,
+                                            today,
+                                          ),
+                                          isOutside: true,
+                                          rowHeight: rowHeight,
+                                          tagAccents: tagAccents,
+                                        );
+                                      },
+                                ),
                               ),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
+                        if (monthGridLoading)
+                          SizedBox(
+                            height: calendarHeight,
+                            child: Center(
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: cs.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: HomeLayout.sectionGap),
-          ),
-          SliverToBoxAdapter(
-            child: entriesAsync.when(
-              skipLoadingOnReload: true,
-              data: (List<EntryIndexRecord> entries) {
-                final String dateLabel = DisplayFormat.formatDateOnly(
-                  context.l10n,
-                  selectedDate,
-                );
-                return HomeDiaryListSectionCard(
-                  title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
-                  stripeColor: cs.primary,
-                  child: entries.isEmpty
-                      ? HomePaneEmptyHint(
-                          text: context.l10n.homeEmptyDayMessage(dateLabel),
-                        )
-                      : HomeCompactEntryList(entries: entries),
-                );
-              },
-              loading: () {
-                final String dateLabel = DisplayFormat.formatDateOnly(
-                  context.l10n,
-                  selectedDate,
-                );
-                return HomeDiaryListSectionCard(
-                  title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
-                  stripeColor: cs.primary,
-                  child: const Center(child: CircularProgressIndicator()),
-                );
-              },
-              error: (Object error, StackTrace _) {
-                final String dateLabel = DisplayFormat.formatDateOnly(
-                  context.l10n,
-                  selectedDate,
-                );
-                return HomeDiaryListSectionCard(
-                  title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
-                  stripeColor: cs.primary,
-                  child: Text(
-                    userFacingErrorMessage(error, l10n: context.l10n),
-                  ),
-                );
-              },
+            const SliverToBoxAdapter(
+              child: SizedBox(height: HomeLayout.sectionGap),
             ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            SliverToBoxAdapter(
+              child: entriesAsync.when(
+                skipLoadingOnReload: true,
+                data: (List<EntryIndexRecord> entries) {
+                  final String dateLabel = DisplayFormat.formatDateOnly(
+                    context.l10n,
+                    selectedDate,
+                  );
+                  return HomeDiaryListSectionCard(
+                    title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
+                    stripeColor: cs.primary,
+                    child: entries.isEmpty
+                        ? HomePaneEmptyHint(
+                            text: context.l10n.homeEmptyDayMessage(dateLabel),
+                          )
+                        : HomeCompactEntryList(entries: entries),
+                  );
+                },
+                loading: () {
+                  final String dateLabel = DisplayFormat.formatDateOnly(
+                    context.l10n,
+                    selectedDate,
+                  );
+                  return HomeDiaryListSectionCard(
+                    title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
+                    stripeColor: cs.primary,
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
+                error: (Object error, StackTrace _) {
+                  final String dateLabel = DisplayFormat.formatDateOnly(
+                    context.l10n,
+                    selectedDate,
+                  );
+                  return HomeDiaryListSectionCard(
+                    title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
+                    stripeColor: cs.primary,
+                    child: Text(
+                      userFacingErrorMessage(error, l10n: context.l10n),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
       ),

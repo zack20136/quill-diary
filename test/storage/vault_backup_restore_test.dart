@@ -235,7 +235,9 @@ void main() {
     );
     expect(await draftStore.listDraftKeys(), isNotEmpty);
 
-    final File backupFile = File(p.join(harness.tempDir.path, 'draft_clear.zip'));
+    final File backupFile = File(
+      p.join(harness.tempDir.path, 'draft_clear.zip'),
+    );
     await archiveIo.writeBackupZip(backupFile);
 
     await harness.repository.closeUnlockedResources();

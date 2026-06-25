@@ -123,15 +123,13 @@ void main() {
     final ProductDetails product = service.state.products.first;
     await service.buySponsorProduct(product);
 
-    fakeInAppPurchase.emitPurchases(
-      <PurchaseDetails>[
-        buildPurchaseDetails(
-          productId: product.id,
-          status: PurchaseStatus.purchased,
-          pendingCompletePurchase: true,
-        ),
-      ],
-    );
+    fakeInAppPurchase.emitPurchases(<PurchaseDetails>[
+      buildPurchaseDetails(
+        productId: product.id,
+        status: PurchaseStatus.purchased,
+        pendingCompletePurchase: true,
+      ),
+    ]);
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
 

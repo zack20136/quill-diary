@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../../../shared/platform/vault_platform_support.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';

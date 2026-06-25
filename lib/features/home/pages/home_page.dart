@@ -7,10 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
-import '../../../shared/providers/core_providers.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/providers/session_providers.dart';
-import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../home_layout.dart';
 import '../providers/home_bottom_chrome_provider.dart';
@@ -31,17 +29,9 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
-    final bool isSupportedPlatform = ref.watch(supportedPlatformProvider);
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
       effectiveAppSessionProvider,
     );
-
-    if (!isSupportedPlatform) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text(sessionAndroidOnlyMessage(context.l10n))),
-      );
-    }
 
     return sessionAsync.when(
       data: (AppSessionState sessionState) {
@@ -95,9 +85,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                         tooltip: context.l10n.homeTooltipNewEntry,
                         icon: Icons.add_rounded,
                         onPressed: canCreate
-                            ? () => unawaited(
-                                context.push(AppRouter.editorRoute),
-                              )
+                            ? () =>
+                                  unawaited(context.push(AppRouter.editorRoute))
                             : null,
                       ),
                     ),

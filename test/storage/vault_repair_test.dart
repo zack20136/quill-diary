@@ -173,10 +173,7 @@ void main() {
 
     final List<TagCatalogItem> catalog = await harness.repository
         .listTagCatalog();
-    expect(
-      catalog.any((TagCatalogItem item) => item.label == '修復標籤'),
-      isTrue,
-    );
+    expect(catalog.any((TagCatalogItem item) => item.label == '修復標籤'), isTrue);
   });
 
   test('修復後索引篇數與日記一致', () async {

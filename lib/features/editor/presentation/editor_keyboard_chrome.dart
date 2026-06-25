@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 const Duration kEditorChromeEnterDuration = Duration(milliseconds: 180);
 const Duration kEditorChromeExitDuration = Duration(milliseconds: 120);
 
-const Key kEditorAttachmentAreaVisibleKey = Key('editor-attachment-area-visible');
+const Key kEditorAttachmentAreaVisibleKey = Key(
+  'editor-attachment-area-visible',
+);
 const Key kEditorAttachmentAreaHiddenKey = Key('editor-attachment-area-hidden');
 
 Widget editorKeyboardChromeTransition(

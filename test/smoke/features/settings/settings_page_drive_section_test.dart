@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
@@ -64,9 +64,7 @@ void main() {
     );
   }
 
-  testWidgets('鎖定且未連線時會停用雲端連結', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('鎖定且未連線時會停用雲端連結', (WidgetTester tester) async {
     await pumpDriveSection(
       tester,
       connectionState: const DriveConnectionState.disconnected(),
@@ -86,9 +84,7 @@ void main() {
     );
   });
 
-  testWidgets('鎖定但沒有復原金鑰時仍可進行雲端還原', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('鎖定但沒有復原金鑰時仍可進行雲端還原', (WidgetTester tester) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -117,9 +113,7 @@ void main() {
     );
   });
 
-  testWidgets('鎖定且已有復原金鑰時會停用雲端還原', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('鎖定且已有復原金鑰時會停用雲端還原', (WidgetTester tester) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -141,9 +135,7 @@ void main() {
     );
   });
 
-  testWidgets('鎖定且已連線時會停用帳號操作', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('鎖定且已連線時會停用帳號操作', (WidgetTester tester) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -178,62 +170,57 @@ void main() {
     );
   });
 
-  testWidgets(
-    '本機備份區塊在沒有復原金鑰時仍可匯入外部備份',
-    (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: LocalBackupSection(
-              access: lockedAccess(hasRecoveryKey: false),
-              busy: false,
-              onCreate: () {},
-              onRestore: () {},
-              onExport: () {},
-              onImport: () {},
-            ),
+  testWidgets('本機備份區塊在沒有復原金鑰時仍可匯入外部備份', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: appZhLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: Scaffold(
+          body: LocalBackupSection(
+            access: lockedAccess(hasRecoveryKey: false),
+            busy: false,
+            onCreate: () {},
+            onRestore: () {},
+            onExport: () {},
+            onImport: () {},
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        readSettingsActionButton(
-          tester,
-          testL10n.settingsLocalBackupCreateButton,
-        ).onPressed,
-        isNull,
-      );
-      expect(
-        readSettingsActionButton(
-          tester,
-          testL10n.settingsLocalBackupRestoreButton,
-        ).onPressed,
-        isNull,
-      );
-      expect(
-        readSettingsActionButton(
-          tester,
-          testL10n.settingsLocalBackupExportToExternalButton,
-        ).onPressed,
-        isNull,
-      );
-      expect(
-        readSettingsActionButton(
-          tester,
-          testL10n.settingsLocalBackupImportFromExternalButton,
-        ).onPressed,
-        isNotNull,
-      );
-    },
-  );
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsLocalBackupCreateButton,
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsLocalBackupRestoreButton,
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsLocalBackupExportToExternalButton,
+      ).onPressed,
+      isNull,
+    );
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsLocalBackupImportFromExternalButton,
+      ).onPressed,
+      isNotNull,
+    );
+  });
 
-  testWidgets('安全性總覽不會重複顯示解鎖狀態卡片', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('安全性總覽不會重複顯示解鎖狀態卡片', (WidgetTester tester) async {
     await tester.pumpWidget(
       settingsTestScope(
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
@@ -257,37 +244,36 @@ void main() {
     );
   });
 
-  testWidgets('locked without recovery key keeps create recovery key available', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      settingsTestScope(
-        sessionState: const AppSessionState(status: AppLockStatus.locked),
-        transferService: FakeVaultTransferService(
-          connectionState: const DriveConnectionState.disconnected(),
+  testWidgets(
+    'locked without recovery key keeps create recovery key available',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        settingsTestScope(
+          sessionState: const AppSessionState(status: AppLockStatus.locked),
+          transferService: FakeVaultTransferService(
+            connectionState: const DriveConnectionState.disconnected(),
+          ),
+          child: MaterialApp(
+            locale: appZhLocale,
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            home: const SettingsPage(),
+          ),
         ),
-        child: MaterialApp(
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: const SettingsPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsSecurityOverviewCreateRecoveryKeyButton,
-      ).onPressed,
-      isNotNull,
-    );
-  });
+      expect(
+        readSettingsActionButton(
+          tester,
+          testL10n.settingsSecurityOverviewCreateRecoveryKeyButton,
+        ).onPressed,
+        isNotNull,
+      );
+    },
+  );
 
-  testWidgets('鎖定且已有復原金鑰時會停用建立復原金鑰', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('鎖定且已有復原金鑰時會停用建立復原金鑰', (WidgetTester tester) async {
     await tester.pumpWidget(
       settingsTestScope(
         sessionState: const AppSessionState(status: AppLockStatus.locked),
@@ -323,4 +309,3 @@ void main() {
     );
   });
 }
-

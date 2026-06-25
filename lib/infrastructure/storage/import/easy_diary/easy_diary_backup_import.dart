@@ -14,18 +14,14 @@ import 'easy_diary_realm_entry.dart';
 
 /// Easy Diary 完整備份（Realm + Photos）匯入。
 class EasyDiaryBackupImporter {
-  EasyDiaryBackupImporter({
-    MethodChannel? realmChannel,
-    bool? realmReaderEnabled,
-  }) : _realmChannel = realmChannel ?? _defaultRealmChannel,
-       _realmReaderEnabled = realmReaderEnabled ?? Platform.isAndroid;
+  EasyDiaryBackupImporter({MethodChannel? realmChannel})
+    : _realmChannel = realmChannel ?? _defaultRealmChannel;
 
   static const MethodChannel _defaultRealmChannel = MethodChannel(
     AppIdentifiers.easyDiaryRealmChannel,
   );
 
   final MethodChannel _realmChannel;
-  final bool _realmReaderEnabled;
 
   Future<PortableImportResult?> tryImportFromExtractedRoot({
     required UnlockedVaultSession session,
@@ -37,14 +33,6 @@ class EasyDiaryBackupImporter {
     );
     if (layout == null) {
       return null;
-    }
-
-    if (!_realmReaderEnabled) {
-      return const PortableImportResult(
-        importedEntries: 0,
-        skippedFiles: 0,
-        failureCode: PortableImportFailureCode.easyDiaryUnsupportedPlatform,
-      );
     }
 
     final List<EasyDiaryRealmEntry> realmEntries;

@@ -104,8 +104,6 @@ String settingsImportExportMessageForFailureCode(
       l10n.settingsImportExportFailureSelectedFilesUnreadable,
     PortableImportFailureCode.zipNoEntries =>
       l10n.settingsImportExportFailureZipNoEntries,
-    PortableImportFailureCode.easyDiaryUnsupportedPlatform =>
-      l10n.settingsImportExportFailureEasyDiaryUnsupportedPlatform,
     PortableImportFailureCode.easyDiaryRealmReadFailed =>
       l10n.settingsImportExportFailureEasyDiaryRealmReadFailed,
     PortableImportFailureCode.easyDiaryEmptyBackup =>

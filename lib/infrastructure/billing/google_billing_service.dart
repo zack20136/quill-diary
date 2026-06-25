@@ -136,7 +136,9 @@ class GoogleBillingService {
         return;
       }
 
-      final List<ProductDetails> sorted = _sortProducts(response.productDetails);
+      final List<ProductDetails> sorted = _sortProducts(
+        response.productDetails,
+      );
       _emitProductLoadResult(
         products: sorted,
         notFoundProductIds: response.notFoundIDs.toList(growable: false),

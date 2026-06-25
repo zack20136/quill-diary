@@ -77,21 +77,23 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
             Expanded(
               child:
                   SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
-                choices: _options
-                    .map(
-                      (SessionBackgroundTimeoutMinutes value) =>
-                          SettingsSegmentChoice<SessionBackgroundTimeoutMinutes>(
-                            value: value,
-                            label: '${value.minutes}',
-                            icon: null,
-                            flex: 1,
-                            enabled: enabled,
-                          ),
-                    )
-                    .toList(growable: false),
-                selected: selected,
-                onSelected: onSelected,
-              ),
+                    choices: _options
+                        .map(
+                          (SessionBackgroundTimeoutMinutes value) =>
+                              SettingsSegmentChoice<
+                                SessionBackgroundTimeoutMinutes
+                              >(
+                                value: value,
+                                label: '${value.minutes}',
+                                icon: null,
+                                flex: 1,
+                                enabled: enabled,
+                              ),
+                        )
+                        .toList(growable: false),
+                    selected: selected,
+                    onSelected: onSelected,
+                  ),
             ),
             const SizedBox(width: 12),
             Text(

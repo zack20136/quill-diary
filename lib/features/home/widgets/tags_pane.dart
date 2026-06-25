@@ -515,40 +515,42 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
               return HomeScrollAffordance(
                 controller: _pageScrollController,
                 child: NotificationListener<OverscrollIndicatorNotification>(
-                  onNotification: (
-                    OverscrollIndicatorNotification notification,
-                  ) {
-                    notification.disallowIndicator();
-                    return false;
-                  },
+                  onNotification:
+                      (OverscrollIndicatorNotification notification) {
+                        notification.disallowIndicator();
+                        return false;
+                      },
                   child: CustomScrollView(
                     controller: _pageScrollController,
                     scrollCacheExtent: HomeLayout.entryListCacheExtent,
                     slivers: <Widget>[
-                    SliverToBoxAdapter(
-                      child: HomeSectionCard(
-                        title: homeTagsSectionTitle(context.l10n, list.length),
-                        stripeColor: cs.secondary,
-                        child: SizedBox(
-                          height: HomeLayout.tagListSectionHeight,
-                          child: NestedPanelScrollbar(
-                            controller: _tagListScrollController,
-                            contentPadding: const EdgeInsets.only(right: 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: tagTiles,
+                      SliverToBoxAdapter(
+                        child: HomeSectionCard(
+                          title: homeTagsSectionTitle(
+                            context.l10n,
+                            list.length,
+                          ),
+                          stripeColor: cs.secondary,
+                          child: SizedBox(
+                            height: HomeLayout.tagListSectionHeight,
+                            child: NestedPanelScrollbar(
+                              controller: _tagListScrollController,
+                              contentPadding: const EdgeInsets.only(right: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: tagTiles,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: HomeLayout.sectionGap),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _tagDiaryPreviewPanel(records, theme, cs),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: HomeLayout.sectionGap),
+                      ),
+                      SliverToBoxAdapter(
+                        child: _tagDiaryPreviewPanel(records, theme, cs),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
                     ],
                   ),
                 ),

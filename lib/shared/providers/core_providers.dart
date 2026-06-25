@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../infrastructure/crypto/crypto_service.dart';
@@ -14,11 +13,7 @@ import '../../infrastructure/storage/vault_archive_io.dart';
 import '../../infrastructure/storage/vault_path_strategy.dart';
 import '../../infrastructure/storage/vault_repository.dart';
 import '../../infrastructure/storage/vault_transfer_service.dart';
-
-/// 目前只有 Android 原生環境支援完整 vault 能力。
-final supportedPlatformProvider = Provider<bool>((Ref ref) {
-  return !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-});
+import '../platform/vault_platform_support.dart';
 
 /// 組合 vault 相關檔案路徑策略。
 final vaultPathStrategyProvider = Provider<VaultPathStrategy>((Ref ref) {

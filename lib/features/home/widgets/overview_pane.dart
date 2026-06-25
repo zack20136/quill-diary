@@ -291,98 +291,100 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                   controller: _scrollController,
                   scrollCacheExtent: HomeLayout.entryListCacheExtent,
                   slivers: <Widget>[
-                  SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        OverviewScopePicker(exportButton: exportButton),
-                        const SizedBox(height: HomeLayout.sectionGap),
-                        OverviewScopedMetricPanel(
-                          scope: scope,
-                          focusedMonth: focusedMonth,
-                          focusedYear: focusedYear,
-                          entriesAsync: scopedEntriesAsync,
-                        ),
-                        const SizedBox(height: HomeLayout.sectionGap),
-                        HomeSectionCard(
-                          title: context.l10n.homePopularTagsTitle,
-                          stripeColor: cs.tertiary,
-                          child: scopedTopTags.isEmpty
-                              ? HomePaneEmptyHint(
-                                  text: context.l10n.homeScopeEmptyTags,
-                                )
-                              : Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: scopedTopTags.map((
-                                    TagCatalogUsageItem item,
-                                  ) {
-                                    final (
-                                      Color chipBg,
-                                      Color chipFg,
-                                    ) = tagResolvedAccentPair(
-                                      item.label,
-                                      cs,
-                                      tagAccents,
-                                    );
-                                    final bool isSelected =
-                                        selectedTag == item.label;
-                                    final Color bg = isSelected
-                                        ? Color.alphaBlend(
-                                            cs.primary.withValues(alpha: 0.2),
-                                            chipBg,
-                                          )
-                                        : chipBg;
-                                    return FilterChip(
-                                      label: Text(
-                                        '${item.label} ${item.count}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium
-                                            ?.copyWith(
-                                              color: chipFg,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                      selected: isSelected,
-                                      showCheckmark: false,
-                                      backgroundColor: bg.withValues(
-                                        alpha: 0.94,
-                                      ),
-                                      selectedColor: bg.withValues(alpha: 0.98),
-                                      checkmarkColor: chipFg,
-                                      side: BorderSide(
-                                        color: chipFg.withValues(
-                                          alpha: isSelected ? 0.48 : 0.3,
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          OverviewScopePicker(exportButton: exportButton),
+                          const SizedBox(height: HomeLayout.sectionGap),
+                          OverviewScopedMetricPanel(
+                            scope: scope,
+                            focusedMonth: focusedMonth,
+                            focusedYear: focusedYear,
+                            entriesAsync: scopedEntriesAsync,
+                          ),
+                          const SizedBox(height: HomeLayout.sectionGap),
+                          HomeSectionCard(
+                            title: context.l10n.homePopularTagsTitle,
+                            stripeColor: cs.tertiary,
+                            child: scopedTopTags.isEmpty
+                                ? HomePaneEmptyHint(
+                                    text: context.l10n.homeScopeEmptyTags,
+                                  )
+                                : Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: scopedTopTags.map((
+                                      TagCatalogUsageItem item,
+                                    ) {
+                                      final (
+                                        Color chipBg,
+                                        Color chipFg,
+                                      ) = tagResolvedAccentPair(
+                                        item.label,
+                                        cs,
+                                        tagAccents,
+                                      );
+                                      final bool isSelected =
+                                          selectedTag == item.label;
+                                      final Color bg = isSelected
+                                          ? Color.alphaBlend(
+                                              cs.primary.withValues(alpha: 0.2),
+                                              chipBg,
+                                            )
+                                          : chipBg;
+                                      return FilterChip(
+                                        label: Text(
+                                          '${item.label} ${item.count}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: chipFg,
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                         ),
-                                        width: isSelected ? 1.05 : 0.92,
-                                      ),
-                                      onSelected: (_) {
-                                        final notifier = ref.read(
-                                          overviewTagFilterProvider.notifier,
-                                        );
-                                        notifier.set(
-                                          selectedTag == item.label
-                                              ? null
-                                              : item.label,
-                                        );
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                        ),
-                      ],
+                                        selected: isSelected,
+                                        showCheckmark: false,
+                                        backgroundColor: bg.withValues(
+                                          alpha: 0.94,
+                                        ),
+                                        selectedColor: bg.withValues(
+                                          alpha: 0.98,
+                                        ),
+                                        checkmarkColor: chipFg,
+                                        side: BorderSide(
+                                          color: chipFg.withValues(
+                                            alpha: isSelected ? 0.48 : 0.3,
+                                          ),
+                                          width: isSelected ? 1.05 : 0.92,
+                                        ),
+                                        onSelected: (_) {
+                                          final notifier = ref.read(
+                                            overviewTagFilterProvider.notifier,
+                                          );
+                                          notifier.set(
+                                            selectedTag == item.label
+                                                ? null
+                                                : item.label,
+                                          );
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  ...overviewDiarySectionSlivers(
-                    context: context,
-                    cs: cs,
-                    diarySectionTitle: diarySectionTitle,
-                    diaryEmptyText: diaryEmptyText,
-                    diaryEntries: diaryEntries,
-                    diaryLoading: false,
-                    titleTrail: diarySectionTitleTrail,
-                  ),
+                    ...overviewDiarySectionSlivers(
+                      context: context,
+                      cs: cs,
+                      diarySectionTitle: diarySectionTitle,
+                      diaryEmptyText: diaryEmptyText,
+                      diaryEntries: diaryEntries,
+                      diaryLoading: false,
+                      titleTrail: diarySectionTitleTrail,
+                    ),
                   ],
                 ),
               ),
@@ -399,77 +401,74 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                 controller: _scrollController,
                 scrollCacheExtent: HomeLayout.entryListCacheExtent,
                 slivers: <Widget>[
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const OverviewScopePicker(),
-                      const SizedBox(height: HomeLayout.sectionGap),
-                      OverviewScopedMetricPanel(
-                        scope: scope,
-                        focusedMonth: focusedMonth,
-                        focusedYear: focusedYear,
-                        entriesAsync: scopedEntriesAsync,
-                      ),
-                    ],
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        const OverviewScopePicker(),
+                        const SizedBox(height: HomeLayout.sectionGap),
+                        OverviewScopedMetricPanel(
+                          scope: scope,
+                          focusedMonth: focusedMonth,
+                          focusedYear: focusedYear,
+                          entriesAsync: scopedEntriesAsync,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                ...overviewDiarySectionSlivers(
-                  context: context,
-                  cs: cs,
-                  diarySectionTitle: diarySectionTitle,
-                  diaryEmptyText: diaryEmptyText,
-                  diaryEntries: null,
-                  diaryLoading: true,
-                  titleTrail: diarySectionTitleTrail,
-                ),
+                  ...overviewDiarySectionSlivers(
+                    context: context,
+                    cs: cs,
+                    diarySectionTitle: diarySectionTitle,
+                    diaryEmptyText: diaryEmptyText,
+                    diaryEntries: null,
+                    diaryLoading: true,
+                    titleTrail: diarySectionTitleTrail,
+                  ),
                 ],
               ),
             ),
           ),
-          error: (Object error, StackTrace _) =>
-              HomeScrollAffordance(
+          error: (Object error, StackTrace _) => HomeScrollAffordance(
+            controller: _scrollController,
+            child: NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (OverscrollIndicatorNotification notification) {
+                notification.disallowIndicator();
+                return false;
+              },
+              child: CustomScrollView(
                 controller: _scrollController,
-                child: NotificationListener<OverscrollIndicatorNotification>(
-                  onNotification: (
-                    OverscrollIndicatorNotification notification,
-                  ) {
-                    notification.disallowIndicator();
-                    return false;
-                  },
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                    slivers: <Widget>[
-                    SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          const OverviewScopePicker(),
-                          const SizedBox(height: HomeLayout.sectionGap),
-                          OverviewScopedMetricPanel(
-                            scope: scope,
-                            focusedMonth: focusedMonth,
-                            focusedYear: focusedYear,
-                            entriesAsync: scopedEntriesAsync,
-                          ),
-                        ],
-                      ),
+                scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                slivers: <Widget>[
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        const OverviewScopePicker(),
+                        const SizedBox(height: HomeLayout.sectionGap),
+                        OverviewScopedMetricPanel(
+                          scope: scope,
+                          focusedMonth: focusedMonth,
+                          focusedYear: focusedYear,
+                          entriesAsync: scopedEntriesAsync,
+                        ),
+                      ],
                     ),
-                    ...overviewDiarySectionSlivers(
-                      context: context,
-                      cs: cs,
-                      diarySectionTitle: diarySectionTitle,
-                      diaryEmptyText: diaryEmptyText,
-                      diaryEntries: null,
-                      diaryLoading: false,
-                      diaryError: error,
-                      titleTrail: diarySectionTitleTrail,
-                    ),
-                    ],
                   ),
-                ),
+                  ...overviewDiarySectionSlivers(
+                    context: context,
+                    cs: cs,
+                    diarySectionTitle: diarySectionTitle,
+                    diaryEmptyText: diaryEmptyText,
+                    diaryEntries: null,
+                    diaryLoading: false,
+                    diaryError: error,
+                    titleTrail: diarySectionTitleTrail,
+                  ),
+                ],
               ),
+            ),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),

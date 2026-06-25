@@ -7,7 +7,7 @@ import 'package:quill_diary/features/settings/providers/billing_providers.dart';
 import 'package:quill_diary/features/settings/state/sponsor_billing_state.dart';
 import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../../helpers/shared/fake_in_app_purchase_platform.dart';
 
@@ -52,10 +52,7 @@ void main() {
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: buildApp(),
-      ),
+      UncontrolledProviderScope(container: container, child: buildApp()),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -84,10 +81,7 @@ void main() {
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: buildApp(),
-      ),
+      UncontrolledProviderScope(container: container, child: buildApp()),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -95,15 +89,13 @@ void main() {
     final ProductDetails product = service.state.products.first;
 
     await service.buySponsorProduct(product);
-    fakeInAppPurchase.emitPurchases(
-      <PurchaseDetails>[
-        buildPurchaseDetails(
-          productId: product.id,
-          status: PurchaseStatus.purchased,
-          pendingCompletePurchase: true,
-        ),
-      ],
-    );
+    fakeInAppPurchase.emitPurchases(<PurchaseDetails>[
+      buildPurchaseDetails(
+        productId: product.id,
+        status: PurchaseStatus.purchased,
+        pendingCompletePurchase: true,
+      ),
+    ]);
     await tester.pump();
     await tester.pumpAndSettle();
 

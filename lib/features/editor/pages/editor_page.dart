@@ -30,7 +30,6 @@ import '../../../shared/utils/user_facing_error.dart';
 import '../../home/providers/home_providers.dart';
 import '../../session/presentation/session_locked_pane.dart';
 import '../../session/providers/session_providers.dart';
-import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
 import '../../settings/providers/personalization_providers.dart';
 import '../../settings/providers/settings_providers.dart';
@@ -198,10 +197,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     setState(() => _showEntryRequiredHint = true);
-    showAppFeedbackSnackBar(
-      context,
-      context.l10n.editorSaveNeedsEntryMessage,
-    );
+    showAppFeedbackSnackBar(context, context.l10n.editorSaveNeedsEntryMessage);
   }
 
   EditorDraftSnapshot _currentDraftSnapshot() {
@@ -410,10 +406,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
           draftKey: _draftKey,
           session: session,
           existingEntry: entry,
-          decideRestore: (EditorDraftRecord record) => _showRestoreDraftDialog(
-            record,
-            hasExistingEntry: entry != null,
-          ),
+          decideRestore: (EditorDraftRecord record) =>
+              _showRestoreDraftDialog(record, hasExistingEntry: entry != null),
         );
     _handlingDraftRestore = false;
     if (!mounted) {
@@ -486,9 +480,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   @override
   Widget build(BuildContext context) {
-    final bool isSupportedPlatform = ref.watch(
-      sessionSupportedPlatformProvider,
-    );
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
       effectiveAppSessionProvider,
     );
@@ -498,13 +489,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     final AsyncValue<Object?> metadataAsync = ref.watch(
       recoveryMetadataProvider,
     );
-
-    if (!isSupportedPlatform) {
-      return Scaffold(
-        appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
-        body: Center(child: Text(sessionAndroidOnlyMessage(context.l10n))),
-      );
-    }
 
     return sessionAsync.when(
       data: (AppSessionState sessionState) {

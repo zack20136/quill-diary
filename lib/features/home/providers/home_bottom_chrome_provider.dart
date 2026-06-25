@@ -50,7 +50,9 @@ class HomeBottomChromeSnackBarLift {
   final HomeBottomChromeSnackBarCount _notifier;
   bool _released = false;
 
-  void bind(ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller) {
+  void bind(
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller,
+  ) {
     unawaited(controller.closed.whenComplete(_release));
   }
 

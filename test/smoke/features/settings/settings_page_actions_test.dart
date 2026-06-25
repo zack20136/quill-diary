@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,9 +90,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('法務連結失敗時顯示備援訊息', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('法務連結失敗時顯示備援訊息', (WidgetTester tester) async {
     urlLauncher.launchResult = false;
 
     await pumpSettingsActionsPage(
@@ -115,9 +113,7 @@ void main() {
     );
   });
 
-  testWidgets('取消中斷連線時不會呼叫服務', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('取消中斷連線時不會呼叫服務', (WidgetTester tester) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: connectedState,
     );
@@ -147,9 +143,7 @@ void main() {
     );
   });
 
-  testWidgets('確認中斷連線會呼叫服務並顯示成功訊息', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('確認中斷連線會呼叫服務並顯示成功訊息', (WidgetTester tester) async {
     final FakeVaultTransferService transferService = FakeVaultTransferService(
       connectionState: connectedState,
     );
@@ -176,9 +170,7 @@ void main() {
     );
   });
 
-  testWidgets('雲端還原失敗時會刪除暫存備份檔', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('雲端還原失敗時會刪除暫存備份檔', (WidgetTester tester) async {
     final Directory tempDir = Directory.systemTemp.createTempSync(
       'settings_restore_test',
     );
@@ -228,4 +220,3 @@ void main() {
     expect(transferService.precheckRestoreCalls, 1);
   });
 }
-

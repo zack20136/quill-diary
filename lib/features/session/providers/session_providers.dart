@@ -16,6 +16,7 @@ import '../../../infrastructure/security/device_key_manager.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/platform/vault_platform_support.dart';
 import '../../settings/providers/personalization_providers.dart';
 import '../session_inactivity_watchdog.dart';
 import '../session_messages.dart';
@@ -116,10 +117,8 @@ class AppSessionController extends Notifier<AppSessionState> {
         if (nextPrefs == null) {
           return;
         }
-        final SessionBackgroundTimeoutMinutes? previousTimeout = previous
-            ?.asData
-            ?.value
-            .sessionTimeoutMinutes;
+        final SessionBackgroundTimeoutMinutes? previousTimeout =
+            previous?.asData?.value.sessionTimeoutMinutes;
         if (previousTimeout == nextPrefs.sessionTimeoutMinutes) {
           return;
         }
@@ -320,7 +319,9 @@ class AppSessionController extends Notifier<AppSessionState> {
   void notifyAppBackground() {
     _isInForeground = false;
     if (state.isUnlocked) {
-      ref.read(sessionRoutePreservationProvider.notifier).savePreBackgroundLocation();
+      ref
+          .read(sessionRoutePreservationProvider.notifier)
+          .savePreBackgroundLocation();
     }
     if (!_shouldWatchInactivity) {
       return;
@@ -423,8 +424,8 @@ class AppSessionController extends Notifier<AppSessionState> {
             '${l10n.sessionKeystoreMigrationMayReverifyMessage}';
         state = state.copyWith(message: migrationMessage);
       }
-      final UnlockedVaultSession session =
-          await repository.openTrustedSessionEnsuringKeystore();
+      final UnlockedVaultSession session = await repository
+          .openTrustedSessionEnsuringKeystore();
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
       onSessionUnlocked();
       _recordCompletedUnlock(source: source, outcome: UnlockOutcome.success);
@@ -674,10 +675,6 @@ final appSessionProvider =
       AppSessionController.new,
     );
 
-final sessionSupportedPlatformProvider = Provider<bool>((Ref ref) {
-  return ref.watch(supportedPlatformProvider);
-});
-
 /// 冷啟動或還原後重新建立應用 session（請在還原流程直接呼叫，避免與 provider 並行）。
 Future<AppSessionState> bootstrapAppSession(Ref ref) async {
   final AppLocalizations l10n = await _loadSessionL10n(ref);
@@ -686,7 +683,7 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
     if (!ref.read(supportedPlatformProvider)) {
       final AppSessionState next = AppSessionState(
         status: AppLockStatus.fatalError,
-        message: sessionAndroidOnlyMessage(l10n),
+        message: sessionUnsupportedRuntimeMessage(l10n),
       );
       controller.adoptBootstrapState(next);
       return next;
@@ -697,7 +694,8 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
     try {
       await repository.initialize();
 
-      final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
+      final RecoveryMetadata? metadata = await repository
+          .readRecoveryMetadata();
       if (metadata == null) {
         final AppSessionState next = AppSessionState(
           status: AppLockStatus.unlocked,
@@ -733,7 +731,10 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
           message: message,
         );
       } else {
-        next = AppSessionState(status: AppLockStatus.fatalError, message: message);
+        next = AppSessionState(
+          status: AppLockStatus.fatalError,
+          message: message,
+        );
       }
       controller.adoptBootstrapState(next);
       return next;

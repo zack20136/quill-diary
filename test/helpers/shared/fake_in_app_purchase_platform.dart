@@ -104,12 +104,12 @@ class FakeInAppPurchase extends Fake
   }
 
   @override
-  Future<bool> buyNonConsumable({
-    required PurchaseParam purchaseParam,
-  }) async {
-    log.add(MethodCall('buyNonConsumable', <String, Object?>{
-      'purchaseParam': purchaseParam,
-    }));
+  Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) async {
+    log.add(
+      MethodCall('buyNonConsumable', <String, Object?>{
+        'purchaseParam': purchaseParam,
+      }),
+    );
     return false;
   }
 

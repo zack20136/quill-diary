@@ -31,10 +31,7 @@ class HomeScrollAffordance extends StatelessWidget {
       clipBehavior: Clip.none,
       children: <Widget>[
         Positioned.fill(
-          child: AppScrollbar(
-            controller: controller,
-            child: child,
-          ),
+          child: AppScrollbar(controller: controller, child: child),
         ),
         _HomeBackToTopOverlay(
           controller: controller,

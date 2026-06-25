@@ -602,6 +602,12 @@ abstract class AppLocalizations {
   /// **'請檢查設定或重新啟動應用程式'**
   String get sessionBlockedFatalErrorSubtitle;
 
+  /// No description provided for @sessionUnsupportedRuntimeMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'Quill Diary 目前僅支援 Android。'**
+  String get sessionUnsupportedRuntimeMessage;
+
   /// No description provided for @editorPageTitle.
   ///
   /// In zh, this message translates to:
@@ -1643,18 +1649,6 @@ abstract class AppLocalizations {
   /// **'正在啟動還原後的日記庫…'**
   String get settingsBackupStartingAfterRestore;
 
-  /// No description provided for @settingsPlatformSectionTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'平台限制'**
-  String get settingsPlatformSectionTitle;
-
-  /// No description provided for @settingsPlatformSectionDescription.
-  ///
-  /// In zh, this message translates to:
-  /// **'Quill Diary 目前僅支援 Android。'**
-  String get settingsPlatformSectionDescription;
-
   /// No description provided for @settingsSecurityLockStatusPreparing.
   ///
   /// In zh, this message translates to:
@@ -2040,12 +2034,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'ZIP 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。'**
   String get settingsImportExportFailureZipNoEntries;
-
-  /// No description provided for @settingsImportExportFailureEasyDiaryUnsupportedPlatform.
-  ///
-  /// In zh, this message translates to:
-  /// **'Easy Diary 備份目前僅支援在 Android 上匯入。'**
-  String get settingsImportExportFailureEasyDiaryUnsupportedPlatform;
 
   /// No description provided for @settingsImportExportFailureEasyDiaryRealmReadFailed.
   ///
@@ -2641,7 +2629,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportBillingUnavailableMessage.
   ///
   /// In zh, this message translates to:
-  /// **'目前無法使用 Google Play 購買功能，請於已安裝 Google Play 商店的 Android 裝置上操作。'**
+  /// **'目前無法使用 Google Play 結帳，請確認已安裝 Google Play 商店且 Google Play 服務運作正常。'**
   String get settingsSupportBillingUnavailableMessage;
 
   /// No description provided for @settingsSupportProductLoadErrorTitle.

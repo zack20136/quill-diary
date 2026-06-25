@@ -336,8 +336,8 @@ class VaultRepository {
     required WrappedRecoveryKeyRecord record,
     required KeystoreAuthKind expected,
   }) async {
-    final RewrapTrustedRecoveryKeyResult rewrap =
-        await _deviceKeyManager.rewrapTrustedRecoveryKey(
+    final RewrapTrustedRecoveryKeyResult rewrap = await _deviceKeyManager
+        .rewrapTrustedRecoveryKey(
           vaultId: metadata.vaultId,
           sourceSlotId: record.slotId,
           nonceBase64: record.nonceBase64,
@@ -809,8 +809,7 @@ class VaultRepository {
       }
     }
 
-    final int updatedCount =
-        fromNorm != toNorm || fromDisplay != toDisplay
+    final int updatedCount = fromNorm != toNorm || fromDisplay != toDisplay
         ? await _rewriteTagInAllEntries(
             session,
             fromNorm: fromNorm,
@@ -1186,7 +1185,9 @@ class VaultRepository {
               .copyWith(vaultId: metadata.vaultId);
           final List<AssetAttachment> attachments =
               await _findAttachmentsForEntry(entry);
-          final _EntrySearchFields searchFields = _buildEntrySearchFields(entry);
+          final _EntrySearchFields searchFields = _buildEntrySearchFields(
+            entry,
+          );
 
           await indexDb.upsertEntry(
             entry: entry,
@@ -1198,20 +1199,17 @@ class VaultRepository {
             encryptedFileSize: await entity.length(),
             encryptedModifiedAt: await entity.lastModified(),
           );
-          await indexDb.replaceAttachments(
-            entry.id,
-            attachments,
-            <AssetId, String>{
-              for (final AssetAttachment attachment in attachments)
-                attachment.id: await _pathStrategy.assetAbsolutePath(
-                  date: entry.date,
-                  assetId: attachment.id,
-                  extension: p
-                      .extension(attachment.safeFilename)
-                      .replaceFirst('.', ''),
-                ),
-            },
-          );
+          await indexDb
+              .replaceAttachments(entry.id, attachments, <AssetId, String>{
+                for (final AssetAttachment attachment in attachments)
+                  attachment.id: await _pathStrategy.assetAbsolutePath(
+                    date: entry.date,
+                    assetId: attachment.id,
+                    extension: p
+                        .extension(attachment.safeFilename)
+                        .replaceFirst('.', ''),
+                  ),
+              });
           collectedTagLabels.addAll(entry.tags);
         }
       }
@@ -1302,10 +1300,7 @@ class VaultRepository {
       tagsAdded: tagsAdded,
       relocatedAssets: assetStats.relocatedAssets,
       removedOrphanAssets: assetStats.removedOrphanAssets,
-      warnings: <String>[
-        ...entryStats.warnings,
-        ...assetStats.warnings,
-      ],
+      warnings: <String>[...entryStats.warnings, ...assetStats.warnings],
     );
   }
 
@@ -1350,9 +1345,8 @@ class VaultRepository {
         );
         final DiaryEntry decoded = _frontMatterCodec.decode(markdown);
         final DiaryEntry entry = decoded.copyWith(vaultId: metadata.vaultId);
-        final List<AssetAttachment> attachments = await _findAttachmentsForEntry(
-          entry,
-        );
+        final List<AssetAttachment> attachments =
+            await _findAttachmentsForEntry(entry);
         rawScans.add(
           _RawScannedEntry(
             entry: entry,
@@ -1376,9 +1370,9 @@ class VaultRepository {
     final Map<String, List<_RawScannedEntry>> entriesById =
         <String, List<_RawScannedEntry>>{};
     for (final _RawScannedEntry raw in rawScans) {
-      entriesById.putIfAbsent(raw.entry.id, () => <_RawScannedEntry>[]).add(
-        raw,
-      );
+      entriesById
+          .putIfAbsent(raw.entry.id, () => <_RawScannedEntry>[])
+          .add(raw);
     }
 
     final List<String> pathsToDelete = <String>[];

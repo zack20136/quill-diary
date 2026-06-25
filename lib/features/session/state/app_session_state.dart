@@ -28,8 +28,7 @@ class AppSessionState {
   bool get isUnlocked => status == AppLockStatus.unlocked;
 
   bool get shouldUnlockOnResume =>
-      status == AppLockStatus.locked &&
-      lockReason != SessionLockReason.manual;
+      status == AppLockStatus.locked && lockReason != SessionLockReason.manual;
 
   AppSessionState copyWith({
     AppLockStatus? status,

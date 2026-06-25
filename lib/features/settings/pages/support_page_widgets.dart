@@ -17,8 +17,10 @@ class _ProductsSection extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final bool buttonsEnabled = billing.isAvailable && !billing.isPurchaseBusy;
-    final AppFeedbackBanner? statusBanner =
-        _purchaseStatusBanner(l10n, billing);
+    final AppFeedbackBanner? statusBanner = _purchaseStatusBanner(
+      l10n,
+      billing,
+    );
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -106,20 +108,24 @@ class _ProductsSection extends StatelessWidget {
                 ),
                 onRetry: onRetryLoad,
                 isRefreshing: billing.isRefreshingProducts,
-                isError: billing.productLoadError == 'query_failed' ||
+                isError:
+                    billing.productLoadError == 'query_failed' ||
                     billing.productLoadError == 'init_failed',
               ),
               if (billing.products.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 12),
-                for (int index = 0; index < billing.products.length; index++)
-                  ...<Widget>[
-                    if (index > 0) const SizedBox(height: 10),
-                    _SponsorProductTile(
-                      product: billing.products[index],
-                      enabled: buttonsEnabled,
-                      onPressed: () => onBuy(billing.products[index].id),
-                    ),
-                  ],
+                for (
+                  int index = 0;
+                  index < billing.products.length;
+                  index++
+                ) ...<Widget>[
+                  if (index > 0) const SizedBox(height: 10),
+                  _SponsorProductTile(
+                    product: billing.products[index],
+                    enabled: buttonsEnabled,
+                    onPressed: () => onBuy(billing.products[index].id),
+                  ),
+                ],
               ],
             ] else if (!billing.isAvailable)
               _InlineMessage(
@@ -137,9 +143,11 @@ class _ProductsSection extends StatelessWidget {
                     color: cs.onSurfaceVariant,
                   ),
                 ),
-              for (int index = 0; index < billing.products.length; index++) ...<
-                Widget
-              >[
+              for (
+                int index = 0;
+                index < billing.products.length;
+                index++
+              ) ...<Widget>[
                 if (index > 0) const SizedBox(height: 10),
                 _SponsorProductTile(
                   product: billing.products[index],
@@ -203,10 +211,7 @@ class _SponsorProductTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: PageStyle.outlineSide(cs).color,
-          width: 1,
-        ),
+        border: Border.all(color: PageStyle.outlineSide(cs).color, width: 1),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),

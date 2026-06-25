@@ -139,7 +139,7 @@ class SessionRoutePreservationController
 }
 
 final sessionRoutePreservationProvider =
-    NotifierProvider<SessionRoutePreservationController,
-        SessionRoutePreservationState>(
-      SessionRoutePreservationController.new,
-    );
+    NotifierProvider<
+      SessionRoutePreservationController,
+      SessionRoutePreservationState
+    >(SessionRoutePreservationController.new);

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 abstract final class AppScrollbarMetrics {
   static const double thickness = 4;
   static const double radius = 4;
+
   /// 距右緣極小留白，讓 thumb 貼近邊緣但不完全貼死。
   static const double crossAxisMargin = 0;
   static const double mainAxisMargin = 12;
@@ -31,7 +32,9 @@ const ScrollbarThemeData kPrimaryScrollbarTheme = ScrollbarThemeData(
 const ScrollbarThemeData kNestedPanelScrollbarTheme = ScrollbarThemeData(
   thumbVisibility: WidgetStatePropertyAll<bool>(true),
   interactive: true,
-  thickness: WidgetStatePropertyAll<double>(AppScrollbarMetrics.nestedThickness),
+  thickness: WidgetStatePropertyAll<double>(
+    AppScrollbarMetrics.nestedThickness,
+  ),
   radius: Radius.circular(AppScrollbarMetrics.nestedRadius),
   crossAxisMargin: AppScrollbarMetrics.crossAxisMargin,
   mainAxisMargin: AppScrollbarMetrics.mainAxisMargin,
@@ -82,15 +85,18 @@ class _AppScrollbarState extends State<AppScrollbar>
       ? AppScrollbarMetrics.nestedThickness
       : AppScrollbarMetrics.thickness;
 
-  double get _radius =>
-      widget.nested ? AppScrollbarMetrics.nestedRadius : AppScrollbarMetrics.radius;
+  double get _radius => widget.nested
+      ? AppScrollbarMetrics.nestedRadius
+      : AppScrollbarMetrics.radius;
 
   @override
   void initState() {
     super.initState();
     _extentAnimation.addListener(_handleExtentAnimation);
     widget.controller?.addListener(_handleControllerChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _handleControllerChanged());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _handleControllerChanged(),
+    );
   }
 
   @override
@@ -184,10 +190,7 @@ class _AppScrollbarState extends State<AppScrollbar>
     final double totalExtent = maxScroll + metrics.viewportDimension;
     final double naturalThumb =
         trackLength * (metrics.viewportDimension / totalExtent);
-    return naturalThumb.clamp(
-      AppScrollbarMetrics.minThumbLength,
-      trackLength,
-    );
+    return naturalThumb.clamp(AppScrollbarMetrics.minThumbLength, trackLength);
   }
 
   _AppScrollbarGeometry _geometryFor(
@@ -218,7 +221,8 @@ class _AppScrollbarState extends State<AppScrollbar>
       trackLength,
     );
     final double scrollableTrack = trackLength - layoutThumb;
-    final double thumbOffset = AppScrollbarMetrics.mainAxisMargin +
+    final double thumbOffset =
+        AppScrollbarMetrics.mainAxisMargin +
         scrollableTrack * (metrics.pixels / maxScroll);
 
     return _AppScrollbarGeometry(
@@ -243,8 +247,7 @@ class _AppScrollbarState extends State<AppScrollbar>
       return;
     }
 
-    final double deltaPixels =
-        details.delta.dy / scrollableTrack * maxScroll;
+    final double deltaPixels = details.delta.dy / scrollableTrack * maxScroll;
     controller.jumpTo(
       (controller.offset + deltaPixels).clamp(0, metrics.maxScrollExtent),
     );

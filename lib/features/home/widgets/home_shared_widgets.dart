@@ -317,16 +317,12 @@ class HomeStateCard extends StatelessWidget {
                 actionOutlined
                     ? OutlinedButton.icon(
                         onPressed: onAction,
-                        icon: Icon(
-                          actionIcon ?? kSessionRetryVerificationIcon,
-                        ),
+                        icon: Icon(actionIcon ?? kSessionRetryVerificationIcon),
                         label: Text(actionLabel!),
                       )
                     : FilledButton.icon(
                         onPressed: onAction,
-                        icon: Icon(
-                          actionIcon ?? Icons.settings_outlined,
-                        ),
+                        icon: Icon(actionIcon ?? Icons.settings_outlined),
                         label: Text(actionLabel!),
                       ),
               ],

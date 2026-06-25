@@ -16,8 +16,8 @@ export '../../infrastructure/security/unlock_mode_policy.dart'
         kUnlockModeNeedsDeviceLockMessage,
         kUseDeviceLockToUnlockMessage;
 
-String sessionAndroidOnlyMessage(AppLocalizations l10n) =>
-    l10n.settingsPlatformSectionDescription;
+String sessionUnsupportedRuntimeMessage(AppLocalizations l10n) =>
+    l10n.sessionUnsupportedRuntimeMessage;
 
 String sessionStartupNeedsRecoveryKeyMessage(AppLocalizations l10n) =>
     l10n.sessionStartupNeedsRecoveryKeyMessage;
