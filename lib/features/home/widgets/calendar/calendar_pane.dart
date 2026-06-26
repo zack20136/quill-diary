@@ -131,12 +131,14 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     }
 
     if (monthEntriesAsync.hasError && !monthEntriesAsync.hasValue) {
-      return HomeStateCard(
-        icon: Icons.error_outline,
-        title: context.l10n.commonReadFailureTitle,
-        message: userFacingErrorMessage(
-          monthEntriesAsync.error!,
-          l10n: context.l10n,
+      return HomeScrollbarGutter(
+        child: HomeStateCard(
+          icon: Icons.error_outline,
+          title: context.l10n.commonReadFailureTitle,
+          message: userFacingErrorMessage(
+            monthEntriesAsync.error!,
+            l10n: context.l10n,
+          ),
         ),
       );
     }

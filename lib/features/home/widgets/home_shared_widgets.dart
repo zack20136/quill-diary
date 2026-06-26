@@ -12,6 +12,7 @@ import '../../session/presentation/session_locked_pane.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/session_messages.dart';
 import '../../session/state/app_session_state.dart';
+import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 
 IconData blockedIconForStatus(AppLockStatus status) {
@@ -41,6 +42,10 @@ class HomeBlockedEntriesPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return HomeScrollbarGutter(child: _buildBody(context));
+  }
+
+  Widget _buildBody(BuildContext context) {
     if (sessionState.status == AppLockStatus.unlocking) {
       return HomeStateCard(
         icon: Icons.sync_rounded,
@@ -143,6 +148,7 @@ class HomeSectionCard extends StatelessWidget {
     this.stripeColor,
     this.titleTrail,
     this.expandChild = false,
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 14),
     super.key,
   });
 
@@ -151,6 +157,7 @@ class HomeSectionCard extends StatelessWidget {
   final Color? stripeColor;
   final Widget? titleTrail;
   final bool expandChild;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +172,7 @@ class HomeSectionCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(PageStyle.radiusCard),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,

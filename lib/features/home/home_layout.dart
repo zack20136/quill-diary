@@ -3,7 +3,7 @@ import 'package:flutter/rendering.dart';
 
 /// 首頁各分頁共用的版面常數。
 abstract final class HomeLayout {
-  static const double bodyHorizontal = 12;
+  static const double bodyHorizontal = 16;
   static const EdgeInsets bodyPadding = EdgeInsets.fromLTRB(
     bodyHorizontal,
     4,
@@ -12,6 +12,15 @@ abstract final class HomeLayout {
   );
   static const double sectionGap = 12;
   static const double tagListSectionHeight = 350;
+
+  /// 標籤列表卡片內距；右側比 [bodyHorizontal] 小，預留 nested scrollbar gutter。
+  static const EdgeInsets tagListSectionCardPadding = EdgeInsets.fromLTRB(
+    bodyHorizontal,
+    16,
+    bodyHorizontal - 5,
+    14,
+  );
+
   static const ScrollCacheExtent entryListCacheExtent =
       ScrollCacheExtent.pixels(1200);
 

@@ -13,6 +13,21 @@ const Duration _kBackToTopScrollDuration = Duration(milliseconds: 240);
 const Duration _kBackToTopEnterDuration = Duration(milliseconds: 260);
 const Duration _kBackToTopExitDuration = Duration(milliseconds: 180);
 
+/// 首頁主內容右側 scrollbar gutter（固定列、空狀態與捲動區共用）。
+class HomeScrollbarGutter extends StatelessWidget {
+  const HomeScrollbarGutter({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(right: HomeLayout.bodyHorizontal),
+      child: child,
+    );
+  }
+}
+
 class HomeScrollAffordance extends StatelessWidget {
   const HomeScrollAffordance({
     required this.controller,
@@ -31,7 +46,10 @@ class HomeScrollAffordance extends StatelessWidget {
       clipBehavior: Clip.none,
       children: <Widget>[
         Positioned.fill(
-          child: AppScrollbar(controller: controller, child: child),
+          child: AppScrollbar(
+            controller: controller,
+            child: HomeScrollbarGutter(child: child),
+          ),
         ),
         _HomeBackToTopOverlay(
           controller: controller,

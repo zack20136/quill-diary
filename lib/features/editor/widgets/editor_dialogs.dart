@@ -20,6 +20,7 @@ class _TagsStudioDialog extends ConsumerStatefulWidget {
 class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   late final LinkedHashMap<String, String> _chosenByNorm;
   late final TextEditingController _filterCtrl;
+  late final ScrollController _tagPoolScrollController = ScrollController();
 
   String _norm(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -45,6 +46,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
   @override
   void dispose() {
     _filterCtrl.dispose();
+    _tagPoolScrollController.dispose();
     super.dispose();
   }
 
@@ -318,10 +320,10 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                       240,
                     ),
                   ),
-                  child: Scrollbar(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Wrap(
+                  child: NestedPanelScrollbar(
+                    controller: _tagPoolScrollController,
+                    contentPadding: const EdgeInsets.only(right: 8, bottom: 2),
+                    child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         alignment: WrapAlignment.start,
@@ -350,7 +352,6 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 16),
                 Row(
                   children: <Widget>[

@@ -197,10 +197,12 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
     return allEntriesAsync.when(
       data: (List<EntryIndexRecord> allEntries) {
         if (allEntries.isEmpty) {
-          return HomeStateCard(
-            icon: Icons.insights_outlined,
-            title: context.l10n.homeNoAnalysisTitle,
-            message: context.l10n.homeNoAnalysisMessage,
+          return HomeScrollbarGutter(
+            child: HomeStateCard(
+              icon: Icons.insights_outlined,
+              title: context.l10n.homeNoAnalysisTitle,
+              message: context.l10n.homeNoAnalysisMessage,
+            ),
           );
         }
 
@@ -466,11 +468,15 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace _) => HomeStateCard(
-        icon: Icons.error_outline,
-        title: context.l10n.commonReadFailureTitle,
-        message: userFacingErrorMessage(error, l10n: context.l10n),
+      loading: () => const HomeScrollbarGutter(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (Object error, StackTrace _) => HomeScrollbarGutter(
+        child: HomeStateCard(
+          icon: Icons.error_outline,
+          title: context.l10n.commonReadFailureTitle,
+          message: userFacingErrorMessage(error, l10n: context.l10n),
+        ),
       ),
     );
   }

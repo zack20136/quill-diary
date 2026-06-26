@@ -19,6 +19,7 @@ import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
+import '../../../shared/presentation/app_scrollbar.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../app/app_colors.dart';
 import '../../../shared/presentation/tag_visual.dart';

@@ -103,9 +103,10 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: selection.isActive
+        HomeScrollbarGutter(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: selection.isActive
               ? HomeSelectionToolbar(
                   key: const ValueKey<String>('home-selection-toolbar'),
                   selectedCount: selection.selectedIds.length,
@@ -182,6 +183,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                     ],
                   ),
                 ),
+          ),
         ),
         const SizedBox(height: 12),
         Expanded(

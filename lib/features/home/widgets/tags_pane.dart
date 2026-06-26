@@ -43,6 +43,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   /// 用於預覽：已選標籤的顯示字串（見 [normalizeText] 比對實際日記）。
   String? _selectedTagLabel;
   bool _seedingDefaultTags = false;
+  final ValueNotifier<bool> _tagListThumbDragging = ValueNotifier<bool>(false);
+  ScrollHoldController? _pageScrollHold;
 
   @override
   void initState() {
@@ -52,6 +54,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
 
   @override
   void dispose() {
+    _pageScrollHold?.cancel();
+    _tagListThumbDragging.dispose();
     _searchCtrl.dispose();
     _pageScrollController.dispose();
     _tagListScrollController.dispose();
@@ -307,6 +311,19 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     );
   }
 
+  void _setTagListThumbDragging(bool dragging) {
+    if (dragging) {
+      if (_pageScrollController.hasClients) {
+        _pageScrollHold?.cancel();
+        _pageScrollHold = _pageScrollController.position.hold(() {});
+      }
+    } else {
+      _pageScrollHold?.cancel();
+      _pageScrollHold = null;
+    }
+    _tagListThumbDragging.value = dragging;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!widget.sessionState.isUnlocked ||
@@ -331,27 +348,29 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SizedBox(
-          height: kHomeSearchRowControlHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Expanded(
-                child: HomeSearchTextField(
-                  controller: _searchCtrl,
-                  hintText: context.l10n.homeTagSearchHint,
+        HomeScrollbarGutter(
+          child: SizedBox(
+            height: kHomeSearchRowControlHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: HomeSearchTextField(
+                    controller: _searchCtrl,
+                    hintText: context.l10n.homeTagSearchHint,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              HomeCircleIconButton(
-                tooltip: context.l10n.homeTooltipAddTag,
-                onPressed: () => _presentComposer(accentMap: accentMap),
-                icon: Icons.add_rounded,
-                size: kHomeSearchRowControlHeight,
-                backgroundColor: cs.primaryContainer,
-                foregroundColor: cs.onPrimaryContainer,
-              ),
-            ],
+                const SizedBox(width: 8),
+                HomeCircleIconButton(
+                  tooltip: context.l10n.homeTooltipAddTag,
+                  onPressed: () => _presentComposer(accentMap: accentMap),
+                  icon: Icons.add_rounded,
+                  size: kHomeSearchRowControlHeight,
+                  backgroundColor: cs.primaryContainer,
+                  foregroundColor: cs.onPrimaryContainer,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -370,14 +389,16 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                     freq,
                   );
               if (mergedTags.isEmpty) {
-                return HomeStateCard(
-                  icon: Icons.label_outline_rounded,
-                  title: context.l10n.homeNoTagsTitle,
-                  message: context.l10n.homeNoTagsMessage,
-                  actionLabel: _seedingDefaultTags
-                      ? null
-                      : context.l10n.homeCreateDefaultTagsButton,
-                  onAction: _seedingDefaultTags ? null : _seedDefaultTags,
+                return HomeScrollbarGutter(
+                  child: HomeStateCard(
+                    icon: Icons.label_outline_rounded,
+                    title: context.l10n.homeNoTagsTitle,
+                    message: context.l10n.homeNoTagsMessage,
+                    actionLabel: _seedingDefaultTags
+                        ? null
+                        : context.l10n.homeCreateDefaultTagsButton,
+                    onAction: _seedingDefaultTags ? null : _seedDefaultTags,
+                  ),
                 );
               }
               final List<TagCatalogUsageItem> list = mergedTags
@@ -536,47 +557,63 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                         notification.disallowIndicator();
                         return false;
                       },
-                  child: CustomScrollView(
-                    controller: _pageScrollController,
-                    scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                    slivers: <Widget>[
-                      SliverToBoxAdapter(
-                        child: HomeSectionCard(
-                          title: homeTagsSectionTitle(
-                            context.l10n,
-                            list.length,
-                          ),
-                          stripeColor: cs.tertiary,
-                          child: SizedBox(
-                            height: HomeLayout.tagListSectionHeight,
-                            child: NestedPanelScrollbar(
-                              controller: _tagListScrollController,
-                              contentPadding: const EdgeInsets.only(right: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: tagTiles,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _tagListThumbDragging,
+                    builder: (BuildContext context, bool dragging, _) {
+                      return CustomScrollView(
+                        controller: _pageScrollController,
+                        physics: dragging
+                            ? const NeverScrollableScrollPhysics()
+                            : null,
+                        scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                        slivers: <Widget>[
+                          SliverToBoxAdapter(
+                            child: HomeSectionCard(
+                              title: homeTagsSectionTitle(
+                                context.l10n,
+                                list.length,
+                              ),
+                              stripeColor: cs.tertiary,
+                              padding: HomeLayout.tagListSectionCardPadding,
+                              child: SizedBox(
+                                height: HomeLayout.tagListSectionHeight,
+                                child: NestedPanelScrollbar(
+                                  controller: _tagListScrollController,
+                                  onThumbDragChanged: _setTagListThumbDragging,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: tagTiles,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: HomeLayout.sectionGap),
-                      ),
-                      SliverToBoxAdapter(
-                        child: _tagDiaryPreviewPanel(records, theme, cs),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    ],
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: HomeLayout.sectionGap),
+                          ),
+                          SliverToBoxAdapter(
+                            child: _tagDiaryPreviewPanel(records, theme, cs),
+                          ),
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 24),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (Object err, StackTrace _) => HomeStateCard(
-              icon: Icons.error_outline_rounded,
-              title: context.l10n.commonReadFailureTitle,
-              message: '$err',
+            loading: () => const HomeScrollbarGutter(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (Object err, StackTrace _) => HomeScrollbarGutter(
+              child: HomeStateCard(
+                icon: Icons.error_outline_rounded,
+                title: context.l10n.commonReadFailureTitle,
+                message: '$err',
+              ),
             ),
           ),
         ),

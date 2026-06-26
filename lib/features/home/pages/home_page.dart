@@ -63,7 +63,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 SafeArea(
                   top: false,
                   child: Padding(
-                    padding: HomeLayout.bodyPadding,
+                    padding: EdgeInsets.fromLTRB(
+                      HomeLayout.bodyHorizontal,
+                      HomeLayout.bodyPadding.top,
+                      0,
+                      HomeLayout.bodyPadding.bottom,
+                    ),
                     child: HomeTabStack(sessionState: sessionState),
                   ),
                 ),
