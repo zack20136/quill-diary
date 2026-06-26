@@ -68,17 +68,17 @@ class TagCatalogItem {
 
 List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {
   final List<String> labels = localizedDefaultTagLabels(l10n);
-  final List<int> defaultAccents = defaultTagAccentArgbs();
+  final List<int> defaultAccents = defaultTagCatalogAccentArgbs();
   assert(
     labels.length == defaultAccents.length,
-    'localizedDefaultTagLabels (${labels.length}) 與 kDefaultTagAccentPresets (${defaultAccents.length}) 數量必須一致',
+    'localizedDefaultTagLabels (${labels.length}) 與 kDefaultTagCatalogAccents (${defaultAccents.length}) 數量必須一致',
   );
   return List<TagCatalogItem>.generate(
     labels.length,
     (int index) => TagCatalogItem(
       label: labels[index],
       accentArgb: defaultAccents[index],
-      accentIsCustom: false,
+      accentIsCustom: true,
     ),
     growable: false,
   );

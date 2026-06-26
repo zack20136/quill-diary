@@ -3,21 +3,61 @@ import 'package:flutter/material.dart';
 import '../../app/app_colors.dart';
 import '../../domain/shared/value_objects.dart';
 
+/// 色盤快速選色（20 色，涵蓋全色相；柔和飽和、貼近 App 冷灰藍調）。
 const List<Color> kDefaultTagAccentPresets = <Color>[
-  Color(0xFF4C6EF5),
-  Color(0xFF7950F2),
-  Color(0xFFA855F7),
-  Color(0xFFD6336C),
-  Color(0xFFFF6B6B),
-  Color(0xFFF783AC),
-  Color(0xFFFF922B),
-  Color(0xFFFCC419),
-  Color(0xFF51CF66),
-  Color(0xFF20C997),
-  Color(0xFF15AABF),
-  Color(0xFF339AF0),
-  Color(0xFF74C0FC),
-  Color(0xFFADB5BD),
+  Color(0xFFBF6760), // 紅
+  Color(0xFFC47A88), // 玫紅
+  Color(0xFFCC8A98), // 粉
+  Color(0xFFCC8C74), // 珊瑚
+  Color(0xFFCC9A5E), // 橘
+  Color(0xFFC4A256), // 琥珀
+  Color(0xFFB0A262), // 金黃
+  Color(0xFF8EAA6A), // 黃綠
+  Color(0xFF62A87C), // 綠
+  Color(0xFF54A890), // 翠綠
+  Color(0xFF4EA196), // 青綠
+  Color(0xFF559AAC), // 青
+  Color(0xFF5C94B8), // 天藍
+  Color(0xFF5480B0), // 藍
+  Color(0xFF6874B0), // 靛
+  Color(0xFF786CB0), // 紫
+  Color(0xFF8C66AC), // 深紫
+  Color(0xFFA666A0), // 洋紅
+  Color(0xFF968876), // 褐
+  Color(0xFF748494), // 灰藍
+];
+
+/// 預設標籤目錄專用強調色；索引須與 [localizedDefaultTagLabels] 一致。
+/// 針對 chip 淺色 12% / 深色 24% alpha blend 調校，不必落在 [kDefaultTagAccentPresets]。
+const List<Color> kDefaultTagCatalogAccents = <Color>[
+  // 0 defaultTagDaily — 日常
+  Color(0xFF8A7E70),
+  // 1 defaultTagMood — 心情
+  Color(0xFF9C6888),
+  // 2 defaultTagTakeaways — 心得
+  Color(0xFF3A8A80),
+  // 3 defaultTagNotes — 筆記
+  Color(0xFF4C6E98),
+  // 4 defaultTagReflection — 反思
+  Color(0xFF605C9C),
+  // 5 defaultTagIdeas — 靈感
+  Color(0xFFB08844),
+  // 6 defaultTagPlans — 計畫
+  Color(0xFF4470A8),
+  // 7 defaultTagGoals — 目標
+  Color(0xFFAE6048),
+  // 8 defaultTagWork — 工作
+  Color(0xFF5A6878),
+  // 9 defaultTagLearning — 學習
+  Color(0xFF388A5E),
+  // 10 defaultTagRelationships — 人際
+  Color(0xFFA06878),
+  // 11 defaultTagFamily — 家庭
+  Color(0xFFB07850),
+  // 12 defaultTagHealth — 健康
+  Color(0xFF449872),
+  // 13 defaultTagGratitude — 感謝
+  Color(0xFF988848),
 ];
 
 const double kTagChipBorderAlpha = 0.32;
@@ -140,5 +180,5 @@ BorderSide? tagChipBorderSide(
   return BorderSide(color: borderColor, width: width);
 }
 
-List<int> defaultTagAccentArgbs() =>
-    kDefaultTagAccentPresets.map(colorArgb32).toList(growable: false);
+List<int> defaultTagCatalogAccentArgbs() =>
+    kDefaultTagCatalogAccents.map(colorArgb32).toList(growable: false);
