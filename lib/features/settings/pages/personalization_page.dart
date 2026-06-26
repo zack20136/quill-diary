@@ -7,7 +7,6 @@ import '../../../infrastructure/preferences/personalization_preferences.dart';
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_scrollbar.dart';
-import '../../../shared/presentation/page_style.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';
 import '../providers/personalization_providers.dart';
@@ -21,8 +20,6 @@ class PersonalizationPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    final Color pageBackground = PageStyle.scaffoldWash(cs);
     final AsyncValue<PersonalizationPreferences> prefsAsync = ref.watch(
       personalizationPreferencesProvider,
     );
@@ -46,11 +43,8 @@ class PersonalizationPage extends ConsumerWidget {
         : null;
 
     return Scaffold(
-      backgroundColor: pageBackground,
       appBar: AppBar(
         title: Text(context.l10n.personalizationPageTitle),
-        backgroundColor: pageBackground,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
       ),

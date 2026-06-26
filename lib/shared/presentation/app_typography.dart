@@ -7,21 +7,8 @@ abstract final class AppTypography {
   static const String interFamily = 'Inter';
   static const String notoSansTcFamily = 'NotoSansTC';
 
-  /// 淺色模式預設正文 / 標題色。
-  static const Color ink = Color(0xFF000000);
-
-  /// hint、占位、次要說明。
-  static Color muted(ColorScheme cs) => cs.onSurfaceVariant;
-
   /// 套用 Inter + Noto Sans TC 堆疊與預設色。
-  static TextTheme textTheme(
-    TextTheme base, {
-    required Brightness brightness,
-    required ColorScheme scheme,
-  }) {
-    final Color defaultColor = brightness == Brightness.light
-        ? ink
-        : scheme.onSurface;
+  static TextTheme textTheme(TextTheme base, {required Color defaultColor}) {
     final TextTheme themed = base.apply(
       bodyColor: defaultColor,
       displayColor: defaultColor,

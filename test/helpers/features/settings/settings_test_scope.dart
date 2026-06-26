@@ -15,6 +15,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
+import '../../app_test_theme.dart';
 import '../../session/fake_session_vault_repository.dart';
 import '../../storage/fake_vault_transfer_service.dart';
 
@@ -66,7 +67,8 @@ Future<void> pumpSettingsPage(
       transferService: transferService,
       recoveryMetadata: recoveryMetadata,
       child: MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        theme: appTestTheme(),
+        darkTheme: appTestTheme(brightness: Brightness.dark),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SettingsPage(),

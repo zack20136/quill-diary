@@ -110,7 +110,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tagDefaultColorLabel => 'Default Color';
 
   @override
-  String get tagHueLabel => 'Hue';
+  String get tagCustomColorLabel => 'Custom color';
+
+  @override
+  String get tagCustomColorDialogTitle => 'Pick a custom color';
 
   @override
   String get tagPreviewLabel => 'Preview';

@@ -26,7 +26,7 @@ class _ProductsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(context.appColors.outlineBorder()),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: cs.shadow.withValues(alpha: 0.04),
@@ -211,7 +211,7 @@ class _SponsorProductTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PageStyle.outlineSide(cs).color, width: 1),
+        border: Border.all(color: context.appColors.outlineBorder().color, width: 1),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
@@ -456,7 +456,7 @@ class _SupportInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(context.appColors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

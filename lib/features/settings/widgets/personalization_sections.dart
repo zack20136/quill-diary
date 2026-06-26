@@ -7,6 +7,7 @@ import '../../../infrastructure/preferences/personalization_preferences.dart';
 import '../../../infrastructure/preferences/user_preferences.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/personalization_providers.dart';
 import 'settings_sections.dart';
@@ -227,7 +228,6 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
     final TextStyle titlePreviewStyle = typography.titleTextStyle(
       theme.textTheme,
     );
@@ -341,9 +341,9 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         const SizedBox(height: 16),
         DecoratedBox(
           decoration: BoxDecoration(
-            color: PageStyle.previewPanelFill(cs),
+            color: context.appColors.previewPanel,
             borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-            border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+            border: Border.fromBorderSide(context.appColors.outlineBorder()),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),

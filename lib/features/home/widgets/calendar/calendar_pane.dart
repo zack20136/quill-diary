@@ -6,6 +6,7 @@ import '../../../../domain/shared/value_objects.dart';
 import '../../../../infrastructure/database/index_database.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/presentation/display_format.dart';
+import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/page_style.dart';
 import '../../../../shared/providers/tag_providers.dart';
 import '../../../../shared/utils/user_facing_error.dart';
@@ -26,15 +27,15 @@ class CalendarSectionShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
+    final AppColors colors = context.appColors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
+        color: colors.sectionCard,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.all(color: PageStyle.primaryMutedOutline(cs)),
+        border: Border.all(color: colors.outlineMuted),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -244,27 +245,27 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                   tablePadding: EdgeInsets.zero,
                                   tableBorder: TableBorder(
                                     top: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                     bottom: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                     left: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                     right: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                     horizontalInside: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                     verticalInside: BorderSide(
-                                      color: calendarGridLineColor(cs),
+                                      color: context.appColors.calendarGridLine,
                                       width: 0.5,
                                     ),
                                   ),
@@ -351,9 +352,9 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                                 .withValues(alpha: 0.45),
                                             border: Border(
                                               bottom: BorderSide(
-                                                color: calendarGridLineColor(
-                                                  cs,
-                                                ),
+                                                color: context
+                                                    .appColors
+                                                    .calendarGridLine,
                                                 width: 0.5,
                                               ),
                                             ),

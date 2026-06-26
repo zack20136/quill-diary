@@ -19,6 +19,7 @@ import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/app_scrollbar.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/utils/external_url.dart';
 import '../../../shared/utils/user_facing_error.dart';
@@ -96,32 +97,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final VaultTransferAccess transferAccess = pageAccess.vaultTransfer;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
-
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final Color pageBackground = PageStyle.scaffoldWash(cs);
 
     return Scaffold(
-      backgroundColor: pageBackground,
       appBar: AppBar(
         title: Text(l10n.settingsPageTitle),
-        backgroundColor: pageBackground,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: ColoredBox(
-        color: pageBackground,
-        child: SafeArea(
-          child: Stack(
+      body: SafeArea(
+        child: Stack(
             children: <Widget>[
               NotificationListener<OverscrollIndicatorNotification>(
                 onNotification: (OverscrollIndicatorNotification notification) {
                   notification.disallowIndicator();
                   return false;
                 },
-                child: ColoredBox(
-                  color: pageBackground,
-                  child: ListViewWithScrollbar(
+                child: ListViewWithScrollbar(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: <Widget>[
                       const _SettingsTopNavSection(),
@@ -238,7 +230,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ],
                   ),
                 ),
-              ),
               if (_busy)
                 SettingsBlockingProgressOverlay(
                   message: _busyMessage ?? l10n.settingsProgressDefault,
@@ -246,7 +237,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
             ],
           ),
-        ),
       ),
     );
   }

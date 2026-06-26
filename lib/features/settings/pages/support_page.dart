@@ -7,6 +7,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_scrollbar.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../providers/billing_providers.dart';
 import '../settings_messages.dart';
@@ -36,7 +37,6 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color pageBackground = PageStyle.scaffoldWash(cs);
     final SponsorBillingState billing = ref.watch(sponsorBillingProvider);
 
     ref.listen<SponsorBillingState>(sponsorBillingProvider, (
@@ -51,11 +51,8 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     });
 
     return Scaffold(
-      backgroundColor: pageBackground,
       appBar: AppBar(
         title: Text(l10n.settingsSupportPageTitle),
-        backgroundColor: pageBackground,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
       ),

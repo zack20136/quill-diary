@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../shared/presentation/app_typography.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 
 class EditorMarkdownPreview extends StatelessWidget {
@@ -18,6 +19,7 @@ class EditorMarkdownPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
     final TextStyle bodyStyle = typography.bodyTextStyle(theme.textTheme);
     final List<String> lines = markdown.replaceAll('\r\n', '\n').split('\n');
     final List<Widget> children = <Widget>[];
@@ -86,6 +88,7 @@ class EditorMarkdownPreview extends StatelessWidget {
                   theme.textTheme,
                   fontWeight: FontWeight.w800,
                 ),
+                colors.inlineCodeBackground,
               ),
             ),
           ),
@@ -107,6 +110,7 @@ class EditorMarkdownPreview extends StatelessWidget {
               _inlineMarkdownSpan(
                 line.replaceFirst(RegExp(r'^>\s?'), ''),
                 bodyStyle.copyWith(color: cs.onSurfaceVariant),
+                colors.inlineCodeBackground,
               ),
             ),
           ),
@@ -133,7 +137,11 @@ class EditorMarkdownPreview extends StatelessWidget {
                 ),
                 Expanded(
                   child: SelectableText.rich(
-                    _inlineMarkdownSpan(listItem.group(3)!.trim(), bodyStyle),
+                    _inlineMarkdownSpan(
+                      listItem.group(3)!.trim(),
+                      bodyStyle,
+                      colors.inlineCodeBackground,
+                    ),
                   ),
                 ),
               ],
@@ -146,7 +154,9 @@ class EditorMarkdownPreview extends StatelessWidget {
       children.add(
         Padding(
           padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
-          child: SelectableText.rich(_inlineMarkdownSpan(line, bodyStyle)),
+          child: SelectableText.rich(
+            _inlineMarkdownSpan(line, bodyStyle, colors.inlineCodeBackground),
+          ),
         ),
       );
     }
@@ -161,7 +171,11 @@ class EditorMarkdownPreview extends StatelessWidget {
     );
   }
 
-  TextSpan _inlineMarkdownSpan(String text, TextStyle baseStyle) {
+  TextSpan _inlineMarkdownSpan(
+    String text,
+    TextStyle baseStyle,
+    Color inlineCodeBackground,
+  ) {
     final List<InlineSpan> spans = <InlineSpan>[];
     final RegExp pattern = RegExp(
       r'(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)',
@@ -198,7 +212,7 @@ class EditorMarkdownPreview extends StatelessWidget {
             text: token.substring(1, token.length - 1),
             style: AppTypography.mono(
               const TextStyle(),
-            ).copyWith(backgroundColor: Colors.black.withValues(alpha: 0.06)),
+            ).copyWith(backgroundColor: inlineCodeBackground),
           ),
         );
       } else {

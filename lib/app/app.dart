@@ -1,4 +1,3 @@
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -124,22 +123,18 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
         );
 
     return _sessionLifecycle.wrap(
-      DynamicColorBuilder(
-        builder: (ColorScheme? lightDynamic, ColorScheme? _) {
-          return MaterialApp.router(
-            onGenerateTitle: (BuildContext context) => context.l10n.appTitle,
-            scrollBehavior: const MaterialScrollBehavior().copyWith(
-              scrollbars: false,
-            ),
-            theme: buildAppTheme(dynamicScheme: lightDynamic),
-            darkTheme: buildAppTheme(brightness: Brightness.dark),
-            themeMode: themeMode,
-            locale: locale,
-            supportedLocales: appSupportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            routerConfig: _router,
-          );
-        },
+      MaterialApp.router(
+        onGenerateTitle: (BuildContext context) => context.l10n.appTitle,
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          scrollbars: false,
+        ),
+        theme: buildAppTheme(brightness: Brightness.light),
+        darkTheme: buildAppTheme(brightness: Brightness.dark),
+        themeMode: themeMode,
+        locale: locale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        routerConfig: _router,
       ),
     );
   }

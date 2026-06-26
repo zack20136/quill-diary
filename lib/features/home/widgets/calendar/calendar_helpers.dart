@@ -1,8 +1,6 @@
 /// 首頁日曆 widget 共用輔助函式。
 library;
 
-import 'package:flutter/material.dart';
-
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/presentation/display_format.dart';
 import '../../home_formatters.dart';
@@ -84,8 +82,4 @@ double calendarEntryFontSize(double rowHeight) {
     return 8;
   }
   return 7.5;
-}
-
-Color calendarGridLineColor(ColorScheme cs) {
-  return cs.outlineVariant.withValues(alpha: 0.22);
 }

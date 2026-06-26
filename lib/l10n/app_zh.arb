@@ -49,7 +49,8 @@
   "tagDeleteLabel": "刪除標籤",
   "tagUnnamedPreview": "未命名標籤",
   "tagDefaultColorLabel": "預設色",
-  "tagHueLabel": "色相",
+  "tagCustomColorLabel": "自訂顏色",
+  "tagCustomColorDialogTitle": "選擇自訂顏色",
   "tagPreviewLabel": "預覽",
   "tagSaveFailure": "儲存標籤失敗：{message}",
   "@tagSaveFailure": {

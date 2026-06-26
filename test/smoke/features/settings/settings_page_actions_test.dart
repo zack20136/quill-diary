@@ -12,6 +12,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
+import '../../../helpers/app_test_theme.dart';
 import '../../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../../helpers/features/settings/settings_test_scope.dart';
 import '../../../helpers/shared/test_l10n.dart';
@@ -79,8 +80,9 @@ void main() {
               session: unlockedSession,
             ),
         child: MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
-          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SettingsPage(),

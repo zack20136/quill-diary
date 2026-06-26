@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../infrastructure/database/index_database.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
+import '../../../shared/presentation/widgets/tag_chip.dart';
 import '../../../shared/providers/tag_providers.dart';
 import '../../editor/providers/editor_draft_providers.dart';
 import '../../settings/providers/personalization_providers.dart';
@@ -21,33 +23,35 @@ import '../state/home_state.dart';
 class HomeTimelineEntryShell extends StatelessWidget {
   const HomeTimelineEntryShell({
     required this.child,
-    this.tintedCard = false,
     this.selected = false,
+    this.nestedInSection = false,
     super.key,
   });
 
   final Widget child;
-  final bool tintedCard;
   final bool selected;
+  /// 嵌在 [HomeSectionCard] 等區塊內時使用 inset 底色，與外層 surface 區隔。
+  final bool nestedInSection;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color color = tintedCard ? cs.surfaceContainerLow : cs.surface;
+    final AppColors colors = context.appColors;
+    final Color color = nestedInSection
+        ? colors.sectionInset
+        : colors.sectionCard;
+    final double radius = nestedInSection
+        ? PageStyle.radiusPanel
+        : PageStyle.radiusEntry;
     return Material(
       color: color,
-      elevation: tintedCard ? 0 : 1,
-      surfaceTintColor: Colors.transparent,
-      shadowColor: cs.shadow.withValues(alpha: tintedCard ? 0 : 0.12),
+      elevation: nestedInSection ? 0 : 1,
+      shadowColor: cs.shadow.withValues(alpha: nestedInSection ? 0 : 0.12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          tintedCard ? PageStyle.radiusPanel : PageStyle.radiusEntry,
-        ),
+        borderRadius: BorderRadius.circular(radius),
         side: selected
-            ? BorderSide(color: cs.primary.withValues(alpha: 0.72), width: 1.5)
-            : tintedCard
-            ? BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))
+            ? BorderSide(color: colors.entrySelectedBorder, width: 1.5)
             : BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
@@ -66,9 +70,6 @@ class HomeEntryList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final HomeEntrySelectionState selection = ref.watch(
       homeEntrySelectionProvider,
-    );
-    final Color pageBackground = PageStyle.scaffoldWash(
-      Theme.of(context).colorScheme,
     );
     final Map<String, int> tagAccents = ref
         .watch(tagAccentArgbMapProvider)
@@ -90,9 +91,7 @@ class HomeEntryList extends ConsumerWidget {
         notification.disallowIndicator();
         return false;
       },
-      child: ColoredBox(
-        color: pageBackground,
-        child: ListView.separated(
+      child: ListView.separated(
           controller: controller,
           primary: controller == null,
           padding: const EdgeInsets.only(bottom: 16),
@@ -135,7 +134,6 @@ class HomeEntryList extends ConsumerWidget {
             );
           },
         ),
-      ),
     );
   }
 }
@@ -287,7 +285,7 @@ class HomeCompactEntryList extends ConsumerWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: HomeTimelineEntryShell(
-            tintedCard: true,
+            nestedInSection: true,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -383,91 +381,30 @@ class HomeEntryListTagsWrap extends StatelessWidget {
           runSpacing: 4,
           children: <Widget>[
             if (showUnsavedDraft)
-              HomeEntryListTagChip(
+              TagChip.pair(
                 label: context.l10n.homeUnsavedDraftLabel,
-                background: Color.alphaBlend(
-                  theme.colorScheme.error.withValues(alpha: 0.14),
-                  theme.colorScheme.surface,
-                ),
-                foreground: theme.colorScheme.error,
+                pair: tagUnsavedPair(theme.colorScheme, context.appColors),
                 compact: compactTags,
               ),
             if (charCount > 0)
-              HomeEntryListTagChip(
+              TagChip.pair(
                 label: DisplayFormat.formatCharCount(context.l10n, charCount),
-                background: Color.alphaBlend(
-                  theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
-                  theme.colorScheme.surface,
-                ),
-                foreground: theme.colorScheme.onSurfaceVariant,
+                pair: tagCharCountPair(theme.colorScheme),
                 compact: compactTags,
               ),
-            ...trimmedTags.map((String tag) {
-              final (Color bg, Color fg) = tagResolvedAccentPair(
-                tag,
-                theme.colorScheme,
-                tagAccents,
-              );
-              return HomeEntryListTagChip(
+            ...trimmedTags.map(
+              (String tag) => TagChip.pair(
                 label: tag,
-                background: bg,
-                foreground: fg,
+                pair: tagResolvedAccentPair(
+                  tag,
+                  theme.colorScheme,
+                  tagAccents,
+                  context.appColors,
+                ),
                 compact: compactTags,
-              );
-            }),
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class HomeEntryListTagChip extends StatelessWidget {
-  const HomeEntryListTagChip({
-    required this.label,
-    required this.background,
-    required this.foreground,
-    this.compact = false,
-    super.key,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final double maxWidth =
-        MediaQuery.sizeOf(context).width * (compact ? 0.38 : 0.52);
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 4 : 5,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: background.withValues(alpha: 0.92),
-        border: Border.all(
-          color: foreground.withValues(alpha: 0.32),
-          width: 0.9,
-        ),
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: maxWidth.clamp(120, 260).toDouble(),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style:
-              (compact
-                      ? theme.textTheme.labelSmall
-                      : theme.textTheme.labelMedium)
-                  ?.copyWith(color: foreground, fontWeight: FontWeight.w700),
         ),
       ),
     );

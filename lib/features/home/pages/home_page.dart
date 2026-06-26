@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../l10n/l10n.dart';
-import '../../../shared/presentation/page_style.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/providers/session_providers.dart';
 import '../../session/state/app_session_state.dart';
@@ -37,7 +36,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       data: (AppSessionState sessionState) {
         final bool canCreate =
             sessionState.isUnlocked && sessionState.session != null;
-        final ColorScheme cs = Theme.of(context).colorScheme;
         final HomeEntrySelectionState selection = ref.watch(
           homeEntrySelectionProvider,
         );
@@ -56,21 +54,17 @@ class _HomePageState extends ConsumerState<HomePage> {
             }
           },
           child: Scaffold(
-            backgroundColor: PageStyle.scaffoldWash(cs),
             appBar: const PreferredSize(
               preferredSize: Size.fromHeight(76),
               child: HomeHeader(),
             ),
             body: Stack(
               children: <Widget>[
-                ColoredBox(
-                  color: PageStyle.scaffoldWash(cs),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: HomeLayout.bodyPadding,
-                      child: HomeTabStack(sessionState: sessionState),
-                    ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: HomeLayout.bodyPadding,
+                    child: HomeTabStack(sessionState: sessionState),
                   ),
                 ),
                 if (showFab)
@@ -118,15 +112,10 @@ class HomeHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final Color pageBackground = PageStyle.scaffoldWash(cs);
     final HomeTab activeTab = ref.watch(homeTabProvider);
 
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: pageBackground,
-      surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       toolbarHeight: 76,

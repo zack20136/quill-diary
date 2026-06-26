@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 
 class SettingsGradientHeroCard extends StatelessWidget {
@@ -26,16 +27,12 @@ class SettingsGradientHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
     final Color startColor = accentColor ?? cs.primary;
     final Color endColor = accentColor != null ? cs.primary : cs.tertiary;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
+    final List<Color> gradientColors = accentColor == null
+        ? <Color>[colors.heroGradientStart, colors.heroGradientEnd]
+        : <Color>[
             Color.alphaBlend(
               startColor.withValues(alpha: startAlpha),
               cs.surface,
@@ -44,9 +41,17 @@ class SettingsGradientHeroCard extends StatelessWidget {
               endColor.withValues(alpha: endAlpha),
               cs.surfaceContainerLow,
             ),
-          ],
+          ];
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
         ),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(colors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -102,12 +107,13 @@ class SettingsTitleBodyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(colors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -146,12 +152,13 @@ class _FactChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cs.surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(999),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.24)),
+        border: Border.fromBorderSide(colors.outlineBorder(opacity: 0.24)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

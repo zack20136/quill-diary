@@ -10,6 +10,7 @@ import '../../session/presentation/session_locked_pane.dart';
 import '../../session/state/app_session_state.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_typography.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 
 /// 設定頁的標準卡片容器，統一標題、說明與外框風格。
@@ -31,11 +32,12 @@ class SettingsSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: colors.sectionCard,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(colors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -48,10 +50,7 @@ class SettingsSectionCard extends StatelessWidget {
                 if (icon != null) ...<Widget>[
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Color.alphaBlend(
-                        cs.primary.withValues(alpha: 0.08),
-                        cs.surfaceContainerLow,
-                      ),
+                      color: colors.sectionInset,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Padding(
@@ -103,7 +102,7 @@ class SettingsActionGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: context.appColors.sectionInset,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
       child: Padding(
@@ -602,11 +601,19 @@ class SettingsActionButton extends StatelessWidget {
     final Widget button = switch (_resolvedAppearance) {
       SettingsActionButtonAppearance.filled => FilledButton.icon(
         onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
+        ),
         icon: Icon(icon),
         label: Text(label),
       ),
-      SettingsActionButtonAppearance.tonal => FilledButton.tonalIcon(
+      SettingsActionButtonAppearance.tonal => FilledButton.icon(
         onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: colorScheme.primaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
+        ),
         icon: Icon(icon),
         label: Text(label),
       ),
@@ -618,6 +625,10 @@ class SettingsActionButton extends StatelessWidget {
       ),
       SettingsActionButtonAppearance.outlined => OutlinedButton.icon(
         onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colorScheme.onSurface,
+          side: BorderSide(color: colorScheme.outline),
+        ),
         icon: Icon(icon),
         label: Text(label),
       ),
@@ -834,21 +845,16 @@ class _SecurityOverviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
     final Color background = switch (item.level) {
-      SettingsHealthLevel.ok => Color.alphaBlend(
-        cs.primary.withValues(alpha: 0.08),
-        cs.surfaceContainerLow,
-      ),
-      SettingsHealthLevel.warning => cs.secondaryContainer.withValues(
-        alpha: 0.75,
-      ),
-      SettingsHealthLevel.error => cs.errorContainer,
+      SettingsHealthLevel.ok => colors.healthOkFill,
+      SettingsHealthLevel.warning => colors.healthWarningFill,
+      SettingsHealthLevel.error => colors.healthErrorFill,
     };
     final Color foreground = switch (item.level) {
-      SettingsHealthLevel.ok => cs.onSurface,
-      SettingsHealthLevel.warning => cs.onSecondaryContainer,
-      SettingsHealthLevel.error => cs.onErrorContainer,
+      SettingsHealthLevel.ok => colors.healthOkForeground,
+      SettingsHealthLevel.warning => colors.healthWarningForeground,
+      SettingsHealthLevel.error => colors.healthErrorForeground,
     };
     final IconData statusIcon = switch (item.level) {
       SettingsHealthLevel.ok => Icons.check_circle_outline_rounded,
@@ -951,10 +957,11 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
     final double? clampedProgress = progress?.clamp(0.0, 1.0);
     return Positioned.fill(
       child: ColoredBox(
-        color: Colors.black.withValues(alpha: 0.18),
+        color: colors.overlayDim,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 300),
@@ -962,7 +969,7 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
               decoration: BoxDecoration(
                 color: cs.surface,
                 borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+                border: Border.fromBorderSide(colors.outlineBorder()),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(

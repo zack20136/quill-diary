@@ -10,6 +10,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
+import '../../../helpers/app_test_theme.dart';
 import '../../../helpers/session/fake_session_vault_repository.dart';
 import '../../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../../helpers/shared/test_l10n.dart';
@@ -19,8 +20,9 @@ void main() {
     await tester.pumpWidget(
       _settingsScope(
         MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
-          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           home: const SettingsPage(),

@@ -109,7 +109,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tagDefaultColorLabel => '預設色';
 
   @override
-  String get tagHueLabel => '色相';
+  String get tagCustomColorLabel => '自訂顏色';
+
+  @override
+  String get tagCustomColorDialogTitle => '選擇自訂顏色';
 
   @override
   String get tagPreviewLabel => '預覽';

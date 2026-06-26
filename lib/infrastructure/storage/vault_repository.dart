@@ -717,7 +717,11 @@ class VaultRepository {
     return TagStylesStore(_pathStrategy).read();
   }
 
-  Future<void> upsertTagCatalogItem(String label, {int? accentArgb}) async {
+  Future<void> upsertTagCatalogItem(
+    String label, {
+    int? accentArgb,
+    bool? accentIsCustom,
+  }) async {
     final String displayLabel = label.trim().replaceAll(RegExp(r'\s+'), ' ');
     final String normalized = normalizeText(displayLabel);
     if (normalized.isEmpty) {
@@ -728,7 +732,11 @@ class VaultRepository {
     final List<TagCatalogItem> merged = TagStylesStore.merge(
       catalog,
       <TagCatalogItem>[
-        TagCatalogItem(label: displayLabel, accentArgb: accentArgb),
+        TagCatalogItem(
+          label: displayLabel,
+          accentArgb: accentArgb,
+          accentIsCustom: accentIsCustom,
+        ),
       ],
     );
     await _persistTagCatalogToVault(merged);
@@ -774,8 +782,16 @@ class VaultRepository {
     await _requireOpenIndex().deleteTagAccentArgb(label);
   }
 
-  Future<void> upsertTagAccentArgb(String tag, int accentArgb) async {
-    await upsertTagCatalogItem(tag, accentArgb: accentArgb);
+  Future<void> upsertTagAccentArgb(
+    String tag,
+    int accentArgb, {
+    bool? accentIsCustom,
+  }) async {
+    await upsertTagCatalogItem(
+      tag,
+      accentArgb: accentArgb,
+      accentIsCustom: accentIsCustom,
+    );
   }
 
   Future<void> deleteTagAccentArgb(String tag) async {
@@ -789,6 +805,7 @@ class VaultRepository {
     required String fromLabel,
     required String toLabel,
     int? accentArgb,
+    bool? accentIsCustom,
   }) async {
     final String fromDisplay = fromLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
     final String toDisplay = toLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -800,12 +817,11 @@ class VaultRepository {
 
     final List<TagCatalogItem> catalog = await listTagCatalog();
     int? resolvedAccent = accentArgb;
+    bool? resolvedIsCustom = accentIsCustom;
     for (final TagCatalogItem item in catalog) {
-      if (resolvedAccent != null) {
-        break;
-      }
-      if (item.normalized == fromNorm || item.normalized == toNorm) {
-        resolvedAccent = item.accentArgb;
+      if (item.normalized == fromNorm) {
+        resolvedAccent ??= item.accentArgb;
+        resolvedIsCustom ??= item.accentIsCustom;
       }
     }
 
@@ -823,7 +839,11 @@ class VaultRepository {
     final List<TagCatalogItem> merged = TagStylesStore.merge(
       base,
       <TagCatalogItem>[
-        TagCatalogItem(label: toDisplay, accentArgb: resolvedAccent),
+        TagCatalogItem(
+          label: toDisplay,
+          accentArgb: resolvedAccent,
+          accentIsCustom: resolvedIsCustom,
+        ),
       ],
     );
     await _persistTagCatalogToVault(merged);

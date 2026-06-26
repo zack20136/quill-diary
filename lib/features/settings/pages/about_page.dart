@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/app_scrollbar.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../l10n/l10n.dart';
 import '../about_content.dart';
@@ -13,8 +14,6 @@ class SettingsAboutPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    final Color pageBackground = PageStyle.scaffoldWash(cs);
     final AppLocalizations l10n = context.l10n;
     final List<AboutTab> tabs = buildAboutTabs(
       l10n,
@@ -24,11 +23,8 @@ class SettingsAboutPage extends ConsumerWidget {
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
-        backgroundColor: pageBackground,
         appBar: AppBar(
           title: Text(l10n.aboutPageTitle),
-          backgroundColor: pageBackground,
-          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           bottom: TabBar(
@@ -97,7 +93,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
+        border: Border.fromBorderSide(context.appColors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),

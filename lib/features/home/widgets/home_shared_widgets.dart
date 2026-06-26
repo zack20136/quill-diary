@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/app_colors.dart';
 import '../../../app/router.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/page_style.dart';
@@ -107,12 +108,12 @@ class HomeSectionShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs)),
-      ),
+    return Material(
+      color: context.appColors.sectionCard,
+      elevation: 1,
+      shadowColor: cs.shadow.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+      clipBehavior: Clip.antiAlias,
       child: Padding(padding: const EdgeInsets.all(14), child: child),
     );
   }
@@ -139,7 +140,6 @@ class HomeSectionCard extends StatelessWidget {
   const HomeSectionCard({
     required this.title,
     required this.child,
-    this.listSection = false,
     this.stripeColor,
     this.titleTrail,
     this.expandChild = false,
@@ -148,7 +148,6 @@ class HomeSectionCard extends StatelessWidget {
 
   final String title;
   final Widget child;
-  final bool listSection;
   final Color? stripeColor;
   final Widget? titleTrail;
   final bool expandChild;
@@ -157,17 +156,11 @@ class HomeSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color bg = listSection
-        ? (theme.brightness == Brightness.light
-              ? Colors.white
-              : cs.surfaceContainerLowest)
-        : cs.surface;
     final Color stripe = stripeColor ?? cs.primary;
 
     return Material(
-      color: bg,
+      color: context.appColors.sectionCard,
       elevation: 1,
-      surfaceTintColor: Colors.transparent,
       shadowColor: cs.shadow.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(PageStyle.radiusCard),
       clipBehavior: Clip.antiAlias,
@@ -250,7 +243,6 @@ class HomeDiaryListSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HomeSectionCard(
-      listSection: true,
       title: title,
       stripeColor: stripeColor,
       titleTrail: titleTrail,

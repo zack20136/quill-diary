@@ -31,21 +31,21 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                 unawaited(_openLegalLink(AppIdentifiers.sourceRepositoryUrl)),
             colorScheme: cs,
           ),
-          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalPrivacyPolicyTitle,
             onTap: () =>
                 unawaited(_openLegalLink(AppIdentifiers.privacyPolicyUrl)),
             colorScheme: cs,
           ),
-          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalThirdPartyNoticesTitle,
             onTap: () =>
                 unawaited(_openLegalLink(AppIdentifiers.thirdPartyNoticesUrl)),
             colorScheme: cs,
           ),
-          Divider(height: 1, color: PageStyle.outlineSide(cs).color),
+          Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalContactAuthorTitle,
             onTap: () => unawaited(_openLegalLink(AppIdentifiers.issuesUrl)),

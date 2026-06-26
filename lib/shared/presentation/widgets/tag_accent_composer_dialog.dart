@@ -7,7 +7,11 @@ import '../../../shared/providers/tag_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
 import '../app_feedback.dart';
+import '../../../app/app_colors.dart';
 import '../tag_visual.dart';
+import 'tag_accent_dialog_shell.dart';
+import 'tag_accent_wheel_dialog.dart';
+import 'tag_chip.dart';
 
 /// 建立或編輯標籤名稱與強調色的對話框。
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
@@ -15,6 +19,7 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
     super.key,
     this.initialDisplayLabel,
     this.initialAccentArgb,
+    this.initialAccentIsCustom,
     this.sessionForRename,
     this.titleText,
     this.descriptionText,
@@ -24,6 +29,7 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
 
   final String? initialDisplayLabel;
   final int? initialAccentArgb;
+  final bool? initialAccentIsCustom;
   final UnlockedVaultSession? sessionForRename;
   final String? titleText;
   final String? descriptionText;
@@ -39,8 +45,7 @@ class _TagAccentComposerDialogState
     extends ConsumerState<TagAccentComposerDialog> {
   late final TextEditingController _nameCtrl;
   late Color _accent;
-  late double _hueDeg;
-  bool _fromHueSlider = false;
+  late bool _isCustom;
   bool _deleting = false;
   bool _saving = false;
 
@@ -49,12 +54,12 @@ class _TagAccentComposerDialogState
     super.initState();
     _nameCtrl = TextEditingController(text: widget.initialDisplayLabel ?? '');
     if (widget.initialAccentArgb != null) {
-      final Color parsed = Color(widget.initialAccentArgb!);
-      _accent = parsed;
-      _hueDeg = HSVColor.fromColor(parsed).hue;
+      _accent = Color(widget.initialAccentArgb!);
+      _isCustom = widget.initialAccentIsCustom ??
+          !tagAccentMatchesPreset(_accent);
     } else {
-      _accent = kEditorTagAccentPresets.first;
-      _hueDeg = HSVColor.fromColor(_accent).hue;
+      _accent = kDefaultTagAccentPresets.first;
+      _isCustom = false;
     }
     _nameCtrl.addListener(_onNameChanged);
   }
@@ -68,6 +73,23 @@ class _TagAccentComposerDialogState
     _nameCtrl.removeListener(_onNameChanged);
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _openCustomColorPicker() async {
+    if (_deleting || _saving) {
+      return;
+    }
+    final Color? picked = await showTagAccentWheelDialog(
+      context,
+      initialColor: _accent,
+    );
+    if (!mounted || picked == null) {
+      return;
+    }
+    setState(() {
+      _accent = picked;
+      _isCustom = true;
+    });
   }
 
   Future<void> _save() async {
@@ -88,9 +110,14 @@ class _TagAccentComposerDialogState
           fromLabel: originalLabel,
           toLabel: name,
           accentArgb: colorArgb32(_accent),
+          accentIsCustom: _isCustom,
         );
       } else {
-        await vaultRepository.upsertTagAccentArgb(name, colorArgb32(_accent));
+        await vaultRepository.upsertTagAccentArgb(
+          name,
+          colorArgb32(_accent),
+          accentIsCustom: _isCustom,
+        );
       }
       ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
@@ -138,6 +165,46 @@ class _TagAccentComposerDialogState
     }
   }
 
+  Widget _previewPanel(
+    AppLocalizations l10n,
+    ThemeData theme,
+    ColorScheme cs,
+    String previewText,
+    (Color, Color) previewPair,
+  ) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          cs.primary.withValues(alpha: 0.04),
+          cs.surface,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.26),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: <Widget>[
+            Text(
+              l10n.tagPreviewLabel,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.outline,
+              ),
+            ),
+            const Spacer(),
+            TagChip.pair(
+              label: previewText.isEmpty ? l10n.tagNameHint : previewText,
+              pair: previewPair,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -150,306 +217,258 @@ class _TagAccentComposerDialogState
       RegExp(r'\s+'),
       ' ',
     );
+    final AppColors appColors = context.appColors;
     final (Color previewBg, Color previewFg) = chipFillFromAccentColor(
       _accent,
       cs,
+      appColors,
     );
     final bool canDelete = widget.onDelete != null;
     final bool busy = _deleting || _saving;
+    final bool customSelected = _isCustom;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 384),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                Color.lerp(cs.primary, cs.surface, 0.92)!,
-                cs.surface,
-              ],
-            ),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: theme.shadowColor.withValues(alpha: 0.12),
-                blurRadius: 28,
-                offset: const Offset(0, 16),
+    return TagAccentDialogShell(
+      icon: Icons.color_lens_rounded,
+      title: widget.titleText ?? l10n.tagAddTitle,
+      closeEnabled: !busy,
+      onClose: () => Navigator.of(context).pop(),
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const SizedBox(height: 22),
+          Row(
+            children: <Widget>[
+              if (canDelete)
+                TextButton.icon(
+                  onPressed: busy ? null : _delete,
+                  icon: _deleting
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.error,
+                          ),
+                        )
+                      : Icon(
+                          Icons.delete_outline_rounded,
+                          color: cs.error,
+                        ),
+                  label: Text(
+                    l10n.tagDeleteLabel,
+                    style: TextStyle(color: cs.error),
+                  ),
+                )
+              else
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.of(context).pop(),
+                  child: Text(
+                    l10n.commonActionCancel,
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              const Spacer(),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+                icon: _saving
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: cs.onPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded, size: 20),
+                onPressed: busy ? null : _save,
+                label: Text(
+                  widget.primaryButtonLabel ?? l10n.tagSaveButton,
+                ),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 16, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Icon(Icons.color_lens_rounded, color: cs.primary, size: 26),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (showBlurb) ...<Widget>[
+            const SizedBox(height: 14),
+            Text(
+              widget.descriptionText!.trim(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                height: 1.42,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ] else ...<Widget>[
+            const SizedBox(height: 22),
+          ],
+          TextField(
+            controller: _nameCtrl,
+            enabled: !busy,
+            textInputAction: TextInputAction.done,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: l10n.tagNameHint,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 16,
+              ),
+              filled: true,
+              fillColor: cs.surface.withValues(alpha: 0.95),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.tagDefaultColorLabel,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface.withValues(alpha: 0.65),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ClipRect(
+            child: SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: kDefaultTagAccentPresets.length,
+                separatorBuilder: (BuildContext context, int index) =>
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.titleText ?? l10n.tagAddTitle,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: l10n.commonCloseTooltip,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: busy
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      icon: Icon(
-                        Icons.close_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                if (showBlurb) ...<Widget>[
-                  const SizedBox(height: 14),
-                  Text(
-                    widget.descriptionText!.trim(),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      height: 1.42,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ] else ...<Widget>[const SizedBox(height: 22)],
-                TextField(
-                  controller: _nameCtrl,
-                  enabled: !busy,
-                  textInputAction: TextInputAction.done,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: l10n.tagNameHint,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 16,
-                    ),
-                    filled: true,
-                    fillColor: cs.surface.withValues(alpha: 0.95),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onSubmitted: (_) => _save(),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  l10n.tagDefaultColorLabel,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.65),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 48,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: kEditorTagAccentPresets.length,
-                    separatorBuilder: (BuildContext context, int index) =>
-                        const SizedBox(width: 12),
-                    itemBuilder: (BuildContext context, int index) {
-                      final Color c = kEditorTagAccentPresets[index];
-                      final bool selected =
-                          !_fromHueSlider &&
-                          colorArgb32(c) == colorArgb32(_accent);
-                      return GestureDetector(
-                        onTap: busy
-                            ? null
-                            : () => setState(() {
-                                _accent = c;
-                                _hueDeg = HSVColor.fromColor(c).hue;
-                                _fromHueSlider = false;
-                              }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          curve: Curves.easeOutCubic,
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: c,
-                            border: Border.all(
-                              color: selected
-                                  ? cs.primary.withValues(alpha: 0.9)
-                                  : Colors.white.withValues(alpha: 0.9),
-                              width: selected ? 3.25 : 1.85,
-                            ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: c.withValues(alpha: 0.32),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  l10n.tagHueLabel,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.65),
-                  ),
-                ),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 11,
-                    ),
-                    overlayShape: SliderComponentShape.noOverlay,
-                  ),
-                  child: Slider(
-                    value: _hueDeg.clamp(0.0, 359.0),
-                    min: 0,
-                    max: 359,
-                    divisions: 96,
-                    onChanged: busy
+                itemBuilder: (BuildContext context, int index) {
+                  final Color c = kDefaultTagAccentPresets[index];
+                  final (Color chipBg, Color chipFg) = chipFillFromAccentColor(
+                    c,
+                    cs,
+                    appColors,
+                  );
+                  final bool selected =
+                      !_isCustom && colorArgb32(c) == colorArgb32(_accent);
+                  final BorderSide? unselectedSide = tagChipBorderSide(
+                    appColors,
+                    cs,
+                    chipBg,
+                    chipFg,
+                    width: 1.85,
+                  );
+                  return GestureDetector(
+                    onTap: busy
                         ? null
-                        : (double v) {
-                            setState(() {
-                              _hueDeg = v;
-                              _accent = HSVColor.fromAHSV(
-                                1,
-                                v,
-                                0.76,
-                                0.9,
-                              ).toColor();
-                              _fromHueSlider = true;
-                            });
-                          },
+                        : () => setState(() {
+                            _accent = c;
+                            _isCustom = false;
+                          }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      curve: Curves.easeOutCubic,
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: chipBg,
+                        border: Border.all(
+                          color: selected
+                              ? cs.primary.withValues(alpha: 0.9)
+                              : unselectedSide!.color,
+                          width: selected ? 3.25 : 1.85,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: busy ? null : _openCustomColorPicker,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              side: BorderSide(
+                color: customSelected
+                    ? cs.primary.withValues(alpha: 0.9)
+                    : cs.outlineVariant.withValues(alpha: 0.5),
+                width: customSelected ? 2 : 1,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  Icons.palette_outlined,
+                  size: 20,
+                  color: customSelected ? cs.primary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.tagCustomColorLabel,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: customSelected
+                          ? cs.primary
+                          : cs.onSurface.withValues(alpha: 0.78),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                DecoratedBox(
+                Container(
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: Color.alphaBlend(
-                      cs.primary.withValues(alpha: 0.04),
-                      cs.surface,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.26),
-                    ),
+                    shape: BoxShape.circle,
+                    color: previewBg,
+                    border: () {
+                      if (customSelected) {
+                        return Border.all(
+                          color: cs.primary.withValues(alpha: 0.9),
+                          width: 2.5,
+                        );
+                      }
+                      final BorderSide? side = tagChipBorderSide(
+                        appColors,
+                        cs,
+                        previewBg,
+                        previewFg,
+                        width: 1.5,
+                      );
+                      return side == null
+                          ? null
+                          : Border.fromBorderSide(side);
+                    }(),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Row(
-                      children: <Widget>[
-                        Text(
-                          l10n.tagPreviewLabel,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: cs.outline,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 9,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(999),
-                            color: previewBg.withValues(alpha: 0.95),
-                            border: Border.all(
-                              color: previewFg.withValues(alpha: 0.33),
-                              width: 0.95,
-                            ),
-                          ),
-                          child: Text(
-                            previewText.isEmpty
-                                ? l10n.tagNameHint
-                                : previewText,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: previewFg,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: <Widget>[
-                    if (canDelete)
-                      TextButton.icon(
-                        onPressed: busy ? null : _delete,
-                        icon: _deleting
-                            ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: cs.error,
-                                ),
-                              )
-                            : Icon(
-                                Icons.delete_outline_rounded,
-                                color: cs.error,
-                              ),
-                        label: Text(
-                          l10n.tagDeleteLabel,
-                          style: TextStyle(color: cs.error),
-                        ),
-                      )
-                    else
-                      TextButton(
-                        onPressed: busy
-                            ? null
-                            : () => Navigator.of(context).pop(),
-                        child: Text(
-                          l10n.commonActionCancel,
-                          style: TextStyle(color: cs.onSurfaceVariant),
-                        ),
-                      ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                      ),
-                      icon: _saving
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: cs.onPrimary,
-                              ),
-                            )
-                          : const Icon(Icons.check_rounded, size: 20),
-                      onPressed: busy ? null : _save,
-                      label: Text(
-                        widget.primaryButtonLabel ?? l10n.tagSaveButton,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: 20),
+          _previewPanel(
+            l10n,
+            theme,
+            cs,
+            previewText,
+            (previewBg, previewFg),
+          ),
+        ],
       ),
     );
   }

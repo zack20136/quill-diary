@@ -3,14 +3,20 @@ import 'dart:io';
 import 'dart:ui';
 
 import '../../domain/shared/value_objects.dart';
+import '../../shared/presentation/tag_visual.dart';
 import '../../l10n/l10n.dart';
 import 'vault_path_strategy.dart';
 
 class TagCatalogItem {
-  const TagCatalogItem({required this.label, this.accentArgb});
+  const TagCatalogItem({
+    required this.label,
+    this.accentArgb,
+    this.accentIsCustom,
+  });
 
   final String label;
   final int? accentArgb;
+  final bool? accentIsCustom;
 
   String get displayLabel => label.trim().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -20,6 +26,7 @@ class TagCatalogItem {
     return <String, Object?>{
       'label': displayLabel,
       if (accentArgb != null) 'accent_argb': accentArgb,
+      if (accentIsCustom != null) 'accent_is_custom': accentIsCustom,
     };
   }
 
@@ -37,7 +44,15 @@ class TagCatalogItem {
     return TagCatalogItem(
       label: label,
       accentArgb: _parseArgb(raw['accent_argb']),
+      accentIsCustom: _parseBool(raw['accent_is_custom']),
     );
+  }
+
+  static bool? _parseBool(Object? value) {
+    if (value is bool) {
+      return value;
+    }
+    return null;
   }
 
   static int? _parseArgb(Object? value) {
@@ -51,30 +66,19 @@ class TagCatalogItem {
   }
 }
 
-const List<int> kDefaultTagAccents = <int>[
-  0xFF748091,
-  0xFFD6336C,
-  0xFF7950F2,
-  0xFF4C6EF5,
-  0xFF7048E8,
-  0xFFA855F7,
-  0xFF339AF0,
-  0xFF15AABF,
-  0xFF228BE6,
-  0xFF20C997,
-  0xFFF783AC,
-  0xFFFF922B,
-  0xFF51CF66,
-  0xFFFCC419,
-];
-
 List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {
   final List<String> labels = localizedDefaultTagLabels(l10n);
+  final List<int> defaultAccents = defaultTagAccentArgbs();
+  assert(
+    labels.length == defaultAccents.length,
+    'localizedDefaultTagLabels (${labels.length}) 與 kDefaultTagAccentPresets (${defaultAccents.length}) 數量必須一致',
+  );
   return List<TagCatalogItem>.generate(
     labels.length,
     (int index) => TagCatalogItem(
       label: labels[index],
-      accentArgb: kDefaultTagAccents[index],
+      accentArgb: defaultAccents[index],
+      accentIsCustom: false,
     ),
     growable: false,
   );
@@ -172,7 +176,11 @@ class TagStylesStore {
       if (existingIndex == null) {
         indexByNorm[normalizedKey] = normalized.length;
         normalized.add(
-          TagCatalogItem(label: item.displayLabel, accentArgb: item.accentArgb),
+          TagCatalogItem(
+            label: item.displayLabel,
+            accentArgb: item.accentArgb,
+            accentIsCustom: item.accentIsCustom,
+          ),
         );
         continue;
       }
@@ -180,6 +188,7 @@ class TagStylesStore {
       normalized[existingIndex] = TagCatalogItem(
         label: item.displayLabel,
         accentArgb: item.accentArgb ?? previous.accentArgb,
+        accentIsCustom: item.accentIsCustom ?? previous.accentIsCustom,
       );
     }
 

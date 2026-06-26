@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../l10n/l10n.dart';
-import '../../../shared/presentation/app_typography.dart';
 import '../../../shared/presentation/display_format.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
+import '../../../shared/presentation/widgets/tag_chip.dart';
 import 'editor_keyboard_chrome.dart';
 import 'editor_markdown_preview.dart';
 
@@ -58,7 +59,7 @@ class EditorTitleSection extends StatelessWidget {
             titleText.isEmpty ? context.l10n.editorUntitledDraft : titleText,
             style: titleStyle.copyWith(
               color: titleText.isEmpty
-                  ? AppTypography.muted(theme.colorScheme)
+                  ? context.appColors.mutedForeground
                   : null,
             ),
           ),
@@ -128,7 +129,7 @@ class EditorTitleSection extends StatelessWidget {
             hintStyle: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
               fontStyle: FontStyle.italic,
-              color: AppTypography.muted(theme.colorScheme),
+              color: context.appColors.mutedForeground,
             ),
             errorStyle: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.error,
@@ -199,7 +200,7 @@ class EditorBodySection extends StatelessWidget {
                     context.l10n.editorBodyEmptyPreview,
                     style: bodyStyle.copyWith(
                       fontStyle: FontStyle.italic,
-                      color: AppTypography.muted(paneTheme.colorScheme),
+                      color: context.appColors.mutedForeground,
                     ),
                   )
                 : EditorMarkdownPreview(
@@ -214,26 +215,38 @@ class EditorBodySection extends StatelessWidget {
             minLines: null,
             textAlignVertical: TextAlignVertical.top,
             style: bodyStyle,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
+              filled: false,
+              fillColor: Colors.transparent,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               contentPadding: EdgeInsets.zero,
               isDense: true,
-            ).copyWith(hintText: context.l10n.editorBodyHint),
+              hintText: context.l10n.editorBodyHint,
+            ),
           );
 
+    final AppColors colors = context.appColors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: PageStyle.previewPanelFill(paneTheme.colorScheme),
+        color: colors.previewPanel,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
         border: Border.fromBorderSide(
-          PageStyle.outlineSide(paneTheme.colorScheme),
+          colors.outlineBorder(),
         ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-        child: body,
+        child: Theme(
+          data: paneTheme.copyWith(
+            inputDecorationTheme: paneTheme.inputDecorationTheme.copyWith(
+              filled: false,
+              fillColor: Colors.transparent,
+            ),
+          ),
+          child: body,
+        ),
       ),
     );
   }
@@ -270,95 +283,31 @@ class _TagsWrap extends StatelessWidget {
         spacing: 8,
         runSpacing: 6,
         children: <Widget>[
-          if (showUnsavedTag) _buildUnsavedTagPill(context, theme),
+          if (showUnsavedTag)
+            TagChip.pair(
+              label: context.l10n.editorUnsavedDraftLabel,
+              pair: tagUnsavedPair(theme.colorScheme, context.appColors),
+            ),
           if (showCharCount && bodyCharCount > 0)
-            _buildCharCountTagPill(context, theme, bodyCharCount),
+            TagChip.pair(
+              label: DisplayFormat.formatCharCount(
+                context.l10n,
+                bodyCharCount,
+              ),
+              pair: tagCharCountPair(theme.colorScheme),
+            ),
           ...tags.map(
-            (String tag) => _buildTagPill(tag, theme, tagAccentArgbMap),
+            (String tag) => TagChip.pair(
+              label: tag,
+              pair: tagResolvedAccentPair(
+                tag,
+                theme.colorScheme,
+                tagAccentArgbMap,
+                context.appColors,
+              ),
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCharCountTagPill(
-    BuildContext context,
-    ThemeData theme,
-    int charCount,
-  ) {
-    final ColorScheme cs = theme.colorScheme;
-    final Color bg = Color.alphaBlend(
-      cs.onSurfaceVariant.withValues(alpha: 0.12),
-      cs.surface,
-    );
-    final Color fg = cs.onSurfaceVariant;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: bg.withValues(alpha: 0.92),
-        border: Border.all(color: fg.withValues(alpha: 0.32), width: 0.9),
-      ),
-      child: Text(
-        DisplayFormat.formatCharCount(context.l10n, charCount),
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          height: 1.15,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUnsavedTagPill(BuildContext context, ThemeData theme) {
-    final ColorScheme cs = theme.colorScheme;
-    final Color bg = Color.alphaBlend(
-      cs.error.withValues(alpha: 0.14),
-      cs.surface,
-    );
-    final Color fg = cs.error;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: bg.withValues(alpha: 0.96),
-        border: Border.all(color: fg.withValues(alpha: 0.28), width: 0.9),
-      ),
-      child: Text(
-        context.l10n.editorUnsavedDraftLabel,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          height: 1.15,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTagPill(
-    String tag,
-    ThemeData theme,
-    Map<String, int> tagAccentArgbMap,
-  ) {
-    final (Color bg, Color fg) = tagResolvedAccentPair(
-      tag,
-      theme.colorScheme,
-      tagAccentArgbMap,
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: bg.withValues(alpha: 0.88),
-        border: Border.all(color: fg.withValues(alpha: 0.34), width: 0.9),
-      ),
-      child: Text(
-        tag,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          height: 1.15,
-        ),
       ),
     );
   }

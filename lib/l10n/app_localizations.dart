@@ -290,11 +290,17 @@ abstract class AppLocalizations {
   /// **'預設色'**
   String get tagDefaultColorLabel;
 
-  /// No description provided for @tagHueLabel.
+  /// No description provided for @tagCustomColorLabel.
   ///
   /// In zh, this message translates to:
-  /// **'色相'**
-  String get tagHueLabel;
+  /// **'自訂顏色'**
+  String get tagCustomColorLabel;
+
+  /// No description provided for @tagCustomColorDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇自訂顏色'**
+  String get tagCustomColorDialogTitle;
 
   /// No description provided for @tagPreviewLabel.
   ///

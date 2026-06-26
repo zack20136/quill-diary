@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../l10n/l10n.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
@@ -16,7 +17,6 @@ import '../../../shared/utils/user_facing_error.dart';
 import '../../session/state/app_session_state.dart';
 import '../home_export_actions.dart';
 import '../home_layout.dart';
-import '../home_palette.dart';
 import '../models/overview_models.dart';
 import '../overview_export.dart';
 import '../providers/home_providers.dart';
@@ -324,15 +324,10 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         item.label,
                                         cs,
                                         tagAccents,
+                                        context.appColors,
                                       );
                                       final bool isSelected =
                                           selectedTag == item.label;
-                                      final Color bg = isSelected
-                                          ? Color.alphaBlend(
-                                              cs.primary.withValues(alpha: 0.2),
-                                              chipBg,
-                                            )
-                                          : chipBg;
                                       return FilterChip(
                                         label: Text(
                                           '${item.label} ${item.count}',
@@ -346,18 +341,18 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         ),
                                         selected: isSelected,
                                         showCheckmark: false,
-                                        backgroundColor: bg.withValues(
-                                          alpha: 0.94,
-                                        ),
-                                        selectedColor: bg.withValues(
-                                          alpha: 0.98,
-                                        ),
+                                        backgroundColor: chipBg,
+                                        selectedColor: chipBg,
                                         checkmarkColor: chipFg,
-                                        side: BorderSide(
-                                          color: chipFg.withValues(
-                                            alpha: isSelected ? 0.48 : 0.3,
-                                          ),
+                                        side: tagChipBorderSide(
+                                          context.appColors,
+                                          cs,
+                                          chipBg,
+                                          chipFg,
                                           width: isSelected ? 1.05 : 0.92,
+                                          accentBorderAlpha: isSelected
+                                              ? 0.48
+                                              : kTagChipBorderAlpha,
                                         ),
                                         onSelected: (_) {
                                           final notifier = ref.read(
@@ -601,7 +596,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                  border: Border.all(color: PageStyle.primaryMutedOutline(cs)),
+                  border: Border.all(color: context.appColors.outlineMuted),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -814,24 +809,13 @@ class OverviewMetricShell extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
+    final AppColors colors = context.appColors;
+
     return DecoratedBox(
       decoration: BoxDecoration(
+        color: colors.sectionCard,
         borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.42)),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: <Color>[
-            Color.alphaBlend(
-              cs.primary.withValues(alpha: 0.07),
-              cs.surfaceContainerLow,
-            ),
-            Color.alphaBlend(
-              cs.surfaceContainerHigh.withValues(alpha: 0.48),
-              cs.surface,
-            ),
-          ],
-        ),
+        border: Border.fromBorderSide(colors.outlineBorder(opacity: 0.42)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -903,13 +887,13 @@ class OverviewNumericTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: HomePalette.metricTileFill(cs),
+        color: colors.metricTile,
         borderRadius: BorderRadius.circular(18),
-        border: Border.fromBorderSide(PageStyle.outlineSide(cs, opacity: 0.48)),
+        border: Border.fromBorderSide(colors.outlineBorder(opacity: 0.48)),
       ),
       child: SizedBox(
         height: 92,
@@ -921,7 +905,7 @@ class OverviewNumericTile extends StatelessWidget {
               Text(
                 label,
                 style: theme.textTheme.titleSmall?.copyWith(
-                  color: HomePalette.metricTileTitle(cs),
+                  color: colors.metricTileTitle,
                   fontWeight: FontWeight.w700,
                   height: 1.0,
                 ),
@@ -944,7 +928,7 @@ class OverviewNumericTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.left,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: HomePalette.metricTileDetail(cs),
+                                color: colors.metricTileDetail,
                                 height: 1.1,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -962,7 +946,7 @@ class OverviewNumericTile extends StatelessWidget {
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                               height: 1.0,
-                              color: HomePalette.metricTileValue(cs),
+                              color: colors.metricTileValue,
                             ),
                           ),
                         ),

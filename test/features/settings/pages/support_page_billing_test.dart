@@ -9,6 +9,7 @@ import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
+import '../../../helpers/app_test_theme.dart';
 import '../../../helpers/shared/fake_in_app_purchase_platform.dart';
 
 void main() {
@@ -28,6 +29,8 @@ void main() {
 
   Widget buildApp() {
     return MaterialApp(
+      theme: appTestTheme(),
+      darkTheme: appTestTheme(brightness: Brightness.dark),
       locale: appZhLocale,
       supportedLocales: appSupportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

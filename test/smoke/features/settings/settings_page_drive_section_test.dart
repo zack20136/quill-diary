@@ -13,6 +13,7 @@ import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
+import '../../../helpers/app_test_theme.dart';
 import '../../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../../helpers/features/settings/settings_test_scope.dart';
 import '../../../helpers/shared/test_l10n.dart';
@@ -33,6 +34,8 @@ void main() {
           ),
         ],
         child: MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -173,6 +176,8 @@ void main() {
   testWidgets('本機備份區塊在沒有復原金鑰時仍可匯入外部備份', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: appTestTheme(),
+        darkTheme: appTestTheme(brightness: Brightness.dark),
         locale: appZhLocale,
         supportedLocales: appSupportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -228,6 +233,8 @@ void main() {
           connectionState: const DriveConnectionState.disconnected(),
         ),
         child: MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -254,6 +261,8 @@ void main() {
             connectionState: const DriveConnectionState.disconnected(),
           ),
           child: MaterialApp(
+            theme: appTestTheme(),
+            darkTheme: appTestTheme(brightness: Brightness.dark),
             locale: appZhLocale,
             supportedLocales: appSupportedLocales,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -291,6 +300,8 @@ void main() {
           connectionState: const DriveConnectionState.disconnected(),
         ),
         child: MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,

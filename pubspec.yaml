@@ -1,9 +1,9 @@
 name: quill_diary
-description: "Offline diary app with local LDJ2-encrypted Markdown vault and Recovery Key."
+description: "Privacy-first offline diary for Android with local encryption, recovery key unlock, full-text search, drafts, and portable backup."
 license: AGPL-3.0-or-later
 publish_to: 'none'
 
-version: 1.0.0+8
+version: 1.0.0+9
 
 environment:
   sdk: ^3.11.5
@@ -27,7 +27,7 @@ dependencies:
   ulid: ^2.0.1
 
   flex_color_scheme: ^8.4.0
-  dynamic_color: ^1.8.1
+  flex_color_picker: ^3.8.0
   skeletonizer: ^2.1.3
   phosphor_flutter: ^2.1.0
   go_router: ^17.2.3

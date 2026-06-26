@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/attachment/asset_attachment.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/presentation/widgets/local_file_thumbnail.dart';
@@ -263,11 +264,12 @@ class EditorAttachmentStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
             ),
             if (editable)
-              _editorImageDeleteBadge(
-                theme,
-                onTap: () => onRemoveSaved(attachment),
-              ),
-            if (draggable) _dragIndicator(theme),
+            _editorImageDeleteBadge(
+              context,
+              theme,
+              onTap: () => onRemoveSaved(attachment),
+            ),
+            if (draggable) _dragIndicator(context, theme),
           ],
         ),
       );
@@ -307,10 +309,11 @@ class EditorAttachmentStrip extends StatelessWidget {
           ),
           if (editable)
             _editorImageDeleteBadge(
+              context,
               theme,
               onTap: () => onRemovePending(attachment),
             ),
-          if (draggable) _dragIndicator(theme),
+          if (draggable) _dragIndicator(context, theme),
         ],
       ),
     );
@@ -365,6 +368,7 @@ class EditorAttachmentStrip extends StatelessWidget {
   }
 
   Widget _editorImageDeleteBadge(
+    BuildContext context,
     ThemeData theme, {
     required VoidCallback onTap,
   }) {
@@ -380,8 +384,8 @@ class EditorAttachmentStrip extends StatelessWidget {
             Icons.cancel_rounded,
             size: 20,
             color: theme.colorScheme.error.withValues(alpha: 0.9),
-            shadows: const <Shadow>[
-              Shadow(blurRadius: 4, color: Color(0x66000000)),
+            shadows: <Shadow>[
+              Shadow(blurRadius: 4, color: context.appColors.shadow),
             ],
           ),
         ),
@@ -389,7 +393,7 @@ class EditorAttachmentStrip extends StatelessWidget {
     );
   }
 
-  Widget _dragIndicator(ThemeData theme) {
+  Widget _dragIndicator(BuildContext context, ThemeData theme) {
     return Positioned(
       left: 4,
       bottom: 4,
@@ -398,8 +402,8 @@ class EditorAttachmentStrip extends StatelessWidget {
           Icons.drag_indicator_rounded,
           size: 18,
           color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-          shadows: const <Shadow>[
-            Shadow(blurRadius: 4, color: Color(0x66000000)),
+          shadows: <Shadow>[
+            Shadow(blurRadius: 4, color: context.appColors.shadow),
           ],
         ),
       ),

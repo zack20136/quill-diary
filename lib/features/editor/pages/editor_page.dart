@@ -20,7 +20,7 @@ import '../../../infrastructure/storage/vault_repository.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/display_format.dart';
-import '../../../shared/presentation/page_style.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import '../../../shared/providers/tag_providers.dart';
@@ -537,7 +537,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
                 _pendingImageAttachments.toList();
             final List<PendingAttachment> pendingNonImages =
                 _pendingNonImageAttachments.toList();
-            final ColorScheme colorScheme = Theme.of(context).colorScheme;
             final EditorTypographyPreferences typography =
                 watchPersonalizationPreferences(ref).typography;
             final bool showUnsavedTag =
@@ -559,7 +558,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
                 unawaited(_requestClose());
               },
               child: Scaffold(
-                backgroundColor: PageStyle.scaffoldWash(colorScheme),
                 body: metadataAsync.when(
                   data: (Object? metadata) {
                     if (metadata == null) {
@@ -1150,7 +1148,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black54,
+      barrierColor: context.appColors.scrim,
       builder: (BuildContext dialogContext) => _EntryImageGalleryDialog(
         items: gallery.items,
         initialIndex: gallery.initialIndex,
@@ -1188,7 +1186,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black54,
+      barrierColor: context.appColors.scrim,
       builder: (BuildContext dialogContext) {
         return AnimatedPadding(
           padding: EdgeInsets.only(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../infrastructure/database/index_database.dart';
+import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/tag_visual.dart';
 import '../../home_entry_helpers.dart';
 import 'calendar_helpers.dart';
@@ -25,17 +26,22 @@ class CalendarDayCell extends StatelessWidget {
   final double rowHeight;
   final Map<String, int> tagAccents;
 
-  Color _entryTintBackground(ColorScheme cs, EntryIndexRecord entry) {
+  Color _entryTintBackground(
+    ColorScheme cs,
+    AppColors colors,
+    EntryIndexRecord entry,
+  ) {
     final String tagLabel = firstNonemptyTag(entry.tags);
     final (Color bg, _) = tagLabel.isEmpty
         ? tagNeutralAccentPair(cs)
-        : tagResolvedAccentPair(tagLabel, cs, tagAccents);
+        : tagResolvedAccentPair(tagLabel, cs, tagAccents, colors);
     return Color.alphaBlend(bg.withValues(alpha: 0.22), cs.surface);
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final AppColors colors = context.appColors;
     final double contentOpacity = isOutside ? 0.4 : 1.0;
     final bool showTitles = calendarShouldShowEntryTitles(rowHeight);
     final List<EntryIndexRecord> visibleEntries = showTitles
@@ -45,7 +51,7 @@ class CalendarDayCell extends StatelessWidget {
 
     Color cellColor = cs.surface;
     if (visibleEntries.isNotEmpty) {
-      cellColor = _entryTintBackground(cs, visibleEntries.first);
+      cellColor = _entryTintBackground(cs, colors, visibleEntries.first);
     }
     if (isSelected) {
       cellColor = Color.alphaBlend(
@@ -64,7 +70,7 @@ class CalendarDayCell extends StatelessWidget {
             color: cellColor,
             border: isSelected
                 ? Border.all(
-                    color: cs.primary.withValues(alpha: 0.55),
+                    color: colors.calendarTodayMarker,
                     width: 1.2,
                   )
                 : null,
@@ -89,6 +95,7 @@ class CalendarDayCell extends StatelessWidget {
                       ),
                       tagLabel: firstNonemptyTag(entry.tags),
                       accents: tagAccents,
+                      colors: colors,
                       fontSize: entryFontSize,
                     ),
                   if (entries.length > kCalendarMaxEntriesPerCell)
@@ -184,6 +191,7 @@ class CalendarEntryPreviewRow extends StatelessWidget {
     required this.label,
     required this.tagLabel,
     required this.accents,
+    required this.colors,
     required this.fontSize,
     super.key,
   });
@@ -191,6 +199,7 @@ class CalendarEntryPreviewRow extends StatelessWidget {
   final String label;
   final String tagLabel;
   final Map<String, int> accents;
+  final AppColors colors;
   final double fontSize;
 
   @override
@@ -198,7 +207,7 @@ class CalendarEntryPreviewRow extends StatelessWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final (_, Color accent) = tagLabel.isEmpty
         ? tagNeutralAccentPair(cs)
-        : tagResolvedAccentPair(tagLabel, cs, accents);
+        : tagResolvedAccentPair(tagLabel, cs, accents, colors);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 1),

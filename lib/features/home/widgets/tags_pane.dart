@@ -9,6 +9,7 @@ import '../../../infrastructure/storage/tag_styles_store.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_scrollbar.dart';
+import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_accent_composer_dialog.dart';
@@ -65,10 +66,26 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     final int? initialArgb = existingLabel == null
         ? null
         : accentMap[normalizeText(existingLabel)];
+    bool? initialAccentIsCustom;
+    if (existingLabel != null) {
+      final List<TagCatalogItem> catalog = await ref.read(
+        tagCatalogProvider.future,
+      );
+      for (final TagCatalogItem item in catalog) {
+        if (item.normalized == normalizeText(existingLabel)) {
+          initialAccentIsCustom = item.accentIsCustom;
+          break;
+        }
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    final Color dialogBarrierColor = context.appColors.scrim;
     final String? savedLabel = await showDialog<String>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black45,
+      barrierColor: dialogBarrierColor,
       builder: (BuildContext ctx) {
         return AnimatedPadding(
           duration: const Duration(milliseconds: 180),
@@ -89,6 +106,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 initialDisplayLabel: existingLabel,
                 sessionForRename: existingLabel == null ? null : session,
                 initialAccentArgb: initialArgb,
+                initialAccentIsCustom: initialAccentIsCustom,
                 primaryButtonLabel: ctx.l10n.tagSaveButton,
                 onDelete: existingLabel == null || session == null
                     ? null
@@ -230,11 +248,11 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     ColorScheme cs,
   ) {
     if (_selectedTagLabel == null) {
-      return HomeDiaryListSectionCard(
+      return HomeSectionCard(
         title: context.l10n.homeTagPreviewTitle,
         stripeColor: cs.primary,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -266,17 +284,26 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       _selectedTagLabel!,
     );
 
+    if (matched.isEmpty) {
+      return HomeSectionCard(
+        title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
+        stripeColor: cs.primary,
+        titleTrail: HomeDiarySectionCloseButton(
+          onPressed: () => setState(() => _selectedTagLabel = null),
+        ),
+        child: HomePaneEmptyHint(
+          text: context.l10n.homeTagIndexEmptyForTag(_selectedTagLabel!),
+        ),
+      );
+    }
+
     return HomeDiaryListSectionCard(
       title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
       stripeColor: cs.primary,
       titleTrail: HomeDiarySectionCloseButton(
         onPressed: () => setState(() => _selectedTagLabel = null),
       ),
-      child: matched.isEmpty
-          ? HomePaneEmptyHint(
-              text: context.l10n.homeTagIndexEmptyForTag(_selectedTagLabel!),
-            )
-          : HomeCompactEntryList(entries: matched),
+      child: HomeCompactEntryList(entries: matched),
     );
   }
 
@@ -321,10 +348,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 onPressed: () => _presentComposer(accentMap: accentMap),
                 icon: Icons.add_rounded,
                 size: kHomeSearchRowControlHeight,
-                backgroundColor: Color.alphaBlend(
-                  cs.primaryContainer.withValues(alpha: 0.78),
-                  cs.surfaceContainerLow,
-                ),
+                backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
               ),
             ],
@@ -384,6 +408,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                         e.label,
                         cs,
                         accentMap,
+                        context.appColors,
                       );
                       final bool isRowSelected =
                           _selectedTagLabel != null &&
@@ -391,12 +416,11 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               normalizeText(e.label);
 
                       return Material(
-                        color: cs.surface,
-                        elevation: isRowSelected ? 1.5 : 1,
+                        color: context.appColors.sectionInset,
+                        elevation: isRowSelected ? 1.5 : 0,
                         shadowColor: cs.shadow.withValues(alpha: 0.08),
-                        surfaceTintColor: Colors.transparent,
                         borderRadius: BorderRadius.circular(
-                          PageStyle.radiusCard,
+                          PageStyle.radiusPanel,
                         ),
                         child: ListTile(
                           dense: true,
@@ -407,7 +431,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              PageStyle.radiusCard,
+                              PageStyle.radiusPanel,
                             ),
                             side: isRowSelected
                                 ? BorderSide(
@@ -426,10 +450,18 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                             height: 38,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: bg.withValues(alpha: 0.95),
-                              border: Border.all(
-                                color: fg.withValues(alpha: 0.34),
-                              ),
+                              color: bg,
+                              border: () {
+                                final BorderSide? side = tagChipBorderSide(
+                                  context.appColors,
+                                  cs,
+                                  bg,
+                                  fg,
+                                );
+                                return side == null
+                                    ? null
+                                    : Border.fromBorderSide(side);
+                              }(),
                             ),
                             alignment: Alignment.center,
                             child: Icon(
@@ -480,12 +512,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                   ),
                                   icon: Icons.edit_outlined,
                                   size: kHomeToolbarActionCircleSize,
-                                  backgroundColor: Color.alphaBlend(
-                                    cs.secondaryContainer.withValues(
-                                      alpha: 0.65,
-                                    ),
-                                    cs.surface,
-                                  ),
+                                  backgroundColor: cs.secondaryContainer,
                                   foregroundColor: cs.onSecondaryContainer,
                                 ),
                                 const SizedBox(width: 6),
@@ -500,7 +527,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                   icon: Icons.delete_outline_rounded,
                                   size: kHomeToolbarActionCircleSize,
                                   backgroundColor: cs.errorContainer,
-                                  foregroundColor: cs.onErrorContainer,
+                                  foregroundColor: cs.error,
                                 ),
                               ],
                             ),
@@ -530,7 +557,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                             context.l10n,
                             list.length,
                           ),
-                          stripeColor: cs.secondary,
+                          stripeColor: cs.tertiary,
                           child: SizedBox(
                             height: HomeLayout.tagListSectionHeight,
                             child: NestedPanelScrollbar(

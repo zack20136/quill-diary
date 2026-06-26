@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../l10n/l10n.dart';
 
-import '../../../shared/presentation/page_style.dart';
+import '../../../app/app_colors.dart';
 
 const double kHomeSearchRowControlHeight = 46;
 const double kHomeToolbarActionCircleSize = 34;
@@ -53,16 +53,13 @@ class HomeSearchTextField extends StatelessWidget {
           maxHeight: kHomeSearchRowControlHeight,
         ),
         filled: true,
-        fillColor: Color.alphaBlend(
-          cs.tertiary.withValues(alpha: 0.05),
-          cs.surfaceContainerLowest,
-        ),
+        fillColor: context.appColors.sectionCard,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
-          borderSide: BorderSide(color: PageStyle.primaryMutedOutline(cs)),
+          borderSide: BorderSide(color: context.appColors.outlineMuted),
         ),
         contentPadding: const EdgeInsets.only(right: 14),
       ),
@@ -107,10 +104,7 @@ class HomeSelectionToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color fillColor = Color.alphaBlend(
-      cs.tertiary.withValues(alpha: 0.05),
-      cs.surfaceContainerLowest,
-    );
+    final Color fillColor = context.appColors.sectionCard;
 
     return SizedBox(
       height: kHomeSearchRowControlHeight,
@@ -118,7 +112,7 @@ class HomeSelectionToolbar extends StatelessWidget {
         decoration: BoxDecoration(
           color: fillColor,
           borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
-          border: Border.all(color: PageStyle.primaryMutedOutline(cs)),
+          border: Border.all(color: context.appColors.outlineMuted),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(2, 0, 6, 0),
@@ -153,10 +147,7 @@ class HomeSelectionToolbar extends StatelessWidget {
                     ? Icons.check_box_outline_blank_rounded
                     : Icons.check_box_rounded,
                 size: kHomeToolbarActionCircleSize,
-                backgroundColor: Color.alphaBlend(
-                  cs.primaryContainer.withValues(alpha: 0.82),
-                  cs.surface,
-                ),
+                backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
               ),
               for (final HomeSelectionAction action in actions) ...<Widget>[
@@ -168,17 +159,11 @@ class HomeSelectionToolbar extends StatelessWidget {
                   size: kHomeToolbarActionCircleSize,
                   backgroundColor: action.destructive
                       ? cs.errorContainer
-                      : Color.alphaBlend(
-                          cs.secondaryContainer.withValues(alpha: 0.65),
-                          cs.surface,
-                        ),
+                      : cs.secondaryContainer,
                   foregroundColor: action.destructive
-                      ? cs.onErrorContainer
+                      ? cs.error
                       : cs.onSecondaryContainer,
-                  disabledBackgroundColor: Color.alphaBlend(
-                    cs.errorContainer.withValues(alpha: 0.35),
-                    cs.surface,
-                  ),
+                  disabledBackgroundColor: cs.surfaceContainerHighest,
                   disabledForegroundColor: cs.onSurfaceVariant.withValues(
                     alpha: 0.38,
                   ),
@@ -289,10 +274,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: kHomeSearchRowControlHeight,
-      backgroundColor: Color.alphaBlend(
-        cs.primaryContainer.withValues(alpha: 0.78),
-        cs.surfaceContainerLow,
-      ),
+      backgroundColor: cs.primaryContainer,
       foregroundColor: cs.onPrimaryContainer,
       disabledBackgroundColor: cs.surfaceContainerHighest,
       disabledForegroundColor: cs.onSurfaceVariant.withValues(alpha: 0.4),

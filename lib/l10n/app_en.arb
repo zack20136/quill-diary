@@ -49,7 +49,8 @@
   "tagDeleteLabel": "Delete Tag",
   "tagUnnamedPreview": "Untitled Tag",
   "tagDefaultColorLabel": "Default Color",
-  "tagHueLabel": "Hue",
+  "tagCustomColorLabel": "Custom color",
+  "tagCustomColorDialogTitle": "Pick a custom color",
   "tagPreviewLabel": "Preview",
   "tagSaveFailure": "Failed to save tag: {message}",
   "@tagSaveFailure": {

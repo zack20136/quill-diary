@@ -52,7 +52,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     final String? createdTag = await showDialog<String>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black45,
+      barrierColor: context.appColors.scrim,
       builder: (BuildContext dialogContext) {
         return AnimatedPadding(
           duration: const Duration(milliseconds: 180),
@@ -83,11 +83,17 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     });
   }
 
-  Widget _chosenTagChip(String tag, ThemeData theme, Map<String, int> accents) {
+  Widget _chosenTagChip(
+    String tag,
+    ThemeData theme,
+    Map<String, int> accents,
+    AppColors colors,
+  ) {
     final (Color bg, Color fg) = tagResolvedAccentPair(
       tag,
       theme.colorScheme,
       accents,
+      colors,
     );
     return Padding(
       padding: const EdgeInsets.only(right: 4, bottom: 4),
@@ -103,8 +109,14 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           setState(() {});
         },
         deleteIconColor: fg.withValues(alpha: 0.82),
-        backgroundColor: bg.withValues(alpha: 0.92),
-        side: BorderSide(color: fg.withValues(alpha: 0.38), width: 0.95),
+        backgroundColor: bg,
+        side: tagChipBorderSide(
+          colors,
+          theme.colorScheme,
+          bg,
+          fg,
+          width: 0.95,
+        ),
       ),
     );
   }
@@ -113,11 +125,13 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
     String label,
     ThemeData theme,
     Map<String, int> accents,
+    AppColors colors,
   ) {
     final (Color bg0, Color fg0) = tagResolvedAccentPair(
       label,
       theme.colorScheme,
       accents,
+      colors,
     );
     return ActionChip(
       avatar: Icon(
@@ -136,19 +150,23 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           _addChosen(label);
         });
       },
-      side: BorderSide(color: fg0.withValues(alpha: 0.28), width: 0.95),
+      side: tagChipBorderSide(
+        colors,
+        theme.colorScheme,
+        bg0,
+        fg0,
+        width: 0.95,
+      ),
       elevation: 0,
       shadowColor: Colors.transparent,
-      backgroundColor: Color.alphaBlend(
-        fg0.withValues(alpha: 0.08),
-        bg0,
-      ).withValues(alpha: 0.96),
+      backgroundColor: bg0,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final AppColors colors = context.appColors;
     final Map<String, int> accentArgbByNorm = ref
         .watch(tagAccentArgbMapProvider)
         .maybeWhen(
@@ -172,16 +190,12 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
               begin: Alignment.topLeft,
               end: const Alignment(0.15, 0.45),
               colors: <Color>[
-                Color.lerp(
-                  theme.colorScheme.primary,
-                  theme.colorScheme.surface,
-                  0.86,
-                )!,
-                theme.colorScheme.surface,
+                colors.accentDialogGradientStart,
+                colors.accentDialogGradientEnd,
               ],
             ),
             border: Border.all(
-              color: theme.colorScheme.primary.withValues(alpha: 0.18),
+              color: colors.accentDialogBorder,
               width: 1.1,
             ),
             boxShadow: <BoxShadow>[
@@ -259,7 +273,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                       runSpacing: 8,
                       children: <Widget>[
                         for (final String t in _chosenByNorm.values)
-                          _chosenTagChip(t, theme, accentArgbByNorm),
+                          _chosenTagChip(t, theme, accentArgbByNorm, colors),
                       ],
                     ),
                   ),
@@ -330,6 +344,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                               item.label,
                               theme,
                               accentArgbByNorm,
+                              colors,
                             ),
                         ],
                       ),
@@ -420,8 +435,9 @@ class _EntryImageGalleryDialogState
   @override
   Widget build(BuildContext context) {
     final Size mq = MediaQuery.sizeOf(context);
+    final AppColors colors = context.appColors;
     return Dialog(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.galleryBackground,
       insetPadding: const EdgeInsets.all(12),
       child: SizedBox(
         width: mq.width - 24,
@@ -451,7 +467,7 @@ class _EntryImageGalleryDialogState
               start: 16,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.42),
+                  color: colors.scrim,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Padding(
@@ -461,8 +477,8 @@ class _EntryImageGalleryDialogState
                   ),
                   child: Text(
                     '${_currentIndex + 1} / ${widget.items.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colors.galleryForeground,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -481,23 +497,23 @@ class _EntryImageGalleryDialogState
                         ? null
                         : () => unawaited(_downloadCurrentImage()),
                     icon: _downloading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: colors.galleryForeground,
                             ),
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.download_outlined,
-                            color: Colors.white,
+                            color: colors.galleryForeground,
                           ),
                   ),
                   IconButton(
                     tooltip: context.l10n.commonCloseTooltip,
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: colors.galleryForeground),
                   ),
                 ],
               ),
@@ -522,6 +538,7 @@ class _GalleryImagePane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final Color galleryForeground = context.appColors.galleryForeground;
     return switch (item.source) {
       GalleryImageSource.encrypted => _EncryptedGalleryImage(
         path: item.path,
@@ -536,9 +553,9 @@ class _GalleryImagePane extends ConsumerWidget {
           fit: BoxFit.contain,
           errorBuilder:
               (BuildContext context, Object error, StackTrace? stackTrace) =>
-                  const Icon(
+                  Icon(
                     Icons.broken_image_outlined,
-                    color: Colors.white,
+                    color: galleryForeground,
                     size: 56,
                   ),
         ),
@@ -753,6 +770,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final AppColors colors = context.appColors;
     final AsyncValue<Uint8List?> async = ref.watch(
       entryCoverPreviewBytesProvider(path),
     );
@@ -762,7 +780,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
           return Center(
             child: Text(
               context.l10n.editorPreviewUnavailable,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+              style: TextStyle(color: colors.galleryForeground.withValues(alpha: 0.85)),
             ),
           );
         }
@@ -776,11 +794,12 @@ class _EncryptedGalleryImage extends ConsumerWidget {
           ),
         );
       },
-      loading: () =>
-          const Center(child: CircularProgressIndicator(color: Colors.white)),
-      error: (Object _, StackTrace _) => const Icon(
+      loading: () => Center(
+        child: CircularProgressIndicator(color: colors.galleryForeground),
+      ),
+      error: (Object _, StackTrace _) => Icon(
         Icons.broken_image_outlined,
-        color: Colors.white,
+        color: colors.galleryForeground,
         size: 56,
       ),
     );

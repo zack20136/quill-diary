@@ -25,6 +25,7 @@ import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 import '../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../helpers/app_test_theme.dart';
 
 void main() {
   late GoRouter router;
@@ -58,6 +59,8 @@ void main() {
         }),
       ],
       child: MaterialApp.router(
+        theme: appTestTheme(),
+        darkTheme: appTestTheme(brightness: Brightness.dark),
         routerConfig: router,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
