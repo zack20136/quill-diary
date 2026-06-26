@@ -52,14 +52,14 @@ class LocalBackupSection extends StatelessWidget {
           SettingsActionButton(
             label: l10n.settingsLocalBackupExportToExternalButton,
             icon: Icons.file_upload_outlined,
-            appearance: SettingsActionButtonAppearance.outlined,
+            appearance: SettingsActionButtonAppearance.filled,
             fullWidth: true,
             onPressed: busy || !access.canBackup ? null : onExport,
           ),
           SettingsActionButton(
             label: l10n.settingsLocalBackupImportFromExternalButton,
             icon: Icons.file_download_outlined,
-            appearance: SettingsActionButtonAppearance.outlined,
+            appearance: SettingsActionButtonAppearance.tonal,
             fullWidth: true,
             onPressed: busy || !access.canRestore ? null : onImport,
           ),

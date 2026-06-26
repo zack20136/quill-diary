@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
@@ -100,26 +101,26 @@ Future<String?> saveGalleryImageToPictures({
 }
 
 void showGalleryDownloadSnackBar(
-  BuildContext scaffoldMessengerContext,
+  BuildContext context,
   String message, {
   AppFeedbackTone tone = AppFeedbackTone.info,
 }) {
-  showAppFeedbackSnackBar(scaffoldMessengerContext, message, tone: tone);
+  showAppFeedbackSnackBar(context, message, tone: tone);
 }
 
 Future<void> downloadGalleryImage({
   required WidgetRef ref,
-  required BuildContext scaffoldMessengerContext,
+  required BuildContext context,
   required GalleryImageItem item,
 }) async {
   final Uint8List? bytes = await loadGalleryImageBytes(ref: ref, item: item);
-  if (!scaffoldMessengerContext.mounted) {
+  if (!context.mounted) {
     return;
   }
   if (bytes == null || bytes.isEmpty) {
     showGalleryDownloadSnackBar(
-      scaffoldMessengerContext,
-      scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
+      context,
+      context.l10n.editorGalleryDownloadFailed,
       tone: AppFeedbackTone.error,
     );
     return;
@@ -129,20 +130,20 @@ Future<void> downloadGalleryImage({
     fileName: item.fileName,
     mimeType: item.mimeType,
   );
-  if (!scaffoldMessengerContext.mounted) {
+  if (!context.mounted) {
     return;
   }
   if (savedName == null) {
     showGalleryDownloadSnackBar(
-      scaffoldMessengerContext,
-      scaffoldMessengerContext.l10n.editorGalleryDownloadFailed,
+      context,
+      context.l10n.editorGalleryDownloadFailed,
       tone: AppFeedbackTone.error,
     );
     return;
   }
   showGalleryDownloadSnackBar(
-    scaffoldMessengerContext,
-    scaffoldMessengerContext.l10n.editorGalleryDownloadSuccess(
+    context,
+    context.l10n.editorGalleryDownloadSuccess(
       UserExportPaths.picturesDisplayPath(savedName),
     ),
   );

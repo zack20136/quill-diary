@@ -21,6 +21,9 @@ class HomeBottomChromeSnackBarCount extends Notifier<int> {
   void register() => state++;
 
   void unregister() {
+    if (!ref.mounted) {
+      return;
+    }
     if (state > 0) {
       state--;
     }
@@ -29,7 +32,7 @@ class HomeBottomChromeSnackBarCount extends Notifier<int> {
   void reset() => state = 0;
 }
 
-/// 在顯示 SnackBar 前呼叫；須在 [hideCurrentSnackBar] 之前 register，避免替換時閃爍。
+/// 在顯示底部通知前呼叫；須在取代舊通知之前 register，避免替換時閃爍。
 HomeBottomChromeSnackBarLift? beginHomeSnackBarLift(BuildContext context) {
   final ProviderContainer container;
   try {
@@ -50,10 +53,8 @@ class HomeBottomChromeSnackBarLift {
   final HomeBottomChromeSnackBarCount _notifier;
   bool _released = false;
 
-  void bind(
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller,
-  ) {
-    unawaited(controller.closed.whenComplete(_release));
+  void bind(Future<void> whenDismissed) {
+    unawaited(whenDismissed.whenComplete(_release));
   }
 
   void _release() {

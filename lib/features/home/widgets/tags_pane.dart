@@ -386,17 +386,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                         q.isEmpty || item.label.toLowerCase().contains(q),
                   )
                   .toList();
-              if (list.isEmpty) {
-                return Center(
-                  child: Text(
-                    context.l10n.commonNoTagSearchResults,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: cs.outline,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                );
-              }
               final UnlockedVaultSession? session = widget.sessionState.session;
               final List<Widget> tagTiles = <Widget>[
                 for (int i = 0; i < list.length; i++) ...<Widget>[

@@ -379,12 +379,10 @@ class _EntryImageGalleryDialog extends ConsumerStatefulWidget {
   const _EntryImageGalleryDialog({
     required this.items,
     required this.initialIndex,
-    required this.scaffoldMessengerContext,
   });
 
   final List<GalleryImageItem> items;
   final int initialIndex;
-  final BuildContext scaffoldMessengerContext;
 
   @override
   ConsumerState<_EntryImageGalleryDialog> createState() =>
@@ -422,7 +420,7 @@ class _EntryImageGalleryDialogState
     try {
       await downloadGalleryImage(
         ref: ref,
-        scaffoldMessengerContext: widget.scaffoldMessengerContext,
+        context: context,
         item: widget.items[_currentIndex],
       );
     } finally {

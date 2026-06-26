@@ -1152,7 +1152,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
       builder: (BuildContext dialogContext) => _EntryImageGalleryDialog(
         items: gallery.items,
         initialIndex: gallery.initialIndex,
-        scaffoldMessengerContext: context,
       ),
     );
   }

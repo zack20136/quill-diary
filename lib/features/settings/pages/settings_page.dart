@@ -169,7 +169,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             SettingsActionButton(
                               label: l10n.settingsImportExportImportButton,
                               icon: Icons.file_download_outlined,
-                              appearance: SettingsActionButtonAppearance.filled,
+                              appearance: SettingsActionButtonAppearance.tonal,
                               fullWidth: true,
                               onPressed: _busy || !transferAccess.canBackup
                                   ? null
@@ -182,7 +182,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             SettingsActionButton(
                               label: l10n.settingsImportExportExportButton,
                               icon: Icons.file_upload_outlined,
-                              appearance: SettingsActionButtonAppearance.tonal,
+                              appearance: SettingsActionButtonAppearance.filled,
                               fullWidth: true,
                               onPressed: _busy || !transferAccess.canBackup
                                   ? null

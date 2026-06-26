@@ -5,7 +5,6 @@ import 'app_color_scheme.dart';
 import 'app_colors.dart';
 import '../shared/presentation/app_scrollbar.dart';
 import '../shared/presentation/app_typography.dart';
-import '../shared/presentation/page_style.dart';
 
 const FlexSubThemesData _kFlexSubThemesLight = FlexSubThemesData(
   interactionEffects: true,
@@ -104,12 +103,6 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: scheme.primary, width: 1.5),
-      ),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
     ),
     scrollbarTheme: kPrimaryScrollbarTheme,

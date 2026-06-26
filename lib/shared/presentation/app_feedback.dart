@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../features/home/providers/home_bottom_chrome_provider.dart';
@@ -90,6 +92,193 @@ class AppFeedbackBanner extends StatelessWidget {
   }
 }
 
+const Duration _kFeedbackToastAnimationDuration = Duration(milliseconds: 250);
+const Duration _kFeedbackToastDisplayDuration = Duration(seconds: 4);
+
+/// Root overlay 通知；能蓋過 dialog，取代 Scaffold SnackBar。
+final _AppFeedbackOverlayHost _feedbackOverlayHost = _AppFeedbackOverlayHost();
+
+class _AppFeedbackOverlayHost {
+  _ActiveFeedbackToast? _active;
+
+  void hideCurrent() {
+    final _ActiveFeedbackToast? active = _active;
+    if (active == null) {
+      return;
+    }
+    _active = null;
+    active.entry.remove();
+    active.completeDismiss();
+  }
+
+  Future<void> show({
+    required BuildContext context,
+    required String message,
+    required AppFeedbackColors colors,
+    required TextStyle? textStyle,
+  }) {
+    final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) {
+      return Future<void>.value();
+    }
+
+    hideCurrent();
+
+    final Completer<void> dismissCompleter = Completer<void>();
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (BuildContext overlayContext) => _AppFeedbackToast(
+        message: message,
+        backgroundColor: colors.background,
+        textStyle: textStyle,
+        onDismissed: () {
+          if (identical(_active?.entry, entry)) {
+            _active = null;
+            entry.remove();
+          }
+          if (!dismissCompleter.isCompleted) {
+            dismissCompleter.complete();
+          }
+        },
+      ),
+    );
+
+    _active = _ActiveFeedbackToast(
+      entry: entry,
+      dismissCompleter: dismissCompleter,
+    );
+    overlay.insert(entry);
+    return dismissCompleter.future;
+  }
+}
+
+class _ActiveFeedbackToast {
+  _ActiveFeedbackToast({
+    required this.entry,
+    required this.dismissCompleter,
+  });
+
+  final OverlayEntry entry;
+  final Completer<void> dismissCompleter;
+
+  void completeDismiss() {
+    if (!dismissCompleter.isCompleted) {
+      dismissCompleter.complete();
+    }
+  }
+}
+
+class _AppFeedbackToast extends StatefulWidget {
+  const _AppFeedbackToast({
+    required this.message,
+    required this.backgroundColor,
+    required this.textStyle,
+    required this.onDismissed,
+  });
+
+  final String message;
+  final Color backgroundColor;
+  final TextStyle? textStyle;
+  final VoidCallback onDismissed;
+
+  @override
+  State<_AppFeedbackToast> createState() => _AppFeedbackToastState();
+}
+
+class _AppFeedbackToastState extends State<_AppFeedbackToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _kFeedbackToastAnimationDuration,
+  );
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOut,
+    reverseCurve: Curves.easeIn,
+  );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, 1),
+    end: Offset.zero,
+  ).animate(_fade);
+  bool _dismissed = false;
+  Timer? _dismissTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_controller.forward());
+    _dismissTimer = Timer(
+      _kFeedbackToastAnimationDuration + _kFeedbackToastDisplayDuration,
+      () {
+        if (!_dismissed && mounted) {
+          unawaited(_dismiss());
+        }
+      },
+    );
+  }
+
+  Future<void> _dismiss() async {
+    if (_dismissed) {
+      return;
+    }
+    _dismissed = true;
+    _dismissTimer?.cancel();
+    final VoidCallback notify = widget.onDismissed;
+    if (_controller.status != AnimationStatus.dismissed &&
+        _controller.status != AnimationStatus.reverse) {
+      await _controller.reverse();
+    }
+    notify();
+  }
+
+  @override
+  void dispose() {
+    _dismissTimer?.cancel();
+    _controller.dispose();
+    if (!_dismissed) {
+      _dismissed = true;
+      widget.onDismissed();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: HomeLayout.bodyHorizontal,
+      right: HomeLayout.bodyHorizontal,
+      bottom: 0,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            bottom: HomeLayout.snackBarBottomPadding,
+          ),
+          child: SlideTransition(
+            position: _slide,
+            child: FadeTransition(
+              opacity: _fade,
+              child: Material(
+                color: widget.backgroundColor,
+                elevation: 6,
+                shadowColor: Colors.black26,
+                borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Text(widget.message, style: widget.textStyle),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 void showAppFeedbackSnackBar(
   BuildContext context,
   String message, {
@@ -103,30 +292,14 @@ void showAppFeedbackSnackBar(
     theme.colorScheme,
     tone,
   );
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
   final HomeBottomChromeSnackBarLift? lift = beginHomeSnackBarLift(context);
-  messenger.hideCurrentSnackBar();
-  final ScaffoldFeatureController<SnackBar, SnackBarClosedReason> controller =
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.foreground,
-            ),
-          ),
-          backgroundColor: colors.background,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-          ),
-          margin: const EdgeInsets.fromLTRB(
-            HomeLayout.bodyHorizontal,
-            0,
-            HomeLayout.bodyHorizontal,
-            HomeLayout.snackBarBottomPadding,
-          ),
-        ),
-      );
-  lift?.bind(controller);
+  final Future<void> dismissed = _feedbackOverlayHost.show(
+    context: context,
+    message: message,
+    colors: colors,
+    textStyle: theme.textTheme.bodyMedium?.copyWith(
+      color: colors.foreground,
+    ),
+  );
+  lift?.bind(dismissed);
 }

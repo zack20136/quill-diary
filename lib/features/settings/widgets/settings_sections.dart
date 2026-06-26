@@ -598,12 +598,31 @@ class SettingsActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final bool isDark = colorScheme.brightness == Brightness.dark;
+    final ({Color background, Color foreground}) filledColors = isDark
+        ? (
+            background: colorScheme.primaryContainer,
+            foreground: colorScheme.onPrimaryContainer,
+          )
+        : (
+            background: colorScheme.primary,
+            foreground: colorScheme.onPrimary,
+          );
+    final ({Color background, Color foreground}) tonalColors = isDark
+        ? (
+            background: colorScheme.surfaceContainerHighest,
+            foreground: colorScheme.onSurface,
+          )
+        : (
+            background: colorScheme.secondaryContainer,
+            foreground: colorScheme.onSecondaryContainer,
+          );
     final Widget button = switch (_resolvedAppearance) {
       SettingsActionButtonAppearance.filled => FilledButton.icon(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: colorScheme.primaryContainer,
-          foregroundColor: colorScheme.onPrimaryContainer,
+          backgroundColor: filledColors.background,
+          foregroundColor: filledColors.foreground,
         ),
         icon: Icon(icon),
         label: Text(label),
@@ -611,8 +630,13 @@ class SettingsActionButton extends StatelessWidget {
       SettingsActionButtonAppearance.tonal => FilledButton.icon(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: colorScheme.primaryContainer,
-          foregroundColor: colorScheme.onPrimaryContainer,
+          backgroundColor: tonalColors.background,
+          foregroundColor: tonalColors.foreground,
+          side: isDark
+              ? BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+                )
+              : null,
         ),
         icon: Icon(icon),
         label: Text(label),
