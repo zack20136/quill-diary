@@ -489,6 +489,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeSearchHint => '搜尋標題、內文或標籤';
 
   @override
+  String homeSearchResultCount(int count) {
+    return '找到 $count 筆';
+  }
+
+  @override
+  String get homeSearchNoResultsTitle => '沒有符合的日記';
+
+  @override
+  String get homeSearchNoResultsMessage => '試試其他關鍵字，或搜尋標題、內文與標籤。';
+
+  @override
   String get homeEmptyDiaryTitle => '目前沒有日記';
 
   @override

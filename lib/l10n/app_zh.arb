@@ -235,6 +235,16 @@
     }
   },
   "homeSearchHint": "搜尋標題、內文或標籤",
+  "homeSearchResultCount": "找到 {count} 筆",
+  "@homeSearchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSearchNoResultsTitle": "沒有符合的日記",
+  "homeSearchNoResultsMessage": "試試其他關鍵字，或搜尋標題、內文與標籤。",
   "homeEmptyDiaryTitle": "目前沒有日記",
   "homeEmptyDiaryMessage": "建立第一篇日記後，就會在這裡看到您的首頁列表。",
   "homeNoAnalysisTitle": "尚無可分析內容",

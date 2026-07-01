@@ -235,6 +235,16 @@
     }
   },
   "homeSearchHint": "Search titles, content, or tags",
+  "homeSearchResultCount": "{count} results",
+  "@homeSearchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSearchNoResultsTitle": "No Matching Entries",
+  "homeSearchNoResultsMessage": "Try different keywords, or search titles, content, and tags.",
   "homeEmptyDiaryTitle": "No Entries Yet",
   "homeEmptyDiaryMessage": "Create your first entry to see it here.",
   "homeNoAnalysisTitle": "No Data to Analyze Yet",

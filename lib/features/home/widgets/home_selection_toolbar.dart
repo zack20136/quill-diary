@@ -25,6 +25,10 @@ class HomeSearchTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final OutlineInputBorder capsuleBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
+      borderSide: BorderSide(color: context.appColors.outlineMuted),
+    );
 
     return TextField(
       controller: controller,
@@ -54,15 +58,15 @@ class HomeSearchTextField extends StatelessWidget {
         ),
         filled: true,
         fillColor: context.appColors.sectionCard,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
-          borderSide: BorderSide(color: context.appColors.outlineMuted),
-        ),
+        border: capsuleBorder,
+        enabledBorder: capsuleBorder,
+        focusedBorder: capsuleBorder,
+        errorBorder: capsuleBorder,
+        focusedErrorBorder: capsuleBorder,
+        disabledBorder: capsuleBorder,
         contentPadding: const EdgeInsets.only(right: 14),
       ),
+      onTapOutside: (_) => FocusScope.of(context).unfocus(),
       onChanged: onChanged,
     );
   }

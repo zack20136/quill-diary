@@ -992,6 +992,24 @@ abstract class AppLocalizations {
   /// **'搜尋標題、內文或標籤'**
   String get homeSearchHint;
 
+  /// No description provided for @homeSearchResultCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'找到 {count} 筆'**
+  String homeSearchResultCount(int count);
+
+  /// No description provided for @homeSearchNoResultsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'沒有符合的日記'**
+  String get homeSearchNoResultsTitle;
+
+  /// No description provided for @homeSearchNoResultsMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'試試其他關鍵字，或搜尋標題、內文與標籤。'**
+  String get homeSearchNoResultsMessage;
+
   /// No description provided for @homeEmptyDiaryTitle.
   ///
   /// In zh, this message translates to:

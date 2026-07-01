@@ -95,8 +95,13 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     final HomeEntrySelectionState selection = ref.watch(
       homeEntrySelectionProvider,
     );
+    final String searchQuery = ref.watch(homeSearchQueryProvider).trim();
     final List<EntryIndexRecord> entries =
         entriesAsync.value ?? const <EntryIndexRecord>[];
+    final bool showSearchResultCount =
+        !selection.isActive &&
+        searchQuery.isNotEmpty &&
+        entriesAsync.hasValue;
     final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
     final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
 
@@ -185,7 +190,18 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                 ),
           ),
         ),
-        const SizedBox(height: 12),
+        if (showSearchResultCount) ...<Widget>[
+          const SizedBox(height: 6),
+          HomeScrollbarGutter(
+            child: Text(
+              context.l10n.homeSearchResultCount(entries.length),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+        SizedBox(height: showSearchResultCount ? 6 : 12),
         Expanded(
           child: canReadEntries
               ? HomeScrollAffordance(
@@ -193,6 +209,13 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   child: entriesAsync.when(
                     data: (List<EntryIndexRecord> loadedEntries) {
                       if (loadedEntries.isEmpty) {
+                        if (searchQuery.isNotEmpty) {
+                          return HomeStateCard(
+                            icon: Icons.search_off_rounded,
+                            title: context.l10n.homeSearchNoResultsTitle,
+                            message: context.l10n.homeSearchNoResultsMessage,
+                          );
+                        }
                         return HomeStateCard(
                           icon: Icons.auto_stories_outlined,
                           title: context.l10n.homeEmptyDiaryTitle,

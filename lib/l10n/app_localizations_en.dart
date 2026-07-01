@@ -507,6 +507,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSearchHint => 'Search titles, content, or tags';
 
   @override
+  String homeSearchResultCount(int count) {
+    return '$count results';
+  }
+
+  @override
+  String get homeSearchNoResultsTitle => 'No Matching Entries';
+
+  @override
+  String get homeSearchNoResultsMessage =>
+      'Try different keywords, or search titles, content, and tags.';
+
+  @override
   String get homeEmptyDiaryTitle => 'No Entries Yet';
 
   @override
