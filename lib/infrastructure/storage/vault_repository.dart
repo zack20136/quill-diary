@@ -89,11 +89,13 @@ class VaultRepairReport {
 class _EntrySearchFields {
   const _EntrySearchFields({
     required this.previewText,
+    required this.previewMarkdown,
     required this.titleSearchText,
     required this.bodySearchText,
   });
 
   final String previewText;
+  final String previewMarkdown;
   final String titleSearchText;
   final String bodySearchText;
 }
@@ -1108,6 +1110,7 @@ class VaultRepository {
       entry: normalized,
       filePath: filePath,
       previewText: searchFields.previewText,
+      previewMarkdown: searchFields.previewMarkdown,
       titleSearchText: searchFields.titleSearchText,
       bodySearchText: searchFields.bodySearchText,
       contentHash: await _hashString(markdown),
@@ -1176,6 +1179,7 @@ class VaultRepository {
           entry: scanned.entry,
           filePath: scanned.filePath,
           previewText: scanned.searchFields.previewText,
+          previewMarkdown: scanned.searchFields.previewMarkdown,
           titleSearchText: scanned.searchFields.titleSearchText,
           bodySearchText: scanned.searchFields.bodySearchText,
           contentHash: await _hashString(scanned.markdown),
@@ -1233,6 +1237,7 @@ class VaultRepository {
             entry: entry,
             filePath: entity.path,
             previewText: searchFields.previewText,
+            previewMarkdown: searchFields.previewMarkdown,
             titleSearchText: searchFields.titleSearchText,
             bodySearchText: searchFields.bodySearchText,
             contentHash: await _hashString(markdown),
@@ -2391,6 +2396,7 @@ class VaultRepository {
   _EntrySearchFields _buildEntrySearchFields(DiaryEntry entry) {
     return _EntrySearchFields(
       previewText: previewTextFromMarkdown(entry.markdownBody),
+      previewMarkdown: previewMarkdownExcerpt(entry.markdownBody),
       titleSearchText: _titleSearchText(entry.title),
       bodySearchText: _bodySearchText(entry.markdownBody),
     );

@@ -13,6 +13,7 @@ import '../gallery_image_download.dart';
 import '../providers/editor_draft_providers.dart';
 import '../providers/editor_providers.dart';
 import 'editor_actions.dart';
+import 'editor_body_blocks.dart';
 import 'editor_draft_models.dart';
 
 final editorFlowControllerProvider = Provider<EditorFlowController>((Ref ref) {
@@ -249,7 +250,7 @@ class EditorFlowController {
       ),
       updatedAt: now,
       tags: parseEditorTagsCsv(request.tagsRaw),
-      markdownBody: request.markdownBodyRaw.trim(),
+      markdownBody: normalizeEditorBodyMarkdownForSave(request.markdownBodyRaw),
       attachmentIds: List<AssetId>.from(request.keptAttachmentIds),
     );
     final DiaryEntry saved = await _actions.saveEntry(

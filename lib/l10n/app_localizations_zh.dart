@@ -304,6 +304,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorBodyHint => '在這裡輸入內容…';
 
   @override
+  String get editorCheckboxDragTooltip => '拖移排序';
+
+  @override
   String get editorBodyEmptyPreview => '尚未輸入內容';
 
   @override
@@ -374,6 +377,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get editorTooltipAddAttachment => '新增附件';
+
+  @override
+  String get editorTooltipInsertCheckbox => '插入待辦項目';
 
   @override
   String get editorTooltipDelete => '刪除';

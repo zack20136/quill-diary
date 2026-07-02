@@ -638,6 +638,12 @@ abstract class AppLocalizations {
   /// **'在這裡輸入內容…'**
   String get editorBodyHint;
 
+  /// No description provided for @editorCheckboxDragTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖移排序'**
+  String get editorCheckboxDragTooltip;
+
   /// No description provided for @editorBodyEmptyPreview.
   ///
   /// In zh, this message translates to:
@@ -781,6 +787,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'新增附件'**
   String get editorTooltipAddAttachment;
+
+  /// No description provided for @editorTooltipInsertCheckbox.
+  ///
+  /// In zh, this message translates to:
+  /// **'插入待辦項目'**
+  String get editorTooltipInsertCheckbox;
 
   /// No description provided for @editorTooltipDelete.
   ///

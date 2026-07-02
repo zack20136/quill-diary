@@ -16,6 +16,7 @@ class EditorTopBar extends StatelessWidget {
     required this.onEditTags,
     required this.onPickImage,
     required this.onPickFile,
+    required this.onInsertCheckbox,
     required this.onSave,
     required this.onDelete,
     required this.onEnterEditMode,
@@ -32,6 +33,7 @@ class EditorTopBar extends StatelessWidget {
   final VoidCallback? onEditTags;
   final VoidCallback? onPickImage;
   final VoidCallback? onPickFile;
+  final VoidCallback? onInsertCheckbox;
   final VoidCallback? onSave;
   final VoidCallback? onDelete;
   final VoidCallback? onEnterEditMode;
@@ -91,6 +93,11 @@ class EditorTopBar extends StatelessWidget {
                             tooltip: l10n.editorTooltipAddAttachment,
                             onPressed: saving ? null : onPickFile,
                             icon: const Icon(Icons.attach_file),
+                          ),
+                          IconButton(
+                            tooltip: l10n.editorTooltipInsertCheckbox,
+                            onPressed: saving ? null : onInsertCheckbox,
+                            icon: const Icon(Icons.check_box_outlined),
                           ),
                         ],
                       ),

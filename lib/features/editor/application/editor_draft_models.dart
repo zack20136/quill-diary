@@ -1,6 +1,7 @@
 import '../../../domain/diary/diary_entry.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/storage/vault_repository.dart';
+import 'editor_body_blocks.dart';
 
 class EditorDraftSnapshot {
   const EditorDraftSnapshot({
@@ -167,6 +168,12 @@ List<String> parseEditorTagsCsv(String tagsRaw) {
   return out;
 }
 
+String draftPendingAttachmentFingerprint(
+  EditorDraftPendingAttachment attachment,
+) {
+  return '${attachment.relativePath}|${attachment.mimeType}|${attachment.originalFilename}';
+}
+
 String pendingAttachmentFingerprint(PendingAttachment attachment) {
   final String sourceKey = attachment.bytes != null
       ? 'bytes:${attachment.bytes!.length}'
@@ -181,7 +188,7 @@ EditorDraftSnapshot editorDraftSnapshotFromEntry(DiaryEntry entry) {
     entryHour: entry.createdAt.hour,
     entryMinute: entry.createdAt.minute,
     tags: List<String>.from(entry.tags),
-    markdownBody: entry.markdownBody.trim(),
+    markdownBody: normalizeEditorBodyMarkdownForSave(entry.markdownBody),
     keptAttachmentIds: List<AssetId>.from(entry.attachmentIds),
     pendingFingerprints: const <String>[],
   );
@@ -194,13 +201,10 @@ EditorDraftSnapshot editorDraftSnapshotFromRecord(EditorDraftRecord record) {
     entryHour: record.entryHour,
     entryMinute: record.entryMinute,
     tags: List<String>.from(record.tags),
-    markdownBody: record.markdownBody.trim(),
+    markdownBody: normalizeEditorBodyMarkdownForSave(record.markdownBody),
     keptAttachmentIds: List<AssetId>.from(record.keptAttachmentIds),
     pendingFingerprints: record.pendingAttachments
-        .map(
-          (EditorDraftPendingAttachment attachment) =>
-              '${attachment.relativePath}|${attachment.mimeType}|${attachment.originalFilename}',
-        )
+        .map(draftPendingAttachmentFingerprint)
         .toList(),
   );
 }
@@ -225,7 +229,7 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
     entryHour: entryHour,
     entryMinute: entryMinute,
     tags: parseEditorTagsCsv(tagsRaw),
-    markdownBody: bodyRaw.trim(),
+    markdownBody: normalizeEditorBodyMarkdownForSave(bodyRaw),
     keptAttachmentIds: List<AssetId>.from(keptAttachmentIds),
     pendingFingerprints: pendingFingerprints,
   );

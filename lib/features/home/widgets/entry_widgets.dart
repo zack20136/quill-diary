@@ -21,6 +21,7 @@ import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
+import 'home_entry_preview_body.dart';
 import 'home_pin_glyph.dart';
 
 class HomeTimelineEntryShell extends StatelessWidget {
@@ -200,7 +201,9 @@ class HomeEntryCard extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
     final String? trimmedTitle = entry.title?.trim();
     final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-    final bool showPreview = hasTitle && entry.previewText.trim().isNotEmpty;
+    final bool showPreview = hasTitle &&
+        (entry.previewMarkdown.trim().isNotEmpty ||
+            entry.previewText.trim().isNotEmpty);
     final double selectionLeadingWidth = selectionActive ? 34 : 0;
     final TextStyle titleStyle = typography.listTitleTextStyle(theme.textTheme);
     final TextStyle previewStyle = typography.listPreviewTextStyle(
@@ -254,12 +257,12 @@ class HomeEntryCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Padding(
                   padding: EdgeInsets.only(left: selectionLeadingWidth),
-                  child: Text(
-                    entry.previewText,
-                    style: previewStyle,
+                  child: HomeEntryPreviewBody(
+                    previewMarkdown: entry.previewMarkdown,
+                    fallbackText: entry.previewText,
+                    textStyle: previewStyle,
                     maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.start,
+                    lineSpacing: typography.bodyParagraphSpacing,
                   ),
                 ),
               ],
@@ -314,8 +317,9 @@ class HomeCompactEntryList extends ConsumerWidget {
       children: entries.map((EntryIndexRecord entry) {
         final String? trimmedTitle = entry.title?.trim();
         final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-        final bool showPreview =
-            hasTitle && entry.previewText.trim().isNotEmpty;
+        final bool showPreview = hasTitle &&
+            (entry.previewMarkdown.trim().isNotEmpty ||
+                entry.previewText.trim().isNotEmpty);
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -349,11 +353,12 @@ class HomeCompactEntryList extends ConsumerWidget {
                       ),
                       if (showPreview) ...<Widget>[
                         const SizedBox(height: 6),
-                        Text(
-                          entry.previewText,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: previewStyle,
+                        HomeEntryPreviewBody(
+                          previewMarkdown: entry.previewMarkdown,
+                          fallbackText: entry.previewText,
+                          textStyle: previewStyle,
+                          maxLines: 3,
+                          lineSpacing: typography.bodyParagraphSpacing,
                         ),
                       ],
                       if (entry.previewImagePaths.isNotEmpty) ...<Widget>[

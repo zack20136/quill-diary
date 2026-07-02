@@ -42,6 +42,7 @@ class EntryIndexRecord {
     required this.filePath,
     required this.title,
     required this.previewText,
+    this.previewMarkdown = '',
     required this.date,
     required this.createdAt,
     required this.updatedAt,
@@ -59,6 +60,7 @@ class EntryIndexRecord {
   final String filePath;
   final String? title;
   final String previewText;
+  final String previewMarkdown;
   final DateOnly date;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -77,6 +79,7 @@ class EntryIndexRecord {
       filePath: row.read<String>('file_path'),
       title: row.readNullable<String>('title'),
       previewText: row.readNullable<String>('preview_text') ?? '',
+      previewMarkdown: row.readNullable<String>('preview_markdown') ?? '',
       date: DateOnly.parse(row.read<String>('date')),
       createdAt: DateTime.parse(row.read<String>('created_at')),
       updatedAt: DateTime.parse(row.read<String>('updated_at')),
@@ -194,12 +197,28 @@ class IndexDatabase extends GeneratedDatabase {
       CREATE INDEX IF NOT EXISTS idx_entry_attachments_entry_created
       ON entry_attachments (entry_id, created_at);
     ''');
+    await _ensurePreviewMarkdownColumn();
+  }
+
+  Future<void> _ensurePreviewMarkdownColumn() async {
+    final List<QueryRow> rows = await customSelect(
+      'PRAGMA table_info(entries_index);',
+    ).get();
+    final bool hasColumn = rows.any(
+      (QueryRow row) => row.read<String>('name') == 'preview_markdown',
+    );
+    if (!hasColumn) {
+      await customStatement(
+        'ALTER TABLE entries_index ADD COLUMN preview_markdown TEXT;',
+      );
+    }
   }
 
   Future<void> upsertEntry({
     required DiaryEntry entry,
     required String filePath,
     required String previewText,
+    required String previewMarkdown,
     required String titleSearchText,
     required String bodySearchText,
     required String contentHash,
@@ -210,17 +229,18 @@ class IndexDatabase extends GeneratedDatabase {
       '''
         INSERT INTO entries_index (
           id, vault_id, file_path, title, title_search_text, preview_text,
-          body_search_text, date,
+          preview_markdown, body_search_text, date,
           created_at, updated_at, word_count, char_count, attachment_count,
           has_attachments, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
           title = excluded.title,
           title_search_text = excluded.title_search_text,
           preview_text = excluded.preview_text,
+          preview_markdown = excluded.preview_markdown,
           body_search_text = excluded.body_search_text,
           date = excluded.date,
           created_at = excluded.created_at,
@@ -240,6 +260,7 @@ class IndexDatabase extends GeneratedDatabase {
         entry.normalizedTitle,
         titleSearchText,
         previewText,
+        previewMarkdown,
         bodySearchText,
         entry.date.value,
         entry.createdAt.toIso8601String(),

@@ -25,7 +25,7 @@ class EditorTypographyPreferences {
   static const double defaultListPreviewLineHeight = 1.4;
 
   /// 精簡列表摘要原始為 [TextTheme.bodySmall] + `height: 1.35`。
-  static const double defaultListCompactPreviewLineHeight = 1.35;
+  static const double defaultListCompactPreviewLineHeight = 1.45;
 
   static const double minTitleFontSize = 18;
   static const double maxTitleFontSize = 28;
@@ -192,7 +192,7 @@ class EditorTypographyPreferences {
     );
   }
 
-  /// 精簡列表摘要：以原本 `bodySmall` + `height: 1.35` 為基準。
+  /// 精簡列表摘要：以原本 `bodySmall` + `height: 1.45` 為基準。
   TextStyle listCompactPreviewTextStyle(TextTheme textTheme, {Color? color}) {
     final TextStyle base = textTheme.bodySmall ?? const TextStyle();
     return base.copyWith(

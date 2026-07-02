@@ -529,122 +529,8 @@ class PortableExportIo {
     return html.toString();
   }
 
-  String _markdownToExportHtml(String markdown) {
-    final List<String> lines = markdown
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .split('\n');
-    final StringBuffer html = StringBuffer();
-    final List<String> paragraph = <String>[];
-    var inList = false;
-    var inCodeBlock = false;
-    final StringBuffer codeBlock = StringBuffer();
-
-    void flushParagraph() {
-      if (paragraph.isEmpty) {
-        return;
-      }
-      html.writeln(
-        '<p>${paragraph.map(_inlineMarkdownToHtml).join('<br>')}</p>',
-      );
-      paragraph.clear();
-    }
-
-    void closeList() {
-      if (!inList) {
-        return;
-      }
-      html.writeln('</ul>');
-      inList = false;
-    }
-
-    for (final String line in lines) {
-      if (line.trimLeft().startsWith('```')) {
-        if (inCodeBlock) {
-          html.writeln(
-            '<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>',
-          );
-          codeBlock.clear();
-          inCodeBlock = false;
-        } else {
-          flushParagraph();
-          closeList();
-          inCodeBlock = true;
-        }
-        continue;
-      }
-      if (inCodeBlock) {
-        codeBlock.writeln(line);
-        continue;
-      }
-
-      final String trimmed = line.trim();
-      if (trimmed.isEmpty) {
-        flushParagraph();
-        closeList();
-        continue;
-      }
-
-      final Match? heading = RegExp(r'^(#{1,6})\s+(.+)$').firstMatch(trimmed);
-      if (heading != null) {
-        flushParagraph();
-        closeList();
-        final int level = (heading.group(1) ?? '#').length.clamp(1, 6).toInt();
-        html.writeln(
-          '<h$level>${_inlineMarkdownToHtml(heading.group(2) ?? '')}</h$level>',
-        );
-        continue;
-      }
-
-      final Match? bullet = RegExp(r'^[-*]\s+(.+)$').firstMatch(trimmed);
-      if (bullet != null) {
-        flushParagraph();
-        if (!inList) {
-          html.writeln('<ul>');
-          inList = true;
-        }
-        html.writeln(
-          '<li>${_inlineMarkdownToHtml(bullet.group(1) ?? '')}</li>',
-        );
-        continue;
-      }
-
-      paragraph.add(line);
-    }
-
-    if (inCodeBlock) {
-      html.writeln(
-        '<pre><code>${_escapeHtml(codeBlock.toString().trimRight())}</code></pre>',
-      );
-    }
-    flushParagraph();
-    closeList();
-    return html.toString();
-  }
-
-  String _inlineMarkdownToHtml(String input) {
-    String output = _escapeHtml(input);
-    output = output.replaceAllMapped(
-      RegExp(r'`([^`]+)`'),
-      (Match match) => '<code>${match.group(1)}</code>',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'\*\*([^*]+)\*\*'),
-      (Match match) => '<strong>${match.group(1)}</strong>',
-    );
-    output = output.replaceAllMapped(
-      RegExp(r'\*([^*]+)\*'),
-      (Match match) => '<em>${match.group(1)}</em>',
-    );
-    output = output.replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]+)\)'), (
-      Match match,
-    ) {
-      final String label = match.group(1) ?? '';
-      final String href = match.group(2) ?? '';
-      return '<a href="${_escapeHtmlAttribute(href)}">$label</a>';
-    });
-    return output;
-  }
+  String _markdownToExportHtml(String markdown) =>
+      exportMarkdownBodyToHtml(markdown);
 
   bool _isImageAttachment(AssetAttachment attachment) {
     return attachment.mimeType.toLowerCase().startsWith('image/');
@@ -798,3 +684,159 @@ class PortableExportIo {
     ).writeAsBytes(bytes, flush: true);
   }
 }
+
+/// Converts diary body markdown to portable export HTML fragment.
+String exportMarkdownBodyToHtml(String markdown) {
+  final List<String> lines = markdown
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .split('\n');
+  final StringBuffer html = StringBuffer();
+  final List<String> paragraph = <String>[];
+  var inList = false;
+  var inTaskList = false;
+  var inCodeBlock = false;
+  final StringBuffer codeBlock = StringBuffer();
+
+  void flushParagraph() {
+    if (paragraph.isEmpty) {
+      return;
+    }
+    html.writeln(
+      '<p>${paragraph.map(_exportInlineMarkdownToHtml).join('<br>')}</p>',
+    );
+    paragraph.clear();
+  }
+
+  void closeList() {
+    if (inTaskList) {
+      html.writeln('</ul>');
+      inTaskList = false;
+    }
+    if (inList) {
+      html.writeln('</ul>');
+      inList = false;
+    }
+  }
+
+  for (final String line in lines) {
+    if (line.trimLeft().startsWith('```')) {
+      if (inCodeBlock) {
+        html.writeln(
+          '<pre><code>${_exportEscapeHtml(codeBlock.toString().trimRight())}</code></pre>',
+        );
+        codeBlock.clear();
+        inCodeBlock = false;
+      } else {
+        flushParagraph();
+        closeList();
+        inCodeBlock = true;
+      }
+      continue;
+    }
+    if (inCodeBlock) {
+      codeBlock.writeln(line);
+      continue;
+    }
+
+    final String trimmed = line.trim();
+    if (trimmed.isEmpty) {
+      flushParagraph();
+      closeList();
+      continue;
+    }
+
+    final Match? heading = RegExp(r'^(#{1,6})\s+(.+)$').firstMatch(trimmed);
+    if (heading != null) {
+      flushParagraph();
+      closeList();
+      final int level = (heading.group(1) ?? '#').length.clamp(1, 6).toInt();
+      html.writeln(
+        '<h$level>${_exportInlineMarkdownToHtml(heading.group(2) ?? '')}</h$level>',
+      );
+      continue;
+    }
+
+    final Match? taskItem = RegExp(
+      r'^-\s*\[([ xX])\]\s*(.*)$',
+    ).firstMatch(trimmed);
+    if (taskItem != null) {
+      flushParagraph();
+      if (inList) {
+        closeList();
+      }
+      if (!inTaskList) {
+        html.writeln('<ul class="task-list">');
+        inTaskList = true;
+      }
+      final String marker = taskItem.group(1) ?? ' ';
+      final String checkedAttr = marker.toLowerCase() == 'x' ? ' checked' : '';
+      html.writeln(
+        '<li class="task-list-item"><label><input type="checkbox"$checkedAttr disabled> '
+        '${_exportInlineMarkdownToHtml(taskItem.group(2) ?? '')}</label></li>',
+      );
+      continue;
+    }
+
+    final Match? bullet = RegExp(r'^[-*]\s+(.+)$').firstMatch(trimmed);
+    if (bullet != null) {
+      flushParagraph();
+      closeList();
+      if (!inList) {
+        html.writeln('<ul>');
+        inList = true;
+      }
+      html.writeln(
+        '<li>${_exportInlineMarkdownToHtml(bullet.group(1) ?? '')}</li>',
+      );
+      continue;
+    }
+
+    paragraph.add(line);
+  }
+
+  if (inCodeBlock) {
+    html.writeln(
+      '<pre><code>${_exportEscapeHtml(codeBlock.toString().trimRight())}</code></pre>',
+    );
+  }
+  flushParagraph();
+  closeList();
+  return html.toString();
+}
+
+String _exportInlineMarkdownToHtml(String input) {
+  String output = _exportEscapeHtml(input);
+  output = output.replaceAllMapped(
+    RegExp(r'`([^`]+)`'),
+    (Match match) => '<code>${match.group(1)}</code>',
+  );
+  output = output.replaceAllMapped(
+    RegExp(r'\*\*([^*]+)\*\*'),
+    (Match match) => '<strong>${match.group(1)}</strong>',
+  );
+  output = output.replaceAllMapped(
+    RegExp(r'\*([^*]+)\*'),
+    (Match match) => '<em>${match.group(1)}</em>',
+  );
+  output = output.replaceAllMapped(RegExp(r'\[([^\]]+)\]\(([^)]+)\)'), (
+    Match match,
+  ) {
+    final String label = match.group(1) ?? '';
+    final String href = match.group(2) ?? '';
+    return '<a href="${_exportEscapeHtmlAttribute(href)}">$label</a>';
+  });
+  return output;
+}
+
+String _exportEscapeHtml(String input) {
+  return input
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+}
+
+String _exportEscapeHtmlAttribute(String input) =>
+    _exportEscapeHtml(input).replaceAll('\n', ' ');

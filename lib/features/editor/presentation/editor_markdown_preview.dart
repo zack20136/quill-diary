@@ -4,24 +4,78 @@ import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../../../shared/presentation/app_typography.dart';
 import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
+import '../application/editor_body_blocks.dart';
+import 'editor_checkbox_block_row.dart';
 
-class EditorMarkdownPreview extends StatelessWidget {
+class EditorMarkdownPreview extends StatefulWidget {
   const EditorMarkdownPreview({
     super.key,
     required this.markdown,
     required this.typography,
+    this.interactiveCheckboxes = false,
+    this.onMarkdownChanged,
   });
 
   final String markdown;
   final EditorTypographyPreferences typography;
+  final bool interactiveCheckboxes;
+  final ValueChanged<String>? onMarkdownChanged;
+
+  @override
+  State<EditorMarkdownPreview> createState() => _EditorMarkdownPreviewState();
+}
+
+class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
+  late String _markdown;
+  List<String> _lines = <String>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _markdown = widget.markdown;
+    _lines = _splitMarkdownLines(_markdown);
+  }
+
+  @override
+  void didUpdateWidget(EditorMarkdownPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.markdown != widget.markdown) {
+      _markdown = widget.markdown;
+      _lines = _splitMarkdownLines(_markdown);
+    }
+  }
+
+  List<String> _splitMarkdownLines(String markdown) {
+    return markdown.replaceAll('\r\n', '\n').split('\n');
+  }
+
+  void _setMarkdown(String next) {
+    if (next == _markdown) {
+      return;
+    }
+    setState(() {
+      _markdown = next;
+      _lines = _splitMarkdownLines(next);
+    });
+    widget.onMarkdownChanged?.call(next);
+  }
+
+  void _toggleCheckbox(int lineIndex, bool checked) {
+    final String next = setCheckboxLineChecked(
+      markdown: _markdown,
+      lineIndex: lineIndex,
+      checked: checked,
+    );
+    _setMarkdown(next);
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors colors = context.appColors;
-    final TextStyle bodyStyle = typography.bodyTextStyle(theme.textTheme);
-    final List<String> lines = markdown.replaceAll('\r\n', '\n').split('\n');
+    final TextStyle bodyStyle = widget.typography.bodyTextStyle(theme.textTheme);
+    final List<String> lines = _lines;
     final List<Widget> children = <Widget>[];
     var inCodeBlock = false;
     final StringBuffer codeBuffer = StringBuffer();
@@ -50,7 +104,8 @@ class EditorMarkdownPreview extends StatelessWidget {
       codeBuffer.clear();
     }
 
-    for (final String rawLine in lines) {
+    for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      final String rawLine = lines[lineIndex];
       final String line = rawLine.trimRight();
       if (line.trimLeft().startsWith('```')) {
         if (inCodeBlock) {
@@ -66,7 +121,33 @@ class EditorMarkdownPreview extends StatelessWidget {
         continue;
       }
       if (line.trim().isEmpty) {
-        children.add(SizedBox(height: typography.bodyParagraphSpacing));
+        children.add(SizedBox(height: widget.typography.bodyParagraphSpacing));
+        continue;
+      }
+
+      final RegExpMatch? checkboxMatch = kEditorCheckboxLinePattern.firstMatch(
+        line,
+      );
+      if (checkboxMatch != null) {
+        final String marker = checkboxMatch.group(2) ?? ' ';
+        final EditorCheckboxLine block = EditorCheckboxLine(
+          id: 'preview-$lineIndex',
+          text: checkboxMatch.group(3) ?? '',
+          checked: marker.toLowerCase() == 'x',
+        );
+        children.add(
+          EditorCheckboxBlockRow(
+            key: ValueKey<String>('preview-checkbox-$lineIndex-$marker'),
+            block: block,
+            typography: widget.typography,
+            bodyStyle: bodyStyle,
+            editable: false,
+            onCheckedChanged: widget.interactiveCheckboxes
+                ? (bool checked) => _toggleCheckbox(lineIndex, checked)
+                : (_) {},
+            onTextChanged: (_) {},
+          ),
+        );
         continue;
       }
 
@@ -78,13 +159,13 @@ class EditorMarkdownPreview extends StatelessWidget {
         children.add(
           Padding(
             padding: EdgeInsets.only(
-              top: children.isEmpty ? 0 : typography.bodyParagraphSpacing,
-              bottom: typography.bodyParagraphSpacing,
+              top: children.isEmpty ? 0 : widget.typography.bodyParagraphSpacing,
+              bottom: widget.typography.bodyParagraphSpacing,
             ),
             child: SelectableText.rich(
               _inlineMarkdownSpan(
                 text,
-                typography.titleTextStyle(
+                widget.typography.titleTextStyle(
                   theme.textTheme,
                   fontWeight: FontWeight.w800,
                 ),
@@ -153,7 +234,7 @@ class EditorMarkdownPreview extends StatelessWidget {
 
       children.add(
         Padding(
-          padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
+          padding: EdgeInsets.only(bottom: widget.typography.bodyParagraphSpacing),
           child: SelectableText.rich(
             _inlineMarkdownSpan(line, bodyStyle, colors.inlineCodeBackground),
           ),

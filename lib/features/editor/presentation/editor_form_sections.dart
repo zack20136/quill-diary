@@ -7,6 +7,8 @@ import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/tag_chip.dart';
+import '../application/editor_body_blocks.dart';
+import 'editor_hybrid_body.dart';
 import 'editor_keyboard_chrome.dart';
 import 'editor_markdown_preview.dart';
 
@@ -48,6 +50,20 @@ class EditorTitleSection extends StatelessWidget {
         bodyCharCount > 0 ||
         (previewMode && showUnsavedTag);
     final bool showTagsRow = showMetadataTags && hasTagMetadata;
+    final Widget tagsWrap = ListenableBuilder(
+      listenable: bodyController,
+      builder: (BuildContext context, Widget? child) {
+        final int liveBodyCharCount = bodyController.text.runes.length;
+        return _TagsWrap(
+          theme: theme,
+          tagsCsv: tagsController.text,
+          bodyCharCount: liveBodyCharCount,
+          showCharCount: true,
+          showUnsavedTag: previewMode ? showUnsavedTag : false,
+          tagAccentArgbMap: tagAccentArgbMap,
+        );
+      },
+    );
 
     if (previewMode) {
       final String titleText = titleController.text.trim();
@@ -76,14 +92,7 @@ class EditorTitleSection extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       const SizedBox(height: 10),
-                      _TagsWrap(
-                        theme: theme,
-                        tagsCsv: tagsController.text,
-                        bodyCharCount: bodyCharCount,
-                        showCharCount: true,
-                        showUnsavedTag: showUnsavedTag,
-                        tagAccentArgbMap: tagAccentArgbMap,
-                      ),
+                      tagsWrap,
                     ],
                   )
                 : const SizedBox(
@@ -157,14 +166,7 @@ class EditorTitleSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     const SizedBox(height: 10),
-                    _TagsWrap(
-                      theme: theme,
-                      tagsCsv: tagsController.text,
-                      bodyCharCount: bodyCharCount,
-                      showCharCount: true,
-                      showUnsavedTag: false,
-                      tagAccentArgbMap: tagAccentArgbMap,
-                    ),
+                    tagsWrap,
                   ],
                 )
               : const SizedBox(
@@ -177,25 +179,68 @@ class EditorTitleSection extends StatelessWidget {
   }
 }
 
-class EditorBodySection extends StatelessWidget {
+class EditorBodySection extends StatefulWidget {
   const EditorBodySection({
     super.key,
     required this.previewMode,
     required this.bodyController,
     required this.typography,
+    required this.onBodyChanged,
+    this.onPreviewCheckboxChanged,
+    this.hybridBodyKey,
   });
 
   final bool previewMode;
   final TextEditingController bodyController;
   final EditorTypographyPreferences typography;
+  final VoidCallback onBodyChanged;
+  final ValueChanged<String>? onPreviewCheckboxChanged;
+  final GlobalKey<EditorHybridBodyState>? hybridBodyKey;
+
+  @override
+  State<EditorBodySection> createState() => _EditorBodySectionState();
+}
+
+class _EditorBodySectionState extends State<EditorBodySection> {
+  String? _previewMarkdown;
+
+  @override
+  void initState() {
+    super.initState();
+    _previewMarkdown = widget.bodyController.text;
+  }
+
+  @override
+  void didUpdateWidget(EditorBodySection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.previewMode) {
+      _previewMarkdown = null;
+      return;
+    }
+    if (oldWidget.bodyController != widget.bodyController ||
+        (oldWidget.previewMode != widget.previewMode &&
+            widget.bodyController.text != _previewMarkdown)) {
+      _previewMarkdown = widget.bodyController.text;
+    }
+  }
+
+  void _handlePreviewCheckboxChanged(String markdown) {
+    setState(() => _previewMarkdown = markdown);
+    widget.bodyController.text = markdown;
+    widget.onPreviewCheckboxChanged?.call(markdown);
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData paneTheme = Theme.of(context);
-    final TextStyle bodyStyle = typography.bodyTextStyle(paneTheme.textTheme);
-    final Widget body = previewMode
+    final TextStyle bodyStyle = widget.typography.bodyTextStyle(
+      paneTheme.textTheme,
+    );
+    final String previewMarkdown =
+        _previewMarkdown ?? widget.bodyController.text;
+    final Widget body = widget.previewMode
         ? SingleChildScrollView(
-            child: bodyController.text.isEmpty
+            child: previewMarkdown.isEmpty
                 ? SelectableText(
                     context.l10n.editorBodyEmptyPreview,
                     style: bodyStyle.copyWith(
@@ -204,27 +249,19 @@ class EditorBodySection extends StatelessWidget {
                     ),
                   )
                 : EditorMarkdownPreview(
-                    markdown: bodyController.text,
-                    typography: typography,
+                    markdown: previewMarkdown,
+                    typography: widget.typography,
+                    interactiveCheckboxes: editorBodyHasCheckboxBlocks(
+                      previewMarkdown,
+                    ),
+                    onMarkdownChanged: _handlePreviewCheckboxChanged,
                   ),
           )
-        : TextField(
-            controller: bodyController,
-            expands: true,
-            maxLines: null,
-            minLines: null,
-            textAlignVertical: TextAlignVertical.top,
-            style: bodyStyle,
-            decoration: InputDecoration(
-              filled: false,
-              fillColor: Colors.transparent,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-              hintText: context.l10n.editorBodyHint,
-            ),
+        : EditorHybridBody(
+            key: widget.hybridBodyKey,
+            bodyController: widget.bodyController,
+            typography: widget.typography,
+            onBodyChanged: widget.onBodyChanged,
           );
 
     final AppColors colors = context.appColors;

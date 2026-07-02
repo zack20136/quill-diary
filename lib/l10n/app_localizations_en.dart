@@ -314,6 +314,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorBodyHint => 'Write here…';
 
   @override
+  String get editorCheckboxDragTooltip => 'Drag to reorder';
+
+  @override
   String get editorBodyEmptyPreview => 'No content yet';
 
   @override
@@ -391,6 +394,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editorTooltipAddAttachment => 'Add Attachment';
+
+  @override
+  String get editorTooltipInsertCheckbox => 'Insert Checklist Item';
 
   @override
   String get editorTooltipDelete => 'Delete';

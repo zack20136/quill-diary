@@ -39,6 +39,7 @@ import '../application/editor_flow_controller.dart';
 import '../gallery_image_download.dart';
 import '../presentation/editor_attachment_strip.dart';
 import '../presentation/editor_form_sections.dart';
+import '../presentation/editor_hybrid_body.dart';
 import '../presentation/editor_keyboard_chrome.dart';
 import '../presentation/editor_preview_gallery.dart';
 import '../presentation/editor_top_bar.dart';
@@ -66,6 +67,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   );
   final TextEditingController _tagsController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+  final GlobalKey<EditorHybridBodyState> _hybridBodyKey =
+      GlobalKey<EditorHybridBodyState>();
   final List<PendingAttachment> _pendingAttachments = <PendingAttachment>[];
   final Map<String, Future<String>> _savedAssetPathFutures =
       <String, Future<String>>{};
@@ -80,6 +83,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool _didOfferDraftRestore = false;
   bool _handlingDraftRestore = false;
   bool _preservesEditorOnLock = false;
+  int _previewCheckboxSaveVersion = 0;
   bool _draftPersistInFlight = false;
   bool _draftPersistQueued = false;
   bool _suppressTagDraftListener = false;
@@ -136,7 +140,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.addListener(_onDraftChanged);
     _titleController.addListener(_onDraftChanged);
-    _bodyController.addListener(_onDraftChanged);
+    _bodyController.addListener(_onBodyControllerChanged);
     _dateController.addListener(_onDraftChanged);
     _sessionSubscription = ref.listenManual<AsyncValue<AppSessionState>>(
       effectiveAppSessionProvider,
@@ -161,7 +165,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _dateController.removeListener(_onDraftChanged);
     _tagsController.removeListener(_onDraftChanged);
     _titleController.removeListener(_onDraftChanged);
-    _bodyController.removeListener(_onDraftChanged);
+    _bodyController.removeListener(_onBodyControllerChanged);
     _titleController.dispose();
     _dateController.dispose();
     _tagsController.dispose();
@@ -176,6 +180,28 @@ class _EditorPageState extends ConsumerState<EditorPage>
         state == AppLifecycleState.paused) {
       unawaited(_persistDraftNow());
     }
+  }
+
+  void _insertCheckboxBlock() {
+    if (_previewMode || _saving) {
+      return;
+    }
+    _hybridBodyKey.currentState?.insertCheckboxAtCursor();
+    _onDraftChanged();
+  }
+
+  void _onBodyChangedFromSection() {
+    _scheduleDraftPersist();
+  }
+
+  void _onBodyControllerChanged() {
+    if (_suppressTagDraftListener || _previewMode || !mounted) {
+      return;
+    }
+    if (_suppressDraftListener) {
+      return;
+    }
+    _scheduleDraftPersist();
   }
 
   void _onDraftChanged() {
@@ -193,6 +219,51 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _scheduleDraftPersist();
   }
 
+  void _onPreviewCheckboxChanged(String markdown) {
+    if (!mounted) {
+      return;
+    }
+    _bodyController.text = markdown;
+    final UnlockedVaultSession? session = _activeSession;
+    final DiaryEntry? entry = _activeEntry;
+    if (session != null && entry != null) {
+      unawaited(_savePreviewCheckboxState(session, entry, markdown));
+    }
+  }
+
+  Future<void> _savePreviewCheckboxState(
+    UnlockedVaultSession session,
+    DiaryEntry entry,
+    String markdown,
+  ) async {
+    final int saveVersion = ++_previewCheckboxSaveVersion;
+    try {
+      final EditorSaveResult result = await _editorFlow.saveEntry(
+        EditorSaveRequest(
+          draftKey: _draftKey,
+          session: session,
+          existingEntry: entry,
+          titleRaw: _titleController.text,
+          dateValue: _dateController.text,
+          entryTime: _entryTime,
+          tagsRaw: _tagsController.text,
+          markdownBodyRaw: markdown,
+          keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
+          pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
+          provisionalEntryId: entry.id,
+          switchToPreview: true,
+        ),
+      );
+      if (!mounted || saveVersion != _previewCheckboxSaveVersion) {
+        return;
+      }
+      _activeEntry = result.savedEntry;
+      _lastSavedSnapshot = editorDraftSnapshotFromEntry(result.savedEntry);
+    } catch (_) {
+      // Keep optimistic UI; user can retry by toggling again.
+    }
+  }
+
   void _notifyEntryRequired() {
     if (!mounted) {
       return;
@@ -202,6 +273,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   EditorDraftSnapshot _currentDraftSnapshot() {
+    _hybridBodyKey.currentState?.flushBodyToController();
     return buildEditorDraftSnapshot(
       titleRaw: _titleController.text,
       dateRaw: _dateController.text,
@@ -385,7 +457,16 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _entryTime = TimeOfDay(hour: record.entryHour, minute: record.entryMinute);
     _provisionalEntryId = record.provisionalEntryId;
     _draftCreatedAt = record.createdAt;
-    _lastPersistedDraftSnapshot = decision.snapshot;
+    _lastPersistedDraftSnapshot = buildEditorDraftSnapshot(
+      titleRaw: record.title ?? '',
+      dateRaw: record.dateValue,
+      entryHour: record.entryHour,
+      entryMinute: record.entryMinute,
+      tagsRaw: record.tags.join(', '),
+      bodyRaw: record.markdownBody,
+      keptAttachmentIds: record.keptAttachmentIds,
+      pendingAttachments: decision.pendingAttachments,
+    );
     _showEntryRequiredHint = false;
     _suppressTagDraftListener = false;
     _suppressDraftListener = false;
@@ -588,6 +669,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           onEditTags: _showTagsEditorDialog,
                           onPickImage: () => unawaited(_pickImage()),
                           onPickFile: () => unawaited(_pickFile()),
+                          onInsertCheckbox: _insertCheckboxBlock,
                           onSave: () =>
                               unawaited(_saveCurrentEntry(session, entry)),
                           onDelete: () =>
@@ -705,6 +787,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                           previewMode: _previewMode,
                                           bodyController: _bodyController,
                                           typography: typography,
+                                          hybridBodyKey: _hybridBodyKey,
+                                          onBodyChanged:
+                                              _onBodyChangedFromSection,
+                                          onPreviewCheckboxChanged:
+                                              _onPreviewCheckboxChanged,
                                         ),
                                       ),
                                     ),
@@ -981,6 +1068,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       _notifyEntryRequired();
       return;
     }
+    _hybridBodyKey.currentState?.flushBodyToController();
     _draftPersistQueued = false;
     setState(() => _saving = true);
     try {

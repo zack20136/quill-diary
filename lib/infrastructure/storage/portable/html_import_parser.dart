@@ -82,6 +82,31 @@ String exportHtmlBodyToMarkdown(String html) {
     );
   }
   output = output.replaceAllMapped(
+    RegExp(
+      "<ul\\b[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\btask-list\\b[^\"']*[\"'][^>]*>([\\s\\S]*?)</ul>",
+      caseSensitive: false,
+    ),
+    (Match match) {
+      final String items = (match.group(1) ?? '').replaceAllMapped(
+        RegExp(r'<li\b[^>]*>([\s\S]*?)</li>', caseSensitive: false),
+        (Match itemMatch) {
+          final String inner = itemMatch.group(1) ?? '';
+          final bool checked = RegExp(
+            '<input\\b[^>]*\\btype\\s*=\\s*["\']checkbox["\'][^>]*\\bchecked\\b',
+            caseSensitive: false,
+          ).hasMatch(inner);
+          final String text = inner.replaceAll(
+            RegExp(r'<input\b[^>]*>', caseSensitive: false),
+            '',
+          );
+          final String marker = checked ? 'x' : ' ';
+          return '- [$marker] ${inlineExportHtmlToMarkdown(text)}\n';
+        },
+      );
+      return '$items\n';
+    },
+  );
+  output = output.replaceAllMapped(
     RegExp(r'<ul\b[^>]*>([\s\S]*?)</ul>', caseSensitive: false),
     (Match match) {
       final String items = (match.group(1) ?? '').replaceAllMapped(
