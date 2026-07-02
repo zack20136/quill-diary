@@ -10,6 +10,7 @@ import '../../../infrastructure/database/index_database.dart';
 import '../../../app/app_colors.dart';
 import '../../../shared/presentation/display_format.dart';
 import '../../../shared/presentation/page_style.dart';
+import '../../../shared/presentation/widgets/entry_date_time_column.dart';
 import '../../../shared/presentation/tag_visual.dart';
 import '../../../shared/presentation/widgets/entry_cover_thumbnail.dart';
 import '../../../shared/presentation/widgets/tag_chip.dart';
@@ -523,43 +524,11 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final TextStyle? base = compact
-        ? theme.textTheme.labelSmall
-        : theme.textTheme.labelMedium;
-    final TextStyle? muted = base?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-    final double maxWidth = compact ? 88 : 112;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            DisplayFormat.formatDateOnly(context.l10n, entry.date),
-            style: muted,
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-          ),
-          Text(
-            DisplayFormat.formatWeekdayAndTime(
-              context.l10n,
-              entry.date,
-              entry.createdAt,
-            ),
-            style: muted,
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-          ),
-        ],
-      ),
+    return EntryDateTimeColumn(
+      date: entry.date,
+      at: entry.createdAt,
+      compact: compact,
+      maxWidth: compact ? 88 : 112,
     );
   }
 }

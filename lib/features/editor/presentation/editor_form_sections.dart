@@ -20,12 +20,11 @@ class EditorTitleSection extends StatelessWidget {
     required this.bodyController,
     required this.tagsController,
     required this.typography,
-    required this.formattedDisplayDate,
-    required this.formattedEntryTime,
     required this.showEntryRequiredHint,
     required this.showUnsavedTag,
     required this.showMetadataTags,
     required this.tagAccentArgbMap,
+    this.editToolbar,
   });
 
   final bool previewMode;
@@ -33,12 +32,11 @@ class EditorTitleSection extends StatelessWidget {
   final TextEditingController bodyController;
   final TextEditingController tagsController;
   final EditorTypographyPreferences typography;
-  final String formattedDisplayDate;
-  final String formattedEntryTime;
   final bool showEntryRequiredHint;
   final bool showUnsavedTag;
   final bool showMetadataTags;
   final Map<String, int> tagAccentArgbMap;
+  final Widget? editToolbar;
 
   @override
   Widget build(BuildContext context) {
@@ -108,22 +106,10 @@ class EditorTitleSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              '$formattedDisplayDate · $formattedEntryTime',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-                height: 1.25,
-              ),
-              maxLines: 1,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
+        if (editToolbar != null) ...<Widget>[
+          editToolbar!,
+          const SizedBox(height: 6),
+        ],
         TextField(
           controller: titleController,
           textInputAction: TextInputAction.next,

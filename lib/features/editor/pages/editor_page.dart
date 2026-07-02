@@ -661,15 +661,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           saving: _saving,
                           canSaveEntry: _canSaveEntry,
                           canDelete: widget.entryId != null,
-                          previewTimestampLabel:
-                              '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}',
+                          timestampLabel: _formattedTimestampLabel(context),
                           onClose: () => unawaited(_requestClose()),
-                          onPickDate: _pickEntryDate,
-                          onPickTime: _pickEntryTime,
-                          onEditTags: _showTagsEditorDialog,
-                          onPickImage: () => unawaited(_pickImage()),
-                          onPickFile: () => unawaited(_pickFile()),
-                          onInsertCheckbox: _insertCheckboxBlock,
                           onSave: () =>
                               unawaited(_saveCurrentEntry(session, entry)),
                           onDelete: () =>
@@ -815,10 +808,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                         bodyController: _bodyController,
                                         tagsController: _tagsController,
                                         typography: typography,
-                                        formattedDisplayDate:
-                                            _formattedDisplayDate(context),
-                                        formattedEntryTime:
-                                            _formattedEntryTime24h(),
                                         showEntryRequiredHint:
                                             _showEntryRequiredHint,
                                         showUnsavedTag: showUnsavedTag,
@@ -826,6 +815,21 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                             showVisualEditorChrome,
                                         tagAccentArgbMap:
                                             _watchedTagAccentArgbMap(),
+                                        editToolbar: _isEditing
+                                            ? EditorActionToolbar(
+                                                saving: _saving,
+                                                onPickDate: _pickEntryDate,
+                                                onPickTime: _pickEntryTime,
+                                                onEditTags:
+                                                    _showTagsEditorDialog,
+                                                onPickImage: () =>
+                                                    unawaited(_pickImage()),
+                                                onPickFile: () =>
+                                                    unawaited(_pickFile()),
+                                                onInsertCheckbox:
+                                                    _insertCheckboxBlock,
+                                              )
+                                            : null,
                                       ),
                                       const SizedBox(height: _editorSectionGap),
                                       Expanded(
@@ -945,6 +949,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     setState(() => _entryTime = picked);
     _onDraftChanged();
+  }
+
+  String _formattedTimestampLabel(BuildContext context) {
+    return '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}';
   }
 
   String _formattedDisplayDate(BuildContext context) {
