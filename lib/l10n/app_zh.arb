@@ -217,6 +217,24 @@
   "homeTooltipNewEntry": "新增日記",
   "homeTooltipSettings": "設定與備份",
   "homeTooltipExportHtml": "匯出 HTML",
+  "homeTooltipPin": "釘選",
+  "homeTooltipUnpin": "取消釘選",
+  "homePinEntriesSuccess": "已釘選 {count} 篇",
+  "@homePinEntriesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeUnpinEntriesSuccess": "已取消釘選 {count} 篇",
+  "@homeUnpinEntriesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipDelete": "刪除",
   "homeTooltipAddTag": "新增標籤",
   "homeTooltipEditTag": "編輯標籤",

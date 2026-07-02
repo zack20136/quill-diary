@@ -454,6 +454,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeTooltipExportHtml => '匯出 HTML';
 
   @override
+  String get homeTooltipPin => '釘選';
+
+  @override
+  String get homeTooltipUnpin => '取消釘選';
+
+  @override
+  String homePinEntriesSuccess(int count) {
+    return '已釘選 $count 篇';
+  }
+
+  @override
+  String homeUnpinEntriesSuccess(int count) {
+    return '已取消釘選 $count 篇';
+  }
+
+  @override
   String get homeTooltipDelete => '刪除';
 
   @override

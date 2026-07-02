@@ -472,6 +472,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTooltipExportHtml => 'Export HTML';
 
   @override
+  String get homeTooltipPin => 'Pin';
+
+  @override
+  String get homeTooltipUnpin => 'Unpin';
+
+  @override
+  String homePinEntriesSuccess(int count) {
+    return 'Pinned $count entries';
+  }
+
+  @override
+  String homeUnpinEntriesSuccess(int count) {
+    return 'Unpinned $count entries';
+  }
+
+  @override
   String get homeTooltipDelete => 'Delete';
 
   @override

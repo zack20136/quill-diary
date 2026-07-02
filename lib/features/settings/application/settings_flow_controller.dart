@@ -335,7 +335,7 @@ class SettingsFlowController {
 
   void _refreshCaches({String? editedEntryId}) {
     _ref
-      ..invalidate(homeEntriesProvider)
+      ..invalidate(homeEntryIndexListProvider)
       ..invalidate(calendarMonthEntryDatesProvider)
       ..invalidate(calendarMonthEntriesProvider)
       ..invalidate(calendarEntriesProvider)

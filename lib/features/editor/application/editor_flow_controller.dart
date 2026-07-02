@@ -439,7 +439,7 @@ class EditorFlowController {
 
   void _refreshCaches({EntryId? editedEntryId}) {
     _ref
-      ..invalidate(homeEntriesProvider)
+      ..invalidate(homeEntryIndexListProvider)
       ..invalidate(calendarMonthEntryDatesProvider)
       ..invalidate(calendarMonthEntriesProvider)
       ..invalidate(calendarEntriesProvider)

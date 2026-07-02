@@ -23,6 +23,7 @@ import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import '../security/unlock_mode_policy.dart';
 import 'restore_precheck.dart';
+import 'pinned_entries_store.dart';
 import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
 import 'shared/vault_file_ops.dart';
@@ -717,6 +718,24 @@ class VaultRepository {
     return TagStylesStore(_pathStrategy).read();
   }
 
+  Future<Set<EntryId>> listPinnedEntryIds() {
+    return PinnedEntriesStore(_pathStrategy).readIds();
+  }
+
+  Future<void> setEntriesPinned(
+    Iterable<EntryId> entryIds, {
+    required bool pinned,
+  }) {
+    return PinnedEntriesStore(_pathStrategy).setPinnedMany(
+      entryIds,
+      pinned: pinned,
+    );
+  }
+
+  Future<void> _prunePinnedEntriesToExisting(Iterable<EntryId> existingIds) {
+    return PinnedEntriesStore(_pathStrategy).pruneTo(existingIds);
+  }
+
   Future<void> upsertTagCatalogItem(
     String label, {
     int? accentArgb,
@@ -1126,6 +1145,7 @@ class VaultRepository {
     );
     await _deleteEntryFilesOnDisk(record: record, attachments: attachments);
     await indexDb.removeEntry(entryId);
+    await PinnedEntriesStore(_pathStrategy).remove(entryId);
 
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     await _writeEncryptedManifest(session, metadata);
@@ -1248,6 +1268,9 @@ class VaultRepository {
       IndexDatabase.indexGeneration.toString(),
     );
     await syncTagStylesBetweenVaultAndIndex();
+    await _prunePinnedEntriesToExisting(
+      (await listEntries()).map((EntryIndexRecord item) => item.id),
+    );
   }
 
   Future<VaultRepairReport> repairVaultWithReport(
@@ -1307,6 +1330,9 @@ class VaultRepository {
     }
 
     await _rebuildIndex(session, preScannedEntries: indexEntries);
+    await _prunePinnedEntriesToExisting(
+      indexEntries.map((_ScannedEntry item) => item.entry.id),
+    );
     await _writeEncryptedManifest(session, metadata);
 
     stopwatch.stop();

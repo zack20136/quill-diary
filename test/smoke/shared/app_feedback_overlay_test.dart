@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,15 +31,17 @@ void main() {
               body: Center(
                 child: FilledButton(
                   onPressed: () {
-                    showDialog<void>(
-                      context: context,
-                      builder: (BuildContext ctx) {
-                        dialogContext = ctx;
-                        return const AlertDialog(
-                          title: Text('對話框'),
-                          content: SizedBox(width: 280, height: 360),
-                        );
-                      },
+                    unawaited(
+                      showDialog<void>(
+                        context: context,
+                        builder: (BuildContext ctx) {
+                          dialogContext = ctx;
+                          return const AlertDialog(
+                            title: Text('對話框'),
+                            content: SizedBox(width: 280, height: 360),
+                          );
+                        },
+                      ),
                     );
                   },
                   child: const Text('開啟'),

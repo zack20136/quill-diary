@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/l10n.dart';
 
 import '../../../app/app_colors.dart';
+import 'home_pin_glyph.dart';
 
 const double kHomeSearchRowControlHeight = 46;
 const double kHomeToolbarActionCircleSize = 34;
@@ -96,6 +97,9 @@ class HomeSelectionToolbar extends StatelessWidget {
     required this.onCancel,
     required this.onSelectAll,
     required this.actions,
+    this.allPinned = false,
+    this.onTogglePin,
+    this.pinToggleEnabled = false,
   });
 
   final int selectedCount;
@@ -103,6 +107,9 @@ class HomeSelectionToolbar extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onSelectAll;
   final List<HomeSelectionAction> actions;
+  final bool allPinned;
+  final VoidCallback? onTogglePin;
+  final bool pinToggleEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +161,34 @@ class HomeSelectionToolbar extends StatelessWidget {
                 backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
               ),
+              if (onTogglePin != null) ...<Widget>[
+                const SizedBox(width: 6),
+                HomeCircleIconButton(
+                  tooltip: allPinned
+                      ? context.l10n.homeTooltipUnpin
+                      : context.l10n.homeTooltipPin,
+                  onPressed: pinToggleEnabled ? onTogglePin : null,
+                  icon: allPinned
+                      ? Icons.push_pin_outlined
+                      : Icons.push_pin_rounded,
+                  iconWidget: HomePinGlyph(
+                    icon: allPinned
+                        ? Icons.push_pin_outlined
+                        : Icons.push_pin_rounded,
+                    size: kHomeToolbarActionCircleSize * 0.5,
+                    color: pinToggleEnabled
+                        ? cs.onSecondaryContainer
+                        : cs.onSurfaceVariant.withValues(alpha: 0.38),
+                  ),
+                  size: kHomeToolbarActionCircleSize,
+                  backgroundColor: cs.secondaryContainer,
+                  foregroundColor: cs.onSecondaryContainer,
+                  disabledBackgroundColor: cs.surfaceContainerHighest,
+                  disabledForegroundColor: cs.onSurfaceVariant.withValues(
+                    alpha: 0.38,
+                  ),
+                ),
+              ],
               for (final HomeSelectionAction action in actions) ...<Widget>[
                 const SizedBox(width: 6),
                 HomeCircleIconButton(
@@ -217,6 +252,7 @@ class HomeCircleIconButton extends StatelessWidget {
     this.size = kHomeToolbarActionCircleSize,
     this.disabledBackgroundColor,
     this.disabledForegroundColor,
+    this.iconWidget,
   });
 
   final String tooltip;
@@ -227,6 +263,7 @@ class HomeCircleIconButton extends StatelessWidget {
   final double size;
   final Color? disabledBackgroundColor;
   final Color? disabledForegroundColor;
+  final Widget? iconWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +293,8 @@ class HomeCircleIconButton extends StatelessWidget {
           child: SizedBox(
             width: size,
             height: size,
-            child: Icon(icon, size: size * 0.5, color: fg),
+            child: iconWidget ??
+                Icon(icon, size: size * 0.5, color: fg),
           ),
         ),
       ),

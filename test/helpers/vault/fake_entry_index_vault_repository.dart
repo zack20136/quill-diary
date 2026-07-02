@@ -92,4 +92,24 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
 
   @override
   Future<List<TagCatalogItem>> listTagCatalog() async => tagCatalog;
+
+  Set<EntryId> pinnedEntryIds = <EntryId>{};
+
+  @override
+  Future<Set<EntryId>> listPinnedEntryIds() async =>
+      Set<EntryId>.from(pinnedEntryIds);
+
+  @override
+  Future<void> setEntriesPinned(
+    Iterable<EntryId> entryIds, {
+    required bool pinned,
+  }) async {
+    for (final EntryId id in entryIds) {
+      if (pinned) {
+        pinnedEntryIds.add(id);
+      } else {
+        pinnedEntryIds.remove(id);
+      }
+    }
+  }
 }

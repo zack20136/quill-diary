@@ -55,6 +55,11 @@ class VaultPathStrategy {
     return p.join(vaultRoot.path, 'tag_styles.json');
   }
 
+  Future<String> pinnedEntriesPath() async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    return p.join(vaultRoot.path, 'pinned_entries.json');
+  }
+
   Future<String> manifestPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
     return p.join(vaultRoot.path, 'manifest.json.enc');

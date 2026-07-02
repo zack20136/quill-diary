@@ -217,6 +217,24 @@
   "homeTooltipNewEntry": "New Entry",
   "homeTooltipSettings": "Settings & Backup",
   "homeTooltipExportHtml": "Export HTML",
+  "homeTooltipPin": "Pin",
+  "homeTooltipUnpin": "Unpin",
+  "homePinEntriesSuccess": "Pinned {count} entries",
+  "@homePinEntriesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeUnpinEntriesSuccess": "Unpinned {count} entries",
+  "@homeUnpinEntriesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeTooltipDelete": "Delete",
   "homeTooltipAddTag": "Add Tag",
   "homeTooltipEditTag": "Edit Tag",

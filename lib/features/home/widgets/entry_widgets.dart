@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../domain/shared/value_objects.dart';
 import '../../../infrastructure/database/index_database.dart';
 import '../../../app/app_colors.dart';
 import '../../../shared/presentation/display_format.dart';
@@ -18,7 +19,9 @@ import '../../settings/providers/personalization_providers.dart';
 import '../home_entry_helpers.dart';
 import '../../../infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
+import '../providers/home_providers.dart';
 import '../state/home_state.dart';
+import 'home_pin_glyph.dart';
 
 class HomeTimelineEntryShell extends StatelessWidget {
   const HomeTimelineEntryShell({
@@ -83,8 +86,18 @@ class HomeEntryList extends ConsumerWidget {
           data: (Set<String> draftKeys) => draftKeys,
           orElse: () => const <String>{},
         );
+    final Set<EntryId> pinnedEntryIds = ref
+        .watch(homePinnedEntryIdsProvider)
+        .maybeWhen(
+          data: (Set<EntryId> ids) => ids,
+          orElse: () => const <EntryId>{},
+        );
     final EditorTypographyPreferences typography =
         watchPersonalizationPreferences(ref).typography;
+    final List<EntryId> displayOrder =
+        entries.map((EntryIndexRecord item) => item.id).toList();
+    final Color pinnedSectionDividerColor = context.appColors.outlineMuted
+        .withValues(alpha: 0.42);
 
     return NotificationListener<OverscrollIndicatorNotification>(
       onNotification: (OverscrollIndicatorNotification notification) {
@@ -97,11 +110,29 @@ class HomeEntryList extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 16),
           scrollCacheExtent: HomeLayout.entryListCacheExtent,
           itemCount: entries.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 14),
+          separatorBuilder: (BuildContext context, int index) {
+            final bool showPinnedSectionDivider =
+                !selection.isActive &&
+                pinnedEntryIds.contains(entries[index].id) &&
+                index + 1 < entries.length &&
+                !pinnedEntryIds.contains(entries[index + 1].id);
+            if (showPinnedSectionDivider) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: pinnedSectionDividerColor,
+                ),
+              );
+            }
+            return const SizedBox(height: 14);
+          },
           itemBuilder: (BuildContext context, int index) {
             final EntryIndexRecord entry = entries[index];
             final bool selected = selection.selectedIds.contains(entry.id);
             return HomeTimelineEntryShell(
+              key: ValueKey<String>(entry.id),
               selected: selection.isActive && selected,
               child: HomeEntryCard(
                 entry: entry,
@@ -110,11 +141,12 @@ class HomeEntryList extends ConsumerWidget {
                 selected: selected,
                 tagAccents: tagAccents,
                 showUnsavedDraft: draftEntryIds.contains(entry.id),
+                isPinned: pinnedEntryIds.contains(entry.id),
                 onTap: () {
                   if (selection.isActive) {
                     ref
                         .read(homeEntrySelectionProvider.notifier)
-                        .toggle(entry.id);
+                        .toggle(entry.id, displayOrder: displayOrder);
                     return;
                   }
                   unawaited(context.push('/editor/${entry.id}'));
@@ -123,12 +155,12 @@ class HomeEntryList extends ConsumerWidget {
                   if (selection.isActive) {
                     ref
                         .read(homeEntrySelectionProvider.notifier)
-                        .toggle(entry.id);
+                        .toggle(entry.id, displayOrder: displayOrder);
                     return;
                   }
                   ref
                       .read(homeEntrySelectionProvider.notifier)
-                      .enterWith(entry.id);
+                      .enterWith(entry.id, displayOrder: displayOrder);
                 },
               ),
             );
@@ -146,6 +178,7 @@ class HomeEntryCard extends StatelessWidget {
     required this.selected,
     required this.tagAccents,
     required this.showUnsavedDraft,
+    this.isPinned = false,
     required this.onTap,
     required this.onLongPress,
     super.key,
@@ -157,6 +190,7 @@ class HomeEntryCard extends StatelessWidget {
   final bool selected;
   final Map<String, int> tagAccents;
   final bool showUnsavedDraft;
+  final bool isPinned;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -193,6 +227,7 @@ class HomeEntryCard extends StatelessWidget {
               HomeEntryCardHeader(
                 entry: entry,
                 titleStyle: titleStyle,
+                showPinned: isPinned,
                 trailing: HomeEntryCardRightDateTime(entry: entry),
                 leading: selectionActive
                     ? Padding(
@@ -418,6 +453,7 @@ class HomeEntryCardHeader extends StatelessWidget {
     this.leading,
     this.leadingGap = 0,
     this.trailing,
+    this.showPinned = false,
     super.key,
   });
 
@@ -426,21 +462,41 @@ class HomeEntryCardHeader extends StatelessWidget {
   final Widget? leading;
   final double leadingGap;
   final Widget? trailing;
+  final bool showPinned;
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         ?leading,
         if (leading != null && leadingGap > 0) SizedBox(width: leadingGap),
         Expanded(
-          child: Text(
-            entryListHeadline(entry),
-            style: titleStyle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              if (showPinned) ...<Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: HomePinGlyph(
+                    icon: Icons.push_pin_rounded,
+                    size: 18,
+                    color: cs.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Text(
+                  entryListHeadline(entry),
+                  style: titleStyle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.start,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 10),

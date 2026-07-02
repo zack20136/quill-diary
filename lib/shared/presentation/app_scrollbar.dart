@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// 全站 scrollbar 尺寸常數。
 abstract final class AppScrollbarMetrics {
@@ -101,6 +102,8 @@ class _AppScrollbarState extends State<AppScrollbar>
   double _toThumbExtent = AppScrollbarMetrics.minThumbLength;
   int? _activeThumbPointer;
   ScrollHoldController? _scrollHold;
+  bool _stateUpdateScheduled = false;
+  VoidCallback? _pendingStateUpdate;
 
   double get _thickness => widget.nested
       ? AppScrollbarMetrics.nestedThickness
@@ -160,12 +163,36 @@ class _AppScrollbarState extends State<AppScrollbar>
   }
 
   void _handleExtentAnimation() {
-    setState(() {
-      _displayedThumbExtent = _lerpDouble(
-        _fromThumbExtent,
-        _toThumbExtent,
-        _extentAnimation.value,
-      );
+    final double extent = _lerpDouble(
+      _fromThumbExtent,
+      _toThumbExtent,
+      _extentAnimation.value,
+    );
+    _scheduleStateUpdate(() => _displayedThumbExtent = extent);
+  }
+
+  void _scheduleStateUpdate(VoidCallback update) {
+    final VoidCallback? previous = _pendingStateUpdate;
+    _pendingStateUpdate = () {
+      previous?.call();
+      update();
+    };
+    if (_stateUpdateScheduled) {
+      return;
+    }
+    _stateUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _stateUpdateScheduled = false;
+      if (!mounted) {
+        _pendingStateUpdate = null;
+        return;
+      }
+      final VoidCallback? pending = _pendingStateUpdate;
+      _pendingStateUpdate = null;
+      if (pending == null) {
+        return;
+      }
+      setState(pending);
     });
   }
 
@@ -195,6 +222,15 @@ class _AppScrollbarState extends State<AppScrollbar>
   }
 
   void _applyMetrics(ScrollMetrics metrics) {
+    if (SchedulerBinding.instance.schedulerPhase != SchedulerPhase.idle) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _applyMetrics(metrics);
+        }
+      });
+      return;
+    }
+
     final double targetThumbExtent = _naturalThumbExtent(metrics);
     final bool firstValidMetrics = _metrics == null && targetThumbExtent > 0;
 
@@ -209,7 +245,7 @@ class _AppScrollbarState extends State<AppScrollbar>
       unawaited(_extentAnimation.forward(from: 0));
     }
 
-    setState(() => _metrics = metrics);
+    _scheduleStateUpdate(() => _metrics = metrics);
   }
 
   double _naturalThumbExtent(ScrollMetrics metrics) {

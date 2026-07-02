@@ -926,6 +926,30 @@ abstract class AppLocalizations {
   /// **'匯出 HTML'**
   String get homeTooltipExportHtml;
 
+  /// No description provided for @homeTooltipPin.
+  ///
+  /// In zh, this message translates to:
+  /// **'釘選'**
+  String get homeTooltipPin;
+
+  /// No description provided for @homeTooltipUnpin.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消釘選'**
+  String get homeTooltipUnpin;
+
+  /// No description provided for @homePinEntriesSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已釘選 {count} 篇'**
+  String homePinEntriesSuccess(int count);
+
+  /// No description provided for @homeUnpinEntriesSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消釘選 {count} 篇'**
+  String homeUnpinEntriesSuccess(int count);
+
   /// No description provided for @homeTooltipDelete.
   ///
   /// In zh, this message translates to:

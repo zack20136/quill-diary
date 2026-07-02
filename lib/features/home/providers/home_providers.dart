@@ -21,8 +21,20 @@ final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
   return ref.read(vaultRepositoryProvider).listEntries();
 });
 
-/// 依首頁搜尋字串取得排序後的日記列表。
-final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
+/// 載入首頁釘選的日記 ID 集合（權威來源為 vault/pinned_entries.json）。
+final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
+  Ref ref,
+) async {
+  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
+  if (!sessionState.isUnlocked || sessionState.session == null) {
+    return const <EntryId>{};
+  }
+
+  return ref.read(vaultRepositoryProvider).listPinnedEntryIds();
+});
+
+/// 依搜尋條件載入首頁日記索引（不含釘選排序）。
+final homeEntryIndexListProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,
 ) async {
   final sessionState = await ref.watch(effectiveAppSessionProvider.future);
@@ -32,18 +44,40 @@ final homeEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
 
   final String query = ref.watch(homeSearchQueryProvider);
   if (query.trim().isEmpty) {
-    final List<EntryIndexRecord> list = List<EntryIndexRecord>.from(
-      await ref.watch(allEntryIndexRecordsProvider.future),
-    );
-    list.sort(compareEntriesNewestFirst);
-    return list;
+    return ref.watch(allEntryIndexRecordsProvider.future);
   }
 
-  final List<EntryIndexRecord> list = await ref
-      .read(vaultRepositoryProvider)
-      .listEntries(searchQuery: query);
-  list.sort(compareEntriesNewestFirst);
-  return list;
+  return ref.read(vaultRepositoryProvider).listEntries(searchQuery: query);
+});
+
+/// 首頁時間軸顯示用列表；排序與勾選狀態解耦，避免勾選時重載跳動。
+final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
+  Ref ref,
+) {
+  final AsyncValue<List<EntryIndexRecord>> raw = ref.watch(
+    homeEntryIndexListProvider,
+  );
+  final HomeEntrySortState sortState = ref.watch(
+    homeEntrySelectionProvider.select(
+      (HomeEntrySelectionState state) => (
+        isActive: state.isActive,
+        frozenDisplayOrder: state.frozenDisplayOrder,
+      ),
+    ),
+  );
+  final bool frozenSort =
+      sortState.isActive && sortState.frozenDisplayOrder.isNotEmpty;
+  final Set<EntryId> pinnedIds = frozenSort
+      ? (ref.read(homePinnedEntryIdsProvider).value ?? const <EntryId>{})
+      : (ref.watch(homePinnedEntryIdsProvider).value ?? const <EntryId>{});
+
+  return raw.whenData(
+    (List<EntryIndexRecord> list) => sortHomeEntries(
+      list: list,
+      sortState: sortState,
+      pinnedIds: pinnedIds,
+    ),
+  );
 });
 
 /// 取得目前日曆選取日期對應的日記項目。
@@ -142,7 +176,8 @@ Future<void> refreshHomeIndexCaches(
   EntryId? editedEntryId,
 }) async {
   ref
-    ..invalidate(homeEntriesProvider)
+    ..invalidate(homeEntryIndexListProvider)
+    ..invalidate(homePinnedEntryIdsProvider)
     ..invalidate(calendarMonthEntryDatesProvider)
     ..invalidate(calendarMonthEntriesProvider)
     ..invalidate(calendarEntriesProvider)

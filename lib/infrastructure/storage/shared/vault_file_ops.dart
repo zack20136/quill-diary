@@ -20,6 +20,17 @@ Future<Directory> createWorkingDirectory(
   return workingDirectory;
 }
 
+/// 以暫存檔寫入後 rename，避免中斷時留下半寫入的目標檔。
+Future<void> atomicWriteString(File file, String content) async {
+  await file.parent.create(recursive: true);
+  final File tempFile = File('${file.path}.tmp');
+  await tempFile.writeAsString(content, flush: true);
+  if (file.existsSync()) {
+    await file.delete();
+  }
+  await tempFile.rename(file.path);
+}
+
 /// 刪除檔案（存在時）；忽略刪除失敗。
 Future<void> deleteFileIfExists(String path) async {
   final File file = File(path);

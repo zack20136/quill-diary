@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../infrastructure/database/index_database.dart';
+import '../../../domain/shared/value_objects.dart';
 import '../../../shared/utils/user_facing_error.dart';
 import '../../session/state/app_session_state.dart';
 import '../home_export_actions.dart';
+import '../home_pin_actions.dart';
 import '../providers/home_providers.dart';
 import '../state/home_state.dart';
 import 'entry_widgets.dart';
@@ -28,7 +30,10 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
   ProviderSubscription<String>? _searchQuerySubscription;
+  ProviderSubscription<AsyncValue<List<EntryIndexRecord>>>?
+      _entryIndexListSubscription;
   bool _syncingController = false;
+  bool _awaitingSearchResync = false;
 
   @override
   void initState() {
@@ -41,17 +46,60 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
       homeSearchQueryProvider,
       (String? previous, String next) {
         _syncSearchController(next);
-        final List<EntryIndexRecord>? visible = ref
-            .read(homeEntriesProvider)
-            .value;
-        if (visible != null) {
-          ref
-              .read(homeEntrySelectionProvider.notifier)
-              .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
+        if (previous == next) {
+          return;
         }
+        if (ref.read(homeEntrySelectionProvider).isActive) {
+          _awaitingSearchResync = true;
+          final List<EntryIndexRecord>? current =
+              ref.read(homeEntryIndexListProvider).value;
+          if (current != null) {
+            _applySearchResync(current);
+          }
+          return;
+        }
+        _pruneSelectionToVisibleEntries();
       },
       fireImmediately: true,
     );
+    _entryIndexListSubscription = ref.listenManual<
+        AsyncValue<List<EntryIndexRecord>>>(
+      homeEntryIndexListProvider,
+      (_, AsyncValue<List<EntryIndexRecord>> next) {
+        if (!_awaitingSearchResync ||
+            !ref.read(homeEntrySelectionProvider).isActive) {
+          return;
+        }
+        next.whenData(_applySearchResync);
+      },
+    );
+  }
+
+  void _applySearchResync(List<EntryIndexRecord> rawEntries) {
+    final HomeEntrySelectionState selection =
+        ref.read(homeEntrySelectionProvider);
+    if (!selection.isActive) {
+      _awaitingSearchResync = false;
+      return;
+    }
+    resyncHomeSelectionDisplayOrder(
+      selectionController: ref.read(homeEntrySelectionProvider.notifier),
+      selection: selection,
+      pinnedIds:
+          ref.read(homePinnedEntryIdsProvider).value ?? const <EntryId>{},
+      rawEntries: rawEntries,
+    );
+    _awaitingSearchResync = false;
+  }
+
+  void _pruneSelectionToVisibleEntries() {
+    final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
+    if (visible == null) {
+      return;
+    }
+    ref
+        .read(homeEntrySelectionProvider.notifier)
+        .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
   }
 
   void _syncSearchController(String value) {
@@ -79,6 +127,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   @override
   void dispose() {
     _searchQuerySubscription?.close();
+    _entryIndexListSubscription?.close();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -104,6 +153,16 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         entriesAsync.hasValue;
     final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
     final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
+    final Set<EntryId> pinnedEntryIds = ref
+        .watch(homePinnedEntryIdsProvider)
+        .maybeWhen(
+          data: (Set<EntryId> ids) => ids,
+          orElse: () => const <EntryId>{},
+        );
+    final bool allSelectedPinned = homeSelectionAllPinned(
+      selection.selectedIds,
+      pinnedEntryIds,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,6 +188,17 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                       .selectAll(
                         entries.map((EntryIndexRecord item) => item.id),
                       ),
+                  allPinned: allSelectedPinned,
+                  pinToggleEnabled: canActOnSelectedEntries,
+                  onTogglePin: () => unawaited(
+                    togglePinSelectedHomeEntries(
+                      context,
+                      ref,
+                      sessionState,
+                      selection.selectedIds,
+                      pinnedEntryIds,
+                    ),
+                  ),
                   actions: <HomeSelectionAction>[
                     HomeSelectionAction(
                       tooltip: context.l10n.homeTooltipExportHtml,
@@ -182,7 +252,13 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         onPressed: canReadEntries
                             ? () => ref
                                   .read(homeEntrySelectionProvider.notifier)
-                                  .enterSelection()
+                                  .enterSelection(
+                                    entries
+                                        .map(
+                                          (EntryIndexRecord item) => item.id,
+                                        )
+                                        .toList(),
+                                  )
                             : null,
                       ),
                     ],
@@ -207,6 +283,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
               ? HomeScrollAffordance(
                   controller: _scrollController,
                   child: entriesAsync.when(
+                    skipLoadingOnReload: true,
                     data: (List<EntryIndexRecord> loadedEntries) {
                       if (loadedEntries.isEmpty) {
                         if (searchQuery.isNotEmpty) {
