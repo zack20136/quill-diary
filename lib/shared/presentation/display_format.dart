@@ -50,17 +50,6 @@ abstract final class DisplayFormat {
     return '${value.year}年${value.month}月${value.day}日';
   }
 
-  static String formatDateOnlyWithWeekday(
-    AppLocalizations l10n,
-    DateOnly date,
-  ) {
-    final DateTime local = date.toDateTime();
-    if (isEnglishL10n(l10n)) {
-      return '${formatDateOnly(l10n, date)} ${_englishWeekdayShort[local.weekday - 1]}';
-    }
-    return '${formatDateOnly(l10n, date)} ${_zhTwWeekdayLong[local.weekday - 1]}';
-  }
-
   static String formatYearMonth(AppLocalizations l10n, int year, int month) {
     if (isEnglishL10n(l10n)) {
       return '${_englishMonthShort[month - 1]} $year';
@@ -72,12 +61,33 @@ abstract final class DisplayFormat {
     return isEnglishL10n(l10n) ? '$year' : '$year年';
   }
 
+  static DateTime combineEntryDateTime(
+    DateOnly date, {
+    required int hour,
+    required int minute,
+  }) {
+    final DateTime day = date.toDateTime();
+    return DateTime(day.year, day.month, day.day, hour, minute);
+  }
+
+  static String formatEntryDateTime(
+    AppLocalizations l10n,
+    DateOnly date, {
+    required int hour,
+    required int minute,
+  }) {
+    return formatDateTime(
+      l10n,
+      combineEntryDateTime(date, hour: hour, minute: minute),
+    );
+  }
+
   static String formatDateTime(AppLocalizations l10n, DateTime local) {
     final DateTime value = local.toLocal();
     if (isEnglishL10n(l10n)) {
-      return '${_formatEnglishDate(value)} ${formatTime24h(value)}';
+      return '${_formatEnglishDate(value)} ${formatTime24h(value)} · ${_englishWeekdayShort[value.weekday - 1]}';
     }
-    return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)}';
+    return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)} · ${_zhTwWeekdayLong[value.weekday - 1]}';
   }
 
   static String formatWeekdayAndTime(

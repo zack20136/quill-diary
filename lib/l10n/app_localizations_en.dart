@@ -380,23 +380,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipSaveNeedsEntry => 'Enter a Title or Body First';
 
   @override
-  String get editorTooltipDate => 'Date';
+  String get editorTooltipDate => 'Set Date';
 
   @override
-  String get editorTooltipTime => 'Time';
+  String get editorTooltipTime => 'Set Time';
 
   @override
   String get editorTooltipEditTags => 'Edit Tags';
 
   @override
-  String get editorTooltipUploadImages =>
-      'Upload Images (Multiple Selection Supported)';
+  String get editorTooltipUploadImages => 'Upload Images';
 
   @override
   String get editorTooltipAddAttachment => 'Add Attachment';
 
   @override
-  String get editorTooltipInsertCheckbox => 'Insert Checklist Item';
+  String get editorTooltipInsertCheckbox => 'Insert Checkbox';
 
   @override
   String get editorTooltipDelete => 'Delete';

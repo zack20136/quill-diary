@@ -761,13 +761,13 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipDate.
   ///
   /// In zh, this message translates to:
-  /// **'日期'**
+  /// **'設定日期'**
   String get editorTooltipDate;
 
   /// No description provided for @editorTooltipTime.
   ///
   /// In zh, this message translates to:
-  /// **'時間'**
+  /// **'設定時間'**
   String get editorTooltipTime;
 
   /// No description provided for @editorTooltipEditTags.
@@ -779,7 +779,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipUploadImages.
   ///
   /// In zh, this message translates to:
-  /// **'上傳圖片（可一次選多張）'**
+  /// **'上傳圖片'**
   String get editorTooltipUploadImages;
 
   /// No description provided for @editorTooltipAddAttachment.
@@ -791,7 +791,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipInsertCheckbox.
   ///
   /// In zh, this message translates to:
-  /// **'插入待辦項目'**
+  /// **'插入核取方塊'**
   String get editorTooltipInsertCheckbox;
 
   /// No description provided for @editorTooltipDelete.

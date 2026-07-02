@@ -364,22 +364,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTooltipSaveNeedsEntry => '請先輸入標題或內容';
 
   @override
-  String get editorTooltipDate => '日期';
+  String get editorTooltipDate => '設定日期';
 
   @override
-  String get editorTooltipTime => '時間';
+  String get editorTooltipTime => '設定時間';
 
   @override
   String get editorTooltipEditTags => '編輯標籤';
 
   @override
-  String get editorTooltipUploadImages => '上傳圖片（可一次選多張）';
+  String get editorTooltipUploadImages => '上傳圖片';
 
   @override
   String get editorTooltipAddAttachment => '新增附件';
 
   @override
-  String get editorTooltipInsertCheckbox => '插入待辦項目';
+  String get editorTooltipInsertCheckbox => '插入核取方塊';
 
   @override
   String get editorTooltipDelete => '刪除';

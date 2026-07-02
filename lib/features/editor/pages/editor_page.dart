@@ -661,20 +661,24 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           saving: _saving,
                           canSaveEntry: _canSaveEntry,
                           canDelete: widget.entryId != null,
-                          previewTimestampLabel:
-                              '${_formattedDisplayDate(context)} · ${_formattedEntryTime24h()}',
+                          timestampLabel: _formattedTimestampLabel(context),
                           onClose: () => unawaited(_requestClose()),
-                          onPickDate: _pickEntryDate,
-                          onPickTime: _pickEntryTime,
-                          onEditTags: _showTagsEditorDialog,
-                          onPickImage: () => unawaited(_pickImage()),
-                          onPickFile: () => unawaited(_pickFile()),
-                          onInsertCheckbox: _insertCheckboxBlock,
                           onSave: () =>
                               unawaited(_saveCurrentEntry(session, entry)),
                           onDelete: () =>
                               unawaited(_deleteCurrentEntry(session)),
                           onEnterEditMode: _enterEditMode,
+                          bottomToolbar: _isEditing
+                              ? EditorActionToolbar(
+                                  saving: _saving,
+                                  onPickDate: _pickEntryDate,
+                                  onPickTime: _pickEntryTime,
+                                  onEditTags: _showTagsEditorDialog,
+                                  onPickImage: () => unawaited(_pickImage()),
+                                  onPickFile: () => unawaited(_pickFile()),
+                                  onInsertCheckbox: _insertCheckboxBlock,
+                                )
+                              : null,
                         ),
                         Expanded(
                           child: SafeArea(
@@ -815,10 +819,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                         bodyController: _bodyController,
                                         tagsController: _tagsController,
                                         typography: typography,
-                                        formattedDisplayDate:
-                                            _formattedDisplayDate(context),
-                                        formattedEntryTime:
-                                            _formattedEntryTime24h(),
                                         showEntryRequiredHint:
                                             _showEntryRequiredHint,
                                         showUnsavedTag: showUnsavedTag,
@@ -947,20 +947,29 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _onDraftChanged();
   }
 
-  String _formattedDisplayDate(BuildContext context) {
+  String _formattedTimestampLabel(BuildContext context) {
     try {
       final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
-      return DisplayFormat.formatDateOnlyWithWeekday(context.l10n, parsed);
+      return DisplayFormat.formatEntryDateTime(
+        context.l10n,
+        parsed,
+        hour: _entryTime.hour,
+        minute: _entryTime.minute,
+      );
     } catch (_) {
       final String raw = _dateController.text.trim();
-      return raw.isEmpty ? '--' : raw;
+      if (raw.isEmpty) {
+        return '--';
+      }
+      final DateTime timeOnly = DateTime(
+        1970,
+        1,
+        1,
+        _entryTime.hour,
+        _entryTime.minute,
+      );
+      return '$raw ${DisplayFormat.formatTime24h(timeOnly)}';
     }
-  }
-
-  String _formattedEntryTime24h() {
-    final int hour = _entryTime.hour;
-    final int minute = _entryTime.minute;
-    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
 
   Future<List<TagCatalogUsageItem>> _tagSuggestionsFromIndexAsync() async {
