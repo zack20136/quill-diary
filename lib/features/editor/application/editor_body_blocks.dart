@@ -147,7 +147,7 @@ EditorCheckboxLine createEmptyCheckboxLine() {
   );
 }
 
-/// Keeps a trailing empty text line when the body contains checkboxes.
+/// 內文含 checkbox 時，保留尾端空白文字行供繼續輸入。
 List<EditorBodyLine> ensureEditorBodyLinesForEditing(List<EditorBodyLine> lines) {
   final List<EditorBodyLine> editable = lines.isEmpty
       ? <EditorBodyLine>[createEmptyTextLine()]
@@ -173,11 +173,23 @@ String normalizeEditorBodyMarkdownForSave(String markdown) {
   return serializeEditorBodyLines(lines);
 }
 
+/// 離開 checkbox 編輯時，將 line blocks 收斂為純文字 markdown。
+String collapseEditorBodyToPlainMarkdown(List<EditorBodyLine> lines) {
+  if (editorLinesHaveCheckbox(lines)) {
+    return serializeEditorBodyLines(lines);
+  }
+  return normalizeEditorBodyMarkdownForSave(serializeEditorBodyLines(lines));
+}
+
 EditorTextLine createEmptyTextLine() {
   return EditorTextLine(id: generateEditorLineId(), text: '');
 }
 
-List<EditorBodyLine> linesAfterNewCheckbox({
+/// 新插入 checkbox 後接續的行區塊。
+///
+/// 僅在 checkbox 插入於文件末尾時補上一行空白文字行；
+/// 若後方已有內容，則原樣保留。
+List<EditorBodyLine> tailLinesAfterCheckboxInsert({
   required List<EditorBodyLine> lines,
   required int consumedThroughIndex,
   required String afterText,
@@ -189,12 +201,10 @@ List<EditorBodyLine> linesAfterNewCheckbox({
       ...remaining,
     ];
   }
-  if (remaining.isNotEmpty &&
-      remaining.first is EditorTextLine &&
-      (remaining.first as EditorTextLine).text.isEmpty) {
+  if (remaining.isNotEmpty) {
     return remaining;
   }
-  return <EditorBodyLine>[createEmptyTextLine(), ...remaining];
+  return <EditorBodyLine>[createEmptyTextLine()];
 }
 
 List<EditorBodyLine> reorderEditorBodyLines({
@@ -258,7 +268,7 @@ List<EditorBodyLine> reorderEditorBodyLines({
     return (
       lines: <EditorBodyLine>[
         ...head,
-        ...linesAfterNewCheckbox(
+        ...tailLinesAfterCheckboxInsert(
           lines: lines,
           consumedThroughIndex: lineIndex,
           afterText: after,
@@ -273,7 +283,7 @@ List<EditorBodyLine> reorderEditorBodyLines({
       lines: <EditorBodyLine>[
         ...lines.sublist(0, lineIndex + 1),
         checkbox,
-        ...linesAfterNewCheckbox(
+        ...tailLinesAfterCheckboxInsert(
           lines: lines,
           consumedThroughIndex: lineIndex,
           afterText: '',

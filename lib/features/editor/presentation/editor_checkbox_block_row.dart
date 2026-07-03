@@ -41,19 +41,21 @@ class EditorCheckboxBlockRow extends StatelessWidget {
       decorationColor: cs.onSurfaceVariant.withValues(alpha: 0.55),
     );
 
-    final Widget checkbox = SizedBox(
-      width: 24,
-      height: 24,
-      child: Checkbox(
-        value: block.checked,
-        onChanged: (bool? value) {
-          if (value != null) {
-            onCheckedChanged(value);
-          }
-        },
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    final Widget checkbox = SelectionContainer.disabled(
+      child: SizedBox(
+        width: 24,
+        height: 24,
+        child: Checkbox(
+          value: block.checked,
+          onChanged: (bool? value) {
+            if (value != null) {
+              onCheckedChanged(value);
+            }
+          },
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
       ),
     );
 
@@ -77,7 +79,7 @@ class EditorCheckboxBlockRow extends StatelessWidget {
           )
         : block.text.isEmpty
             ? const SizedBox.shrink()
-            : SelectableText(
+            : Text(
                 block.text,
                 style: labelStyle,
               );

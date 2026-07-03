@@ -93,7 +93,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
             color: cs.surfaceContainerHighest.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
           ),
-          child: SelectableText(
+          child: Text(
             codeBuffer.toString().trimRight(),
             style: AppTypography.mono(
               theme.textTheme.bodyMedium ?? const TextStyle(),
@@ -162,7 +162,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
               top: children.isEmpty ? 0 : widget.typography.bodyParagraphSpacing,
               bottom: widget.typography.bodyParagraphSpacing,
             ),
-            child: SelectableText.rich(
+            child: Text.rich(
               _inlineMarkdownSpan(
                 text,
                 widget.typography.titleTextStyle(
@@ -187,7 +187,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
               color: cs.surfaceContainerHigh.withValues(alpha: 0.58),
               border: Border(left: BorderSide(color: cs.primary, width: 3)),
             ),
-            child: SelectableText.rich(
+            child: Text.rich(
               _inlineMarkdownSpan(
                 line.replaceFirst(RegExp(r'^>\s?'), ''),
                 bodyStyle.copyWith(color: cs.onSurfaceVariant),
@@ -217,7 +217,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
                   ),
                 ),
                 Expanded(
-                  child: SelectableText.rich(
+                  child: Text.rich(
                     _inlineMarkdownSpan(
                       listItem.group(3)!.trim(),
                       bodyStyle,
@@ -235,7 +235,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
       children.add(
         Padding(
           padding: EdgeInsets.only(bottom: widget.typography.bodyParagraphSpacing),
-          child: SelectableText.rich(
+          child: Text.rich(
             _inlineMarkdownSpan(line, bodyStyle, colors.inlineCodeBackground),
           ),
         ),

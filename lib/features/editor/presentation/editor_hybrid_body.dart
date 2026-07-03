@@ -89,13 +89,79 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
         previousLines: _lines,
       ),
     );
-    _hybridMode = editorLinesHaveCheckbox(_lines);
+    if (editorLinesHaveCheckbox(_lines)) {
+      _enterHybridEditing();
+      _focusPendingLine();
+      return;
+    }
+    _syncEditingSurfaceMode();
+  }
+
+  void _enterHybridEditing() {
+    _hybridMode = true;
     _pruneControllers();
     _syncControllersWithLines();
     if (mounted) {
       setState(() {});
     }
-    _focusPendingLine();
+  }
+
+  void _writeBodyControllerText(String markdown) {
+    if (widget.bodyController.text == markdown) {
+      return;
+    }
+    _committingToBodyController = true;
+    _syncingFromController = markdown;
+    widget.bodyController.text = markdown;
+    _syncingFromController = null;
+    _committingToBodyController = false;
+  }
+
+  void _requestPlainTextFocus({int? offset}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _plainTextFocusNode.requestFocus();
+      if (offset == null) {
+        return;
+      }
+      final int safeOffset =
+          offset.clamp(0, widget.bodyController.text.length);
+      widget.bodyController.selection =
+          TextSelection.collapsed(offset: safeOffset);
+    });
+  }
+
+  void _syncEditingSurfaceMode({
+    String? focusLineId,
+    int? plainTextOffset,
+  }) {
+    if (editorLinesHaveCheckbox(_lines)) {
+      _enterHybridEditing();
+      if (focusLineId != null) {
+        _requestFocusOnLine(focusLineId);
+      }
+      return;
+    }
+
+    if (!_hybridMode) {
+      return;
+    }
+
+    final String plainMarkdown = collapseEditorBodyToPlainMarkdown(_lines);
+    _disposeControllers();
+    _lines = plainMarkdown.isEmpty
+        ? <EditorBodyLine>[createEmptyTextLine()]
+        : parseEditorBodyLines(plainMarkdown);
+    _hybridMode = false;
+    _focusedLineId = null;
+    _pendingFocusLineId = null;
+    _writeBodyControllerText(plainMarkdown);
+    if (mounted) {
+      setState(() {});
+    }
+    _requestPlainTextFocus(offset: plainTextOffset);
   }
 
   void _disposeControllers() {
@@ -111,7 +177,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
 
   bool _syncingControllers = false;
 
-  /// Writes the latest line editors back to [bodyController].
+  /// 將各 line 編輯器的最新內容寫回 [bodyController]。
   void flushBodyToController() {
     if (!_hybridMode) {
       _lines = ensureEditorBodyLinesForEditing(
@@ -125,14 +191,18 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     _commitLines(ensureTrailing: true);
   }
 
+  String _lineText(EditorBodyLine line) {
+    return switch (line) {
+      EditorTextLine(:final String text) => text,
+      EditorCheckboxLine(:final String text) => text,
+    };
+  }
+
   TextEditingController _controllerForLine(EditorBodyLine line) {
     final String lineId = line.id;
     return _lineControllers.putIfAbsent(lineId, () {
-      final String text = switch (line) {
-        EditorTextLine(:final String text) => text,
-        EditorCheckboxLine(:final String text) => text,
-      };
-      final TextEditingController controller = TextEditingController(text: text);
+      final TextEditingController controller =
+          TextEditingController(text: _lineText(line));
       if (line is EditorTextLine) {
         controller.addListener(() => _onLineControllerChanged(lineId));
       }
@@ -166,16 +236,13 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     try {
       for (final EditorBodyLine line in _lines) {
         final TextEditingController controller = _controllerForLine(line);
-        final String text = switch (line) {
-          EditorTextLine(:final String text) => text,
-          EditorCheckboxLine(:final String text) => text,
-        };
+        final String text = _lineText(line);
         if (controller.text != text) {
           controller.text = text;
         }
         _lineFocusNodes.putIfAbsent(
-        line.id,
-        () {
+          line.id,
+          () {
           final String lineId = line.id;
           if (line is EditorCheckboxLine) {
             return FocusNode(
@@ -197,8 +264,8 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
               );
             },
           )..addListener(() => _onLineFocusChanged(lineId));
-        },
-      );
+          },
+        );
       }
     } finally {
       _syncingControllers = false;
@@ -214,10 +281,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   void _refreshLinesFromControllers() {
     _lines = _lines.map((EditorBodyLine line) {
       final TextEditingController? controller = _lineControllers[line.id];
-      final String text = controller?.text ?? switch (line) {
-        EditorTextLine(:final String text) => text,
-        EditorCheckboxLine(:final String text) => text,
-      };
+      final String text = controller?.text ?? _lineText(line);
       return switch (line) {
         EditorTextLine() => line.copyWith(text: text),
         EditorCheckboxLine() => line.copyWith(text: text),
@@ -226,7 +290,6 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }
 
   void _commitLines({
-    bool notify = true,
     bool ensureTrailing = false,
     bool refreshControllers = true,
   }) {
@@ -236,18 +299,10 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     if (ensureTrailing) {
       _lines = ensureEditorBodyLinesForEditing(_lines);
     }
-    final String markdown = serializeEditorBodyLines(_lines);
-    final bool markdownChanged = widget.bodyController.text != markdown;
-    if (markdownChanged) {
-      _committingToBodyController = true;
-      _syncingFromController = markdown;
-      widget.bodyController.text = markdown;
-      _syncingFromController = null;
-      _committingToBodyController = false;
-    }
-    if (notify && markdownChanged) {
-      widget.onBodyChanged();
-    }
+    final String markdown = _hybridMode
+        ? serializeEditorBodyLines(_lines)
+        : collapseEditorBodyToPlainMarkdown(_lines);
+    _writeBodyControllerText(markdown);
   }
 
   void _requestFocusOnLine(String id) {
@@ -282,6 +337,12 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }
 
   int _resolveInsertLineIndex() {
+    for (int index = 0; index < _lines.length; index++) {
+      final FocusNode? node = _lineFocusNodes[_lines[index].id];
+      if (node != null && node.hasFocus) {
+        return index;
+      }
+    }
     final int? focusedIndex = _lineIndexById(_focusedLineId);
     if (focusedIndex != null) {
       return focusedIndex;
@@ -304,16 +365,65 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }
 
   void insertCheckboxAtCursor() {
-    _refreshLinesFromControllers();
-    if (!editorLinesHaveCheckbox(_lines)) {
-      _insertCheckboxFromPlainText();
+    final ({
+      List<EditorBodyLine> lines,
+      int lineIndex,
+      int textOffset,
+    }) context = _resolveCheckboxInsertContext();
+    if (context.lines.isEmpty) {
       return;
     }
+    _insertCheckboxAt(
+      lines: context.lines,
+      lineIndex: context.lineIndex,
+      textOffset: context.textOffset,
+    );
+  }
+
+  ({
+    List<EditorBodyLine> lines,
+    int lineIndex,
+    int textOffset,
+  }) _resolveCheckboxInsertContext() {
+    if (!editorLinesHaveCheckbox(_lines)) {
+      final String text = widget.bodyController.text;
+      final TextSelection selection = widget.bodyController.selection;
+      final int offset = selection.isValid
+          ? selection.baseOffset.clamp(0, text.length)
+          : text.length;
+      final List<EditorBodyLine> lines = reparseEditorBodyLinesPreservingIds(
+        text,
+        previousLines: _lines,
+      );
+      if (lines.isEmpty) {
+        return (lines: <EditorBodyLine>[], lineIndex: 0, textOffset: 0);
+      }
+      final ({int lineIndex, int textOffset}) position =
+          offsetToLinePosition(text, offset);
+      return (
+        lines: lines,
+        lineIndex: position.lineIndex.clamp(0, lines.length - 1),
+        textOffset: position.textOffset,
+      );
+    }
+
+    _refreshLinesFromControllers();
     final int lineIndex = _resolveInsertLineIndex();
-    final int textOffset = _resolveInsertTextOffset(lineIndex);
+    return (
+      lines: _lines,
+      lineIndex: lineIndex,
+      textOffset: _resolveInsertTextOffset(lineIndex),
+    );
+  }
+
+  void _insertCheckboxAt({
+    required List<EditorBodyLine> lines,
+    required int lineIndex,
+    required int textOffset,
+  }) {
     final ({List<EditorBodyLine> lines, String checkboxId}) result =
         insertCheckboxAtLineIndex(
-      lines: _lines,
+      lines: lines,
       lineIndex: lineIndex,
       textOffset: textOffset,
     );
@@ -323,57 +433,19 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     _applyLines(result.lines, focusLineId: result.checkboxId);
   }
 
-  void _insertCheckboxFromPlainText() {
-    final String text = widget.bodyController.text;
-    final TextSelection selection = widget.bodyController.selection;
-    final int offset = selection.isValid
-        ? selection.baseOffset.clamp(0, text.length)
-        : text.length;
-    final List<EditorBodyLine> lines = parseEditorBodyLines(text);
-    final ({int lineIndex, int textOffset}) position = offsetToLinePosition(
-      text,
-      offset,
-    );
-    final int lineIndex = position.lineIndex.clamp(0, lines.length - 1);
-    final ({List<EditorBodyLine> lines, String checkboxId}) result =
-        insertCheckboxAtLineIndex(
-      lines: lines,
-      lineIndex: lineIndex,
-      textOffset: position.textOffset,
-    );
-    if (result.checkboxId.isEmpty) {
-      return;
-    }
-    widget.bodyController.text = serializeEditorBodyLines(result.lines);
-    widget.onBodyChanged();
-    _reloadFromController();
-    _requestFocusOnLine(result.checkboxId);
-  }
-
   void _applyLines(List<EditorBodyLine> lines, {String? focusLineId}) {
     _lines = ensureEditorBodyLinesForEditing(lines);
-    _hybridMode = editorLinesHaveCheckbox(_lines);
-    _pruneControllers();
-    _syncControllersWithLines();
     _commitLines(ensureTrailing: false, refreshControllers: false);
-    setState(() {});
-    if (focusLineId != null) {
-      _requestFocusOnLine(focusLineId);
-    }
+    _syncEditingSurfaceMode(focusLineId: focusLineId);
   }
 
   void _insertCheckboxAfter(int lineIndex) {
     _refreshLinesFromControllers();
-    final ({List<EditorBodyLine> lines, String checkboxId}) result =
-        insertCheckboxAtLineIndex(
+    _insertCheckboxAt(
       lines: _lines,
       lineIndex: lineIndex,
       textOffset: 0,
     );
-    if (result.checkboxId.isEmpty) {
-      return;
-    }
-    _applyLines(result.lines, focusLineId: result.checkboxId);
   }
 
   void _toggleCheckbox(String lineId, bool checked) {
@@ -385,7 +457,9 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       return line;
     }).toList();
     _commitLines();
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _updateLineText(String lineId, String text) {
@@ -398,11 +472,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       return;
     }
     final EditorBodyLine line = _lines[lineIndex];
-    final String currentText = switch (line) {
-      EditorTextLine(:final String text) => text,
-      EditorCheckboxLine(:final String text) => text,
-    };
-    if (currentText == text) {
+    if (_lineText(line) == text) {
       return;
     }
     _lines = _lines.map((EditorBodyLine entry) {
@@ -521,6 +591,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     if (lineIndex < 0 || lineIndex >= _lines.length) {
       return;
     }
+    final bool wasHybrid = _hybridMode;
     _lines = <EditorBodyLine>[
       ..._lines.sublist(0, lineIndex),
       ..._lines.sublist(lineIndex + 1),
@@ -531,12 +602,15 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       ];
     }
     _lines = ensureEditorBodyLinesForEditing(_lines);
-    _pruneControllers();
-    _syncControllersWithLines();
-    _commitLines();
-    setState(() {});
-    final int focusIndex = (lineIndex - 1).clamp(0, _lines.length - 1);
-    _requestFocusOnLine(_lines[focusIndex].id);
+    _commitLines(refreshControllers: false);
+    if (editorLinesHaveCheckbox(_lines)) {
+      final int focusIndex = (lineIndex - 1).clamp(0, _lines.length - 1);
+      _syncEditingSurfaceMode(focusLineId: _lines[focusIndex].id);
+      return;
+    }
+    _syncEditingSurfaceMode(
+      plainTextOffset: wasHybrid ? 0 : null,
+    );
   }
 
   KeyEventResult _handleCheckboxKeyEvent({
@@ -572,7 +646,9 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     _pruneControllers();
     _syncControllersWithLines();
     _commitLines();
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   TextStyle _bodyStyle(BuildContext context) {

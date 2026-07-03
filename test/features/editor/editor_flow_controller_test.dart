@@ -10,7 +10,7 @@ import 'package:quill_diary/features/editor/application/editor_flow_controller.d
 import '../../helpers/features/editor/fake_editor_actions.dart';
 
 void main() {
-  test('saveEntry normalizes checkbox markdown before persisting', () async {
+  test('儲存日記前會正規化 checkbox markdown', () async {
     final FakeEditorActions actions = FakeEditorActions();
     final ProviderContainer container = ProviderContainer(
       overrides: [

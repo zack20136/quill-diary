@@ -219,23 +219,25 @@ class _EditorBodySectionState extends State<EditorBodySection> {
     final String previewMarkdown =
         _previewMarkdown ?? widget.bodyController.text;
     final Widget body = widget.previewMode
-        ? SingleChildScrollView(
-            child: previewMarkdown.isEmpty
-                ? SelectableText(
-                    context.l10n.editorBodyEmptyPreview,
-                    style: bodyStyle.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: context.appColors.mutedForeground,
+        ? SelectionArea(
+            child: SingleChildScrollView(
+              child: previewMarkdown.isEmpty
+                  ? Text(
+                      context.l10n.editorBodyEmptyPreview,
+                      style: bodyStyle.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: context.appColors.mutedForeground,
+                      ),
+                    )
+                  : EditorMarkdownPreview(
+                      markdown: previewMarkdown,
+                      typography: widget.typography,
+                      interactiveCheckboxes: editorBodyHasCheckboxBlocks(
+                        previewMarkdown,
+                      ),
+                      onMarkdownChanged: _handlePreviewCheckboxChanged,
                     ),
-                  )
-                : EditorMarkdownPreview(
-                    markdown: previewMarkdown,
-                    typography: widget.typography,
-                    interactiveCheckboxes: editorBodyHasCheckboxBlocks(
-                      previewMarkdown,
-                    ),
-                    onMarkdownChanged: _handlePreviewCheckboxChanged,
-                  ),
+            ),
           )
         : EditorHybridBody(
             key: widget.hybridBodyKey,
