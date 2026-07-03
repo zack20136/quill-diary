@@ -371,7 +371,7 @@ class PortableExportIo {
       background: var(--bg);
       color: var(--ink);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.72;
+      line-height: 1.55;
     }
     main {
       width: min(920px, calc(100% - 32px));
@@ -410,8 +410,23 @@ class PortableExportIo {
       font-size: 0.88rem;
       font-weight: 650;
     }
-    .entry-body { margin-top: 22px; }
-    .entry-body p { margin: 0 0 1em; }
+    .entry-body { margin-top: 16px; }
+    .entry-body p { margin: 0 0 0.65em; }
+    .entry-body p:last-child { margin-bottom: 0; }
+    .entry-body ul:not(.task-list) {
+      margin: 0 0 0.65em;
+      padding-left: 1.35em;
+    }
+    .entry-body ul:last-child { margin-bottom: 0; }
+    .entry-body h1,
+    .entry-body h2,
+    .entry-body h3,
+    .entry-body h4,
+    .entry-body h5,
+    .entry-body h6 {
+      margin: 0.85em 0 0.4em;
+    }
+    .entry-body > :first-child { margin-top: 0; }
     .entry-body pre {
       overflow-x: auto;
       border-radius: 10px;
@@ -425,6 +440,25 @@ class PortableExportIo {
       padding: 1px 5px;
     }
     .entry-body pre code { background: transparent; padding: 0; }
+    .entry-body ul.task-list {
+      list-style: none;
+      margin: 0 0 0.65em;
+      padding-left: 0;
+    }
+    .task-list-item {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .task-list-item label {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .task-list-item input {
+      flex: 0 0 auto;
+      margin-top: 0.2em;
+    }
     .entry-body blockquote {
       margin: 1em 0;
       padding-left: 14px;
@@ -698,16 +732,6 @@ String exportMarkdownBodyToHtml(String markdown) {
   var inCodeBlock = false;
   final StringBuffer codeBlock = StringBuffer();
 
-  void flushParagraph() {
-    if (paragraph.isEmpty) {
-      return;
-    }
-    html.writeln(
-      '<p>${paragraph.map(_exportInlineMarkdownToHtml).join('<br>')}</p>',
-    );
-    paragraph.clear();
-  }
-
   void closeList() {
     if (inTaskList) {
       html.writeln('</ul>');
@@ -717,6 +741,17 @@ String exportMarkdownBodyToHtml(String markdown) {
       html.writeln('</ul>');
       inList = false;
     }
+  }
+
+  void flushParagraph() {
+    if (paragraph.isEmpty) {
+      return;
+    }
+    closeList();
+    html.writeln(
+      '<p>${paragraph.map(_exportInlineMarkdownToHtml).join('<br>')}</p>',
+    );
+    paragraph.clear();
   }
 
   for (final String line in lines) {
@@ -792,6 +827,7 @@ String exportMarkdownBodyToHtml(String markdown) {
       continue;
     }
 
+    closeList();
     paragraph.add(line);
   }
 

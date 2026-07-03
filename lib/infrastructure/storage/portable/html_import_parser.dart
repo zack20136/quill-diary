@@ -89,21 +89,13 @@ String exportHtmlBodyToMarkdown(String html) {
     (Match match) {
       final String items = (match.group(1) ?? '').replaceAllMapped(
         RegExp(r'<li\b[^>]*>([\s\S]*?)</li>', caseSensitive: false),
-        (Match itemMatch) {
-          final String inner = itemMatch.group(1) ?? '';
-          final bool checked = RegExp(
-            '<input\\b[^>]*\\btype\\s*=\\s*["\']checkbox["\'][^>]*\\bchecked\\b',
-            caseSensitive: false,
-          ).hasMatch(inner);
-          final String text = inner.replaceAll(
-            RegExp(r'<input\b[^>]*>', caseSensitive: false),
-            '',
-          );
-          final String marker = checked ? 'x' : ' ';
-          return '- [$marker] ${inlineExportHtmlToMarkdown(text)}\n';
-        },
+        (Match itemMatch) => _htmlListItemToMarkdown(itemMatch.group(1) ?? ''),
       );
-      return '$items\n';
+      final String trimmedItems = items.trim();
+      if (trimmedItems.isEmpty) {
+        return '\n';
+      }
+      return '$trimmedItems\n';
     },
   );
   output = output.replaceAllMapped(
@@ -111,10 +103,13 @@ String exportHtmlBodyToMarkdown(String html) {
     (Match match) {
       final String items = (match.group(1) ?? '').replaceAllMapped(
         RegExp(r'<li\b[^>]*>([\s\S]*?)</li>', caseSensitive: false),
-        (Match itemMatch) =>
-            '- ${inlineExportHtmlToMarkdown(itemMatch.group(1) ?? '')}\n',
+        (Match itemMatch) => _htmlListItemToMarkdown(itemMatch.group(1) ?? ''),
       );
-      return '$items\n';
+      final String trimmedItems = items.trim();
+      if (trimmedItems.isEmpty) {
+        return '\n';
+      }
+      return '$trimmedItems\n';
     },
   );
   output = output.replaceAllMapped(
@@ -124,15 +119,53 @@ String exportHtmlBodyToMarkdown(String html) {
         RegExp(r'<br\s*/?>', caseSensitive: false),
         (_) => '\n',
       );
-      return '${inlineExportHtmlToMarkdown(content)}\n\n';
+      return '${inlineExportHtmlToMarkdown(content)}\n';
     },
   );
 
   output = decodeHtmlEntities(stripHtmlTags(output));
+  return _normalizeImportedMarkdownWhitespace(output);
+}
+
+String _normalizeImportedMarkdownWhitespace(String output) {
   output = output.replaceAll(RegExp(r'\r\n?'), '\n');
-  output = output.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-  output = output.replaceAll(RegExp(r'[ \t]+\n'), '\n');
-  return output.trimRight();
+  final List<String> lines = output.split('\n');
+  final List<String> normalized = <String>[];
+  for (final String raw in lines) {
+    final String line = raw.trim();
+    if (line.isEmpty) {
+      if (normalized.isNotEmpty && normalized.last.isEmpty) {
+        continue;
+      }
+      normalized.add('');
+      continue;
+    }
+    normalized.add(line);
+  }
+
+  final List<String> withoutListGaps = <String>[];
+  for (int index = 0; index < normalized.length; index++) {
+    final String line = normalized[index];
+    if (line.isEmpty &&
+        withoutListGaps.isNotEmpty &&
+        index + 1 < normalized.length) {
+      final String previous = withoutListGaps.last;
+      final String next = normalized[index + 1];
+      if (_isMarkdownListLine(previous) || _isMarkdownListLine(next)) {
+        continue;
+      }
+    }
+    withoutListGaps.add(line);
+  }
+
+  return withoutListGaps.join('\n').trimRight();
+}
+
+bool _isMarkdownListLine(String line) {
+  final String trimmed = line.trim();
+  return RegExp(r'^-\s*\[([ xX])\]\s').hasMatch(trimmed) ||
+      RegExp(r'^[-*]\s+').hasMatch(trimmed) ||
+      RegExp(r'^\d+\.\s+').hasMatch(trimmed);
 }
 
 String inlineExportHtmlToMarkdown(String html) {
@@ -289,6 +322,26 @@ int? _indexOfHtmlTagEnd(String html, int openBracketIndex) {
 
 String stripHtmlTags(String input) {
   return input.replaceAll(RegExp(r'<[^>]+>'), ' ');
+}
+
+String _htmlListItemToMarkdown(String innerHtml) {
+  final bool checked = RegExp(
+    '<input\\b[^>]*\\btype\\s*=\\s*["\']checkbox["\'][^>]*\\bchecked\\b',
+    caseSensitive: false,
+  ).hasMatch(innerHtml);
+  final bool checkboxLike = RegExp(
+    '<input\\b[^>]*\\btype\\s*=\\s*["\']checkbox["\']',
+    caseSensitive: false,
+  ).hasMatch(innerHtml);
+  if (checkboxLike) {
+    final String text = innerHtml.replaceAll(
+      RegExp(r'<input\b[^>]*>', caseSensitive: false),
+      '',
+    );
+    final String marker = checked ? 'x' : ' ';
+    return '- [$marker] ${inlineExportHtmlToMarkdown(text)}\n';
+  }
+  return '- ${inlineExportHtmlToMarkdown(innerHtml)}\n';
 }
 
 String decodeHtmlEntities(String input) {
