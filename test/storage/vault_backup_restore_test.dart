@@ -45,8 +45,8 @@ void main() {
     final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(
       backupFile,
     );
-    expect(preview.metadata?.vaultId, setup.session.vaultId);
-    expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
+    expect(preview.metadata.vaultId, setup.session.vaultId);
+    expect(preview.metadata.recoveryKeyHint, isNotEmpty);
   });
 
   test('inspectBackup 可接受可讀取的 vault 備份', () async {

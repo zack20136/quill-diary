@@ -18,15 +18,12 @@ void main() {
 
   RestorePrecheck buildPrecheck({
     RecoveryMetadata? metadata,
-    bool includeMetadata = true,
     String? localVaultId = 'vlt_backup',
     String? localRecoverySaltBase64,
     bool localHasTrustedDevice = true,
   }) {
     return RestorePrecheck(
-      preview: BackupRecoveryPreview(
-        metadata: includeMetadata ? (metadata ?? backupMetadata) : null,
-      ),
+      preview: BackupRecoveryPreview(metadata: metadata ?? backupMetadata),
       localVaultId: localVaultId,
       localRecoverySaltBase64:
           localRecoverySaltBase64 ?? backupMetadata.kdf.saltBase64,
@@ -35,22 +32,11 @@ void main() {
     );
   }
 
-  test('metadata 為 null 時 backupHasRecovery 為 false 且 vault 欄位為空', () {
-    const RestorePrecheck withoutMetadata = RestorePrecheck(
-      preview: BackupRecoveryPreview(),
-      localVaultId: 'vlt_local',
-      localHasTrustedDevice: false,
-      willOverwriteLocalVault: true,
-    );
-    expect(withoutMetadata.backupHasRecovery, isFalse);
-    expect(withoutMetadata.backupVaultId, isNull);
-    expect(withoutMetadata.backupRecoveryHint, isNull);
-    expect(withoutMetadata.backupRecoverySaltBase64, isNull);
-
-    final RestorePrecheck withMetadata = buildPrecheck();
-    expect(withMetadata.backupHasRecovery, isTrue);
-    expect(withMetadata.backupVaultId, 'vlt_backup');
-    expect(withMetadata.backupRecoveryHint, 'WXYZ');
+  test('備份 vault 欄位取自 metadata', () {
+    final RestorePrecheck precheck = buildPrecheck();
+    expect(precheck.backupVaultId, 'vlt_backup');
+    expect(precheck.backupRecoveryHint, 'WXYZ');
+    expect(precheck.backupRecoverySaltBase64, backupMetadata.kdf.saltBase64);
   });
 
   test('sameVaultId 需兩側 vaultId 皆存在且相等', () {
@@ -92,10 +78,6 @@ void main() {
       ).recoveryKeyRotatedSinceBackup,
       isFalse,
     );
-    expect(
-      buildPrecheck(includeMetadata: false).recoveryKeyRotatedSinceBackup,
-      isFalse,
-    );
   });
 
   test('expectsTrustedUnlockAfterRestore 需同 vault、trusted 且同代金鑰', () {
@@ -114,10 +96,6 @@ void main() {
     );
     expect(
       buildPrecheck(localVaultId: 'vlt_other').expectsTrustedUnlockAfterRestore,
-      isFalse,
-    );
-    expect(
-      buildPrecheck(includeMetadata: false).expectsTrustedUnlockAfterRestore,
       isFalse,
     );
   });
@@ -165,10 +143,6 @@ void main() {
       isTrue,
     );
     expect(buildPrecheck().expectsRecoveryKeyAfterRestore, isFalse);
-    expect(
-      buildPrecheck(includeMetadata: false).expectsRecoveryKeyAfterRestore,
-      isFalse,
-    );
   });
 
   test('trusted 遺失且金鑰已輪替時仍需輸入舊金鑰', () {
@@ -180,16 +154,5 @@ void main() {
     expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
     expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
     expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
-  });
-
-  test('backupRecoverySaltBase64 會取自 metadata kdf', () {
-    expect(
-      buildPrecheck().backupRecoverySaltBase64,
-      backupMetadata.kdf.saltBase64,
-    );
-    expect(
-      buildPrecheck(includeMetadata: false).backupRecoverySaltBase64,
-      isNull,
-    );
   });
 }

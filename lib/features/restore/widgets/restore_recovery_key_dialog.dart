@@ -67,7 +67,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
-    final String? hint = widget.precheck.backupRecoveryHint;
+    final String hint = widget.precheck.backupRecoveryHint;
 
     return AlertDialog(
       title: Text(l10n.settingsRestoreDialogRecoveryKeyTitle),
@@ -91,7 +91,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (hint != null && hint.isNotEmpty) ...<Widget>[
+            if (hint.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               Text(
                 settingsRecoveryKeyHintLine(l10n, hint),

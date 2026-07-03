@@ -92,6 +92,14 @@ String sessionTrustedUnlockFailedAfterRestoreMessage(AppLocalizations l10n) =>
 String sessionIndexDatabaseUnreadableMessage(AppLocalizations l10n) =>
     l10n.sessionIndexDatabaseUnreadableMessage;
 
+bool isIndexRelatedSessionMessage(AppLocalizations l10n, String? message) {
+  final String trimmed = message?.trim() ?? '';
+  if (trimmed.isEmpty) {
+    return false;
+  }
+  return trimmed == sessionIndexDatabaseUnreadableMessage(l10n);
+}
+
 final RegExp _userFacingTextPattern = RegExp(r'[\u4e00-\u9fff，。；：！？、]');
 
 bool _looksLikeUserFacingText(String message) {
@@ -136,27 +144,14 @@ String friendlySessionErrorMessage(
 
 String snackbarMessageForPostRestore(
   AppLocalizations l10n,
-  AppLockStatus status, {
-  String? sessionMessage,
-}) {
-  if (status == AppLockStatus.fatalError) {
-    final String? message = sessionMessage?.trim();
-    if (message == sessionIndexDatabaseUnreadableMessage(l10n) ||
-        message == sessionTrustedUnlockFailedAfterRestoreMessage(l10n) ||
-        message == sessionRecoveryRequiredAfterRestoreMessage(l10n)) {
-      return sessionRestoreSuccessRecoveryRequiredMessage(l10n);
-    }
-    if (message != null && _looksLikeUserFacingText(message)) {
-      return message;
-    }
-    return sessionRestoreStartupFailedMessage(l10n);
-  }
-
+  AppLockStatus status,
+) {
   return switch (status) {
     AppLockStatus.unlocked => sessionRestoreSuccessUnlockedMessage(l10n),
     AppLockStatus.locked => sessionRestoreSuccessLockedMessage(l10n),
     AppLockStatus.recoveryRequired =>
       sessionRestoreSuccessRecoveryRequiredMessage(l10n),
-    _ => sessionRestoreSuccessUnlockedMessage(l10n),
+    AppLockStatus.fatalError => sessionRestoreStartupFailedMessage(l10n),
+    _ => sessionRestoreStartupFailedMessage(l10n),
   };
 }

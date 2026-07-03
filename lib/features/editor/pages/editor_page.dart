@@ -191,17 +191,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   void _onBodyChangedFromSection() {
-    _scheduleDraftPersist();
+    _onDraftChanged();
   }
 
   void _onBodyControllerChanged() {
-    if (_suppressTagDraftListener || _previewMode || !mounted) {
-      return;
-    }
-    if (_suppressDraftListener) {
-      return;
-    }
-    _scheduleDraftPersist();
+    _onDraftChanged();
   }
 
   void _onDraftChanged() {

@@ -11,6 +11,7 @@ void main() {
     WidgetTester tester, {
     required SettingsHealthLevel indexHealthLevel,
     required String indexMessage,
+    bool hasUnlockedSession = true,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -23,7 +24,7 @@ void main() {
           body: SettingsSecurityOverview(
             hasRecoveryKey: true,
             recoveryKeyHint: 'ABCD',
-            hasUnlockedSession: indexHealthLevel != SettingsHealthLevel.warning,
+            hasUnlockedSession: hasUnlockedSession,
             hasTrustedDevice: true,
             unlockModeLabel: testL10n.settingsUnlockModeFullNone,
             indexMessage: indexMessage,
@@ -40,11 +41,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('索引卡片依傳入的 health level 顯示正常', (WidgetTester tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+    );
+
+    expect(find.text(testL10n.settingsRepairVaultReadyMessage), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsSecurityOverviewIndexTitle),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('索引卡片依傳入的 health level 顯示需注意', (WidgetTester tester) async {
     await pumpOverview(
       tester,
       indexHealthLevel: SettingsHealthLevel.warning,
       indexMessage: testL10n.settingsRepairVaultLockedMessage,
+      hasUnlockedSession: false,
     );
 
     expect(

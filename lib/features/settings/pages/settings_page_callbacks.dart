@@ -79,14 +79,17 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           hasUnlockedSession: hasUnlockedSession,
           hasTrustedDevice: hasTrustedDevice,
           unlockModeLabel: mode.fullLabel(l10n),
-          indexMessage: _indexStatusMessage(
+          indexMessage: settingsIndexStatusMessage(
             l10n,
             sessionState: sessionState,
             hasUnlockedSession: hasUnlockedSession,
+            repairReport: _lastVaultRepairReport,
           ),
-          indexHealthLevel: _indexHealthLevel(
+          indexHealthLevel: settingsIndexHealthLevel(
+            l10n: l10n,
             sessionState: sessionState,
             hasUnlockedSession: hasUnlockedSession,
+            repairReport: _lastVaultRepairReport,
           ),
           busy: _busy,
           onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
@@ -261,55 +264,6 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           .toList(),
     );
     return picked == null ? null : backupsById[picked.id];
-  }
-
-  SettingsHealthLevel _indexHealthLevel({
-    required AppSessionState? sessionState,
-    required bool hasUnlockedSession,
-  }) {
-    if (sessionState?.status == AppLockStatus.fatalError) {
-      return SettingsHealthLevel.error;
-    }
-    if (!hasUnlockedSession) {
-      return SettingsHealthLevel.warning;
-    }
-    final VaultRepairReport? report = _lastVaultRepairReport;
-    if (report != null && _repairReportNeedsAttention(report)) {
-      return SettingsHealthLevel.warning;
-    }
-    return SettingsHealthLevel.ok;
-  }
-
-  bool _repairReportNeedsAttention(VaultRepairReport report) {
-    return report.skippedCorruptEntries > 0 ||
-        report.removedDuplicateEntries > 0 ||
-        report.removedOrphanAssets > 0 ||
-        report.relocatedEntries > 0 ||
-        report.warnings.isNotEmpty;
-  }
-
-  String _indexStatusMessage(
-    AppLocalizations l10n, {
-    required AppSessionState? sessionState,
-    required bool hasUnlockedSession,
-  }) {
-    if (sessionState?.status == AppLockStatus.fatalError) {
-      final String? message = sessionState?.message?.trim();
-      if (message != null && message.isNotEmpty) {
-        return message;
-      }
-      return l10n.sessionIndexDatabaseUnreadableMessage;
-    }
-    final VaultRepairReport? report = _lastVaultRepairReport;
-    if (report != null) {
-      return l10n.settingsRepairVaultCompleted(
-        report.entryCount,
-        DisplayFormat.formatDateTime(l10n, report.finishedAt),
-      );
-    }
-    return hasUnlockedSession
-        ? l10n.settingsRepairVaultReadyMessage
-        : l10n.settingsRepairVaultLockedMessage;
   }
 
   Future<void> _importDocuments() async {
@@ -566,7 +520,6 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         driveAwarePostRestoreSnackBarMessage(
           l10n: l10n,
           status: sessionState.status,
-          sessionMessage: sessionState.message,
           driveBackupName: driveBackupName,
         ),
         tone: SettingsFlowFeedbackTone.success,
