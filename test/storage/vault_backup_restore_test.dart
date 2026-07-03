@@ -45,7 +45,6 @@ void main() {
     final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(
       backupFile,
     );
-    expect(preview.hasRecovery, isTrue);
     expect(preview.metadata?.vaultId, setup.session.vaultId);
     expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
   });
@@ -118,6 +117,24 @@ void main() {
 
     expect(report.ok, isFalse);
     expect(report.message, contains('recovery.json'));
+  });
+
+  test('inspectBackup 會拒絕缺少 recovery.json 的 zip', () async {
+    final File backupFile = File(
+      p.join(harness.tempDir.path, 'no_recovery.zip'),
+    );
+    final Archive archive = Archive()
+      ..addFile(ArchiveFile.string('manifest.json.enc', 'enc'))
+      ..addFile(ArchiveFile.string('entries/a.md.enc', 'body'));
+    await backupFile.writeAsBytes(ZipEncoder().encode(archive));
+
+    final BackupInspectResult report = await archiveIo.inspectBackup(
+      backupFile,
+    );
+
+    expect(report.ok, isFalse);
+    expect(report.layout.hasRecovery, isFalse);
+    expect(report.message, contains('缺少復原金鑰資訊'));
   });
 
   test('restoreBackupZip 會在覆寫前拒絕缺少加密資料的備份', () async {

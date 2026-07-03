@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../infrastructure/security/app_unlock_mode.dart';
 import '../../infrastructure/security/unlock_mode_change_service.dart';
 import '../../infrastructure/storage/backup_task_progress.dart';
@@ -7,6 +9,7 @@ import '../../l10n/l10n.dart';
 import '../session/session_messages.dart';
 import '../session/session_timeout_policy.dart';
 import '../session/state/app_session_state.dart';
+import 'vault_transfer_access.dart';
 
 String settingsRecoveryKeyHintLine(AppLocalizations l10n, String hint) =>
     l10n.settingsRecoveryKeyHintLine(hint);
@@ -92,8 +95,56 @@ String settingsSecurityOverviewUnlockModeProtectedMessage(
 String settingsLocalBackupSectionDescriptionEnabled(AppLocalizations l10n) =>
     l10n.settingsLocalBackupSectionDescriptionEnabled;
 
+String localBackupSectionDescription(
+  AppLocalizations l10n,
+  VaultTransferAccess access,
+) {
+  if (access.canBackup) {
+    return settingsLocalBackupSectionDescriptionEnabled(l10n);
+  }
+  return l10n.vaultTransferLocalSectionDescriptionBackupLocked;
+}
+
+String? localBackupLockedBannerMessage(
+  AppLocalizations l10n,
+  VaultTransferAccess access,
+) {
+  if (!access.canBackup && !access.canRestore) {
+    return access.restoreDisabledReason ?? access.backupDisabledReason;
+  }
+  if (!access.canBackup) {
+    return access.backupDisabledReason ??
+        l10n.vaultTransferLocalBackupActionsLockedHint;
+  }
+  if (!access.canRestore) {
+    return access.restoreDisabledReason;
+  }
+  return null;
+}
+
 String settingsDriveBackupSectionDescriptionEnabled(AppLocalizations l10n) =>
     l10n.settingsDriveBackupSectionDescriptionEnabled;
+
+class RestorePrecheckSummaryItem {
+  const RestorePrecheckSummaryItem({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.isWarning = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool isWarning;
+}
+
+String restoreConfirmHeadline(AppLocalizations l10n, RestorePrecheck precheck) {
+  if (precheck.willOverwriteLocalVault) {
+    return l10n.settingsRestoreConfirmOverwriteHeadline;
+  }
+  return l10n.settingsRestoreConfirmFreshVaultHeadline;
+}
 
 String settingsImportExportMessageForFailureCode(
   AppLocalizations l10n,
@@ -155,19 +206,106 @@ String driveAwarePostRestoreSnackBarMessage({
   return '$driveMessage\n$statusMessage';
 }
 
+List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
+  AppLocalizations l10n,
+  RestorePrecheck precheck,
+) {
+  final List<RestorePrecheckSummaryItem> items = <RestorePrecheckSummaryItem>[];
+
+  if (precheck.backupVaultId != null) {
+    items.add(
+      RestorePrecheckSummaryItem(
+        icon: precheck.sameVaultId
+            ? Icons.home_work_outlined
+            : Icons.devices_other_outlined,
+        title: precheck.sameVaultId
+            ? l10n.settingsRestorePrecheckSameVaultTitle
+            : l10n.settingsRestorePrecheckOtherVaultTitle,
+        body: precheck.sameVaultId
+            ? l10n.settingsRestorePrecheckSameVaultBody
+            : l10n.settingsRestorePrecheckOtherVaultBody,
+      ),
+    );
+  }
+
+  if (precheck.recoveryKeyRotatedSinceBackup) {
+    items.add(
+      RestorePrecheckSummaryItem(
+        icon: Icons.autorenew_rounded,
+        title: l10n.settingsRestorePrecheckRotatedTitle,
+        body: l10n.settingsRestorePrecheckRotatedBody,
+        isWarning: true,
+      ),
+    );
+    final String? hint = precheck.backupRecoveryHint;
+    if (hint != null && hint.isNotEmpty) {
+      items.add(
+        RestorePrecheckSummaryItem(
+          icon: Icons.tips_and_updates_outlined,
+          title: l10n.settingsRestorePrecheckHintTitle,
+          body: settingsRecoveryKeyHintLine(l10n, hint),
+        ),
+      );
+    }
+  } else if (precheck.expectsTrustedUnlockAfterRestore) {
+    items.add(
+      RestorePrecheckSummaryItem(
+        icon: Icons.verified_user_outlined,
+        title: l10n.settingsRestorePrecheckTrustedUnlockTitle,
+        body: l10n.settingsRestorePrecheckTrustedUnlockBody,
+      ),
+    );
+  } else if (precheck.expectsRecoveryKeyAfterRestore) {
+    items.add(
+      RestorePrecheckSummaryItem(
+        icon: Icons.vpn_key_outlined,
+        title: l10n.settingsRestorePrecheckRecoveryKeyTitle,
+        body: l10n.settingsRestorePrecheckRecoveryKeyBody,
+        isWarning: true,
+      ),
+    );
+    final String? hint = precheck.backupRecoveryHint;
+    if (hint != null && hint.isNotEmpty) {
+      items.add(
+        RestorePrecheckSummaryItem(
+          icon: Icons.tips_and_updates_outlined,
+          title: l10n.settingsRestorePrecheckHintTitle,
+          body: settingsRecoveryKeyHintLine(l10n, hint),
+        ),
+      );
+    }
+  }
+
+  items.add(
+    RestorePrecheckSummaryItem(
+      icon: Icons.search_outlined,
+      title: l10n.settingsRestorePrecheckRebuildIndexTitle,
+      body: l10n.settingsRestorePrecheckRebuildIndexBody,
+    ),
+  );
+
+  items.add(
+    RestorePrecheckSummaryItem(
+      icon: Icons.hourglass_top_outlined,
+      title: l10n.settingsRestorePrecheckRewrapTitle,
+      body: l10n.settingsRestorePrecheckRewrapBody,
+    ),
+  );
+
+  return items;
+}
+
 List<String> buildRestoreConfirmBulletPoints(
   AppLocalizations l10n,
   RestorePrecheck precheck,
 ) {
-  final List<String> bullets = <String>[
-    l10n.settingsRestoreBulletOverwriteWarning,
-    l10n.settingsRestoreBulletRebuildIndex,
-  ];
-
-  if (!precheck.backupHasRecovery) {
-    bullets.add(l10n.settingsRestoreBulletBackupWithoutRecovery);
-    return bullets;
+  final List<String> bullets = <String>[];
+  if (precheck.willOverwriteLocalVault) {
+    bullets.add(l10n.settingsRestoreBulletOverwriteWarning);
+  } else {
+    bullets.add(l10n.settingsRestoreBulletFreshVaultNote);
   }
+  bullets.add(l10n.settingsRestoreBulletRebuildIndex);
 
   if (precheck.recoveryKeyRotatedSinceBackup) {
     bullets.add(l10n.settingsRestoreBulletRotatedBackup);

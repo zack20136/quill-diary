@@ -80,10 +80,6 @@ String sessionRestoreSuccessLockedMessage(AppLocalizations l10n) =>
 String sessionRestoreSuccessRecoveryRequiredMessage(AppLocalizations l10n) =>
     l10n.sessionRestoreSuccessRecoveryRequiredMessage;
 
-String sessionRestoreSuccessNeedsRecoveryKeySetupMessage(
-  AppLocalizations l10n,
-) => l10n.sessionRestoreSuccessNeedsRecoveryKeySetupMessage;
-
 String sessionRestoreStartupFailedMessage(AppLocalizations l10n) =>
     l10n.sessionRestoreStartupFailedMessage;
 
@@ -157,10 +153,7 @@ String snackbarMessageForPostRestore(
   }
 
   return switch (status) {
-    AppLockStatus.unlocked =>
-      sessionMessage == sessionStartupNeedsRecoveryKeyMessage(l10n)
-          ? sessionRestoreSuccessNeedsRecoveryKeySetupMessage(l10n)
-          : sessionRestoreSuccessUnlockedMessage(l10n),
+    AppLockStatus.unlocked => sessionRestoreSuccessUnlockedMessage(l10n),
     AppLockStatus.locked => sessionRestoreSuccessLockedMessage(l10n),
     AppLockStatus.recoveryRequired =>
       sessionRestoreSuccessRecoveryRequiredMessage(l10n),

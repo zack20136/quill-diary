@@ -173,7 +173,7 @@ void main() {
     );
   });
 
-  testWidgets('本機備份區塊在沒有復原金鑰時仍可匯入外部備份', (WidgetTester tester) async {
+  testWidgets('本機備份區塊在沒有復原金鑰時仍可還原與匯入外部備份', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: appTestTheme(),
@@ -207,7 +207,7 @@ void main() {
         tester,
         testL10n.settingsLocalBackupRestoreButton,
       ).onPressed,
-      isNull,
+      isNotNull,
     );
     expect(
       readSettingsActionButton(
@@ -223,6 +223,56 @@ void main() {
       ).onPressed,
       isNotNull,
     );
+  });
+
+  testWidgets('Drive 連線讀取失敗時顯示錯誤狀態與重新載入按鈕', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsDriveConnectionProvider.overrideWith(
+            (Ref ref) async => throw StateError('drive connection failed'),
+          ),
+        ],
+        child: MaterialApp(
+          theme: appTestTheme(),
+          darkTheme: appTestTheme(brightness: Brightness.dark),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: DriveBackupSection(
+              access: lockedAccess(hasRecoveryKey: false),
+              canManageDriveAccount: true,
+              isGoogleDriveConfigured: true,
+              busy: false,
+              onLink: () {},
+              onSwitchAccount: () {},
+              onDisconnect: () {},
+              onUpload: () {},
+              onRestore: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(testL10n.settingsDriveBackupConnectionErrorLabel),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.settingsDriveBackupDisconnectedLabel),
+      findsNothing,
+    );
+    expect(
+      readSettingsActionButton(
+        tester,
+        testL10n.settingsDriveBackupConnectionRetryButton,
+      ).onPressed,
+      isNotNull,
+    );
+    expect(find.text('drive connection failed'), findsOneWidget);
   });
 
   testWidgets('安全性總覽不會重複顯示解鎖狀態卡片', (WidgetTester tester) async {

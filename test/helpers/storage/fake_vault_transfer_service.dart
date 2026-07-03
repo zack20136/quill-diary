@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
@@ -14,6 +16,15 @@ import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 
 import '../session/fake_session_vault_repository.dart';
 import '../vault/test_vault_path_strategy.dart';
+
+final RecoveryMetadata _defaultPrecheckMetadata = RecoveryMetadata(
+  vaultId: 'vlt_fake_backup',
+  recoveryEnabled: true,
+  recoveryKeyVersion: 1,
+  recoveryKeyHint: 'FAKE',
+  createdAt: DateTime.parse('2026-05-19T00:00:00Z'),
+  kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
+);
 
 class FakeVaultTransferService extends VaultTransferService {
   FakeVaultTransferService({
@@ -161,9 +172,11 @@ class FakeVaultTransferService extends VaultTransferService {
       throw precheckRestoreError!;
     }
     return precheckRestoreResult ??
-        const RestorePrecheck(
-          preview: BackupRecoveryPreview(hasRecovery: false),
-          localHasTrustedDevice: false,
+        RestorePrecheck(
+          preview: BackupRecoveryPreview(metadata: _defaultPrecheckMetadata),
+          localVaultId: _defaultPrecheckMetadata.vaultId,
+          localRecoverySaltBase64: _defaultPrecheckMetadata.kdf.saltBase64,
+          localHasTrustedDevice: true,
           willOverwriteLocalVault: true,
         );
   }

@@ -9,10 +9,12 @@ const String kBackupRecoveryKeyMismatchMessage =
 const String kBackupNoEncryptedSampleMessage = '備份內找不到可驗證的加密日記檔，無法確認復原金鑰。';
 
 /// 完整 vault 備份 zip 內復原中繼資料的預覽。
+///
+/// 可進入還原流程時一定具備可解析的 [metadata]；缺少或無效時應在
+/// [prepareRestorePreview] 等上游驗證階段直接失敗。
 class BackupRecoveryPreview {
-  const BackupRecoveryPreview({required this.hasRecovery, this.metadata});
+  const BackupRecoveryPreview({this.metadata});
 
-  final bool hasRecovery;
   final RecoveryMetadata? metadata;
 }
 
@@ -32,7 +34,7 @@ class RestorePrecheck {
   final bool localHasTrustedDevice;
   final bool willOverwriteLocalVault;
 
-  bool get backupHasRecovery => preview.hasRecovery;
+  bool get backupHasRecovery => preview.metadata != null;
 
   String? get backupVaultId => preview.metadata?.vaultId;
 
@@ -53,20 +55,20 @@ class RestorePrecheck {
 
   /// 同 vault 但本機曾更新過復原金鑰（舊備份需舊金鑰）。
   bool get recoveryKeyRotatedSinceBackup =>
-      backupHasRecovery &&
+      preview.metadata != null &&
       sameVaultId &&
       localRecoverySaltBase64 != null &&
       backupRecoverySaltBase64 != null &&
       !sameRecoveryGeneration;
 
   bool get expectsTrustedUnlockAfterRestore =>
-      backupHasRecovery &&
+      preview.metadata != null &&
       sameVaultId &&
       localHasTrustedDevice &&
       sameRecoveryGeneration;
 
   bool get expectsRecoveryKeyAfterRestore =>
-      backupHasRecovery && !expectsTrustedUnlockAfterRestore;
+      preview.metadata != null && !expectsTrustedUnlockAfterRestore;
 
   /// 同 vault 還原後能否沿用還原前已解鎖 session（免再次裝置驗證）。
   bool canResumeTrustedSession(UnlockedVaultSession? priorSession) =>

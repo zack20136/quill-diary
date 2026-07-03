@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../infrastructure/storage/restore_precheck.dart';
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/widgets/recovery_key_text_field.dart';
 import '../../settings/settings_messages.dart';
 
 /// 還原備份前收集建立該備份時保存的復原金鑰。
@@ -100,15 +101,10 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
               ),
             ],
             const SizedBox(height: 16),
-            TextField(
+            RecoveryKeyTextField(
               controller: _controller,
               autofocus: true,
-              autocorrect: false,
-              decoration: InputDecoration(
-                labelText: l10n.settingsRecoveryKeyFieldLabel,
-                hintText: l10n.settingsRecoveryKeyFieldHint,
-                errorText: _errorText,
-              ),
+              errorText: _errorText,
               onSubmitted: (_) => _submit(),
             ),
           ],

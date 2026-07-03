@@ -10,6 +10,7 @@ import '../../session/presentation/session_locked_pane.dart';
 import '../../session/state/app_session_state.dart';
 import '../../../shared/presentation/app_feedback.dart';
 import '../../../shared/presentation/app_typography.dart';
+import '../../../shared/presentation/widgets/recovery_key_text_field.dart';
 import '../../../app/app_colors.dart';
 import '../../../shared/presentation/page_style.dart';
 
@@ -196,14 +197,7 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          TextField(
-            controller: recoveryKeyInputController,
-            autocorrect: false,
-            decoration: InputDecoration(
-              labelText: l10n.settingsRecoveryKeyFieldLabel,
-              hintText: l10n.settingsRecoveryKeyFieldHint,
-            ),
-          ),
+          RecoveryKeyTextField(controller: recoveryKeyInputController),
           const SizedBox(height: 12),
           Text(
             l10n.settingsSecurityLockRecoveryUnlockHint,
@@ -714,6 +708,7 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.hasTrustedDevice,
     required this.unlockModeLabel,
     required this.indexMessage,
+    required this.indexHealthLevel,
     required this.busy,
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
@@ -729,6 +724,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final bool hasTrustedDevice;
   final String unlockModeLabel;
   final String indexMessage;
+  final SettingsHealthLevel indexHealthLevel;
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
@@ -779,12 +775,8 @@ class SettingsSecurityOverview extends StatelessWidget {
       _SecurityOverviewItem(
         icon: Icons.storage_rounded,
         title: l10n.settingsSecurityOverviewIndexTitle,
-        message: hasUnlockedSession
-            ? indexMessage
-            : l10n.settingsRepairVaultLockedMessage,
-        level: hasUnlockedSession
-            ? SettingsHealthLevel.ok
-            : SettingsHealthLevel.warning,
+        message: indexMessage,
+        level: indexHealthLevel,
       ),
     ];
 

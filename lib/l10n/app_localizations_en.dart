@@ -825,6 +825,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlock the diary vault and create a recovery key before backing up to Google Drive.';
 
   @override
+  String get vaultTransferLocalBackupActionsLockedHint =>
+      'Unlock the diary vault and create a recovery key before creating or exporting local backups.';
+
+  @override
   String get vaultTransferRestoreUnlockFailed =>
       'The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.';
 
@@ -922,6 +926,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRecoveryKeyFieldHint => 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
 
   @override
+  String get settingsRecoveryKeyShowTooltip => 'Show recovery key';
+
+  @override
+  String get settingsRecoveryKeyHideTooltip => 'Hide recovery key';
+
+  @override
   String settingsRecoveryKeyHintLine(String hint) {
     return 'Last 4: $hint';
   }
@@ -1006,6 +1016,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsRecoveryKeySaveNewDialogTitle =>
       'Save Your New Recovery Key';
+
+  @override
+  String get settingsRecoveryKeySaveDialogHint =>
+      'Save it now. You won\'t be able to view it again after closing.';
 
   @override
   String get settingsRecoveryKeyCopyButton => 'Copy';
@@ -1333,6 +1347,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Google Account Not Linked';
 
   @override
+  String get settingsDriveBackupConnectionErrorLabel =>
+      'Could Not Read Google Connection';
+
+  @override
+  String get settingsDriveBackupConnectionRetryButton => 'Reload';
+
+  @override
   String get settingsDriveBackupFallbackAccountLabel => 'Google Account';
 
   @override
@@ -1415,6 +1436,73 @@ class AppLocalizationsEn extends AppLocalizations {
       'Restore from Google Drive?';
 
   @override
+  String get settingsRestoreConfirmOverwriteHeadline =>
+      'Existing data will be replaced. Follow the prompts to unlock after restore.';
+
+  @override
+  String get settingsRestoreConfirmFreshVaultHeadline =>
+      'The backup will create a new diary vault.';
+
+  @override
+  String get settingsRestoreConfirmOverwriteAcknowledgeCheckbox =>
+      'I understand existing entries will be overwritten and cannot be recovered.';
+
+  @override
+  String get settingsRestorePrecheckSameVaultTitle => 'Same Vault';
+
+  @override
+  String get settingsRestorePrecheckSameVaultBody =>
+      'This backup belongs to the same vault as this device.';
+
+  @override
+  String get settingsRestorePrecheckOtherVaultTitle =>
+      'Backup from Another Device';
+
+  @override
+  String get settingsRestorePrecheckOtherVaultBody =>
+      'This backup is from another device or a different vault.';
+
+  @override
+  String get settingsRestorePrecheckRotatedTitle => 'Recovery Key Rotated';
+
+  @override
+  String get settingsRestorePrecheckRotatedBody =>
+      'This backup was created before the recovery key was updated. Use the old key saved with that backup.';
+
+  @override
+  String get settingsRestorePrecheckTrustedUnlockTitle => 'May Auto-Unlock';
+
+  @override
+  String get settingsRestorePrecheckTrustedUnlockBody =>
+      'If the backup uses the same recovery key as this device, you can usually continue without extra steps.';
+
+  @override
+  String get settingsRestorePrecheckRecoveryKeyTitle =>
+      'Recovery Key Required After Restore';
+
+  @override
+  String get settingsRestorePrecheckRecoveryKeyBody =>
+      'Have the recovery key saved when this backup was created.';
+
+  @override
+  String get settingsRestorePrecheckHintTitle => 'Key Hint';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexTitle => 'Rebuild Search Index';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexBody =>
+      'The search index will be rebuilt after unlock.';
+
+  @override
+  String get settingsRestorePrecheckRewrapTitle =>
+      'First Unlock May Take Longer';
+
+  @override
+  String get settingsRestorePrecheckRewrapBody =>
+      'The first unlock after restore may take longer. Keep the app open.';
+
+  @override
   String settingsRestoreDialogDriveFileLine(String name) {
     return 'Backup: $name';
   }
@@ -1448,12 +1536,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Backup contents will overwrite local entries. Current data cannot be recovered.';
 
   @override
-  String get settingsRestoreBulletRebuildIndex =>
-      'The search index will be rebuilt after unlock.';
+  String get settingsRestoreBulletFreshVaultNote =>
+      'The backup will create a new diary vault.';
 
   @override
-  String get settingsRestoreBulletBackupWithoutRecovery =>
-      'This backup has no recovery key. Create one after restore.';
+  String get settingsRestoreBulletRebuildIndex =>
+      'The search index will be rebuilt after unlock.';
 
   @override
   String get settingsRestoreBulletRotatedBackup =>
@@ -1665,10 +1753,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionRestoreSuccessRecoveryRequiredMessage =>
       'Backup restored. Enter the recovery key saved when this backup was created.';
-
-  @override
-  String get sessionRestoreSuccessNeedsRecoveryKeySetupMessage =>
-      'Backup restored. This backup does not have a recovery key yet. Create one first.';
 
   @override
   String get sessionRestoreStartupFailedMessage =>

@@ -801,6 +801,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '請先解鎖日記庫並建立復原金鑰，才能備份到 Google Drive。';
 
   @override
+  String get vaultTransferLocalBackupActionsLockedHint =>
+      '請先解鎖日記庫並建立復原金鑰，才能建立或匯出本機備份。';
+
+  @override
   String get vaultTransferRestoreUnlockFailed =>
       '備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。';
 
@@ -893,6 +897,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRecoveryKeyFieldHint => 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
 
   @override
+  String get settingsRecoveryKeyShowTooltip => '顯示復原金鑰';
+
+  @override
+  String get settingsRecoveryKeyHideTooltip => '隱藏復原金鑰';
+
+  @override
   String settingsRecoveryKeyHintLine(String hint) {
     return '末四碼：$hint';
   }
@@ -967,6 +977,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsRecoveryKeySaveNewDialogTitle => '請保存新的復原金鑰';
+
+  @override
+  String get settingsRecoveryKeySaveDialogHint => '請立即保存。關閉此畫面後不會再次顯示。';
 
   @override
   String get settingsRecoveryKeyCopyButton => '複製';
@@ -1278,6 +1291,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDriveBackupDisconnectedLabel => '尚未連結 Google 帳戶';
 
   @override
+  String get settingsDriveBackupConnectionErrorLabel => '無法讀取 Google 連線狀態';
+
+  @override
+  String get settingsDriveBackupConnectionRetryButton => '重新載入';
+
+  @override
   String get settingsDriveBackupFallbackAccountLabel => 'Google 帳戶';
 
   @override
@@ -1354,6 +1373,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreDialogConfirmDriveTitle => '從 Google Drive 還原？';
 
   @override
+  String get settingsRestoreConfirmOverwriteHeadline => '現有資料將被取代。還原後請依提示完成解鎖。';
+
+  @override
+  String get settingsRestoreConfirmFreshVaultHeadline => '將以備份內容建立日記庫。';
+
+  @override
+  String get settingsRestoreConfirmOverwriteAcknowledgeCheckbox =>
+      '我了解現有日記將被備份覆蓋，且無法復原。';
+
+  @override
+  String get settingsRestorePrecheckSameVaultTitle => '同一日記庫';
+
+  @override
+  String get settingsRestorePrecheckSameVaultBody => '此備份與本機為同一日記庫。';
+
+  @override
+  String get settingsRestorePrecheckOtherVaultTitle => '其他裝置備份';
+
+  @override
+  String get settingsRestorePrecheckOtherVaultBody => '此備份來自其他裝置或不同日記庫。';
+
+  @override
+  String get settingsRestorePrecheckRotatedTitle => '復原金鑰已更新';
+
+  @override
+  String get settingsRestorePrecheckRotatedBody =>
+      '此備份在更新復原金鑰之前建立，需使用當時保存的舊金鑰。';
+
+  @override
+  String get settingsRestorePrecheckTrustedUnlockTitle => '可能自動解鎖';
+
+  @override
+  String get settingsRestorePrecheckTrustedUnlockBody =>
+      '若備份與本機使用同一把復原金鑰，還原後通常可直接使用。';
+
+  @override
+  String get settingsRestorePrecheckRecoveryKeyTitle => '還原後需輸入復原金鑰';
+
+  @override
+  String get settingsRestorePrecheckRecoveryKeyBody => '請準備建立此備份時保存的復原金鑰。';
+
+  @override
+  String get settingsRestorePrecheckHintTitle => '金鑰提示';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexTitle => '重建搜尋索引';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexBody => '搜尋索引會在解鎖後重新建立。';
+
+  @override
+  String get settingsRestorePrecheckRewrapTitle => '首次解鎖可能較久';
+
+  @override
+  String get settingsRestorePrecheckRewrapBody => '還原後首次解鎖可能需要較久，請保持 App 開啟。';
+
+  @override
   String settingsRestoreDialogDriveFileLine(String name) {
     return '備份：$name';
   }
@@ -1384,11 +1460,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreBulletOverwriteWarning => '將以備份內容覆蓋本機日記，現有資料無法復原。';
 
   @override
-  String get settingsRestoreBulletRebuildIndex => '搜尋索引會在解鎖後重新建立。';
+  String get settingsRestoreBulletFreshVaultNote => '將以備份內容建立日記庫。';
 
   @override
-  String get settingsRestoreBulletBackupWithoutRecovery =>
-      '此備份尚未建立復原金鑰，還原後請重新建立。';
+  String get settingsRestoreBulletRebuildIndex => '搜尋索引會在解鎖後重新建立。';
 
   @override
   String get settingsRestoreBulletRotatedBackup =>
@@ -1579,10 +1654,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get sessionRestoreSuccessRecoveryRequiredMessage =>
       '已還原備份。請輸入建立此備份時保存的復原金鑰。';
-
-  @override
-  String get sessionRestoreSuccessNeedsRecoveryKeySetupMessage =>
-      '已還原備份。此備份尚未建立復原金鑰，請先建立。';
 
   @override
   String get sessionRestoreStartupFailedMessage =>

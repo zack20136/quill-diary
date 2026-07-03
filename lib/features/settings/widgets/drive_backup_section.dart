@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../infrastructure/drive/drive_backup_service.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/presentation/app_feedback.dart';
+import '../../../shared/utils/user_facing_error.dart';
 import '../providers/settings_providers.dart';
 import '../settings_messages.dart';
 import '../vault_transfer_access.dart';
@@ -58,17 +59,14 @@ class DriveBackupSection extends ConsumerWidget {
                 .watch(settingsDriveConnectionProvider)
                 .when(
                   loading: () => const SettingsSectionLoading(),
-                  error: (_, _) => _DriveBackupContent(
-                    connectionState: const DriveConnectionState.disconnected(),
-                    access: access,
-                    canManageDriveAccount: canManageDriveAccount,
-                    busy: busy,
-                    onLink: onLink,
-                    onSwitchAccount: onSwitchAccount,
-                    onDisconnect: onDisconnect,
-                    onUpload: onUpload,
-                    onRestore: onRestore,
-                  ),
+                  error: (Object error, StackTrace _) =>
+                      _DriveConnectionErrorContent(
+                        message: userFacingErrorMessage(error, l10n: l10n),
+                        access: access,
+                        busy: busy,
+                        onRetry: () =>
+                            ref.invalidate(settingsDriveConnectionProvider),
+                      ),
                   data: (DriveConnectionState connectionState) =>
                       _DriveBackupContent(
                         connectionState: connectionState,
@@ -83,6 +81,72 @@ class DriveBackupSection extends ConsumerWidget {
                       ),
                 ),
     );
+  }
+}
+
+class _DriveConnectionErrorContent extends StatelessWidget {
+  const _DriveConnectionErrorContent({
+    required this.message,
+    required this.access,
+    required this.busy,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VaultTransferAccess access;
+  final bool busy;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        DriveAccountStatus(
+          isConnected: false,
+          disconnectedLabel: l10n.settingsDriveBackupConnectionErrorLabel,
+          disconnectedIcon: Icons.error_outline_rounded,
+        ),
+        const SizedBox(height: 10),
+        AppFeedbackBanner(
+          icon: Icons.error_outline_rounded,
+          message: message,
+          tone: AppFeedbackTone.error,
+        ),
+        const SizedBox(height: 10),
+        SettingsActionButton(
+          label: l10n.settingsDriveBackupConnectionRetryButton,
+          icon: Icons.refresh_rounded,
+          appearance: SettingsActionButtonAppearance.outlined,
+          fullWidth: true,
+          onPressed: busy ? null : onRetry,
+        ),
+        if (_lockedBannerMessage(l10n) != null) ...<Widget>[
+          const SizedBox(height: 12),
+          AppFeedbackBanner(
+            icon: Icons.lock_outline_rounded,
+            message: _lockedBannerMessage(l10n)!,
+            tone: AppFeedbackTone.warning,
+          ),
+        ],
+      ],
+    );
+  }
+
+  String? _lockedBannerMessage(AppLocalizations l10n) {
+    if (!access.canBackup && !access.canRestore) {
+      return access.restoreDisabledReason ?? access.backupDisabledReason;
+    }
+    if (!access.canBackup) {
+      return access.backupDisabledReason ??
+          l10n.vaultTransferDriveBackupActionsLockedHint;
+    }
+    if (!access.canRestore) {
+      return access.restoreDisabledReason;
+    }
+    return null;
   }
 }
 

@@ -79,7 +79,15 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           hasUnlockedSession: hasUnlockedSession,
           hasTrustedDevice: hasTrustedDevice,
           unlockModeLabel: mode.fullLabel(l10n),
-          indexMessage: _indexStatusMessage(l10n, hasUnlockedSession),
+          indexMessage: _indexStatusMessage(
+            l10n,
+            sessionState: sessionState,
+            hasUnlockedSession: hasUnlockedSession,
+          ),
+          indexHealthLevel: _indexHealthLevel(
+            sessionState: sessionState,
+            hasUnlockedSession: hasUnlockedSession,
+          ),
           busy: _busy,
           onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
               ? () => _runBusy(_createRecoveryKey)
@@ -255,7 +263,43 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     return picked == null ? null : backupsById[picked.id];
   }
 
-  String _indexStatusMessage(AppLocalizations l10n, bool hasUnlockedSession) {
+  SettingsHealthLevel _indexHealthLevel({
+    required AppSessionState? sessionState,
+    required bool hasUnlockedSession,
+  }) {
+    if (sessionState?.status == AppLockStatus.fatalError) {
+      return SettingsHealthLevel.error;
+    }
+    if (!hasUnlockedSession) {
+      return SettingsHealthLevel.warning;
+    }
+    final VaultRepairReport? report = _lastVaultRepairReport;
+    if (report != null && _repairReportNeedsAttention(report)) {
+      return SettingsHealthLevel.warning;
+    }
+    return SettingsHealthLevel.ok;
+  }
+
+  bool _repairReportNeedsAttention(VaultRepairReport report) {
+    return report.skippedCorruptEntries > 0 ||
+        report.removedDuplicateEntries > 0 ||
+        report.removedOrphanAssets > 0 ||
+        report.relocatedEntries > 0 ||
+        report.warnings.isNotEmpty;
+  }
+
+  String _indexStatusMessage(
+    AppLocalizations l10n, {
+    required AppSessionState? sessionState,
+    required bool hasUnlockedSession,
+  }) {
+    if (sessionState?.status == AppLockStatus.fatalError) {
+      final String? message = sessionState?.message?.trim();
+      if (message != null && message.isNotEmpty) {
+        return message;
+      }
+      return l10n.sessionIndexDatabaseUnreadableMessage;
+    }
     final VaultRepairReport? report = _lastVaultRepairReport;
     if (report != null) {
       return l10n.settingsRepairVaultCompleted(

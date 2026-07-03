@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../shared/presentation/app_feedback.dart';
 import '../settings_messages.dart';
 import '../vault_transfer_access.dart';
 import 'settings_sections.dart';
@@ -27,42 +28,58 @@ class LocalBackupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final String? lockedBannerMessage = localBackupLockedBannerMessage(
+      l10n,
+      access,
+    );
+
     return SettingsSectionCard(
       icon: Icons.storage_rounded,
       title: l10n.settingsLocalBackupSectionTitle,
-      description: access.canBackup
-          ? settingsLocalBackupSectionDescriptionEnabled(l10n)
-          : l10n.vaultTransferLocalSectionDescriptionBackupLocked,
-      child: SettingsActionGroup(
-        actions: <SettingsActionButton>[
-          SettingsActionButton(
-            label: l10n.settingsLocalBackupCreateButton,
-            icon: Icons.archive_outlined,
-            appearance: SettingsActionButtonAppearance.filled,
-            fullWidth: true,
-            onPressed: busy || !access.canBackup ? null : onCreate,
+      description: localBackupSectionDescription(l10n, access),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SettingsActionGroup(
+            actions: <SettingsActionButton>[
+              SettingsActionButton(
+                label: l10n.settingsLocalBackupCreateButton,
+                icon: Icons.archive_outlined,
+                appearance: SettingsActionButtonAppearance.filled,
+                fullWidth: true,
+                onPressed: busy || !access.canBackup ? null : onCreate,
+              ),
+              SettingsActionButton(
+                label: l10n.settingsLocalBackupRestoreButton,
+                icon: Icons.restore_rounded,
+                appearance: SettingsActionButtonAppearance.tonal,
+                fullWidth: true,
+                onPressed: busy || !access.canRestore ? null : onRestore,
+              ),
+              SettingsActionButton(
+                label: l10n.settingsLocalBackupExportToExternalButton,
+                icon: Icons.file_upload_outlined,
+                appearance: SettingsActionButtonAppearance.filled,
+                fullWidth: true,
+                onPressed: busy || !access.canBackup ? null : onExport,
+              ),
+              SettingsActionButton(
+                label: l10n.settingsLocalBackupImportFromExternalButton,
+                icon: Icons.file_download_outlined,
+                appearance: SettingsActionButtonAppearance.tonal,
+                fullWidth: true,
+                onPressed: busy || !access.canRestore ? null : onImport,
+              ),
+            ],
           ),
-          SettingsActionButton(
-            label: l10n.settingsLocalBackupRestoreButton,
-            icon: Icons.restore_rounded,
-            appearance: SettingsActionButtonAppearance.tonal,
-            fullWidth: true,
-            onPressed: busy || !access.canBackup ? null : onRestore,
-          ),
-          SettingsActionButton(
-            label: l10n.settingsLocalBackupExportToExternalButton,
-            icon: Icons.file_upload_outlined,
-            appearance: SettingsActionButtonAppearance.filled,
-            fullWidth: true,
-            onPressed: busy || !access.canBackup ? null : onExport,
-          ),
-          SettingsActionButton(
-            label: l10n.settingsLocalBackupImportFromExternalButton,
-            icon: Icons.file_download_outlined,
-            appearance: SettingsActionButtonAppearance.tonal,
-            fullWidth: true,
-            onPressed: busy || !access.canRestore ? null : onImport,
-          ),
+          if (lockedBannerMessage != null) ...<Widget>[
+            const SizedBox(height: 12),
+            AppFeedbackBanner(
+              icon: Icons.lock_outline_rounded,
+              message: lockedBannerMessage,
+              tone: AppFeedbackTone.warning,
+            ),
+          ],
         ],
       ),
     );

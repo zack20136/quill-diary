@@ -17,16 +17,15 @@ void main() {
   );
 
   RestorePrecheck buildPrecheck({
-    bool hasRecovery = true,
     RecoveryMetadata? metadata,
+    bool includeMetadata = true,
     String? localVaultId = 'vlt_backup',
     String? localRecoverySaltBase64,
     bool localHasTrustedDevice = true,
   }) {
     return RestorePrecheck(
       preview: BackupRecoveryPreview(
-        hasRecovery: hasRecovery,
-        metadata: hasRecovery ? (metadata ?? backupMetadata) : null,
+        metadata: includeMetadata ? (metadata ?? backupMetadata) : null,
       ),
       localVaultId: localVaultId,
       localRecoverySaltBase64:
@@ -36,20 +35,22 @@ void main() {
     );
   }
 
-  test('backupHasRecovery 與 backupVaultId 會反映預覽資訊', () {
-    const RestorePrecheck withoutRecovery = RestorePrecheck(
-      preview: BackupRecoveryPreview(hasRecovery: false),
+  test('metadata 為 null 時 backupHasRecovery 為 false 且 vault 欄位為空', () {
+    const RestorePrecheck withoutMetadata = RestorePrecheck(
+      preview: BackupRecoveryPreview(),
       localVaultId: 'vlt_local',
       localHasTrustedDevice: false,
       willOverwriteLocalVault: true,
     );
-    expect(withoutRecovery.backupHasRecovery, isFalse);
-    expect(withoutRecovery.backupVaultId, isNull);
+    expect(withoutMetadata.backupHasRecovery, isFalse);
+    expect(withoutMetadata.backupVaultId, isNull);
+    expect(withoutMetadata.backupRecoveryHint, isNull);
+    expect(withoutMetadata.backupRecoverySaltBase64, isNull);
 
-    final RestorePrecheck withRecovery = buildPrecheck();
-    expect(withRecovery.backupHasRecovery, isTrue);
-    expect(withRecovery.backupVaultId, 'vlt_backup');
-    expect(withRecovery.backupRecoveryHint, 'WXYZ');
+    final RestorePrecheck withMetadata = buildPrecheck();
+    expect(withMetadata.backupHasRecovery, isTrue);
+    expect(withMetadata.backupVaultId, 'vlt_backup');
+    expect(withMetadata.backupRecoveryHint, 'WXYZ');
   });
 
   test('sameVaultId 需兩側 vaultId 皆存在且相等', () {
@@ -67,10 +68,7 @@ void main() {
       isFalse,
     );
     final RestorePrecheck withoutLocalSalt = RestorePrecheck(
-      preview: BackupRecoveryPreview(
-        hasRecovery: true,
-        metadata: backupMetadata,
-      ),
+      preview: BackupRecoveryPreview(metadata: backupMetadata),
       localVaultId: 'vlt_backup',
       localRecoverySaltBase64: null,
       localHasTrustedDevice: true,
@@ -95,7 +93,7 @@ void main() {
       isFalse,
     );
     expect(
-      buildPrecheck(hasRecovery: false).recoveryKeyRotatedSinceBackup,
+      buildPrecheck(includeMetadata: false).recoveryKeyRotatedSinceBackup,
       isFalse,
     );
   });
@@ -119,7 +117,7 @@ void main() {
       isFalse,
     );
     expect(
-      buildPrecheck(hasRecovery: false).expectsTrustedUnlockAfterRestore,
+      buildPrecheck(includeMetadata: false).expectsTrustedUnlockAfterRestore,
       isFalse,
     );
   });
@@ -168,7 +166,7 @@ void main() {
     );
     expect(buildPrecheck().expectsRecoveryKeyAfterRestore, isFalse);
     expect(
-      buildPrecheck(hasRecovery: false).expectsRecoveryKeyAfterRestore,
+      buildPrecheck(includeMetadata: false).expectsRecoveryKeyAfterRestore,
       isFalse,
     );
   });
@@ -189,6 +187,9 @@ void main() {
       buildPrecheck().backupRecoverySaltBase64,
       backupMetadata.kdf.saltBase64,
     );
-    expect(buildPrecheck(hasRecovery: false).backupRecoverySaltBase64, isNull);
+    expect(
+      buildPrecheck(includeMetadata: false).backupRecoverySaltBase64,
+      isNull,
+    );
   });
 }

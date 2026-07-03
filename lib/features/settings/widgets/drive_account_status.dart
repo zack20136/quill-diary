@@ -8,11 +8,15 @@ class DriveAccountStatus extends StatelessWidget {
   const DriveAccountStatus({
     required this.isConnected,
     this.accountLabel,
+    this.disconnectedLabel,
+    this.disconnectedIcon = Icons.cloud_off_outlined,
     super.key,
   });
 
   final bool isConnected;
   final String? accountLabel;
+  final String? disconnectedLabel;
+  final IconData disconnectedIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -21,15 +25,26 @@ class DriveAccountStatus extends StatelessWidget {
     final ColorScheme colorScheme = theme.colorScheme;
 
     if (!isConnected) {
+      final bool isErrorState = disconnectedLabel != null;
       return _DriveAccountStatusCard(
-        icon: Icons.cloud_off_outlined,
-        iconColor: colorScheme.onSurfaceVariant,
-        iconBackground: colorScheme.surfaceContainerHighest,
+        icon: disconnectedIcon,
+        iconColor: isErrorState
+            ? colorScheme.error
+            : colorScheme.onSurfaceVariant,
+        iconBackground: isErrorState
+            ? Color.alphaBlend(
+                colorScheme.error.withValues(alpha: 0.08),
+                colorScheme.surfaceContainerLow,
+              )
+            : colorScheme.surfaceContainerHighest,
         child: Text(
-          l10n.settingsDriveBackupDisconnectedLabel,
+          disconnectedLabel ?? l10n.settingsDriveBackupDisconnectedLabel,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
+            color: isErrorState
+                ? colorScheme.onErrorContainer
+                : colorScheme.onSurfaceVariant,
             height: 1.4,
+            fontWeight: isErrorState ? FontWeight.w600 : null,
           ),
         ),
       );

@@ -150,7 +150,7 @@ class VaultBackupIo {
         if (metadata == null) {
           throw StateError(VaultBackupLayout.invalidRecoveryJsonMessage);
         }
-        return BackupRecoveryPreview(hasRecovery: true, metadata: metadata);
+        return BackupRecoveryPreview(metadata: metadata);
       } finally {
         await zip.close();
       }
@@ -305,7 +305,10 @@ class VaultBackupIo {
     final bool hasEntries = Directory(
       p.join(root.path, 'entries'),
     ).existsSync();
-    if (!hasRecovery && !hasEntries) {
+    if (!hasRecovery) {
+      throw StateError('缺少復原金鑰資訊。');
+    }
+    if (!hasEntries) {
       throw StateError('備份檔內容不完整，找不到日記庫資料。');
     }
   }

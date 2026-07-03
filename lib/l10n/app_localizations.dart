@@ -1493,6 +1493,12 @@ abstract class AppLocalizations {
   /// **'請先解鎖日記庫並建立復原金鑰，才能備份到 Google Drive。'**
   String get vaultTransferDriveBackupActionsLockedHint;
 
+  /// No description provided for @vaultTransferLocalBackupActionsLockedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'請先解鎖日記庫並建立復原金鑰，才能建立或匯出本機備份。'**
+  String get vaultTransferLocalBackupActionsLockedHint;
+
   /// No description provided for @vaultTransferRestoreUnlockFailed.
   ///
   /// In zh, this message translates to:
@@ -1667,6 +1673,18 @@ abstract class AppLocalizations {
   /// **'ABCD-EFGH-IJKL-MNOP-QRST-UVWX'**
   String get settingsRecoveryKeyFieldHint;
 
+  /// No description provided for @settingsRecoveryKeyShowTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'顯示復原金鑰'**
+  String get settingsRecoveryKeyShowTooltip;
+
+  /// No description provided for @settingsRecoveryKeyHideTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'隱藏復原金鑰'**
+  String get settingsRecoveryKeyHideTooltip;
+
   /// No description provided for @settingsRecoveryKeyHintLine.
   ///
   /// In zh, this message translates to:
@@ -1810,6 +1828,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'請保存新的復原金鑰'**
   String get settingsRecoveryKeySaveNewDialogTitle;
+
+  /// No description provided for @settingsRecoveryKeySaveDialogHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'請立即保存。關閉此畫面後不會再次顯示。'**
+  String get settingsRecoveryKeySaveDialogHint;
 
   /// No description provided for @settingsRecoveryKeyCopyButton.
   ///
@@ -2327,6 +2351,18 @@ abstract class AppLocalizations {
   /// **'尚未連結 Google 帳戶'**
   String get settingsDriveBackupDisconnectedLabel;
 
+  /// No description provided for @settingsDriveBackupConnectionErrorLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取 Google 連線狀態'**
+  String get settingsDriveBackupConnectionErrorLabel;
+
+  /// No description provided for @settingsDriveBackupConnectionRetryButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新載入'**
+  String get settingsDriveBackupConnectionRetryButton;
+
   /// No description provided for @settingsDriveBackupFallbackAccountLabel.
   ///
   /// In zh, this message translates to:
@@ -2447,6 +2483,114 @@ abstract class AppLocalizations {
   /// **'從 Google Drive 還原？'**
   String get settingsRestoreDialogConfirmDriveTitle;
 
+  /// No description provided for @settingsRestoreConfirmOverwriteHeadline.
+  ///
+  /// In zh, this message translates to:
+  /// **'現有資料將被取代。還原後請依提示完成解鎖。'**
+  String get settingsRestoreConfirmOverwriteHeadline;
+
+  /// No description provided for @settingsRestoreConfirmFreshVaultHeadline.
+  ///
+  /// In zh, this message translates to:
+  /// **'將以備份內容建立日記庫。'**
+  String get settingsRestoreConfirmFreshVaultHeadline;
+
+  /// No description provided for @settingsRestoreConfirmOverwriteAcknowledgeCheckbox.
+  ///
+  /// In zh, this message translates to:
+  /// **'我了解現有日記將被備份覆蓋，且無法復原。'**
+  String get settingsRestoreConfirmOverwriteAcknowledgeCheckbox;
+
+  /// No description provided for @settingsRestorePrecheckSameVaultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'同一日記庫'**
+  String get settingsRestorePrecheckSameVaultTitle;
+
+  /// No description provided for @settingsRestorePrecheckSameVaultBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'此備份與本機為同一日記庫。'**
+  String get settingsRestorePrecheckSameVaultBody;
+
+  /// No description provided for @settingsRestorePrecheckOtherVaultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他裝置備份'**
+  String get settingsRestorePrecheckOtherVaultTitle;
+
+  /// No description provided for @settingsRestorePrecheckOtherVaultBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'此備份來自其他裝置或不同日記庫。'**
+  String get settingsRestorePrecheckOtherVaultBody;
+
+  /// No description provided for @settingsRestorePrecheckRotatedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'復原金鑰已更新'**
+  String get settingsRestorePrecheckRotatedTitle;
+
+  /// No description provided for @settingsRestorePrecheckRotatedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'此備份在更新復原金鑰之前建立，需使用當時保存的舊金鑰。'**
+  String get settingsRestorePrecheckRotatedBody;
+
+  /// No description provided for @settingsRestorePrecheckTrustedUnlockTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能自動解鎖'**
+  String get settingsRestorePrecheckTrustedUnlockTitle;
+
+  /// No description provided for @settingsRestorePrecheckTrustedUnlockBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'若備份與本機使用同一把復原金鑰，還原後通常可直接使用。'**
+  String get settingsRestorePrecheckTrustedUnlockBody;
+
+  /// No description provided for @settingsRestorePrecheckRecoveryKeyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'還原後需輸入復原金鑰'**
+  String get settingsRestorePrecheckRecoveryKeyTitle;
+
+  /// No description provided for @settingsRestorePrecheckRecoveryKeyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'請準備建立此備份時保存的復原金鑰。'**
+  String get settingsRestorePrecheckRecoveryKeyBody;
+
+  /// No description provided for @settingsRestorePrecheckHintTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'金鑰提示'**
+  String get settingsRestorePrecheckHintTitle;
+
+  /// No description provided for @settingsRestorePrecheckRebuildIndexTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重建搜尋索引'**
+  String get settingsRestorePrecheckRebuildIndexTitle;
+
+  /// No description provided for @settingsRestorePrecheckRebuildIndexBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜尋索引會在解鎖後重新建立。'**
+  String get settingsRestorePrecheckRebuildIndexBody;
+
+  /// No description provided for @settingsRestorePrecheckRewrapTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'首次解鎖可能較久'**
+  String get settingsRestorePrecheckRewrapTitle;
+
+  /// No description provided for @settingsRestorePrecheckRewrapBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'還原後首次解鎖可能需要較久，請保持 App 開啟。'**
+  String get settingsRestorePrecheckRewrapBody;
+
   /// No description provided for @settingsRestoreDialogDriveFileLine.
   ///
   /// In zh, this message translates to:
@@ -2495,17 +2639,17 @@ abstract class AppLocalizations {
   /// **'將以備份內容覆蓋本機日記，現有資料無法復原。'**
   String get settingsRestoreBulletOverwriteWarning;
 
+  /// No description provided for @settingsRestoreBulletFreshVaultNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'將以備份內容建立日記庫。'**
+  String get settingsRestoreBulletFreshVaultNote;
+
   /// No description provided for @settingsRestoreBulletRebuildIndex.
   ///
   /// In zh, this message translates to:
   /// **'搜尋索引會在解鎖後重新建立。'**
   String get settingsRestoreBulletRebuildIndex;
-
-  /// No description provided for @settingsRestoreBulletBackupWithoutRecovery.
-  ///
-  /// In zh, this message translates to:
-  /// **'此備份尚未建立復原金鑰，還原後請重新建立。'**
-  String get settingsRestoreBulletBackupWithoutRecovery;
 
   /// No description provided for @settingsRestoreBulletRotatedBackup.
   ///
@@ -2841,12 +2985,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已還原備份。請輸入建立此備份時保存的復原金鑰。'**
   String get sessionRestoreSuccessRecoveryRequiredMessage;
-
-  /// No description provided for @sessionRestoreSuccessNeedsRecoveryKeySetupMessage.
-  ///
-  /// In zh, this message translates to:
-  /// **'已還原備份。此備份尚未建立復原金鑰，請先建立。'**
-  String get sessionRestoreSuccessNeedsRecoveryKeySetupMessage;
 
   /// No description provided for @sessionRestoreStartupFailedMessage.
   ///
