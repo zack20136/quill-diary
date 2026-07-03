@@ -90,6 +90,18 @@ abstract final class DisplayFormat {
     return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)} · ${_zhTwWeekdayLong[value.weekday - 1]}';
   }
 
+  /// 日期時間，不含星期（備份狀態等簡短摘要用）。
+  static String formatDateTimeWithoutWeekday(
+    AppLocalizations l10n,
+    DateTime local,
+  ) {
+    final DateTime value = local.toLocal();
+    if (isEnglishL10n(l10n)) {
+      return '${_formatEnglishDate(value)} ${formatTime24h(value)}';
+    }
+    return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)}';
+  }
+
   static String formatWeekdayAndTime(
     AppLocalizations l10n,
     DateOnly date,

@@ -7,6 +7,7 @@ import '../../infrastructure/markdown/front_matter_codec.dart';
 import '../../infrastructure/preferences/user_preferences.dart';
 import '../../infrastructure/security/app_lock_service.dart';
 import '../../infrastructure/security/device_key_manager.dart';
+import '../../infrastructure/storage/backup_status_store.dart';
 import '../../infrastructure/storage/editor_draft_store.dart';
 import '../../infrastructure/storage/external_directory_store.dart';
 import '../../infrastructure/storage/vault_archive_io.dart';
@@ -41,6 +42,11 @@ final cryptoServiceProvider = Provider<CryptoService>((Ref ref) {
 /// 使用者偏好儲存。
 final userPreferencesProvider = Provider<UserPreferences>((Ref ref) {
   return UserPreferences();
+});
+
+/// 備份操作健康度 metadata。
+final backupStatusStoreProvider = Provider<BackupStatusStore>((Ref ref) {
+  return BackupStatusStore();
 });
 
 /// App 解鎖模式服務，非支援平台會退回 no-op 實作。

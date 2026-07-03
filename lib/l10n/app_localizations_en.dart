@@ -1039,7 +1039,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewSectionDescription =>
-      'Review recovery key status, unlock method, and search index health.';
+      'Review recovery key status, unlock method, search index, and backup status.';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyTitle => 'Recovery Key';
@@ -1110,6 +1110,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewHealthLevelError => 'Error';
+
+  @override
+  String get settingsSecurityOverviewLocalBackupTitle => 'Local backup';
+
+  @override
+  String get settingsSecurityOverviewLocalBackupNever =>
+      'No local backup yet. Consider backing up soon.';
+
+  @override
+  String settingsSecurityOverviewLocalBackupLast(String time, String method) {
+    return '\"$method\", $time.';
+  }
+
+  @override
+  String get settingsSecurityOverviewLocalBackupStale =>
+      'Your last backup was over 30 days ago. Consider backing up soon.';
+
+  @override
+  String get settingsSecurityOverviewDriveBackupTitle => 'Google Drive backup';
+
+  @override
+  String get settingsSecurityOverviewDriveBackupNever =>
+      'No Google Drive backup uploaded yet. Consider uploading soon.';
+
+  @override
+  String settingsSecurityOverviewDriveBackupLast(String time) {
+    return 'Last uploaded $time.';
+  }
+
+  @override
+  String settingsSecurityOverviewDriveBackupLastWithAccount(
+    String time,
+    String account,
+  ) {
+    return 'Last uploaded $time to $account.';
+  }
+
+  @override
+  String get settingsSecurityOverviewDriveBackupStale =>
+      'Your last Drive backup was over 30 days ago. Consider uploading soon.';
+
+  @override
+  String settingsSecurityOverviewBackupRecentFailure(String action) {
+    return 'Latest \"$action\" attempt failed.';
+  }
 
   @override
   String get settingsUnlockModeFullNone => 'None';
@@ -1757,6 +1802,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionRestoreStartupFailedMessage =>
       'Backup restored, but startup failed. Retry from Settings or enter the recovery key.';
+
+  @override
+  String get postRestoreOutcomeTitle => 'Restore completed';
+
+  @override
+  String get postRestoreOutcomeNextStepLocked =>
+      'One more step: complete biometric or screen-lock verification.';
+
+  @override
+  String get postRestoreOutcomeNextStepRecovery =>
+      'One more step: enter the recovery key saved when this backup was created.';
+
+  @override
+  String get postRestoreOutcomeSecondaryHint =>
+      'The first unlock after restore may take longer while the search index rebuilds.';
+
+  @override
+  String get postRestoreOutcomePrimaryRetryVerification => 'Verify now';
+
+  @override
+  String get postRestoreOutcomePrimaryEnterRecoveryKey => 'Enter recovery key';
+
+  @override
+  String get postRestoreOutcomeUnlockFailedTitle =>
+      'Could not unlock after restore';
 
   @override
   String get sessionRecoveryKeyMismatchMessage =>
@@ -2606,7 +2676,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      'Full backup does not include local drafts still being edited and not yet saved.';
+      'Full backup does not include local drafts still being edited. Restoring a backup also clears all drafts and pending attachments on this device.';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title =>

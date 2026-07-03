@@ -153,16 +153,13 @@ class EditorFlowController {
     final List<EditorDraftPendingAttachment> pendingAttachments =
         <EditorDraftPendingAttachment>[];
     for (final PendingAttachment attachment in request.pendingAttachments) {
-      final String sourcePath = attachment.sourcePath?.trim() ?? '';
-      if (sourcePath.isEmpty) {
+      final String? relativePath = attachment.pendingRelativePath?.trim();
+      if (relativePath == null || relativePath.isEmpty) {
         continue;
       }
       pendingAttachments.add(
         EditorDraftPendingAttachment(
-          relativePath: await _actions.pendingRelativePath(
-            request.draftKey,
-            sourcePath,
-          ),
+          relativePath: relativePath,
           mimeType: attachment.mimeType,
           originalFilename: attachment.originalFilename,
         ),
@@ -218,18 +215,22 @@ class EditorFlowController {
       return const EditorDraftRestoreDecision.discarded();
     }
 
-    final Map<String, String> absolutePaths = <String, String>{};
+    final Map<String, String> previewPaths = <String, String>{};
     for (final EditorDraftPendingAttachment attachment
         in record.pendingAttachments) {
-      absolutePaths[attachment.relativePath] = await _actions
-          .pendingAbsolutePath(draftKey, attachment.relativePath);
+      previewPaths[attachment.relativePath] = await _actions
+          .materializePendingFileForPreview(
+            draftKey,
+            attachment.relativePath,
+            session,
+          );
     }
     return EditorDraftRestoreDecision.restored(
       record: record,
       pendingAttachments: pendingAttachmentsFromDraftRecord(
         record,
         absolutePathBuilder: (String relativePath) =>
-            absolutePaths[relativePath] ?? '',
+            previewPaths[relativePath] ?? '',
       ),
       snapshot: snapshot,
     );
@@ -283,6 +284,7 @@ class EditorFlowController {
     required ImageCompressPreset preset,
     required String draftKey,
     required Iterable<String> sourcePaths,
+    required UnlockedVaultSession session,
   }) async {
     final Set<String> seenPaths = <String>{};
     final List<PendingAttachment> staged = <PendingAttachment>[];
@@ -296,6 +298,7 @@ class EditorFlowController {
         draftKey: draftKey,
         sourcePath: path,
         displayName: p.basename(path),
+        session: session,
       );
       if (attachment != null) {
         staged.add(attachment);
@@ -308,6 +311,7 @@ class EditorFlowController {
     required String draftKey,
     required String path,
     required String displayName,
+    required UnlockedVaultSession session,
   }) async {
     final String trimmed = path.trim();
     if (trimmed.isEmpty) {
@@ -316,13 +320,16 @@ class EditorFlowController {
     final String relativePath = await _actions.stagePendingFile(
       draftKey,
       trimmed,
+      session,
     );
-    final String stagedPath = await _actions.pendingAbsolutePath(
+    final String previewPath = await _actions.materializePendingFileForPreview(
       draftKey,
       relativePath,
+      session,
     );
     return PendingAttachment(
-      sourcePath: stagedPath,
+      sourcePath: previewPath,
+      pendingRelativePath: relativePath,
       mimeType: _mimeTypeFromPath(trimmed),
       originalFilename: displayName,
     );

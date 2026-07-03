@@ -11,6 +11,7 @@ import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
@@ -44,6 +45,10 @@ Widget settingsTestScope({
         (Ref ref) async => recoveryMetadata,
       ),
       unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
+      trustedDeviceAccessProvider.overrideWith((Ref ref) async => false),
+      backupStatusProvider.overrideWith(
+        (Ref ref) async => const BackupStatusSnapshot(),
+      ),
       if (driveConnectionState != null)
         settingsDriveConnectionProvider.overrideWith(
           (Ref ref) async => driveConnectionState,

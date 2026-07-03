@@ -18,6 +18,7 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/providers/core_providers.dart';
@@ -53,6 +54,10 @@ void main() {
         settingsDriveConnectionProvider.overrideWith(
           (Ref ref) async => const DriveConnectionState.disconnected(),
         ),
+        backupStatusProvider.overrideWith(
+          (Ref ref) async => const BackupStatusSnapshot(),
+        ),
+        trustedDeviceAccessProvider.overrideWith((Ref ref) async => false),
         editorDraftKeysProvider.overrideWith((Ref ref) async => <String>{}),
         personalizationPreferencesProvider.overrideWith(() {
           return _FixedPersonalizationPreferencesController();

@@ -72,84 +72,94 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
       description: l10n.settingsSecurityOverviewSectionDescription,
-      child: trustedDeviceAccessAsync.when(
-        data: (bool hasTrustedDevice) => SettingsSecurityOverview(
-          hasRecoveryKey: recoveryMetadata != null,
-          recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
-          hasUnlockedSession: hasUnlockedSession,
-          hasTrustedDevice: hasTrustedDevice,
-          unlockModeLabel: mode.fullLabel(l10n),
-          indexMessage: settingsIndexStatusMessage(
-            l10n,
-            sessionState: sessionState,
-            hasUnlockedSession: hasUnlockedSession,
-            repairReport: _lastVaultRepairReport,
-          ),
-          indexHealthLevel: settingsIndexHealthLevel(
-            l10n: l10n,
-            sessionState: sessionState,
-            hasUnlockedSession: hasUnlockedSession,
-            repairReport: _lastVaultRepairReport,
-          ),
-          busy: _busy,
-          onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
-              ? () => _runBusy(_createRecoveryKey)
-              : null,
-          onRotateRecoveryKey:
-              recoveryMetadata != null && pageAccess.vaultTransfer.canBackup
-              ? () => _runBusy(_rotateRecoveryKey)
-              : null,
-          onRepairVault: hasUnlockedSession
-              ? () => _runBusy(_repairVault)
-              : null,
-          onRetryTrustedUnlock: sessionState?.status == AppLockStatus.locked
-              ? () => _runBusy(_retryTrustedUnlock)
-              : null,
-          lockPanel:
-              sessionState?.status == AppLockStatus.unlocked ||
-                  sessionState?.status == AppLockStatus.locked
-              ? null
-              : sessionAsync.when(
-                  data: (AppSessionState sessionState) => SettingsStatusPanel(
-                    sessionState: sessionState,
-                    busy: _busy,
-                    recoveryKeyInputController: _recoveryKeyInputController,
-                    recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
-                    bannerIcon: _sessionIcon(sessionState.status),
-                    bannerMessage: _sessionSummary(l10n, sessionState),
-                    bannerTone: _sessionTone(sessionState.status),
-                    onUnlockWithRecovery:
-                        sessionState.status == AppLockStatus.recoveryRequired
-                        ? () => _runBusy(() async {
-                            await ref
-                                .read(appSessionProvider.notifier)
-                                .unlockWithRecovery(
-                                  _recoveryKeyInputController.text.trim(),
-                                );
-                            await refreshEntryIndexCaches(ref);
-                            ref.invalidate(trustedDeviceAccessProvider);
-                          })
-                        : null,
-                    onCancelUnlock:
-                        sessionState.status == AppLockStatus.unlocking
-                        ? () => _runBusy(() async {
-                            await ref.read(appSessionProvider.notifier).lock();
-                          })
-                        : null,
-                  ),
-                  loading: () => const SettingsSectionLoading(),
-                  error: (Object error, StackTrace _) => AppFeedbackBanner(
-                    icon: Icons.error_outline_rounded,
-                    message: userFacingErrorMessage(error, l10n: l10n),
-                    tone: AppFeedbackTone.error,
-                  ),
-                ),
-        ),
+      child: ref.watch(backupStatusProvider).when(
         loading: () => const SettingsSectionLoading(),
         error: (Object error, StackTrace _) => AppFeedbackBanner(
           icon: Icons.error_outline_rounded,
           message: userFacingErrorMessage(error, l10n: l10n),
           tone: AppFeedbackTone.error,
+        ),
+        data: (BackupStatusSnapshot backupStatus) =>
+            trustedDeviceAccessAsync.when(
+          data: (bool hasTrustedDevice) => SettingsSecurityOverview(
+            hasRecoveryKey: recoveryMetadata != null,
+            recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+            hasUnlockedSession: hasUnlockedSession,
+            hasTrustedDevice: hasTrustedDevice,
+            unlockModeLabel: mode.fullLabel(l10n),
+            indexMessage: settingsIndexStatusMessage(
+              l10n,
+              sessionState: sessionState,
+              hasUnlockedSession: hasUnlockedSession,
+              repairReport: _lastVaultRepairReport,
+            ),
+            indexHealthLevel: settingsIndexHealthLevel(
+              l10n: l10n,
+              sessionState: sessionState,
+              hasUnlockedSession: hasUnlockedSession,
+              repairReport: _lastVaultRepairReport,
+            ),
+            backupStatus: backupStatus,
+            busy: _busy,
+            onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
+                ? () => _runBusy(_createRecoveryKey)
+                : null,
+            onRotateRecoveryKey:
+                recoveryMetadata != null && pageAccess.vaultTransfer.canBackup
+                ? () => _runBusy(_rotateRecoveryKey)
+                : null,
+            onRepairVault: hasUnlockedSession
+                ? () => _runBusy(_repairVault)
+                : null,
+            onRetryTrustedUnlock: sessionState?.status == AppLockStatus.locked
+                ? () => _runBusy(_retryTrustedUnlock)
+                : null,
+            lockPanel:
+                sessionState?.status == AppLockStatus.unlocked ||
+                    sessionState?.status == AppLockStatus.locked
+                ? null
+                : sessionAsync.when(
+                    data: (AppSessionState sessionState) => SettingsStatusPanel(
+                      sessionState: sessionState,
+                      busy: _busy,
+                      recoveryKeyInputController: _recoveryKeyInputController,
+                      recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+                      bannerIcon: _sessionIcon(sessionState.status),
+                      bannerMessage: _sessionSummary(l10n, sessionState),
+                      bannerTone: _sessionTone(sessionState.status),
+                      onUnlockWithRecovery:
+                          sessionState.status == AppLockStatus.recoveryRequired
+                          ? () => _runBusy(() async {
+                              await ref
+                                  .read(appSessionProvider.notifier)
+                                  .unlockWithRecovery(
+                                    _recoveryKeyInputController.text.trim(),
+                                  );
+                              await refreshEntryIndexCaches(ref);
+                              ref.invalidate(trustedDeviceAccessProvider);
+                            })
+                          : null,
+                      onCancelUnlock:
+                          sessionState.status == AppLockStatus.unlocking
+                          ? () => _runBusy(() async {
+                              await ref.read(appSessionProvider.notifier).lock();
+                            })
+                          : null,
+                    ),
+                    loading: () => const SettingsSectionLoading(),
+                    error: (Object error, StackTrace _) => AppFeedbackBanner(
+                      icon: Icons.error_outline_rounded,
+                      message: userFacingErrorMessage(error, l10n: l10n),
+                      tone: AppFeedbackTone.error,
+                    ),
+                  ),
+          ),
+          loading: () => const SettingsSectionLoading(),
+          error: (Object error, StackTrace _) => AppFeedbackBanner(
+            icon: Icons.error_outline_rounded,
+            message: userFacingErrorMessage(error, l10n: l10n),
+            tone: AppFeedbackTone.error,
+          ),
         ),
       ),
     );
@@ -296,8 +306,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final BackupPersistResult result = await _settingsFlow.createLocalBackup(
       onProgress: reportProgress,
     );
-    _showBackupPersistResult(
+    await _recordBackupPersistResult(
       result,
+      action: BackupStatusAction.localBackup,
       onSuccess: (String path) =>
           l10n.settingsLocalBackupBackupSuccessInApp(path),
     );
@@ -311,8 +322,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       l10n: l10n,
       onProgress: reportProgress,
     );
-    _showBackupPersistResult(
+    await _recordBackupPersistResult(
       result,
+      action: BackupStatusAction.externalExport,
       onSuccess: (String path) =>
           l10n.settingsLocalBackupBackupExportSuccess(path),
     );
@@ -322,14 +334,25 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     BackupTaskProgressListener reportProgress,
   ) async {
     final AppLocalizations l10n = context.l10n;
+    String? driveAccountLabel;
+    try {
+      final DriveConnectionState connection = await ref.read(
+        settingsDriveConnectionProvider.future,
+      );
+      driveAccountLabel = connection.accountLabel(l10n);
+    } on Object {
+      driveAccountLabel = null;
+    }
     final BackupPersistResult result = await _settingsFlow.uploadDriveBackup(
       onProgress: reportProgress,
     );
-    _showBackupPersistResult(
+    await _recordBackupPersistResult(
       result,
+      action: BackupStatusAction.driveUpload,
       onSuccess: (String path) => l10n.settingsDriveBackupUploadSuccess(path),
       inspectFailedMessage: (String message) =>
           l10n.settingsDriveBackupBackupInspectFailed(message),
+      driveAccountLabel: driveAccountLabel,
     );
   }
 
@@ -503,17 +526,54 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     }
     final AppLocalizations l10n = context.l10n;
     final String? trimmedKey = prepared.backupRecoveryKey?.trim();
-    if (trimmedKey != null &&
+    final bool unlockFailedAfterKey =
+        trimmedKey != null &&
         trimmedKey.isNotEmpty &&
-        sessionState.status != AppLockStatus.unlocked) {
+        sessionState.status != AppLockStatus.unlocked;
+
+    if (sessionState.status == AppLockStatus.unlocked) {
+      context.go(AppRouter.homeRoute);
       _showFeedback(
         SettingsFlowFeedback(
-          sessionState.message ?? l10n.vaultTransferRestoreUnlockFailed,
-          tone: SettingsFlowFeedbackTone.error,
+          driveAwarePostRestoreSnackBarMessage(
+            l10n: l10n,
+            status: sessionState.status,
+            driveBackupName: driveBackupName,
+          ),
+          tone: SettingsFlowFeedbackTone.success,
         ),
       );
       return;
     }
+
+    if (unlockFailedAfterKey ||
+        sessionState.status == AppLockStatus.locked ||
+        sessionState.status == AppLockStatus.recoveryRequired) {
+      final PostRestoreOutcome outcome = PostRestoreOutcome.fromSessionState(
+        l10n,
+        sessionState,
+        unlockFailedAfterRecoveryKey: unlockFailedAfterKey,
+      );
+      final bool runPrimary = await showPostRestoreOutcomeDialog(
+        context,
+        outcome: outcome,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (runPrimary) {
+        switch (outcome.primaryAction) {
+          case PostRestorePrimaryAction.retryVerification:
+            await ref.read(appSessionProvider.notifier).unlock();
+          case PostRestorePrimaryAction.openSettingsRecovery:
+            context.go(AppRouter.settingsRoute);
+        }
+      } else {
+        context.go(AppRouter.homeRoute);
+      }
+      return;
+    }
+
     context.go(AppRouter.homeRoute);
     _showFeedback(
       SettingsFlowFeedback(
@@ -522,7 +582,9 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           status: sessionState.status,
           driveBackupName: driveBackupName,
         ),
-        tone: SettingsFlowFeedbackTone.success,
+        tone: sessionState.status == AppLockStatus.fatalError
+            ? SettingsFlowFeedbackTone.error
+            : SettingsFlowFeedbackTone.success,
       ),
     );
   }
@@ -623,6 +685,43 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         });
       }
     }
+  }
+
+  Future<void> _recordBackupPersistResult(
+    BackupPersistResult result, {
+    required BackupStatusAction action,
+    required String Function(String savedPath) onSuccess,
+    String Function(String message)? inspectFailedMessage,
+    String? driveAccountLabel,
+  }) async {
+    final BackupStatusStore store = ref.read(backupStatusStoreProvider);
+    switch (result.status) {
+      case BackupPersistStatus.success:
+        switch (action) {
+          case BackupStatusAction.localBackup:
+            await store.recordLocalBackupSuccess();
+          case BackupStatusAction.externalExport:
+            await store.recordExternalExportSuccess();
+          case BackupStatusAction.driveUpload:
+            await store.recordDriveUploadSuccess(
+              accountLabel: driveAccountLabel,
+            );
+        }
+        ref.invalidate(backupStatusProvider);
+      case BackupPersistStatus.inspectFailed:
+        final String message = result.message.trim().isNotEmpty
+            ? result.message.trim()
+            : context.l10n.settingsLocalBackupBackupInspectFailed('');
+        await store.recordFailure(action: action, message: message);
+        ref.invalidate(backupStatusProvider);
+      case BackupPersistStatus.cancelled:
+        break;
+    }
+    _showBackupPersistResult(
+      result,
+      onSuccess: onSuccess,
+      inspectFailedMessage: inspectFailedMessage,
+    );
   }
 
   void _showBackupPersistResult(

@@ -244,6 +244,7 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
   ) {
     return PendingAttachment(
       sourcePath: absolutePathBuilder(attachment.relativePath),
+      pendingRelativePath: attachment.relativePath,
       mimeType: attachment.mimeType,
       originalFilename: attachment.originalFilename,
     );

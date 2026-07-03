@@ -18,8 +18,14 @@ class EditorDraftStore {
   }) : _pathStrategy = pathStrategy,
        _cryptoService = cryptoService;
 
+  static const String _materializedPreviewRootName = 'quill_diary_draft_preview';
+
   final VaultPathStrategy _pathStrategy;
   final CryptoService _cryptoService;
+
+  /// 已 materialize 的暫時明文路徑快取：`draftKey` → `relativePath` → 絕對路徑。
+  final Map<String, Map<String, String>> _materializedPreviewCache =
+      <String, Map<String, String>>{};
 
   Future<EditorDraftRecord?> read(
     String draftKey,
@@ -88,6 +94,7 @@ class EditorDraftStore {
   }
 
   Future<void> delete(String draftKey) async {
+    await clearMaterializedPendingFiles(draftKey);
     final Directory draftDir = await _pathStrategy.editorDraftDirectory(
       draftKey,
     );
@@ -101,6 +108,7 @@ class EditorDraftStore {
   ///
   /// 還原備份後應呼叫，避免舊草稿與還原後的正式日記庫不一致。
   Future<void> deleteAll() async {
+    await clearAllMaterializedPendingFiles();
     final Directory draftsRoot = await _pathStrategy
         .editorDraftsRootDirectory();
     if (!draftsRoot.existsSync()) {
@@ -109,8 +117,12 @@ class EditorDraftStore {
     await draftsRoot.delete(recursive: true);
   }
 
-  /// 將來源檔複製到草稿 pending 目錄，回傳相對路徑。
-  Future<String> stagePendingFile(String draftKey, String sourcePath) async {
+  /// 讀入來源檔並以 LDJ2 加密寫入 `pending/*.enc`，回傳相對路徑。
+  Future<String> stagePendingFile(
+    String draftKey,
+    String sourcePath,
+    UnlockedVaultSession session,
+  ) async {
     final String trimmed = sourcePath.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError.value(sourcePath, 'sourcePath', '來源檔案路徑不可為空。');
@@ -120,15 +132,104 @@ class EditorDraftStore {
       throw FileSystemException('找不到待暫存的附件', trimmed);
     }
 
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final List<int> recoveryWrapKey =
+        session.recoveryWrapKey ??
+        (throw StateError('目前 session 缺少 recovery wrap key。'));
+
     final Directory pendingDir = await _pathStrategy
         .editorDraftPendingDirectory(draftKey);
     await pendingDir.create(recursive: true);
-    final String fileName =
-        '${DateTime.now().microsecondsSinceEpoch}_${_sanitizeFileName(p.basename(trimmed))}';
-    final File copied = await sourceFile.copy(
-      p.join(pendingDir.path, fileName),
+    final String baseName = _sanitizeFileName(p.basename(trimmed));
+    final String storedName =
+        '${DateTime.now().microsecondsSinceEpoch}_$baseName.enc';
+    final String absoluteEncPath = p.join(pendingDir.path, storedName);
+    final Uint8List sourceBytes = await sourceFile.readAsBytes();
+    final DateTime now = DateTime.now();
+    final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+      documentId: 'draft_pending_${draftKey}_$storedName',
+      vaultId: metadata.vaultId,
+      plaintextBytes: sourceBytes,
+      contentType: _mimeTypeFromFileName(baseName),
+      recoveryWrapKey: recoveryWrapKey,
+      recoverySlotKdf: metadata.kdf,
+      createdAt: now,
+      updatedAt: now,
     );
-    return pendingRelativePath(draftKey, copied.path);
+    await File(
+      absoluteEncPath,
+    ).writeAsBytes(encrypted.toFileBytes(), flush: true);
+    return await pendingRelativePath(draftKey, absoluteEncPath);
+  }
+
+  /// 將加密 pending 附件解密到暫時目錄，供預覽與分享使用。
+  ///
+  /// UI 不應直接讀取 [pendingAbsolutePath] 指向的 `.enc` 檔。
+  Future<String> materializePendingFileForPreview(
+    String draftKey,
+    String relativePath,
+    UnlockedVaultSession session,
+  ) async {
+    final String normalizedRelative = relativePath.replaceAll('\\', '/');
+    final Map<String, String> draftCache = _materializedPreviewCache.putIfAbsent(
+      draftKey,
+      () => <String, String>{},
+    );
+    final String? cached = draftCache[normalizedRelative];
+    if (cached != null && File(cached).existsSync()) {
+      return cached;
+    }
+
+    final String encryptedPath = await pendingAbsolutePath(
+      draftKey,
+      normalizedRelative,
+    );
+    final File encryptedFile = File(encryptedPath);
+    if (!encryptedFile.existsSync()) {
+      throw FileSystemException('找不到待解密的 pending 附件', encryptedPath);
+    }
+
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+      await encryptedFile.readAsBytes(),
+    );
+    final List<int> plain = await _cryptoService.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: DecryptionContext(
+        vaultId: session.vaultId,
+        trustedDevice: session.trustedDevice,
+        recoveryWrapKey: session.recoveryWrapKey,
+        deviceSlotId: session.deviceSlotId,
+      ),
+    );
+
+    final Directory previewDir = await _materializedPreviewDirectory(draftKey);
+    await previewDir.create(recursive: true);
+    final String outputName = _materializedFileName(normalizedRelative);
+    final String outputPath = p.join(previewDir.path, outputName);
+    await File(outputPath).writeAsBytes(plain, flush: true);
+    draftCache[normalizedRelative] = outputPath;
+    return outputPath;
+  }
+
+  /// 清除指定草稿的暫時解密檔案。
+  Future<void> clearMaterializedPendingFiles(String draftKey) async {
+    _materializedPreviewCache.remove(draftKey);
+    final Directory previewDir = await _materializedPreviewDirectory(draftKey);
+    if (previewDir.existsSync()) {
+      await previewDir.delete(recursive: true);
+    }
+  }
+
+  /// 清除所有草稿的暫時解密檔案（session 鎖定或還原時呼叫）。
+  Future<void> clearAllMaterializedPendingFiles() async {
+    _materializedPreviewCache.clear();
+    final Directory previewRoot = Directory(
+      p.join(Directory.systemTemp.path, _materializedPreviewRootName),
+    );
+    if (previewRoot.existsSync()) {
+      await previewRoot.delete(recursive: true);
+    }
   }
 
   /// 掃描 drafts 根目錄，回傳仍有 draft.json.enc 的 key 集合。
@@ -165,6 +266,7 @@ class EditorDraftStore {
     return p.relative(absolutePath, from: draftDir.path).replaceAll('\\', '/');
   }
 
+  /// 回傳磁碟上加密 pending 檔的絕對路徑；UI 請改用 [materializePendingFileForPreview]。
   Future<String> pendingAbsolutePath(
     String draftKey,
     String relativePath,
@@ -218,8 +320,27 @@ class EditorDraftStore {
       final String relative = await pendingRelativePath(draftKey, entity.path);
       if (!keepRelativePaths.contains(relative)) {
         await entity.delete();
+        _materializedPreviewCache[draftKey]?.remove(relative);
       }
     }
+  }
+
+  Future<Directory> _materializedPreviewDirectory(String draftKey) async {
+    return Directory(
+      p.join(
+        Directory.systemTemp.path,
+        _materializedPreviewRootName,
+        draftKey,
+      ),
+    );
+  }
+
+  String _materializedFileName(String relativePath) {
+    final String base = p.basename(relativePath);
+    if (base.endsWith('.enc')) {
+      return base.substring(0, base.length - 4);
+    }
+    return base;
   }
 
   String _sanitizeFileName(String fileName) {
@@ -228,5 +349,21 @@ class EditorDraftStore {
       return 'attachment.bin';
     }
     return trimmed.replaceAll(RegExp(r'[^\w.\-]'), '_');
+  }
+
+  String _mimeTypeFromFileName(String fileName) {
+    switch (p.extension(fileName).toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.webp':
+        return 'image/webp';
+      case '.gif':
+        return 'image/gif';
+      default:
+        return 'application/octet-stream';
+    }
   }
 }

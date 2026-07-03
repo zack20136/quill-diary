@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../../infrastructure/security/app_unlock_mode.dart';
+import '../../../infrastructure/storage/backup_status_store.dart';
 import '../../../l10n/l10n.dart';
 import '../settings_messages.dart';
 import '../../session/presentation/session_locked_pane.dart';
@@ -700,6 +701,22 @@ class SettingsSectionLoading extends StatelessWidget {
 
 enum SettingsHealthLevel { ok, warning, error }
 
+class SecurityOverviewItem {
+  const SecurityOverviewItem({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.level,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? subtitle;
+  final SettingsHealthLevel level;
+}
+
 class SettingsSecurityOverview extends StatelessWidget {
   const SettingsSecurityOverview({
     required this.hasRecoveryKey,
@@ -709,6 +726,7 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.unlockModeLabel,
     required this.indexMessage,
     required this.indexHealthLevel,
+    required this.backupStatus,
     required this.busy,
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
@@ -725,6 +743,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final String unlockModeLabel;
   final String indexMessage;
   final SettingsHealthLevel indexHealthLevel;
+  final BackupStatusSnapshot backupStatus;
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
@@ -735,8 +754,13 @@ class SettingsSecurityOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final List<_SecurityOverviewItem> items = <_SecurityOverviewItem>[
-      _SecurityOverviewItem(
+    final DateTime now = DateTime.now();
+    final SecurityOverviewItem localBackupItem =
+        settingsLocalBackupSecurityOverview(l10n, backupStatus, now);
+    final SecurityOverviewItem driveBackupItem =
+        settingsDriveBackupSecurityOverview(l10n, backupStatus, now);
+    final List<SecurityOverviewItem> items = <SecurityOverviewItem>[
+      SecurityOverviewItem(
         icon: Icons.key_outlined,
         title: l10n.settingsSecurityOverviewRecoveryKeyTitle,
         message: hasRecoveryKey
@@ -749,7 +773,7 @@ class SettingsSecurityOverview extends StatelessWidget {
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
       ),
-      _SecurityOverviewItem(
+      SecurityOverviewItem(
         icon: Icons.phonelink_lock_outlined,
         title: l10n.settingsSecurityOverviewUnlockModeTitle,
         message: hasRecoveryKey
@@ -762,7 +786,7 @@ class SettingsSecurityOverview extends StatelessWidget {
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
       ),
-      _SecurityOverviewItem(
+      SecurityOverviewItem(
         icon: Icons.verified_user_outlined,
         title: l10n.settingsSecurityOverviewTrustedDeviceTitle,
         message: hasTrustedDevice
@@ -772,12 +796,14 @@ class SettingsSecurityOverview extends StatelessWidget {
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
       ),
-      _SecurityOverviewItem(
+      SecurityOverviewItem(
         icon: Icons.storage_rounded,
         title: l10n.settingsSecurityOverviewIndexTitle,
         message: indexMessage,
         level: indexHealthLevel,
       ),
+      localBackupItem,
+      driveBackupItem,
     ];
 
     return Column(
@@ -833,26 +859,10 @@ class SettingsSecurityOverview extends StatelessWidget {
   }
 }
 
-class _SecurityOverviewItem {
-  const _SecurityOverviewItem({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.level,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? subtitle;
-  final SettingsHealthLevel level;
-}
-
 class _SecurityOverviewTile extends StatelessWidget {
   const _SecurityOverviewTile({required this.item, required this.l10n});
 
-  final _SecurityOverviewItem item;
+  final SecurityOverviewItem item;
   final AppLocalizations l10n;
 
   @override

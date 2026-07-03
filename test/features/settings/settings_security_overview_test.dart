@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/features/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/test_l10n.dart';
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+  });
+
   Future<void> pumpOverview(
     WidgetTester tester, {
     required SettingsHealthLevel indexHealthLevel,
     required String indexMessage,
     bool hasUnlockedSession = true,
+    BackupStatusSnapshot backupStatus = const BackupStatusSnapshot(),
   }) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await tester.pumpWidget(
       MaterialApp(
         theme: appTestTheme(),
@@ -29,6 +38,7 @@ void main() {
             unlockModeLabel: testL10n.settingsUnlockModeFullNone,
             indexMessage: indexMessage,
             indexHealthLevel: indexHealthLevel,
+            backupStatus: backupStatus,
             busy: false,
             onCreateRecoveryKey: () {},
             onRotateRecoveryKey: () {},
@@ -61,12 +71,12 @@ void main() {
       indexHealthLevel: SettingsHealthLevel.warning,
       indexMessage: testL10n.settingsRepairVaultLockedMessage,
       hasUnlockedSession: false,
+      backupStatus: BackupStatusSnapshot(
+        lastLocalBackupAt: DateTime(2026, 7, 3),
+        lastDriveUploadAt: DateTime(2026, 7, 3),
+      ),
     );
 
-    expect(
-      find.text(testL10n.settingsSecurityOverviewHealthLevelWarning),
-      findsOneWidget,
-    );
     expect(
       find.text(testL10n.settingsRepairVaultLockedMessage),
       findsOneWidget,
@@ -87,5 +97,27 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(errorMessage), findsOneWidget);
+  });
+
+  testWidgets('安全狀態會顯示本機與 Drive 備份卡片', (WidgetTester tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+      backupStatus: BackupStatusSnapshot(
+        lastLocalBackupAt: DateTime(2026, 7, 3, 8, 53),
+        lastDriveUploadAt: DateTime(2026, 7, 3, 8, 53),
+        lastDriveAccountLabel: 'user@example.com',
+      ),
+    );
+
+    expect(
+      find.text(testL10n.settingsSecurityOverviewLocalBackupTitle),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.settingsSecurityOverviewDriveBackupTitle),
+      findsOneWidget,
+    );
   });
 }

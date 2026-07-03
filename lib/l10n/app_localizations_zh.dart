@@ -999,7 +999,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewSectionDescription =>
-      '查看復原金鑰、解鎖方式與搜尋索引是否正常。';
+      '查看復原金鑰、解鎖方式、搜尋索引與備份狀態是否正常。';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyTitle => '復原金鑰';
@@ -1062,6 +1062,49 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewHealthLevelError => '錯誤';
+
+  @override
+  String get settingsSecurityOverviewLocalBackupTitle => '本機備份';
+
+  @override
+  String get settingsSecurityOverviewLocalBackupNever => '尚未建立本機備份，建議儘快備份。';
+
+  @override
+  String settingsSecurityOverviewLocalBackupLast(String time, String method) {
+    return '「$method」，$time。';
+  }
+
+  @override
+  String get settingsSecurityOverviewLocalBackupStale => '上次備份已超過 30 天，建議儘快備份。';
+
+  @override
+  String get settingsSecurityOverviewDriveBackupTitle => 'Google Drive 備份';
+
+  @override
+  String get settingsSecurityOverviewDriveBackupNever =>
+      '尚未上傳備份到 Google Drive，建議儘快備份。';
+
+  @override
+  String settingsSecurityOverviewDriveBackupLast(String time) {
+    return '$time 已上傳。';
+  }
+
+  @override
+  String settingsSecurityOverviewDriveBackupLastWithAccount(
+    String time,
+    String account,
+  ) {
+    return '$time 已上傳至 $account。';
+  }
+
+  @override
+  String get settingsSecurityOverviewDriveBackupStale =>
+      '上次 Drive 備份已超過 30 天，建議儘快上傳。';
+
+  @override
+  String settingsSecurityOverviewBackupRecentFailure(String action) {
+    return '最近一次「$action」失敗。';
+  }
 
   @override
   String get settingsUnlockModeFullNone => '無';
@@ -1658,6 +1701,27 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get sessionRestoreStartupFailedMessage =>
       '已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。';
+
+  @override
+  String get postRestoreOutcomeTitle => '還原已完成';
+
+  @override
+  String get postRestoreOutcomeNextStepLocked => '目前還差一步：請完成生物驗證或螢幕鎖驗證。';
+
+  @override
+  String get postRestoreOutcomeNextStepRecovery => '目前還差一步：請輸入建立此備份時保存的復原金鑰。';
+
+  @override
+  String get postRestoreOutcomeSecondaryHint => '首次解鎖可能較久，搜尋索引也會重新建立。';
+
+  @override
+  String get postRestoreOutcomePrimaryRetryVerification => '立即重新驗證';
+
+  @override
+  String get postRestoreOutcomePrimaryEnterRecoveryKey => '立即輸入復原金鑰';
+
+  @override
+  String get postRestoreOutcomeUnlockFailedTitle => '還原後仍無法解鎖';
 
   @override
   String get sessionRecoveryKeyMismatchMessage =>
@@ -2445,7 +2509,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      '完整備份不含尚在編輯中、尚未正式儲存的本地草稿。';
+      '完整備份不含尚在編輯中、尚未正式儲存的本地草稿；執行還原時也會清除裝置上所有草稿與待上傳附件暫存。';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title => '可讀匯出要自己保管';

@@ -591,6 +591,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       return;
     }
     _pendingResourceCleanup = false;
+    await ref.read(editorDraftStoreProvider).clearAllMaterializedPendingFiles();
     await ref.read(vaultRepositoryProvider).closeUnlockedResources();
   }
 

@@ -35,6 +35,7 @@ class PendingAttachment {
   PendingAttachment({
     this.bytes,
     this.sourcePath,
+    this.pendingRelativePath,
     required this.mimeType,
     required this.originalFilename,
   }) : assert(
@@ -46,8 +47,11 @@ class PendingAttachment {
   /// 內嵌或已讀入記憶體的附件（例如 HTML 資料 URI）。
   final Uint8List? bytes;
 
-  /// 本機檔案路徑（編輯器選檔或匯入的外部圖片）。
+  /// 暫時明文路徑（materialize 後供預覽與正式儲存讀取）。
   final String? sourcePath;
+
+  /// 加密 pending 附件在草稿目錄下的相對路徑（例如 `pending/*.enc`）。
+  final String? pendingRelativePath;
   final String mimeType;
   final String originalFilename;
 }

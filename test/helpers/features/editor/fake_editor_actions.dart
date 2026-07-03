@@ -61,6 +61,9 @@ class FakeEditorActions implements EditorActionPort {
   }) async => 'C:/vault/${attachment.id}';
 
   @override
+  Future<void> clearAllMaterializedPendingFiles() async {}
+
+  @override
   Future<void> deleteDraft(String draftKey) async {}
 
   @override
@@ -81,6 +84,13 @@ class FakeEditorActions implements EditorActionPort {
     UnlockedVaultSession session,
     EntryId entryId,
   ) async => existingEntry ?? defaultEntry;
+
+  @override
+  Future<String> materializePendingFileForPreview(
+    String draftKey,
+    String relativePath,
+    UnlockedVaultSession session,
+  ) async => 'C:/drafts/preview/$relativePath';
 
   @override
   Future<String> pendingAbsolutePath(
@@ -123,11 +133,15 @@ class FakeEditorActions implements EditorActionPort {
     required String draftKey,
     required String sourcePath,
     required String displayName,
+    required UnlockedVaultSession session,
   }) async => null;
 
   @override
-  Future<String> stagePendingFile(String draftKey, String sourcePath) async =>
-      sourcePath;
+  Future<String> stagePendingFile(
+    String draftKey,
+    String sourcePath,
+    UnlockedVaultSession session,
+  ) async => 'pending/file.enc';
 
   @override
   Future<void> writeDraft(

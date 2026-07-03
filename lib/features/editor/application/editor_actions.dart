@@ -37,13 +37,26 @@ abstract interface class EditorActionPort {
 
   Future<String> pendingAbsolutePath(String draftKey, String relativePath);
 
-  Future<String> stagePendingFile(String draftKey, String sourcePath);
+  Future<String> stagePendingFile(
+    String draftKey,
+    String sourcePath,
+    UnlockedVaultSession session,
+  );
+
+  Future<String> materializePendingFileForPreview(
+    String draftKey,
+    String relativePath,
+    UnlockedVaultSession session,
+  );
+
+  Future<void> clearAllMaterializedPendingFiles();
 
   Future<PendingAttachment?> stagePickedImage({
     required ImageCompressPreset preset,
     required String draftKey,
     required String sourcePath,
     required String displayName,
+    required UnlockedVaultSession session,
   });
 
   Future<Uint8List?> readDecryptedAssetBytes(
@@ -116,10 +129,34 @@ class EditorActions implements EditorActionPort {
   }
 
   @override
-  Future<String> stagePendingFile(String draftKey, String sourcePath) {
+  Future<String> stagePendingFile(
+    String draftKey,
+    String sourcePath,
+    UnlockedVaultSession session,
+  ) {
     return _ref
         .read(editorDraftStoreProvider)
-        .stagePendingFile(draftKey, sourcePath);
+        .stagePendingFile(draftKey, sourcePath, session);
+  }
+
+  @override
+  Future<String> materializePendingFileForPreview(
+    String draftKey,
+    String relativePath,
+    UnlockedVaultSession session,
+  ) {
+    return _ref
+        .read(editorDraftStoreProvider)
+        .materializePendingFileForPreview(
+          draftKey,
+          relativePath,
+          session,
+        );
+  }
+
+  @override
+  Future<void> clearAllMaterializedPendingFiles() {
+    return _ref.read(editorDraftStoreProvider).clearAllMaterializedPendingFiles();
   }
 
   @override
@@ -128,6 +165,7 @@ class EditorActions implements EditorActionPort {
     required String draftKey,
     required String sourcePath,
     required String displayName,
+    required UnlockedVaultSession session,
   }) {
     return editor_image_staging.stagePickedImage(
       draftStore: _ref.read(editorDraftStoreProvider),
@@ -135,6 +173,7 @@ class EditorActions implements EditorActionPort {
       draftKey: draftKey,
       sourcePath: sourcePath,
       displayName: displayName,
+      session: session,
     );
   }
 

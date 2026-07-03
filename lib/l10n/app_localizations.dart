@@ -1868,7 +1868,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewSectionDescription.
   ///
   /// In zh, this message translates to:
-  /// **'查看復原金鑰、解鎖方式與搜尋索引是否正常。'**
+  /// **'查看復原金鑰、解鎖方式、搜尋索引與備份狀態是否正常。'**
   String get settingsSecurityOverviewSectionDescription;
 
   /// No description provided for @settingsSecurityOverviewRecoveryKeyTitle.
@@ -1986,6 +1986,69 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'錯誤'**
   String get settingsSecurityOverviewHealthLevelError;
+
+  /// No description provided for @settingsSecurityOverviewLocalBackupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'本機備份'**
+  String get settingsSecurityOverviewLocalBackupTitle;
+
+  /// No description provided for @settingsSecurityOverviewLocalBackupNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未建立本機備份，建議儘快備份。'**
+  String get settingsSecurityOverviewLocalBackupNever;
+
+  /// No description provided for @settingsSecurityOverviewLocalBackupLast.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{method}」，{time}。'**
+  String settingsSecurityOverviewLocalBackupLast(String time, String method);
+
+  /// No description provided for @settingsSecurityOverviewLocalBackupStale.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次備份已超過 30 天，建議儘快備份。'**
+  String get settingsSecurityOverviewLocalBackupStale;
+
+  /// No description provided for @settingsSecurityOverviewDriveBackupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 備份'**
+  String get settingsSecurityOverviewDriveBackupTitle;
+
+  /// No description provided for @settingsSecurityOverviewDriveBackupNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未上傳備份到 Google Drive，建議儘快備份。'**
+  String get settingsSecurityOverviewDriveBackupNever;
+
+  /// No description provided for @settingsSecurityOverviewDriveBackupLast.
+  ///
+  /// In zh, this message translates to:
+  /// **'{time} 已上傳。'**
+  String settingsSecurityOverviewDriveBackupLast(String time);
+
+  /// No description provided for @settingsSecurityOverviewDriveBackupLastWithAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{time} 已上傳至 {account}。'**
+  String settingsSecurityOverviewDriveBackupLastWithAccount(
+    String time,
+    String account,
+  );
+
+  /// No description provided for @settingsSecurityOverviewDriveBackupStale.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次 Drive 備份已超過 30 天，建議儘快上傳。'**
+  String get settingsSecurityOverviewDriveBackupStale;
+
+  /// No description provided for @settingsSecurityOverviewBackupRecentFailure.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近一次「{action}」失敗。'**
+  String settingsSecurityOverviewBackupRecentFailure(String action);
 
   /// No description provided for @settingsUnlockModeFullNone.
   ///
@@ -2991,6 +3054,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。'**
   String get sessionRestoreStartupFailedMessage;
+
+  /// No description provided for @postRestoreOutcomeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'還原已完成'**
+  String get postRestoreOutcomeTitle;
+
+  /// No description provided for @postRestoreOutcomeNextStepLocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前還差一步：請完成生物驗證或螢幕鎖驗證。'**
+  String get postRestoreOutcomeNextStepLocked;
+
+  /// No description provided for @postRestoreOutcomeNextStepRecovery.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前還差一步：請輸入建立此備份時保存的復原金鑰。'**
+  String get postRestoreOutcomeNextStepRecovery;
+
+  /// No description provided for @postRestoreOutcomeSecondaryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'首次解鎖可能較久，搜尋索引也會重新建立。'**
+  String get postRestoreOutcomeSecondaryHint;
+
+  /// No description provided for @postRestoreOutcomePrimaryRetryVerification.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即重新驗證'**
+  String get postRestoreOutcomePrimaryRetryVerification;
+
+  /// No description provided for @postRestoreOutcomePrimaryEnterRecoveryKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即輸入復原金鑰'**
+  String get postRestoreOutcomePrimaryEnterRecoveryKey;
+
+  /// No description provided for @postRestoreOutcomeUnlockFailedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'還原後仍無法解鎖'**
+  String get postRestoreOutcomeUnlockFailedTitle;
 
   /// No description provided for @sessionRecoveryKeyMismatchMessage.
   ///
@@ -4387,7 +4492,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份不含尚在編輯中、尚未正式儲存的本地草稿。'**
+  /// **'完整備份不含尚在編輯中、尚未正式儲存的本地草稿；執行還原時也會清除裝置上所有草稿與待上傳附件暫存。'**
   String get aboutTabBackupRestoreSection3Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Item1Title.

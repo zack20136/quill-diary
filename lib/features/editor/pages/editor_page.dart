@@ -1334,10 +1334,16 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
 
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null) {
+      return;
+    }
+
     final List<PendingAttachment> staged = await _editorFlow.stagePickedImages(
       preset: watchPersonalizationPreferences(ref).imageCompressPreset,
       draftKey: _draftKey,
       sourcePaths: files.map((XFile file) => file.path),
+      session: session,
     );
     if (staged.isEmpty) {
       return;
@@ -1357,6 +1363,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
 
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null) {
+      return;
+    }
+
     final List<PendingAttachment> staged = <PendingAttachment>[];
     for (final PlatformFile file in result.files) {
       if (file.path == null || file.path!.trim().isEmpty) {
@@ -1366,6 +1377,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         draftKey: _draftKey,
         path: file.path!,
         displayName: file.name,
+        session: session,
       );
       if (attachment != null) {
         staged.add(attachment);

@@ -263,6 +263,45 @@ void main() {
     expect(await draftStore.listDraftKeys(), isEmpty);
   });
 
+  test('restoreBackupZip 會清除 materialize 的暫時明文附件', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Restore Me',
+      date: '2026-05-26',
+      markdownBody: 'restore body',
+    );
+
+    final EditorDraftStore draftStore = EditorDraftStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: LocalCryptoService(),
+    );
+    final File sourceFile = File(p.join(harness.tempDir.path, 'pending.txt'))
+      ..writeAsStringSync('pending secret');
+    final String relativePath = await draftStore.stagePendingFile(
+      'entry-pending',
+      sourceFile.path,
+      setup.session,
+    );
+    final String previewPath = await draftStore.materializePendingFileForPreview(
+      'entry-pending',
+      relativePath,
+      setup.session,
+    );
+    expect(File(previewPath).existsSync(), isTrue);
+
+    final File backupFile = File(
+      p.join(harness.tempDir.path, 'pending_preview_clear.zip'),
+    );
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.closeUnlockedResources();
+    await archiveIo.restoreBackupZip(backupFile);
+
+    expect(File(previewPath).existsSync(), isFalse);
+    expect(await draftStore.listDraftKeys(), isEmpty);
+  });
+
   test('損壞的備份 zip 不應清空現有 vault', () async {
     final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(

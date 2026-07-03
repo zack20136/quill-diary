@@ -608,7 +608,7 @@
   "settingsRecoveryKeyRotateDialogTitle": "Update Recovery Key?",
   "settingsRecoveryKeyRotateDialogBody": "A new recovery key will be generated—save it immediately.\n\nExisting local or Google Drive backups still require the old key to restore; create a new backup after updating.",
   "settingsSecurityOverviewSectionTitle": "Security Overview",
-  "settingsSecurityOverviewSectionDescription": "Review recovery key status, unlock method, and search index health.",
+  "settingsSecurityOverviewSectionDescription": "Review recovery key status, unlock method, search index, and backup status.",
   "settingsSecurityOverviewRecoveryKeyTitle": "Recovery Key",
   "settingsSecurityOverviewRecoveryKeyReady": "Created and ready for device migration and restore.",
   "settingsSecurityOverviewRecoveryKeyMissing": "Not created yet. Create one before backing up or exporting.",
@@ -635,6 +635,38 @@
   "settingsSecurityOverviewHealthLevelOk": "OK",
   "settingsSecurityOverviewHealthLevelWarning": "Needs Attention",
   "settingsSecurityOverviewHealthLevelError": "Error",
+  "settingsSecurityOverviewLocalBackupTitle": "Local backup",
+  "settingsSecurityOverviewLocalBackupNever": "No local backup yet. Consider backing up soon.",
+  "settingsSecurityOverviewLocalBackupLast": "\"{method}\", {time}.",
+  "@settingsSecurityOverviewLocalBackupLast": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "method": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewLocalBackupStale": "Your last backup was over 30 days ago. Consider backing up soon.",
+  "settingsSecurityOverviewDriveBackupTitle": "Google Drive backup",
+  "settingsSecurityOverviewDriveBackupNever": "No Google Drive backup uploaded yet. Consider uploading soon.",
+  "settingsSecurityOverviewDriveBackupLast": "Last uploaded {time}.",
+  "@settingsSecurityOverviewDriveBackupLast": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewDriveBackupLastWithAccount": "Last uploaded {time} to {account}.",
+  "@settingsSecurityOverviewDriveBackupLastWithAccount": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "account": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewDriveBackupStale": "Your last Drive backup was over 30 days ago. Consider uploading soon.",
+  "settingsSecurityOverviewBackupRecentFailure": "Latest \"{action}\" attempt failed.",
+  "@settingsSecurityOverviewBackupRecentFailure": {
+    "placeholders": {
+      "action": { "type": "String" }
+    }
+  },
   "settingsUnlockModeFullNone": "None",
   "settingsUnlockModeFullDeviceLock": "Device Screen Lock",
   "settingsUnlockModeFullBiometric": "Biometric Verification",
@@ -995,6 +1027,13 @@
   "sessionRestoreSuccessLockedMessage": "Backup restored. Complete biometric or device-lock verification to continue.",
   "sessionRestoreSuccessRecoveryRequiredMessage": "Backup restored. Enter the recovery key saved when this backup was created.",
   "sessionRestoreStartupFailedMessage": "Backup restored, but startup failed. Retry from Settings or enter the recovery key.",
+  "postRestoreOutcomeTitle": "Restore completed",
+  "postRestoreOutcomeNextStepLocked": "One more step: complete biometric or screen-lock verification.",
+  "postRestoreOutcomeNextStepRecovery": "One more step: enter the recovery key saved when this backup was created.",
+  "postRestoreOutcomeSecondaryHint": "The first unlock after restore may take longer while the search index rebuilds.",
+  "postRestoreOutcomePrimaryRetryVerification": "Verify now",
+  "postRestoreOutcomePrimaryEnterRecoveryKey": "Enter recovery key",
+  "postRestoreOutcomeUnlockFailedTitle": "Could not unlock after restore",
   "sessionRecoveryKeyMismatchMessage": "The recovery key is incorrect. If this backup predates a key rotation, enter the old key saved with that backup.",
   "sessionTrustedUnlockFailedAfterRestoreMessage": "Automatic unlock failed after restore. Enter the recovery key saved for this backup.",
   "sessionIndexDatabaseUnreadableMessage": "The search index cannot be read and may be corrupted. Unlock with the recovery key or try restoring the backup.",
@@ -1234,7 +1273,7 @@
   "aboutTabBackupRestoreSection3Title": "Things to Know Before Use",
   "aboutTabBackupRestoreSection3Subtitle": "Backup and export both matter, but they protect different things with different responsibility boundaries.",
   "aboutTabBackupRestoreSection3Item0Title": "Full Backup Excludes Drafts",
-  "aboutTabBackupRestoreSection3Item0Body": "Full backup does not include local drafts still being edited and not yet saved.",
+  "aboutTabBackupRestoreSection3Item0Body": "Full backup does not include local drafts still being edited. Restoring a backup also clears all drafts and pending attachments on this device.",
   "aboutTabBackupRestoreSection3Item1Title": "Protect Readable Exports Yourself",
   "aboutTabBackupRestoreSection3Item1Body": "Markdown and HTML exports are for reading, organizing, and moving content, but they are no longer in-app encrypted formats. You decide how to store them afterward.",
   "aboutTabBackupRestoreSection3Item2Title": "Do Not Mix the Two Flows",

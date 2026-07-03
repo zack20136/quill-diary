@@ -1,25 +1,17 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/features/session/providers/session_providers.dart';
-import 'package:quill_diary/features/session/state/app_session_state.dart';
 import 'package:quill_diary/features/settings/pages/settings_page.dart';
-import 'package:quill_diary/features/settings/providers/settings_providers.dart';
-import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/providers/core_providers.dart';
-import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../../helpers/app_test_theme.dart';
-import '../../../helpers/session/fake_session_vault_repository.dart';
-import '../../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../../helpers/features/settings/settings_test_scope.dart';
 import '../../../helpers/shared/test_l10n.dart';
 
 void main() {
   testWidgets('法務區塊會顯示 GitHub 相關連結', (WidgetTester tester) async {
     await tester.pumpWidget(
-      _settingsScope(
-        MaterialApp(
+      settingsTestScope(
+        child: MaterialApp(
           theme: appTestTheme(),
           darkTheme: appTestTheme(brightness: Brightness.dark),
           locale: appZhLocale,
@@ -51,22 +43,4 @@ void main() {
     );
     expect(find.text(testL10n.settingsLegalContactAuthorTitle), findsOneWidget);
   });
-}
-
-Widget _settingsScope(Widget child) {
-  return ProviderScope(
-    overrides: [
-      supportedPlatformProvider.overrideWith((Ref ref) => true),
-      vaultRepositoryProvider.overrideWithValue(FakeSessionVaultRepository()),
-      vaultTransferServiceProvider.overrideWithValue(
-        FakeVaultTransferService(),
-      ),
-      effectiveAppSessionProvider.overrideWith(
-        (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),
-      ),
-      recoveryMetadataProvider.overrideWith((Ref ref) async => null),
-      unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
-    ],
-    child: child,
-  );
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 
+import '../../domain/security/unlocked_vault_session.dart';
 import '../../infrastructure/preferences/user_preferences.dart';
 import '../../infrastructure/storage/editor_draft_store.dart';
 import '../../infrastructure/storage/vault_repository.dart';
@@ -17,6 +18,7 @@ Future<PendingAttachment?> stagePickedImage({
   required String draftKey,
   required String sourcePath,
   required String displayName,
+  required UnlockedVaultSession session,
 }) async {
   final String trimmed = sourcePath.trim();
   if (trimmed.isEmpty) {
@@ -33,13 +35,16 @@ Future<PendingAttachment?> stagePickedImage({
     final String relativePath = await draftStore.stagePendingFile(
       draftKey,
       prepared.path,
+      session,
     );
-    final String stagedPath = await draftStore.pendingAbsolutePath(
+    final String previewPath = await draftStore.materializePendingFileForPreview(
       draftKey,
       relativePath,
+      session,
     );
     return PendingAttachment(
-      sourcePath: stagedPath,
+      sourcePath: previewPath,
+      pendingRelativePath: relativePath,
       mimeType: prepared.mimeType,
       originalFilename: prepared.fileName,
     );

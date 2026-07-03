@@ -12,6 +12,8 @@ import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory rootDir;
   late _TestPathStrategy pathStrategy;
   late EditorDraftStore store;
@@ -49,6 +51,7 @@ void main() {
   });
 
   tearDown(() async {
+    await store.clearAllMaterializedPendingFiles();
     if (rootDir.existsSync()) {
       await rootDir.delete(recursive: true);
     }
@@ -81,6 +84,40 @@ void main() {
     expect(draftKeys, contains('__new__'));
   });
 
+  test('暫存附件為加密檔，materialize 後可讀且清理會移除明文', () async {
+    const String plainText = 'hello encrypted pending';
+    final File sourceFile = File('${rootDir.path}\\picked.txt');
+    await sourceFile.writeAsString(plainText);
+
+    final String relativePath = await store.stagePendingFile(
+      'entry-1',
+      sourceFile.path,
+      session,
+    );
+    final String stagedPath = await store.pendingAbsolutePath(
+      'entry-1',
+      relativePath,
+    );
+
+    expect(relativePath, startsWith('pending/'));
+    expect(relativePath, endsWith('.enc'));
+    expect(File(stagedPath).existsSync(), isTrue);
+    expect(await sourceFile.readAsString(), plainText);
+    final List<int> encBytes = await File(stagedPath).readAsBytes();
+    expect(String.fromCharCodes(encBytes.take(4)), 'LDJ2');
+
+    final String previewPath = await store.materializePendingFileForPreview(
+      'entry-1',
+      relativePath,
+      session,
+    );
+    expect(File(previewPath).existsSync(), isTrue);
+    expect(await File(previewPath).readAsString(), plainText);
+
+    await store.clearMaterializedPendingFiles('entry-1');
+    expect(File(previewPath).existsSync(), isFalse);
+  });
+
   test('暫存附件、寫入草稿後再刪除會移除檔案', () async {
     final File sourceFile = File('${rootDir.path}\\picked.txt');
     await sourceFile.writeAsString('hello');
@@ -88,14 +125,13 @@ void main() {
     final String relativePath = await store.stagePendingFile(
       'entry-1',
       sourceFile.path,
+      session,
     );
-    final String stagedPath = await store.pendingAbsolutePath(
+    await store.materializePendingFileForPreview(
       'entry-1',
       relativePath,
+      session,
     );
-
-    expect(File(stagedPath).existsSync(), isTrue);
-    expect(relativePath, startsWith('pending/'));
 
     final EditorDraftRecord record = EditorDraftRecord(
       title: null,
@@ -220,10 +256,12 @@ void main() {
     final String relativeA = await store.stagePendingFile(
       'entry-prune',
       sourceA.path,
+      session,
     );
     final String relativeB = await store.stagePendingFile(
       'entry-prune',
       sourceB.path,
+      session,
     );
 
     final EditorDraftRecord record = EditorDraftRecord(
@@ -262,11 +300,11 @@ void main() {
 
   test('stagePendingFile 空路徑或不存在來源會拋錯', () async {
     await expectLater(
-      store.stagePendingFile('entry-1', '   '),
+      store.stagePendingFile('entry-1', '   ', session),
       throwsA(isA<ArgumentError>()),
     );
     await expectLater(
-      store.stagePendingFile('entry-1', '${rootDir.path}\\missing.txt'),
+      store.stagePendingFile('entry-1', '${rootDir.path}\\missing.txt', session),
       throwsA(isA<FileSystemException>()),
     );
   });

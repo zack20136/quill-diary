@@ -608,7 +608,7 @@
   "settingsRecoveryKeyRotateDialogTitle": "更新復原金鑰？",
   "settingsRecoveryKeyRotateDialogBody": "將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。",
   "settingsSecurityOverviewSectionTitle": "安全狀態",
-  "settingsSecurityOverviewSectionDescription": "查看復原金鑰、解鎖方式與搜尋索引是否正常。",
+  "settingsSecurityOverviewSectionDescription": "查看復原金鑰、解鎖方式、搜尋索引與備份狀態是否正常。",
   "settingsSecurityOverviewRecoveryKeyTitle": "復原金鑰",
   "settingsSecurityOverviewRecoveryKeyReady": "已建立，可用於換機與還原。",
   "settingsSecurityOverviewRecoveryKeyMissing": "尚未建立，請先建立後再備份或匯出。",
@@ -635,6 +635,38 @@
   "settingsSecurityOverviewHealthLevelOk": "正常",
   "settingsSecurityOverviewHealthLevelWarning": "需注意",
   "settingsSecurityOverviewHealthLevelError": "錯誤",
+  "settingsSecurityOverviewLocalBackupTitle": "本機備份",
+  "settingsSecurityOverviewLocalBackupNever": "尚未建立本機備份，建議儘快備份。",
+  "settingsSecurityOverviewLocalBackupLast": "「{method}」，{time}。",
+  "@settingsSecurityOverviewLocalBackupLast": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "method": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewLocalBackupStale": "上次備份已超過 30 天，建議儘快備份。",
+  "settingsSecurityOverviewDriveBackupTitle": "Google Drive 備份",
+  "settingsSecurityOverviewDriveBackupNever": "尚未上傳備份到 Google Drive，建議儘快備份。",
+  "settingsSecurityOverviewDriveBackupLast": "{time} 已上傳。",
+  "@settingsSecurityOverviewDriveBackupLast": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewDriveBackupLastWithAccount": "{time} 已上傳至 {account}。",
+  "@settingsSecurityOverviewDriveBackupLastWithAccount": {
+    "placeholders": {
+      "time": { "type": "String" },
+      "account": { "type": "String" }
+    }
+  },
+  "settingsSecurityOverviewDriveBackupStale": "上次 Drive 備份已超過 30 天，建議儘快上傳。",
+  "settingsSecurityOverviewBackupRecentFailure": "最近一次「{action}」失敗。",
+  "@settingsSecurityOverviewBackupRecentFailure": {
+    "placeholders": {
+      "action": { "type": "String" }
+    }
+  },
   "settingsUnlockModeFullNone": "無",
   "settingsUnlockModeFullDeviceLock": "裝置螢幕鎖",
   "settingsUnlockModeFullBiometric": "生物驗證",
@@ -995,6 +1027,13 @@
   "sessionRestoreSuccessLockedMessage": "已還原備份。請完成生物驗證或螢幕鎖驗證以繼續。",
   "sessionRestoreSuccessRecoveryRequiredMessage": "已還原備份。請輸入建立此備份時保存的復原金鑰。",
   "sessionRestoreStartupFailedMessage": "已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。",
+  "postRestoreOutcomeTitle": "還原已完成",
+  "postRestoreOutcomeNextStepLocked": "目前還差一步：請完成生物驗證或螢幕鎖驗證。",
+  "postRestoreOutcomeNextStepRecovery": "目前還差一步：請輸入建立此備份時保存的復原金鑰。",
+  "postRestoreOutcomeSecondaryHint": "首次解鎖可能較久，搜尋索引也會重新建立。",
+  "postRestoreOutcomePrimaryRetryVerification": "立即重新驗證",
+  "postRestoreOutcomePrimaryEnterRecoveryKey": "立即輸入復原金鑰",
+  "postRestoreOutcomeUnlockFailedTitle": "還原後仍無法解鎖",
   "sessionRecoveryKeyMismatchMessage": "復原金鑰不正確。若為更新復原金鑰前的舊備份，請輸入建立該備份時保存的舊金鑰。",
   "sessionTrustedUnlockFailedAfterRestoreMessage": "還原後無法自動解鎖。請輸入建立此備份時保存的復原金鑰。",
   "sessionIndexDatabaseUnreadableMessage": "搜尋索引無法讀取，可能已損壞。請用復原金鑰重新解鎖；若仍失敗，可嘗試重新還原備份。",
@@ -1234,7 +1273,7 @@
   "aboutTabBackupRestoreSection3Title": "使用前要知道的事",
   "aboutTabBackupRestoreSection3Subtitle": "備份與匯出都很重要，但它們保護的對象與責任邊界並不相同。",
   "aboutTabBackupRestoreSection3Item0Title": "完整備份不包含草稿",
-  "aboutTabBackupRestoreSection3Item0Body": "完整備份不含尚在編輯中、尚未正式儲存的本地草稿。",
+  "aboutTabBackupRestoreSection3Item0Body": "完整備份不含尚在編輯中、尚未正式儲存的本地草稿；執行還原時也會清除裝置上所有草稿與待上傳附件暫存。",
   "aboutTabBackupRestoreSection3Item1Title": "可讀匯出要自己保管",
   "aboutTabBackupRestoreSection3Item1Body": "Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由您自己決定。",
   "aboutTabBackupRestoreSection3Item2Title": "別把兩條流程混用",
