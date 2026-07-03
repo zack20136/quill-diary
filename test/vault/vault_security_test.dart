@@ -89,7 +89,7 @@ void main() {
     expect(record, isNull);
   });
 
-  test('錯誤的 Recovery Key 無法 unlockWithRecoveryKey', () async {
+  test('錯誤的復原金鑰無法 unlockWithRecoveryKey', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
     final session = setup.session;
@@ -157,7 +157,7 @@ void main() {
     );
   });
 
-  test('正確的 Recovery Key 可在清除 trusted 後重新 unlock', () async {
+  test('正確的復原金鑰可在清除 trusted 後重新解鎖', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
     await harness.repository.clearTrustedDeviceAccess();

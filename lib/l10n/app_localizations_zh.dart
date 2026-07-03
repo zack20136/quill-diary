@@ -379,7 +379,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTooltipAddAttachment => '新增附件';
 
   @override
-  String get editorTooltipInsertCheckbox => '插入核取方塊';
+  String get editorTooltipInsertCheckbox => '插入任務項目';
 
   @override
   String get editorTooltipDelete => '刪除';
@@ -941,7 +941,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSecurityLockRetryVerificationButton => '重新驗證';
 
   @override
-  String get settingsRecoveryKeyNotSetupBanner => '尚未建立復原金鑰。請先建立，以便換機、備份與還原。';
+  String get settingsRecoveryKeyNotSetupBanner =>
+      '尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，以便換機、還原或裝置失效時使用。';
 
   @override
   String get settingsRecoveryKeySetupBanner => '復原金鑰已建立，請確認已妥善保存。';
@@ -1019,7 +1020,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage =>
-      '建立復原金鑰後，即可設定解鎖方式。';
+      '請先建立復原金鑰。它是保護整個日記庫的重要依據，建立後才能設定解鎖方式，也能在換機、還原或裝置失效時重新進入日記庫。';
 
   @override
   String settingsSecurityOverviewUnlockModeProtectedMessage(
@@ -1534,7 +1535,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSupportFooterNote => '支持完全自願，請依您的需求與意願決定。';
 
   @override
-  String get sessionStartupNeedsRecoveryKeyMessage => '尚未建立復原金鑰。';
+  String get sessionStartupNeedsRecoveryKeyMessage =>
+      '尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，這樣換機、還原或裝置失效時，才可以重新進入日記庫。';
 
   @override
   String get sessionStartupNeedsTrustedDeviceMessage => '這台裝置尚未授權，請使用復原金鑰解鎖。';
@@ -2163,7 +2165,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorSection0Title => '日常寫作功能';
 
   @override
-  String get aboutTabEditorSection0Subtitle => '以個人記錄為核心，把常用的整理方式都放進同一個編輯流程。';
+  String get aboutTabEditorSection0Subtitle => '以個人記錄為核心，把常用的整理方式分開放進同一個編輯流程。';
 
   @override
   String get aboutTabEditorSection0Item0Title => '新建或修改既有日記';
@@ -2173,17 +2175,31 @@ class AppLocalizationsZh extends AppLocalizations {
       '新建日記會直接進入編輯模式；既有日記則可先閱讀，確定要改時再切換到編輯狀態。';
 
   @override
-  String get aboutTabEditorSection0Item1Title => '內容、標題、日期與標籤';
+  String get aboutTabEditorSection0Item1Title => '內容、標題與日期';
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      '您可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。';
+      '您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時，您仍能把內容匯出成 Markdown。';
 
   @override
-  String get aboutTabEditorSection0Item2Title => '圖片與一般附件';
+  String get aboutTabEditorSection0Item2Title => '標籤';
 
   @override
   String get aboutTabEditorSection0Item2Body =>
+      '標籤可以獨立整理，讓每篇日記都維持一致的標記方式，也方便之後快速回頭查找。';
+
+  @override
+  String get aboutTabEditorSection0Item3Title => '任務清單';
+
+  @override
+  String get aboutTabEditorSection0Item3Body =>
+      '若內容含有任務清單，編輯器會用混合區塊方式處理，讓勾選與繼續輸入都更順手，預覽也會直接顯示成可互動的項目。';
+
+  @override
+  String get aboutTabEditorSection0Item4Title => '圖片與一般附件';
+
+  @override
+  String get aboutTabEditorSection0Item4Body =>
       '可加入多張圖片或一般檔案，並調整圖片順序。這讓日記不只是一段文字，也能保留當下的素材與脈絡。';
 
   @override

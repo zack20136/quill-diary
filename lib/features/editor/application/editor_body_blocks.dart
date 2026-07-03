@@ -37,11 +37,7 @@ class EditorCheckboxLine extends EditorBodyLine {
   final String text;
   final bool checked;
 
-  EditorCheckboxLine copyWith({
-    String? id,
-    String? text,
-    bool? checked,
-  }) {
+  EditorCheckboxLine copyWith({String? id, String? text, bool? checked}) {
     return EditorCheckboxLine(
       id: id ?? this.id,
       text: text ?? this.text,
@@ -74,7 +70,9 @@ bool editorLinesHaveCheckbox(List<EditorBodyLine> lines) {
 List<EditorBodyLine> parseEditorBodyLines(String markdown) {
   final List<String> rawLines = _normalizedLines(markdown);
   if (rawLines.isEmpty) {
-    return <EditorBodyLine>[EditorTextLine(id: generateEditorLineId(), text: '')];
+    return <EditorBodyLine>[
+      EditorTextLine(id: generateEditorLineId(), text: ''),
+    ];
   }
 
   return rawLines
@@ -113,7 +111,9 @@ List<EditorBodyLine> reparseEditorBodyLinesPreservingIds(
 }
 
 EditorBodyLine _parseMarkdownLine(String line) {
-  final RegExpMatch? checkboxMatch = kEditorCheckboxLinePattern.firstMatch(line);
+  final RegExpMatch? checkboxMatch = kEditorCheckboxLinePattern.firstMatch(
+    line,
+  );
   if (checkboxMatch != null) {
     final String marker = checkboxMatch.group(2) ?? ' ';
     return EditorCheckboxLine(
@@ -147,8 +147,10 @@ EditorCheckboxLine createEmptyCheckboxLine() {
   );
 }
 
-/// 內文含 checkbox 時，保留尾端空白文字行供繼續輸入。
-List<EditorBodyLine> ensureEditorBodyLinesForEditing(List<EditorBodyLine> lines) {
+/// 內文含任務清單時，保留尾端空白文字行供繼續輸入。
+List<EditorBodyLine> ensureEditorBodyLinesForEditing(
+  List<EditorBodyLine> lines,
+) {
   final List<EditorBodyLine> editable = lines.isEmpty
       ? <EditorBodyLine>[createEmptyTextLine()]
       : lines;
@@ -173,7 +175,7 @@ String normalizeEditorBodyMarkdownForSave(String markdown) {
   return serializeEditorBodyLines(lines);
 }
 
-/// 離開 checkbox 編輯時，將 line blocks 收斂為純文字 markdown。
+/// 離開任務清單編輯時，將 line blocks 收斂為純文字 markdown。
 String collapseEditorBodyToPlainMarkdown(List<EditorBodyLine> lines) {
   if (editorLinesHaveCheckbox(lines)) {
     return serializeEditorBodyLines(lines);
@@ -185,16 +187,18 @@ EditorTextLine createEmptyTextLine() {
   return EditorTextLine(id: generateEditorLineId(), text: '');
 }
 
-/// 新插入 checkbox 後接續的行區塊。
+/// 新插入任務項目後接續的行區塊。
 ///
-/// 僅在 checkbox 插入於文件末尾時補上一行空白文字行；
+/// 僅在任務項目插入於文件末尾時補上一行空白文字行；
 /// 若後方已有內容，則原樣保留。
 List<EditorBodyLine> tailLinesAfterCheckboxInsert({
   required List<EditorBodyLine> lines,
   required int consumedThroughIndex,
   required String afterText,
 }) {
-  final List<EditorBodyLine> remaining = lines.sublist(consumedThroughIndex + 1);
+  final List<EditorBodyLine> remaining = lines.sublist(
+    consumedThroughIndex + 1,
+  );
   if (afterText.isNotEmpty) {
     return <EditorBodyLine>[
       EditorTextLine(id: generateEditorLineId(), text: afterText),
@@ -230,8 +234,13 @@ List<EditorBodyLine> reorderEditorBodyLines({
   return next;
 }
 
-({int lineIndex, int textOffset}) offsetToLinePosition(String markdown, int offset) {
-  final String normalized = markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+({int lineIndex, int textOffset}) offsetToLinePosition(
+  String markdown,
+  int offset,
+) {
+  final String normalized = markdown
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n');
   final int safeOffset = offset.clamp(0, normalized.length);
   var lineIndex = 0;
   var lineStart = 0;

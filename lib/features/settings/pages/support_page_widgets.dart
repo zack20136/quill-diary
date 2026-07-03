@@ -211,7 +211,10 @@ class _SponsorProductTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: context.appColors.outlineBorder().color, width: 1),
+        border: Border.all(
+          color: context.appColors.outlineBorder().color,
+          width: 1,
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),

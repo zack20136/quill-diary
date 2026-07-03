@@ -791,7 +791,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipInsertCheckbox.
   ///
   /// In zh, this message translates to:
-  /// **'插入核取方塊'**
+  /// **'插入任務項目'**
   String get editorTooltipInsertCheckbox;
 
   /// No description provided for @editorTooltipDelete.
@@ -1760,7 +1760,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRecoveryKeyNotSetupBanner.
   ///
   /// In zh, this message translates to:
-  /// **'尚未建立復原金鑰。請先建立，以便換機、備份與還原。'**
+  /// **'尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，以便換機、還原或裝置失效時使用。'**
   String get settingsRecoveryKeyNotSetupBanner;
 
   /// No description provided for @settingsRecoveryKeySetupBanner.
@@ -1910,7 +1910,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'建立復原金鑰後，即可設定解鎖方式。'**
+  /// **'請先建立復原金鑰。它是保護整個日記庫的重要依據，建立後才能設定解鎖方式，也能在換機、還原或裝置失效時重新進入日記庫。'**
   String get settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage;
 
   /// No description provided for @settingsSecurityOverviewUnlockModeProtectedMessage.
@@ -2761,7 +2761,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionStartupNeedsRecoveryKeyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'尚未建立復原金鑰。'**
+  /// **'尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，這樣換機、還原或裝置失效時，才可以重新進入日記庫。'**
   String get sessionStartupNeedsRecoveryKeyMessage;
 
   /// No description provided for @sessionStartupNeedsTrustedDeviceMessage.
@@ -3883,7 +3883,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'以個人記錄為核心，把常用的整理方式都放進同一個編輯流程。'**
+  /// **'以個人記錄為核心，把常用的整理方式分開放進同一個編輯流程。'**
   String get aboutTabEditorSection0Subtitle;
 
   /// No description provided for @aboutTabEditorSection0Item0Title.
@@ -3901,26 +3901,50 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection0Item1Title.
   ///
   /// In zh, this message translates to:
-  /// **'內容、標題、日期與標籤'**
+  /// **'內容、標題與日期'**
   String get aboutTabEditorSection0Item1Title;
 
   /// No description provided for @aboutTabEditorSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以編輯日記內容，同時整理標題、日期、時間與標籤。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時也能把內容匯出成 Markdown。'**
+  /// **'您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時，您仍能把內容匯出成 Markdown。'**
   String get aboutTabEditorSection0Item1Body;
 
   /// No description provided for @aboutTabEditorSection0Item2Title.
   ///
   /// In zh, this message translates to:
-  /// **'圖片與一般附件'**
+  /// **'標籤'**
   String get aboutTabEditorSection0Item2Title;
 
   /// No description provided for @aboutTabEditorSection0Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'可加入多張圖片或一般檔案，並調整圖片順序。這讓日記不只是一段文字，也能保留當下的素材與脈絡。'**
+  /// **'標籤可以獨立整理，讓每篇日記都維持一致的標記方式，也方便之後快速回頭查找。'**
   String get aboutTabEditorSection0Item2Body;
+
+  /// No description provided for @aboutTabEditorSection0Item3Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'任務清單'**
+  String get aboutTabEditorSection0Item3Title;
+
+  /// No description provided for @aboutTabEditorSection0Item3Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'若內容含有任務清單，編輯器會用混合區塊方式處理，讓勾選與繼續輸入都更順手，預覽也會直接顯示成可互動的項目。'**
+  String get aboutTabEditorSection0Item3Body;
+
+  /// No description provided for @aboutTabEditorSection0Item4Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'圖片與一般附件'**
+  String get aboutTabEditorSection0Item4Title;
+
+  /// No description provided for @aboutTabEditorSection0Item4Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'可加入多張圖片或一般檔案，並調整圖片順序。這讓日記不只是一段文字，也能保留當下的素材與脈絡。'**
+  String get aboutTabEditorSection0Item4Body;
 
   /// No description provided for @aboutTabEditorSection1Title.
   ///

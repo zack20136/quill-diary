@@ -49,7 +49,9 @@ bool markdownHasCheckboxLines(String markdown) {
 }
 
 String previewMarkdownExcerpt(String markdown, {int maxLength = 600}) {
-  final String normalized = markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final String normalized = markdown
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n');
   if (normalized.length <= maxLength) {
     return normalized;
   }
@@ -135,10 +137,10 @@ String searchableTextFromMarkdown(String markdown) {
       buffer.write(' ');
     }
     buffer.write(
-      plainLine.replaceAll(RegExp(r'[#>*_`\[\]\(\)!-]'), ' ').replaceAll(
-        RegExp(r'\s+'),
-        ' ',
-      ).trim(),
+      plainLine
+          .replaceAll(RegExp(r'[#>*_`\[\]\(\)!-]'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim(),
     );
   }
   return buffer.toString().trim();

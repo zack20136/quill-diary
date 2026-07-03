@@ -86,10 +86,7 @@ class EditorTitleSection extends StatelessWidget {
                     key: const ValueKey<String>('editor-title-tags-visible'),
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const SizedBox(height: 10),
-                      tagsWrap,
-                    ],
+                    children: <Widget>[const SizedBox(height: 10), tagsWrap],
                   )
                 : const SizedBox(
                     key: ValueKey<String>('editor-title-tags-hidden'),
@@ -144,10 +141,7 @@ class EditorTitleSection extends StatelessWidget {
                   key: const ValueKey<String>('editor-edit-tags-visible'),
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const SizedBox(height: 10),
-                    tagsWrap,
-                  ],
+                  children: <Widget>[const SizedBox(height: 10), tagsWrap],
                 )
               : const SizedBox(
                   key: ValueKey<String>('editor-edit-tags-hidden'),
@@ -251,9 +245,7 @@ class _EditorBodySectionState extends State<EditorBodySection> {
       decoration: BoxDecoration(
         color: colors.previewPanel,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        border: Border.fromBorderSide(
-          colors.outlineBorder(),
-        ),
+        border: Border.fromBorderSide(colors.outlineBorder()),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
@@ -309,10 +301,7 @@ class _TagsWrap extends StatelessWidget {
             ),
           if (showCharCount && bodyCharCount > 0)
             TagChip.pair(
-              label: DisplayFormat.formatCharCount(
-                context.l10n,
-                bodyCharCount,
-              ),
+              label: DisplayFormat.formatCharCount(context.l10n, bodyCharCount),
               pair: tagCharCountPair(theme.colorScheme),
             ),
           ...tags.map(

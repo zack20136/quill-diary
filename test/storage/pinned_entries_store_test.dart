@@ -29,10 +29,11 @@ void main() {
   test('寫入、批次更新、prune 與清空後刪檔都正常', () async {
     expect(await store.readIds(), isEmpty);
 
-    await store.setPinnedMany(
-      <String>['entry_a', 'entry_b', 'entry_missing'],
-      pinned: true,
-    );
+    await store.setPinnedMany(<String>[
+      'entry_a',
+      'entry_b',
+      'entry_missing',
+    ], pinned: true);
     await store.setPinnedMany(<String>['entry_a'], pinned: false);
     await store.pruneTo(<String>['entry_b']);
 
@@ -48,10 +49,7 @@ void main() {
   });
 
   test('損毀或格式不符的檔案會保留並回傳空集合', () async {
-    for (final String content in <String>[
-      '{not valid json',
-      '["entry_a"]',
-    ]) {
+    for (final String content in <String>['{not valid json', '["entry_a"]']) {
       final String path = await pathStrategy.pinnedEntriesPath();
       await File(path).parent.create(recursive: true);
       await File(path).writeAsString(content);

@@ -221,10 +221,7 @@ class EditorActionToolbar extends StatelessWidget {
 }
 
 class _EditorChromeDivider extends StatelessWidget {
-  const _EditorChromeDivider({
-    super.key,
-    required this.colorScheme,
-  });
+  const _EditorChromeDivider({super.key, required this.colorScheme});
 
   final ColorScheme colorScheme;
 
@@ -256,7 +253,8 @@ class _EditorChromeIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final bool enabled = onPressed != null;
-    final Color resolvedForeground = foregroundColor ??
+    final Color resolvedForeground =
+        foregroundColor ??
         (enabled
             ? cs.onSurfaceVariant
             : cs.onSurfaceVariant.withValues(alpha: 0.38));

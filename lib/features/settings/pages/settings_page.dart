@@ -107,136 +107,129 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
       body: SafeArea(
         child: Stack(
-            children: <Widget>[
-              NotificationListener<OverscrollIndicatorNotification>(
-                onNotification: (OverscrollIndicatorNotification notification) {
-                  notification.disallowIndicator();
-                  return false;
-                },
-                child: ListViewWithScrollbar(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    children: <Widget>[
-                      const _SettingsTopNavSection(),
-                      const SizedBox(height: 16),
-                      _buildSecurityStatusSection(
-                        sessionAsync: sessionAsync,
-                        recoveryMetadata: recoveryMetadata,
-                        pageAccess: pageAccess,
-                        trustedDeviceAccessAsync: trustedDeviceAccessAsync,
-                        unlockModeAsync: unlockModeAsync,
-                      ),
-                      const SizedBox(height: 16),
-                      SettingsSectionCard(
-                        icon: Icons.phonelink_lock_outlined,
-                        title: l10n.settingsUnlockMethodSectionTitle,
-                        description: settingsUnlockMethodSectionDescription(
-                          l10n,
-                          watchPersonalizationPreferences(ref).sessionTimeout,
-                        ),
-                        child: unlockModeAsync.when(
-                          data: (AppUnlockMode unlockMode) =>
-                              UnlockMethodSectionBody(
-                                enabled:
-                                    recoveryMetadataAsync.asData?.value != null,
-                                changeAllowed: pageAccess.hasUnlockedSession,
-                                busy: _busy,
-                                unlockMode: unlockMode,
-                                onModeSelected: (AppUnlockMode selected) =>
-                                    _runBusy(() => _applyUnlockMode(selected)),
-                              ),
-                          loading: () => const SettingsSectionLoading(),
-                          error: (Object error, StackTrace _) =>
-                              AppFeedbackBanner(
-                                icon: Icons.error_outline_rounded,
-                                message: userFacingErrorMessage(
-                                  error,
-                                  l10n: l10n,
-                                ),
-                                tone: AppFeedbackTone.error,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SettingsSectionCard(
-                        icon: Icons.swap_horiz_rounded,
-                        title: l10n.settingsImportExportSectionTitle,
-                        description: transferAccess.canBackup
-                            ? l10n.settingsImportExportSectionDescriptionEnabled
-                            : transferAccess.backupDisabledReason ??
-                                  l10n.vaultTransferNeedsUnlockForBackup,
-                        child: SettingsActionGroup(
-                          actions: <SettingsActionButton>[
-                            SettingsActionButton(
-                              label: l10n.settingsImportExportImportButton,
-                              icon: Icons.file_download_outlined,
-                              appearance: SettingsActionButtonAppearance.tonal,
-                              fullWidth: true,
-                              onPressed: _busy || !transferAccess.canBackup
-                                  ? null
-                                  : () => _runBusy(
-                                      _importDocuments,
-                                      message: l10n
-                                          .settingsImportExportImportProgress,
-                                    ),
-                            ),
-                            SettingsActionButton(
-                              label: l10n.settingsImportExportExportButton,
-                              icon: Icons.file_upload_outlined,
-                              appearance: SettingsActionButtonAppearance.filled,
-                              fullWidth: true,
-                              onPressed: _busy || !transferAccess.canBackup
-                                  ? null
-                                  : () => _runBusy(
-                                      _exportMarkdown,
-                                      message: l10n
-                                          .settingsImportExportExportProgress,
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      LocalBackupSection(
-                        access: transferAccess,
-                        busy: _busy,
-                        onCreate: () =>
-                            _runWithBackupProgress(_createLocalBackup),
-                        onRestore: _runRestoreFromAppLocalBackup,
-                        onExport: () =>
-                            _runWithBackupProgress(_exportLocalBackup),
-                        onImport: _runRestoreFromLocalBackup,
-                      ),
-                      const SizedBox(height: 16),
-                      DriveBackupSection(
-                        access: transferAccess,
-                        canManageDriveAccount: pageAccess.canManageDriveAccount,
-                        isGoogleDriveConfigured: isGoogleDriveConfigured,
-                        busy: _busy,
-                        onLink: () => _runBusy(
-                          _linkGoogleDrive,
-                          message: l10n.settingsIndexLinkDriveProgress,
-                        ),
-                        onSwitchAccount: () => _runBusy(
-                          _switchGoogleDrive,
-                          message: l10n.settingsIndexSwitchDriveAccountProgress,
-                        ),
-                        onDisconnect: _disconnectGoogleDrive,
-                        onUpload: () =>
-                            _runWithBackupProgress(_uploadDriveBackup),
-                        onRestore: _runRestoreFromGoogleDrive,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildLegalSection(context, cs),
-                    ],
+          children: <Widget>[
+            NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (OverscrollIndicatorNotification notification) {
+                notification.disallowIndicator();
+                return false;
+              },
+              child: ListViewWithScrollbar(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: <Widget>[
+                  const _SettingsTopNavSection(),
+                  const SizedBox(height: 16),
+                  _buildSecurityStatusSection(
+                    sessionAsync: sessionAsync,
+                    recoveryMetadata: recoveryMetadata,
+                    pageAccess: pageAccess,
+                    trustedDeviceAccessAsync: trustedDeviceAccessAsync,
+                    unlockModeAsync: unlockModeAsync,
                   ),
-                ),
-              if (_busy)
-                SettingsBlockingProgressOverlay(
-                  message: _busyMessage ?? l10n.settingsProgressDefault,
-                  progress: _busyProgress,
-                ),
-            ],
-          ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
+                    icon: Icons.phonelink_lock_outlined,
+                    title: l10n.settingsUnlockMethodSectionTitle,
+                    description: settingsUnlockMethodSectionDescription(
+                      l10n,
+                      watchPersonalizationPreferences(ref).sessionTimeout,
+                    ),
+                    child: unlockModeAsync.when(
+                      data: (AppUnlockMode unlockMode) =>
+                          UnlockMethodSectionBody(
+                            enabled:
+                                recoveryMetadataAsync.asData?.value != null,
+                            changeAllowed: pageAccess.hasUnlockedSession,
+                            busy: _busy,
+                            unlockMode: unlockMode,
+                            onModeSelected: (AppUnlockMode selected) =>
+                                _runBusy(() => _applyUnlockMode(selected)),
+                          ),
+                      loading: () => const SettingsSectionLoading(),
+                      error: (Object error, StackTrace _) => AppFeedbackBanner(
+                        icon: Icons.error_outline_rounded,
+                        message: userFacingErrorMessage(error, l10n: l10n),
+                        tone: AppFeedbackTone.error,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
+                    icon: Icons.swap_horiz_rounded,
+                    title: l10n.settingsImportExportSectionTitle,
+                    description: transferAccess.canBackup
+                        ? l10n.settingsImportExportSectionDescriptionEnabled
+                        : transferAccess.backupDisabledReason ??
+                              l10n.vaultTransferNeedsUnlockForBackup,
+                    child: SettingsActionGroup(
+                      actions: <SettingsActionButton>[
+                        SettingsActionButton(
+                          label: l10n.settingsImportExportImportButton,
+                          icon: Icons.file_download_outlined,
+                          appearance: SettingsActionButtonAppearance.tonal,
+                          fullWidth: true,
+                          onPressed: _busy || !transferAccess.canBackup
+                              ? null
+                              : () => _runBusy(
+                                  _importDocuments,
+                                  message:
+                                      l10n.settingsImportExportImportProgress,
+                                ),
+                        ),
+                        SettingsActionButton(
+                          label: l10n.settingsImportExportExportButton,
+                          icon: Icons.file_upload_outlined,
+                          appearance: SettingsActionButtonAppearance.filled,
+                          fullWidth: true,
+                          onPressed: _busy || !transferAccess.canBackup
+                              ? null
+                              : () => _runBusy(
+                                  _exportMarkdown,
+                                  message:
+                                      l10n.settingsImportExportExportProgress,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  LocalBackupSection(
+                    access: transferAccess,
+                    busy: _busy,
+                    onCreate: () => _runWithBackupProgress(_createLocalBackup),
+                    onRestore: _runRestoreFromAppLocalBackup,
+                    onExport: () => _runWithBackupProgress(_exportLocalBackup),
+                    onImport: _runRestoreFromLocalBackup,
+                  ),
+                  const SizedBox(height: 16),
+                  DriveBackupSection(
+                    access: transferAccess,
+                    canManageDriveAccount: pageAccess.canManageDriveAccount,
+                    isGoogleDriveConfigured: isGoogleDriveConfigured,
+                    busy: _busy,
+                    onLink: () => _runBusy(
+                      _linkGoogleDrive,
+                      message: l10n.settingsIndexLinkDriveProgress,
+                    ),
+                    onSwitchAccount: () => _runBusy(
+                      _switchGoogleDrive,
+                      message: l10n.settingsIndexSwitchDriveAccountProgress,
+                    ),
+                    onDisconnect: _disconnectGoogleDrive,
+                    onUpload: () => _runWithBackupProgress(_uploadDriveBackup),
+                    onRestore: _runRestoreFromGoogleDrive,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildLegalSection(context, cs),
+                ],
+              ),
+            ),
+            if (_busy)
+              SettingsBlockingProgressOverlay(
+                message: _busyMessage ?? l10n.settingsProgressDefault,
+                progress: _busyProgress,
+              ),
+          ],
+        ),
       ),
     );
   }

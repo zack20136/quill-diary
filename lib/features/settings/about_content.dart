@@ -424,9 +424,19 @@ List<AboutTab> buildAboutTabs(AppLocalizations l10n, Duration sessionTimeout) =>
                 body: l10n.aboutTabEditorSection0Item1Body,
               ),
               AboutItem(
-                icon: Icons.attach_file,
+                icon: Icons.local_offer_outlined,
                 title: l10n.aboutTabEditorSection0Item2Title,
                 body: l10n.aboutTabEditorSection0Item2Body,
+              ),
+              AboutItem(
+                icon: Icons.checklist_rounded,
+                title: l10n.aboutTabEditorSection0Item3Title,
+                body: l10n.aboutTabEditorSection0Item3Body,
+              ),
+              AboutItem(
+                icon: Icons.attach_file,
+                title: l10n.aboutTabEditorSection0Item4Title,
+                body: l10n.aboutTabEditorSection0Item4Body,
               ),
             ],
           ),

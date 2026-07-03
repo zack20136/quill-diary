@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/app/app.dart';
@@ -23,13 +23,11 @@ import '../../helpers/storage/fake_vault_transfer_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('appSupportedLocales 包含 zh 與 en', () {
+  test('appSupportedLocales 包含繁中與英文', () {
     expect(appSupportedLocales, <Locale>[appZhLocale, appEnLocale]);
   });
 
-  testWidgets('QuillDiaryApp 開機 wiring smoke test', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('QuillDiaryApp 開機整合煙霧測試', (WidgetTester tester) async {
     final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 

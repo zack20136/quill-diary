@@ -139,8 +139,11 @@ class AppColors extends ThemeExtension<AppColors> {
       ),
       outlineVariant: scheme.outlineVariant,
       calendarGridLine: scheme.outlineVariant.withValues(alpha: 0.22),
-      accentDialogGradientStart:
-          Color.lerp(scheme.primary, scheme.surface, 0.92)!,
+      accentDialogGradientStart: Color.lerp(
+        scheme.primary,
+        scheme.surface,
+        0.92,
+      )!,
       accentDialogGradientEnd: scheme.surface,
       accentDialogBorder: scheme.primary.withValues(alpha: 0.14),
       heroGradientStart: Color.alphaBlend(
@@ -178,8 +181,9 @@ class AppColors extends ThemeExtension<AppColors> {
       galleryForeground: scheme.surface,
       tagAccentBackgroundAlpha: isLight ? 0.12 : 0.24,
       tagAccentForegroundUseLightenBlend: !isLight,
-      tagAccentForegroundBlendTarget:
-          isLight ? const Color(0xFF121212) : const Color(0xFFFFFFFF),
+      tagAccentForegroundBlendTarget: isLight
+          ? const Color(0xFF121212)
+          : const Color(0xFFFFFFFF),
       tagAccentForegroundOnDarkLerp: 0.26,
       tagAccentForegroundLightHighLerp: 0.44,
       tagAccentForegroundLightLowLerp: 0.20,
@@ -261,7 +265,8 @@ class AppColors extends ThemeExtension<AppColors> {
       healthOkForeground: healthOkForeground ?? this.healthOkForeground,
       healthWarningForeground:
           healthWarningForeground ?? this.healthWarningForeground,
-      healthErrorForeground: healthErrorForeground ?? this.healthErrorForeground,
+      healthErrorForeground:
+          healthErrorForeground ?? this.healthErrorForeground,
       entrySelectedBorder: entrySelectedBorder ?? this.entrySelectedBorder,
       calendarTodayMarker: calendarTodayMarker ?? this.calendarTodayMarker,
       scrim: scrim ?? this.scrim,
@@ -272,15 +277,18 @@ class AppColors extends ThemeExtension<AppColors> {
       galleryForeground: galleryForeground ?? this.galleryForeground,
       tagAccentBackgroundAlpha:
           tagAccentBackgroundAlpha ?? this.tagAccentBackgroundAlpha,
-      tagAccentForegroundUseLightenBlend: tagAccentForegroundUseLightenBlend ??
+      tagAccentForegroundUseLightenBlend:
+          tagAccentForegroundUseLightenBlend ??
           this.tagAccentForegroundUseLightenBlend,
-      tagAccentForegroundBlendTarget: tagAccentForegroundBlendTarget ??
-          this.tagAccentForegroundBlendTarget,
+      tagAccentForegroundBlendTarget:
+          tagAccentForegroundBlendTarget ?? this.tagAccentForegroundBlendTarget,
       tagAccentForegroundOnDarkLerp:
           tagAccentForegroundOnDarkLerp ?? this.tagAccentForegroundOnDarkLerp,
-      tagAccentForegroundLightHighLerp: tagAccentForegroundLightHighLerp ??
+      tagAccentForegroundLightHighLerp:
+          tagAccentForegroundLightHighLerp ??
           this.tagAccentForegroundLightHighLerp,
-      tagAccentForegroundLightLowLerp: tagAccentForegroundLightLowLerp ??
+      tagAccentForegroundLightLowLerp:
+          tagAccentForegroundLightLowLerp ??
           this.tagAccentForegroundLightLowLerp,
       tagNeutralChipBorder: tagNeutralChipBorder ?? this.tagNeutralChipBorder,
       tagUnsavedAccent: tagUnsavedAccent ?? this.tagUnsavedAccent,
@@ -294,8 +302,10 @@ class AppColors extends ThemeExtension<AppColors> {
     }
     Color? lerpColor(Color a, Color b) => Color.lerp(a, b, t);
     return AppColors(
-      scaffoldBackground:
-          lerpColor(scaffoldBackground, other.scaffoldBackground)!,
+      scaffoldBackground: lerpColor(
+        scaffoldBackground,
+        other.scaffoldBackground,
+      )!,
       sectionCard: lerpColor(sectionCard, other.sectionCard)!,
       sectionInset: lerpColor(sectionInset, other.sectionInset)!,
       previewPanel: lerpColor(previewPanel, other.previewPanel)!,
@@ -312,31 +322,46 @@ class AppColors extends ThemeExtension<AppColors> {
         accentDialogGradientStart,
         other.accentDialogGradientStart,
       )!,
-      accentDialogGradientEnd:
-          lerpColor(accentDialogGradientEnd, other.accentDialogGradientEnd)!,
-      accentDialogBorder: lerpColor(accentDialogBorder, other.accentDialogBorder)!,
+      accentDialogGradientEnd: lerpColor(
+        accentDialogGradientEnd,
+        other.accentDialogGradientEnd,
+      )!,
+      accentDialogBorder: lerpColor(
+        accentDialogBorder,
+        other.accentDialogBorder,
+      )!,
       heroGradientStart: lerpColor(heroGradientStart, other.heroGradientStart)!,
       heroGradientEnd: lerpColor(heroGradientEnd, other.heroGradientEnd)!,
       healthOkFill: lerpColor(healthOkFill, other.healthOkFill)!,
       healthWarningFill: lerpColor(healthWarningFill, other.healthWarningFill)!,
       healthErrorFill: lerpColor(healthErrorFill, other.healthErrorFill)!,
-      healthOkForeground:
-          lerpColor(healthOkForeground, other.healthOkForeground)!,
+      healthOkForeground: lerpColor(
+        healthOkForeground,
+        other.healthOkForeground,
+      )!,
       healthWarningForeground: lerpColor(
         healthWarningForeground,
         other.healthWarningForeground,
       )!,
-      healthErrorForeground:
-          lerpColor(healthErrorForeground, other.healthErrorForeground)!,
-      entrySelectedBorder:
-          lerpColor(entrySelectedBorder, other.entrySelectedBorder)!,
-      calendarTodayMarker:
-          lerpColor(calendarTodayMarker, other.calendarTodayMarker)!,
+      healthErrorForeground: lerpColor(
+        healthErrorForeground,
+        other.healthErrorForeground,
+      )!,
+      entrySelectedBorder: lerpColor(
+        entrySelectedBorder,
+        other.entrySelectedBorder,
+      )!,
+      calendarTodayMarker: lerpColor(
+        calendarTodayMarker,
+        other.calendarTodayMarker,
+      )!,
       scrim: lerpColor(scrim, other.scrim)!,
       overlayDim: lerpColor(overlayDim, other.overlayDim)!,
       shadow: lerpColor(shadow, other.shadow)!,
-      inlineCodeBackground:
-          lerpColor(inlineCodeBackground, other.inlineCodeBackground)!,
+      inlineCodeBackground: lerpColor(
+        inlineCodeBackground,
+        other.inlineCodeBackground,
+      )!,
       galleryBackground: lerpColor(galleryBackground, other.galleryBackground)!,
       galleryForeground: lerpColor(galleryForeground, other.galleryForeground)!,
       tagAccentBackgroundAlpha: t < 0.5

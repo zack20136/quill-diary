@@ -27,15 +27,16 @@ Widget editorTestApp({
 }
 
 /// 建立並渲染 [EditorHybridBody]，回傳測試所需的 controller 與 state key。
-Future<({
-  TextEditingController bodyController,
-  GlobalKey<EditorHybridBodyState> bodyKey,
-})> pumpEditorHybridBody(
-  WidgetTester tester, {
-  String? bodyText,
-}) async {
-  final TextEditingController bodyController =
-      TextEditingController(text: bodyText);
+Future<
+  ({
+    TextEditingController bodyController,
+    GlobalKey<EditorHybridBodyState> bodyKey,
+  })
+>
+pumpEditorHybridBody(WidgetTester tester, {String? bodyText}) async {
+  final TextEditingController bodyController = TextEditingController(
+    text: bodyText,
+  );
   final GlobalKey<EditorHybridBodyState> bodyKey =
       GlobalKey<EditorHybridBodyState>();
 

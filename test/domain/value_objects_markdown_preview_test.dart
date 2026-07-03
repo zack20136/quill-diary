@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 
 void main() {
-  test('searchableTextFromMarkdown strips checkbox markers but keeps item text', () {
+  test('searchableTextFromMarkdown 會移除任務清單標記但保留項目文字', () {
     const String markdown =
         '莉莉絲之毯\n'
         '- [x] 5446456\n'
@@ -16,11 +16,11 @@ void main() {
     );
   });
 
-  test('previewLinesFromMarkdown keeps checkbox checked state', () {
+  test('previewLinesFromMarkdown 會保留任務項目勾選狀態', () {
     const String markdown =
         '前言\n'
         '- [x] 已完成\n'
-        '- [ ] 待辦';
+        '- [ ] 任務三';
 
     final List<MarkdownPreviewLine> lines = previewLinesFromMarkdown(markdown);
 

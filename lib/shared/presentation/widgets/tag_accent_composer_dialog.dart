@@ -55,8 +55,8 @@ class _TagAccentComposerDialogState
     _nameCtrl = TextEditingController(text: widget.initialDisplayLabel ?? '');
     if (widget.initialAccentArgb != null) {
       _accent = Color(widget.initialAccentArgb!);
-      _isCustom = widget.initialAccentIsCustom ??
-          !tagAccentMatchesPreset(_accent);
+      _isCustom =
+          widget.initialAccentIsCustom ?? !tagAccentMatchesPreset(_accent);
     } else {
       _accent = kDefaultTagAccentPresets.first;
       _isCustom = false;
@@ -174,14 +174,9 @@ class _TagAccentComposerDialogState
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          cs.primary.withValues(alpha: 0.04),
-          cs.surface,
-        ),
+        color: Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.26),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -251,10 +246,7 @@ class _TagAccentComposerDialogState
                             color: cs.error,
                           ),
                         )
-                      : Icon(
-                          Icons.delete_outline_rounded,
-                          color: cs.error,
-                        ),
+                      : Icon(Icons.delete_outline_rounded, color: cs.error),
                   label: Text(
                     l10n.tagDeleteLabel,
                     style: TextStyle(color: cs.error),
@@ -287,9 +279,7 @@ class _TagAccentComposerDialogState
                       )
                     : const Icon(Icons.check_rounded, size: 20),
                 onPressed: busy ? null : _save,
-                label: Text(
-                  widget.primaryButtonLabel ?? l10n.tagSaveButton,
-                ),
+                label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
               ),
             ],
           ),
@@ -309,9 +299,7 @@ class _TagAccentComposerDialogState
               ),
             ),
             const SizedBox(height: 6),
-          ] else ...<Widget>[
-            const SizedBox(height: 22),
-          ],
+          ] else ...<Widget>[const SizedBox(height: 22)],
           TextField(
             controller: _nameCtrl,
             enabled: !busy,
@@ -398,10 +386,7 @@ class _TagAccentComposerDialogState
           OutlinedButton(
             onPressed: busy ? null : _openCustomColorPicker,
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               side: BorderSide(
                 color: customSelected
                     ? cs.primary.withValues(alpha: 0.9)
@@ -451,9 +436,7 @@ class _TagAccentComposerDialogState
                         previewFg,
                         width: 1.5,
                       );
-                      return side == null
-                          ? null
-                          : Border.fromBorderSide(side);
+                      return side == null ? null : Border.fromBorderSide(side);
                     }(),
                   ),
                 ),
@@ -461,13 +444,7 @@ class _TagAccentComposerDialogState
             ),
           ),
           const SizedBox(height: 20),
-          _previewPanel(
-            l10n,
-            theme,
-            cs,
-            previewText,
-            (previewBg, previewFg),
-          ),
+          _previewPanel(l10n, theme, cs, previewText, (previewBg, previewFg)),
         ],
       ),
     );

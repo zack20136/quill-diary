@@ -153,10 +153,7 @@ class _AppFeedbackOverlayHost {
 }
 
 class _ActiveFeedbackToast {
-  _ActiveFeedbackToast({
-    required this.entry,
-    required this.dismissCompleter,
-  });
+  _ActiveFeedbackToast({required this.entry, required this.dismissCompleter});
 
   final OverlayEntry entry;
   final Completer<void> dismissCompleter;
@@ -297,9 +294,7 @@ void showAppFeedbackSnackBar(
     context: context,
     message: message,
     colors: colors,
-    textStyle: theme.textTheme.bodyMedium?.copyWith(
-      color: colors.foreground,
-    ),
+    textStyle: theme.textTheme.bodyMedium?.copyWith(color: colors.foreground),
   );
   lift?.bind(dismissed);
 }

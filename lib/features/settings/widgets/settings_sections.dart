@@ -604,10 +604,7 @@ class SettingsActionButton extends StatelessWidget {
             background: colorScheme.primaryContainer,
             foreground: colorScheme.onPrimaryContainer,
           )
-        : (
-            background: colorScheme.primary,
-            foreground: colorScheme.onPrimary,
-          );
+        : (background: colorScheme.primary, foreground: colorScheme.onPrimary);
     final ({Color background, Color foreground}) tonalColors = isDark
         ? (
             background: colorScheme.surfaceContainerHighest,

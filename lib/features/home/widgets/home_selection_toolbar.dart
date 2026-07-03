@@ -293,8 +293,7 @@ class HomeCircleIconButton extends StatelessWidget {
           child: SizedBox(
             width: size,
             height: size,
-            child: iconWidget ??
-                Icon(icon, size: size * 0.5, color: fg),
+            child: iconWidget ?? Icon(icon, size: size * 0.5, color: fg),
           ),
         ),
       ),

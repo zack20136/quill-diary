@@ -10,17 +10,16 @@ import 'package:quill_diary/features/editor/application/editor_flow_controller.d
 import '../../helpers/features/editor/fake_editor_actions.dart';
 
 void main() {
-  test('儲存日記前會正規化 checkbox markdown', () async {
+  test('儲存日記前會正規化任務清單 markdown', () async {
     final FakeEditorActions actions = FakeEditorActions();
     final ProviderContainer container = ProviderContainer(
-      overrides: [
-        editorActionsProvider.overrideWithValue(actions),
-      ],
+      overrides: [editorActionsProvider.overrideWithValue(actions)],
     );
     addTearDown(container.dispose);
 
-    final EditorFlowController controller =
-        container.read(editorFlowControllerProvider);
+    final EditorFlowController controller = container.read(
+      editorFlowControllerProvider,
+    );
     final UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: 'vault-1',
       trustedDevice: true,
@@ -35,7 +34,7 @@ void main() {
         dateValue: '2026-06-18',
         entryTime: const TimeOfDay(hour: 8, minute: 0),
         tagsRaw: '標籤',
-        markdownBodyRaw: '前言\n- [ ] 待辦',
+        markdownBodyRaw: '前言\n- [ ] 任務三',
         keptAttachmentIds: const <AssetId>[],
         pendingAttachments: const <PendingAttachment>[],
         provisionalEntryId: 'entry-new',
@@ -44,6 +43,6 @@ void main() {
     );
 
     expect(actions.saveEntryCallCount, 1);
-    expect(actions.savedEntryDraft?.markdownBody, '前言\n- [ ] 待辦\n');
+    expect(actions.savedEntryDraft?.markdownBody, '前言\n- [ ] 任務三\n');
   });
 }

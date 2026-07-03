@@ -60,7 +60,10 @@ class PinnedEntriesStore {
     await writeIds(next);
   }
 
-  Future<void> setPinnedMany(Iterable<EntryId> entryIds, {required bool pinned}) async {
+  Future<void> setPinnedMany(
+    Iterable<EntryId> entryIds, {
+    required bool pinned,
+  }) async {
     final Set<EntryId> next = await readIds();
     for (final EntryId id in entryIds) {
       if (pinned) {

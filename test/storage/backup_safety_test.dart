@@ -23,7 +23,7 @@ void main() {
     await harness.dispose();
   });
 
-  test('writeBackupZip excludes derived local index files', () async {
+  test('writeBackupZip 會排除衍生的本機索引檔', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
     await harness.repository.saveEntry(
@@ -57,7 +57,7 @@ void main() {
     expect(names, contains('recovery.json'));
   });
 
-  test('inspectBackup rejects unsafe archive paths', () async {
+  test('inspectBackup 會拒絕不安全的壓縮檔路徑', () async {
     final File backupFile = File(p.join(harness.tempDir.path, 'unsafe.zip'));
     final Archive archive = Archive()
       ..addFile(ArchiveFile.string('recovery.json', '{}'))

@@ -264,11 +264,11 @@ class EditorAttachmentStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
             ),
             if (editable)
-            _editorImageDeleteBadge(
-              context,
-              theme,
-              onTap: () => onRemoveSaved(attachment),
-            ),
+              _editorImageDeleteBadge(
+                context,
+                theme,
+                onTap: () => onRemoveSaved(attachment),
+              ),
             if (draggable) _dragIndicator(context, theme),
           ],
         ),

@@ -72,8 +72,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     if (_committingToBodyController) {
       return;
     }
-    if (widget.bodyController.text ==
-        serializeEditorBodyLines(_lines)) {
+    if (widget.bodyController.text == serializeEditorBodyLines(_lines)) {
       return;
     }
     if (_syncingFromController == widget.bodyController.text) {
@@ -126,17 +125,14 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       if (offset == null) {
         return;
       }
-      final int safeOffset =
-          offset.clamp(0, widget.bodyController.text.length);
-      widget.bodyController.selection =
-          TextSelection.collapsed(offset: safeOffset);
+      final int safeOffset = offset.clamp(0, widget.bodyController.text.length);
+      widget.bodyController.selection = TextSelection.collapsed(
+        offset: safeOffset,
+      );
     });
   }
 
-  void _syncEditingSurfaceMode({
-    String? focusLineId,
-    int? plainTextOffset,
-  }) {
+  void _syncEditingSurfaceMode({String? focusLineId, int? plainTextOffset}) {
     if (editorLinesHaveCheckbox(_lines)) {
       _enterHybridEditing();
       if (focusLineId != null) {
@@ -201,8 +197,9 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   TextEditingController _controllerForLine(EditorBodyLine line) {
     final String lineId = line.id;
     return _lineControllers.putIfAbsent(lineId, () {
-      final TextEditingController controller =
-          TextEditingController(text: _lineText(line));
+      final TextEditingController controller = TextEditingController(
+        text: _lineText(line),
+      );
       if (line is EditorTextLine) {
         controller.addListener(() => _onLineControllerChanged(lineId));
       }
@@ -222,10 +219,13 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }
 
   void _pruneControllers() {
-    final Set<String> liveIds = _lines.map((EditorBodyLine line) => line.id).toSet();
-    for (final String id in _lineControllers.keys
-        .where((String key) => !liveIds.contains(key))
-        .toList()) {
+    final Set<String> liveIds = _lines
+        .map((EditorBodyLine line) => line.id)
+        .toSet();
+    for (final String id
+        in _lineControllers.keys
+            .where((String key) => !liveIds.contains(key))
+            .toList()) {
       _lineControllers.remove(id)?.dispose();
       _lineFocusNodes.remove(id)?.dispose();
     }
@@ -240,9 +240,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
         if (controller.text != text) {
           controller.text = text;
         }
-        _lineFocusNodes.putIfAbsent(
-          line.id,
-          () {
+        _lineFocusNodes.putIfAbsent(line.id, () {
           final String lineId = line.id;
           if (line is EditorCheckboxLine) {
             return FocusNode(
@@ -264,8 +262,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
               );
             },
           )..addListener(() => _onLineFocusChanged(lineId));
-          },
-        );
+        });
       }
     } finally {
       _syncingControllers = false;
@@ -365,11 +362,8 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }
 
   void insertCheckboxAtCursor() {
-    final ({
-      List<EditorBodyLine> lines,
-      int lineIndex,
-      int textOffset,
-    }) context = _resolveCheckboxInsertContext();
+    final ({List<EditorBodyLine> lines, int lineIndex, int textOffset})
+    context = _resolveCheckboxInsertContext();
     if (context.lines.isEmpty) {
       return;
     }
@@ -380,11 +374,8 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     );
   }
 
-  ({
-    List<EditorBodyLine> lines,
-    int lineIndex,
-    int textOffset,
-  }) _resolveCheckboxInsertContext() {
+  ({List<EditorBodyLine> lines, int lineIndex, int textOffset})
+  _resolveCheckboxInsertContext() {
     if (!editorLinesHaveCheckbox(_lines)) {
       final String text = widget.bodyController.text;
       final TextSelection selection = widget.bodyController.selection;
@@ -398,8 +389,10 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       if (lines.isEmpty) {
         return (lines: <EditorBodyLine>[], lineIndex: 0, textOffset: 0);
       }
-      final ({int lineIndex, int textOffset}) position =
-          offsetToLinePosition(text, offset);
+      final ({int lineIndex, int textOffset}) position = offsetToLinePosition(
+        text,
+        offset,
+      );
       return (
         lines: lines,
         lineIndex: position.lineIndex.clamp(0, lines.length - 1),
@@ -423,10 +416,10 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
   }) {
     final ({List<EditorBodyLine> lines, String checkboxId}) result =
         insertCheckboxAtLineIndex(
-      lines: lines,
-      lineIndex: lineIndex,
-      textOffset: textOffset,
-    );
+          lines: lines,
+          lineIndex: lineIndex,
+          textOffset: textOffset,
+        );
     if (result.checkboxId.isEmpty) {
       return;
     }
@@ -441,11 +434,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
 
   void _insertCheckboxAfter(int lineIndex) {
     _refreshLinesFromControllers();
-    _insertCheckboxAt(
-      lines: _lines,
-      lineIndex: lineIndex,
-      textOffset: 0,
-    );
+    _insertCheckboxAt(lines: _lines, lineIndex: lineIndex, textOffset: 0);
   }
 
   void _toggleCheckbox(String lineId, bool checked) {
@@ -608,9 +597,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       _syncEditingSurfaceMode(focusLineId: _lines[focusIndex].id);
       return;
     }
-    _syncEditingSurfaceMode(
-      plainTextOffset: wasHybrid ? 0 : null,
-    );
+    _syncEditingSurfaceMode(plainTextOffset: wasHybrid ? 0 : null);
   }
 
   KeyEventResult _handleCheckboxKeyEvent({
@@ -712,11 +699,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
         return KeyedSubtree(
           key: ValueKey<String>(line.id),
           child: switch (line) {
-            EditorTextLine() => _buildTextLine(
-              context,
-              lineIndex,
-              bodyStyle,
-            ),
+            EditorTextLine() => _buildTextLine(context, lineIndex, bodyStyle),
             EditorCheckboxLine() => _buildCheckboxLine(
               context,
               lineIndex,

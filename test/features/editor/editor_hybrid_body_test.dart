@@ -11,13 +11,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('EditorHybridBody', () {
-    testWidgets('從空白純文字內容插入第一個 checkbox', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('從空白純文字內容插入第一個任務項目', (WidgetTester tester) async {
       final ({
         TextEditingController bodyController,
         GlobalKey<EditorHybridBodyState> bodyKey,
-      }) harness = await pumpEditorHybridBody(tester);
+      })
+      harness = await pumpEditorHybridBody(tester);
 
       harness.bodyKey.currentState!.insertCheckboxAtCursor();
       await tester.pumpAndSettle();
@@ -26,13 +25,12 @@ void main() {
       expect(find.byType(Checkbox), findsOneWidget);
     });
 
-    testWidgets('插入 checkbox 後會保留後續文字行', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('插入任務項目後會保留後續文字行', (WidgetTester tester) async {
       final ({
         TextEditingController bodyController,
         GlobalKey<EditorHybridBodyState> bodyKey,
-      }) harness = await pumpEditorHybridBody(
+      })
+      harness = await pumpEditorHybridBody(
         tester,
         bodyText: '15651\n- [x] 111\n456456',
       );
@@ -47,43 +45,36 @@ void main() {
       expect(find.byIcon(Icons.drag_handle_rounded), findsNWidgets(2));
     });
 
-    testWidgets('在中間插入 checkbox 時不會在後方內容前多加空白行', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('在中間插入任務項目時不會在後方內容前多加空白行', (WidgetTester tester) async {
       final ({
         TextEditingController bodyController,
         GlobalKey<EditorHybridBodyState> bodyKey,
-      }) harness = await pumpEditorHybridBody(
-        tester,
-        bodyText: '第一行\n第二行',
-      );
+      })
+      harness = await pumpEditorHybridBody(tester, bodyText: '第一行\n第二行');
 
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
-      harness.bodyController.selection =
-          const TextSelection.collapsed(offset: 3);
+      harness.bodyController.selection = const TextSelection.collapsed(
+        offset: 3,
+      );
       await tester.pump();
 
       harness.bodyKey.currentState!.insertCheckboxAtCursor();
       await tester.pumpAndSettle();
 
       expect(harness.bodyController.text, '第一行\n- [ ]\n第二行\n');
-      expect(
-        harness.bodyController.text,
-        isNot(contains('- [ ]\n\n第二行')),
-      );
+      expect(harness.bodyController.text, isNot(contains('- [ ]\n\n第二行')));
       expect(find.text('第二行'), findsOneWidget);
     });
 
-    testWidgets('在空白文字行按 backspace 會刪除該行', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('在空白文字行按 backspace 會刪除該行', (WidgetTester tester) async {
       final ({
         TextEditingController bodyController,
         GlobalKey<EditorHybridBodyState> bodyKey,
-      }) harness = await pumpEditorHybridBody(
+      })
+      harness = await pumpEditorHybridBody(
         tester,
-        bodyText: '第一行\n\n第三行\n- [ ] 待辦',
+        bodyText: '第一行\n\n第三行\n- [ ] 任務三',
       );
 
       final Finder emptyLineField = find.byType(TextField).at(1);
@@ -92,24 +83,20 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pumpAndSettle();
 
-      expect(harness.bodyController.text, '第一行\n第三行\n- [ ] 待辦\n');
+      expect(harness.bodyController.text, '第一行\n第三行\n- [ ] 任務三\n');
     });
 
-    testWidgets('刪除最後一個 checkbox 後會回到純文字編輯器', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('刪除最後一個任務項目後會回到純文字編輯器', (WidgetTester tester) async {
       final ({
         TextEditingController bodyController,
         GlobalKey<EditorHybridBodyState> bodyKey,
-      }) harness = await pumpEditorHybridBody(
-        tester,
-        bodyText: '- [ ]\n',
-      );
+      })
+      harness = await pumpEditorHybridBody(tester, bodyText: '- [ ]\n');
 
       expect(find.byType(ReorderableListView), findsOneWidget);
 
-      final Finder checkboxField = find.byType(TextField).first;
-      await tester.tap(checkboxField);
+      final Finder taskItemField = find.byType(TextField).first;
+      await tester.tap(taskItemField);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pumpAndSettle();
@@ -121,11 +108,9 @@ void main() {
   });
 
   group('EditorMarkdownPreview', () {
-    testWidgets('點擊 checkbox 會更新 markdown', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('點擊任務項目會更新 markdown', (WidgetTester tester) async {
       String? changedMarkdown;
-      const String markdown = '前言\n- [ ] 待辦';
+      const String markdown = '前言\n- [ ] 任務三';
 
       await tester.pumpWidget(
         editorTestApp(
@@ -142,7 +127,7 @@ void main() {
       await tester.tap(find.byType(Checkbox));
       await tester.pumpAndSettle();
 
-      expect(changedMarkdown, '前言\n- [x] 待辦');
+      expect(changedMarkdown, '前言\n- [x] 任務三');
     });
   });
 }

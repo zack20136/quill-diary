@@ -60,14 +60,9 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          cs.primary.withValues(alpha: 0.04),
-          cs.surface,
-        ),
+        color: Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.26),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -81,10 +76,7 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
               ),
             ),
             const Spacer(),
-            TagChip.pair(
-              label: l10n.tagUnnamedPreview,
-              pair: previewPair,
-            ),
+            TagChip.pair(label: l10n.tagUnnamedPreview, pair: previewPair),
           ],
         ),
       ),

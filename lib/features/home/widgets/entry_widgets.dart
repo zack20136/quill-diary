@@ -35,6 +35,7 @@ class HomeTimelineEntryShell extends StatelessWidget {
 
   final Widget child;
   final bool selected;
+
   /// 嵌在 [HomeSectionCard] 等區塊內時使用 inset 底色，與外層 surface 區隔。
   final bool nestedInSection;
 
@@ -96,8 +97,9 @@ class HomeEntryList extends ConsumerWidget {
         );
     final EditorTypographyPreferences typography =
         watchPersonalizationPreferences(ref).typography;
-    final List<EntryId> displayOrder =
-        entries.map((EntryIndexRecord item) => item.id).toList();
+    final List<EntryId> displayOrder = entries
+        .map((EntryIndexRecord item) => item.id)
+        .toList();
     final Color pinnedSectionDividerColor = context.appColors.outlineMuted
         .withValues(alpha: 0.42);
 
@@ -107,67 +109,67 @@ class HomeEntryList extends ConsumerWidget {
         return false;
       },
       child: ListView.separated(
-          controller: controller,
-          primary: controller == null,
-          padding: const EdgeInsets.only(bottom: 16),
-          scrollCacheExtent: HomeLayout.entryListCacheExtent,
-          itemCount: entries.length,
-          separatorBuilder: (BuildContext context, int index) {
-            final bool showPinnedSectionDivider =
-                !selection.isActive &&
-                pinnedEntryIds.contains(entries[index].id) &&
-                index + 1 < entries.length &&
-                !pinnedEntryIds.contains(entries[index + 1].id);
-            if (showPinnedSectionDivider) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: pinnedSectionDividerColor,
-                ),
-              );
-            }
-            return const SizedBox(height: 14);
-          },
-          itemBuilder: (BuildContext context, int index) {
-            final EntryIndexRecord entry = entries[index];
-            final bool selected = selection.selectedIds.contains(entry.id);
-            return HomeTimelineEntryShell(
-              key: ValueKey<String>(entry.id),
-              selected: selection.isActive && selected,
-              child: HomeEntryCard(
-                entry: entry,
-                typography: typography,
-                selectionActive: selection.isActive,
-                selected: selected,
-                tagAccents: tagAccents,
-                showUnsavedDraft: draftEntryIds.contains(entry.id),
-                isPinned: pinnedEntryIds.contains(entry.id),
-                onTap: () {
-                  if (selection.isActive) {
-                    ref
-                        .read(homeEntrySelectionProvider.notifier)
-                        .toggle(entry.id, displayOrder: displayOrder);
-                    return;
-                  }
-                  unawaited(context.push('/editor/${entry.id}'));
-                },
-                onLongPress: () {
-                  if (selection.isActive) {
-                    ref
-                        .read(homeEntrySelectionProvider.notifier)
-                        .toggle(entry.id, displayOrder: displayOrder);
-                    return;
-                  }
-                  ref
-                      .read(homeEntrySelectionProvider.notifier)
-                      .enterWith(entry.id, displayOrder: displayOrder);
-                },
+        controller: controller,
+        primary: controller == null,
+        padding: const EdgeInsets.only(bottom: 16),
+        scrollCacheExtent: HomeLayout.entryListCacheExtent,
+        itemCount: entries.length,
+        separatorBuilder: (BuildContext context, int index) {
+          final bool showPinnedSectionDivider =
+              !selection.isActive &&
+              pinnedEntryIds.contains(entries[index].id) &&
+              index + 1 < entries.length &&
+              !pinnedEntryIds.contains(entries[index + 1].id);
+          if (showPinnedSectionDivider) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: pinnedSectionDividerColor,
               ),
             );
-          },
-        ),
+          }
+          return const SizedBox(height: 14);
+        },
+        itemBuilder: (BuildContext context, int index) {
+          final EntryIndexRecord entry = entries[index];
+          final bool selected = selection.selectedIds.contains(entry.id);
+          return HomeTimelineEntryShell(
+            key: ValueKey<String>(entry.id),
+            selected: selection.isActive && selected,
+            child: HomeEntryCard(
+              entry: entry,
+              typography: typography,
+              selectionActive: selection.isActive,
+              selected: selected,
+              tagAccents: tagAccents,
+              showUnsavedDraft: draftEntryIds.contains(entry.id),
+              isPinned: pinnedEntryIds.contains(entry.id),
+              onTap: () {
+                if (selection.isActive) {
+                  ref
+                      .read(homeEntrySelectionProvider.notifier)
+                      .toggle(entry.id, displayOrder: displayOrder);
+                  return;
+                }
+                unawaited(context.push('/editor/${entry.id}'));
+              },
+              onLongPress: () {
+                if (selection.isActive) {
+                  ref
+                      .read(homeEntrySelectionProvider.notifier)
+                      .toggle(entry.id, displayOrder: displayOrder);
+                  return;
+                }
+                ref
+                    .read(homeEntrySelectionProvider.notifier)
+                    .enterWith(entry.id, displayOrder: displayOrder);
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -202,7 +204,8 @@ class HomeEntryCard extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
     final String? trimmedTitle = entry.title?.trim();
     final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-    final bool showPreview = hasTitle &&
+    final bool showPreview =
+        hasTitle &&
         (entry.previewMarkdown.trim().isNotEmpty ||
             entry.previewText.trim().isNotEmpty);
     final double selectionLeadingWidth = selectionActive ? 34 : 0;
@@ -318,7 +321,8 @@ class HomeCompactEntryList extends ConsumerWidget {
       children: entries.map((EntryIndexRecord entry) {
         final String? trimmedTitle = entry.title?.trim();
         final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
-        final bool showPreview = hasTitle &&
+        final bool showPreview =
+            hasTitle &&
             (entry.previewMarkdown.trim().isNotEmpty ||
                 entry.previewText.trim().isNotEmpty);
 

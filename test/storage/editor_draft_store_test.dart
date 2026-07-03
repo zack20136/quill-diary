@@ -54,7 +54,7 @@ void main() {
     }
   });
 
-  test('write/read roundtrip and listDraftKeys', () async {
+  test('寫入、讀取往返與列出草稿鍵', () async {
     final EditorDraftRecord record = EditorDraftRecord(
       title: '草稿標題',
       dateValue: '2026-06-09',
@@ -81,7 +81,7 @@ void main() {
     expect(draftKeys, contains('__new__'));
   });
 
-  test('stagePendingFile, write record, then delete removes files', () async {
+  test('暫存附件、寫入草稿後再刪除會移除檔案', () async {
     final File sourceFile = File('${rootDir.path}\\picked.txt');
     await sourceFile.writeAsString('hello');
 
@@ -214,7 +214,7 @@ void main() {
     );
   });
 
-  test('write 會 prune 未引用的 pending 檔', () async {
+  test('寫入時會清理未引用的暫存檔', () async {
     final File sourceA = File('${rootDir.path}\\a.txt')..writeAsStringSync('a');
     final File sourceB = File('${rootDir.path}\\b.txt')..writeAsStringSync('b');
     final String relativeA = await store.stagePendingFile(

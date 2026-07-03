@@ -4,8 +4,7 @@ import 'package:quill_diary/features/editor/application/editor_body_blocks.dart'
 void main() {
   group('parseEditorBodyLines', () {
     test('會把每行 markdown 拆成對應的 line block', () {
-      const String markdown =
-          '今天心情不錯\n\n- [ ] 買牛奶\n- [x] 回覆信件\n\n明天再整理';
+      const String markdown = '今天心情不錯\n\n- [ ] 買牛奶\n- [x] 回覆信件\n\n明天再整理';
 
       final List<EditorBodyLine> lines = parseEditorBodyLines(markdown);
       expect(lines, hasLength(6));
@@ -50,17 +49,17 @@ void main() {
   });
 
   group('insertCheckboxAtLineIndex', () {
-    test('會在游標處切分文字行並插入 checkbox', () {
+    test('會在游標處切分文字行並插入任務項目', () {
       final ({List<EditorBodyLine> lines, String checkboxId}) result =
           insertCheckboxAtLineIndex(
-        lines: <EditorBodyLine>[
-          EditorTextLine(id: 't1', text: '15651'),
-          EditorCheckboxLine(id: 'c1', text: '111', checked: true),
-          EditorTextLine(id: 't2', text: '456456'),
-        ],
-        lineIndex: 2,
-        textOffset: 3,
-      );
+            lines: <EditorBodyLine>[
+              EditorTextLine(id: 't1', text: '15651'),
+              EditorCheckboxLine(id: 'c1', text: '111', checked: true),
+              EditorTextLine(id: 't2', text: '456456'),
+            ],
+            lineIndex: 2,
+            textOffset: 3,
+          );
 
       expect(result.lines, hasLength(5));
       expect((result.lines[2] as EditorTextLine).text, '456');
@@ -71,12 +70,10 @@ void main() {
     test('在文件末尾插入時會保留可輸入的尾端空白文字行', () {
       final ({List<EditorBodyLine> lines, String checkboxId}) result =
           insertCheckboxAtLineIndex(
-        lines: <EditorBodyLine>[
-          EditorTextLine(id: 't1', text: '前言'),
-        ],
-        lineIndex: 0,
-        textOffset: 2,
-      );
+            lines: <EditorBodyLine>[EditorTextLine(id: 't1', text: '前言')],
+            lineIndex: 0,
+            textOffset: 2,
+          );
 
       expect(result.lines, hasLength(3));
       expect((result.lines[0] as EditorTextLine).text, '前言');
@@ -88,13 +85,13 @@ void main() {
     test('在行末插入且後方還有內容時不會插入多餘空白行', () {
       final ({List<EditorBodyLine> lines, String checkboxId}) result =
           insertCheckboxAtLineIndex(
-        lines: <EditorBodyLine>[
-          EditorTextLine(id: 't1', text: '第一行'),
-          EditorTextLine(id: 't2', text: '第二行'),
-        ],
-        lineIndex: 0,
-        textOffset: 3,
-      );
+            lines: <EditorBodyLine>[
+              EditorTextLine(id: 't1', text: '第一行'),
+              EditorTextLine(id: 't2', text: '第二行'),
+            ],
+            lineIndex: 0,
+            textOffset: 3,
+          );
 
       expect(result.lines, hasLength(3));
       expect((result.lines[0] as EditorTextLine).text, '第一行');
@@ -122,9 +119,7 @@ void main() {
 
     test('插入於文件末尾時會補上一行空白文字行', () {
       final List<EditorBodyLine> tail = tailLinesAfterCheckboxInsert(
-        lines: <EditorBodyLine>[
-          EditorTextLine(id: 't1', text: '前言'),
-        ],
+        lines: <EditorBodyLine>[EditorTextLine(id: 't1', text: '前言')],
         consumedThroughIndex: 0,
         afterText: '',
       );
@@ -136,10 +131,10 @@ void main() {
   });
 
   group('reorderEditorBodyLines', () {
-    test('可交換 checkbox 與文字行', () {
+    test('可交換任務項目與文字行', () {
       final List<EditorBodyLine> lines = <EditorBodyLine>[
         EditorTextLine(id: 't1', text: '文字'),
-        EditorCheckboxLine(id: 'c1', text: '待辦', checked: false),
+        EditorCheckboxLine(id: 'c1', text: '任務三', checked: false),
         EditorTextLine(id: 't2', text: '結尾'),
       ];
 
@@ -166,24 +161,21 @@ void main() {
       expect(collapseEditorBodyToPlainMarkdown(lines), '前言');
     });
 
-    test('仍含 checkbox 時會保留 checkbox markdown', () {
+    test('仍含任務清單時會保留任務清單 markdown', () {
       final List<EditorBodyLine> lines = <EditorBodyLine>[
         EditorTextLine(id: 't1', text: '前言'),
-        EditorCheckboxLine(id: 'c1', text: '待辦', checked: false),
+        EditorCheckboxLine(id: 'c1', text: '任務三', checked: false),
       ];
 
-      expect(
-        collapseEditorBodyToPlainMarkdown(lines),
-        '前言\n- [ ] 待辦',
-      );
+      expect(collapseEditorBodyToPlainMarkdown(lines), '前言\n- [ ] 任務三');
     });
   });
 
   group('normalizeEditorBodyMarkdownForSave', () {
-    test('含 checkbox 時會保留尾端空白行', () {
-      const String markdown = '前言\n- [ ] 待辦';
+    test('含任務清單時會保留尾端空白行', () {
+      const String markdown = '前言\n- [ ] 任務三';
       final String normalized = normalizeEditorBodyMarkdownForSave(markdown);
-      expect(normalized, '前言\n- [ ] 待辦\n');
+      expect(normalized, '前言\n- [ ] 任務三\n');
       expect(parseEditorBodyLines(normalized).last, isA<EditorTextLine>());
       expect(
         (parseEditorBodyLines(normalized).last as EditorTextLine).text,

@@ -5,7 +5,7 @@ import 'package:quill_diary/features/home/widgets/home_entry_preview_body.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
-  testWidgets('HomeEntryPreviewBody renders content in markdown order', (
+  testWidgets('HomeEntryPreviewBody 依 markdown 順序顯示內容', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -18,8 +18,7 @@ void main() {
           body: SizedBox(
             width: 360,
             child: HomeEntryPreviewBody(
-              previewMarkdown:
-                  '前言\n- [x] 已完成\n- [ ] 待辦\n- [ ] \n- [x] 另一項',
+              previewMarkdown: '前言\n- [x] 已完成\n- [ ] 任務三\n- [ ] \n- [x] 另一項',
               fallbackText: '',
               textStyle: TextStyle(fontSize: 14),
               maxLines: 5,
@@ -32,12 +31,12 @@ void main() {
 
     expect(find.byType(Checkbox), findsNWidgets(4));
     expect(find.textContaining('已完成'), findsOneWidget);
-    expect(find.textContaining('待辦'), findsOneWidget);
+    expect(find.textContaining('任務三'), findsOneWidget);
     expect(find.textContaining('另一項'), findsOneWidget);
     expect(find.textContaining('前言'), findsOneWidget);
   });
 
-  testWidgets('HomeEntryPreviewBody shows first checkbox when text leaves one line', (
+  testWidgets('HomeEntryPreviewBody 文字剩一行時只顯示第一個任務項目', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -66,7 +65,7 @@ void main() {
     expect(find.textContaining('545645645'), findsNothing);
   });
 
-  testWidgets('HomeEntryPreviewBody hides checkboxes when text already fills max lines', (
+  testWidgets('HomeEntryPreviewBody 文字已佔滿最大行數時隱藏任務項目', (
     WidgetTester tester,
   ) async {
     const String bodyText =
@@ -99,7 +98,7 @@ void main() {
     expect(find.textContaining('…'), findsNothing);
   });
 
-  testWidgets('HomeEntryPreviewBody stops at budget without skipping to later lines', (
+  testWidgets('HomeEntryPreviewBody 達到行數預算後不會跳過後續行', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -133,9 +132,7 @@ void main() {
     expect(find.textContaining('45645646456'), findsNothing);
   });
 
-  testWidgets('HomeEntryPreviewBody still shows checkboxes when text fits', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('HomeEntryPreviewBody 文字足夠時仍顯示任務項目', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(brightness: Brightness.light),
@@ -146,7 +143,7 @@ void main() {
           body: SizedBox(
             width: 360,
             child: HomeEntryPreviewBody(
-              previewMarkdown: '短前言\n- [x] 已完成\n- [ ] 待辦',
+              previewMarkdown: '短前言\n- [x] 已完成\n- [ ] 任務三',
               fallbackText: '',
               textStyle: TextStyle(fontSize: 14, height: 1.4),
               maxLines: 3,
@@ -160,6 +157,6 @@ void main() {
     expect(find.byType(Checkbox), findsNWidgets(2));
     expect(find.textContaining('短前言'), findsOneWidget);
     expect(find.textContaining('已完成'), findsOneWidget);
-    expect(find.textContaining('待辦'), findsOneWidget);
+    expect(find.textContaining('任務三'), findsOneWidget);
   });
 }

@@ -50,7 +50,7 @@ void main() {
     expect(preview.metadata?.recoveryKeyHint, isNotEmpty);
   });
 
-  test('inspectBackup accepts a readable vault backup', () async {
+  test('inspectBackup 可接受可讀取的 vault 備份', () async {
     final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
@@ -70,7 +70,7 @@ void main() {
     expect(report.layout.hasRecovery, isTrue);
   });
 
-  test('inspectBackup rejects an invalid zip', () async {
+  test('inspectBackup 會拒絕無效的 zip', () async {
     final File backupFile = File(p.join(harness.tempDir.path, 'invalid.zip'))
       ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
@@ -82,7 +82,7 @@ void main() {
     expect(report.message, contains('zip 備份'));
   });
 
-  test('inspectBackup rejects portable markdown export zip', () async {
+  test('inspectBackup 會拒絕可攜式 markdown 匯出 zip', () async {
     final setup = await harness.repository.setupRecoveryKey();
     await harness.saveSimpleEntry(
       setup,
@@ -102,7 +102,7 @@ void main() {
     expect(report.message, contains('日記匯出檔'));
   });
 
-  test('inspectBackup rejects corrupted recovery.json', () async {
+  test('inspectBackup 會拒絕損壞的 recovery.json', () async {
     final File backupFile = File(
       p.join(harness.tempDir.path, 'bad_recovery.zip'),
     );

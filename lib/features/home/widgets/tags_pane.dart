@@ -595,9 +595,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                           SliverToBoxAdapter(
                             child: _tagDiaryPreviewPanel(records, theme, cs),
                           ),
-                          const SliverToBoxAdapter(
-                            child: SizedBox(height: 24),
-                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
                         ],
                       );
                     },

@@ -112,13 +112,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
         },
         deleteIconColor: fg.withValues(alpha: 0.82),
         backgroundColor: bg,
-        side: tagChipBorderSide(
-          colors,
-          theme.colorScheme,
-          bg,
-          fg,
-          width: 0.95,
-        ),
+        side: tagChipBorderSide(colors, theme.colorScheme, bg, fg, width: 0.95),
       ),
     );
   }
@@ -152,13 +146,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           _addChosen(label);
         });
       },
-      side: tagChipBorderSide(
-        colors,
-        theme.colorScheme,
-        bg0,
-        fg0,
-        width: 0.95,
-      ),
+      side: tagChipBorderSide(colors, theme.colorScheme, bg0, fg0, width: 0.95),
       elevation: 0,
       shadowColor: Colors.transparent,
       backgroundColor: bg0,
@@ -196,10 +184,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                 colors.accentDialogGradientEnd,
               ],
             ),
-            border: Border.all(
-              color: colors.accentDialogBorder,
-              width: 1.1,
-            ),
+            border: Border.all(color: colors.accentDialogBorder, width: 1.1),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: theme.shadowColor.withValues(alpha: 0.17),
@@ -324,34 +309,34 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
                     controller: _tagPoolScrollController,
                     contentPadding: const EdgeInsets.only(right: 8, bottom: 2),
                     child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.start,
-                        children: <Widget>[
-                          if (pool.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8, bottom: 8),
-                              child: Text(
-                                qlow.isEmpty
-                                    ? context.l10n.editorTagPoolEmpty
-                                    : context.l10n.commonNoTagSearchResults,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontStyle: FontStyle.italic,
-                                  color: theme.colorScheme.outline,
-                                ),
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.start,
+                      children: <Widget>[
+                        if (pool.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 8),
+                            child: Text(
+                              qlow.isEmpty
+                                  ? context.l10n.editorTagPoolEmpty
+                                  : context.l10n.commonNoTagSearchResults,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontStyle: FontStyle.italic,
+                                color: theme.colorScheme.outline,
                               ),
                             ),
-                          for (final TagCatalogUsageItem item in pool.take(60))
-                            _suggestionChip(
-                              item.label,
-                              theme,
-                              accentArgbByNorm,
-                              colors,
-                            ),
-                        ],
-                      ),
+                          ),
+                        for (final TagCatalogUsageItem item in pool.take(60))
+                          _suggestionChip(
+                            item.label,
+                            theme,
+                            accentArgbByNorm,
+                            colors,
+                          ),
+                      ],
                     ),
                   ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: <Widget>[
@@ -779,7 +764,9 @@ class _EncryptedGalleryImage extends ConsumerWidget {
           return Center(
             child: Text(
               context.l10n.editorPreviewUnavailable,
-              style: TextStyle(color: colors.galleryForeground.withValues(alpha: 0.85)),
+              style: TextStyle(
+                color: colors.galleryForeground.withValues(alpha: 0.85),
+              ),
             ),
           );
         }

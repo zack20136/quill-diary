@@ -6,8 +6,8 @@ import 'package:quill_diary/app/theme.dart';
 
 void main() {
   const testCases = <({String name, Brightness brightness})>[
-    (name: 'light', brightness: Brightness.light),
-    (name: 'dark', brightness: Brightness.dark),
+    (name: '淺色', brightness: Brightness.light),
+    (name: '深色', brightness: Brightness.dark),
   ];
 
   for (final testCase in testCases) {
@@ -44,7 +44,10 @@ void main() {
 
     expect(light.scaffoldBackground, isNot(dark.scaffoldBackground));
     expect(light.foreground, isNot(dark.foreground));
-    expect(light.tagAccentBackgroundAlpha, isNot(dark.tagAccentBackgroundAlpha));
+    expect(
+      light.tagAccentBackgroundAlpha,
+      isNot(dark.tagAccentBackgroundAlpha),
+    );
   });
 
   test('固定色票關鍵欄位', () {

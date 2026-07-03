@@ -728,10 +728,9 @@ class VaultRepository {
     Iterable<EntryId> entryIds, {
     required bool pinned,
   }) {
-    return PinnedEntriesStore(_pathStrategy).setPinnedMany(
-      entryIds,
-      pinned: pinned,
-    );
+    return PinnedEntriesStore(
+      _pathStrategy,
+    ).setPinnedMany(entryIds, pinned: pinned);
   }
 
   Future<void> _prunePinnedEntriesToExisting(Iterable<EntryId> existingIds) {
@@ -750,16 +749,14 @@ class VaultRepository {
     }
 
     final List<TagCatalogItem> catalog = await listTagCatalog();
-    final List<TagCatalogItem> merged = TagStylesStore.merge(
-      catalog,
-      <TagCatalogItem>[
-        TagCatalogItem(
-          label: displayLabel,
-          accentArgb: accentArgb,
-          accentIsCustom: accentIsCustom,
-        ),
-      ],
-    );
+    final List<TagCatalogItem> merged =
+        TagStylesStore.merge(catalog, <TagCatalogItem>[
+          TagCatalogItem(
+            label: displayLabel,
+            accentArgb: accentArgb,
+            accentIsCustom: accentIsCustom,
+          ),
+        ]);
     await _persistTagCatalogToVault(merged);
     final TagCatalogItem saved = merged.firstWhere(
       (TagCatalogItem item) => item.normalized == normalized,
@@ -857,16 +854,14 @@ class VaultRepository {
     final List<TagCatalogItem> base = catalog
         .where((TagCatalogItem item) => item.normalized != fromNorm)
         .toList(growable: false);
-    final List<TagCatalogItem> merged = TagStylesStore.merge(
-      base,
-      <TagCatalogItem>[
-        TagCatalogItem(
-          label: toDisplay,
-          accentArgb: resolvedAccent,
-          accentIsCustom: resolvedIsCustom,
-        ),
-      ],
-    );
+    final List<TagCatalogItem> merged =
+        TagStylesStore.merge(base, <TagCatalogItem>[
+          TagCatalogItem(
+            label: toDisplay,
+            accentArgb: resolvedAccent,
+            accentIsCustom: resolvedIsCustom,
+          ),
+        ]);
     await _persistTagCatalogToVault(merged);
 
     final IndexDatabase indexDb = _requireOpenIndex();

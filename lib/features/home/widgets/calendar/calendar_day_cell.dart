@@ -69,10 +69,7 @@ class CalendarDayCell extends StatelessWidget {
           decoration: BoxDecoration(
             color: cellColor,
             border: isSelected
-                ? Border.all(
-                    color: colors.calendarTodayMarker,
-                    width: 1.2,
-                  )
+                ? Border.all(color: colors.calendarTodayMarker, width: 1.2)
                 : null,
           ),
           child: Padding(

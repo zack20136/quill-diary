@@ -13,7 +13,7 @@ void main() {
     return GoogleBillingService(inAppPurchase: fakeInAppPurchase);
   }
 
-  test('buySponsorProduct passes autoConsume false', () async {
+  test('購買贊助商品時會關閉自動消耗', () async {
     final FakeInAppPurchaseAndroidPlatformAddition fakeAndroidAddition =
         FakeInAppPurchaseAndroidPlatformAddition();
     final FakeInAppPurchase fakeInAppPurchase = FakeInAppPurchase(
@@ -40,7 +40,7 @@ void main() {
     );
   });
 
-  test('loadProducts catches query errors and clears loading state', () async {
+  test('載入商品查詢錯誤時會清除載入狀態', () async {
     final FakeInAppPurchase fakeInAppPurchase = FakeInAppPurchase(
       queryProductDetailsError: StateError('boom'),
       androidAddition: FakeInAppPurchaseAndroidPlatformAddition(),
@@ -55,7 +55,7 @@ void main() {
     expect(service.state.products, isEmpty);
   });
 
-  test('loadProducts retries after init_failed', () async {
+  test('載入商品在 init_failed 後會重試', () async {
     final FakeInAppPurchaseAndroidPlatformAddition fakeAndroidAddition =
         FakeInAppPurchaseAndroidPlatformAddition();
     final FakeInAppPurchase fakeInAppPurchase = FakeInAppPurchase(
@@ -91,7 +91,7 @@ void main() {
     expect(fakeAndroidAddition.consumePurchaseCalled, isFalse);
   });
 
-  test('buySponsorProduct catches buy errors', () async {
+  test('購買贊助商品時會捕捉購買錯誤', () async {
     final FakeInAppPurchase fakeInAppPurchase = FakeInAppPurchase(
       buyConsumableError: StateError('boom'),
       androidAddition: FakeInAppPurchaseAndroidPlatformAddition(),
@@ -109,7 +109,7 @@ void main() {
     expect(service.state.purchaseErrorMessage, contains('boom'));
   });
 
-  test('purchased purchases are consumed, completed and clearable', () async {
+  test('已購買項目會被消耗、完成並可清除', () async {
     final FakeInAppPurchaseAndroidPlatformAddition fakeAndroidAddition =
         FakeInAppPurchaseAndroidPlatformAddition();
     final FakeInAppPurchase fakeInAppPurchase = FakeInAppPurchase(

@@ -72,11 +72,8 @@ final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
       : (ref.watch(homePinnedEntryIdsProvider).value ?? const <EntryId>{});
 
   return raw.whenData(
-    (List<EntryIndexRecord> list) => sortHomeEntries(
-      list: list,
-      sortState: sortState,
-      pinnedIds: pinnedIds,
-    ),
+    (List<EntryIndexRecord> list) =>
+        sortHomeEntries(list: list, sortState: sortState, pinnedIds: pinnedIds),
   );
 });
 

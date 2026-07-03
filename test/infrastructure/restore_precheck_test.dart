@@ -36,7 +36,7 @@ void main() {
     );
   }
 
-  test('backupHasRecovery 與 backupVaultId 反映 preview', () {
+  test('backupHasRecovery 與 backupVaultId 會反映預覽資訊', () {
     const RestorePrecheck withoutRecovery = RestorePrecheck(
       preview: BackupRecoveryPreview(hasRecovery: false),
       localVaultId: 'vlt_local',
@@ -58,7 +58,7 @@ void main() {
     expect(buildPrecheck(localVaultId: null).sameVaultId, isFalse);
   });
 
-  test('sameRecoveryGeneration 比對備份與本機 salt', () {
+  test('sameRecoveryGeneration 會比對備份與本機 salt', () {
     expect(buildPrecheck().sameRecoveryGeneration, isTrue);
     expect(
       buildPrecheck(
@@ -124,7 +124,7 @@ void main() {
     );
   });
 
-  test('canResumeTrustedSession 需 expectsTrustedUnlock 且 prior session 有效', () {
+  test('canResumeTrustedSession 需 expectsTrustedUnlock 且前一個 session 有效', () {
     final UnlockedVaultSession priorSession = UnlockedVaultSession(
       vaultId: backupMetadata.vaultId,
       trustedDevice: true,
@@ -184,7 +184,7 @@ void main() {
     expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
   });
 
-  test('backupRecoverySaltBase64 取自 metadata kdf', () {
+  test('backupRecoverySaltBase64 會取自 metadata kdf', () {
     expect(
       buildPrecheck().backupRecoverySaltBase64,
       backupMetadata.kdf.saltBase64,

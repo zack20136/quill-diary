@@ -19,8 +19,8 @@ class TagChip extends StatelessWidget {
     this.compact = false,
     this.bordered,
     super.key,
-  })  : background = pair.$1,
-        foreground = pair.$2;
+  }) : background = pair.$1,
+       foreground = pair.$2;
 
   final String label;
   final Color background;

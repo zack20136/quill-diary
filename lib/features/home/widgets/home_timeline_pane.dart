@@ -31,7 +31,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   late final ScrollController _scrollController;
   ProviderSubscription<String>? _searchQuerySubscription;
   ProviderSubscription<AsyncValue<List<EntryIndexRecord>>>?
-      _entryIndexListSubscription;
+  _entryIndexListSubscription;
   bool _syncingController = false;
   bool _awaitingSearchResync = false;
 
@@ -51,8 +51,9 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         }
         if (ref.read(homeEntrySelectionProvider).isActive) {
           _awaitingSearchResync = true;
-          final List<EntryIndexRecord>? current =
-              ref.read(homeEntryIndexListProvider).value;
+          final List<EntryIndexRecord>? current = ref
+              .read(homeEntryIndexListProvider)
+              .value;
           if (current != null) {
             _applySearchResync(current);
           }
@@ -62,22 +63,23 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
       },
       fireImmediately: true,
     );
-    _entryIndexListSubscription = ref.listenManual<
-        AsyncValue<List<EntryIndexRecord>>>(
-      homeEntryIndexListProvider,
-      (_, AsyncValue<List<EntryIndexRecord>> next) {
-        if (!_awaitingSearchResync ||
-            !ref.read(homeEntrySelectionProvider).isActive) {
-          return;
-        }
-        next.whenData(_applySearchResync);
-      },
-    );
+    _entryIndexListSubscription = ref
+        .listenManual<AsyncValue<List<EntryIndexRecord>>>(
+          homeEntryIndexListProvider,
+          (_, AsyncValue<List<EntryIndexRecord>> next) {
+            if (!_awaitingSearchResync ||
+                !ref.read(homeEntrySelectionProvider).isActive) {
+              return;
+            }
+            next.whenData(_applySearchResync);
+          },
+        );
   }
 
   void _applySearchResync(List<EntryIndexRecord> rawEntries) {
-    final HomeEntrySelectionState selection =
-        ref.read(homeEntrySelectionProvider);
+    final HomeEntrySelectionState selection = ref.read(
+      homeEntrySelectionProvider,
+    );
     if (!selection.isActive) {
       _awaitingSearchResync = false;
       return;
@@ -148,9 +150,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     final List<EntryIndexRecord> entries =
         entriesAsync.value ?? const <EntryIndexRecord>[];
     final bool showSearchResultCount =
-        !selection.isActive &&
-        searchQuery.isNotEmpty &&
-        entriesAsync.hasValue;
+        !selection.isActive && searchQuery.isNotEmpty && entriesAsync.hasValue;
     final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
     final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
     final Set<EntryId> pinnedEntryIds = ref
@@ -171,99 +171,99 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
             child: selection.isActive
-              ? HomeSelectionToolbar(
-                  key: const ValueKey<String>('home-selection-toolbar'),
-                  selectedCount: selection.selectedIds.length,
-                  allSelected:
-                      entries.isNotEmpty &&
-                      selection.selectedIds.length == entries.length &&
-                      entries.every(
-                        (EntryIndexRecord item) =>
-                            selection.selectedIds.contains(item.id),
-                      ),
-                  onCancel: () =>
-                      ref.read(homeEntrySelectionProvider.notifier).clear(),
-                  onSelectAll: () => ref
-                      .read(homeEntrySelectionProvider.notifier)
-                      .selectAll(
-                        entries.map((EntryIndexRecord item) => item.id),
-                      ),
-                  allPinned: allSelectedPinned,
-                  pinToggleEnabled: canActOnSelectedEntries,
-                  onTogglePin: () => unawaited(
-                    togglePinSelectedHomeEntries(
-                      context,
-                      ref,
-                      sessionState,
-                      selection.selectedIds,
-                      pinnedEntryIds,
-                    ),
-                  ),
-                  actions: <HomeSelectionAction>[
-                    HomeSelectionAction(
-                      tooltip: context.l10n.homeTooltipExportHtml,
-                      icon: Icons.html,
-                      enabled: canActOnSelectedEntries,
-                      onPressed: !canActOnSelectedEntries
-                          ? null
-                          : () => unawaited(
-                              exportSelectedHomeEntriesAsHtml(
-                                context,
-                                ref,
-                                sessionState,
-                                selection.selectedIds,
-                              ),
-                            ),
-                    ),
-                    HomeSelectionAction(
-                      tooltip: context.l10n.homeTooltipDelete,
-                      icon: Icons.delete_outline_rounded,
-                      destructive: true,
-                      enabled: canActOnSelectedEntries,
-                      onPressed: !canActOnSelectedEntries
-                          ? null
-                          : () => unawaited(
-                              deleteSelectedHomeEntries(
-                                context,
-                                ref,
-                                sessionState,
-                                selection.selectedIds,
-                              ),
-                            ),
-                    ),
-                  ],
-                )
-              : SizedBox(
-                  key: const ValueKey<String>('home-search-field'),
-                  height: kHomeSearchRowControlHeight,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Expanded(
-                        child: HomeSearchTextField(
-                          controller: _searchController,
-                          enabled: canReadEntries,
-                          hintText: context.l10n.homeSearchHint,
-                          onChanged: _handleSearchChanged,
+                ? HomeSelectionToolbar(
+                    key: const ValueKey<String>('home-selection-toolbar'),
+                    selectedCount: selection.selectedIds.length,
+                    allSelected:
+                        entries.isNotEmpty &&
+                        selection.selectedIds.length == entries.length &&
+                        entries.every(
+                          (EntryIndexRecord item) =>
+                              selection.selectedIds.contains(item.id),
                         ),
+                    onCancel: () =>
+                        ref.read(homeEntrySelectionProvider.notifier).clear(),
+                    onSelectAll: () => ref
+                        .read(homeEntrySelectionProvider.notifier)
+                        .selectAll(
+                          entries.map((EntryIndexRecord item) => item.id),
+                        ),
+                    allPinned: allSelectedPinned,
+                    pinToggleEnabled: canActOnSelectedEntries,
+                    onTogglePin: () => unawaited(
+                      togglePinSelectedHomeEntries(
+                        context,
+                        ref,
+                        sessionState,
+                        selection.selectedIds,
+                        pinnedEntryIds,
                       ),
-                      const SizedBox(width: 8),
-                      HomeSearchSelectionToggleButton(
-                        onPressed: canReadEntries
-                            ? () => ref
-                                  .read(homeEntrySelectionProvider.notifier)
-                                  .enterSelection(
-                                    entries
-                                        .map(
-                                          (EntryIndexRecord item) => item.id,
-                                        )
-                                        .toList(),
-                                  )
-                            : null,
+                    ),
+                    actions: <HomeSelectionAction>[
+                      HomeSelectionAction(
+                        tooltip: context.l10n.homeTooltipExportHtml,
+                        icon: Icons.html,
+                        enabled: canActOnSelectedEntries,
+                        onPressed: !canActOnSelectedEntries
+                            ? null
+                            : () => unawaited(
+                                exportSelectedHomeEntriesAsHtml(
+                                  context,
+                                  ref,
+                                  sessionState,
+                                  selection.selectedIds,
+                                ),
+                              ),
+                      ),
+                      HomeSelectionAction(
+                        tooltip: context.l10n.homeTooltipDelete,
+                        icon: Icons.delete_outline_rounded,
+                        destructive: true,
+                        enabled: canActOnSelectedEntries,
+                        onPressed: !canActOnSelectedEntries
+                            ? null
+                            : () => unawaited(
+                                deleteSelectedHomeEntries(
+                                  context,
+                                  ref,
+                                  sessionState,
+                                  selection.selectedIds,
+                                ),
+                              ),
                       ),
                     ],
+                  )
+                : SizedBox(
+                    key: const ValueKey<String>('home-search-field'),
+                    height: kHomeSearchRowControlHeight,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Expanded(
+                          child: HomeSearchTextField(
+                            controller: _searchController,
+                            enabled: canReadEntries,
+                            hintText: context.l10n.homeSearchHint,
+                            onChanged: _handleSearchChanged,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        HomeSearchSelectionToggleButton(
+                          onPressed: canReadEntries
+                              ? () => ref
+                                    .read(homeEntrySelectionProvider.notifier)
+                                    .enterSelection(
+                                      entries
+                                          .map(
+                                            (EntryIndexRecord item) => item.id,
+                                          )
+                                          .toList(),
+                                    )
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
           ),
         ),
         if (showSearchResultCount) ...<Widget>[

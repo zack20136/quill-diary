@@ -20,31 +20,28 @@ void main() {
       date: const DateOnly('2026-06-01'),
     );
 
-    final List<EntryIndexRecord> pinnedPriority = <EntryIndexRecord>[
-      newerUnpinned,
-      olderPinned,
-    ]..sort(
-      (EntryIndexRecord a, EntryIndexRecord b) =>
-          compareHomeEntriesPinnedFirst(a, b, <String>{'pinned_old'}),
-    );
-    final List<EntryIndexRecord> sameGroup = <EntryIndexRecord>[olderPinned, newerPinned]
-      ..sort(
-        (EntryIndexRecord a, EntryIndexRecord b) =>
-            compareHomeEntriesPinnedFirst(
-              a,
-              b,
-              <String>{'pinned_old', 'pinned_new'},
-            ),
-      );
+    final List<EntryIndexRecord> pinnedPriority =
+        <EntryIndexRecord>[newerUnpinned, olderPinned]..sort(
+          (EntryIndexRecord a, EntryIndexRecord b) =>
+              compareHomeEntriesPinnedFirst(a, b, <String>{'pinned_old'}),
+        );
+    final List<EntryIndexRecord> sameGroup =
+        <EntryIndexRecord>[olderPinned, newerPinned]..sort(
+          (EntryIndexRecord a, EntryIndexRecord b) =>
+              compareHomeEntriesPinnedFirst(a, b, <String>{
+                'pinned_old',
+                'pinned_new',
+              }),
+        );
 
     expect(
       pinnedPriority.map((EntryIndexRecord item) => item.id).toList(),
       <String>['pinned_old', 'unpinned_new'],
     );
-    expect(
-      sameGroup.map((EntryIndexRecord item) => item.id).toList(),
-      <String>['pinned_new', 'pinned_old'],
-    );
+    expect(sameGroup.map((EntryIndexRecord item) => item.id).toList(), <String>[
+      'pinned_new',
+      'pinned_old',
+    ]);
   });
 
   test('orderEntriesByFrozenDisplay 會保留凍結順序，未知項目則依日期排序', () {

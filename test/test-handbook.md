@@ -14,7 +14,7 @@
 ### 單元測試 vs widget 測試
 
 - **單元測試**：驗證純函式、資料轉換、狀態規則，不依賴 widget tree。例：`editor_body_blocks_test.dart` 驗證 `insertCheckboxAtLineIndex`、`tailLinesAfterCheckboxInsert`。
-- **Widget 測試**：驗證 UI 整合、焦點、鍵盤、模式切換等單元測試難覆蓋的行為。例：`editor_hybrid_body_test.dart` 驗證刪除最後一個 checkbox 後回到純文字編輯器。
+- **Widget 測試**：驗證 UI 整合、焦點、鍵盤、模式切換等單元測試難覆蓋的行為。例：`editor_hybrid_body_test.dart` 驗證刪除最後一個任務項目後回到純文字編輯器。
 - 同一條規則不要 unit 與 widget 各寫一份幾乎相同的案例；widget 測試應聚焦「整合後才有的差異」。
 
 ## 命名原則
@@ -24,7 +24,7 @@
   - `正確復原金鑰可通過驗證`
   - `鎖定且已連線時會停用帳號操作`
   - `在行末插入且後方還有內容時不會插入多餘空白行`
-  - `刪除最後一個 checkbox 後會回到純文字編輯器`
+  - `刪除最後一個任務項目後會回到純文字編輯器`
 - `group` 可用 API / 類別名稱（如 `insertCheckboxAtLineIndex`），但 `test` / `testWidgets` 內文仍用繁體中文描述行為。
 - 避免含糊字眼，例如「正常」、「應該可以」、「測試一個功能」。
 
@@ -56,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/featu
 2. 這個行為屬於核心規則、`features/<domain>`、`infrastructure`，還是 `smoke`。
 3. 測試名稱是否直接說出條件與預期。
 4. 是否使用現有的 helper（`editorTestApp`、`appTestTheme`、`FakeEditorActions` 等），而不是再造一份新的 fake 或 `_wrap`。
-5. 是否真的需要新增測試；若只是重複驗證同一條規則，應刪除或合併（例如兩個 widget 測試都只驗證「backspace 刪除空 checkbox」時，保留涵蓋範圍較完整的那一個）。
+5. 是否真的需要新增測試；若只是重複驗證同一條規則，應刪除或合併（例如兩個 widget 測試都只驗證「backspace 刪除空任務項目」時，保留涵蓋範圍較完整的那一個）。
 
 ## 維護提醒
 

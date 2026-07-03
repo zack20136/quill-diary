@@ -18,7 +18,9 @@ Future<void> _pumpToastLifecycle(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('dialog 開啟時從 dialog context 顯示 toast', (WidgetTester tester) async {
+  testWidgets('dialog 開啟時從 dialog context 顯示 toast', (
+    WidgetTester tester,
+  ) async {
     const String toastMessage = '已複製到剪貼簿';
     late BuildContext dialogContext;
 

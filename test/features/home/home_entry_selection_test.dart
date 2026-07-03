@@ -31,7 +31,11 @@ void main() {
         container.read(homeEntrySelectionProvider).frozenDisplayOrder,
         frozenOrder,
       );
-      expect(container.read(homeEntrySelectionProvider).selectedIds, <String>{'a', 'b', 'c'});
+      expect(container.read(homeEntrySelectionProvider).selectedIds, <String>{
+        'a',
+        'b',
+        'c',
+      });
 
       controller.selectAll(<String>['a', 'b', 'c']);
 
@@ -63,7 +67,9 @@ void main() {
         container.read(homeEntrySelectionProvider).frozenDisplayOrder,
         <String>['x', 'y'],
       );
-      expect(container.read(homeEntrySelectionProvider).selectedIds, <String>{'a'});
+      expect(container.read(homeEntrySelectionProvider).selectedIds, <String>{
+        'a',
+      });
     });
 
     test('resyncHomeSelectionDisplayOrder 會依釘選優先重算凍結順序', () {

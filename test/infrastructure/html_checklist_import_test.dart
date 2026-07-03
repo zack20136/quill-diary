@@ -3,7 +3,7 @@ import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.d
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 
 void main() {
-  test('checklist markdown round-trips through html export and import', () {
+  test('任務清單 markdown 可透過 HTML 匯出與匯入往返', () {
     const String markdown = '前言\n- [ ] 買牛奶\n- [x] 回覆信件\n結尾';
     final String html = exportMarkdownBodyToHtml(markdown);
     expect(html, contains('class="task-list"'));

@@ -34,9 +34,7 @@ class EditorCheckboxBlockRow extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final TextStyle labelStyle = bodyStyle.copyWith(
-      color: block.checked
-          ? cs.onSurfaceVariant.withValues(alpha: 0.72)
-          : null,
+      color: block.checked ? cs.onSurfaceVariant.withValues(alpha: 0.72) : null,
       decoration: block.checked ? TextDecoration.lineThrough : null,
       decorationColor: cs.onSurfaceVariant.withValues(alpha: 0.55),
     );
@@ -78,21 +76,15 @@ class EditorCheckboxBlockRow extends StatelessWidget {
             ),
           )
         : block.text.isEmpty
-            ? const SizedBox.shrink()
-            : Text(
-                block.text,
-                style: labelStyle,
-              );
+        ? const SizedBox.shrink()
+        : Text(block.text, style: labelStyle);
 
     return Padding(
       padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: checkbox,
-          ),
+          Padding(padding: const EdgeInsets.only(top: 2), child: checkbox),
           const SizedBox(width: 4),
           Expanded(child: textField),
           if (editable && dragHandle != null) dragHandle!,

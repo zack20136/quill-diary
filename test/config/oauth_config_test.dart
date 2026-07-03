@@ -14,7 +14,7 @@ void main() {
     expect(resolved, 'from-env');
   });
 
-  test('Android 會回退到 xml 值', () async {
+  test('Android 會回退到 XML 值', () async {
     final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '',
       isAndroid: true,
@@ -24,7 +24,7 @@ void main() {
     expect(resolved, 'from-xml');
   });
 
-  test('Android fallback 例外時回傳空字串', () async {
+  test('Android 備援例外時回傳空字串', () async {
     final String resolved = await OAuthConfig.resolveServerClientIdForTesting(
       envServerClientId: '',
       isAndroid: true,

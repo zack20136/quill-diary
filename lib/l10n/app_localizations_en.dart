@@ -395,7 +395,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipAddAttachment => 'Add Attachment';
 
   @override
-  String get editorTooltipInsertCheckbox => 'Insert Checkbox';
+  String get editorTooltipInsertCheckbox => 'Insert Task Item';
 
   @override
   String get editorTooltipDelete => 'Delete';
@@ -979,7 +979,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRecoveryKeyNotSetupBanner =>
-      'No recovery key yet. Create one for device migration, backup, and restore.';
+      'No recovery key yet. The recovery key is an important part of protecting the entire vault, so create and save one before you change devices, restore, or lose access to this device.';
 
   @override
   String get settingsRecoveryKeySetupBanner =>
@@ -1065,7 +1065,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage =>
-      'Create a recovery key before configuring an unlock method.';
+      'Create a recovery key first. It helps protect the entire vault, and you will need it to configure an unlock method and to regain access when you change devices, restore, or lose access to this device.';
 
   @override
   String settingsSecurityOverviewUnlockModeProtectedMessage(
@@ -1614,7 +1614,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionStartupNeedsRecoveryKeyMessage =>
-      'No recovery key has been created yet.';
+      'No recovery key has been created yet. The recovery key is an important part of protecting the entire vault, so create and save one before you change devices, restore, or lose access to this device.';
 
   @override
   String get sessionStartupNeedsTrustedDeviceMessage =>
@@ -2298,7 +2298,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Subtitle =>
-      'Built around personal records, with common organization tools in one editing flow.';
+      'Built around personal records, with common organization tools split into clearer parts of the same editing flow.';
 
   @override
   String get aboutTabEditorSection0Item0Title =>
@@ -2309,19 +2309,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'New entries open directly in edit mode. Existing ones can be read first and edited when you decide to change them.';
 
   @override
-  String get aboutTabEditorSection0Item1Title =>
-      'Content, Title, Date, and Tags';
+  String get aboutTabEditorSection0Item1Title => 'Content, Title, and Date';
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      'Edit entry content while organizing title, date, time, and tags. Saving checks required fields to avoid incomplete records. Export to Markdown when needed.';
+      'Edit entry content while organizing the title, date, and time. Saving checks required fields to avoid incomplete records. Export to Markdown when needed.';
 
   @override
-  String get aboutTabEditorSection0Item2Title =>
-      'Images and General Attachments';
+  String get aboutTabEditorSection0Item2Title => 'Tags';
 
   @override
   String get aboutTabEditorSection0Item2Body =>
+      'Tags can be organized on their own, so each entry keeps a consistent set of labels and remains easy to search later.';
+
+  @override
+  String get aboutTabEditorSection0Item3Title => 'Task Lists';
+
+  @override
+  String get aboutTabEditorSection0Item3Body =>
+      'If the content includes a task list, the editor uses mixed block handling so checking items and continuing to write stay smooth, and the preview shows them as interactive items.';
+
+  @override
+  String get aboutTabEditorSection0Item4Title =>
+      'Images and General Attachments';
+
+  @override
+  String get aboutTabEditorSection0Item4Body =>
       'Add multiple images or general files and reorder images. Entries can preserve more than text by keeping context and materials from the moment.';
 
   @override

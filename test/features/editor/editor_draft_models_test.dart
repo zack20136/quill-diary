@@ -11,7 +11,7 @@ void main() {
       entryHour: 9,
       entryMinute: 30,
       tagsRaw: '工作, 工作, 生活',
-      bodyRaw: '前言\n- [ ] 待辦',
+      bodyRaw: '前言\n- [ ] 任務三',
       keptAttachmentIds: const <AssetId>['asset-1'],
       pendingAttachments: const <PendingAttachment>[],
     );
@@ -19,7 +19,7 @@ void main() {
     expect(snapshot.title, '標題');
     expect(snapshot.dateValue, '2026-06-18');
     expect(snapshot.tags, <String>['工作', '生活']);
-    expect(snapshot.markdownBody, '前言\n- [ ] 待辦\n');
+    expect(snapshot.markdownBody, '前言\n- [ ] 任務三\n');
   });
 
   test('標籤順序不同時會視為 dirty', () {

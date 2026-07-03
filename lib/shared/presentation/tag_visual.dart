@@ -62,11 +62,7 @@ const List<Color> kDefaultTagCatalogAccents = <Color>[
 
 const double kTagChipBorderAlpha = 0.32;
 
-Color _tagTintedBackground(
-  Color accent,
-  ColorScheme scheme,
-  AppColors colors,
-) {
+Color _tagTintedBackground(Color accent, ColorScheme scheme, AppColors colors) {
   return Color.alphaBlend(
     accent.withValues(alpha: colors.tagAccentBackgroundAlpha),
     scheme.surfaceContainerHigh,
@@ -87,10 +83,8 @@ Color _tagAccentForeground(Color accent, AppColors colors) {
   return Color.lerp(accent, colors.tagAccentForegroundBlendTarget, lerp)!;
 }
 
-(Color, Color) tagNeutralAccentPair(ColorScheme scheme) => (
-  scheme.surfaceContainerHighest,
-  scheme.onSurfaceVariant,
-);
+(Color, Color) tagNeutralAccentPair(ColorScheme scheme) =>
+    (scheme.surfaceContainerHighest, scheme.onSurfaceVariant);
 
 (Color, Color) tagCharCountPair(ColorScheme scheme) =>
     tagNeutralAccentPair(scheme);

@@ -295,8 +295,7 @@ class _AppScrollbarState extends State<AppScrollbar>
     );
     final double scrollableTrack = trackLength - layoutThumb;
     final double thumbOffset =
-        _mainAxisMarginStart +
-        scrollableTrack * (metrics.pixels / maxScroll);
+        _mainAxisMarginStart + scrollableTrack * (metrics.pixels / maxScroll);
 
     return _AppScrollbarGeometry(
       show: true,
@@ -328,8 +327,8 @@ class _AppScrollbarState extends State<AppScrollbar>
 
   void _acquireScrollHold() {
     _releaseScrollHold();
-    final ScrollableState? outer =
-        context.findAncestorStateOfType<ScrollableState>();
+    final ScrollableState? outer = context
+        .findAncestorStateOfType<ScrollableState>();
     if (outer != null) {
       _scrollHold = outer.position.hold(() {});
     }
@@ -435,10 +434,7 @@ class _AppScrollbarState extends State<AppScrollbar>
     );
   }
 
-  Widget _buildThumbRail(
-    BuildContext context,
-    _AppScrollbarGeometry geometry,
-  ) {
+  Widget _buildThumbRail(BuildContext context, _AppScrollbarGeometry geometry) {
     return SizedBox(
       width: AppScrollbarMetrics.nestedScrollbarGutter,
       child: geometry.show

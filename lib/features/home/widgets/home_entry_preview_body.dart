@@ -50,10 +50,7 @@ double _defaultLineSpacing(TextStyle textStyle) {
 }
 
 class _PreviewLineSpec {
-  const _PreviewLineSpec({
-    required this.line,
-    required this.maxTextLines,
-  });
+  const _PreviewLineSpec({required this.line, required this.maxTextLines});
 
   final MarkdownPreviewLine line;
   final int maxTextLines;
@@ -76,7 +73,7 @@ int _measureTextVisualLines({
 }
 
 /// Walks markdown lines in order and spends [maxVisualLines] without skipping
-/// checkbox rows or rendering checkbox text as plain paragraphs.
+/// task list rows or rendering task item text as plain paragraphs.
 List<_PreviewLineSpec> _buildPreviewLineSpecs({
   required List<MarkdownPreviewLine> lines,
   required int maxVisualLines,
@@ -110,14 +107,10 @@ List<_PreviewLineSpec> _buildPreviewLineSpecs({
           continue;
         }
         final int allocatedLines = math.min(naturalLines, remaining);
-        specs.add(
-          _PreviewLineSpec(line: line, maxTextLines: allocatedLines),
-        );
+        specs.add(_PreviewLineSpec(line: line, maxTextLines: allocatedLines));
         remaining -= allocatedLines;
       case MarkdownPreviewCheckboxLine():
-        specs.add(
-          _PreviewLineSpec(line: line, maxTextLines: 1),
-        );
+        specs.add(_PreviewLineSpec(line: line, maxTextLines: 1));
         remaining -= 1;
     }
   }
@@ -141,14 +134,14 @@ class _OrderedMarkdownPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final List<MarkdownPreviewLine> visibleLines = lines
-        .where((MarkdownPreviewLine line) {
-          return switch (line) {
-            MarkdownPreviewTextLine(:final String text) => text.trim().isNotEmpty,
-            MarkdownPreviewCheckboxLine() => true,
-          };
-        })
-        .toList();
+    final List<MarkdownPreviewLine> visibleLines = lines.where((
+      MarkdownPreviewLine line,
+    ) {
+      return switch (line) {
+        MarkdownPreviewTextLine(:final String text) => text.trim().isNotEmpty,
+        MarkdownPreviewCheckboxLine() => true,
+      };
+    }).toList();
 
     if (visibleLines.isEmpty) {
       return const SizedBox.shrink();
@@ -244,10 +237,7 @@ class _PreviewCheckboxRow extends StatelessWidget {
       decoration: checked ? TextDecoration.lineThrough : null,
       decorationColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
     );
-    final double checkboxSize = math.max(
-      18,
-      (textStyle.fontSize ?? 14) * 1.25,
-    );
+    final double checkboxSize = math.max(18, (textStyle.fontSize ?? 14) * 1.25);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

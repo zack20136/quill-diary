@@ -74,7 +74,9 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors colors = context.appColors;
-    final TextStyle bodyStyle = widget.typography.bodyTextStyle(theme.textTheme);
+    final TextStyle bodyStyle = widget.typography.bodyTextStyle(
+      theme.textTheme,
+    );
     final List<String> lines = _lines;
     final List<Widget> children = <Widget>[];
     var inCodeBlock = false;
@@ -159,7 +161,9 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         children.add(
           Padding(
             padding: EdgeInsets.only(
-              top: children.isEmpty ? 0 : widget.typography.bodyParagraphSpacing,
+              top: children.isEmpty
+                  ? 0
+                  : widget.typography.bodyParagraphSpacing,
               bottom: widget.typography.bodyParagraphSpacing,
             ),
             child: Text.rich(
@@ -234,7 +238,9 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
 
       children.add(
         Padding(
-          padding: EdgeInsets.only(bottom: widget.typography.bodyParagraphSpacing),
+          padding: EdgeInsets.only(
+            bottom: widget.typography.bodyParagraphSpacing,
+          ),
           child: Text.rich(
             _inlineMarkdownSpan(line, bodyStyle, colors.inlineCodeBackground),
           ),

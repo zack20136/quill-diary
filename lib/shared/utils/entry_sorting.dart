@@ -57,7 +57,10 @@ int compareEntriesNewestFirst(EntryIndexRecord a, EntryIndexRecord b) {
   return b.updatedAt.compareTo(a.updatedAt);
 }
 
-typedef HomeEntrySortState = ({bool isActive, List<EntryId> frozenDisplayOrder});
+typedef HomeEntrySortState = ({
+  bool isActive,
+  List<EntryId> frozenDisplayOrder,
+});
 
 /// 首頁列表排序：選取模式凍結順序，一般模式釘選優先。
 List<EntryIndexRecord> sortHomeEntries({
@@ -68,11 +71,10 @@ List<EntryIndexRecord> sortHomeEntries({
   if (sortState.isActive && sortState.frozenDisplayOrder.isNotEmpty) {
     return orderEntriesByFrozenDisplay(list, sortState.frozenDisplayOrder);
   }
-  return List<EntryIndexRecord>.from(list)
-    ..sort(
-      (EntryIndexRecord a, EntryIndexRecord b) =>
-          compareHomeEntriesPinnedFirst(a, b, pinnedIds),
-    );
+  return List<EntryIndexRecord>.from(list)..sort(
+    (EntryIndexRecord a, EntryIndexRecord b) =>
+        compareHomeEntriesPinnedFirst(a, b, pinnedIds),
+  );
 }
 
 /// 依釘選優先規則計算首頁顯示順序的 ID 列表。
