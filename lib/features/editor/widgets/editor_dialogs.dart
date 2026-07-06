@@ -426,84 +426,92 @@ class _EntryImageGalleryDialogState
       child: SizedBox(
         width: mq.width - 24,
         height: mq.height * 0.88,
-        child: Stack(
+        child: Column(
           children: <Widget>[
-            PageView.builder(
-              controller: _pageController,
-              itemCount: widget.items.length,
-              physics: _pageScrollEnabled && widget.items.length > 1
-                  ? const PageScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              onPageChanged: (int index) => setState(() {
-                _currentIndex = index;
-                _pageScrollEnabled = true;
-              }),
-              itemBuilder: (BuildContext context, int index) {
-                return _GalleryImagePane(
-                  item: widget.items[index],
-                  isActive: index == _currentIndex,
-                  onZoomChanged: _onGalleryZoomChanged,
-                );
-              },
+            _GalleryChromeBar(
+              pageLabel: '${_currentIndex + 1} / ${widget.items.length}',
+              downloading: _downloading,
+              onDownload: () => unawaited(_downloadCurrentImage()),
+              onClose: () => Navigator.of(context).pop(),
+              colors: colors,
             ),
-            PositionedDirectional(
-              top: 12,
-              start: 16,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.scrim,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: Text(
-                    '${_currentIndex + 1} / ${widget.items.length}',
-                    style: TextStyle(
-                      color: colors.galleryForeground,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            PositionedDirectional(
-              top: 4,
-              end: 4,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  IconButton(
-                    tooltip: context.l10n.editorGalleryDownloadTooltip,
-                    onPressed: _downloading
-                        ? null
-                        : () => unawaited(_downloadCurrentImage()),
-                    icon: _downloading
-                        ? SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colors.galleryForeground,
-                            ),
-                          )
-                        : Icon(
-                            Icons.download_outlined,
-                            color: colors.galleryForeground,
-                          ),
-                  ),
-                  IconButton(
-                    tooltip: context.l10n.commonCloseTooltip,
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: colors.galleryForeground),
-                  ),
-                ],
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: widget.items.length,
+                physics: _pageScrollEnabled && widget.items.length > 1
+                    ? const PageScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                onPageChanged: (int index) => setState(() {
+                  _currentIndex = index;
+                  _pageScrollEnabled = true;
+                }),
+                itemBuilder: (BuildContext context, int index) {
+                  return _GalleryImagePane(
+                    item: widget.items[index],
+                    isActive: index == _currentIndex,
+                    onZoomChanged: _onGalleryZoomChanged,
+                  );
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GalleryChromeBar extends StatelessWidget {
+  const _GalleryChromeBar({
+    required this.pageLabel,
+    required this.downloading,
+    required this.onDownload,
+    required this.onClose,
+    required this.colors,
+  });
+
+  final String pageLabel;
+  final bool downloading;
+  final VoidCallback onDownload;
+  final VoidCallback onClose;
+  final AppColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color foreground = colors.galleryForeground;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 16, end: 4),
+      child: Row(
+        children: <Widget>[
+          Text(
+            pageLabel,
+            style: TextStyle(
+              color: foreground,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: context.l10n.editorGalleryDownloadTooltip,
+            onPressed: downloading ? null : onDownload,
+            icon: downloading
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: foreground,
+                    ),
+                  )
+                : Icon(Icons.download_outlined, color: foreground),
+          ),
+          IconButton(
+            tooltip: context.l10n.commonCloseTooltip,
+            onPressed: onClose,
+            icon: Icon(Icons.close, color: foreground),
+          ),
+        ],
       ),
     );
   }
@@ -522,7 +530,7 @@ class _GalleryImagePane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Color galleryForeground = context.appColors.galleryForeground;
+    final Color foreground = context.appColors.galleryForeground;
     return switch (item.source) {
       GalleryImageSource.encrypted => _EncryptedGalleryImage(
         path: item.path,
@@ -539,7 +547,7 @@ class _GalleryImagePane extends ConsumerWidget {
               (BuildContext context, Object error, StackTrace? stackTrace) =>
                   Icon(
                     Icons.broken_image_outlined,
-                    color: galleryForeground,
+                    color: foreground,
                     size: 56,
                   ),
         ),
@@ -754,7 +762,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AppColors colors = context.appColors;
+    final Color foreground = context.appColors.galleryForeground;
     final AsyncValue<Uint8List?> async = ref.watch(
       entryCoverPreviewBytesProvider(path),
     );
@@ -765,7 +773,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
             child: Text(
               context.l10n.editorPreviewUnavailable,
               style: TextStyle(
-                color: colors.galleryForeground.withValues(alpha: 0.85),
+                color: foreground.withValues(alpha: 0.85),
               ),
             ),
           );
@@ -781,11 +789,11 @@ class _EncryptedGalleryImage extends ConsumerWidget {
         );
       },
       loading: () => Center(
-        child: CircularProgressIndicator(color: colors.galleryForeground),
+        child: CircularProgressIndicator(color: foreground),
       ),
       error: (Object _, StackTrace _) => Icon(
         Icons.broken_image_outlined,
-        color: colors.galleryForeground,
+        color: foreground,
         size: 56,
       ),
     );

@@ -177,8 +177,9 @@ class AppColors extends ThemeExtension<AppColors> {
       overlayDim: scheme.scrim.withValues(alpha: 0.18),
       shadow: scheme.shadow.withValues(alpha: 0.40),
       inlineCodeBackground: scheme.onSurface.withValues(alpha: 0.06),
+      // 看圖 overlay 固定黑底白字，不跟隨主題 surface，避免白底圖上看不見控制項。
       galleryBackground: scheme.scrim,
-      galleryForeground: scheme.surface,
+      galleryForeground: Colors.white,
       tagAccentBackgroundAlpha: isLight ? 0.12 : 0.24,
       tagAccentForegroundUseLightenBlend: !isLight,
       tagAccentForegroundBlendTarget: isLight
