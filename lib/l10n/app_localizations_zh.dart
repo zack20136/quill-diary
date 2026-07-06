@@ -812,6 +812,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vaultTransferPickBackupFileTitle => '選擇備份 ZIP';
 
   @override
+  String get vaultTransferPickedFileUnreadable => '無法讀取所選備份，請重新選取或改用其他來源。';
+
+  @override
   String get vaultTransferPickBackupDirectoryTitle => '選擇匯出備份的資料夾';
 
   @override

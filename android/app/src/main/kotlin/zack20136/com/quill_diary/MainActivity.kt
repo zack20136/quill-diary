@@ -119,6 +119,24 @@ class MainActivity : FlutterFragmentActivity() {
                 )
             }
         }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CONTENT_URI_IMPORT_CHANNEL_NAME,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "copyUriToPath" -> copyUriToPath(call, result)
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "content_uri_import_error",
+                    error.message ?: "Unknown content URI import error.",
+                    null,
+                )
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -849,6 +867,54 @@ class MainActivity : FlutterFragmentActivity() {
         return "device_key_invalidated" to detail.ifEmpty { "Device key operation failed." }
     }
 
+    private fun copyUriToPath(call: MethodCall, result: MethodChannel.Result) {
+        val sourceUriString = call.argument<String>("sourceUri")?.trim().orEmpty()
+        val destinationPath = call.argument<String>("destinationPath")?.trim().orEmpty()
+
+        if (sourceUriString.isEmpty() || destinationPath.isEmpty()) {
+            result.error("invalid_args", "缺少 sourceUri 或 destinationPath。", null)
+            return
+        }
+
+        val destinationFile = File(destinationPath)
+        destinationFile.parentFile?.mkdirs()
+
+        try {
+            contentResolver.openInputStream(Uri.parse(sourceUriString))?.use { input ->
+                destinationFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: run {
+                result.error("open_input_failed", "無法讀取選取的檔案。", null)
+                return
+            }
+            result.success(null)
+        } catch (error: IOException) {
+            deleteIfExists(destinationFile)
+            result.error(
+                "copy_failed",
+                error.message ?: "複製檔案失敗。",
+                null,
+            )
+        } catch (error: SecurityException) {
+            deleteIfExists(destinationFile)
+            result.error("open_input_failed", "無法讀取選取的檔案。", null)
+        } catch (error: Exception) {
+            deleteIfExists(destinationFile)
+            result.error(
+                "copy_failed",
+                error.message ?: "複製檔案失敗。",
+                null,
+            )
+        }
+    }
+
+    private fun deleteIfExists(file: File) {
+        if (file.exists()) {
+            file.delete()
+        }
+    }
+
     private fun copyFileToSafTree(call: MethodCall, result: MethodChannel.Result) {
         val treeUriString = call.argument<String>("treeUri")?.trim().orEmpty()
         val sourcePath = call.argument<String>("sourcePath")?.trim().orEmpty()
@@ -936,6 +1002,7 @@ class MainActivity : FlutterFragmentActivity() {
         private const val OAUTH_CHANNEL_NAME = "quill_diary/oauth_config"
         private const val DEVICE_KEY_CHANNEL_NAME = "quill_diary/device_key_bridge"
         private const val SAF_FILE_COPY_CHANNEL_NAME = "quill_diary/saf_file_copy"
+        private const val CONTENT_URI_IMPORT_CHANNEL_NAME = "quill_diary/content_uri_import"
         private const val DIRECTORY_PICKER_CHANNEL_NAME = "quill_diary/directory_picker"
         private const val GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE = 43021
         private const val DIRECTORY_PICK_REQUEST_CODE = 43022

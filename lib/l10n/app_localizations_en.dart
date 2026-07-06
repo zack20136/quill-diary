@@ -836,6 +836,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vaultTransferPickBackupFileTitle => 'Choose Backup ZIP';
 
   @override
+  String get vaultTransferPickedFileUnreadable =>
+      'The selected backup could not be read. Choose another file or source.';
+
+  @override
   String get vaultTransferPickBackupDirectoryTitle =>
       'Choose a Folder for the Backup Export';
 

@@ -535,6 +535,7 @@
   "vaultTransferLocalBackupActionsLockedHint": "Unlock the diary vault and create a recovery key before creating or exporting local backups.",
   "vaultTransferRestoreUnlockFailed": "The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.",
   "vaultTransferPickBackupFileTitle": "Choose Backup ZIP",
+  "vaultTransferPickedFileUnreadable": "The selected backup could not be read. Choose another file or source.",
   "vaultTransferPickBackupDirectoryTitle": "Choose a Folder for the Backup Export",
   "vaultTransferPickMarkdownDirectoryTitle": "Choose a Folder for the Markdown Export",
   "vaultTransferPickHtmlDirectoryTitle": "Choose a Folder for the HTML Export",

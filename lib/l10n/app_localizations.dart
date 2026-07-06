@@ -1511,6 +1511,12 @@ abstract class AppLocalizations {
   /// **'選擇備份 ZIP'**
   String get vaultTransferPickBackupFileTitle;
 
+  /// No description provided for @vaultTransferPickedFileUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取所選備份，請重新選取或改用其他來源。'**
+  String get vaultTransferPickedFileUnreadable;
+
   /// No description provided for @vaultTransferPickBackupDirectoryTitle.
   ///
   /// In zh, this message translates to:

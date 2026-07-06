@@ -16,6 +16,8 @@ abstract final class AppIdentifiers {
   static const String easyDiaryRealmChannel = 'quill_diary/easy_diary_realm';
   static const String mediaStoreExportChannel =
       'quill_diary/media_store_export';
+  static const String contentUriImportChannel =
+      'quill_diary/content_uri_import';
 
   static const String indexKeyDerivationInfo = 'quill_diary:index:v1';
 

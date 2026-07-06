@@ -535,6 +535,7 @@
   "vaultTransferLocalBackupActionsLockedHint": "請先解鎖日記庫並建立復原金鑰，才能建立或匯出本機備份。",
   "vaultTransferRestoreUnlockFailed": "備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。",
   "vaultTransferPickBackupFileTitle": "選擇備份 ZIP",
+  "vaultTransferPickedFileUnreadable": "無法讀取所選備份，請重新選取或改用其他來源。",
   "vaultTransferPickBackupDirectoryTitle": "選擇匯出備份的資料夾",
   "vaultTransferPickMarkdownDirectoryTitle": "選擇匯出日記的資料夾",
   "vaultTransferPickHtmlDirectoryTitle": "選擇匯出 HTML 的資料夾",

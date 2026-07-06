@@ -17,6 +17,7 @@ import 'restore_precheck.dart';
 import 'shared/archive_extract.dart';
 import 'shared/external_directory_picker.dart';
 import 'shared/external_file_delivery.dart';
+import 'shared/picked_file_materializer.dart';
 import 'vault_archive_io.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
@@ -26,8 +27,6 @@ typedef PickPortableFiles =
       required String dialogTitle,
       required List<String> allowedExtensions,
     });
-
-typedef ReadPlatformFileBytes = Future<Uint8List?> Function(PlatformFile file);
 
 enum BackupPersistStatus { success, inspectFailed, cancelled }
 
@@ -76,13 +75,22 @@ class VaultTransferService {
     required VaultPathStrategy pathStrategy,
     PickPortableFiles? pickPortableFiles,
     ReadPlatformFileBytes? readPlatformFileBytes,
+    @visibleForTesting bool allowBytesFallback = false,
+    @visibleForTesting CopyAndroidUriToPath? copyAndroidUriToPath,
+    @visibleForTesting PickedFileMaterializer? pickedFileMaterializer,
   }) : _archiveIo = archiveIo,
        _driveBackupService = driveBackupService,
        _vaultRepository = vaultRepository,
        _externalDirectoryStore = externalDirectoryStore,
        _pathStrategy = pathStrategy,
        _pickPortableFiles = pickPortableFiles,
-       _readPlatformFileBytesOverride = readPlatformFileBytes;
+       _pickedFileMaterializer =
+           pickedFileMaterializer ??
+           PickedFileMaterializer(
+             copyAndroidUriToPath: copyAndroidUriToPath,
+             readPlatformFileBytes: readPlatformFileBytes,
+             allowBytesFallback: allowBytesFallback,
+           );
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;
@@ -90,7 +98,7 @@ class VaultTransferService {
   final ExternalDirectoryStore _externalDirectoryStore;
   final VaultPathStrategy _pathStrategy;
   final PickPortableFiles? _pickPortableFiles;
-  final ReadPlatformFileBytes? _readPlatformFileBytesOverride;
+  final PickedFileMaterializer _pickedFileMaterializer;
 
   static const int backupRetainCount = VaultBackupPolicy.retainCount;
 
@@ -295,11 +303,12 @@ class VaultTransferService {
       dialogTitle: l10n.vaultTransferPickBackupFileTitle,
       type: FileType.custom,
       allowedExtensions: const <String>[VaultBackupPolicy.fileExtension],
+      // pickFile 內建 withData: false；大檔依 path 或 content:// URI materialize。
     );
     if (picked == null) {
       return null;
     }
-    return _resolvePickedBackupFile(picked);
+    return _resolvePickedBackupFile(picked, l10n);
   }
 
   Future<RestorePrecheck> precheckRestore(File backupFile) async {
@@ -415,32 +424,26 @@ class VaultTransferService {
     sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
   }
 
-  Future<PickedBackupFile?> _resolvePickedBackupFile(PlatformFile file) async {
-    final String? path = file.path;
-    if (path != null && path.isNotEmpty) {
-      try {
-        if (File(path).existsSync()) {
-          return PickedBackupFile(
-            file: File(path),
-            shouldDeleteAfterUse: false,
+  Future<PickedBackupFile?> _resolvePickedBackupFile(
+    PlatformFile file,
+    AppLocalizations l10n,
+  ) async {
+    try {
+      final MaterializedPickedFile materialized = await _pickedFileMaterializer
+          .materialize(
+            file,
+            fallbackBaseName: file.name.isNotEmpty
+                ? file.name
+                : 'restore.${VaultBackupPolicy.fileExtension}',
+            alwaysCopyToTemp: true,
           );
-        }
-      } on Object {
-        // Ignore unsupported URI-style paths and try the bytes fallback.
-      }
+      return PickedBackupFile(
+        file: materialized.file,
+        shouldDeleteAfterUse: materialized.shouldDeleteAfterUse,
+      );
+    } on PickedFileMaterializationException catch (error) {
+      throw StateError(materializationFailureMessage(error.failure, l10n));
     }
-
-    final Uint8List? bytes = await _readPlatformFileBytes(file);
-    if (bytes == null) {
-      return null;
-    }
-
-    final String baseName = file.name.isNotEmpty
-        ? file.name
-        : 'restore.${VaultBackupPolicy.fileExtension}';
-    final File tempBackup = await _createTempFile(baseName);
-    await tempBackup.writeAsBytes(bytes, flush: true);
-    return PickedBackupFile(file: tempBackup, shouldDeleteAfterUse: true);
   }
 
   Future<void> _ensureFileInsideLocalBackupsDirectory(
@@ -500,6 +503,7 @@ class VaultTransferService {
       dialogTitle: dialogTitle,
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
+      // pickFiles 預設允許多選；大檔依 path 或 content:// URI materialize。
     );
   }
 
@@ -507,40 +511,29 @@ class VaultTransferService {
     UnlockedVaultSession session,
     PlatformFile zipFile,
   ) async {
-    final String? path = zipFile.path;
-    if (path != null && path.isNotEmpty) {
-      try {
-        if (File(path).existsSync()) {
-          return _archiveIo.importDocumentsFromZip(
-            session: session,
-            zipFile: File(path),
-          );
-        }
-      } on Object {
-        // Ignore unsupported URI-style paths and try the bytes fallback.
-      }
-    }
-
-    final Uint8List? bytes = await _readPlatformFileBytes(zipFile);
-    if (bytes == null) {
-      return const PortableImportResult(
-        importedEntries: 0,
-        skippedFiles: 0,
-        failureCode: PortableImportFailureCode.selectedFilesUnreadable,
-      );
-    }
-
-    final File tempZip = await _createTempFile(
-      zipFile.name.isNotEmpty ? zipFile.name : 'portable_import.zip',
-    );
+    final String baseName = zipFile.name.isNotEmpty
+        ? zipFile.name
+        : 'portable_import.zip';
+    final MaterializedPickedFile materialized;
     try {
-      await tempZip.writeAsBytes(bytes, flush: true);
+      materialized = await _pickedFileMaterializer.materialize(
+        zipFile,
+        fallbackBaseName: baseName,
+        alwaysCopyToTemp: true,
+      );
+    } on PickedFileMaterializationException catch (error) {
+      return importResultForMaterializationFailure(error.failure);
+    }
+
+    try {
       return await _archiveIo.importDocumentsFromZip(
         session: session,
-        zipFile: tempZip,
+        zipFile: materialized.file,
       );
     } finally {
-      await _deleteIfExists(tempZip);
+      if (materialized.shouldDeleteAfterUse) {
+        await _deleteIfExists(materialized.file);
+      }
     }
   }
 
@@ -564,25 +557,17 @@ class VaultTransferService {
         );
         final File destination = File(p.join(tempRoot.path, fileName));
 
-        final String? path = file.path;
-        if (path != null && path.isNotEmpty) {
-          try {
-            if (File(path).existsSync()) {
-              await File(path).copy(destination.path);
-              copiedFiles++;
-              continue;
-            }
-          } on Object {
-            // Ignore unsupported URI-style paths and try the bytes fallback.
-          }
-        }
-
-        final Uint8List? bytes = await _readPlatformFileBytes(file);
-        if (bytes == null) {
+        try {
+          await _pickedFileMaterializer.materialize(
+            file,
+            fallbackBaseName: fileName,
+            alwaysCopyToTemp: true,
+            importDestination: destination,
+          );
+          copiedFiles++;
+        } on PickedFileMaterializationException {
           continue;
         }
-        await destination.writeAsBytes(bytes, flush: true);
-        copiedFiles++;
       }
 
       if (copiedFiles == 0) {
@@ -601,23 +586,6 @@ class VaultTransferService {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
-    }
-  }
-
-  Future<Uint8List?> _readPlatformFileBytes(PlatformFile file) async {
-    final ReadPlatformFileBytes? override = _readPlatformFileBytesOverride;
-    if (override != null) {
-      return override(file);
-    }
-
-    try {
-      final Uint8List bytes = await file.readAsBytes();
-      if (bytes.isEmpty) {
-        return null;
-      }
-      return bytes;
-    } on Object {
-      return null;
     }
   }
 
