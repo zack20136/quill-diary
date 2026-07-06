@@ -42,7 +42,7 @@ Future<void> togglePinSelectedHomeEntries(
   if (ref.read(homeEntrySelectionProvider).isActive) {
     ref.invalidate(homePinnedEntryIdsProvider);
   } else {
-    await refreshHomeIndexCaches(ref);
+    refreshHomeIndexCaches(ref);
   }
 
   if (!context.mounted) {

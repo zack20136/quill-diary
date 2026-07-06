@@ -616,19 +616,14 @@ class AppSessionController extends Notifier<AppSessionState> {
     UnlockedVaultSession priorSession,
   ) async {
     final VaultRepository repository = ref.read(vaultRepositoryProvider);
-    final AppLocalizations l10n = await _loadSessionL10n(ref);
-
-    _inactivityWatchdog.disarm();
-    state = AppSessionState(
-      status: AppLockStatus.unlocking,
-      message: sessionPostRestoreStartupMessage(l10n),
-    );
 
     try {
       await repository.initialize();
       final UnlockedVaultSession session = await repository
           .resumeUnlockedSessionAfterRestore(priorSession);
       await repository.ensureIndexReady(session);
+      // 須先重建索引再發布 unlocked，否則底層仍掛載的首頁會在空索引上快取空列表。
+      await repository.rebuildIndex(session);
       state = AppSessionState(status: AppLockStatus.unlocked, session: session);
       onSessionUnlocked();
       return state;
@@ -748,6 +743,39 @@ Future<AppSessionState> bootstrapAppSession(Ref ref) async {
 final appStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
   return bootstrapAppSession(ref);
 });
+
+/// 首頁索引查詢用的 session 閘道；`unlocking` 期間保留上一個 session，避免底層仍掛載的首頁把空列表鎖入快取。
+class IndexQueryableVaultSession extends Notifier<UnlockedVaultSession?> {
+  UnlockedVaultSession? _held;
+
+  @override
+  UnlockedVaultSession? build() {
+    ref.listen(appSessionProvider, (_, AppSessionState next) {
+      final UnlockedVaultSession? synced = _derive(next);
+      if (synced != _held) {
+        _held = synced;
+        state = synced;
+      }
+    });
+    _held = _derive(ref.watch(appSessionProvider));
+    return _held;
+  }
+
+  UnlockedVaultSession? _derive(AppSessionState next) {
+    if (next.isUnlocked && next.session != null) {
+      return next.session;
+    }
+    if (next.status == AppLockStatus.unlocking) {
+      return _held;
+    }
+    return null;
+  }
+}
+
+final indexQueryableVaultSessionProvider =
+    NotifierProvider<IndexQueryableVaultSession, UnlockedVaultSession?>(
+      IndexQueryableVaultSession.new,
+    );
 
 final effectiveAppSessionProvider = FutureProvider<AppSessionState>((
   Ref ref,

@@ -135,7 +135,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                                   .unlockWithRecovery(
                                     _recoveryKeyInputController.text.trim(),
                                   );
-                              await refreshEntryIndexCaches(ref);
+                              refreshEntryIndexCaches(ref);
                               ref.invalidate(trustedDeviceAccessProvider);
                             })
                           : null,

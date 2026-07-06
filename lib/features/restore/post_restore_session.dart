@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../shared/providers/core_providers.dart';
 import '../editor/providers/editor_draft_providers.dart';
-import '../editor/providers/editor_providers.dart';
 import '../home/providers/home_providers.dart';
 import '../session/providers/session_providers.dart';
 import '../session/session_route_preservation.dart';
@@ -26,10 +25,14 @@ Future<AppSessionState> finishRestoreSession(
   ref.invalidate(recoveryMetadataProvider);
   ref.invalidate(settingsDriveConnectionProvider);
   ref.invalidate(unlockModeProvider);
-  ref.read(entryIndexRevisionProvider.notifier).bump();
 
+  AppSessionState sessionState = const AppSessionState(
+    status: AppLockStatus.uninitialized,
+  );
+  final bool resumeTrustedSessionAfterRestore =
+      prepared.precheck.canResumeTrustedSession(livePriorSession);
   try {
-    final AppSessionState sessionState = await _startupRestoredSession(
+    sessionState = await _startupRestoredSession(
       ref,
       prepared: prepared,
       livePriorSession: livePriorSession,
@@ -37,17 +40,19 @@ Future<AppSessionState> finishRestoreSession(
     if (sessionState.isUnlocked && sessionState.session != null) {
       final bool usedRecoveryKey =
           prepared.backupRecoveryKey?.trim().isNotEmpty == true;
-      if (!usedRecoveryKey) {
+      if (!usedRecoveryKey && !resumeTrustedSessionAfterRestore) {
         await ref
             .read(vaultRepositoryProvider)
             .rebuildIndex(sessionState.session!);
       }
-      await refreshEntryIndexCaches(ref);
     }
     return sessionState;
   } finally {
     ref.read(sessionRoutePreservationProvider.notifier).clear();
     ref.read(appSessionProvider.notifier).endTrustedUnlockBootstrap();
+    if (sessionState.isUnlocked && sessionState.session != null) {
+      refreshEntryIndexCaches(ref);
+    }
     ref.invalidate(appStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
   }

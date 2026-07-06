@@ -126,7 +126,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
 
     if (existingLabel != null) {
-      await refreshHomeIndexCaches(ref);
+      refreshHomeIndexCaches(ref);
       if (_selectedTagLabel != null &&
           normalizeText(_selectedTagLabel!) == normalizeText(existingLabel)) {
         setState(() => _selectedTagLabel = savedLabel);
@@ -172,7 +172,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
         .removeTagFromAllEntries(session, label);
     ref.invalidate(tagCatalogProvider);
     ref.invalidate(tagAccentArgbMapProvider);
-    await refreshHomeIndexCaches(ref);
+    refreshHomeIndexCaches(ref);
 
     if (!mounted) {
       return;
@@ -229,7 +229,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
           );
       ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
-      await refreshHomeIndexCaches(ref);
+      refreshHomeIndexCaches(ref);
       if (!mounted) {
         return;
       }

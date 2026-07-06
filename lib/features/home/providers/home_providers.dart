@@ -13,8 +13,8 @@ import '../state/home_state.dart';
 final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,
 ) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  ref.watch(entryIndexRevisionProvider);
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
 
@@ -25,8 +25,7 @@ final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
 final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
   Ref ref,
 ) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryId>{};
   }
 
@@ -37,14 +36,14 @@ final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
 final homeEntryIndexListProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,
 ) async {
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  ref.watch(entryIndexRevisionProvider);
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
 
   final String query = ref.watch(homeSearchQueryProvider);
   if (query.trim().isEmpty) {
-    return ref.watch(allEntryIndexRecordsProvider.future);
+    return ref.read(vaultRepositoryProvider).listEntries();
   }
 
   return ref.read(vaultRepositoryProvider).listEntries(searchQuery: query);
@@ -86,8 +85,7 @@ final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
     return const <EntryIndexRecord>[];
   }
 
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
 
@@ -102,8 +100,7 @@ final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((
   Ref ref,
 ) async {
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <DateOnly>[];
   }
 
@@ -115,8 +112,7 @@ final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,
 ) async {
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
 
@@ -156,8 +152,7 @@ final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   }
 
   final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
-  final sessionState = await ref.watch(effectiveAppSessionProvider.future);
-  if (!sessionState.isUnlocked || sessionState.session == null) {
+  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
 
@@ -168,10 +163,7 @@ final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
 });
 
 /// 統一刷新首頁依賴的索引快取，避免編輯後各區塊資料不同步。
-Future<void> refreshHomeIndexCaches(
-  WidgetRef ref, {
-  EntryId? editedEntryId,
-}) async {
+void refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
   ref
     ..invalidate(homeEntryIndexListProvider)
     ..invalidate(homePinnedEntryIdsProvider)
@@ -190,6 +182,6 @@ Future<void> refreshHomeIndexCaches(
 }
 
 /// 編輯器／設定等其他功能共用的索引刷新入口。
-Future<void> refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
-  return refreshHomeIndexCaches(ref, editedEntryId: editedEntryId);
+void refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
+  refreshHomeIndexCaches(ref, editedEntryId: editedEntryId);
 }

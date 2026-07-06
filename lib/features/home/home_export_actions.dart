@@ -182,5 +182,5 @@ Future<void> deleteSelectedHomeEntries(
   if (!context.mounted) {
     return;
   }
-  await refreshHomeIndexCaches(ref);
+  refreshHomeIndexCaches(ref);
 }
