@@ -113,60 +113,65 @@ class EditorAttachmentStrip extends StatelessWidget {
       children: <Widget>[
         const SizedBox(height: 4),
         SizedBox(
-          height: 76,
-          child: editable && itemCount > 1
-              ? ReorderableListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.zero,
-                  buildDefaultDragHandles: false,
-                  clipBehavior: Clip.none,
-                  proxyDecorator: _decorateEditorImageDragProxy,
-                  onReorderStart: onDragStart,
-                  onReorderEnd: onDragEnd,
-                  onReorderItem: onReorder,
-                  itemCount: itemCount,
-                  itemBuilder: (BuildContext context, int index) {
-                    final Key itemKey;
-                    if (index < savedImages.length) {
-                      itemKey = ValueKey<String>(
-                        'saved-image-${savedImages[index].id}',
-                      );
-                    } else {
-                      final PendingAttachment attachment =
-                          pendingImages[index - savedImages.length];
-                      itemKey = ValueKey<String>(
-                        'pending-image-${pendingAttachmentFingerprint(attachment)}',
-                      );
-                    }
-                    return KeyedSubtree(
-                      key: itemKey,
-                      child: _editorImageStripSlot(
-                        child: ReorderableDelayedDragStartListener(
-                          index: index,
-                          child: buildThumbContent(index),
+          width: double.infinity,
+          child: SizedBox(
+            height: 76,
+            child: editable && itemCount > 1
+                ? ReorderableListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.zero,
+                    buildDefaultDragHandles: false,
+                    clipBehavior: Clip.none,
+                    proxyDecorator: _decorateEditorImageDragProxy,
+                    onReorderStart: onDragStart,
+                    onReorderEnd: onDragEnd,
+                    onReorderItem: onReorder,
+                    itemCount: itemCount,
+                    itemBuilder: (BuildContext context, int index) {
+                      final Key itemKey;
+                      if (index < savedImages.length) {
+                        itemKey = ValueKey<String>(
+                          'saved-image-${savedImages[index].id}',
+                        );
+                      } else {
+                        final PendingAttachment attachment =
+                            pendingImages[index - savedImages.length];
+                        itemKey = ValueKey<String>(
+                          'pending-image-${pendingAttachmentFingerprint(attachment)}',
+                        );
+                      }
+                      return KeyedSubtree(
+                        key: itemKey,
+                        child: _editorImageStripSlot(
+                          child: ReorderableDelayedDragStartListener(
+                            index: index,
+                            child: buildThumbContent(index),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                )
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List<Widget>.generate(itemCount, buildStripItem),
+                      );
+                    },
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List<Widget>.generate(itemCount, buildStripItem),
+                    ),
                   ),
-                ),
+          ),
         ),
         const SizedBox(height: 6),
       ],
     );
   }
 
-  Widget _editorImageStripSlot({required Widget child}) {
+  Widget _editorImageStripSlot({
+    required Widget child,
+  }) {
     return SizedBox(
       width: _slotWidth,
       height: _thumbSize,
-      child: Center(child: child),
+      child: Align(alignment: Alignment.centerLeft, child: child),
     );
   }
 
