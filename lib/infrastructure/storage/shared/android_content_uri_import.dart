@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-import '../../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 
 /// Android：將 content:// URI 串流複製到本機暫存路徑。
 abstract final class AndroidContentUriImport {

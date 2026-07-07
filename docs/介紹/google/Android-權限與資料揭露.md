@@ -77,7 +77,7 @@
 ## 相關檔案
 
 - [AndroidManifest.xml](../../../android/app/src/main/AndroidManifest.xml)
-- [editor_page.dart](../../../lib/features/editor/pages/editor_page.dart)
+- [editor_page.dart](../../../lib/presentation/editor/pages/editor_page.dart)
 
 ---
 

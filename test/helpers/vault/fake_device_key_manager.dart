@@ -4,7 +4,6 @@ import 'package:cryptography/cryptography.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 
-/// Device-key fake for crypto unit tests.
 class TestDeviceKeyManager implements DeviceKeyManager {
   TestDeviceKeyManager()
     : _cipher = AesGcm.with256bits(),
@@ -128,7 +127,6 @@ class TestDeviceKeyManager implements DeviceKeyManager {
   }) async {}
 }
 
-/// Records keystore auth kind usage for vault integration tests.
 class RecordingDeviceKeyManager implements DeviceKeyManager {
   RecordingDeviceKeyManager()
     : _cipher = AesGcm.with256bits(),
@@ -150,7 +148,6 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   int wrapWithDeviceKeyCalls = 0;
   int rewrapTrustedRecoveryKeyCalls = 0;
 
-  /// 測試用：直接寫入受信任裝置資料。
   void seedTrustedDevice({
     required String vaultId,
     required WrappedRecoveryKeyRecord record,
@@ -300,7 +297,6 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   }
 }
 
-/// 於 [wrapWithDeviceKey] 時拋出取消，供解鎖方式切換測試使用。
 class CancellingDeviceKeyManager extends RecordingDeviceKeyManager {
   bool cancelWrap = false;
 

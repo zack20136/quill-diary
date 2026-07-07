@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import 'editor_typography_preferences.dart';
 import 'personalization_preferences.dart';
 

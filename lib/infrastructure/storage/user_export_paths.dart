@@ -1,4 +1,4 @@
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../shared/presentation/display_format.dart';
 
 /// 使用者可見的匯出子資料夾（Pictures / Download 共用 `quill-diary`）。

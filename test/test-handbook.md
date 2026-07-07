@@ -4,10 +4,10 @@
 
 ## 分層原則
 
-- `config`、`crypto`、`database`、`storage`、`vault` 等目錄：放最值得長期維護的核心規則。
-- `features/<domain>/`：放該功能的 application / presentation 測試（unit、controller、widget），例如 `test/features/editor/editor_body_blocks_test.dart`。
-- `infrastructure/`、`domain/`：放基礎設施與純領域邏輯測試。
-- `helpers/`：測試支援層，依職責拆到 `shared`、`session`、`storage`、`vault`、`features/*`；不要堆在 `test/` 根目錄。
+- `application/`：放 flow、controller、coordinator、provider wiring 等流程協調測試。
+- `presentation/`：放 page、widget、presentation state 與 feature-local provider 測試。
+- `infrastructure/`、`domain/`、`shared/`：放基礎設施、純領域邏輯與跨功能純規則測試。
+- `helpers/`：測試支援層，依職責拆到 `shared`、`session`、`storage`、`vault`、`presentation/*`；不要堆在 `test/` 根目錄。
 - `smoke/`：只保留少量 app / 跨模組煙霧案例，不承擔核心規則與細部互動驗證。
 - 若某個測試同時驗證多個職責，優先下放到更底層，或拆成更小的測試。
 
@@ -30,11 +30,11 @@
 
 ## 檔案與目錄
 
-- 同一 domain 的測試放在 `test/features/<domain>/`（或對應的 `storage/`、`vault/` 等目錄）。
+- 同一 domain 的測試放在 `test/application/<domain>/`、`test/presentation/<domain>/`，或對應的 `test/infrastructure/*`、`test/domain/`、`test/shared/`。
 - 新增 helper 時先判斷 domain：
   - 跨測試主題：`test/helpers/app_test_theme.dart`、`test/helpers/shared/test_l10n.dart`
-  - 單一功能：`test/helpers/features/<domain>/`，例如 `editor_test_scope.dart` 提供 `editorTestApp`、`pumpEditorHybridBody`
-  - fake / stub：放在對應 domain 的 `helpers/features/<domain>/`，不要在各測試檔重複 `_wrap` 或自建 MaterialApp。
+  - 單一功能：`test/helpers/presentation/<domain>/`，例如 `editor_test_scope.dart` 提供 `editorTestApp`、`pumpEditorHybridBody`
+  - fake / stub：放在對應 domain 的 `helpers/presentation/<domain>/`，不要在各測試檔重複 `_wrap` 或自建 MaterialApp。
 - 煙霧測試統一放在 `test/smoke/`；不要把完整 widget / controller 測試塞進 smoke，也不要把 smoke 案例散回各 domain。
 
 ## 執行方式
@@ -44,16 +44,16 @@
 
 ```powershell
 # Cursor 可直接使用 flutter test
-flutter test test/features/editor/
+flutter test test/application/editor/
 
 # Codex 請改用 AGENTS.md 中的 flutter-safe.ps1
-powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/features/editor/
+powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/application/editor/
 ```
 
 ## 寫測試前先檢查
 
 1. 這個測試是否已被其他更底層測試覆蓋。
-2. 這個行為屬於核心規則、`features/<domain>`、`infrastructure`，還是 `smoke`。
+2. 這個行為屬於核心規則、`test/application/<domain>`、`test/presentation/<domain>`、`infrastructure`，還是 `smoke`。
 3. 測試名稱是否直接說出條件與預期。
 4. 是否使用現有的 helper（`editorTestApp`、`appTestTheme`、`FakeEditorActions` 等），而不是再造一份新的 fake 或 `_wrap`。
 5. 是否真的需要新增測試；若只是重複驗證同一條規則，應刪除或合併（例如兩個 widget 測試都只驗證「backspace 刪除空任務項目」時，保留涵蓋範圍較完整的那一個）。

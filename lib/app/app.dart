@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/session/app_lifecycle_session_bridge.dart';
-import '../features/session/session_navigation_coordinator.dart';
-import '../features/settings/providers/billing_providers.dart';
-import '../features/settings/providers/personalization_providers.dart';
-import '../infrastructure/preferences/personalization_preferences.dart';
-import '../l10n/l10n.dart';
-import 'router.dart';
-import 'theme.dart';
+import 'package:quill_diary/application/session/app_lifecycle_session_bridge.dart';
+import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
+import 'package:quill_diary/application/settings/billing_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/app/theme.dart';
 
 class QuillDiaryApp extends ConsumerStatefulWidget {
   const QuillDiaryApp({super.key});

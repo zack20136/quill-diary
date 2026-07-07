@@ -1,11 +1,11 @@
 import 'package:go_router/go_router.dart';
 
-import '../features/editor/pages/editor_page.dart';
-import '../features/home/pages/home_page.dart';
-import '../features/settings/pages/about_page.dart';
-import '../features/settings/pages/personalization_page.dart';
-import '../features/settings/pages/settings_page.dart';
-import '../features/settings/pages/support_page.dart';
+import '../presentation/editor/pages/editor_page.dart';
+import '../presentation/home/pages/home_page.dart';
+import '../presentation/settings/pages/about_page.dart';
+import '../presentation/settings/pages/personalization_page.dart';
+import '../presentation/settings/pages/settings_page.dart';
+import '../presentation/settings/pages/support_page.dart';
 
 /// 集中定義全站路由與頁面入口。
 class AppRouter {

@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/features/session/providers/session_providers.dart';
-import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/providers/session_providers.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
 
-/// Widget / provider 測試用：可手動切換 locked / unlocked 的 session 狀態。
 final NotifierProvider<MutableAppSessionNotifier, AppSessionState>
 mutableAppSessionProvider =
     NotifierProvider<MutableAppSessionNotifier, AppSessionState>(
@@ -24,7 +23,6 @@ class MutableAppSessionNotifier extends Notifier<AppSessionState> {
   }
 }
 
-/// 以 [mutableAppSessionProvider] 驅動 [effectiveAppSessionProvider] 的測試容器。
 ProviderContainer buildMutableAppSessionContainer({required List overrides}) {
   return ProviderContainer(
     overrides: [

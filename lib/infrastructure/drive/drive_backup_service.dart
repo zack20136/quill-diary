@@ -6,9 +6,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../domain/shared/vault_backup_policy.dart';
-import '../../config/oauth_config.dart';
+import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 import '../storage/backup_task_progress.dart';

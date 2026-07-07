@@ -1,0 +1,118 @@
+import 'package:flutter/material.dart';
+
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+
+class DriveAccountStatus extends StatelessWidget {
+  const DriveAccountStatus({
+    required this.isConnected,
+    this.accountLabel,
+    this.disconnectedLabel,
+    this.disconnectedIcon = Icons.cloud_off_outlined,
+    super.key,
+  });
+
+  final bool isConnected;
+  final String? accountLabel;
+  final String? disconnectedLabel;
+  final IconData disconnectedIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+
+    if (!isConnected) {
+      final bool isErrorState = disconnectedLabel != null;
+      return _DriveAccountStatusCard(
+        icon: disconnectedIcon,
+        iconColor: isErrorState
+            ? colorScheme.error
+            : colorScheme.onSurfaceVariant,
+        iconBackground: isErrorState
+            ? Color.alphaBlend(
+                colorScheme.error.withValues(alpha: 0.08),
+                colorScheme.surfaceContainerLow,
+              )
+            : colorScheme.surfaceContainerHighest,
+        child: Text(
+          disconnectedLabel ?? l10n.settingsDriveBackupDisconnectedLabel,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: isErrorState
+                ? colorScheme.onErrorContainer
+                : colorScheme.onSurfaceVariant,
+            height: 1.4,
+            fontWeight: isErrorState ? FontWeight.w600 : null,
+          ),
+        ),
+      );
+    }
+
+    final String label = accountLabel?.trim().isNotEmpty == true
+        ? accountLabel!.trim()
+        : l10n.settingsDriveBackupFallbackAccountLabel;
+
+    return _DriveAccountStatusCard(
+      icon: Icons.cloud_done_outlined,
+      iconColor: colorScheme.primary,
+      iconBackground: Color.alphaBlend(
+        colorScheme.primary.withValues(alpha: 0.08),
+        colorScheme.surfaceContainerLow,
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _DriveAccountStatusCard extends StatelessWidget {
+  const _DriveAccountStatusCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.child,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: iconBackground,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}

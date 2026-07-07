@@ -72,9 +72,9 @@ Play Console 的商品名稱與說明要保留原意，App 端只負責直接顯
 相關程式：
 
 - [`lib/infrastructure/billing/google_billing_service.dart`](../../../lib/infrastructure/billing/google_billing_service.dart)
-- [`lib/features/settings/providers/billing_providers.dart`](../../../lib/features/settings/providers/billing_providers.dart)
-- [`lib/features/settings/pages/support_page.dart`](../../../lib/features/settings/pages/support_page.dart)
-- [`lib/config/billing_config.dart`](../../../lib/config/billing_config.dart)
+- [`lib/application/settings/billing_providers.dart`](../../../lib/application/settings/billing_providers.dart)
+- [`lib/presentation/settings/pages/support_page.dart`](../../../lib/presentation/settings/pages/support_page.dart)
+- [`lib/infrastructure/billing/billing_catalog.dart`](../../../lib/infrastructure/billing/billing_catalog.dart)
 
 ## Play Console 手動設定
 

@@ -13,7 +13,6 @@ import '../vault/test_vault_path_strategy.dart';
 
 DateTime _monthKey(DateTime month) => DateTime(month.year, month.month);
 
-/// 首頁索引查詢用的 VaultRepository 測試替身；不 reimplement 搜尋/排序規則。
 class FakeEntryIndexVaultRepository extends VaultRepository {
   FakeEntryIndexVaultRepository({
     List<EntryIndexRecord> allEntries = const <EntryIndexRecord>[],

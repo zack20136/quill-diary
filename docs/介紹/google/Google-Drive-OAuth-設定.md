@@ -31,7 +31,7 @@
 | 位置 | 用途 |
 |------|------|
 | `android/app/src/main/res/values/oauth_config.xml` | 提供 Android 使用的 Web client id |
-| `lib/config/oauth_config.dart` | 讀取 Android / iOS OAuth 設定 |
+| `lib/infrastructure/drive/google_oauth_config.dart` | 讀取 Android / iOS OAuth 設定 |
 | `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` | 覆寫 Android 使用的 Web client id |
 
 `oauth_request_id_token` 必須填同一個 GCP 專案下的 **Web OAuth client ID**，不是 Android client id。

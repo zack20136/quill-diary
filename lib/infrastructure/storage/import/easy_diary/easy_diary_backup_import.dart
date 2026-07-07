@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-import '../../../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../../../domain/diary/diary_entry.dart';
 import '../../../../domain/security/unlocked_vault_session.dart';
 import '../../../../domain/shared/value_objects.dart';

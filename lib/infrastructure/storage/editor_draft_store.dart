@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
-import '../../features/editor/application/editor_draft_models.dart';
+import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import '../crypto/crypto_service.dart';
 import 'vault_path_strategy.dart';
 
@@ -18,7 +18,8 @@ class EditorDraftStore {
   }) : _pathStrategy = pathStrategy,
        _cryptoService = cryptoService;
 
-  static const String _materializedPreviewRootName = 'quill_diary_draft_preview';
+  static const String _materializedPreviewRootName =
+      'quill_diary_draft_preview';
 
   final VaultPathStrategy _pathStrategy;
   final CryptoService _cryptoService;
@@ -171,10 +172,8 @@ class EditorDraftStore {
     UnlockedVaultSession session,
   ) async {
     final String normalizedRelative = relativePath.replaceAll('\\', '/');
-    final Map<String, String> draftCache = _materializedPreviewCache.putIfAbsent(
-      draftKey,
-      () => <String, String>{},
-    );
+    final Map<String, String> draftCache = _materializedPreviewCache
+        .putIfAbsent(draftKey, () => <String, String>{});
     final String? cached = draftCache[normalizedRelative];
     if (cached != null && File(cached).existsSync()) {
       return cached;
@@ -327,11 +326,7 @@ class EditorDraftStore {
 
   Future<Directory> _materializedPreviewDirectory(String draftKey) async {
     return Directory(
-      p.join(
-        Directory.systemTemp.path,
-        _materializedPreviewRootName,
-        draftKey,
-      ),
+      p.join(Directory.systemTemp.path, _materializedPreviewRootName, draftKey),
     );
   }
 

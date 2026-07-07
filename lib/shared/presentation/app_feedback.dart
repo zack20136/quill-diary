@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../features/home/providers/home_bottom_chrome_provider.dart';
-import '../../features/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/providers/home_bottom_chrome_provider.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'page_style.dart';
 
 enum AppFeedbackTone { info, warning, error }

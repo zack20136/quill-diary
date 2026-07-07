@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 import 'keystore_unlock_policy.dart';
 

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 
 /// 備份健康度門檻（本機與 Drive 各自比對最後成功時間）。
 abstract final class BackupStatusPolicy {
@@ -53,7 +53,8 @@ final class BackupFailureRecord {
           BackupStatusAction.fromStorage(json['action']?.toString()) ??
           BackupStatusAction.localBackup,
       message: (json['message'] ?? '').toString(),
-      occurredAt: DateTime.tryParse((json['occurred_at'] ?? '').toString()) ??
+      occurredAt:
+          DateTime.tryParse((json['occurred_at'] ?? '').toString()) ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
@@ -220,7 +221,8 @@ class BackupStatusStore {
         lastLocalBackupAt: current.lastLocalBackupAt,
         lastExternalExportAt: current.lastExternalExportAt,
         lastDriveUploadAt: at ?? DateTime.now(),
-        lastDriveAccountLabel: trimmedAccount != null && trimmedAccount.isNotEmpty
+        lastDriveAccountLabel:
+            trimmedAccount != null && trimmedAccount.isNotEmpty
             ? trimmedAccount
             : null,
         lastFailure: current.lastFailure,

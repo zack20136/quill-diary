@@ -1,0 +1,118 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/application/session/providers/session_providers.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/shared/platform/vault_platform_support.dart';
+
+import '../../app_test_theme.dart';
+import '../../session/fake_session_vault_repository.dart';
+import '../../storage/fake_vault_transfer_service.dart';
+
+Widget settingsTestScope({
+  required Widget child,
+  FakeSessionVaultRepository? repository,
+  FakeVaultTransferService? transferService,
+  AppSessionState sessionState = const AppSessionState(
+    status: AppLockStatus.locked,
+  ),
+  RecoveryMetadata? recoveryMetadata,
+  DriveConnectionState? driveConnectionState,
+}) {
+  return ProviderScope(
+    overrides: [
+      supportedPlatformProvider.overrideWith((Ref ref) => true),
+      vaultRepositoryProvider.overrideWithValue(
+        repository ?? FakeSessionVaultRepository(metadata: recoveryMetadata),
+      ),
+      vaultTransferServiceProvider.overrideWithValue(
+        transferService ?? FakeVaultTransferService(),
+      ),
+      effectiveAppSessionProvider.overrideWith((Ref ref) async => sessionState),
+      recoveryMetadataProvider.overrideWith(
+        (Ref ref) async => recoveryMetadata,
+      ),
+      unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
+      trustedDeviceAccessProvider.overrideWith((Ref ref) async => false),
+      backupStatusProvider.overrideWith(
+        (Ref ref) async => const BackupStatusSnapshot(),
+      ),
+      if (driveConnectionState != null)
+        settingsDriveConnectionProvider.overrideWith(
+          (Ref ref) async => driveConnectionState,
+        ),
+    ],
+    child: child,
+  );
+}
+
+Future<void> pumpSettingsPage(
+  WidgetTester tester, {
+  required DriveConnectionState connectionState,
+  required AppSessionState sessionState,
+  required FakeVaultTransferService transferService,
+  RecoveryMetadata? recoveryMetadata,
+}) async {
+  await tester.pumpWidget(
+    settingsTestScope(
+      driveConnectionState: connectionState,
+      sessionState: sessionState,
+      transferService: transferService,
+      recoveryMetadata: recoveryMetadata,
+      child: MaterialApp(
+        theme: appTestTheme(),
+        darkTheme: appTestTheme(brightness: Brightness.dark),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsPage(),
+      ),
+    ),
+  );
+}
+
+Finder settingsActionButton(String label) {
+  return find.byWidgetPredicate(
+    (Widget widget) => widget is SettingsActionButton && widget.label == label,
+  );
+}
+
+SettingsActionButton readSettingsActionButton(
+  WidgetTester tester,
+  String label,
+) {
+  return tester.widget<SettingsActionButton>(settingsActionButton(label));
+}
+
+Future<void> scrollSettingsPageUntilVisible(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+  }
+}
+
+Future<File> createTempBackupFile(
+  Directory tempDir, {
+  String name = 'drive-backup.zip',
+}) async {
+  final File file = File('${tempDir.path}/$name');
+  await file.writeAsString('backup');
+  return file;
+}

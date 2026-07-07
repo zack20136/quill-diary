@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 import '../../l10n/l10n.dart';
 

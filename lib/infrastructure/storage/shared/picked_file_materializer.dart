@@ -26,10 +26,7 @@ const int kPickedFileBytesFallbackMaxBytes = 64 * 1024 * 1024;
 
 enum PickedFileSourceKind { localPath, androidContentUri, bytesFallback }
 
-enum PickedFileMaterializationFailure {
-  unreadable,
-  tooLargeForBytesFallback,
-}
+enum PickedFileMaterializationFailure { unreadable, tooLargeForBytesFallback }
 
 final class PickedFileMaterializationException implements Exception {
   const PickedFileMaterializationException(this.failure);
@@ -190,8 +187,7 @@ class PickedFileMaterializer {
         return candidate;
       }
     }
-    if (file is AndroidPlatformFile &&
-        file.safHandle.uri.scheme == 'content') {
+    if (file is AndroidPlatformFile && file.safHandle.uri.scheme == 'content') {
       return file.safHandle.uri.toString();
     }
     return null;

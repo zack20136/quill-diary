@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 
 Future<List<int>> deriveIndexDatabaseKey({
   required List<int> recoveryWrapKey,

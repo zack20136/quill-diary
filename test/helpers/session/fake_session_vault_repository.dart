@@ -10,7 +10,6 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import '../vault/stub_crypto_service.dart';
 import '../vault/test_vault_path_strategy.dart';
 
-/// Session / restore 流程用的 VaultRepository 測試替身。
 class FakeSessionVaultRepository extends VaultRepository {
   FakeSessionVaultRepository({
     this.metadata,

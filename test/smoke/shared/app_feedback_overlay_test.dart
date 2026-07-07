@@ -3,7 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/features/home/providers/home_bottom_chrome_provider.dart';
+import 'package:quill_diary/presentation/home/providers/home_bottom_chrome_provider.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 import '../../helpers/app_test_theme.dart';

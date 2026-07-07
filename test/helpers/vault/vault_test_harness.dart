@@ -59,7 +59,6 @@ class VaultTestHarness {
     );
   }
 
-  /// 建立一筆最簡日記並回傳 entry id。
   Future<String> saveSimpleEntry(
     RecoverySetupResult setup, {
     String? id,

@@ -1,32 +1,32 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/features/editor/pages/editor_page.dart';
-import 'package:quill_diary/features/editor/providers/editor_draft_providers.dart';
-import 'package:quill_diary/features/home/pages/home_page.dart';
-import 'package:quill_diary/features/session/providers/session_providers.dart';
-import 'package:quill_diary/features/session/state/app_session_state.dart';
-import 'package:quill_diary/features/settings/pages/about_page.dart';
-import 'package:quill_diary/features/settings/pages/personalization_page.dart';
-import 'package:quill_diary/features/settings/pages/settings_page.dart';
-import 'package:quill_diary/features/settings/pages/support_page.dart';
-import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
-import 'package:quill_diary/features/settings/providers/settings_providers.dart';
+import 'package:quill_diary/application/session/providers/session_providers.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
-import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/shared/providers/core_providers.dart';
+import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
+import 'package:quill_diary/presentation/editor/providers/editor_draft_providers.dart';
+import 'package:quill_diary/presentation/home/pages/home_page.dart';
+import 'package:quill_diary/presentation/settings/pages/about_page.dart';
+import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
+import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
+import 'package:quill_diary/presentation/settings/pages/support_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
-import '../../helpers/vault/fake_entry_index_vault_repository.dart';
-import '../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
   late GoRouter router;
@@ -59,9 +59,9 @@ void main() {
         ),
         trustedDeviceAccessProvider.overrideWith((Ref ref) async => false),
         editorDraftKeysProvider.overrideWith((Ref ref) async => <String>{}),
-        personalizationPreferencesProvider.overrideWith(() {
-          return _FixedPersonalizationPreferencesController();
-        }),
+        personalizationPreferencesProvider.overrideWith(
+          _FixedPersonalizationPreferencesController.new,
+        ),
       ],
       child: MaterialApp.router(
         theme: appTestTheme(),

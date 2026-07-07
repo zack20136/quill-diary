@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../l10n/l10n.dart';
-import '../../../shared/providers/tag_providers.dart';
-import '../../providers/core_providers.dart';
+import '../../../application/tag/tag_providers.dart';
+import '../../../infrastructure/providers/core_providers.dart';
 import '../../utils/user_facing_error.dart';
 import '../app_feedback.dart';
 import '../../../app/app_colors.dart';

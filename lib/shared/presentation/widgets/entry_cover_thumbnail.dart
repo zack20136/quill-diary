@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-import '../../../features/editor/providers/editor_providers.dart';
+import 'package:quill_diary/presentation/editor/providers/editor_providers.dart';
 
 /// 解密並渲染加密 vault 資產路徑的圖片預覽。
 class EntryCoverThumbnail extends ConsumerWidget {

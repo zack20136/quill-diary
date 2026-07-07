@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 
 /// Android MediaStore：Pictures / Download 下的 quill-diary 子資料夾。
 abstract final class MediaStoreExport {

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../config/app_identifiers.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import '../../domain/shared/value_objects.dart';
 
 /// 計算 vault、索引與本機備份儲存使用的所有本機路徑。
