@@ -5,9 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/session_providers.dart';
 
-/// 將 App 生命週期與使用者互動接到 session 背景逾時與 resumed 自動解鎖。
-class SessionLifecycleBinding with WidgetsBindingObserver {
-  SessionLifecycleBinding(
+class AppLifecycleSessionBridge with WidgetsBindingObserver {
+  AppLifecycleSessionBridge(
     this.ref, {
     this.resumeUnlockDelay = const Duration(milliseconds: 350),
   });
@@ -37,7 +36,6 @@ class SessionLifecycleBinding with WidgetsBindingObserver {
     _attached = false;
   }
 
-  /// bootstrap 週期結束時清掉同次啟動累積的 stale 背景狀態。
   void clearStaleLifecycleState() {
     _wasBackgrounded = false;
     _cancelPendingResumeUnlock();

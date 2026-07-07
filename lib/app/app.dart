@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/session/providers/session_providers.dart';
-import '../features/session/session_lifecycle_binding.dart';
-import '../features/session/session_route_preservation.dart';
-import '../features/session/state/app_session_state.dart';
+import '../features/session/app_lifecycle_session_bridge.dart';
+import '../features/session/session_navigation_coordinator.dart';
 import '../features/settings/providers/billing_providers.dart';
 import '../features/settings/providers/personalization_providers.dart';
 import '../infrastructure/preferences/personalization_preferences.dart';
@@ -22,8 +20,8 @@ class QuillDiaryApp extends ConsumerStatefulWidget {
 
 class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   late final GoRouter _router = AppRouter.createRouter();
-  late final SessionLifecycleBinding _sessionLifecycle =
-      SessionLifecycleBinding(ref);
+  late final AppLifecycleSessionBridge _sessionLifecycle =
+      AppLifecycleSessionBridge(ref);
 
   @override
   void initState() {
@@ -34,7 +32,7 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
         return;
       }
       ref
-          .read(sessionRoutePreservationProvider.notifier)
+          .read(sessionNavigationCoordinatorProvider)
           .bindLocationResolver(() => _router.state.uri.toString());
     });
   }
@@ -49,62 +47,28 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp> {
   String get _currentRoute => _router.state.uri.toString();
 
   void _handleSessionRouteTransition(
-    AppSessionState? previous,
-    AppSessionState next,
+    SessionNavigationRequest? previous,
+    SessionNavigationRequest? next,
   ) {
-    final CompletedUnlockSnapshot? snapshot = ref
-        .read(appSessionProvider.notifier)
-        .consumeCompletedUnlockSnapshot();
-    if (snapshot == null ||
-        snapshot.source != UnlockRequestSource.lifecycleResume) {
+    if (next == null) {
       return;
     }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
-      final SessionRoutePreservationState preservation = ref.read(
-        sessionRoutePreservationProvider,
-      );
-      final SessionRouteNavigationAction action =
-          resolveLifecycleResumeRouteAction(
-            outcome: snapshot.outcome,
-            recoverable: snapshot.recoverable,
-            savedForInactivityLock: preservation.savedForInactivityLock,
-            pendingRestoreLocation: preservation.pendingRestoreLocation,
-            nextState: next,
-          );
-
-      final String? restoreTarget =
-          action == SessionRouteNavigationAction.restore
-          ? restoreTargetLocation(preservation)
-          : null;
-
-      if (action != SessionRouteNavigationAction.none ||
-          snapshot.outcome == UnlockOutcome.failed) {
-        ref.read(sessionRoutePreservationProvider.notifier).clear();
+      final String target = sessionNavigationLocation(next);
+      if (_currentRoute != target) {
+        _router.go(target);
       }
-
-      switch (action) {
-        case SessionRouteNavigationAction.restore:
-          if (restoreTarget != null && _currentRoute != restoreTarget) {
-            _router.go(restoreTarget);
-          }
-        case SessionRouteNavigationAction.goHome:
-          if (_currentRoute != AppRouter.homeRoute) {
-            _router.go(AppRouter.homeRoute);
-          }
-        case SessionRouteNavigationAction.none:
-          break;
-      }
+      ref.read(sessionNavigationRequestProvider.notifier).clear();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AppSessionState>(
-      appSessionProvider,
+    ref.listen<SessionNavigationRequest?>(
+      sessionNavigationRequestProvider,
       _handleSessionRouteTransition,
     );
 

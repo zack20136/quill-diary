@@ -5,7 +5,9 @@ import 'package:quill_diary/app/app.dart';
 import 'package:quill_diary/features/editor/providers/editor_draft_providers.dart';
 import 'package:quill_diary/features/home/pages/home_page.dart';
 import 'package:quill_diary/features/session/providers/session_providers.dart';
+import 'package:quill_diary/features/session/session_navigation_coordinator.dart';
 import 'package:quill_diary/features/session/state/app_session_state.dart';
+import 'package:quill_diary/features/settings/pages/settings_page.dart';
 import 'package:quill_diary/features/settings/providers/personalization_providers.dart';
 import 'package:quill_diary/features/settings/providers/settings_providers.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
@@ -14,20 +16,20 @@ import 'package:quill_diary/infrastructure/preferences/personalization_preferenc
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/providers/core_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
+import 'package:quill_diary/shared/providers/core_providers.dart';
 
-import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 import '../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('appSupportedLocales 包含繁中與英文', () {
+  test('appSupportedLocales 包含中英文', () {
     expect(appSupportedLocales, <Locale>[appZhLocale, appEnLocale]);
   });
 
-  testWidgets('QuillDiaryApp 開機整合煙霧測試', (WidgetTester tester) async {
+  testWidgets('QuillDiaryApp 可以正常建立 router 與首頁', (WidgetTester tester) async {
     final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 
@@ -49,7 +51,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('App 預設使用繁中 locale', (WidgetTester tester) async {
+  testWidgets('App 預設使用繁體中文 locale', (WidgetTester tester) async {
     final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 
@@ -66,6 +68,32 @@ void main() {
       find.byType(MaterialApp),
     );
     expect(app.locale, appZhLocale);
+  });
+
+  testWidgets('QuillDiaryApp 會響應 session navigation request 導頁', (
+    WidgetTester tester,
+  ) async {
+    final ProviderContainer container = _buildSmokeTestContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const QuillDiaryApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    container
+        .read(sessionNavigationRequestProvider.notifier)
+        .publish(const SessionNavigationRequest.restore('/settings'));
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 150));
+
+    expect(find.byType(SettingsPage), findsOneWidget);
   });
 }
 

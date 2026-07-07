@@ -21,7 +21,7 @@ final recoveryMetadataProvider = FutureProvider<RecoveryMetadata?>((
   }
   final AppSessionState localState = ref.watch(appSessionProvider);
   if (localState.status == AppLockStatus.uninitialized) {
-    await ref.watch(appStartupProvider.future);
+    await ref.watch(sessionStartupProvider.future);
   } else {
     await ref.read(vaultRepositoryProvider).initialize();
   }
