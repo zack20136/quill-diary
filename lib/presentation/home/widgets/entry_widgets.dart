@@ -15,13 +15,13 @@ import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
-import '../../editor/providers/editor_draft_providers.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import '../home_entry_helpers.dart';
+import '../home_entry_presenters.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
-import '../providers/home_providers.dart';
-import '../state/home_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'home_entry_preview_body.dart';
 import 'home_pin_glyph.dart';
 

@@ -9,8 +9,9 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
-import 'package:quill_diary/presentation/editor/editor_image_staging.dart'
+import 'package:quill_diary/infrastructure/storage/storage_path_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
+import 'package:quill_diary/application/editor/editor_image_staging.dart'
     as editor_image_staging;
 import 'editor_draft_models.dart';
 

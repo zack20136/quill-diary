@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
+import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/infrastructure/billing/billing_catalog.dart';
-import 'package:quill_diary/presentation/settings/state/sponsor_billing_state.dart';
 
 /// Google Play Billing 的 client-side 封裝。
 class GoogleBillingService {

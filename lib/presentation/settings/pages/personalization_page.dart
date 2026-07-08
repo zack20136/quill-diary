@@ -11,7 +11,7 @@ import 'package:quill_diary/application/session/providers/session_providers.dart
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import '../settings_page_access.dart';
+import '../settings_capabilities.dart';
 import '../widgets/personalization_sections.dart';
 import '../widgets/settings_sections.dart';
 
@@ -30,11 +30,12 @@ class PersonalizationPage extends ConsumerWidget {
       recoveryMetadataProvider,
     );
     final AppSessionState? sessionState = sessionAsync.asData?.value;
-    final SettingsPageAccess pageAccess = SettingsPageAccess.fromSession(
-      l10n: context.l10n,
-      sessionState: sessionState,
-      hasRecoveryKey: recoveryMetadataAsync.asData?.value != null,
-    );
+    final SettingsPageCapabilities pageAccess =
+        SettingsPageCapabilities.fromSessionState(
+          l10n: context.l10n,
+          sessionState: sessionState,
+          hasRecoveryKey: recoveryMetadataAsync.asData?.value != null,
+        );
     final String? sessionTimeoutLockedMessage =
         pageAccess.canChangeSessionTimeout
         ? null

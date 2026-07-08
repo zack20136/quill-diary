@@ -6,7 +6,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 import 'state/app_session_state.dart';
 import 'state/session_lock_reason.dart';
@@ -235,7 +235,7 @@ class SessionStartupCoordinator {
     })
     friendlyErrorMessage,
   }) async {
-    if (!_ref.read(supportedPlatformProvider)) {
+    if (!_ref.read(vaultPlatformSupportProvider)) {
       final AppSessionState next = AppSessionState(
         status: AppLockStatus.fatalError,
         message: await loadUnsupportedRuntimeMessage(),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
@@ -11,12 +12,11 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
-import 'package:quill_diary/presentation/editor/providers/editor_draft_providers.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/settings/pages/about_page.dart';
 import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
@@ -38,7 +38,7 @@ void main() {
   Widget wrapRouterApp() {
     return ProviderScope(
       overrides: [
-        supportedPlatformProvider.overrideWith((Ref ref) => true),
+        vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
         vaultRepositoryProvider.overrideWithValue(
           FakeEntryIndexVaultRepository(),
         ),
@@ -98,14 +98,14 @@ void main() {
     expect(page.startInEditMode, isFalse);
   });
 
-  testWidgets('編輯器詳細路由帶 edit=1 時會進入編輯模式', (WidgetTester tester) async {
+  testWidgets('編輯器詳細路由帶 edit=1 時會直接進入編輯模式', (WidgetTester tester) async {
     await pumpRoute(tester, '/editor/abc?edit=1');
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, 'abc');
     expect(page.startInEditMode, isTrue);
   });
 
-  testWidgets('設定相關路由會建立對應頁面', (WidgetTester tester) async {
+  testWidgets('設定相關路由都會建立對應頁面', (WidgetTester tester) async {
     await pumpRoute(tester, AppRouter.settingsRoute);
     expect(find.byType(SettingsPage), findsOneWidget);
 

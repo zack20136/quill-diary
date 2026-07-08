@@ -6,7 +6,10 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
+import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/presentation/settings/backup_security_overview.dart';
+import 'package:quill_diary/presentation/settings/security_overview_item.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -686,24 +689,6 @@ class SettingsSectionLoading extends StatelessWidget {
       ),
     );
   }
-}
-
-enum SettingsHealthLevel { ok, warning, error }
-
-class SecurityOverviewItem {
-  const SecurityOverviewItem({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.level,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? subtitle;
-  final SettingsHealthLevel level;
 }
 
 class SettingsSecurityOverview extends StatelessWidget {

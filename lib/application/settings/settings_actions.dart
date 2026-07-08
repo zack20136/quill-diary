@@ -9,8 +9,8 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 

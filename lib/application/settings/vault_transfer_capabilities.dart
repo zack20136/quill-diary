@@ -1,8 +1,8 @@
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
-class VaultTransferAccess {
-  const VaultTransferAccess({
+class VaultTransferCapabilities {
+  const VaultTransferCapabilities({
     required this.canBackup,
     required this.canRestore,
     this.backupDisabledReason,
@@ -14,7 +14,7 @@ class VaultTransferAccess {
   final String? backupDisabledReason;
   final String? restoreDisabledReason;
 
-  factory VaultTransferAccess.fromContext({
+  factory VaultTransferCapabilities.fromSessionContext({
     required AppLocalizations l10n,
     required bool hasUnlockedSession,
     required bool hasRecoveryKey,
@@ -27,7 +27,7 @@ class VaultTransferAccess {
       lockStatus: lockStatus,
     );
 
-    return VaultTransferAccess(
+    return VaultTransferCapabilities(
       canBackup: canBackup,
       canRestore: canRestore,
       backupDisabledReason: canBackup

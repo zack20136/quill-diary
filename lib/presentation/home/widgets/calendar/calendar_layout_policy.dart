@@ -32,15 +32,16 @@ String calendarMonthTitle(AppLocalizations l10n, DateTime month) {
 bool calendarIsSunday(DateTime day) => day.weekday == DateTime.sunday;
 
 bool calendarIsSaturday(DateTime day) => day.weekday == DateTime.saturday;
+
 String calendarEntryPreviewLabel(String text) {
-  final String trimmed = text.trim();
-  if (trimmed.isEmpty) {
-    return trimmed;
+  final String trimmedText = text.trim();
+  if (trimmedText.isEmpty) {
+    return trimmedText;
   }
-  if (trimmed.length <= kCalendarPreviewCharCount) {
-    return trimmed;
+  if (trimmedText.length <= kCalendarPreviewCharCount) {
+    return trimmedText;
   }
-  return trimmed.substring(0, kCalendarPreviewCharCount);
+  return trimmedText.substring(0, kCalendarPreviewCharCount);
 }
 
 double calendarRowHeightForAvailableHeight(

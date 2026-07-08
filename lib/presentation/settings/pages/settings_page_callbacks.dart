@@ -59,7 +59,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Widget _buildSecurityStatusSection({
     required AsyncValue<AppSessionState> sessionAsync,
     required RecoveryMetadata? recoveryMetadata,
-    required SettingsPageAccess pageAccess,
+    required SettingsPageCapabilities pageAccess,
     required AsyncValue<bool> trustedDeviceAccessAsync,
     required AsyncValue<AppUnlockMode> unlockModeAsync,
   }) {
@@ -108,7 +108,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                         : null,
                     onRotateRecoveryKey:
                         recoveryMetadata != null &&
-                            pageAccess.vaultTransfer.canBackup
+                            pageAccess.vaultTransferCapabilities.canBackup
                         ? () => _runBusy(_rotateRecoveryKey)
                         : null,
                     onRepairVault: hasUnlockedSession
@@ -494,21 +494,33 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final AppLocalizations l10n = context.l10n;
     try {
       final RestoreBackupFlow flow = RestoreBackupFlow(ref);
-      final RestorePreparedContext? prepared = await flow.prepare(
-        context: context,
-        backupFile: request.backupFile,
-        precheck: request.precheck,
-        driveBackupName: request.driveBackupName,
-        confirm: (RestorePrecheck precheck, {String? driveBackupName}) =>
-            showRestoreConfirmDialog(
-              context,
-              precheck,
-              driveBackupName: driveBackupName,
-            ),
-      );
-      if (prepared == null) {
+      await flow.ensureRestoreAllowed(l10n);
+      if (!mounted) {
         return;
       }
+      final bool confirmed = await showRestoreConfirmDialog(
+        context,
+        request.precheck,
+        driveBackupName: request.driveBackupName,
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
+      String? backupRecoveryKey;
+      if (request.precheck.expectsRecoveryKeyAfterRestore) {
+        backupRecoveryKey = await _collectValidatedRestoreRecoveryKey(
+          flow: flow,
+          backupFile: request.backupFile,
+          precheck: request.precheck,
+        );
+        if (!mounted || backupRecoveryKey == null) {
+          return;
+        }
+      }
+      final RestorePreparedContext prepared = RestorePreparedContext(
+        precheck: request.precheck,
+        backupRecoveryKey: backupRecoveryKey,
+      );
       await _runWithBackupProgress((
         BackupTaskProgressListener reportProgress,
       ) async {
@@ -534,6 +546,36 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     } finally {
       await request.dispose();
       ref.invalidate(trustedDeviceAccessProvider);
+    }
+  }
+
+  Future<String?> _collectValidatedRestoreRecoveryKey({
+    required RestoreBackupFlow flow,
+    required File backupFile,
+    required RestorePrecheck precheck,
+  }) async {
+    String? validationError;
+    while (true) {
+      if (!mounted) {
+        return null;
+      }
+      final String? recoveryKey = await showRestoreRecoveryKeyDialog(
+        context,
+        precheck: precheck,
+        validationError: validationError,
+      );
+      if (!mounted) {
+        return null;
+      }
+      if (recoveryKey == null) {
+        return null;
+      }
+      try {
+        await flow.verifyBackupRecoveryKey(backupFile, recoveryKey);
+        return recoveryKey;
+      } on StateError catch (error) {
+        validationError = error.message;
+      }
     }
   }
 

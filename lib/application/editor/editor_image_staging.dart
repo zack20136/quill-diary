@@ -9,6 +9,7 @@ import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 typedef PreparedImageFile = ({String path, String mimeType, String fileName});
+
 Future<PendingAttachment?> stagePickedImage({
   required EditorDraftStore draftStore,
   required ImageCompressPreset preset,

@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/presentation/editor/providers/editor_providers.dart';
-import 'package:quill_diary/presentation/home/providers/home_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 import '../../helpers/presentation/home/home_test_helpers.dart';
@@ -22,7 +22,7 @@ void main() {
           buildEntryIndexRecord(id: 'jrn_RESTORED'),
         ],
         searchResponses: const <String, List<EntryIndexRecord>>{
-          '不存在': <EntryIndexRecord>[],
+          'query-miss': <EntryIndexRecord>[],
         },
       );
       container = buildUnlockedHomeContainer(repository);
@@ -32,7 +32,7 @@ void main() {
       container.dispose();
     });
 
-    test('空搜尋直接向 vault 取列表，不受全量索引快取影響', () async {
+    test('快取為空時仍會回頭查 vault 取得最新索引', () async {
       final ProviderContainer staleCacheContainer = buildUnlockedHomeContainer(
         repository,
         overrides: [
@@ -52,7 +52,7 @@ void main() {
       expect(repository.listEntriesSearchQueries.last, isNull);
     });
 
-    test('entryIndexRevision 更新後會重載全量索引', () async {
+    test('entryIndexRevision 更新後會重新抓取索引', () async {
       await container.read(allEntryIndexRecordsProvider.future);
       repository.allEntries = <EntryIndexRecord>[
         buildEntryIndexRecord(id: 'jrn_AFTER_BUMP'),
@@ -96,7 +96,7 @@ void main() {
       container.dispose();
     });
 
-    test('unlocking 期間保留可讀 session，避免首頁索引被清空', () async {
+    test('轉入 unlocking 期間仍保留上一個可查詢 session', () async {
       final List<EntryIndexRecord> before = await container.read(
         homeEntryIndexListProvider.future,
       );

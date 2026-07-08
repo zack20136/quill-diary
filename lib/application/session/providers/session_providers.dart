@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/security_providers.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import '../session_inactivity_watchdog.dart';
 import '../session_navigation_coordinator.dart';

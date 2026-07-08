@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/presentation/editor/presentation/editor_hybrid_body.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../infrastructure/database/index_database.dart';
 import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/tag_visual.dart';
-import '../../home_entry_helpers.dart';
-import 'calendar_helpers.dart';
+import '../../home_entry_presenters.dart';
+import 'calendar_layout_policy.dart';
 
 class CalendarDayCell extends StatelessWidget {
   const CalendarDayCell({

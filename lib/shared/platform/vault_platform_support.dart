@@ -6,6 +6,6 @@ bool get isVaultPlatformSupported =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
 /// Vault 相關功能是否可用的單一來源。
-final supportedPlatformProvider = Provider<bool>((Ref ref) {
+final vaultPlatformSupportProvider = Provider<bool>((Ref ref) {
   return isVaultPlatformSupported;
 });

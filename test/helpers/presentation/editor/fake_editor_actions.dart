@@ -15,12 +15,12 @@ class FakeEditorActions implements EditorActionPort {
   static final DiaryEntry defaultEntry = DiaryEntry(
     id: 'entry-1',
     vaultId: 'vault-1',
-    title: '測試標�?',
+    title: '皜祈岫璅?',
     date: DateOnly.parse('2026-06-18'),
     createdAt: DateTime(2026, 6, 18, 8),
     updatedAt: DateTime(2026, 6, 18, 9),
-    markdownBody: '?��?',
-    tags: const <String>['標籤'],
+    markdownBody: '?扳?',
+    tags: const <String>['璅惜'],
     attachmentIds: const <AssetId>['image-1', 'file-1'],
   );
 

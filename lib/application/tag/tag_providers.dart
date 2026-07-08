@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 
 final tagCatalogProvider = FutureProvider<List<TagCatalogItem>>((
   Ref ref,

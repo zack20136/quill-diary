@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import '../state/home_state.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'calendar/calendar_pane.dart';
 import 'home_timeline_pane.dart';
 import 'overview_pane.dart';

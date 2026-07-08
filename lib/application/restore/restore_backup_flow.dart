@@ -4,22 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/presentation/settings/vault_transfer_access.dart';
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'post_restore_session.dart';
 import 'restore_prepared_context.dart';
-import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
 
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
   final WidgetRef ref;
 
-  Future<VaultTransferAccess> _loadTransferAccess(AppLocalizations l10n) async {
+  Future<VaultTransferCapabilities> _loadTransferCapabilities(
+    AppLocalizations l10n,
+  ) async {
     final AppSessionState sessionState = await ref.read(
       effectiveAppSessionProvider.future,
     );
@@ -27,7 +27,7 @@ class RestoreBackupFlow {
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
         await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
-    return VaultTransferAccess.fromContext(
+    return VaultTransferCapabilities.fromSessionContext(
       l10n: l10n,
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
@@ -35,77 +35,20 @@ class RestoreBackupFlow {
     );
   }
 
-  Future<String?> collectValidatedRecoveryKey(
-    BuildContext context,
-    File backupFile,
-    RestorePrecheck precheck,
-  ) async {
-    final transferService = ref.read(vaultTransferServiceProvider);
-    String? validationError;
-    while (true) {
-      if (!context.mounted) {
-        return null;
-      }
-      final String? key = await showRestoreRecoveryKeyDialog(
-        context,
-        precheck: precheck,
-        validationError: validationError,
-      );
-      if (key == null) {
-        return null;
-      }
-      try {
-        await transferService.verifyBackupRecoveryKey(backupFile, key);
-        return key;
-      } on StateError catch (error) {
-        validationError = error.message;
-      }
-    }
+  Future<void> ensureRestoreAllowed(AppLocalizations l10n) async {
+    final VaultTransferCapabilities access = await _loadTransferCapabilities(
+      l10n,
+    );
+    access.ensureCanRestore(l10n);
   }
 
-  Future<RestorePreparedContext?> prepare({
-    required BuildContext context,
-    required File backupFile,
-    required RestorePrecheck precheck,
-    required Future<bool> Function(
-      RestorePrecheck precheck, {
-      String? driveBackupName,
-    })
-    confirm,
-    String? driveBackupName,
-  }) async {
-    final AppLocalizations l10n = context.l10n;
-    final VaultTransferAccess access = await _loadTransferAccess(l10n);
-    access.ensureCanRestore(l10n);
-
-    if (!context.mounted) {
-      return null;
-    }
-
-    if (!await confirm(precheck, driveBackupName: driveBackupName)) {
-      return null;
-    }
-
-    if (!context.mounted) {
-      return null;
-    }
-
-    String? backupRecoveryKey;
-    if (precheck.expectsRecoveryKeyAfterRestore) {
-      backupRecoveryKey = await collectValidatedRecoveryKey(
-        context,
-        backupFile,
-        precheck,
-      );
-      if (!context.mounted || backupRecoveryKey == null) {
-        return null;
-      }
-    }
-
-    return RestorePreparedContext(
-      precheck: precheck,
-      backupRecoveryKey: backupRecoveryKey,
-    );
+  Future<void> verifyBackupRecoveryKey(
+    File backupFile,
+    String recoveryKey,
+  ) async {
+    await ref
+        .read(vaultTransferServiceProvider)
+        .verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
   Future<UnlockedVaultSession?> executeRestore({

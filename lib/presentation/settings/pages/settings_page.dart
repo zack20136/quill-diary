@@ -5,47 +5,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/app/app_identifiers.dart';
-import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
-import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/utils/external_url.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/presentation/home/providers/home_providers.dart';
-import 'package:quill_diary/presentation/restore/post_restore_outcome.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
+import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/restore/restore_backup_flow.dart';
-import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
 import 'package:quill_diary/application/restore/restore_prepared_context.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_actions.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
-import '../backup/backup_pick_list_item.dart';
-import '../presentation/settings_dialogs.dart';
-import '../presentation/settings_feedback.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import '../settings_page_access.dart';
-import '../vault_transfer_access.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/restore/post_restore_outcome.dart';
+import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
+import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/utils/external_url.dart';
+import 'package:quill_diary/shared/utils/user_facing_error.dart';
+
+import '../backup/backup_pick_list_item.dart';
+import '../settings_capabilities.dart';
 import '../widgets/drive_backup_section.dart';
 import '../widgets/local_backup_section.dart';
 import '../widgets/recovery_key_save_dialog.dart';
+import '../widgets/settings_action_dialogs.dart';
+import '../widgets/settings_flow_feedback.dart';
 import '../widgets/settings_sections.dart';
 
 part 'settings_page_callbacks.dart';
@@ -93,12 +95,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final RecoveryMetadata? recoveryMetadata =
         recoveryMetadataAsync.asData?.value;
-    final SettingsPageAccess pageAccess = SettingsPageAccess.fromSession(
-      l10n: l10n,
-      sessionState: sessionState,
-      hasRecoveryKey: recoveryMetadata != null,
-    );
-    final VaultTransferAccess transferAccess = pageAccess.vaultTransfer;
+    final SettingsPageCapabilities pageAccess =
+        SettingsPageCapabilities.fromSessionState(
+          l10n: l10n,
+          sessionState: sessionState,
+          hasRecoveryKey: recoveryMetadata != null,
+        );
+    final VaultTransferCapabilities transferAccess =
+        pageAccess.vaultTransferCapabilities;
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
     final ColorScheme cs = Theme.of(context).colorScheme;

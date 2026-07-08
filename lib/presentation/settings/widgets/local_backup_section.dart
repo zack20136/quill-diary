@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import '../vault_transfer_access.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'settings_sections.dart';
 
 class LocalBackupSection extends StatelessWidget {
@@ -17,7 +17,7 @@ class LocalBackupSection extends StatelessWidget {
     super.key,
   });
 
-  final VaultTransferAccess access;
+  final VaultTransferCapabilities access;
   final bool busy;
   final VoidCallback onCreate;
   final VoidCallback onRestore;

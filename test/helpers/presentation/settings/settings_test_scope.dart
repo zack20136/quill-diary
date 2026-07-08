@@ -12,8 +12,8 @@ import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../app_test_theme.dart';
@@ -32,7 +32,7 @@ Widget settingsTestScope({
 }) {
   return ProviderScope(
     overrides: [
-      supportedPlatformProvider.overrideWith((Ref ref) => true),
+      vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
       vaultRepositoryProvider.overrideWithValue(
         repository ?? FakeSessionVaultRepository(metadata: recoveryMetadata),
       ),

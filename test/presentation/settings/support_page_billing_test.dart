@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:quill_diary/presentation/settings/pages/support_page.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
-import 'package:quill_diary/presentation/settings/state/sponsor_billing_state.dart';
+import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/pages/support_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -21,7 +21,9 @@ void main() {
   }) {
     return ProviderContainer(
       overrides: [
-        supportedPlatformProvider.overrideWith((Ref ref) => supportedPlatform),
+        vaultPlatformSupportProvider.overrideWith(
+          (Ref ref) => supportedPlatform,
+        ),
         googleBillingServiceProvider.overrideWithValue(service),
       ],
     );
@@ -63,8 +65,8 @@ void main() {
     expect(find.text('title-sponsor_coffee'), findsOneWidget);
     expect(find.text('desc-sponsor_coffee'), findsOneWidget);
     expect(find.text('title-sponsor_super'), findsOneWidget);
-    expect(find.text('請開發者喝杯咖啡'), findsNothing);
-    expect(find.text('讓 Quill Diary 持續被照顧與改進'), findsNothing);
+    expect(find.text('即將支援更多贊助方案'), findsNothing);
+    expect(find.text('感謝你支持 Quill Diary 的持續開發與維護'), findsNothing);
   });
 
   testWidgets('成功購買後會被 listener 收回', (WidgetTester tester) async {

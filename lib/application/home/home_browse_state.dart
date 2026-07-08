@@ -79,7 +79,6 @@ class HomeEntrySelectionState {
 
   final bool isActive;
   final Set<EntryId> selectedIds;
-
   final List<EntryId> frozenDisplayOrder;
 
   HomeEntrySelectionState copyWith({

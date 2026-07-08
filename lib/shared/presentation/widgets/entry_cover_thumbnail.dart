@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-import 'package:quill_diary/presentation/editor/providers/editor_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 
-/// 解密並渲染加密 vault 資產路徑的圖片預覽。
+/// 閫??銝行葡??撖?vault 鞈頝臬?????閬賬?
 class EntryCoverThumbnail extends ConsumerWidget {
   const EntryCoverThumbnail({
     super.key,
@@ -87,7 +87,7 @@ class EntryCoverThumbnail extends ConsumerWidget {
   }
 }
 
-/// 延遲縮圖解密，直至可見或預取交錯延遲後。
+/// 撱園蝮桀?閫??嚗?喳閬???鈭日撱園敺?
 class LazyEntryCoverThumbnail extends ConsumerStatefulWidget {
   const LazyEntryCoverThumbnail({
     super.key,

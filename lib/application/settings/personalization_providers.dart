@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
 
 class PersonalizationPreferencesController
     extends AsyncNotifier<PersonalizationPreferences> {

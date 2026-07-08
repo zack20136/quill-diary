@@ -5,7 +5,7 @@ import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import '../about_content.dart';
+import '../about_tab_catalog.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import '../widgets/settings_info_cards.dart';
 
@@ -15,7 +15,7 @@ class SettingsAboutPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = context.l10n;
-    final List<AboutTab> tabs = buildAboutTabs(
+    final List<AboutPageTabSpec> tabs = buildAboutPageTabSpecs(
       l10n,
       watchPersonalizationPreferences(ref).sessionTimeout,
     );
@@ -31,13 +31,13 @@ class SettingsAboutPage extends ConsumerWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: tabs
-                .map((AboutTab tab) => Tab(text: tab.label))
+                .map((AboutPageTabSpec tab) => Tab(text: tab.label))
                 .toList(growable: false),
           ),
         ),
         body: TabBarView(
           children: tabs
-              .map((AboutTab tab) => _AboutTabBody(tab: tab))
+              .map((AboutPageTabSpec tab) => _AboutTabBody(tab: tab))
               .toList(growable: false),
         ),
       ),
@@ -48,7 +48,7 @@ class SettingsAboutPage extends ConsumerWidget {
 class _AboutTabBody extends StatelessWidget {
   const _AboutTabBody({required this.tab});
 
-  final AboutTab tab;
+  final AboutPageTabSpec tab;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +65,7 @@ class _AboutTabBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ...List<Widget>.generate(tab.sections.length, (int index) {
-            final AboutSection section = tab.sections[index];
+            final AboutPageSectionSpec section = tab.sections[index];
             return Padding(
               padding: EdgeInsets.only(
                 bottom: index == tab.sections.length - 1 ? 0 : 16,
@@ -82,7 +82,7 @@ class _AboutTabBody extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.section});
 
-  final AboutSection section;
+  final AboutPageSectionSpec section;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +116,7 @@ class _SectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ...List<Widget>.generate(section.items.length, (int index) {
-              final AboutItem item = section.items[index];
+              final AboutPageItemSpec item = section.items[index];
               return Padding(
                 padding: EdgeInsets.only(
                   bottom: index == section.items.length - 1 ? 0 : 10,
@@ -134,7 +134,7 @@ class _SectionCard extends StatelessWidget {
 class _ItemPanel extends StatelessWidget {
   const _ItemPanel({required this.item});
 
-  final AboutItem item;
+  final AboutPageItemSpec item;
 
   @override
   Widget build(BuildContext context) {

@@ -3,9 +3,9 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
-import 'package:quill_diary/presentation/settings/state/sponsor_billing_state.dart';
 
 final googleBillingServiceProvider = Provider<GoogleBillingService>((Ref ref) {
   final GoogleBillingService service = GoogleBillingService();
@@ -18,7 +18,7 @@ final sponsorBillingProvider =
       SponsorBillingController.new,
     );
 final sponsorBillingLifecycleProvider = Provider<void>((Ref ref) {
-  if (!ref.watch(supportedPlatformProvider)) {
+  if (!ref.watch(vaultPlatformSupportProvider)) {
     return;
   }
   unawaited(ref.read(sponsorBillingProvider.notifier).ensureInitialized());

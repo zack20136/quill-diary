@@ -9,7 +9,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/session/fake_session_vault_repository.dart';
@@ -18,7 +18,7 @@ void main() {
   test('effectiveAppSessionProvider 會優先回傳本地 session state', () async {
     final ProviderContainer container = ProviderContainer(
       overrides: [
-        supportedPlatformProvider.overrideWith((Ref ref) => true),
+        vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
         vaultRepositoryProvider.overrideWithValue(
           FakeSessionVaultRepository(metadata: null),
         ),
@@ -96,7 +96,7 @@ ProviderContainer _buildSessionContainer(
 ) {
   return ProviderContainer(
     overrides: [
-      supportedPlatformProvider.overrideWith((Ref ref) => true),
+      vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
       vaultRepositoryProvider.overrideWithValue(repository),
       personalizationPreferencesProvider.overrideWith(
         _FixedPersonalizationPreferencesController.new,

@@ -11,14 +11,14 @@ import '../../../../shared/presentation/page_style.dart';
 import '../../../../../application/tag/tag_providers.dart';
 import '../../../../shared/utils/user_facing_error.dart';
 import '../../home_layout.dart';
-import '../../providers/home_providers.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import '../../../../application/session/state/app_session_state.dart';
-import '../../state/home_state.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import '../entry_widgets.dart';
 import '../home_scroll_affordance.dart';
 import '../home_shared_widgets.dart';
 import 'calendar_day_cell.dart';
-import 'calendar_helpers.dart';
+import 'calendar_layout_policy.dart';
 
 class CalendarSectionShell extends StatelessWidget {
   const CalendarSectionShell({required this.child, super.key});
@@ -142,8 +142,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
         ),
       );
     }
-
-    // 換月重載時保留版面，僅月曆表格區顯示載入狀態，避免整頁閃爍。
+    // 月份格線載入時保留外層框架，避免高度跳動。
     final bool monthGridLoading = monthEntriesAsync.isLoading;
     final List<EntryIndexRecord> monthEntries = monthGridLoading
         ? const <EntryIndexRecord>[]

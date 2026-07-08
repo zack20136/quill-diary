@@ -1,8 +1,9 @@
 import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'settings_messages.dart';
 
-extension PortableImportResultMessages on PortableImportResult {
+import 'settings_text.dart';
+
+extension PortableImportResultPresentation on PortableImportResult {
   bool isFailure(AppLocalizations l10n) =>
       failureCode != null ||
       failureMessage != null ||
@@ -33,12 +34,10 @@ extension PortableImportResultMessages on PortableImportResult {
   }
 
   String messageWhenNoEntriesImported(AppLocalizations l10n) {
-    final String fromCode = settingsImportExportMessageForFailureCode(
-      l10n,
-      failureCode,
-    );
-    if (fromCode.isNotEmpty) {
-      return fromCode;
+    final String messageFromFailureCode =
+        settingsImportExportMessageForFailureCode(l10n, failureCode);
+    if (messageFromFailureCode.isNotEmpty) {
+      return messageFromFailureCode;
     }
     if (failureMessage != null) {
       return failureMessage!;

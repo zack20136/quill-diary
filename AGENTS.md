@@ -64,7 +64,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 <flutter-args>
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 --version
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 doctor -v
-powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/features/editor/
+powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/application/editor/
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 pub get
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 run -d chrome
 ```

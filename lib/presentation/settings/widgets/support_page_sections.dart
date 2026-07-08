@@ -1,10 +1,20 @@
-part of 'support_page.dart';
+import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
-class _ProductsSection extends StatelessWidget {
-  const _ProductsSection({
+import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+
+import '../support_page_copy.dart';
+
+class SupportProductsSection extends StatelessWidget {
+  const SupportProductsSection({
     required this.billing,
     required this.onBuy,
     required this.onRetryLoad,
+    super.key,
   });
 
   final SponsorBillingState billing;
@@ -101,8 +111,8 @@ class _ProductsSection extends StatelessWidget {
                 ),
               )
             else if (billing.productLoadError != null) ...<Widget>[
-              _ProductLoadNotice(
-                notice: supportNoticeForProductLoadError(
+              _SupportProductLoadNoticeCard(
+                notice: supportProductLoadNotice(
                   l10n,
                   billing.productLoadError,
                 ),
@@ -120,7 +130,7 @@ class _ProductsSection extends StatelessWidget {
                   index++
                 ) ...<Widget>[
                   if (index > 0) const SizedBox(height: 10),
-                  _SponsorProductTile(
+                  _SupportProductTile(
                     product: billing.products[index],
                     enabled: buttonsEnabled,
                     onPressed: () => onBuy(billing.products[index].id),
@@ -128,7 +138,7 @@ class _ProductsSection extends StatelessWidget {
                 ],
               ],
             ] else if (!billing.isAvailable)
-              _InlineMessage(
+              _SupportInlineMessage(
                 icon: Icons.storefront_outlined,
                 message: l10n.settingsSupportBillingUnavailableMessage,
                 color: cs.onSurfaceVariant,
@@ -137,7 +147,7 @@ class _ProductsSection extends StatelessWidget {
               if (billing.notFoundProductIds.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _InlineMessage(
+                  child: _SupportInlineMessage(
                     icon: Icons.info_outline_rounded,
                     message: l10n.settingsSupportProductsPartialMessage,
                     color: cs.onSurfaceVariant,
@@ -149,13 +159,71 @@ class _ProductsSection extends StatelessWidget {
                 index++
               ) ...<Widget>[
                 if (index > 0) const SizedBox(height: 10),
-                _SponsorProductTile(
+                _SupportProductTile(
                   product: billing.products[index],
                   enabled: buttonsEnabled,
                   onPressed: () => onBuy(billing.products[index].id),
                 ),
               ],
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SupportInfoCard extends StatelessWidget {
+  const SupportInfoCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        border: Border.fromBorderSide(context.appColors.outlineBorder()),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, color: cs.onSurfaceVariant, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    body,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -185,8 +253,8 @@ AppFeedbackBanner? _purchaseStatusBanner(
   };
 }
 
-class _SponsorProductTile extends StatelessWidget {
-  const _SponsorProductTile({
+class _SupportProductTile extends StatelessWidget {
+  const _SupportProductTile({
     required this.product,
     required this.enabled,
     required this.onPressed,
@@ -311,15 +379,15 @@ class _SponsorProductTile extends StatelessWidget {
   }
 }
 
-class _ProductLoadNotice extends StatelessWidget {
-  const _ProductLoadNotice({
+class _SupportProductLoadNoticeCard extends StatelessWidget {
+  const _SupportProductLoadNoticeCard({
     required this.notice,
     required this.onRetry,
     required this.isRefreshing,
     required this.isError,
   });
 
-  final SupportNotice notice;
+  final SupportProductLoadNotice notice;
   final VoidCallback onRetry;
   final bool isRefreshing;
   final bool isError;
@@ -402,8 +470,8 @@ class _ProductLoadNotice extends StatelessWidget {
   }
 }
 
-class _InlineMessage extends StatelessWidget {
-  const _InlineMessage({
+class _SupportInlineMessage extends StatelessWidget {
+  const _SupportInlineMessage({
     required this.icon,
     required this.message,
     required this.color,
@@ -434,63 +502,6 @@ class _InlineMessage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SupportInfoCard extends StatelessWidget {
-  const _SupportInfoCard({
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(context.appColors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(icon, color: cs.onSurfaceVariant, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

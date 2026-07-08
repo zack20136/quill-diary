@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/shared/test_l10n.dart';

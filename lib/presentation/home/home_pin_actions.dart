@@ -2,13 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'providers/home_providers.dart';
-import 'state/home_state.dart';
 
 Future<void> togglePinSelectedHomeEntries(
   BuildContext context,

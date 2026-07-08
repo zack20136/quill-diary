@@ -5,9 +5,9 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import '../vault_transfer_access.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'drive_account_status.dart';
 import 'settings_sections.dart';
 
@@ -25,7 +25,7 @@ class DriveBackupSection extends ConsumerWidget {
     super.key,
   });
 
-  final VaultTransferAccess access;
+  final VaultTransferCapabilities access;
   final bool canManageDriveAccount;
   final bool isGoogleDriveConfigured;
   final bool busy;
@@ -92,7 +92,7 @@ class _DriveConnectionErrorContent extends StatelessWidget {
   });
 
   final String message;
-  final VaultTransferAccess access;
+  final VaultTransferCapabilities access;
   final bool busy;
   final VoidCallback onRetry;
 
@@ -163,7 +163,7 @@ class _DriveBackupContent extends StatelessWidget {
   });
 
   final DriveConnectionState connectionState;
-  final VaultTransferAccess access;
+  final VaultTransferCapabilities access;
   final bool canManageDriveAccount;
   final bool busy;
   final VoidCallback onLink;

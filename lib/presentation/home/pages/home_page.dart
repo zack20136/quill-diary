@@ -11,7 +11,7 @@ import 'package:quill_diary/application/session/providers/session_providers.dart
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_layout.dart';
 import '../providers/home_bottom_chrome_provider.dart';
-import '../state/home_state.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import '../widgets/home_circle_action_button.dart';
 import '../widgets/home_selection_toolbar.dart';
 import '../widgets/home_shared_widgets.dart';

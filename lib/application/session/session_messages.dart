@@ -4,8 +4,8 @@ import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
 import 'state/app_session_state.dart';
 
 export '../../infrastructure/security/unlock_mode_policy.dart'

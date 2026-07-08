@@ -2,19 +2,15 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import 'package:quill_diary/presentation/settings/state/sponsor_billing_state.dart';
+import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
+import 'package:quill_diary/presentation/settings/support_page_copy.dart';
 import '../widgets/settings_info_cards.dart';
-
-part 'support_page_widgets.dart';
+import '../widgets/support_page_sections.dart';
 
 class SupportPage extends ConsumerStatefulWidget {
   const SupportPage({super.key});
@@ -70,7 +66,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
               endAlpha: 0.12,
             ),
             const SizedBox(height: 20),
-            _ProductsSection(
+            SupportProductsSection(
               billing: billing,
               onBuy: (String productId) {
                 unawaited(
@@ -88,7 +84,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
               },
             ),
             const SizedBox(height: 16),
-            _SupportInfoCard(
+            SupportInfoCard(
               icon: Icons.payments_outlined,
               title: l10n.settingsSupportComplianceCardTitle,
               body: l10n.settingsSupportComplianceCardBody,

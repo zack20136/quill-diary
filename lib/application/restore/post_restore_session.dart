@@ -1,13 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
-import 'package:quill_diary/presentation/editor/providers/editor_draft_providers.dart';
-import 'package:quill_diary/presentation/home/providers/home_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_route_snapshot.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/database/database_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 
 import 'restore_prepared_context.dart';
 
@@ -87,7 +88,7 @@ Future<AppSessionState> _unlockWithRecoveryKey(
   try {
     await ref.read(appSessionProvider.notifier).unlockWithRecovery(recoveryKey);
   } catch (_) {
-    // unlockWithRecovery 已更新 session 狀態。
+    // unlockWithRecovery 失敗時會自行更新 session 狀態。
   }
   return ref.read(appSessionProvider);
 }

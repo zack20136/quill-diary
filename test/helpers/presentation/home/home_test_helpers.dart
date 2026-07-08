@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 
 import '../../vault/fake_entry_index_vault_repository.dart';
 

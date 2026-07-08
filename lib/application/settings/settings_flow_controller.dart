@@ -11,16 +11,16 @@ import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/presentation/editor/providers/editor_providers.dart';
-import 'package:quill_diary/presentation/home/providers/home_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
-import 'package:quill_diary/presentation/settings/portable_import_result_messages.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import 'package:quill_diary/presentation/settings/unlock_mode_change.dart';
+import 'package:quill_diary/application/settings/portable_import_result_presenter.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/application/settings/unlock_mode_change_flow.dart';
 import 'settings_actions.dart';
 
 final settingsFlowControllerProvider = Provider<SettingsFlowController>((

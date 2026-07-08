@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/presentation/settings/settings_messages.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/presentation/settings/backup_security_overview.dart';
+import 'package:quill_diary/presentation/settings/security_overview_item.dart';
+import 'package:quill_diary/application/settings/settings_health_level.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 

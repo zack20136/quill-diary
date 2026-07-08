@@ -6,7 +6,7 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/vault_transfer_access.dart';
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
 import 'package:quill_diary/presentation/settings/widgets/local_backup_section.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
@@ -22,7 +22,7 @@ void main() {
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
-    required VaultTransferAccess access,
+    required VaultTransferCapabilities access,
     bool canManageDriveAccount = false,
     bool busy = false,
   }) async {
@@ -58,8 +58,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  VaultTransferAccess lockedAccess({required bool hasRecoveryKey}) {
-    return VaultTransferAccess.fromContext(
+  VaultTransferCapabilities lockedAccess({required bool hasRecoveryKey}) {
+    return VaultTransferCapabilities.fromSessionContext(
       l10n: testL10n,
       hasUnlockedSession: false,
       hasRecoveryKey: hasRecoveryKey,

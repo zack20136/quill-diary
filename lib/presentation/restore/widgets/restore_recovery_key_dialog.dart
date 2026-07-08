@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
-import '../../settings/settings_messages.dart';
+import '../../settings/restore_precheck_presenter.dart';
 
 Future<String?> showRestoreRecoveryKeyDialog(
   BuildContext context, {

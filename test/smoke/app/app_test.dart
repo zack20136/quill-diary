@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/app/app.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
@@ -11,10 +12,9 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/providers/core_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/editor/providers/editor_draft_providers.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
@@ -51,7 +51,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('App 預設使用繁體中文 locale', (WidgetTester tester) async {
+  testWidgets('App 會套用儲存的預設 locale', (WidgetTester tester) async {
     final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 
@@ -70,7 +70,7 @@ void main() {
     expect(app.locale, appZhLocale);
   });
 
-  testWidgets('QuillDiaryApp 會響應 session navigation request 導頁', (
+  testWidgets('QuillDiaryApp 會處理 session navigation request 導頁', (
     WidgetTester tester,
   ) async {
     final ProviderContainer container = _buildSmokeTestContainer();
@@ -100,7 +100,7 @@ void main() {
 ProviderContainer _buildSmokeTestContainer() {
   return ProviderContainer(
     overrides: [
-      supportedPlatformProvider.overrideWith((Ref ref) => false),
+      vaultPlatformSupportProvider.overrideWith((Ref ref) => false),
       vaultRepositoryProvider.overrideWithValue(
         FakeEntryIndexVaultRepository(),
       ),
