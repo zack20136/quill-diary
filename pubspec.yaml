@@ -3,7 +3,7 @@ description: "Privacy-first offline diary for Android with local encryption, rec
 license: AGPL-3.0-or-later
 publish_to: 'none'
 
-version: 1.0.0+12
+version: 1.0.0+13
 
 environment:
   sdk: ^3.11.5
