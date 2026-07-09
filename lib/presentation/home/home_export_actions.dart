@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -73,6 +72,7 @@ Future<void> exportEntriesAsHtml(
       context.l10n.homeHtmlExportSuccess(
         DisplayFormat.formatSavedFileNameForDisplay(savedPath),
       ),
+      tone: AppFeedbackTone.success,
     );
   } on StateError catch (error) {
     if (!context.mounted) {
@@ -173,9 +173,8 @@ Future<void> deleteSelectedHomeEntries(
     return;
   }
 
-  final VaultRepository repository = ref.read(vaultRepositoryProvider);
   for (final EntryId id in selectedIds) {
-    await repository.deleteEntry(session, id);
+    await ref.read(vaultEntryStoreProvider).deleteEntry(session, id);
   }
 
   ref.read(homeEntrySelectionProvider.notifier).clear();
@@ -183,4 +182,9 @@ Future<void> deleteSelectedHomeEntries(
     return;
   }
   refreshHomeIndexCaches(ref);
+  showAppFeedbackSnackBar(
+    context,
+    context.l10n.homeEntriesDeletedSuccess(selectedIds.length),
+    tone: AppFeedbackTone.success,
+  );
 }

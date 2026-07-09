@@ -10,7 +10,7 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 void showGalleryDownloadSnackBar(
   BuildContext context,
   String message, {
-  AppFeedbackTone tone = AppFeedbackTone.info,
+  AppFeedbackTone tone = AppFeedbackTone.success,
 }) {
   showAppFeedbackSnackBar(context, message, tone: tone);
 }

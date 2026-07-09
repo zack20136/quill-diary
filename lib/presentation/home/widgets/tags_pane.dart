@@ -167,7 +167,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     final int entryCount = _entriesMatchingTag(records, label).length;
 
     await ref
-        .read(vaultRepositoryProvider)
+        .read(vaultTagServiceProvider)
         .removeTagFromAllEntries(session, label);
     ref.invalidate(tagCatalogProvider);
     ref.invalidate(tagAccentArgbMapProvider);
@@ -187,6 +187,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       entryCount == 0
           ? context.l10n.homeTagDeleted(label)
           : homeTagRemovedFromEntries(context.l10n, entryCount, label),
+      tone: AppFeedbackTone.success,
     );
   }
 
@@ -222,7 +223,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     setState(() => _seedingDefaultTags = true);
     try {
       final bool created = await ref
-          .read(vaultRepositoryProvider)
+          .read(vaultTagServiceProvider)
           .seedDefaultTagCatalogIfEmpty(
             locale: Localizations.localeOf(context),
           );
@@ -235,7 +236,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       if (created) {
         showAppFeedbackSnackBar(
           context,
-          context.l10n.homeCreateDefaultTagsButton,
+          context.l10n.homeCreateDefaultTagsSuccess,
+          tone: AppFeedbackTone.success,
         );
       }
     } finally {

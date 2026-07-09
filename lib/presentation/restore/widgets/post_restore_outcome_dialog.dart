@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
-import '../post_restore_outcome.dart';
 
 Future<bool> showPostRestoreOutcomeDialog(
   BuildContext context, {
-  required PostRestoreOutcome outcome,
+  required SettingsRestorePrompt outcome,
 }) async {
   final bool? primaryPressed = await showDialog<bool>(
     context: context,
@@ -50,7 +50,7 @@ Future<bool> showPostRestoreOutcomeDialog(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             icon: Icon(
               outcome.primaryAction ==
-                      PostRestorePrimaryAction.retryVerification
+                      SettingsRestorePrimaryAction.retryVerification
                   ? kSessionRetryVerificationIcon
                   : Icons.key_outlined,
             ),

@@ -340,6 +340,7 @@
   "homeNoTagsTitle": "尚未有標籤",
   "homeNoTagsMessage": "可點下方按鈕建立一組預設標籤，或使用右上角的「+」自行新增；即使尚未套用到日記也會保留在清單中。",
   "homeCreateDefaultTagsButton": "建立預設標籤",
+  "homeCreateDefaultTagsSuccess": "已建立預設標籤",
   "homeTagsSectionTitle": "標籤（{countSummary}）",
   "@homeTagsSectionTitle": {
     "placeholders": {
@@ -366,6 +367,14 @@
       },
       "label": {
         "type": "String"
+      }
+    }
+  },
+  "homeEntriesDeletedSuccess": "已刪除 {count} 篇日記",
+  "@homeEntriesDeletedSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -606,6 +615,7 @@
   "settingsRecoveryKeySaveDialogHint": "請立即保存。關閉此畫面後不會再次顯示。",
   "settingsRecoveryKeyCopyButton": "複製",
   "settingsRecoveryKeyCopiedMessage": "已複製到剪貼簿",
+  "tagColorCodeCopiedMessage": "色碼已複製",
   "settingsRecoveryKeyRotateDialogTitle": "更新復原金鑰？",
   "settingsRecoveryKeyRotateDialogBody": "將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。",
   "settingsSecurityOverviewSectionTitle": "安全狀態",

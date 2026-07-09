@@ -4,8 +4,10 @@ import 'package:quill_diary/application/session/providers/session_providers.dart
 import 'package:quill_diary/application/session/session_route_snapshot.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/database_providers.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
@@ -13,7 +15,7 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'restore_prepared_context.dart';
 
 Future<AppSessionState> finishRestoreSession(
-  WidgetRef ref, {
+  Ref ref, {
   required RestorePreparedContext prepared,
   UnlockedVaultSession? livePriorSession,
 }) async {
@@ -43,7 +45,7 @@ Future<AppSessionState> finishRestoreSession(
           prepared.backupRecoveryKey?.trim().isNotEmpty == true;
       if (!usedRecoveryKey && !resumeTrustedSessionAfterRestore) {
         await ref
-            .read(vaultRepositoryProvider)
+            .read(vaultRepairServiceProvider)
             .rebuildIndex(sessionState.session!);
       }
     }
@@ -52,7 +54,15 @@ Future<AppSessionState> finishRestoreSession(
     ref.read(sessionRouteSnapshotProvider.notifier).clear();
     ref.read(appSessionProvider.notifier).endTrustedUnlockBootstrap();
     if (sessionState.isUnlocked && sessionState.session != null) {
-      refreshEntryIndexCaches(ref);
+      ref
+        ..invalidate(homeEntryIndexListProvider)
+        ..invalidate(homePinnedEntryIdsProvider)
+        ..invalidate(calendarMonthEntryDatesProvider)
+        ..invalidate(calendarMonthEntriesProvider)
+        ..invalidate(calendarEntriesProvider)
+        ..invalidate(allEntryIndexRecordsProvider)
+        ..invalidate(tagCatalogProvider);
+      ref.read(entryIndexRevisionProvider.notifier).bump();
     }
     ref.invalidate(sessionStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);
@@ -60,7 +70,7 @@ Future<AppSessionState> finishRestoreSession(
 }
 
 Future<AppSessionState> _startupRestoredSession(
-  WidgetRef ref, {
+  Ref ref, {
   required RestorePreparedContext prepared,
   UnlockedVaultSession? livePriorSession,
 }) async {
@@ -82,7 +92,7 @@ Future<AppSessionState> _startupRestoredSession(
 }
 
 Future<AppSessionState> _unlockWithRecoveryKey(
-  WidgetRef ref,
+  Ref ref,
   String recoveryKey,
 ) async {
   try {

@@ -14,7 +14,7 @@ final tagCatalogProvider = FutureProvider<List<TagCatalogItem>>((
   if (!state.isUnlocked || state.session == null) {
     return const <TagCatalogItem>[];
   }
-  return ref.watch(vaultRepositoryProvider).listTagCatalog();
+  return ref.watch(vaultTagServiceProvider).listTagCatalog();
 });
 final tagAccentArgbMapProvider = FutureProvider<Map<String, int>>((
   Ref ref,

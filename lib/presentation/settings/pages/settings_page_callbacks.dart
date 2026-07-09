@@ -1,11 +1,10 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'settings_page.dart';
 
 extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _openLegalLink(String url) async {
+    final BuildContext context = pageContext;
     final bool opened = await launchExternalUrl(url);
-    if (!mounted || opened) {
+    if (!context.mounted || opened) {
       return;
     }
     final AppLocalizations l10n = context.l10n;
@@ -67,12 +66,12 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final bool hasUnlockedSession = pageAccess.hasUnlockedSession;
     final AppUnlockMode mode =
         unlockModeAsync.asData?.value ?? AppUnlockMode.none;
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     return SettingsSectionCard(
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
       description: l10n.settingsSecurityOverviewSectionDescription,
-      child: ref
+      child: pageRef
           .watch(backupStatusProvider)
           .when(
             loading: () => const SettingsSectionLoading(),
@@ -141,15 +140,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                                       sessionState.status ==
                                           AppLockStatus.recoveryRequired
                                       ? () => _runBusy(() async {
-                                          await ref
-                                              .read(appSessionProvider.notifier)
-                                              .unlockWithRecovery(
-                                                _recoveryKeyInputController.text
-                                                    .trim(),
-                                              );
-                                          refreshEntryIndexCaches(ref);
-                                          ref.invalidate(
-                                            trustedDeviceAccessProvider,
+                                          _showFeedback(
+                                            await _settingsFlow
+                                                .unlockWithRecovery(
+                                                  l10n,
+                                                  _recoveryKeyInputController
+                                                      .text
+                                                      .trim(),
+                                                ),
                                           );
                                         })
                                       : null,
@@ -157,9 +155,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                                       sessionState.status ==
                                           AppLockStatus.unlocking
                                       ? () => _runBusy(() async {
-                                          await ref
-                                              .read(appSessionProvider.notifier)
-                                              .lock();
+                                          await _settingsFlow
+                                              .cancelRecoveryUnlock();
                                         })
                                       : null,
                                 ),
@@ -191,7 +188,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     required String body,
   }) {
     return showSettingsDeleteBackupDialog(
-      context: context,
+      context: pageContext,
       title: title,
       body: body,
     );
@@ -200,19 +197,19 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<LocalBackupFile?> _pickLocalBackup(
     List<LocalBackupFile> backups,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     if (backups.isEmpty) {
       _showFeedback(SettingsFlowFeedback(l10n.settingsLocalBackupNoBackups));
       return null;
     }
-    if (!mounted) {
+    if (!isMounted) {
       return null;
     }
     final Map<String, LocalBackupFile> backupsById = <String, LocalBackupFile>{
       for (final LocalBackupFile backup in backups) backup.path: backup,
     };
     final BackupPickListItem? picked = await showSettingsBackupPickerDialog(
-      context: context,
+      context: pageContext,
       title: l10n.settingsLocalBackupPickDialogTitle,
       emptyMessage: l10n.settingsLocalBackupNoBackups,
       deleteTooltip: l10n.settingsLocalBackupDeleteBackupTooltip,
@@ -229,9 +226,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
               fileName: backup.name,
               sizeLabel: _formatBytes(backup.sizeBytes),
               onDelete: () async {
-                await ref
-                    .read(settingsActionsProvider)
-                    .deleteAppLocalBackup(backup);
+                await _settingsFlow.deleteAppLocalBackup(backup);
                 _showFeedback(
                   SettingsFlowFeedback(
                     l10n.settingsLocalBackupDeleteBackupSuccess(backup.name),
@@ -249,19 +244,19 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<DriveBackupFile?> _pickDriveBackup(
     List<DriveBackupFile> backups,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     if (backups.isEmpty) {
       _showFeedback(SettingsFlowFeedback(l10n.settingsDriveBackupNoBackups));
       return null;
     }
-    if (!mounted) {
+    if (!isMounted) {
       return null;
     }
     final Map<String, DriveBackupFile> backupsById = <String, DriveBackupFile>{
       for (final DriveBackupFile backup in backups) backup.id: backup,
     };
     final BackupPickListItem? picked = await showSettingsBackupPickerDialog(
-      context: context,
+      context: pageContext,
       title: l10n.settingsDriveBackupPickDialogTitle,
       emptyMessage: l10n.settingsDriveBackupNoBackups,
       deleteTooltip: l10n.settingsDriveBackupDeleteBackupTooltip,
@@ -280,9 +275,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                   ? null
                   : _formatBytes(backup.sizeBytes!),
               onDelete: () async {
-                await ref
-                    .read(settingsActionsProvider)
-                    .deleteDriveBackup(backup);
+                await _settingsFlow.deleteDriveBackup(backup);
                 _showFeedback(
                   SettingsFlowFeedback(
                     l10n.settingsDriveBackupDeleteBackupSuccess(backup.name),
@@ -298,19 +291,20 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _importDocuments() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     _showFeedback(await _settingsFlow.importDocuments(l10n));
   }
 
   Future<void> _exportMarkdown() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     _showFeedback(await _settingsFlow.exportMarkdown(l10n));
   }
 
   Future<void> _createRecoveryKey() async {
+    final BuildContext context = pageContext;
     final AppLocalizations l10n = context.l10n;
     final String recoveryKey = await _settingsFlow.createRecoveryKey(l10n);
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
     await showRecoveryKeySaveDialog(
@@ -323,7 +317,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _createLocalBackup(
     BackupTaskProgressListener reportProgress,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     final BackupPersistResult result = await _settingsFlow.createLocalBackup(
       onProgress: reportProgress,
     );
@@ -338,7 +332,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _exportLocalBackup(
     BackupTaskProgressListener reportProgress,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     final BackupPersistResult result = await _settingsFlow.exportLocalBackup(
       l10n: l10n,
       onProgress: reportProgress,
@@ -354,10 +348,10 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _uploadDriveBackup(
     BackupTaskProgressListener reportProgress,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     String? driveAccountLabel;
     try {
-      final DriveConnectionState connection = await ref.read(
+      final DriveConnectionState connection = await pageRef.read(
         settingsDriveConnectionProvider.future,
       );
       driveAccountLabel = connection.accountLabel(l10n);
@@ -378,7 +372,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _runRestoreFromAppLocalBackup() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     try {
       final PreparedRestoreRequest? request = await _settingsFlow
           .prepareAppLocalRestore(pickBackup: _pickLocalBackup);
@@ -397,26 +391,26 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _repairVault() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     final SettingsRepairVaultResult result = await _settingsFlow.repairVault(
       l10n,
     );
-    if (!mounted) {
+    if (!isMounted) {
       return;
     }
-    setState(() => _lastVaultRepairReport = result.report);
+    updatePageState(() => _lastVaultRepairReport = result.report);
     _showFeedback(result.feedback);
   }
 
   String _formatLocalBackupTime(LocalBackupFile backup) {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     return DisplayFormat.formatDateTimeWithoutWeekday(l10n, backup.createdAt);
   }
 
   String _formatBytes(int bytes) => DisplayFormat.formatBytesForDisplay(bytes);
 
   Future<void> _runRestoreFromLocalBackup() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     try {
       final PreparedRestoreRequest? request = await _settingsFlow
           .prepareExternalRestore(l10n);
@@ -435,7 +429,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _runRestoreFromGoogleDrive() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     try {
       final List<DriveBackupFile> backups = await _settingsFlow
           .listDriveBackups();
@@ -467,21 +461,21 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _linkGoogleDrive() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     _showFeedback(await _settingsFlow.linkGoogleDrive(l10n));
   }
 
   Future<void> _switchGoogleDrive() async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     _showFeedback(await _settingsFlow.switchGoogleDrive(l10n));
   }
 
   Future<void> _disconnectGoogleDrive() async {
-    if (!mounted) {
+    if (!isMounted) {
       return;
     }
-    final AppLocalizations l10n = context.l10n;
-    final bool confirmed = await showDisconnectDriveDialog(context);
+    final AppLocalizations l10n = pageContext.l10n;
+    final bool confirmed = await showDisconnectDriveDialog(pageContext);
     if (!confirmed) {
       return;
     }
@@ -491,51 +485,44 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _restorePreparedRequest(PreparedRestoreRequest request) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     try {
-      final RestoreBackupFlow flow = RestoreBackupFlow(ref);
-      await flow.ensureRestoreAllowed(l10n);
-      if (!mounted) {
+      if (!isMounted) {
         return;
       }
       final bool confirmed = await showRestoreConfirmDialog(
-        context,
+        pageContext,
         request.precheck,
         driveBackupName: request.driveBackupName,
       );
-      if (!confirmed || !mounted) {
+      if (!confirmed || !isMounted) {
         return;
       }
       String? backupRecoveryKey;
       if (request.precheck.expectsRecoveryKeyAfterRestore) {
         backupRecoveryKey = await _collectValidatedRestoreRecoveryKey(
-          flow: flow,
           backupFile: request.backupFile,
           precheck: request.precheck,
         );
-        if (!mounted || backupRecoveryKey == null) {
+        if (!isMounted || backupRecoveryKey == null) {
           return;
         }
       }
-      final RestorePreparedContext prepared = RestorePreparedContext(
-        precheck: request.precheck,
-        backupRecoveryKey: backupRecoveryKey,
-      );
+      SettingsRestoreResult? result;
       await _runWithBackupProgress((
         BackupTaskProgressListener reportProgress,
       ) async {
-        final AppSessionState sessionState = await flow
-            .executeRestoreAndFinishSession(
-              backupFile: request.backupFile,
-              prepared: prepared,
-              onProgress: reportProgress,
-            );
-        await _presentRestoreSuccess(
-          sessionState: sessionState,
-          prepared: prepared,
-          driveBackupName: request.driveBackupName,
+        result = await _settingsFlow.restorePreparedRequest(
+          l10n: l10n,
+          request: request,
+          backupRecoveryKey: backupRecoveryKey,
+          recoveryKeyAlreadyVerified: backupRecoveryKey != null,
+          onProgress: reportProgress,
         );
       });
+      if (result != null) {
+        await _presentRestoreResult(result!);
+      }
     } on StateError catch (error) {
       _showFeedback(
         SettingsFlowFeedback(
@@ -543,20 +530,17 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           tone: SettingsFlowFeedbackTone.error,
         ),
       );
-    } finally {
-      await request.dispose();
-      ref.invalidate(trustedDeviceAccessProvider);
     }
   }
 
   Future<String?> _collectValidatedRestoreRecoveryKey({
-    required RestoreBackupFlow flow,
     required File backupFile,
     required RestorePrecheck precheck,
   }) async {
+    final BuildContext context = pageContext;
     String? validationError;
     while (true) {
-      if (!mounted) {
+      if (!context.mounted) {
         return null;
       }
       final String? recoveryKey = await showRestoreRecoveryKeyDialog(
@@ -564,14 +548,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         precheck: precheck,
         validationError: validationError,
       );
-      if (!mounted) {
+      if (!context.mounted) {
         return null;
       }
       if (recoveryKey == null) {
         return null;
       }
       try {
-        await flow.verifyBackupRecoveryKey(backupFile, recoveryKey);
+        await _settingsFlow.verifyRestoreRecoveryKey(backupFile, recoveryKey);
         return recoveryKey;
       } on StateError catch (error) {
         validationError = error.message;
@@ -579,56 +563,25 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     }
   }
 
-  Future<void> _presentRestoreSuccess({
-    required AppSessionState sessionState,
-    required RestorePreparedContext prepared,
-    String? driveBackupName,
-  }) async {
-    if (!mounted) {
+  Future<void> _presentRestoreResult(SettingsRestoreResult result) async {
+    final BuildContext context = pageContext;
+    if (!context.mounted) {
       return;
     }
-    final AppLocalizations l10n = context.l10n;
-    final String? trimmedKey = prepared.backupRecoveryKey?.trim();
-    final bool unlockFailedAfterKey =
-        trimmedKey != null &&
-        trimmedKey.isNotEmpty &&
-        sessionState.status != AppLockStatus.unlocked;
-
-    if (sessionState.status == AppLockStatus.unlocked) {
-      context.go(AppRouter.homeRoute);
-      _showFeedback(
-        SettingsFlowFeedback(
-          driveAwarePostRestoreSnackBarMessage(
-            l10n: l10n,
-            status: sessionState.status,
-            driveBackupName: driveBackupName,
-          ),
-          tone: SettingsFlowFeedbackTone.success,
-        ),
-      );
-      return;
-    }
-
-    if (unlockFailedAfterKey ||
-        sessionState.status == AppLockStatus.locked ||
-        sessionState.status == AppLockStatus.recoveryRequired) {
-      final PostRestoreOutcome outcome = PostRestoreOutcome.fromSessionState(
-        l10n,
-        sessionState,
-        unlockFailedAfterRecoveryKey: unlockFailedAfterKey,
-      );
+    _showFeedback(result.feedback);
+    if (result.prompt != null) {
       final bool runPrimary = await showPostRestoreOutcomeDialog(
         context,
-        outcome: outcome,
+        outcome: result.prompt!,
       );
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       if (runPrimary) {
-        switch (outcome.primaryAction) {
-          case PostRestorePrimaryAction.retryVerification:
-            await ref.read(appSessionProvider.notifier).unlock();
-          case PostRestorePrimaryAction.openSettingsRecovery:
+        switch (result.prompt!.primaryAction) {
+          case SettingsRestorePrimaryAction.retryVerification:
+            await _settingsFlow.retryTrustedUnlock();
+          case SettingsRestorePrimaryAction.openSettingsRecovery:
             context.go(AppRouter.settingsRoute);
         }
       } else {
@@ -636,20 +589,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       }
       return;
     }
-
-    context.go(AppRouter.homeRoute);
-    _showFeedback(
-      SettingsFlowFeedback(
-        driveAwarePostRestoreSnackBarMessage(
-          l10n: l10n,
-          status: sessionState.status,
-          driveBackupName: driveBackupName,
-        ),
-        tone: sessionState.status == AppLockStatus.fatalError
-            ? SettingsFlowFeedbackTone.error
-            : SettingsFlowFeedbackTone.success,
-      ),
-    );
+    switch (result.navigationTarget) {
+      case SettingsRestoreNavigationTarget.home:
+        context.go(AppRouter.homeRoute);
+      case SettingsRestoreNavigationTarget.settings:
+        context.go(AppRouter.settingsRoute);
+      case null:
+        break;
+    }
   }
 
   Future<void> _retryTrustedUnlock() async {
@@ -657,12 +604,13 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _applyUnlockMode(AppUnlockMode mode) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     _showFeedback(await _settingsFlow.applyUnlockMode(l10n, mode));
   }
 
   Future<void> _rotateRecoveryKey() async {
-    if (!mounted) {
+    final BuildContext context = pageContext;
+    if (!context.mounted) {
       return;
     }
     final AppLocalizations l10n = context.l10n;
@@ -671,7 +619,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       return;
     }
     final String recoveryKey = await _settingsFlow.rotateRecoveryKey(l10n);
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
     await showRecoveryKeySaveDialog(
@@ -685,8 +633,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     Future<void> Function() action, {
     String? message,
   }) async {
-    final AppLocalizations l10n = context.l10n;
-    setState(() {
+    final AppLocalizations l10n = pageContext.l10n;
+    updatePageState(() {
       _busy = true;
       _busyMessage = message;
       _busyProgress = null;
@@ -701,8 +649,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() {
+      if (isMounted) {
+        updatePageState(() {
           _busy = false;
           _busyMessage = null;
           _busyProgress = null;
@@ -714,18 +662,18 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _runWithBackupProgress(
     Future<void> Function(BackupTaskProgressListener reportProgress) action,
   ) async {
-    final AppLocalizations l10n = context.l10n;
+    final AppLocalizations l10n = pageContext.l10n;
     void reportProgress(BackupTaskProgress progress) {
-      if (!mounted) {
+      if (!isMounted) {
         return;
       }
-      setState(() {
+      updatePageState(() {
         _busyMessage = settingsBackupTaskProgressLabel(l10n, progress);
         _busyProgress = progress.fraction;
       });
     }
 
-    setState(() {
+    updatePageState(() {
       _busy = true;
       _busyMessage = null;
       _busyProgress = null;
@@ -740,8 +688,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() {
+      if (isMounted) {
+        updatePageState(() {
           _busy = false;
           _busyMessage = null;
           _busyProgress = null;
@@ -757,52 +705,19 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     String Function(String message)? inspectFailedMessage,
     String? driveAccountLabel,
   }) async {
-    final BackupStatusStore store = ref.read(backupStatusStoreProvider);
-    switch (result.status) {
-      case BackupPersistStatus.success:
-        switch (action) {
-          case BackupStatusAction.localBackup:
-            await store.recordLocalBackupSuccess();
-          case BackupStatusAction.externalExport:
-            await store.recordExternalExportSuccess();
-          case BackupStatusAction.driveUpload:
-            await store.recordDriveUploadSuccess(
-              accountLabel: driveAccountLabel,
-            );
-        }
-        ref.invalidate(backupStatusProvider);
-      case BackupPersistStatus.inspectFailed:
-        final String message = result.message.trim().isNotEmpty
-            ? result.message.trim()
-            : context.l10n.settingsLocalBackupBackupInspectFailed('');
-        await store.recordFailure(action: action, message: message);
-        ref.invalidate(backupStatusProvider);
-      case BackupPersistStatus.cancelled:
-        break;
-    }
-    _showBackupPersistResult(
-      result,
-      onSuccess: onSuccess,
-      inspectFailedMessage: inspectFailedMessage,
-    );
-  }
-
-  void _showBackupPersistResult(
-    BackupPersistResult result, {
-    required String Function(String savedPath) onSuccess,
-    String Function(String message)? inspectFailedMessage,
-  }) {
     _showFeedback(
-      backupPersistFeedback(
-        context,
-        result,
+      await _settingsFlow.recordBackupPersistResult(
+        l10n: pageContext.l10n,
+        result: result,
+        action: action,
         onSuccess: onSuccess,
         inspectFailedMessage: inspectFailedMessage,
+        driveAccountLabel: driveAccountLabel,
       ),
     );
   }
 
   void _showFeedback(SettingsFlowFeedback? feedback) {
-    showSettingsFlowFeedback(context, feedback);
+    showSettingsFlowFeedback(pageContext, feedback);
   }
 }

@@ -17,7 +17,7 @@ final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
     return const <EntryIndexRecord>[];
   }
 
-  return ref.read(vaultRepositoryProvider).listEntries();
+  return ref.read(vaultEntryStoreProvider).listEntries();
 });
 
 final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
@@ -27,7 +27,7 @@ final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
     return const <EntryId>{};
   }
 
-  return ref.read(vaultRepositoryProvider).listPinnedEntryIds();
+  return ref.read(vaultTagServiceProvider).listPinnedEntryIds();
 });
 
 final homeEntryIndexListProvider = FutureProvider<List<EntryIndexRecord>>((
@@ -40,10 +40,10 @@ final homeEntryIndexListProvider = FutureProvider<List<EntryIndexRecord>>((
 
   final String query = ref.watch(homeSearchQueryProvider);
   if (query.trim().isEmpty) {
-    return ref.read(vaultRepositoryProvider).listEntries();
+    return ref.read(vaultEntryStoreProvider).listEntries();
   }
 
-  return ref.read(vaultRepositoryProvider).listEntries(searchQuery: query);
+  return ref.read(vaultEntryStoreProvider).listEntries(searchQuery: query);
 });
 
 final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
@@ -85,8 +85,8 @@ final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   }
 
   final List<EntryIndexRecord> entries = await ref
-      .read(vaultRepositoryProvider)
-      .listEntries(date: date);
+      .read(vaultEntryStoreProvider)
+      .listEntriesByDate(date);
   return entries..sort(compareEntriesNewestFirst);
 });
 
@@ -98,7 +98,7 @@ final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((
     return const <DateOnly>[];
   }
 
-  return ref.read(vaultRepositoryProvider).monthEntryDates(month);
+  return ref.read(vaultEntryStoreProvider).monthEntryDates(month);
 });
 
 final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
@@ -109,7 +109,7 @@ final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
     return const <EntryIndexRecord>[];
   }
 
-  return ref.read(vaultRepositoryProvider).listEntriesForMonth(month);
+  return ref.read(vaultEntryStoreProvider).listEntriesForMonth(month);
 });
 
 final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
@@ -148,7 +148,7 @@ final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   }
 
   final List<EntryIndexRecord> entries = await ref
-      .read(vaultRepositoryProvider)
+      .read(vaultEntryStoreProvider)
       .listEntriesForMonth(focusedMonth);
   return entries..sort(compareEntriesNewestFirst);
 });

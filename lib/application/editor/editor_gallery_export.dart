@@ -71,7 +71,7 @@ Future<Uint8List?> loadGalleryImageBytes({
         return null;
       }
       return ref
-          .read(vaultRepositoryProvider)
+          .read(vaultEntryStoreProvider)
           .readDecryptedAssetBytes(sessionState.session!, item.path);
   }
 }

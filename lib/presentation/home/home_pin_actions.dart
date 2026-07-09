@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -24,9 +23,10 @@ Future<void> togglePinSelectedHomeEntries(
   final bool allSelectedPinned = homeSelectionAllPinned(selectedIds, pinnedIds);
   final bool pin = !allSelectedPinned;
   final int count = selectedIds.length;
-  final VaultRepository repository = ref.read(vaultRepositoryProvider);
   try {
-    await repository.setEntriesPinned(selectedIds, pinned: pin);
+    await ref
+        .read(vaultTagServiceProvider)
+        .setEntriesPinned(selectedIds, pinned: pin);
   } catch (error) {
     if (!context.mounted) {
       return;
@@ -53,6 +53,7 @@ Future<void> togglePinSelectedHomeEntries(
     pin
         ? context.l10n.homePinEntriesSuccess(count)
         : context.l10n.homeUnpinEntriesSuccess(count),
+    tone: AppFeedbackTone.success,
   );
 }
 

@@ -36,6 +36,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.inlineCodeBackground,
     required this.galleryBackground,
     required this.galleryForeground,
+    required this.feedbackSuccessBackground,
+    required this.feedbackSuccessForeground,
     required this.tagAccentBackgroundAlpha,
     required this.tagAccentForegroundUseLightenBlend,
     required this.tagAccentForegroundBlendTarget,
@@ -78,6 +80,8 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color inlineCodeBackground;
   final Color galleryBackground;
   final Color galleryForeground;
+  final Color feedbackSuccessBackground;
+  final Color feedbackSuccessForeground;
   final double tagAccentBackgroundAlpha;
   final bool tagAccentForegroundUseLightenBlend;
   final Color tagAccentForegroundBlendTarget;
@@ -180,6 +184,12 @@ class AppColors extends ThemeExtension<AppColors> {
       // 看圖 overlay 固定黑底白字，不跟隨主題 surface，避免白底圖上看不見控制項。
       galleryBackground: scheme.scrim,
       galleryForeground: Colors.white,
+      feedbackSuccessBackground: isLight
+          ? const Color(0xFFE3ECE6)
+          : const Color(0xFF263730),
+      feedbackSuccessForeground: isLight
+          ? const Color(0xFF294239)
+          : const Color(0xFFD8E6DD),
       tagAccentBackgroundAlpha: isLight ? 0.12 : 0.24,
       tagAccentForegroundUseLightenBlend: !isLight,
       tagAccentForegroundBlendTarget: isLight
@@ -230,6 +240,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? inlineCodeBackground,
     Color? galleryBackground,
     Color? galleryForeground,
+    Color? feedbackSuccessBackground,
+    Color? feedbackSuccessForeground,
     double? tagAccentBackgroundAlpha,
     bool? tagAccentForegroundUseLightenBlend,
     Color? tagAccentForegroundBlendTarget,
@@ -276,6 +288,10 @@ class AppColors extends ThemeExtension<AppColors> {
       inlineCodeBackground: inlineCodeBackground ?? this.inlineCodeBackground,
       galleryBackground: galleryBackground ?? this.galleryBackground,
       galleryForeground: galleryForeground ?? this.galleryForeground,
+      feedbackSuccessBackground:
+          feedbackSuccessBackground ?? this.feedbackSuccessBackground,
+      feedbackSuccessForeground:
+          feedbackSuccessForeground ?? this.feedbackSuccessForeground,
       tagAccentBackgroundAlpha:
           tagAccentBackgroundAlpha ?? this.tagAccentBackgroundAlpha,
       tagAccentForegroundUseLightenBlend:
@@ -365,6 +381,14 @@ class AppColors extends ThemeExtension<AppColors> {
       )!,
       galleryBackground: lerpColor(galleryBackground, other.galleryBackground)!,
       galleryForeground: lerpColor(galleryForeground, other.galleryForeground)!,
+      feedbackSuccessBackground: lerpColor(
+        feedbackSuccessBackground,
+        other.feedbackSuccessBackground,
+      )!,
+      feedbackSuccessForeground: lerpColor(
+        feedbackSuccessForeground,
+        other.feedbackSuccessForeground,
+      )!,
       tagAccentBackgroundAlpha: t < 0.5
           ? tagAccentBackgroundAlpha
           : other.tagAccentBackgroundAlpha,

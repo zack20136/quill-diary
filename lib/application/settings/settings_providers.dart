@@ -24,15 +24,15 @@ final recoveryMetadataProvider = FutureProvider<RecoveryMetadata?>((
   if (localState.status == AppLockStatus.uninitialized) {
     await ref.watch(sessionStartupProvider.future);
   } else {
-    await ref.read(vaultRepositoryProvider).initialize();
+    await ref.read(vaultRecoveryServiceProvider).initialize();
   }
-  return ref.read(vaultRepositoryProvider).readRecoveryMetadata();
+  return ref.read(vaultRecoveryServiceProvider).readRecoveryMetadata();
 });
 
 final settingsDriveConnectionProvider =
     FutureProvider.autoDispose<DriveConnectionState>((Ref ref) async {
       return ref
-          .read(vaultTransferServiceProvider)
+          .read(vaultBackupServiceProvider)
           .getGoogleDriveConnectionState();
     });
 
@@ -44,5 +44,5 @@ final trustedDeviceAccessProvider = FutureProvider<bool>((Ref ref) async {
   if (!ref.watch(vaultPlatformSupportProvider)) {
     return false;
   }
-  return ref.read(vaultRepositoryProvider).hasTrustedDeviceAccess();
+  return ref.read(vaultRecoveryServiceProvider).hasTrustedDeviceAccess();
 });

@@ -1229,6 +1229,12 @@ abstract class AppLocalizations {
   /// **'建立預設標籤'**
   String get homeCreateDefaultTagsButton;
 
+  /// No description provided for @homeCreateDefaultTagsSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已建立預設標籤'**
+  String get homeCreateDefaultTagsSuccess;
+
   /// No description provided for @homeTagsSectionTitle.
   ///
   /// In zh, this message translates to:
@@ -1258,6 +1264,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已從 {entrySummary}日記移除「{label}」'**
   String homeTagRemovedFromEntries(String entrySummary, String label);
+
+  /// No description provided for @homeEntriesDeletedSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已刪除 {count} 篇日記'**
+  String homeEntriesDeletedSuccess(int count);
 
   /// No description provided for @homeTagIndexEmptyForTag.
   ///
@@ -1852,6 +1864,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已複製到剪貼簿'**
   String get settingsRecoveryKeyCopiedMessage;
+
+  /// No description provided for @tagColorCodeCopiedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'色碼已複製'**
+  String get tagColorCodeCopiedMessage;
 
   /// No description provided for @settingsRecoveryKeyRotateDialogTitle.
   ///

@@ -37,6 +37,7 @@ class RecoveryKeySaveDialog extends StatelessWidget {
     showAppFeedbackSnackBar(
       context,
       context.l10n.settingsRecoveryKeyCopiedMessage,
+      tone: AppFeedbackTone.success,
     );
   }
 

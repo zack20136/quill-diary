@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/presentation/home/providers/home_bottom_chrome_provider.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'page_style.dart';
 
-enum AppFeedbackTone { info, warning, error }
+enum AppFeedbackTone { info, success, warning, error }
 
 class AppFeedbackColors {
   const AppFeedbackColors({required this.background, required this.foreground});
@@ -16,13 +17,19 @@ class AppFeedbackColors {
 }
 
 AppFeedbackColors resolveAppFeedbackColors(
-  ColorScheme colorScheme,
+  BuildContext context,
   AppFeedbackTone tone,
 ) {
+  final ColorScheme colorScheme = Theme.of(context).colorScheme;
+  final AppColors appColors = context.appColors;
   return switch (tone) {
     AppFeedbackTone.info => AppFeedbackColors(
       background: colorScheme.primaryContainer,
       foreground: colorScheme.onPrimaryContainer,
+    ),
+    AppFeedbackTone.success => AppFeedbackColors(
+      background: appColors.feedbackSuccessBackground,
+      foreground: appColors.feedbackSuccessForeground,
     ),
     AppFeedbackTone.warning => AppFeedbackColors(
       background: colorScheme.secondaryContainer,
@@ -38,6 +45,7 @@ AppFeedbackColors resolveAppFeedbackColors(
 IconData defaultAppFeedbackIcon(AppFeedbackTone tone) {
   return switch (tone) {
     AppFeedbackTone.info => Icons.info_outline_rounded,
+    AppFeedbackTone.success => Icons.check_circle_outline_rounded,
     AppFeedbackTone.warning => Icons.warning_amber_rounded,
     AppFeedbackTone.error => Icons.error_outline_rounded,
   };
@@ -59,10 +67,7 @@ class AppFeedbackBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final AppFeedbackColors colors = resolveAppFeedbackColors(
-      theme.colorScheme,
-      tone,
-    );
+    final AppFeedbackColors colors = resolveAppFeedbackColors(context, tone);
     final IconData resolvedIcon = icon ?? defaultAppFeedbackIcon(tone);
 
     return DecoratedBox(
@@ -115,6 +120,7 @@ class _AppFeedbackOverlayHost {
     required BuildContext context,
     required String message,
     required AppFeedbackColors colors,
+    required IconData icon,
     required TextStyle? textStyle,
   }) {
     final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
@@ -130,6 +136,8 @@ class _AppFeedbackOverlayHost {
       builder: (BuildContext overlayContext) => _AppFeedbackToast(
         message: message,
         backgroundColor: colors.background,
+        icon: icon,
+        foregroundColor: colors.foreground,
         textStyle: textStyle,
         onDismissed: () {
           if (identical(_active?.entry, entry)) {
@@ -169,12 +177,16 @@ class _AppFeedbackToast extends StatefulWidget {
   const _AppFeedbackToast({
     required this.message,
     required this.backgroundColor,
+    required this.icon,
+    required this.foregroundColor,
     required this.textStyle,
     required this.onDismissed,
   });
 
   final String message;
   final Color backgroundColor;
+  final IconData icon;
+  final Color foregroundColor;
   final TextStyle? textStyle;
   final VoidCallback onDismissed;
 
@@ -280,20 +292,19 @@ void showAppFeedbackSnackBar(
   BuildContext context,
   String message, {
   AppFeedbackTone tone = AppFeedbackTone.info,
+  IconData? icon,
 }) {
   if (!context.mounted) {
     return;
   }
   final ThemeData theme = Theme.of(context);
-  final AppFeedbackColors colors = resolveAppFeedbackColors(
-    theme.colorScheme,
-    tone,
-  );
+  final AppFeedbackColors colors = resolveAppFeedbackColors(context, tone);
   final HomeBottomChromeSnackBarLift? lift = beginHomeSnackBarLift(context);
   final Future<void> dismissed = _feedbackOverlayHost.show(
     context: context,
     message: message,
     colors: colors,
+    icon: icon ?? defaultAppFeedbackIcon(tone),
     textStyle: theme.textTheme.bodyMedium?.copyWith(color: colors.foreground),
   );
   lift?.bind(dismissed);

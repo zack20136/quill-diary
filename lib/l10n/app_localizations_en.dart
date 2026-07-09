@@ -648,6 +648,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeCreateDefaultTagsButton => 'Create Default Tags';
 
   @override
+  String get homeCreateDefaultTagsSuccess => 'Default tags created';
+
+  @override
   String homeTagsSectionTitle(String countSummary) {
     return 'Tags ($countSummary)';
   }
@@ -667,6 +670,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String homeTagRemovedFromEntries(String entrySummary, String label) {
     return 'Removed \"$label\" from $entrySummary.';
+  }
+
+  @override
+  String homeEntriesDeletedSuccess(int count) {
+    return 'Deleted $count entries';
   }
 
   @override
@@ -1030,6 +1038,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRecoveryKeyCopiedMessage => 'Copied to clipboard';
+
+  @override
+  String get tagColorCodeCopiedMessage => 'Color code copied';
 
   @override
   String get settingsRecoveryKeyRotateDialogTitle => 'Update Recovery Key?';

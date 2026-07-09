@@ -248,6 +248,7 @@ AppFeedbackBanner? _purchaseStatusBanner(
     SponsorPurchasePhase.thanks => AppFeedbackBanner(
       icon: Icons.check_circle_rounded,
       message: l10n.settingsSupportThanksMessage,
+      tone: AppFeedbackTone.success,
     ),
     _ => null,
   };

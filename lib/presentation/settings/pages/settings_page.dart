@@ -8,14 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/app/app_identifiers.dart';
 import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/restore/restore_backup_flow.dart';
-import 'package:quill_diary/application/restore/restore_prepared_context.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/application/settings/settings_actions.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
@@ -27,11 +23,9 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/restore/post_restore_outcome.dart';
 import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
 import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -70,6 +64,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   SettingsFlowController get _settingsFlow =>
       ref.read(settingsFlowControllerProvider);
+
+  BuildContext get pageContext => context;
+
+  bool get isMounted => mounted;
+
+  WidgetRef get pageRef => ref;
+
+  void updatePageState(VoidCallback callback) {
+    setState(callback);
+  }
 
   @override
   void dispose() {

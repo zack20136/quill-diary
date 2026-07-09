@@ -48,7 +48,8 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
     }
     showAppFeedbackSnackBar(
       context,
-      context.l10n.settingsRecoveryKeyCopiedMessage,
+      context.l10n.tagColorCodeCopiedMessage,
+      tone: AppFeedbackTone.success,
     );
   }
 

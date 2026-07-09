@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_session_controller.dart';
 import 'providers/session_providers.dart';
 
 class AppLifecycleSessionBridge with WidgetsBindingObserver {

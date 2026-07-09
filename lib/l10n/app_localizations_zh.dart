@@ -628,6 +628,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeCreateDefaultTagsButton => '建立預設標籤';
 
   @override
+  String get homeCreateDefaultTagsSuccess => '已建立預設標籤';
+
+  @override
   String homeTagsSectionTitle(String countSummary) {
     return '標籤（$countSummary）';
   }
@@ -646,6 +649,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String homeTagRemovedFromEntries(String entrySummary, String label) {
     return '已從 $entrySummary日記移除「$label」';
+  }
+
+  @override
+  String homeEntriesDeletedSuccess(int count) {
+    return '已刪除 $count 篇日記';
   }
 
   @override
@@ -989,6 +997,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsRecoveryKeyCopiedMessage => '已複製到剪貼簿';
+
+  @override
+  String get tagColorCodeCopiedMessage => '色碼已複製';
 
   @override
   String get settingsRecoveryKeyRotateDialogTitle => '更新復原金鑰？';

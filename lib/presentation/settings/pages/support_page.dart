@@ -41,7 +41,11 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     ) {
       if (previous?.purchasePhase != SponsorPurchasePhase.thanks &&
           next.purchasePhase == SponsorPurchasePhase.thanks) {
-        showAppFeedbackSnackBar(context, l10n.settingsSupportThanksMessage);
+        showAppFeedbackSnackBar(
+          context,
+          l10n.settingsSupportThanksMessage,
+          tone: AppFeedbackTone.success,
+        );
         ref.read(sponsorBillingProvider.notifier).clearPurchaseSuccess();
       }
     });

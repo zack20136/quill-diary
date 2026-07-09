@@ -102,10 +102,10 @@ class _TagAccentComposerDialogState
 
     setState(() => _saving = true);
     try {
-      final vaultRepository = ref.read(vaultRepositoryProvider);
+      final vaultTagService = ref.read(vaultTagServiceProvider);
       final String? originalLabel = widget.initialDisplayLabel;
       if (widget.sessionForRename != null && originalLabel != null) {
-        await vaultRepository.renameTagCatalogItem(
+        await vaultTagService.renameTagCatalogItem(
           widget.sessionForRename!,
           fromLabel: originalLabel,
           toLabel: name,
@@ -113,7 +113,7 @@ class _TagAccentComposerDialogState
           accentIsCustom: _isCustom,
         );
       } else {
-        await vaultRepository.upsertTagAccentArgb(
+        await vaultTagService.upsertTagAccentArgb(
           name,
           colorArgb32(_accent),
           accentIsCustom: _isCustom,

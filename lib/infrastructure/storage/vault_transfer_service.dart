@@ -1,70 +1,24 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
-import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
-import '../../domain/shared/vault_backup_policy.dart';
 import '../../l10n/l10n.dart';
 import '../drive/drive_backup_service.dart';
 import 'backup_task_progress.dart';
 import 'external_directory_store.dart';
+import 'portable_transfer_service.dart';
 import 'restore_precheck.dart';
-import 'shared/archive_extract.dart';
-import 'shared/external_directory_picker.dart';
-import 'shared/external_file_delivery.dart';
 import 'shared/picked_file_materializer.dart';
 import 'vault_archive_io.dart';
+import 'vault_backup_service.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
+import 'vault_restore_service.dart';
+import 'vault_transfer_models.dart';
 
-typedef PickPortableFiles =
-    Future<FilePickerResult?> Function({
-      required String dialogTitle,
-      required List<String> allowedExtensions,
-    });
-
-enum BackupPersistStatus { success, inspectFailed, cancelled }
-
-final class BackupPersistResult {
-  const BackupPersistResult({
-    required this.status,
-    this.savedPath,
-    this.message = '',
-  });
-
-  final BackupPersistStatus status;
-  final String? savedPath;
-  final String message;
-}
-
-final class PickedBackupFile {
-  const PickedBackupFile({
-    required this.file,
-    required this.shouldDeleteAfterUse,
-  });
-
-  final File file;
-  final bool shouldDeleteAfterUse;
-}
-
-final class LocalBackupFile {
-  const LocalBackupFile({
-    required this.name,
-    required this.path,
-    required this.createdAt,
-    required this.sizeBytes,
-  });
-
-  final String name;
-  final String path;
-  final DateTime createdAt;
-  final int sizeBytes;
-}
+export 'vault_transfer_models.dart';
 
 class VaultTransferService {
   VaultTransferService({
@@ -78,664 +32,187 @@ class VaultTransferService {
     @visibleForTesting bool allowBytesFallback = false,
     @visibleForTesting CopyAndroidUriToPath? copyAndroidUriToPath,
     @visibleForTesting PickedFileMaterializer? pickedFileMaterializer,
-  }) : _archiveIo = archiveIo,
-       _driveBackupService = driveBackupService,
-       _vaultRepository = vaultRepository,
-       _externalDirectoryStore = externalDirectoryStore,
-       _pathStrategy = pathStrategy,
-       _pickPortableFiles = pickPortableFiles,
-       _pickedFileMaterializer =
-           pickedFileMaterializer ??
-           PickedFileMaterializer(
-             copyAndroidUriToPath: copyAndroidUriToPath,
-             readPlatformFileBytes: readPlatformFileBytes,
-             allowBytesFallback: allowBytesFallback,
-           );
+  }) : this.fromServices(
+         backupService: VaultBackupService(
+           archiveIo: archiveIo,
+           driveBackupService: driveBackupService,
+           externalDirectoryStore: externalDirectoryStore,
+           pathStrategy: pathStrategy,
+         ),
+         restoreService: VaultRestoreService(
+           archiveIo: archiveIo,
+           vaultRepository: vaultRepository,
+           backupService: VaultBackupService(
+             archiveIo: archiveIo,
+             driveBackupService: driveBackupService,
+             externalDirectoryStore: externalDirectoryStore,
+             pathStrategy: pathStrategy,
+           ),
+           pathStrategy: pathStrategy,
+           readPlatformFileBytes: readPlatformFileBytes,
+           allowBytesFallback: allowBytesFallback,
+           copyAndroidUriToPath: copyAndroidUriToPath,
+           pickedFileMaterializer: pickedFileMaterializer,
+         ),
+         portableTransferService: PortableTransferService(
+           archiveIo: archiveIo,
+           externalDirectoryStore: externalDirectoryStore,
+           pickPortableFiles: pickPortableFiles,
+           readPlatformFileBytes: readPlatformFileBytes,
+           allowBytesFallback: allowBytesFallback,
+           copyAndroidUriToPath: copyAndroidUriToPath,
+           pickedFileMaterializer: pickedFileMaterializer,
+         ),
+       );
 
-  final VaultArchiveIo _archiveIo;
-  final DriveBackupService _driveBackupService;
-  final VaultRepository _vaultRepository;
-  final ExternalDirectoryStore _externalDirectoryStore;
-  final VaultPathStrategy _pathStrategy;
-  final PickPortableFiles? _pickPortableFiles;
-  final PickedFileMaterializer _pickedFileMaterializer;
+  VaultTransferService.fromServices({
+    required VaultBackupService backupService,
+    required VaultRestoreService restoreService,
+    required PortableTransferService portableTransferService,
+  }) : _backupService = backupService,
+       _restoreService = restoreService,
+       _portableTransferService = portableTransferService;
 
-  static const int backupRetainCount = VaultBackupPolicy.retainCount;
+  final VaultBackupService _backupService;
+  final VaultRestoreService _restoreService;
+  final PortableTransferService _portableTransferService;
 
   Future<DriveConnectionState> getGoogleDriveConnectionState() {
-    return _driveBackupService.getConnectionState();
+    return _backupService.getGoogleDriveConnectionState();
   }
 
   Future<DriveConnectionState> linkGoogleDrive() {
-    return _driveBackupService.connect();
+    return _backupService.linkGoogleDrive();
   }
 
   Future<DriveConnectionState> switchGoogleDrive() {
-    return _driveBackupService.switchAccount();
+    return _backupService.switchGoogleDrive();
   }
 
   Future<void> disconnectGoogleDrive() {
-    return _driveBackupService.disconnect();
+    return _backupService.disconnectGoogleDrive();
   }
 
   Future<BackupPersistResult> saveBackupToAppLocal({
     BackupTaskProgressListener? onProgress,
   }) {
-    return _runInspectedBackupPipeline(
-      onProgress: onProgress,
-      deliver:
-          (
-            File stagingZip,
-            String fileName,
-            BackupTaskProgressListener? deliverProgress,
-          ) async {
-            final Directory backupsDirectory = await _pathStrategy
-                .localBackupsDirectory();
-            await backupsDirectory.create(recursive: true);
-            final String destinationPath = p.join(
-              backupsDirectory.path,
-              fileName,
-            );
-            await copyFileToPath(
-              stagingZip,
-              destinationPath,
-              onProgress: deliverProgress,
-            );
-            final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-            await _pruneExcessAppLocalBackupsFromSorted(backups);
-            return destinationPath;
-          },
-    );
+    return _backupService.saveBackupToAppLocal(onProgress: onProgress);
   }
 
   Future<BackupPersistResult> saveBackupToExternalDirectory({
     required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
   }) {
-    return _runInspectedBackupPipeline(
+    return _backupService.saveBackupToExternalDirectory(
+      l10n: l10n,
       onProgress: onProgress,
-      deliver:
-          (
-            File stagingZip,
-            String fileName,
-            BackupTaskProgressListener? deliverProgress,
-          ) {
-            return deliverToExternalDirectory(
-              dialogTitle: l10n.vaultTransferPickBackupDirectoryTitle,
-              fileName: fileName,
-              sourceFile: stagingZip,
-              l10n: l10n,
-              resolveInitialDirectory:
-                  _externalDirectoryStore.resolveInitialDirectory,
-              rememberDirectory: _externalDirectoryStore.rememberDirectory,
-              onProgress: deliverProgress,
-            );
-          },
     );
   }
 
   Future<BackupPersistResult> uploadBackupToDrive({
     BackupTaskProgressListener? onProgress,
   }) {
-    return _runInspectedBackupPipeline(
-      onProgress: onProgress,
-      deliver:
-          (
-            File stagingZip,
-            String fileName,
-            BackupTaskProgressListener? deliverProgress,
-          ) async {
-            await _driveBackupService.uploadBackup(
-              stagingZip,
-              onProgress: deliverProgress,
-            );
-            await _driveBackupService.pruneBackups(
-              retainCount: backupRetainCount,
-            );
-            return fileName;
-          },
-    );
+    return _backupService.uploadBackupToDrive(onProgress: onProgress);
   }
 
-  Future<List<LocalBackupFile>> listAppLocalBackups() async {
-    final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-    await _pruneExcessAppLocalBackupsFromSorted(backups);
-    return backups;
+  Future<List<LocalBackupFile>> listAppLocalBackups() {
+    return _backupService.listAppLocalBackups();
   }
 
-  Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
-    final File file = File(backup.path);
-    await _ensureFileInsideLocalBackupsDirectory(file);
-    await _deleteIfExists(file);
+  Future<void> deleteAppLocalBackup(LocalBackupFile backup) {
+    return _backupService.deleteAppLocalBackup(backup);
   }
 
   Future<void> restoreFromAppLocalBackup(
     LocalBackupFile backup, {
     bool preserveTrustedDeviceAccess = false,
-  }) async {
-    final File file = File(backup.path);
-    await _ensureFileInsideLocalBackupsDirectory(file);
-    await restoreFromBackupFile(
-      file,
+  }) {
+    return _restoreService.restoreFromAppLocalBackup(
+      backup,
       preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
     );
   }
 
   Future<BackupInspectResult> inspectBackup(File backupFile) {
-    return _archiveIo.inspectBackup(backupFile);
+    return _backupService.inspectBackup(backupFile);
   }
 
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
     AppLocalizations l10n,
-  ) async {
-    final String fileName = VaultBackupPolicy.markdownPortableFileName(
-      DateTime.now(),
-    );
-    return _writeTempAndDeliver(
-      dialogTitle: l10n.vaultTransferPickMarkdownDirectoryTitle,
-      fileName: fileName,
-      l10n: l10n,
-      writeTarget: (File target) {
-        return _archiveIo.writeMarkdownZip(session: session, target: target);
-      },
-    );
+  ) {
+    return _portableTransferService.exportMarkdownToDirectory(session, l10n);
   }
 
   Future<HtmlExportEstimate> estimateSelectedHtmlExport(Set<EntryId> entryIds) {
-    return _archiveIo.estimateSelectedHtmlExport(entryIds: entryIds);
+    return _portableTransferService.estimateSelectedHtmlExport(entryIds);
   }
 
   Future<String?> exportHtmlToDirectory(
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
     AppLocalizations l10n,
-  ) async {
-    final String fileName = VaultBackupPolicy.htmlPortableFileName(
-      DateTime.now(),
-    );
-    return _writeTempAndDeliver(
-      dialogTitle: l10n.vaultTransferPickHtmlDirectoryTitle,
-      fileName: fileName,
-      l10n: l10n,
-      writeTarget: (File target) {
-        return _archiveIo.writeSelectedHtmlExport(
-          session: session,
-          entryIds: entryIds,
-          target: target,
-        );
-      },
+  ) {
+    return _portableTransferService.exportHtmlToDirectory(
+      session,
+      entryIds,
+      l10n,
     );
   }
 
   Future<PortableImportResult?> importDocumentsWithPicker(
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
-  }) async {
-    final PortableImportResult? pickedResult = await _tryImportFromPickedFiles(
+  }) {
+    return _portableTransferService.importDocumentsWithPicker(
       session,
       l10n: l10n,
     );
-    if (pickedResult != null) {
-      return pickedResult;
-    }
-
-    final String? sourceDirectory =
-        await ExternalDirectoryPicker.pickExternalDirectory(
-          prompt: l10n.vaultTransferImportDocumentsDirectoryPrompt,
-          initialDirectory: await _externalDirectoryStore
-              .resolveInitialDirectory(),
-        );
-    if (sourceDirectory == null) {
-      return null;
-    }
-
-    await _externalDirectoryStore.rememberDirectory(sourceDirectory);
-
-    return _archiveIo.importDocuments(
-      session: session,
-      rootDirectory: Directory(sourceDirectory),
-    );
   }
 
-  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) async {
-    final PlatformFile? picked = await FilePicker.pickFile(
-      dialogTitle: l10n.vaultTransferPickBackupFileTitle,
-      type: FileType.custom,
-      allowedExtensions: const <String>[VaultBackupPolicy.fileExtension],
-      // pickFile 內建 withData: false；大檔依 path 或 content:// URI materialize。
-    );
-    if (picked == null) {
-      return null;
-    }
-    return _resolvePickedBackupFile(picked, l10n);
+  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) {
+    return _restoreService.pickLocalBackupFile(l10n);
   }
 
-  Future<RestorePrecheck> precheckRestore(File backupFile) async {
-    final BackupRecoveryPreview preview = await _archiveIo
-        .prepareRestorePreview(backupFile);
-    final RecoveryMetadata? localMetadata = await _vaultRepository
-        .readRecoveryMetadata();
-    final bool localHasTrusted =
-        localMetadata != null &&
-        await _vaultRepository.hasTrustedDeviceAccess();
-    return RestorePrecheck(
-      preview: preview,
-      localVaultId: localMetadata?.vaultId,
-      localRecoverySaltBase64: localMetadata?.kdf.saltBase64,
-      localHasTrustedDevice: localHasTrusted,
-      willOverwriteLocalVault: await _vaultRepository.hasVault(),
-    );
+  Future<RestorePrecheck> precheckRestore(File backupFile) {
+    return _restoreService.precheckRestore(backupFile);
   }
 
-  Future<void> verifyBackupRecoveryKey(
-    File backupFile,
-    String recoveryKey,
-  ) async {
-    await _archiveIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
+  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) {
+    return _restoreService.verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
   Future<void> restoreFromBackupFile(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
     BackupTaskProgressListener? onProgress,
-  }) async {
-    await _archiveIo.restoreBackupZip(
+  }) {
+    return _restoreService.restoreFromBackupFile(
       backupFile,
       preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
       onProgress: onProgress,
     );
   }
 
-  Future<List<DriveBackupFile>> listDriveBackups() async {
-    return _driveBackupService.listBackups();
+  Future<List<DriveBackupFile>> listDriveBackups() {
+    return _backupService.listDriveBackups();
   }
 
-  Future<void> deleteDriveBackup(DriveBackupFile backup) async {
-    await _driveBackupService.deleteBackup(backup.id);
+  Future<void> deleteDriveBackup(DriveBackupFile backup) {
+    return _backupService.deleteDriveBackup(backup);
   }
 
   Future<File> downloadDriveBackupToTempFile(
     DriveBackupFile backup, {
     BackupTaskProgressListener? onProgress,
-  }) async {
-    return _driveBackupService.downloadBackupById(
-      fileId: backup.id,
-      fileName: backup.name,
-      destinationDirectory: await getTemporaryDirectory(),
-      totalBytes: backup.sizeBytes,
+  }) {
+    return _restoreService.downloadDriveBackupToTempFile(
+      backup,
       onProgress: onProgress,
     );
   }
 
-  Future<void> restoreFromDownloadedBackupFile(File backupFile) async {
-    await restoreFromBackupFile(backupFile);
-  }
-
-  Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
-    final Directory backupsDirectory = await _pathStrategy
-        .localBackupsDirectory();
-    if (!backupsDirectory.existsSync()) {
-      return <LocalBackupFile>[];
-    }
-
-    final List<LocalBackupFile> backups = <LocalBackupFile>[];
-    await for (final FileSystemEntity entity in backupsDirectory.list(
-      followLinks: false,
-    )) {
-      if (entity is! File ||
-          !VaultBackupPolicy.hasVaultBackupExtension(entity.path)) {
-        continue;
-      }
-      backups.add(
-        LocalBackupFile(
-          name: p.basename(entity.path),
-          path: entity.path,
-          createdAt: await entity.lastModified(),
-          sizeBytes: await entity.length(),
-        ),
-      );
-    }
-
-    backups.sort(_compareLocalBackupsNewestFirst);
-    return backups;
-  }
-
-  int _compareLocalBackupsNewestFirst(LocalBackupFile a, LocalBackupFile b) {
-    final int createdOrder = b.createdAt.compareTo(a.createdAt);
-    if (createdOrder != 0) {
-      return createdOrder;
-    }
-    return b.name.compareTo(a.name);
-  }
-
-  Future<void> _pruneExcessAppLocalBackupsFromSorted(
-    List<LocalBackupFile> sortedNewestFirst,
-  ) async {
-    if (sortedNewestFirst.length <= backupRetainCount) {
-      return;
-    }
-    final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
-      backupRetainCount,
-    );
-    for (final LocalBackupFile backup in stale) {
-      await deleteAppLocalBackup(backup);
-    }
-    sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
-  }
-
-  Future<PickedBackupFile?> _resolvePickedBackupFile(
-    PlatformFile file,
-    AppLocalizations l10n,
-  ) async {
-    try {
-      final MaterializedPickedFile materialized = await _pickedFileMaterializer
-          .materialize(
-            file,
-            fallbackBaseName: file.name.isNotEmpty
-                ? file.name
-                : 'restore.${VaultBackupPolicy.fileExtension}',
-            alwaysCopyToTemp: true,
-          );
-      return PickedBackupFile(
-        file: materialized.file,
-        shouldDeleteAfterUse: materialized.shouldDeleteAfterUse,
-      );
-    } on PickedFileMaterializationException catch (error) {
-      throw StateError(materializationFailureMessage(error.failure, l10n));
-    }
-  }
-
-  Future<void> _ensureFileInsideLocalBackupsDirectory(
-    File file, {
-    AppLocalizations? l10n,
-  }) async {
-    final Directory backupsDirectory = await _pathStrategy
-        .localBackupsDirectory();
-    final String root = p.normalize(backupsDirectory.absolute.path);
-    final String target = p.normalize(file.absolute.path);
-    if (target == root || !p.isWithin(root, target)) {
-      throw StateError(
-        l10n?.vaultTransferBackupOutsideExpectedDirectory ??
-            'Backup file is outside the expected directory.',
-      );
-    }
-  }
-
-  Future<PortableImportResult?> _tryImportFromPickedFiles(
-    UnlockedVaultSession session, {
-    required AppLocalizations l10n,
-  }) async {
-    final FilePickerResult? picked =
-        await (_pickPortableFiles ?? _pickPortableFilesFromSystem)(
-          dialogTitle: l10n.vaultTransferImportDocumentsFileTitle,
-          allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
-        );
-    if (picked == null || picked.files.isEmpty) {
-      return null;
-    }
-
-    final List<PlatformFile> zipFiles = picked.files
-        .where((PlatformFile file) => _extensionOf(file) == '.zip')
-        .toList(growable: false);
-    if (zipFiles.isNotEmpty) {
-      return _importZipFile(session, zipFiles.first);
-    }
-
-    final List<PlatformFile> documentFiles = picked.files
-        .where(
-          (PlatformFile file) =>
-              _isPortableDocumentExtension(_extensionOf(file)),
-        )
-        .toList(growable: false);
-    if (documentFiles.isEmpty) {
-      return null;
-    }
-
-    return _importPickedDocumentFiles(session, documentFiles);
-  }
-
-  Future<FilePickerResult?> _pickPortableFilesFromSystem({
-    required String dialogTitle,
-    required List<String> allowedExtensions,
-  }) {
-    return FilePicker.pickFiles(
-      dialogTitle: dialogTitle,
-      type: FileType.custom,
-      allowedExtensions: allowedExtensions,
-      // pickFiles 預設允許多選；大檔依 path 或 content:// URI materialize。
-    );
-  }
-
-  Future<PortableImportResult?> _importZipFile(
-    UnlockedVaultSession session,
-    PlatformFile zipFile,
-  ) async {
-    final String baseName = zipFile.name.isNotEmpty
-        ? zipFile.name
-        : 'portable_import.zip';
-    final MaterializedPickedFile materialized;
-    try {
-      materialized = await _pickedFileMaterializer.materialize(
-        zipFile,
-        fallbackBaseName: baseName,
-        alwaysCopyToTemp: true,
-      );
-    } on PickedFileMaterializationException catch (error) {
-      return importResultForMaterializationFailure(error.failure);
-    }
-
-    try {
-      return await _archiveIo.importDocumentsFromZip(
-        session: session,
-        zipFile: materialized.file,
-      );
-    } finally {
-      if (materialized.shouldDeleteAfterUse) {
-        await _deleteIfExists(materialized.file);
-      }
-    }
-  }
-
-  Future<PortableImportResult?> _importPickedDocumentFiles(
-    UnlockedVaultSession session,
-    List<PlatformFile> documentFiles,
-  ) async {
-    final Directory tempRoot = await _createTempDirectory('import_picked');
-    try {
-      var copiedFiles = 0;
-      for (final PlatformFile file in documentFiles) {
-        final String extension = _extensionOf(file);
-        if (!_isPortableDocumentExtension(extension)) {
-          continue;
-        }
-
-        final String fileName = uniqueImportedDocumentFileName(
-          sourceName: file.name,
-          extension: extension,
-          index: copiedFiles,
-        );
-        final File destination = File(p.join(tempRoot.path, fileName));
-
-        try {
-          await _pickedFileMaterializer.materialize(
-            file,
-            fallbackBaseName: fileName,
-            alwaysCopyToTemp: true,
-            importDestination: destination,
-          );
-          copiedFiles++;
-        } on PickedFileMaterializationException {
-          continue;
-        }
-      }
-
-      if (copiedFiles == 0) {
-        return const PortableImportResult(
-          importedEntries: 0,
-          skippedFiles: 0,
-          failureCode: PortableImportFailureCode.selectedFilesUnreadable,
-        );
-      }
-
-      return await _archiveIo.importDocuments(
-        session: session,
-        rootDirectory: tempRoot,
-      );
-    } finally {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
-    }
-  }
-
-  String _extensionOf(PlatformFile file) {
-    final String fromName = p.extension(file.name).toLowerCase();
-    if (fromName.isNotEmpty) {
-      return fromName;
-    }
-    final String? path = file.path;
-    if (path == null || path.isEmpty) {
-      return '';
-    }
-    return p.extension(path).toLowerCase();
-  }
-
-  bool _isPortableDocumentExtension(String extension) {
-    return extension == '.md' || extension == '.html' || extension == '.htm';
-  }
-
-  @visibleForTesting
-  static String uniqueImportedDocumentFileName({
-    required String sourceName,
-    required String extension,
-    required int index,
-  }) {
-    final String normalizedExtension = extension.isNotEmpty
-        ? extension
-        : p.extension(sourceName).toLowerCase();
-    final String fallbackName = normalizedExtension.isNotEmpty
-        ? 'imported_entry$index$normalizedExtension'
-        : 'imported_entry$index';
-    final String baseName = sourceName.trim().isNotEmpty
-        ? p.basename(sourceName.trim())
-        : fallbackName;
-    return '${(index + 1).toString().padLeft(4, '0')}_$baseName';
-  }
-
-  Future<Directory> _createTempDirectory(String prefix) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
-    final Directory directory = Directory(
-      p.join(
-        tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$prefix',
-      ),
-    );
-    await directory.create(recursive: true);
-    return directory;
-  }
-
-  Future<File> _createTempFile(String fileName) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
-    return File(
-      p.join(
-        tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
-      ),
-    );
-  }
-
-  Future<BackupPersistResult> _runInspectedBackupPipeline({
-    required Future<String?> Function(
-      File stagingZip,
-      String fileName,
-      BackupTaskProgressListener? deliverProgress,
-    )
-    deliver,
-    BackupTaskProgressListener? onProgress,
-  }) async {
-    final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
-    final File staging = await _createTempFile(fileName);
-    try {
-      await _archiveIo.writeBackupZip(
-        staging,
-        onProgress: remapBackupTaskProgress(
-          onProgress,
-          start: 0,
-          end: backupPipelineZipEndFraction,
-        ),
-      );
-      final BackupInspectResult inspect = await inspectBackup(staging);
-      if (!inspect.ok) {
-        return BackupPersistResult(
-          status: BackupPersistStatus.inspectFailed,
-          message: inspect.message,
-        );
-      }
-      final String? saved = await deliver(
-        staging,
-        fileName,
-        remapBackupTaskProgress(
-          onProgress,
-          start: backupPipelineZipEndFraction,
-          end: 1,
-        ),
-      );
-      if (saved == null) {
-        return const BackupPersistResult(status: BackupPersistStatus.cancelled);
-      }
-      return BackupPersistResult(
-        status: BackupPersistStatus.success,
-        savedPath: saved,
-        message: inspect.message,
-      );
-    } finally {
-      await _deleteIfExists(staging);
-    }
-  }
-
-  @visibleForTesting
-  Future<BackupPersistResult> runInspectedBackupPipelineForTesting({
-    required Future<String?> Function(
-      File stagingZip,
-      String fileName,
-      BackupTaskProgressListener? deliverProgress,
-    )
-    deliver,
-    BackupTaskProgressListener? onProgress,
-  }) {
-    return _runInspectedBackupPipeline(
-      deliver: deliver,
-      onProgress: onProgress,
-    );
-  }
-
-  Future<String?> _writeTempAndDeliver({
-    required String dialogTitle,
-    required String fileName,
-    required AppLocalizations l10n,
-    required Future<void> Function(File target) writeTarget,
-  }) async {
-    final File tempFile = await _createTempFile(fileName);
-    try {
-      await writeTarget(tempFile);
-      return await deliverToExternalDirectory(
-        dialogTitle: dialogTitle,
-        fileName: fileName,
-        sourceFile: tempFile,
-        l10n: l10n,
-        resolveInitialDirectory:
-            _externalDirectoryStore.resolveInitialDirectory,
-        rememberDirectory: _externalDirectoryStore.rememberDirectory,
-      );
-    } finally {
-      await _deleteIfExists(tempFile);
-    }
-  }
-
-  Future<void> _deleteIfExists(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
-    }
+  Future<void> restoreFromDownloadedBackupFile(File backupFile) {
+    return _restoreService.restoreFromDownloadedBackupFile(backupFile);
   }
 }

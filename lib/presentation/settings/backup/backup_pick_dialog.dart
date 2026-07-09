@@ -76,8 +76,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
                                       Text(
                                         item.fileName,
                                         style: textTheme.bodySmall?.copyWith(
-                                          color:
-                                              colorScheme.onSurfaceVariant,
+                                          color: colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                       if (item.sizeLabel != null) ...<Widget>[

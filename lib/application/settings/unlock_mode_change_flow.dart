@@ -6,6 +6,7 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
 import 'package:quill_diary/infrastructure/security/security_providers.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 
@@ -25,9 +26,10 @@ Future<UnlockModeChangeOutcome> applyUnlockModeChange({
     );
   }
 
+  final VaultRepository repository = ref.read(vaultRepositoryProvider);
   final UnlockModeChangeService service = UnlockModeChangeService(
     appLock: appLock,
-    vaultRepository: ref.read(vaultRepositoryProvider),
+    vaultRepository: repository,
   );
 
   late UnlockModeChangeOutcome outcome;

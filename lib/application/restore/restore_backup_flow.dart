@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -15,7 +16,7 @@ import 'restore_prepared_context.dart';
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
-  final WidgetRef ref;
+  final Ref ref;
 
   Future<VaultTransferCapabilities> _loadTransferCapabilities(
     AppLocalizations l10n,
@@ -26,7 +27,8 @@ class RestoreBackupFlow {
     final bool hasUnlockedSession =
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
-        await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
+        await ref.read(vaultRecoveryServiceProvider).readRecoveryMetadata() !=
+        null;
     return VaultTransferCapabilities.fromSessionContext(
       l10n: l10n,
       hasUnlockedSession: hasUnlockedSession,
@@ -47,7 +49,7 @@ class RestoreBackupFlow {
     String recoveryKey,
   ) async {
     await ref
-        .read(vaultTransferServiceProvider)
+        .read(vaultRestoreServiceProvider)
         .verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
@@ -56,7 +58,7 @@ class RestoreBackupFlow {
     required RestorePreparedContext prepared,
     BackupTaskProgressListener? onProgress,
   }) async {
-    final transferService = ref.read(vaultTransferServiceProvider);
+    final transferService = ref.read(vaultRestoreServiceProvider);
     final AppSessionController sessionController = ref.read(
       appSessionProvider.notifier,
     );
@@ -83,7 +85,7 @@ class RestoreBackupFlow {
       await sessionController.runSensitiveTask((_) => restoreBackup());
     } else {
       await sessionController.runBackgroundSafeTask(() async {
-        await ref.read(vaultRepositoryProvider).closeUnlockedResources();
+        await ref.read(vaultRecoveryServiceProvider).closeUnlockedResources();
         await restoreBackup();
       });
     }

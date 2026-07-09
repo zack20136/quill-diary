@@ -3,13 +3,18 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/application/restore/restore_backup_flow.dart';
+import 'package:quill_diary/application/restore/restore_prepared_context.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
@@ -17,11 +22,10 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
-import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/portable_import_result_presenter.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/unlock_mode_change_flow.dart';
-import 'settings_actions.dart';
 
 final settingsFlowControllerProvider = Provider<SettingsFlowController>((
   Ref ref,
@@ -51,6 +55,42 @@ class SettingsRepairVaultResult {
   final SettingsFlowFeedback feedback;
 }
 
+enum SettingsRestorePrimaryAction { retryVerification, openSettingsRecovery }
+
+enum SettingsRestoreNavigationTarget { home, settings }
+
+class SettingsRestorePrompt {
+  const SettingsRestorePrompt({
+    required this.title,
+    required this.body,
+    required this.nextStepHint,
+    required this.primaryAction,
+    required this.primaryActionLabel,
+    required this.secondaryHint,
+    this.isError = false,
+  });
+
+  final String title;
+  final String body;
+  final String nextStepHint;
+  final SettingsRestorePrimaryAction primaryAction;
+  final String primaryActionLabel;
+  final String secondaryHint;
+  final bool isError;
+}
+
+class SettingsRestoreResult {
+  const SettingsRestoreResult({
+    this.feedback,
+    this.navigationTarget,
+    this.prompt,
+  });
+
+  final SettingsFlowFeedback? feedback;
+  final SettingsRestoreNavigationTarget? navigationTarget;
+  final SettingsRestorePrompt? prompt;
+}
+
 class PreparedRestoreRequest {
   const PreparedRestoreRequest({
     required this.backupFile,
@@ -78,10 +118,14 @@ class SettingsFlowController {
 
   final Ref _ref;
 
-  SettingsActions get _actions => _ref.read(settingsActionsProvider);
-
   Future<SettingsFlowFeedback?> importDocuments(AppLocalizations l10n) async {
-    final PortableImportResult? result = await _actions.importDocuments(l10n);
+    final PortableImportResult? result = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(portableTransferServiceProvider)
+              .importDocumentsWithPicker(session, l10n: l10n);
+        });
     if (result == null) {
       return null;
     }
@@ -89,11 +133,20 @@ class SettingsFlowController {
       return SettingsFlowFeedback(result.messageWhenNoEntriesImported(l10n));
     }
     _refreshCaches();
-    return SettingsFlowFeedback(result.formatSuccessMessage(l10n));
+    return SettingsFlowFeedback(
+      result.formatSuccessMessage(l10n),
+      tone: SettingsFlowFeedbackTone.success,
+    );
   }
 
   Future<SettingsFlowFeedback?> exportMarkdown(AppLocalizations l10n) async {
-    final String? exportPath = await _actions.exportMarkdown(l10n);
+    final String? exportPath = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(portableTransferServiceProvider)
+              .exportMarkdownToDirectory(session, l10n);
+        });
     if (exportPath == null) {
       return null;
     }
@@ -101,11 +154,14 @@ class SettingsFlowController {
       l10n.settingsImportExportExportSuccess(
         DisplayFormat.formatSavedFileNameForDisplay(exportPath),
       ),
+      tone: SettingsFlowFeedbackTone.success,
     );
   }
 
   Future<String> createRecoveryKey(AppLocalizations l10n) async {
-    final RecoverySetupResult result = await _actions.setupRecoveryKey();
+    final RecoverySetupResult result = await _ref
+        .read(vaultRecoveryServiceProvider)
+        .setupRecoveryKey();
     _ref
         .read(appSessionProvider.notifier)
         .activateSession(
@@ -120,30 +176,35 @@ class SettingsFlowController {
   Future<BackupPersistResult> createLocalBackup({
     BackupTaskProgressListener? onProgress,
   }) {
-    return _actions.saveBackupToAppLocal(onProgress: onProgress);
+    return _ref
+        .read(vaultBackupServiceProvider)
+        .saveBackupToAppLocal(onProgress: onProgress);
   }
 
   Future<BackupPersistResult> exportLocalBackup({
     required AppLocalizations l10n,
     BackupTaskProgressListener? onProgress,
   }) {
-    return _actions.saveBackupToExternalDirectory(
-      l10n: l10n,
-      onProgress: onProgress,
-    );
+    return _ref
+        .read(vaultBackupServiceProvider)
+        .saveBackupToExternalDirectory(l10n: l10n, onProgress: onProgress);
   }
 
   Future<BackupPersistResult> uploadDriveBackup({
     BackupTaskProgressListener? onProgress,
   }) {
-    return _actions.uploadBackupToDrive(onProgress: onProgress);
+    return _ref
+        .read(vaultBackupServiceProvider)
+        .uploadBackupToDrive(onProgress: onProgress);
   }
 
   Future<PreparedRestoreRequest?> prepareAppLocalRestore({
     required Future<LocalBackupFile?> Function(List<LocalBackupFile> backups)
     pickBackup,
   }) async {
-    final List<LocalBackupFile> backups = await _actions.listAppLocalBackups();
+    final List<LocalBackupFile> backups = await _ref
+        .read(vaultBackupServiceProvider)
+        .listAppLocalBackups();
     final LocalBackupFile? backup = await pickBackup(backups);
     if (backup == null) {
       return null;
@@ -154,7 +215,9 @@ class SettingsFlowController {
   Future<PreparedRestoreRequest?> prepareExternalRestore(
     AppLocalizations l10n,
   ) async {
-    final PickedBackupFile? backup = await _actions.pickLocalBackupFile(l10n);
+    final PickedBackupFile? backup = await _ref
+        .read(vaultRestoreServiceProvider)
+        .pickLocalBackupFile(l10n);
     if (backup == null) {
       return null;
     }
@@ -169,15 +232,16 @@ class SettingsFlowController {
     pickBackup,
     BackupTaskProgressListener? onProgress,
   }) async {
-    final List<DriveBackupFile> backups = await _actions.listDriveBackups();
+    final List<DriveBackupFile> backups = await _ref
+        .read(vaultBackupServiceProvider)
+        .listDriveBackups();
     final DriveBackupFile? backup = await pickBackup(backups);
     if (backup == null) {
       return null;
     }
-    final File tempBackup = await _actions.downloadDriveBackupToTempFile(
-      backup,
-      onProgress: onProgress,
-    );
+    final File tempBackup = await _ref
+        .read(vaultRestoreServiceProvider)
+        .downloadDriveBackupToTempFile(backup, onProgress: onProgress);
     try {
       return await prepareRestoreFile(
         tempBackup,
@@ -193,17 +257,16 @@ class SettingsFlowController {
   }
 
   Future<List<DriveBackupFile>> listDriveBackups() {
-    return _actions.listDriveBackups();
+    return _ref.read(vaultBackupServiceProvider).listDriveBackups();
   }
 
   Future<File> downloadDriveBackupToTempFile(
     DriveBackupFile backup, {
     BackupTaskProgressListener? onProgress,
   }) {
-    return _actions.downloadDriveBackupToTempFile(
-      backup,
-      onProgress: onProgress,
-    );
+    return _ref
+        .read(vaultRestoreServiceProvider)
+        .downloadDriveBackupToTempFile(backup, onProgress: onProgress);
   }
 
   Future<PreparedRestoreRequest> prepareRestoreFile(
@@ -211,7 +274,9 @@ class SettingsFlowController {
     String? driveBackupName,
     File? tempFileToDelete,
   }) async {
-    final RestorePrecheck precheck = await _actions.precheckRestore(backupFile);
+    final RestorePrecheck precheck = await _ref
+        .read(vaultRestoreServiceProvider)
+        .precheckRestore(backupFile);
     return PreparedRestoreRequest(
       backupFile: backupFile,
       precheck: precheck,
@@ -221,7 +286,8 @@ class SettingsFlowController {
   }
 
   Future<SettingsFlowFeedback> linkGoogleDrive(AppLocalizations l10n) async {
-    final DriveConnectionState connectionState = await _actions
+    final DriveConnectionState connectionState = await _ref
+        .read(vaultBackupServiceProvider)
         .linkGoogleDrive();
     await _refreshDriveConnection();
     return SettingsFlowFeedback(
@@ -231,7 +297,8 @@ class SettingsFlowController {
   }
 
   Future<SettingsFlowFeedback> switchGoogleDrive(AppLocalizations l10n) async {
-    final DriveConnectionState connectionState = await _actions
+    final DriveConnectionState connectionState = await _ref
+        .read(vaultBackupServiceProvider)
         .switchGoogleDrive();
     await _refreshDriveConnection();
     return SettingsFlowFeedback(
@@ -246,7 +313,7 @@ class SettingsFlowController {
   Future<SettingsFlowFeedback> disconnectGoogleDrive(
     AppLocalizations l10n,
   ) async {
-    await _actions.disconnectGoogleDrive();
+    await _ref.read(vaultBackupServiceProvider).disconnectGoogleDrive();
     await _refreshDriveConnection();
     return SettingsFlowFeedback(
       l10n.settingsDriveBackupDisconnectSuccess,
@@ -255,13 +322,22 @@ class SettingsFlowController {
   }
 
   Future<SettingsRepairVaultResult> repairVault(AppLocalizations l10n) async {
-    final VaultRepairReport report = await _actions.repairVault();
+    final VaultRepairReport report = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(vaultRepairServiceProvider)
+              .repairVaultWithReport(session);
+        });
     _ref.read(entryIndexRevisionProvider.notifier).bump();
     _ref.invalidate(recoveryMetadataProvider);
     _ref.invalidate(tagAccentArgbMapProvider);
     return SettingsRepairVaultResult(
       report: report,
-      feedback: SettingsFlowFeedback(_repairVaultSuccessMessage(l10n, report)),
+      feedback: SettingsFlowFeedback(
+        _repairVaultSuccessMessage(l10n, report),
+        tone: SettingsFlowFeedbackTone.success,
+      ),
     );
   }
 
@@ -313,9 +389,9 @@ class SettingsFlowController {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) async {
-      final RecoverySetupResult result = await _actions.rotateRecoveryKey(
-        session,
-      );
+      final RecoverySetupResult result = await _ref
+          .read(vaultRecoveryServiceProvider)
+          .rotateRecoveryKey(session);
       _ref
           .read(appSessionProvider.notifier)
           .activateSession(
@@ -328,14 +404,132 @@ class SettingsFlowController {
     });
   }
 
+  Future<void> deleteAppLocalBackup(LocalBackupFile backup) {
+    return _ref.read(vaultBackupServiceProvider).deleteAppLocalBackup(backup);
+  }
+
+  Future<void> deleteDriveBackup(DriveBackupFile backup) {
+    return _ref.read(vaultBackupServiceProvider).deleteDriveBackup(backup);
+  }
+
+  Future<void> cancelRecoveryUnlock() {
+    return _ref.read(appSessionProvider.notifier).lock();
+  }
+
+  Future<SettingsFlowFeedback?> unlockWithRecovery(
+    AppLocalizations l10n,
+    String recoveryKey,
+  ) async {
+    await _ref
+        .read(appSessionProvider.notifier)
+        .unlockWithRecovery(recoveryKey);
+    _refreshCaches();
+    return SettingsFlowFeedback(
+      l10n.sessionRecoveryUnlockSuccessMessage,
+      tone: SettingsFlowFeedbackTone.success,
+    );
+  }
+
+  Future<void> verifyRestoreRecoveryKey(
+    File backupFile,
+    String recoveryKey,
+  ) async {
+    await RestoreBackupFlow(
+      _ref,
+    ).verifyBackupRecoveryKey(backupFile, recoveryKey);
+  }
+
+  Future<SettingsRestoreResult> restorePreparedRequest({
+    required AppLocalizations l10n,
+    required PreparedRestoreRequest request,
+    String? backupRecoveryKey,
+    bool recoveryKeyAlreadyVerified = false,
+    BackupTaskProgressListener? onProgress,
+  }) async {
+    try {
+      final RestoreBackupFlow flow = RestoreBackupFlow(_ref);
+      await flow.ensureRestoreAllowed(l10n);
+      final String? trimmedKey = backupRecoveryKey?.trim();
+      if (!recoveryKeyAlreadyVerified &&
+          trimmedKey != null &&
+          trimmedKey.isNotEmpty) {
+        await flow.verifyBackupRecoveryKey(request.backupFile, trimmedKey);
+      }
+      final RestorePreparedContext prepared = RestorePreparedContext(
+        precheck: request.precheck,
+        backupRecoveryKey: trimmedKey,
+      );
+      final AppSessionState sessionState = await flow
+          .executeRestoreAndFinishSession(
+            backupFile: request.backupFile,
+            prepared: prepared,
+            onProgress: onProgress,
+          );
+      return _buildRestoreResult(
+        l10n: l10n,
+        sessionState: sessionState,
+        prepared: prepared,
+        driveBackupName: request.driveBackupName,
+      );
+    } finally {
+      await request.dispose();
+      _ref.invalidate(trustedDeviceAccessProvider);
+    }
+  }
+
+  Future<SettingsFlowFeedback?> recordBackupPersistResult({
+    required AppLocalizations l10n,
+    required BackupPersistResult result,
+    required BackupStatusAction action,
+    required String Function(String savedPath) onSuccess,
+    String Function(String message)? inspectFailedMessage,
+    String? driveAccountLabel,
+  }) async {
+    final BackupStatusStore store = _ref.read(backupStatusStoreProvider);
+    switch (result.status) {
+      case BackupPersistStatus.success:
+        switch (action) {
+          case BackupStatusAction.localBackup:
+            await store.recordLocalBackupSuccess();
+            break;
+          case BackupStatusAction.externalExport:
+            await store.recordExternalExportSuccess();
+            break;
+          case BackupStatusAction.driveUpload:
+            await store.recordDriveUploadSuccess(
+              accountLabel: driveAccountLabel,
+            );
+            break;
+        }
+        _ref.invalidate(backupStatusProvider);
+        break;
+      case BackupPersistStatus.inspectFailed:
+        final String message = result.message.trim().isNotEmpty
+            ? result.message.trim()
+            : l10n.settingsLocalBackupBackupInspectFailed('');
+        await store.recordFailure(action: action, message: message);
+        _ref.invalidate(backupStatusProvider);
+        break;
+      case BackupPersistStatus.cancelled:
+        break;
+    }
+    return _backupPersistFeedback(
+      l10n: l10n,
+      result: result,
+      onSuccess: onSuccess,
+      inspectFailedMessage: inspectFailedMessage,
+    );
+  }
+
   Future<void> _refreshDriveConnection() async {
-    _actions.invalidateDriveConnection();
-    await _actions.warmDriveConnection();
+    _ref.invalidate(settingsDriveConnectionProvider);
+    await _ref.read(settingsDriveConnectionProvider.future);
   }
 
   void _refreshCaches({String? editedEntryId}) {
     _ref
       ..invalidate(homeEntryIndexListProvider)
+      ..invalidate(homePinnedEntryIdsProvider)
       ..invalidate(calendarMonthEntryDatesProvider)
       ..invalidate(calendarMonthEntriesProvider)
       ..invalidate(calendarEntriesProvider)
@@ -347,5 +541,138 @@ class SettingsFlowController {
     if (id != null && id.isNotEmpty) {
       _ref.invalidate(entryProvider(id));
     }
+  }
+
+  SettingsFlowFeedback? _backupPersistFeedback({
+    required AppLocalizations l10n,
+    required BackupPersistResult result,
+    required String Function(String savedPath) onSuccess,
+    String Function(String message)? inspectFailedMessage,
+  }) {
+    switch (result.status) {
+      case BackupPersistStatus.success:
+        final String? savedPath = result.savedPath;
+        if (savedPath == null) {
+          return null;
+        }
+        return SettingsFlowFeedback(
+          onSuccess(DisplayFormat.formatSavedFileNameForDisplay(savedPath)),
+          tone: SettingsFlowFeedbackTone.success,
+        );
+      case BackupPersistStatus.inspectFailed:
+        final String Function(String message) formatInspectFailed =
+            inspectFailedMessage ??
+            (String message) =>
+                l10n.settingsLocalBackupBackupInspectFailed(message);
+        return SettingsFlowFeedback(
+          formatInspectFailed(result.message),
+          tone: SettingsFlowFeedbackTone.error,
+        );
+      case BackupPersistStatus.cancelled:
+        return null;
+    }
+  }
+
+  SettingsRestoreResult _buildRestoreResult({
+    required AppLocalizations l10n,
+    required AppSessionState sessionState,
+    required RestorePreparedContext prepared,
+    String? driveBackupName,
+  }) {
+    final String? trimmedKey = prepared.backupRecoveryKey?.trim();
+    final bool unlockFailedAfterKey =
+        trimmedKey != null &&
+        trimmedKey.isNotEmpty &&
+        sessionState.status != AppLockStatus.unlocked;
+
+    if (sessionState.status == AppLockStatus.unlocked) {
+      return SettingsRestoreResult(
+        feedback: SettingsFlowFeedback(
+          driveAwarePostRestoreSnackBarMessage(
+            l10n: l10n,
+            status: sessionState.status,
+            driveBackupName: driveBackupName,
+          ),
+          tone: SettingsFlowFeedbackTone.success,
+        ),
+        navigationTarget: SettingsRestoreNavigationTarget.home,
+      );
+    }
+
+    if (unlockFailedAfterKey ||
+        sessionState.status == AppLockStatus.locked ||
+        sessionState.status == AppLockStatus.recoveryRequired) {
+      return SettingsRestoreResult(
+        prompt: _buildRestorePrompt(
+          l10n: l10n,
+          sessionState: sessionState,
+          unlockFailedAfterRecoveryKey: unlockFailedAfterKey,
+        ),
+      );
+    }
+
+    return SettingsRestoreResult(
+      feedback: SettingsFlowFeedback(
+        driveAwarePostRestoreSnackBarMessage(
+          l10n: l10n,
+          status: sessionState.status,
+          driveBackupName: driveBackupName,
+        ),
+        tone: sessionState.status == AppLockStatus.fatalError
+            ? SettingsFlowFeedbackTone.error
+            : SettingsFlowFeedbackTone.success,
+      ),
+      navigationTarget: SettingsRestoreNavigationTarget.home,
+    );
+  }
+
+  SettingsRestorePrompt _buildRestorePrompt({
+    required AppLocalizations l10n,
+    required AppSessionState sessionState,
+    required bool unlockFailedAfterRecoveryKey,
+  }) {
+    if (unlockFailedAfterRecoveryKey) {
+      return SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeUnlockFailedTitle,
+        body: sessionState.message?.trim().isNotEmpty == true
+            ? sessionState.message!.trim()
+            : l10n.vaultTransferRestoreUnlockFailed,
+        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+        isError: true,
+      );
+    }
+
+    return switch (sessionState.status) {
+      AppLockStatus.locked => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: l10n.postRestoreOutcomeNextStepLocked,
+        primaryAction: SettingsRestorePrimaryAction.retryVerification,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryRetryVerification,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+      ),
+      AppLockStatus.recoveryRequired => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+      ),
+      _ => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: sessionState.message?.trim().isNotEmpty == true
+            ? sessionState.message!.trim()
+            : l10n.sessionRestoreStartupFailedMessage,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+        isError: sessionState.status == AppLockStatus.fatalError,
+      ),
+    };
   }
 }

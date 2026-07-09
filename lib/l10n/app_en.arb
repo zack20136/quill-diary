@@ -340,6 +340,7 @@
   "homeNoTagsTitle": "No Tags Yet",
   "homeNoTagsMessage": "Tap the button below to create default tags, or use \"+\" to add your own. Unused tags stay in the list.",
   "homeCreateDefaultTagsButton": "Create Default Tags",
+  "homeCreateDefaultTagsSuccess": "Default tags created",
   "homeTagsSectionTitle": "Tags ({countSummary})",
   "@homeTagsSectionTitle": {
     "placeholders": {
@@ -366,6 +367,14 @@
       },
       "label": {
         "type": "String"
+      }
+    }
+  },
+  "homeEntriesDeletedSuccess": "Deleted {count} entries",
+  "@homeEntriesDeletedSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -606,6 +615,7 @@
   "settingsRecoveryKeySaveDialogHint": "Save it now. You won't be able to view it again after closing.",
   "settingsRecoveryKeyCopyButton": "Copy",
   "settingsRecoveryKeyCopiedMessage": "Copied to clipboard",
+  "tagColorCodeCopiedMessage": "Color code copied",
   "settingsRecoveryKeyRotateDialogTitle": "Update Recovery Key?",
   "settingsRecoveryKeyRotateDialogBody": "A new recovery key will be generated—save it immediately.\n\nExisting local or Google Drive backups still require the old key to restore; create a new backup after updating.",
   "settingsSecurityOverviewSectionTitle": "Security Overview",

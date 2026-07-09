@@ -183,23 +183,23 @@ class EditorActions implements EditorActionPort {
     String encryptedPath,
   ) {
     return _ref
-        .read(vaultRepositoryProvider)
+        .read(vaultEntryStoreProvider)
         .readDecryptedAssetBytes(session, encryptedPath);
   }
 
   @override
   Future<DiaryEntry?> loadEntry(UnlockedVaultSession session, EntryId entryId) {
-    return _ref.read(vaultRepositoryProvider).loadEntry(session, entryId);
+    return _ref.read(vaultEntryStoreProvider).loadEntry(session, entryId);
   }
 
   @override
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
-    return _ref.read(vaultRepositoryProvider).loadAttachments(entryId);
+    return _ref.read(vaultEntryStoreProvider).loadAttachments(entryId);
   }
 
   @override
   Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) {
-    return _ref.read(vaultRepositoryProvider).deleteEntry(session, entryId);
+    return _ref.read(vaultEntryStoreProvider).deleteEntry(session, entryId);
   }
 
   @override
@@ -209,8 +209,12 @@ class EditorActions implements EditorActionPort {
     required List<PendingAttachment> pendingAttachments,
   }) {
     return _ref
-        .read(vaultRepositoryProvider)
-        .saveEntry(session, draft, pendingAttachments: pendingAttachments);
+        .read(vaultEntryStoreProvider)
+        .saveEntry(
+          session,
+          draft: draft,
+          pendingAttachments: pendingAttachments,
+        );
   }
 
   @override

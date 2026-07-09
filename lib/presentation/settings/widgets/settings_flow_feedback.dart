@@ -16,7 +16,7 @@ void showSettingsFlowFeedback(
     feedback.message,
     tone: switch (feedback.tone) {
       SettingsFlowFeedbackTone.info => AppFeedbackTone.info,
-      SettingsFlowFeedbackTone.success => AppFeedbackTone.info,
+      SettingsFlowFeedbackTone.success => AppFeedbackTone.success,
       SettingsFlowFeedbackTone.error => AppFeedbackTone.error,
     },
   );

@@ -422,6 +422,7 @@ Future<void> confirmAndResetTypography({
   showAppFeedbackSnackBar(
     context,
     context.l10n.personalizationTypographyResetSuccess,
+    tone: AppFeedbackTone.success,
   );
 }
 
