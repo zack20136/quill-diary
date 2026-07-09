@@ -4,7 +4,9 @@ permalink: /
 
 # Quill Diary
 
-- [技術文件目錄](./介紹/文件目錄.md)
-- [Google 相關文件](./介紹/google/README.md)
+這個頁面提供 Quill Diary 的公開資訊入口。
+
 - [隱私權政策](./privacy-policy.md)
 - [第三方聲明](./third-party-notices.md)
+- [GitHub 原始碼](https://github.com/zack20136/quill-diary)
+

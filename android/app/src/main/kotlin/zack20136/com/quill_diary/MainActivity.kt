@@ -991,7 +991,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     companion object {
-        // 更新 keystore 後請同步 docs/介紹/google/Google-Drive-OAuth-設定.md 並執行 signingReport。
+        // 更新 keystore 後請同步 docs/開發/google/Google-Drive-OAuth-設定.md 並執行 signingReport。
         // 與 lib/infrastructure/drive/google_drive_oauth_errors.dart 保持一致。
         private const val ANDROID_PACKAGE_NAME = "zack20136.com.quill_diary"
         private const val DEBUG_SHA1_FINGERPRINT =

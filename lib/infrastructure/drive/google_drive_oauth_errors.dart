@@ -14,7 +14,7 @@ abstract final class GoogleDriveOAuthFingerprints {
       'B0:B3:BC:E7:7C:68:8E:67:84:B4:B8:BB:FF:E5:A8:AE:24:6F:53:BB';
 
   static const String oauthSetupDocPath =
-      'docs/介紹/google/Google-Drive-OAuth-設定.md';
+      'docs/開發/google/Google-Drive-OAuth-設定.md';
 }
 
 String googleDriveAndroidOAuthSha1Checklist() {

@@ -3,4 +3,4 @@ description: Quill Diary 文件與隱私權政策
 permalink: pretty
 markdown: kramdown
 exclude:
-  - 介紹
+  - 開發
