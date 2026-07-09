@@ -258,5 +258,5 @@ String formatDriveBackupTime(AppLocalizations l10n, DateTime? value) {
   if (value == null) {
     return l10n.settingsDriveBackupUnknownCreatedTime;
   }
-  return DisplayFormat.formatDateTime(l10n, value);
+  return DisplayFormat.formatDateTimeWithoutWeekday(l10n, value);
 }

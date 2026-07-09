@@ -73,7 +73,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabIntroSection0Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.cloud_off_rounded,
+            icon: Icons.no_accounts_rounded,
             title: l10n.aboutTabIntroSection0Item1Title,
             body: l10n.aboutTabIntroSection0Item1Body,
           ),
@@ -94,7 +94,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabIntroSection1Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.calendar_month_outlined,
+            icon: Icons.dashboard_outlined,
             title: l10n.aboutTabIntroSection1Item1Title,
             body: l10n.aboutTabIntroSection1Item1Body,
           ),
@@ -104,7 +104,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabIntroSection1Item2Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.file_upload_outlined,
+            icon: Icons.outbox_outlined,
             title: l10n.aboutTabIntroSection1Item3Title,
             body: l10n.aboutTabIntroSection1Item3Body,
           ),
@@ -125,7 +125,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabIntroSection2Item1Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.lock_open_rounded,
+            icon: Icons.description_outlined,
             title: l10n.aboutTabIntroSection2Item2Title,
             body: l10n.aboutTabIntroSection2Item2Body,
           ),
@@ -166,7 +166,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
         subtitle: l10n.aboutTabUnlockSessionSection0Subtitle,
         items: <AboutPageItemSpec>[
           AboutPageItemSpec(
-            icon: Icons.no_encryption_gmailerrorred_outlined,
+            icon: Icons.lock_open_rounded,
             title: l10n.aboutTabUnlockSessionSection0Item0Title,
             body: l10n.aboutTabUnlockSessionSection0Item0Body,
           ),
@@ -181,7 +181,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabUnlockSessionSection0Item2Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.info_outline_rounded,
+            icon: Icons.fact_check_outlined,
             title: l10n.aboutTabUnlockSessionSection0Item3Title,
             body: l10n.aboutTabUnlockSessionSection0Item3Body,
           ),
@@ -204,12 +204,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             ),
           ),
           AboutPageItemSpec(
-            icon: Icons.sync_rounded,
+            icon: Icons.keyboard_return_rounded,
             title: l10n.aboutTabUnlockSessionSection1Item2Title,
             body: l10n.aboutTabUnlockSessionSection1Item2Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.error_outline_rounded,
+            icon: Icons.gpp_maybe_outlined,
             title: l10n.aboutTabUnlockSessionSection1Item3Title,
             body: l10n.aboutTabUnlockSessionSection1Item3Body,
           ),
@@ -230,7 +230,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabUnlockSessionSection2Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.warning_amber_rounded,
+            icon: Icons.link_off_rounded,
             title: l10n.aboutTabUnlockSessionSection2Item1Title,
             body: l10n.aboutTabUnlockSessionSection2Item1Body,
           ),
@@ -262,12 +262,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
         subtitle: l10n.aboutTabEncryptionSection0Subtitle,
         items: <AboutPageItemSpec>[
           AboutPageItemSpec(
-            icon: Icons.lock_rounded,
+            icon: Icons.enhanced_encryption_outlined,
             title: l10n.aboutTabEncryptionSection0Item0Title,
             body: l10n.aboutTabEncryptionSection0Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.verified_user_outlined,
+            icon: Icons.gpp_bad_outlined,
             title: l10n.aboutTabEncryptionSection0Item1Title,
             body: l10n.aboutTabEncryptionSection0Item1Body,
           ),
@@ -344,7 +344,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabSearchIndexSection0Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.view_list_rounded,
+            icon: Icons.article_outlined,
             title: l10n.aboutTabSearchIndexSection0Item1Title,
             body: l10n.aboutTabSearchIndexSection0Item1Body,
           ),
@@ -370,7 +370,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabSearchIndexSection1Item1Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.auto_delete_outlined,
+            icon: Icons.refresh_rounded,
             title: l10n.aboutTabSearchIndexSection1Item2Title,
             body: l10n.aboutTabSearchIndexSection1Item2Body,
           ),
@@ -421,7 +421,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabEditorSection0Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.edit_note_rounded,
+            icon: Icons.event_note_rounded,
             title: l10n.aboutTabEditorSection0Item1Title,
             body: l10n.aboutTabEditorSection0Item1Body,
           ),
@@ -452,7 +452,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabEditorSection1Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.restore_page_outlined,
+            icon: Icons.restore_rounded,
             title: l10n.aboutTabEditorSection1Item1Title,
             body: l10n.aboutTabEditorSection1Item1Body,
           ),
@@ -478,7 +478,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabEditorSection2Item1Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.info_outline_rounded,
+            icon: Icons.pending_actions_outlined,
             title: l10n.aboutTabEditorSection2Item2Title,
             body: l10n.aboutTabEditorSection2Item2Body,
           ),
@@ -526,12 +526,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
         subtitle: l10n.aboutTabBackupRestoreSection1Subtitle,
         items: <AboutPageItemSpec>[
           AboutPageItemSpec(
-            icon: Icons.warning_amber_rounded,
+            icon: Icons.swap_horiz_rounded,
             title: l10n.aboutTabBackupRestoreSection1Item0Title,
             body: l10n.aboutTabBackupRestoreSection1Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.manage_search_outlined,
+            icon: Icons.refresh_rounded,
             title: l10n.aboutTabBackupRestoreSection1Item1Title,
             body: l10n.aboutTabBackupRestoreSection1Item1Body,
           ),
@@ -557,7 +557,7 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabBackupRestoreSection2Item1Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.swap_horiz_rounded,
+            icon: Icons.cloud_off_rounded,
             title: l10n.aboutTabBackupRestoreSection2Item2Title,
             body: l10n.aboutTabBackupRestoreSection2Item2Body,
           ),
@@ -573,12 +573,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
             body: l10n.aboutTabBackupRestoreSection3Item0Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.file_open_outlined,
+            icon: Icons.description_outlined,
             title: l10n.aboutTabBackupRestoreSection3Item1Title,
             body: l10n.aboutTabBackupRestoreSection3Item1Body,
           ),
           AboutPageItemSpec(
-            icon: Icons.folder_zip_outlined,
+            icon: Icons.alt_route_rounded,
             title: l10n.aboutTabBackupRestoreSection3Item2Title,
             body: l10n.aboutTabBackupRestoreSection3Item2Body,
           ),

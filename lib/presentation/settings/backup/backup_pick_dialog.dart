@@ -51,59 +51,80 @@ Future<BackupPickListItem?> showBackupPickDialog({
                       separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (BuildContext context, int index) {
                         final BackupPickListItem item = visibleItems[index];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 4,
-                          ),
-                          title: Text(
-                            item.createdAtLabel,
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                        return InkWell(
+                          onTap: () => Navigator.of(dialogContext).pop(item),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        item.createdAtLabel,
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.fileName,
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color:
+                                              colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      if (item.sizeLabel != null) ...<Widget>[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.sizeLabel!,
+                                          style: textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                if (item.onDelete != null) ...<Widget>[
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 36,
+                                    height: 36,
+                                    child: IconButton(
+                                      tooltip: deleteTooltip,
+                                      padding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                      icon: Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: colorScheme.error,
+                                        size: 20,
+                                      ),
+                                      onPressed: actionsDisabled
+                                          ? null
+                                          : () async {
+                                              final bool confirmed =
+                                                  await confirmDelete(
+                                                    item.fileName,
+                                                  );
+                                              if (!confirmed) {
+                                                return;
+                                              }
+                                              await item.onDelete!();
+                                              setDialogState(() {
+                                                visibleItems.removeAt(index);
+                                              });
+                                            },
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                item.fileName,
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (item.sizeLabel != null) ...<Widget>[
-                                const SizedBox(height: 2),
-                                Text(
-                                  item.sizeLabel!,
-                                  style: textTheme.bodySmall,
-                                ),
-                              ],
-                            ],
-                          ),
-                          onTap: () => Navigator.of(dialogContext).pop(item),
-                          trailing: item.onDelete == null
-                              ? null
-                              : IconButton(
-                                  tooltip: deleteTooltip,
-                                  icon: Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: colorScheme.error,
-                                  ),
-                                  onPressed: actionsDisabled
-                                      ? null
-                                      : () async {
-                                          final bool confirmed =
-                                              await confirmDelete(
-                                                item.fileName,
-                                              );
-                                          if (!confirmed) {
-                                            return;
-                                          }
-                                          await item.onDelete!();
-                                          setDialogState(() {
-                                            visibleItems.removeAt(index);
-                                          });
-                                        },
-                                ),
                         );
                       },
                     ),

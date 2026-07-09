@@ -454,7 +454,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeTooltipNewEntry => '新增日記';
 
   @override
-  String get homeTooltipSettings => '設定與備份';
+  String get homeTooltipSettings => '設定';
 
   @override
   String get homeTooltipExportHtml => '匯出 HTML';
@@ -1074,22 +1074,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsSecurityOverviewLocalBackupLast(String time, String method) {
-    return '「$method」，$time。';
+    return '上次本機備份：$time（$method）。';
   }
 
   @override
-  String get settingsSecurityOverviewLocalBackupStale => '上次備份已超過 30 天，建議儘快備份。';
+  String get settingsSecurityOverviewLocalBackupStale =>
+      '距離上次本機備份已超過 30 天，建議儘快備份。';
 
   @override
   String get settingsSecurityOverviewDriveBackupTitle => 'Google Drive 備份';
 
   @override
   String get settingsSecurityOverviewDriveBackupNever =>
-      '尚未上傳備份到 Google Drive，建議儘快備份。';
+      '尚未建立 Google Drive 備份，建議儘快備份。';
 
   @override
   String settingsSecurityOverviewDriveBackupLast(String time) {
-    return '$time 已上傳。';
+    return '上次 Google Drive 備份：$time。';
   }
 
   @override
@@ -1097,12 +1098,12 @@ class AppLocalizationsZh extends AppLocalizations {
     String time,
     String account,
   ) {
-    return '$time 已上傳至 $account。';
+    return '上次 Google Drive 備份：$time（$account）。';
   }
 
   @override
   String get settingsSecurityOverviewDriveBackupStale =>
-      '上次 Drive 備份已超過 30 天，建議儘快上傳。';
+      '距離上次 Google Drive 備份已超過 30 天，建議儘快備份。';
 
   @override
   String settingsSecurityOverviewBackupRecentFailure(String action) {
@@ -1123,7 +1124,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsUnlockMethodSectionDescription(String timeoutLabel) {
-    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方方式重新驗證。';
+    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方設定的解鎖方式重新驗證。';
   }
 
   @override
@@ -1134,10 +1135,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsUnlockMethodSegmentBiometric => '生物驗證';
-
-  @override
-  String get settingsUnlockMethodBiometricNeedsDeviceLockHint =>
-      '須已設定螢幕鎖並登錄生物辨識。\n驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
 
   @override
   String get settingsUnlockModeChangeCancelled => '已取消變更，解鎖方式維持不變。';
@@ -1155,7 +1152,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsUnlockModeDescriptionBiometric =>
-      '鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。';
+      '鎖定後優先使用指紋或臉部驗證；須先設定螢幕鎖並登錄生物辨識。若取消或失敗，可改以螢幕鎖解鎖，不必輸入復原金鑰。';
 
   @override
   String settingsSessionTimeoutBackgroundLockExplanation(String timeoutLabel) {
@@ -1164,7 +1161,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel) {
-    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。';
+    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在建立備份、還原備份或執行匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。';
   }
 
   @override
@@ -1172,7 +1169,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsImportExportSectionDescriptionEnabled =>
-      '可從其他 App 匯入日記，或將日記匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。';
+      '可從其他 App 或檔案匯入日記，也可把正式內容匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。';
 
   @override
   String get settingsImportExportImportNoEntriesMessage => '找不到可匯入的日記，請確認檔案格式。';
@@ -1253,7 +1250,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsLocalBackupSectionDescriptionEnabled =>
-      '建立完整備份並存於本機，還原會覆蓋目前日記。（本機最多保留 5 份）';
+      '建立完整本機備份，還原時會以備份內容取代目前日記庫。（本機最多保留 5 份）';
 
   @override
   String get settingsLocalBackupCreateButton => '建立本機備份';
@@ -1312,7 +1309,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionEnabled =>
-      '連結 Google 帳戶後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）';
+      '連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。（Google Drive 最多保留 5 份）';
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
@@ -1591,18 +1588,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSupportHeroChipGooglePlayPayment => 'Google Play 付款';
 
   @override
-  String get settingsSupportComplianceCardTitle => '付款與資料說明';
+  String get settingsSupportComplianceCardTitle => '支持與資料說明';
 
   @override
   String get settingsSupportComplianceCardBody =>
-      '付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，亦不讀取日記內容。';
+      '支持付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，也不讀取日記內容。';
 
   @override
   String get settingsSupportProductsSectionTitle => '支持選項';
 
   @override
   String get settingsSupportProductsSectionBody =>
-      'Google Play 會依所在地區顯示每個選項的標題、說明與金額。';
+      'Google Play 會依所在地區顯示各支持選項的標題、說明與金額。';
 
   @override
   String get settingsSupportBuyButtonPrefix => '支持';
@@ -1782,7 +1779,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get legalBillingSupportPageBody =>
-      '僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。';
+      '僅透過 Google Play Billing 提供一次性支持，非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。';
 
   @override
   String get legalExternalLinkUnavailableMessage => '無法開啟瀏覽器，請稍後再試。';
@@ -1817,13 +1814,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝，但讀寫日記前須先建立復原金鑰。您可以安心寫、快速找、隨時回顧；除非您主動備份或匯出，資料預設留在裝置上。';
+      'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝與進入 App，但真正要讀寫日記、建立完整備份或匯出內容前，仍須先建立並保存復原金鑰。除非您主動備份或匯出，資料預設留在裝置上。';
 
   @override
   String get aboutTabIntroChip0 => '資料留在裝置';
 
   @override
-  String get aboutTabIntroChip1 => '可匯出 Markdown';
+  String get aboutTabIntroChip1 => 'Markdown / HTML';
 
   @override
   String get aboutTabIntroChip2 => '全文搜尋';
@@ -1846,14 +1843,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      '正式日記、附件、草稿與搜尋索引都會留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份或匯出，內容不會自動離開手機。';
+      '正式日記、附件、草稿與搜尋索引都留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份到外部位置或匯出可讀文件，內容不會自動離開手機。';
 
   @override
   String get aboutTabIntroSection0Item1Title => '不用註冊就能開始';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      '不需帳號即可安裝與瀏覽；讀寫日記、備份與匯出前，須先設定復原金鑰。';
+      '不需帳號即可安裝與進入 App；真正要讀寫日記、建立完整備份或匯出內容前，仍須先設定復原金鑰。';
 
   @override
   String get aboutTabIntroSection0Item2Title => '少收集、少干擾';
@@ -1894,7 +1891,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      '您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。';
+      '您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML 做閱讀、整理或搬移。若要放到雲端，Google Drive 在這裡扮演的是加密備份目的地，不是即時同步。';
 
   @override
   String get aboutTabIntroSection2Title => '資料掌控權在您手上';
@@ -1967,14 +1964,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection0Subtitle =>
-      '您可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。';
+      '您可以依裝置習慣與想要的保護程度，在設定頁切換不同解鎖方式。';
 
   @override
   String get aboutTabUnlockSessionSection0Item0Title => '無';
 
   @override
   String get aboutTabUnlockSessionSection0Item0Body =>
-      '鎖定後不額外驗證，回到 App 會直接恢復。適合尚未設定裝置螢幕鎖的情況，但保護力最低。';
+      '鎖定後不額外驗證，回到 App 會直接恢復先前狀態。適合尚未設定裝置螢幕鎖的情況，但保護力最低。';
 
   @override
   String get aboutTabUnlockSessionSection0Item1Title => '裝置螢幕鎖';
@@ -2009,7 +2006,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      '完成解鎖後，可正常讀寫日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。';
+      '完成解鎖後，可正常讀寫正式日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。';
 
   @override
   String get aboutTabUnlockSessionSection1Item1Title => '背景逾時';
@@ -2275,7 +2272,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item2Body =>
-      '搜尋索引的工作是幫您更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。';
+      '搜尋索引的工作是幫您更快找到內容，不是取代正式資料本體；真正的權威來源仍然是加密日記庫。';
 
   @override
   String get aboutTabEditorLabel => '日記編輯器';
@@ -2317,7 +2314,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      '您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時，您仍能把內容匯出成 Markdown。';
+      '您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時至少要有標題或內文，避免留下空白紀錄；匯出則屬後續整理流程，不會取代正式儲存。';
 
   @override
   String get aboutTabEditorSection0Item2Title => '標籤';
@@ -2384,7 +2381,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorSection2Item1Title => '草稿不進完整備份';
 
   @override
-  String get aboutTabEditorSection2Item1Body => '完整備份只含正式日記庫，不含尚未發佈的本地草稿。';
+  String get aboutTabEditorSection2Item1Body =>
+      '完整備份只含正式日記庫，不含尚未正式儲存的本地草稿；匯入匯出流程也不會把這些草稿當成正式資料。';
 
   @override
   String get aboutTabEditorSection2Item2Title => '未儲存提示';
@@ -2401,7 +2399,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      '備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 則是把內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。';
+      '備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 匯出則是把正式內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。';
 
   @override
   String get aboutTabBackupRestoreChip0 => '完整加密備份';
@@ -2420,7 +2418,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection0Subtitle =>
-      '如果您想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。';
+      '如果您想保留整個正式日記庫，之後能原樣還原，走的就是完整備份。';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Title => '保存整個加密日記庫';
@@ -2477,7 +2475,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Subtitle =>
-      '這條流程處理的是內容交換與閱讀，不是拿來完整覆寫整個日記庫。';
+      '這條流程處理的是內容交換與閱讀，不是拿來完整還原整個日記庫。';
 
   @override
   String get aboutTabBackupRestoreSection2Item0Title => '匯入';
@@ -2491,7 +2489,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Item1Body =>
-      '您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。';
+      '您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把正式內容整理成可閱讀格式。';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Title => '它不是同步服務';

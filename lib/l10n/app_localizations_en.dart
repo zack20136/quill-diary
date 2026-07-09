@@ -471,7 +471,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTooltipNewEntry => 'New Entry';
 
   @override
-  String get homeTooltipSettings => 'Settings & Backup';
+  String get homeTooltipSettings => 'Settings';
 
   @override
   String get homeTooltipExportHtml => 'Export HTML';
@@ -1124,23 +1124,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsSecurityOverviewLocalBackupLast(String time, String method) {
-    return '\"$method\", $time.';
+    return 'Last local backup: $time ($method).';
   }
 
   @override
   String get settingsSecurityOverviewLocalBackupStale =>
-      'Your last backup was over 30 days ago. Consider backing up soon.';
+      'Your last local backup was over 30 days ago. Consider backing up soon.';
 
   @override
   String get settingsSecurityOverviewDriveBackupTitle => 'Google Drive backup';
 
   @override
   String get settingsSecurityOverviewDriveBackupNever =>
-      'No Google Drive backup uploaded yet. Consider uploading soon.';
+      'No Google Drive backup yet. Consider backing up soon.';
 
   @override
   String settingsSecurityOverviewDriveBackupLast(String time) {
-    return 'Last uploaded $time.';
+    return 'Last Google Drive backup: $time.';
   }
 
   @override
@@ -1148,12 +1148,12 @@ class AppLocalizationsEn extends AppLocalizations {
     String time,
     String account,
   ) {
-    return 'Last uploaded $time to $account.';
+    return 'Last Google Drive backup: $time ($account).';
   }
 
   @override
   String get settingsSecurityOverviewDriveBackupStale =>
-      'Your last Drive backup was over 30 days ago. Consider uploading soon.';
+      'Your last Google Drive backup was over 30 days ago. Consider backing up soon.';
 
   @override
   String settingsSecurityOverviewBackupRecentFailure(String action) {
@@ -1174,7 +1174,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsUnlockMethodSectionDescription(String timeoutLabel) {
-    return 'The app auto-locks after staying in the background for $timeoutLabel. Brief app switches usually do not trigger a lock. When you return, verify using the method below.';
+    return 'The app auto-locks after staying in the background for $timeoutLabel. Brief app switches usually do not trigger a lock. When you return, verify using the unlock method set below.';
   }
 
   @override
@@ -1185,10 +1185,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsUnlockMethodSegmentBiometric => 'Biometric';
-
-  @override
-  String get settingsUnlockMethodBiometricNeedsDeviceLockHint =>
-      'Requires a screen lock and enrolled biometrics.\nIf verification is cancelled or fails, use the screen lock instead of the recovery key.';
 
   @override
   String get settingsUnlockModeChangeCancelled =>
@@ -1208,7 +1204,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsUnlockModeDescriptionBiometric =>
-      'Uses fingerprint or face verification after lock; on cancel/failure it falls back to screen lock.';
+      'Uses fingerprint or face verification after lock; requires a screen lock and enrolled biometrics first. On cancel or failure, it falls back to screen lock.';
 
   @override
   String settingsSessionTimeoutBackgroundLockExplanation(String timeoutLabel) {
@@ -1217,7 +1213,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel) {
-    return 'The app auto-locks after staying in the background for $timeoutLabel; brief app switches usually do not trigger a lock. You can change this to 1 / 3 / 5 / 10 minutes in Personalization. Auto-lock pauses during backup, restore, or import/export; when you return, verify with your current unlock method.';
+    return 'The app auto-locks after staying in the background for $timeoutLabel; brief app switches usually do not trigger a lock. You can change this to 1 / 3 / 5 / 10 minutes in Personalization. Auto-lock pauses while creating backups, restoring backups, or running import/export; when you return, verify with your current unlock method.';
   }
 
   @override
@@ -1225,7 +1221,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsImportExportSectionDescriptionEnabled =>
-      'Import entries from other apps or export them as files. Supports Markdown, HTML, and Easy Diary backups.';
+      'Import entries from other apps or files, or export saved content as files. Supports Markdown, HTML, and Easy Diary backups.';
 
   @override
   String get settingsImportExportImportNoEntriesMessage =>
@@ -1308,7 +1304,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLocalBackupSectionDescriptionEnabled =>
-      'Create full backups stored on this device; restore overwrites current entries. (Keeps up to 5 local backups)';
+      'Create full local backups; restoring replaces the current diary vault with the backup copy. (Keeps up to 5 local backups)';
 
   @override
   String get settingsLocalBackupCreateButton => 'Create Local Backup';
@@ -1370,7 +1366,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionEnabled =>
-      'Link a Google Account to upload backups or restore from the cloud; restores overwrite current entries. (Keeps up to 5 cloud backups)';
+      'Link a Google Account to create Google Drive backups or restore from Google Drive backups; restoring replaces the current diary vault with the backup copy. (Keeps up to 5 Google Drive backups)';
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
@@ -1676,24 +1672,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportHeroChipGooglePlayPayment => 'Google Play Payment';
 
   @override
-  String get settingsSupportComplianceCardTitle => 'Payment and Data';
+  String get settingsSupportComplianceCardTitle => 'Support and Data';
 
   @override
   String get settingsSupportComplianceCardBody =>
-      'Payments are processed by Google Play as one-time support purchases, not subscriptions or memberships. The app does not store support records or read entry content.';
+      'Support payments are processed by Google Play as one-time support purchases, not subscriptions or memberships. The app does not store support records or read entry content.';
 
   @override
   String get settingsSupportProductsSectionTitle => 'Support Options';
 
   @override
   String get settingsSupportProductsSectionBody =>
-      'Google Play shows the localized title, description, and price for each option in your region.';
+      'Google Play shows the localized title, description, and price for each support option in your region.';
 
   @override
   String get settingsSupportBuyButtonPrefix => 'Support';
 
   @override
-  String get settingsSupportPendingMessage => 'Processing payment…';
+  String get settingsSupportPendingMessage => 'Processing support…';
 
   @override
   String get settingsSupportThanksMessage =>
@@ -1701,7 +1697,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportErrorMessage =>
-      'Payment did not complete. Please try again later.';
+      'Support did not complete. Please try again later.';
 
   @override
   String get settingsSupportBillingUnavailableMessage =>
@@ -1893,7 +1889,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get legalBillingSupportPageBody =>
-      'Payments are collected only through Google Play Billing as one-time support purchases. Google processes payments; the developer does not store support records. The support flow does not read diary vault content.';
+      'Support is offered only through Google Play Billing as one-time support purchases, not subscriptions or memberships. Google processes payments; the developer does not store support records. The support flow does not read diary vault content.';
 
   @override
   String get legalExternalLinkUnavailableMessage =>
@@ -1930,13 +1926,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary is a local, encrypted diary app for personal journaling. Install without signing up, but create a recovery key before reading or writing entries. Write safely, find entries quickly, and revisit them anytime; unless you back up or export, your data stays on your device by default.';
+      'Quill Diary is a local, encrypted diary app for personal journaling. Install and enter the app without signing up, but create and save a recovery key before actually reading or writing entries, creating a full backup, or exporting content. Unless you back up or export, your data stays on your device by default.';
 
   @override
   String get aboutTabIntroChip0 => 'Data Stays on Device';
 
   @override
-  String get aboutTabIntroChip1 => 'Markdown Export';
+  String get aboutTabIntroChip1 => 'Markdown / HTML';
 
   @override
   String get aboutTabIntroChip2 => 'Full-Text Search';
@@ -1959,14 +1955,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      'Entries, attachments, drafts, and the search index stay on your device, protected by encryption or by the current unlocked session. Nothing leaves the phone unless you back up or export.';
+      'Entries, attachments, drafts, and the search index stay on your device, protected by encryption or by the current unlocked session. Nothing leaves the phone unless you back up to another location or export readable files.';
 
   @override
   String get aboutTabIntroSection0Item1Title => 'Start without Signing Up';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      'No account is required to install and browse. Set up a recovery key before reading, writing, backing up, or exporting.';
+      'No account is required to install and enter the app. Set up a recovery key before actually reading or writing entries, creating a full backup, or exporting content.';
 
   @override
   String get aboutTabIntroSection0Item2Title =>
@@ -2012,7 +2008,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      'Create a full backup of the encrypted diary vault or export Markdown or HTML for reading, organizing, or moving content.';
+      'Create a full backup of the encrypted diary vault or export Markdown or HTML for reading, organizing, or moving content. If you use the cloud, Google Drive here is an encrypted backup destination, not real-time sync.';
 
   @override
   String get aboutTabIntroSection2Title => 'You Stay in Control of Your Data';
@@ -2090,14 +2086,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection0Subtitle =>
-      'Switch modes in Settings based on your device habits and desired protection level.';
+      'Choose the unlock method in Settings based on your device habits and desired protection level.';
 
   @override
   String get aboutTabUnlockSessionSection0Item0Title => 'None';
 
   @override
   String get aboutTabUnlockSessionSection0Item0Body =>
-      'No extra verification after lock; the app resumes immediately. Suitable when no device screen lock is set, but offers the least protection.';
+      'No extra verification after lock; the app resumes the previous state immediately. Suitable when no device screen lock is set, but offers the least protection.';
 
   @override
   String get aboutTabUnlockSessionSection0Item1Title => 'Device Screen Lock';
@@ -2134,7 +2130,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      'While unlocked, you can read and write entries, edit drafts, attach files, and use full-text search. Without a recovery key, content cannot be read or written even if you already see the home screen.';
+      'While unlocked, you can read and write saved entries, edit drafts, attach files, and use full-text search. Without a recovery key, content cannot be read or written even if you already see the home screen.';
 
   @override
   String get aboutTabUnlockSessionSection1Item1Title => 'Background Timeout';
@@ -2426,7 +2422,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item2Body =>
-      'The search index helps you find content faster. It does not replace the vault, which remains the authoritative source.';
+      'The search index helps you find content faster. It does not replace saved data in the vault, which remains the authoritative source.';
 
   @override
   String get aboutTabEditorLabel => 'Entry Editor';
@@ -2471,7 +2467,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      'Edit entry content while organizing the title, date, and time. Saving checks required fields to avoid incomplete records. Export to Markdown when needed.';
+      'Edit entry content while organizing the title, date, and time. Saving requires at least a title or body so you do not leave a blank record. Export is a separate follow-up flow, not a replacement for saving.';
 
   @override
   String get aboutTabEditorSection0Item2Title => 'Tags';
@@ -2544,7 +2540,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection2Item1Body =>
-      'Full backups include only the main vault, not unpublished local drafts.';
+      'Full backups include only the main vault, not local drafts that have not been formally saved. Import and export flows do not treat those drafts as final data either.';
 
   @override
   String get aboutTabEditorSection2Item2Title => 'Unsaved Indicator';
@@ -2562,7 +2558,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      'Backup and export both move data out, but for different purposes. Full backup preserves the entire encrypted vault. Markdown and HTML turn content into readable, organizable, re-importable formats. Do not mix the two flows.';
+      'Backup and export both move data out, but for different purposes. Full backup preserves the entire encrypted vault. Markdown and HTML exports turn saved content into readable, organizable, re-importable formats. Do not mix the two flows.';
 
   @override
   String get aboutTabBackupRestoreChip0 => 'Full Encrypted Backup';
@@ -2644,7 +2640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Subtitle =>
-      'This flow handles content exchange and reading, not replacing the entire vault.';
+      'This flow handles content exchange and reading, not fully restoring the entire vault.';
 
   @override
   String get aboutTabBackupRestoreSection2Item0Title => 'Import';
@@ -2658,7 +2654,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Item1Body =>
-      'Export `markdown_*.zip` from Settings, or export `html_*.html` from selected entries or overview on the home screen for readable formats.';
+      'Export `markdown_*.zip` from Settings, or export `html_*.html` from selected entries or overview on the home screen to turn saved content into readable formats.';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Title => 'Not a Sync Service';

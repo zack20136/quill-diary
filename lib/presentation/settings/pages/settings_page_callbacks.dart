@@ -410,7 +410,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
 
   String _formatLocalBackupTime(LocalBackupFile backup) {
     final AppLocalizations l10n = context.l10n;
-    return DisplayFormat.formatDateTime(l10n, backup.createdAt);
+    return DisplayFormat.formatDateTimeWithoutWeekday(l10n, backup.createdAt);
   }
 
   String _formatBytes(int bytes) => DisplayFormat.formatBytesForDisplay(bytes);

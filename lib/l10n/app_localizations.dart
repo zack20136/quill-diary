@@ -929,7 +929,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeTooltipSettings.
   ///
   /// In zh, this message translates to:
-  /// **'設定與備份'**
+  /// **'設定'**
   String get homeTooltipSettings;
 
   /// No description provided for @homeTooltipExportHtml.
@@ -2008,13 +2008,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewLocalBackupLast.
   ///
   /// In zh, this message translates to:
-  /// **'「{method}」，{time}。'**
+  /// **'上次本機備份：{time}（{method}）。'**
   String settingsSecurityOverviewLocalBackupLast(String time, String method);
 
   /// No description provided for @settingsSecurityOverviewLocalBackupStale.
   ///
   /// In zh, this message translates to:
-  /// **'上次備份已超過 30 天，建議儘快備份。'**
+  /// **'距離上次本機備份已超過 30 天，建議儘快備份。'**
   String get settingsSecurityOverviewLocalBackupStale;
 
   /// No description provided for @settingsSecurityOverviewDriveBackupTitle.
@@ -2026,19 +2026,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewDriveBackupNever.
   ///
   /// In zh, this message translates to:
-  /// **'尚未上傳備份到 Google Drive，建議儘快備份。'**
+  /// **'尚未建立 Google Drive 備份，建議儘快備份。'**
   String get settingsSecurityOverviewDriveBackupNever;
 
   /// No description provided for @settingsSecurityOverviewDriveBackupLast.
   ///
   /// In zh, this message translates to:
-  /// **'{time} 已上傳。'**
+  /// **'上次 Google Drive 備份：{time}。'**
   String settingsSecurityOverviewDriveBackupLast(String time);
 
   /// No description provided for @settingsSecurityOverviewDriveBackupLastWithAccount.
   ///
   /// In zh, this message translates to:
-  /// **'{time} 已上傳至 {account}。'**
+  /// **'上次 Google Drive 備份：{time}（{account}）。'**
   String settingsSecurityOverviewDriveBackupLastWithAccount(
     String time,
     String account,
@@ -2047,7 +2047,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewDriveBackupStale.
   ///
   /// In zh, this message translates to:
-  /// **'上次 Drive 備份已超過 30 天，建議儘快上傳。'**
+  /// **'距離上次 Google Drive 備份已超過 30 天，建議儘快備份。'**
   String get settingsSecurityOverviewDriveBackupStale;
 
   /// No description provided for @settingsSecurityOverviewBackupRecentFailure.
@@ -2083,7 +2083,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsUnlockMethodSectionDescription.
   ///
   /// In zh, this message translates to:
-  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方方式重新驗證。'**
+  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方設定的解鎖方式重新驗證。'**
   String settingsUnlockMethodSectionDescription(String timeoutLabel);
 
   /// No description provided for @settingsUnlockMethodSegmentNone.
@@ -2103,12 +2103,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'生物驗證'**
   String get settingsUnlockMethodSegmentBiometric;
-
-  /// No description provided for @settingsUnlockMethodBiometricNeedsDeviceLockHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'須已設定螢幕鎖並登錄生物辨識。\n驗證取消或失敗時，可改以螢幕鎖解鎖，不必輸入復原金鑰。'**
-  String get settingsUnlockMethodBiometricNeedsDeviceLockHint;
 
   /// No description provided for @settingsUnlockModeChangeCancelled.
   ///
@@ -2137,7 +2131,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsUnlockModeDescriptionBiometric.
   ///
   /// In zh, this message translates to:
-  /// **'鎖定後以指紋或臉部驗證；取消或失敗時可改以螢幕鎖，不必輸入復原金鑰。'**
+  /// **'鎖定後優先使用指紋或臉部驗證；須先設定螢幕鎖並登錄生物辨識。若取消或失敗，可改以螢幕鎖解鎖，不必輸入復原金鑰。'**
   String get settingsUnlockModeDescriptionBiometric;
 
   /// No description provided for @settingsSessionTimeoutBackgroundLockExplanation.
@@ -2149,7 +2143,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSessionTimeoutAboutBackgroundTimeoutBody.
   ///
   /// In zh, this message translates to:
-  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在備份、還原或匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。'**
+  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在建立備份、還原備份或執行匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。'**
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel);
 
   /// No description provided for @settingsImportExportSectionTitle.
@@ -2161,7 +2155,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsImportExportSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'可從其他 App 匯入日記，或將日記匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。'**
+  /// **'可從其他 App 或檔案匯入日記，也可把正式內容匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。'**
   String get settingsImportExportSectionDescriptionEnabled;
 
   /// No description provided for @settingsImportExportImportNoEntriesMessage.
@@ -2279,7 +2273,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLocalBackupSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'建立完整備份並存於本機，還原會覆蓋目前日記。（本機最多保留 5 份）'**
+  /// **'建立完整本機備份，還原時會以備份內容取代目前日記庫。（本機最多保留 5 份）'**
   String get settingsLocalBackupSectionDescriptionEnabled;
 
   /// No description provided for @settingsLocalBackupCreateButton.
@@ -2375,7 +2369,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'連結 Google 帳戶後，可上傳備份到雲端或從雲端還原，還原會覆蓋目前日記。（雲端最多保留 5 份）'**
+  /// **'連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。（Google Drive 最多保留 5 份）'**
   String get settingsDriveBackupSectionDescriptionEnabled;
 
   /// No description provided for @settingsDriveBackupSectionDescriptionOAuthNotConfigured.
@@ -2854,13 +2848,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportComplianceCardTitle.
   ///
   /// In zh, this message translates to:
-  /// **'付款與資料說明'**
+  /// **'支持與資料說明'**
   String get settingsSupportComplianceCardTitle;
 
   /// No description provided for @settingsSupportComplianceCardBody.
   ///
   /// In zh, this message translates to:
-  /// **'付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，亦不讀取日記內容。'**
+  /// **'支持付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，也不讀取日記內容。'**
   String get settingsSupportComplianceCardBody;
 
   /// No description provided for @settingsSupportProductsSectionTitle.
@@ -2872,7 +2866,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsSectionBody.
   ///
   /// In zh, this message translates to:
-  /// **'Google Play 會依所在地區顯示每個選項的標題、說明與金額。'**
+  /// **'Google Play 會依所在地區顯示各支持選項的標題、說明與金額。'**
   String get settingsSupportProductsSectionBody;
 
   /// No description provided for @settingsSupportBuyButtonPrefix.
@@ -3196,7 +3190,7 @@ abstract class AppLocalizations {
   /// No description provided for @legalBillingSupportPageBody.
   ///
   /// In zh, this message translates to:
-  /// **'僅透過 Google Play Billing 收款，為一次性支持、非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。'**
+  /// **'僅透過 Google Play Billing 提供一次性支持，非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。'**
   String get legalBillingSupportPageBody;
 
   /// No description provided for @legalExternalLinkUnavailableMessage.
@@ -3262,7 +3256,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝，但讀寫日記前須先建立復原金鑰。您可以安心寫、快速找、隨時回顧；除非您主動備份或匯出，資料預設留在裝置上。'**
+  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝與進入 App，但真正要讀寫日記、建立完整備份或匯出內容前，仍須先建立並保存復原金鑰。除非您主動備份或匯出，資料預設留在裝置上。'**
   String get aboutTabIntroHeroBody;
 
   /// No description provided for @aboutTabIntroChip0.
@@ -3274,7 +3268,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroChip1.
   ///
   /// In zh, this message translates to:
-  /// **'可匯出 Markdown'**
+  /// **'Markdown / HTML'**
   String get aboutTabIntroChip1;
 
   /// No description provided for @aboutTabIntroChip2.
@@ -3316,7 +3310,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'正式日記、附件、草稿與搜尋索引都會留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份或匯出，內容不會自動離開手機。'**
+  /// **'正式日記、附件、草稿與搜尋索引都留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份到外部位置或匯出可讀文件，內容不會自動離開手機。'**
   String get aboutTabIntroSection0Item0Body;
 
   /// No description provided for @aboutTabIntroSection0Item1Title.
@@ -3328,7 +3322,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'不需帳號即可安裝與瀏覽；讀寫日記、備份與匯出前，須先設定復原金鑰。'**
+  /// **'不需帳號即可安裝與進入 App；真正要讀寫日記、建立完整備份或匯出內容前，仍須先設定復原金鑰。'**
   String get aboutTabIntroSection0Item1Body;
 
   /// No description provided for @aboutTabIntroSection0Item2Title.
@@ -3400,7 +3394,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection1Item3Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML，方便自己閱讀、整理或搬移內容。'**
+  /// **'您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML 做閱讀、整理或搬移。若要放到雲端，Google Drive 在這裡扮演的是加密備份目的地，不是即時同步。'**
   String get aboutTabIntroSection1Item3Body;
 
   /// No description provided for @aboutTabIntroSection2Title.
@@ -3532,7 +3526,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'您可以依裝置習慣與想要的保護程度，在設定頁切換不同模式。'**
+  /// **'您可以依裝置習慣與想要的保護程度，在設定頁切換不同解鎖方式。'**
   String get aboutTabUnlockSessionSection0Subtitle;
 
   /// No description provided for @aboutTabUnlockSessionSection0Item0Title.
@@ -3544,7 +3538,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'鎖定後不額外驗證，回到 App 會直接恢復。適合尚未設定裝置螢幕鎖的情況，但保護力最低。'**
+  /// **'鎖定後不額外驗證，回到 App 會直接恢復先前狀態。適合尚未設定裝置螢幕鎖的情況，但保護力最低。'**
   String get aboutTabUnlockSessionSection0Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection0Item1Title.
@@ -3604,7 +3598,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'完成解鎖後，可正常讀寫日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。'**
+  /// **'完成解鎖後，可正常讀寫正式日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。'**
   String get aboutTabUnlockSessionSection1Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item1Title.
@@ -4078,7 +4072,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection2Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'搜尋索引的工作是幫您更快找到內容，不是取代正式日記資料本體；真正的權威來源仍然是加密日記庫。'**
+  /// **'搜尋索引的工作是幫您更快找到內容，不是取代正式資料本體；真正的權威來源仍然是加密日記庫。'**
   String get aboutTabSearchIndexSection2Item2Body;
 
   /// No description provided for @aboutTabEditorLabel.
@@ -4156,7 +4150,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時會檢查必要欄位，避免留下不完整紀錄；需要時，您仍能把內容匯出成 Markdown。'**
+  /// **'您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時至少要有標題或內文，避免留下空白紀錄；匯出則屬後續整理流程，不會取代正式儲存。'**
   String get aboutTabEditorSection0Item1Body;
 
   /// No description provided for @aboutTabEditorSection0Item2Title.
@@ -4276,7 +4270,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份只含正式日記庫，不含尚未發佈的本地草稿。'**
+  /// **'完整備份只含正式日記庫，不含尚未正式儲存的本地草稿；匯入匯出流程也不會把這些草稿當成正式資料。'**
   String get aboutTabEditorSection2Item1Body;
 
   /// No description provided for @aboutTabEditorSection2Item2Title.
@@ -4306,7 +4300,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 則是把內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。'**
+  /// **'備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 匯出則是把正式內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。'**
   String get aboutTabBackupRestoreHeroBody;
 
   /// No description provided for @aboutTabBackupRestoreChip0.
@@ -4342,7 +4336,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'如果您想保留整個正式日記庫，之後能原樣恢復，走的就是完整備份。'**
+  /// **'如果您想保留整個正式日記庫，之後能原樣還原，走的就是完整備份。'**
   String get aboutTabBackupRestoreSection0Subtitle;
 
   /// No description provided for @aboutTabBackupRestoreSection0Item0Title.
@@ -4438,7 +4432,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'這條流程處理的是內容交換與閱讀，不是拿來完整覆寫整個日記庫。'**
+  /// **'這條流程處理的是內容交換與閱讀，不是拿來完整還原整個日記庫。'**
   String get aboutTabBackupRestoreSection2Subtitle;
 
   /// No description provided for @aboutTabBackupRestoreSection2Item0Title.
@@ -4462,7 +4456,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把內容整理成可閱讀格式。'**
+  /// **'您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把正式內容整理成可閱讀格式。'**
   String get aboutTabBackupRestoreSection2Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection2Item2Title.

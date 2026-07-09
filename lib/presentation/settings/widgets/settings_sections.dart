@@ -357,13 +357,6 @@ class UnlockMethodSectionBody extends StatelessWidget {
             height: 1.45,
           ),
         ),
-        if (unlockMode == AppUnlockMode.biometric) ...<Widget>[
-          const SizedBox(height: 10),
-          AppFeedbackBanner(
-            icon: Icons.info_outline_rounded,
-            message: l10n.settingsUnlockMethodBiometricNeedsDeviceLockHint,
-          ),
-        ],
       ],
     );
   }
