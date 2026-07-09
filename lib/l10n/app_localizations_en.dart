@@ -1370,7 +1370,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
-      'Google Sign-In is not configured in this build, so cloud backup is unavailable.';
+      'Google Sign-In is not configured in this build, so Google Drive backup is unavailable.';
 
   @override
   String get settingsDriveBackupLinkButton => 'Link Google Account';

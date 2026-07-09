@@ -1313,7 +1313,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
-      '此版本尚未設定 Google 登入，暫無法使用雲端備份。';
+      '此版本尚未設定 Google 登入，暫無法使用 Google Drive 備份。';
 
   @override
   String get settingsDriveBackupLinkButton => '連結 Google 帳戶';
@@ -1360,7 +1360,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupDisconnectSuccess =>
-      '已中斷 Google 帳戶連線，雲端備份仍會保留。';
+      '已中斷 Google 帳戶連線，Google Drive 備份仍會保留。';
 
   @override
   String get settingsDriveBackupDisconnectConfirmTitle => '中斷 Google 帳戶連線？';
@@ -1376,7 +1376,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsDriveBackupBackupInspectFailed(String message) {
-    return '雲端備份未完成。\n$message';
+    return 'Google Drive 備份未完成。\n$message';
   }
 
   @override

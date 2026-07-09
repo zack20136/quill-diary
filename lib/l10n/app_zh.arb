@@ -822,7 +822,7 @@
   },
   "settingsDriveBackupSectionTitle": "Google Drive 備份與還原",
   "settingsDriveBackupSectionDescriptionEnabled": "連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。（Google Drive 最多保留 5 份）",
-  "settingsDriveBackupSectionDescriptionOAuthNotConfigured": "此版本尚未設定 Google 登入，暫無法使用雲端備份。",
+  "settingsDriveBackupSectionDescriptionOAuthNotConfigured": "此版本尚未設定 Google 登入，暫無法使用 Google Drive 備份。",
   "settingsDriveBackupLinkButton": "連結 Google 帳戶",
   "settingsDriveBackupSwitchAccountButton": "切換帳戶",
   "settingsDriveBackupDisconnectButton": "中斷連結",
@@ -850,7 +850,7 @@
       }
     }
   },
-  "settingsDriveBackupDisconnectSuccess": "已中斷 Google 帳戶連線，雲端備份仍會保留。",
+  "settingsDriveBackupDisconnectSuccess": "已中斷 Google 帳戶連線，Google Drive 備份仍會保留。",
   "settingsDriveBackupDisconnectConfirmTitle": "中斷 Google 帳戶連線？",
   "settingsDriveBackupDisconnectConfirmBody": "中斷後需重新連結才能備份或還原。雲端上的備份檔不會被刪除。",
   "settingsDriveBackupUploadSuccess": "已備份到 Google Drive：{fileName}",
@@ -861,7 +861,7 @@
       }
     }
   },
-  "settingsDriveBackupBackupInspectFailed": "雲端備份未完成。\n{message}",
+  "settingsDriveBackupBackupInspectFailed": "Google Drive 備份未完成。\n{message}",
   "@settingsDriveBackupBackupInspectFailed": {
     "placeholders": {
       "message": {

@@ -2375,7 +2375,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupSectionDescriptionOAuthNotConfigured.
   ///
   /// In zh, this message translates to:
-  /// **'此版本尚未設定 Google 登入，暫無法使用雲端備份。'**
+  /// **'此版本尚未設定 Google 登入，暫無法使用 Google Drive 備份。'**
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured;
 
   /// No description provided for @settingsDriveBackupLinkButton.
@@ -2459,7 +2459,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupDisconnectSuccess.
   ///
   /// In zh, this message translates to:
-  /// **'已中斷 Google 帳戶連線，雲端備份仍會保留。'**
+  /// **'已中斷 Google 帳戶連線，Google Drive 備份仍會保留。'**
   String get settingsDriveBackupDisconnectSuccess;
 
   /// No description provided for @settingsDriveBackupDisconnectConfirmTitle.
@@ -2483,7 +2483,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupBackupInspectFailed.
   ///
   /// In zh, this message translates to:
-  /// **'雲端備份未完成。\n{message}'**
+  /// **'Google Drive 備份未完成。\n{message}'**
   String settingsDriveBackupBackupInspectFailed(String message);
 
   /// No description provided for @settingsDriveBackupNoBackups.

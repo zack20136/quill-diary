@@ -68,7 +68,7 @@
 - 全文搜尋與索引
 - 本機完整備份與還原
 - Google Drive 備份與還原
-- Google Play Billing 一次性贊助
+- Google Play Billing 一次性支持
 
 如果商店頁文案提到這些能力，內容必須與實作一致，特別是：
 

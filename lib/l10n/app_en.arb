@@ -822,7 +822,7 @@
   },
   "settingsDriveBackupSectionTitle": "Google Drive Backup & Restore",
   "settingsDriveBackupSectionDescriptionEnabled": "Link a Google Account to create Google Drive backups or restore from Google Drive backups; restoring replaces the current diary vault with the backup copy. (Keeps up to 5 Google Drive backups)",
-  "settingsDriveBackupSectionDescriptionOAuthNotConfigured": "Google Sign-In is not configured in this build, so cloud backup is unavailable.",
+  "settingsDriveBackupSectionDescriptionOAuthNotConfigured": "Google Sign-In is not configured in this build, so Google Drive backup is unavailable.",
   "settingsDriveBackupLinkButton": "Link Google Account",
   "settingsDriveBackupSwitchAccountButton": "Switch Account",
   "settingsDriveBackupDisconnectButton": "Disconnect",
