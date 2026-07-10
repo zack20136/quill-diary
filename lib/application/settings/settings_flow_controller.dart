@@ -33,7 +33,7 @@ final settingsFlowControllerProvider = Provider<SettingsFlowController>((
   return SettingsFlowController(ref);
 });
 
-enum SettingsFlowFeedbackTone { info, success, error }
+enum SettingsFlowFeedbackTone { info, success, warning, error }
 
 class SettingsFlowFeedback {
   const SettingsFlowFeedback(
@@ -43,6 +43,16 @@ class SettingsFlowFeedback {
 
   final String message;
   final SettingsFlowFeedbackTone tone;
+}
+
+class SettingsRecoveryKeyResult {
+  const SettingsRecoveryKeyResult({
+    required this.recoveryKey,
+    required this.feedback,
+  });
+
+  final String recoveryKey;
+  final SettingsFlowFeedback feedback;
 }
 
 class SettingsRepairVaultResult {
@@ -158,7 +168,9 @@ class SettingsFlowController {
     );
   }
 
-  Future<String> createRecoveryKey(AppLocalizations l10n) async {
+  Future<SettingsRecoveryKeyResult> createRecoveryKey(
+    AppLocalizations l10n,
+  ) async {
     final RecoverySetupResult result = await _ref
         .read(vaultRecoveryServiceProvider)
         .setupRecoveryKey();
@@ -170,7 +182,13 @@ class SettingsFlowController {
         );
     _ref.invalidate(recoveryMetadataProvider);
     _refreshCaches();
-    return result.recoveryKey;
+    return SettingsRecoveryKeyResult(
+      recoveryKey: result.recoveryKey,
+      feedback: SettingsFlowFeedback(
+        sessionRecoverySetupSuccessMessage(l10n),
+        tone: SettingsFlowFeedbackTone.success,
+      ),
+    );
   }
 
   Future<BackupPersistResult> createLocalBackup({
@@ -382,10 +400,24 @@ class SettingsFlowController {
       return null;
     }
     _ref.invalidate(trustedDeviceAccessProvider);
-    return SettingsFlowFeedback(unlockModeChangeMessage(l10n, outcome.kind));
+    return SettingsFlowFeedback(
+      unlockModeChangeMessage(l10n, outcome.kind),
+      tone: switch (outcome.kind) {
+        UnlockModeChangeMessageKind.changeCancelled =>
+          SettingsFlowFeedbackTone.info,
+        UnlockModeChangeMessageKind.requiresUnlockedSession ||
+        UnlockModeChangeMessageKind.requiresDeviceLock ||
+        UnlockModeChangeMessageKind.requiresBiometricEnrollment =>
+          SettingsFlowFeedbackTone.warning,
+        UnlockModeChangeMessageKind.authFailed =>
+          SettingsFlowFeedbackTone.error,
+      },
+    );
   }
 
-  Future<String> rotateRecoveryKey(AppLocalizations l10n) async {
+  Future<SettingsRecoveryKeyResult> rotateRecoveryKey(
+    AppLocalizations l10n,
+  ) async {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) async {
@@ -400,7 +432,13 @@ class SettingsFlowController {
           );
       _ref.invalidate(recoveryMetadataProvider);
       _refreshCaches();
-      return result.recoveryKey;
+      return SettingsRecoveryKeyResult(
+        recoveryKey: result.recoveryKey,
+        feedback: SettingsFlowFeedback(
+          sessionRecoveryKeyRotatedMessage(l10n),
+          tone: SettingsFlowFeedbackTone.success,
+        ),
+      );
     });
   }
 
@@ -425,7 +463,7 @@ class SettingsFlowController {
         .unlockWithRecovery(recoveryKey);
     _refreshCaches();
     return SettingsFlowFeedback(
-      l10n.sessionRecoveryUnlockSuccessMessage,
+      sessionRecoveryUnlockSuccessMessage(l10n),
       tone: SettingsFlowFeedbackTone.success,
     );
   }

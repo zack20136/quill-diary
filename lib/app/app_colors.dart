@@ -186,10 +186,10 @@ class AppColors extends ThemeExtension<AppColors> {
       galleryForeground: Colors.white,
       feedbackSuccessBackground: isLight
           ? const Color(0xFFE3ECE6)
-          : const Color(0xFF263730),
+          : const Color(0xFF20352F),
       feedbackSuccessForeground: isLight
           ? const Color(0xFF294239)
-          : const Color(0xFFD8E6DD),
+          : const Color(0xFFD6E7E0),
       tagAccentBackgroundAlpha: isLight ? 0.12 : 0.24,
       tagAccentForegroundUseLightenBlend: !isLight,
       tagAccentForegroundBlendTarget: isLight

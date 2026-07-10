@@ -303,14 +303,16 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _createRecoveryKey() async {
     final BuildContext context = pageContext;
     final AppLocalizations l10n = context.l10n;
-    final String recoveryKey = await _settingsFlow.createRecoveryKey(l10n);
+    final SettingsRecoveryKeyResult result = await _settingsFlow
+        .createRecoveryKey(l10n);
     if (!context.mounted) {
       return;
     }
+    _showFeedback(result.feedback);
     await showRecoveryKeySaveDialog(
       context,
       title: l10n.settingsRecoveryKeySaveDialogTitle,
-      recoveryKey: recoveryKey,
+      recoveryKey: result.recoveryKey,
     );
   }
 
@@ -618,14 +620,16 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     if (!confirmed) {
       return;
     }
-    final String recoveryKey = await _settingsFlow.rotateRecoveryKey(l10n);
+    final SettingsRecoveryKeyResult result = await _settingsFlow
+        .rotateRecoveryKey(l10n);
     if (!context.mounted) {
       return;
     }
+    _showFeedback(result.feedback);
     await showRecoveryKeySaveDialog(
       context,
       title: l10n.settingsRecoveryKeySaveNewDialogTitle,
-      recoveryKey: recoveryKey,
+      recoveryKey: result.recoveryKey,
     );
   }
 

@@ -8,6 +8,7 @@ import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/pages/support_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/fake_in_app_purchase_platform.dart';
@@ -107,5 +108,7 @@ void main() {
     expect(fakeAndroidAddition.consumePurchaseCalled, isTrue);
     expect(fakeInAppPurchase.completePurchaseCalled, isTrue);
     expect(service.state.purchasePhase, SponsorPurchasePhase.idle);
+    expect(find.text('謝謝您的支持，這對開發很有幫助。'), findsOneWidget);
+    expect(find.byType(AppFeedbackBanner), findsNothing);
   });
 }
