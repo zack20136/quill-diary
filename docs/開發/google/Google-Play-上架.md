@@ -9,8 +9,7 @@
 - 平台定位目前是 Android
 - Android `applicationId` / `namespace`：`zack20136.com.quill_diary`
 - `minSdk`：`30`
-- 版本來源：`pubspec.yaml`
-- 目前版本：`1.0.0+12`
+- 版本以 [`pubspec.yaml`](../../../pubspec.yaml) 的 `version:` 為準；送審前確認 `versionCode` 已遞增
 - release 建置要求實體簽章設定，不允許用 debug signing 發 release
 
 對應來源：
@@ -49,9 +48,7 @@
 - `versionCode = flutter.versionCode`
 - `versionName = flutter.versionName`
 
-而這些值在本專案來自 [`pubspec.yaml`](../../../pubspec.yaml) 的：
-
-- `version: 1.0.0+12`
+而這些值在本專案來自 [`pubspec.yaml`](../../../pubspec.yaml) 的 `version:`（勿在本文件寫死版號）。
 
 每次送審前至少要再確認：
 

@@ -41,7 +41,7 @@ Manifest 另外宣告了 `queries`，這不是執行時權限，而是 Android �
 Quill Diary 目前支援圖片與附件，但做法不是要求廣泛儲存權限，而是透過系統挑選器取得使用者明確選取的內容。
 
 - 圖片選取使用 `image_picker`
-- 檔案選取使用 `file_picker`
+- 檔案選取使用 `file_picker`（目前鎖 12 beta 的取捨見 [備份與還原.md](../功能/備份與還原.md#外部選檔與-materialize)）
 - App 只處理使用者當次挑選的 `content://` 或暫存檔案
 - 沒有自行掃描相簿、整個儲存空間或下載資料夾
 
