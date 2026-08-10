@@ -111,10 +111,87 @@ class EntryIndexRecord {
   }
 }
 
+/// 人物提及篇數統計（近 30 天窗口以呼叫時的 [now] 計算）。
+class PersonMentionStats {
+  const PersonMentionStats({
+    required this.personId,
+    required this.mentionCount,
+    required this.recentMentionCount,
+    this.lastMentionDate,
+  });
+
+  final PersonId personId;
+  final int mentionCount;
+  final int recentMentionCount;
+  final DateOnly? lastMentionDate;
+}
+
+/// 範圍內提及排序列（總覽 Top N）。
+class PersonScopedMentionRank {
+  const PersonScopedMentionRank({
+    required this.personId,
+    required this.mentionCount,
+    required this.lastMentionDate,
+  });
+
+  final PersonId personId;
+  final int mentionCount;
+  final DateOnly lastMentionDate;
+}
+
+/// 人物姓名分析所需的輕量索引列，不含人物關聯。
+class PeopleAnalysisSourceDocument {
+  const PeopleAnalysisSourceDocument({
+    required this.entryId,
+    required this.entryDate,
+    required this.contentHash,
+    required this.titleText,
+    required this.bodyVisibleText,
+  });
+
+  final EntryId entryId;
+  final DateOnly entryDate;
+  final String contentHash;
+  final String titleText;
+  final String bodyVisibleText;
+}
+
+class PeopleVisibleTextSourceDocument {
+  const PeopleVisibleTextSourceDocument({
+    required this.entryId,
+    required this.filePath,
+    required this.contentHash,
+  });
+
+  final EntryId entryId;
+  final String filePath;
+  final String contentHash;
+}
+
+class PeopleAnalysisDocumentResult {
+  const PeopleAnalysisDocumentResult({
+    required this.document,
+    required this.personIds,
+  });
+
+  final PeopleAnalysisSourceDocument document;
+  final Set<PersonId> personIds;
+}
+
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
   static const int indexGeneration = 1;
+
+  /// 人物分析衍生索引的語意版本（與 schema generation 分開）。
+  /// 變更匹配規則時請遞增，讓既有 vault 自動重建統計。
+  static const int peopleAnalyticsGeneration = 1;
+
+  static const String kPeopleAnalyticsGenerationKey =
+      'people_analytics_generation';
+  static const String kPeopleAnalyticsStaleKey = 'people_analytics_stale';
+  static const String kPeopleAnalyticsCatalogFingerprintKey =
+      'people_analytics_catalog_fingerprint';
 
   @override
   int get schemaVersion => 1;
@@ -137,6 +214,7 @@ class IndexDatabase extends GeneratedDatabase {
         title_search_text TEXT,
         preview_text TEXT,
         body_search_text TEXT,
+        body_visible_text TEXT,
         date TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -198,6 +276,35 @@ class IndexDatabase extends GeneratedDatabase {
       ON entry_attachments (entry_id, created_at);
     ''');
     await _ensurePreviewMarkdownColumn();
+    await _ensureBodyVisibleTextColumn();
+    // 解鎖熱路徑只確保表存在；不重建人物統計。
+    await ensurePeopleAnalyticsTable();
+  }
+
+  Future<void> ensurePeopleAnalyticsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS entry_people_analytics (
+        entry_id TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        entry_date TEXT NOT NULL,
+        PRIMARY KEY (entry_id, person_id)
+      );
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS people_analysis_documents (
+        entry_id TEXT PRIMARY KEY,
+        content_hash TEXT NOT NULL,
+        entry_date TEXT NOT NULL
+      );
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_entry_people_analytics_person_date
+      ON entry_people_analytics (person_id, entry_date);
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_entry_people_analytics_entry
+      ON entry_people_analytics (entry_id);
+    ''');
   }
 
   Future<void> _ensurePreviewMarkdownColumn() async {
@@ -214,6 +321,20 @@ class IndexDatabase extends GeneratedDatabase {
     }
   }
 
+  Future<void> _ensureBodyVisibleTextColumn() async {
+    final List<QueryRow> rows = await customSelect(
+      'PRAGMA table_info(entries_index);',
+    ).get();
+    final bool hasColumn = rows.any(
+      (QueryRow row) => row.read<String>('name') == 'body_visible_text',
+    );
+    if (!hasColumn) {
+      await customStatement(
+        'ALTER TABLE entries_index ADD COLUMN body_visible_text TEXT;',
+      );
+    }
+  }
+
   Future<void> upsertEntry({
     required DiaryEntry entry,
     required String filePath,
@@ -221,6 +342,7 @@ class IndexDatabase extends GeneratedDatabase {
     required String previewMarkdown,
     required String titleSearchText,
     required String bodySearchText,
+    required String bodyVisibleText,
     required String contentHash,
     required int encryptedFileSize,
     required DateTime encryptedModifiedAt,
@@ -229,11 +351,11 @@ class IndexDatabase extends GeneratedDatabase {
       '''
         INSERT INTO entries_index (
           id, vault_id, file_path, title, title_search_text, preview_text,
-          preview_markdown, body_search_text, date,
+          preview_markdown, body_search_text, body_visible_text, date,
           created_at, updated_at, word_count, char_count, attachment_count,
           has_attachments, encrypted_file_size,
           encrypted_file_mtime, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           vault_id = excluded.vault_id,
           file_path = excluded.file_path,
@@ -242,6 +364,7 @@ class IndexDatabase extends GeneratedDatabase {
           preview_text = excluded.preview_text,
           preview_markdown = excluded.preview_markdown,
           body_search_text = excluded.body_search_text,
+          body_visible_text = excluded.body_visible_text,
           date = excluded.date,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
@@ -262,6 +385,7 @@ class IndexDatabase extends GeneratedDatabase {
         previewText,
         previewMarkdown,
         bodySearchText,
+        bodyVisibleText,
         entry.date.value,
         entry.createdAt.toIso8601String(),
         entry.updatedAt.toIso8601String(),
@@ -542,9 +666,379 @@ class IndexDatabase extends GeneratedDatabase {
       'DELETE FROM entry_attachments WHERE entry_id = ?;',
       <Object?>[entryId],
     );
+    await customStatement(
+      'DELETE FROM entry_people_analytics WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
+    await customStatement(
+      'DELETE FROM people_analysis_documents WHERE entry_id = ?;',
+      <Object?>[entryId],
+    );
     await customStatement('DELETE FROM entries_index WHERE id = ?;', <Object?>[
       entryId,
     ]);
+  }
+
+  Future<int> replacePeopleAnalyticsForDocuments(
+    List<PeopleAnalysisDocumentResult> results,
+  ) async {
+    if (results.isEmpty) {
+      return 0;
+    }
+    return transaction(() async {
+      var applied = 0;
+      for (final PeopleAnalysisDocumentResult result in results) {
+        final PeopleAnalysisSourceDocument document = result.document;
+        await customStatement(
+          'DELETE FROM entry_people_analytics WHERE entry_id = ?;',
+          <Object?>[document.entryId],
+        );
+        await customStatement(
+          'DELETE FROM people_analysis_documents WHERE entry_id = ?;',
+          <Object?>[document.entryId],
+        );
+        final QueryRow? current = await customSelect(
+          '''
+            SELECT 1 AS present
+            FROM entries_index
+            WHERE id = ?
+              AND date = ?
+              AND COALESCE(content_hash, '') = ?
+              AND body_visible_text IS NOT NULL
+            LIMIT 1;
+          ''',
+          variables: <Variable<Object>>[
+            Variable.withString(document.entryId),
+            Variable.withString(document.entryDate.value),
+            Variable.withString(document.contentHash),
+          ],
+        ).getSingleOrNull();
+        if (current == null) {
+          continue;
+        }
+        for (final PersonId personId in result.personIds) {
+          if (personId.isEmpty) {
+            continue;
+          }
+          await customStatement(
+            '''
+              INSERT INTO entry_people_analytics
+                (entry_id, person_id, entry_date)
+              VALUES (?, ?, ?);
+            ''',
+            <Object?>[document.entryId, personId, document.entryDate.value],
+          );
+        }
+        await customStatement(
+          '''
+            INSERT INTO people_analysis_documents
+              (entry_id, content_hash, entry_date)
+            VALUES (?, ?, ?)
+            ON CONFLICT(entry_id) DO UPDATE SET
+              content_hash = excluded.content_hash,
+              entry_date = excluded.entry_date;
+          ''',
+          <Object?>[
+            document.entryId,
+            document.contentHash,
+            document.entryDate.value,
+          ],
+        );
+        applied += 1;
+      }
+      return applied;
+    });
+  }
+
+  Future<int> countMissingPeopleVisibleTextDocuments() async {
+    final QueryRow row = await customSelect('''
+      SELECT COUNT(*) AS missing_count
+      FROM entries_index
+      WHERE body_visible_text IS NULL;
+    ''').getSingle();
+    return row.read<int>('missing_count');
+  }
+
+  Future<List<PeopleVisibleTextSourceDocument>>
+  missingPeopleVisibleTextDocuments({
+    int limit = 256,
+    EntryId? afterEntryId,
+  }) async {
+    final String keysetClause = afterEntryId == null ? '' : 'AND id > ?';
+    final List<Variable<Object>> variables = <Variable<Object>>[
+      if (afterEntryId != null) Variable.withString(afterEntryId),
+      Variable.withInt(limit),
+    ];
+    final List<QueryRow> rows = await customSelect('''
+      SELECT id, file_path, COALESCE(content_hash, '') AS content_hash
+      FROM entries_index
+      WHERE body_visible_text IS NULL
+      $keysetClause
+      ORDER BY id
+      LIMIT ?;
+    ''', variables: variables).get();
+    return <PeopleVisibleTextSourceDocument>[
+      for (final QueryRow row in rows)
+        PeopleVisibleTextSourceDocument(
+          entryId: row.read<String>('id'),
+          filePath: row.read<String>('file_path'),
+          contentHash: row.read<String>('content_hash'),
+        ),
+    ];
+  }
+
+  Future<int> updatePeopleVisibleTextDocuments(
+    Map<PeopleVisibleTextSourceDocument, String> visibleTextByDocument,
+  ) async {
+    if (visibleTextByDocument.isEmpty) {
+      return 0;
+    }
+    return transaction(() async {
+      var updated = 0;
+      for (final MapEntry<PeopleVisibleTextSourceDocument, String> item
+          in visibleTextByDocument.entries) {
+        final PeopleVisibleTextSourceDocument document = item.key;
+        await customStatement(
+          '''
+            UPDATE entries_index
+            SET body_visible_text = ?
+            WHERE id = ?
+              AND file_path = ?
+              AND COALESCE(content_hash, '') = ?
+              AND body_visible_text IS NULL;
+          ''',
+          <Object?>[
+            item.value,
+            document.entryId,
+            document.filePath,
+            document.contentHash,
+          ],
+        );
+        final QueryRow changed = await customSelect(
+          'SELECT changes() AS changed;',
+        ).getSingle();
+        updated += changed.read<int>('changed');
+      }
+      return updated;
+    });
+  }
+
+  Future<List<PeopleAnalysisSourceDocument>> changedPeopleAnalysisDocuments({
+    int limit = 256,
+    EntryId? afterEntryId,
+  }) async {
+    final String keysetClause = afterEntryId == null ? '' : 'AND e.id > ?';
+    final List<Variable<Object>> variables = <Variable<Object>>[
+      if (afterEntryId != null) Variable.withString(afterEntryId),
+      Variable.withInt(limit),
+    ];
+    final List<QueryRow> rows = await customSelect('''
+      SELECT
+        e.id,
+        e.date,
+        COALESCE(e.content_hash, '') AS content_hash,
+        COALESCE(e.title_search_text, '') AS title_text,
+        e.body_visible_text AS body_text
+      FROM entries_index e
+      LEFT JOIN people_analysis_documents d ON d.entry_id = e.id
+      WHERE (
+        d.entry_id IS NULL
+        OR d.content_hash <> COALESCE(e.content_hash, '')
+        OR d.entry_date <> e.date
+      )
+      AND e.body_visible_text IS NOT NULL
+      $keysetClause
+      ORDER BY e.id
+      LIMIT ?;
+    ''', variables: variables).get();
+    return <PeopleAnalysisSourceDocument>[
+      for (final QueryRow row in rows)
+        PeopleAnalysisSourceDocument(
+          entryId: row.read<String>('id'),
+          entryDate: DateOnly.parse(row.read<String>('date')),
+          contentHash: row.read<String>('content_hash'),
+          titleText: row.read<String>('title_text'),
+          bodyVisibleText: row.read<String>('body_text'),
+        ),
+    ];
+  }
+
+  Future<int> countChangedPeopleAnalysisDocuments() async {
+    final QueryRow row = await customSelect('''
+      SELECT COUNT(*) AS pending_count
+      FROM entries_index e
+      LEFT JOIN people_analysis_documents d ON d.entry_id = e.id
+      WHERE (
+        d.entry_id IS NULL
+        OR d.content_hash <> COALESCE(e.content_hash, '')
+        OR d.entry_date <> e.date
+      )
+      AND e.body_visible_text IS NOT NULL;
+    ''').getSingle();
+    return row.read<int>('pending_count');
+  }
+
+  Future<void> resetPeopleAnalytics() async {
+    await transaction(() async {
+      await customStatement('DELETE FROM entry_people_analytics;');
+      await customStatement('DELETE FROM people_analysis_documents;');
+    });
+  }
+
+  Future<void> setPeopleAnalyticsStale(bool stale) async {
+    await setAppValue(kPeopleAnalyticsStaleKey, stale ? '1' : '0');
+  }
+
+  Future<bool> isPeopleAnalyticsStale() async {
+    final String? value = await getAppValue(kPeopleAnalyticsStaleKey);
+    return value == '1';
+  }
+
+  Future<void> markPeopleAnalyticsReady(String catalogFingerprint) async {
+    await setAppValue(
+      kPeopleAnalyticsGenerationKey,
+      peopleAnalyticsGeneration.toString(),
+    );
+    await setAppValue(
+      kPeopleAnalyticsCatalogFingerprintKey,
+      catalogFingerprint,
+    );
+    await setPeopleAnalyticsStale(false);
+  }
+
+  Future<void> beginPeopleAnalyticsRebuild(String catalogFingerprint) async {
+    await setAppValue(
+      kPeopleAnalyticsGenerationKey,
+      peopleAnalyticsGeneration.toString(),
+    );
+    await setAppValue(
+      kPeopleAnalyticsCatalogFingerprintKey,
+      catalogFingerprint,
+    );
+    await setPeopleAnalyticsStale(true);
+  }
+
+  Future<bool> needsPeopleAnalyticsReset(String catalogFingerprint) async {
+    final String? generation = await getAppValue(kPeopleAnalyticsGenerationKey);
+    if (generation != peopleAnalyticsGeneration.toString()) {
+      return true;
+    }
+    return await getAppValue(kPeopleAnalyticsCatalogFingerprintKey) !=
+        catalogFingerprint;
+  }
+
+  Future<Map<PersonId, PersonMentionStats>> allPersonMentionStats({
+    DateTime? now,
+  }) async {
+    final DateTime today = now ?? DateTime.now();
+    final DateOnly todayDate = DateOnly.fromDateTime(today);
+    final DateOnly windowStart = DateOnly.fromDateTime(
+      today.subtract(const Duration(days: 29)),
+    );
+
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT
+          person_id,
+          COUNT(*) AS mention_count,
+          MAX(entry_date) AS last_mention_date,
+          SUM(
+            CASE
+              WHEN entry_date >= ? AND entry_date <= ? THEN 1
+              ELSE 0
+            END
+          ) AS recent_mention_count
+        FROM entry_people_analytics
+        GROUP BY person_id;
+      ''',
+      variables: <Variable<Object>>[
+        Variable.withString(windowStart.value),
+        Variable.withString(todayDate.value),
+      ],
+    ).get();
+
+    return <PersonId, PersonMentionStats>{
+      for (final QueryRow row in rows)
+        row.read<String>('person_id'): PersonMentionStats(
+          personId: row.read<String>('person_id'),
+          mentionCount: row.read<int>('mention_count'),
+          recentMentionCount:
+              row.readNullable<int>('recent_mention_count') ?? 0,
+          lastMentionDate: DateOnly.tryParse(
+            row.readNullable<String>('last_mention_date') ?? '',
+          ),
+        ),
+    };
+  }
+
+  Future<List<EntryIndexRecord>> relatedEntriesForPerson(
+    PersonId personId,
+  ) async {
+    final List<QueryRow> rows = await customSelect(
+      '''
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
+          $_kPreviewImagePathsSelect
+        FROM entry_people_analytics epa
+        INNER JOIN entries_index e ON e.id = epa.entry_id
+        LEFT JOIN entry_tags t ON t.entry_id = e.id
+        WHERE epa.person_id = ?
+        GROUP BY e.id
+        ORDER BY e.date DESC, e.created_at DESC, e.updated_at DESC;
+      ''',
+      variables: <Variable<Object>>[Variable.withString(personId)],
+    ).get();
+    return rows.map(EntryIndexRecord.fromRow).toList();
+  }
+
+  Future<List<PersonScopedMentionRank>> topMentionedPeople({
+    required int limit,
+    String? yearPrefix,
+    String? monthPrefix,
+  }) async {
+    final StringBuffer where = StringBuffer();
+    final List<Variable<Object>> variables = <Variable<Object>>[];
+    if (monthPrefix != null && monthPrefix.isNotEmpty) {
+      where.write('WHERE entry_date LIKE ?');
+      variables.add(Variable.withString('$monthPrefix%'));
+    } else if (yearPrefix != null && yearPrefix.isNotEmpty) {
+      where.write('WHERE entry_date LIKE ?');
+      variables.add(Variable.withString('$yearPrefix%'));
+    }
+    variables.add(Variable.withInt(limit));
+
+    final List<QueryRow> rows = await customSelect('''
+        SELECT
+          person_id,
+          COUNT(*) AS mention_count,
+          MAX(entry_date) AS last_mention_date
+        FROM entry_people_analytics
+        $where
+        GROUP BY person_id
+        ORDER BY mention_count DESC, last_mention_date DESC, person_id ASC
+        LIMIT ?;
+      ''', variables: variables).get();
+
+    final List<PersonScopedMentionRank> ranks = <PersonScopedMentionRank>[];
+    for (final QueryRow row in rows) {
+      final DateOnly? last = DateOnly.tryParse(
+        row.readNullable<String>('last_mention_date') ?? '',
+      );
+      if (last == null) {
+        continue;
+      }
+      ranks.add(
+        PersonScopedMentionRank(
+          personId: row.read<String>('person_id'),
+          mentionCount: row.read<int>('mention_count'),
+          lastMentionDate: last,
+        ),
+      );
+    }
+    return ranks;
   }
 
   static const Set<String> _removedIndexColumns = <String>{
@@ -558,6 +1052,7 @@ class IndexDatabase extends GeneratedDatabase {
     'file_path',
     'title_search_text',
     'body_search_text',
+    'body_visible_text',
     'date',
     'created_at',
     'updated_at',
@@ -592,6 +1087,8 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM entries_index;');
     await customStatement('DELETE FROM entry_tags;');
     await customStatement('DELETE FROM entry_attachments;');
+    await customStatement('DELETE FROM entry_people_analytics;');
+    await customStatement('DELETE FROM people_analysis_documents;');
   }
 
   Future<void> setAppValue(String key, String value) async {

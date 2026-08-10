@@ -123,6 +123,38 @@ void main() {
     }
   });
 
+  test('IndexDatabaseManager 會序列化同一 vault 的並行開啟', () async {
+    final Directory dir = await Directory.systemTemp.createTemp(
+      'qld_idx_parallel',
+    );
+    try {
+      final IndexDatabaseManager manager = IndexDatabaseManager(
+        TestVaultPathStrategy(dir),
+      );
+      final UnlockedVaultSession session = UnlockedVaultSession(
+        vaultId: 'vlt_parallel',
+        trustedDevice: true,
+        recoveryWrapKey: List<int>.generate(32, (int index) => index + 1),
+        deviceSlotId: 'dev_test',
+      );
+
+      final List<IndexDatabase> databases =
+          await Future.wait(<Future<IndexDatabase>>[
+            manager.openForSession(session),
+            manager.openForSession(session),
+            manager.openForSession(session),
+          ]);
+
+      expect(identical(databases[0], databases[1]), isTrue);
+      expect(identical(databases[1], databases[2]), isTrue);
+      await manager.close();
+    } finally {
+      if (dir.existsSync()) {
+        await dir.delete(recursive: true);
+      }
+    }
+  });
+
   test('IndexDatabaseManager.openForSession 遇到損壞索引檔時自動重建', () async {
     final Directory dir = await Directory.systemTemp.createTemp(
       'qld_idx_corrupt',

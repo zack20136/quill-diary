@@ -5,7 +5,9 @@ import 'package:quill_diary/infrastructure/preferences/editor_typography_prefere
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
+import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 import 'editor_checkbox_block_row.dart';
+import 'editor_mention_text_field.dart';
 
 class EditorHybridBody extends StatefulWidget {
   const EditorHybridBody({
@@ -13,11 +15,16 @@ class EditorHybridBody extends StatefulWidget {
     required this.bodyController,
     required this.typography,
     required this.onBodyChanged,
+    this.mentionController,
+    this.onMentionKeyEvent,
   });
 
   final TextEditingController bodyController;
   final EditorTypographyPreferences typography;
   final VoidCallback onBodyChanged;
+  final EditorPersonMentionController? mentionController;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)?
+  onMentionKeyEvent;
 
   @override
   State<EditorHybridBody> createState() => EditorHybridBodyState();
@@ -675,9 +682,24 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     final TextStyle bodyStyle = _bodyStyle(context);
 
     if (!_hybridMode) {
-      return TextField(
+      if (widget.mentionController == null) {
+        return TextField(
+          controller: widget.bodyController,
+          focusNode: _plainTextFocusNode,
+          expands: true,
+          maxLines: null,
+          minLines: null,
+          textAlignVertical: TextAlignVertical.top,
+          style: bodyStyle,
+          onChanged: (_) => widget.onBodyChanged(),
+          decoration: _plainTextDecoration(context, bodyStyle),
+        );
+      }
+      return EditorMentionTextField(
         controller: widget.bodyController,
         focusNode: _plainTextFocusNode,
+        mentionController: widget.mentionController,
+        onMentionKeyEvent: widget.onMentionKeyEvent,
         expands: true,
         maxLines: null,
         minLines: null,
@@ -743,17 +765,31 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       return const SizedBox.shrink();
     }
     final TextEditingController controller = _controllerForLine(line);
+    final FocusNode? focusNode = _lineFocusNodes[line.id];
     return Padding(
       padding: EdgeInsets.only(bottom: widget.typography.bodyParagraphSpacing),
-      child: TextField(
-        controller: controller,
-        focusNode: _lineFocusNodes[line.id],
-        minLines: 1,
-        maxLines: null,
-        keyboardType: TextInputType.multiline,
-        style: bodyStyle,
-        decoration: _lineDecoration(),
-      ),
+      child: widget.mentionController == null
+          ? TextField(
+              controller: controller,
+              focusNode: focusNode,
+              minLines: 1,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              style: bodyStyle,
+              decoration: _lineDecoration(),
+            )
+          : EditorMentionTextField(
+              controller: controller,
+              focusNode: focusNode,
+              mentionController: widget.mentionController,
+              onMentionKeyEvent: widget.onMentionKeyEvent,
+              minLines: 1,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              style: bodyStyle,
+              decoration: _lineDecoration(),
+              onChanged: (_) => widget.onBodyChanged(),
+            ),
     );
   }
 
@@ -783,6 +819,8 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       editable: true,
       textController: _controllerForLine(line),
       textFocusNode: _lineFocusNodes[line.id],
+      mentionController: widget.mentionController,
+      onMentionKeyEvent: widget.onMentionKeyEvent,
       onCheckedChanged: (bool checked) => _toggleCheckbox(line.id, checked),
       onTextChanged: (String text) => _updateLineText(line.id, text),
       onSubmitted: () => _insertCheckboxAfter(lineIndex),

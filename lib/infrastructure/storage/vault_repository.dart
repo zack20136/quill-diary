@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui';
 
@@ -9,6 +11,8 @@ import 'package:path/path.dart' as p;
 
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
+import '../../domain/people/person.dart';
+import '../../domain/people/person_name_matcher.dart';
 import '../../domain/recovery/kdf_descriptor.dart';
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
@@ -17,12 +21,14 @@ import '../crypto/crypto_service.dart';
 import '../database/index_database.dart';
 import '../database/index_database_manager.dart';
 import '../markdown/front_matter_codec.dart';
+import '../markdown/visible_text_from_markdown.dart';
 import '../security/app_lock_service.dart';
 import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import '../security/unlock_mode_policy.dart';
 import 'restore_precheck.dart';
+import 'people_store.dart';
 import 'pinned_entries_store.dart';
 import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
@@ -96,12 +102,230 @@ class _EntrySearchFields {
     required this.previewMarkdown,
     required this.titleSearchText,
     required this.bodySearchText,
+    required this.bodyVisibleText,
   });
 
   final String previewText;
   final String previewMarkdown;
   final String titleSearchText;
   final String bodySearchText;
+  final String bodyVisibleText;
+}
+
+final class _PeopleAnalyticsCancelled implements Exception {
+  const _PeopleAnalyticsCancelled();
+}
+
+void _peopleAnalysisWorkerMain(SendPort readyPort) {
+  PersonNameMatcher? matcher;
+  final ReceivePort requests = ReceivePort();
+  readyPort.send(requests.sendPort);
+  requests.listen((Object? message) {
+    if (message == null) {
+      requests.close();
+      Isolate.exit();
+    }
+    final List<Object?> request = (message as List).cast<Object?>();
+    final SendPort replyPort = request[0]! as SendPort;
+    try {
+      final String operation = request[1]! as String;
+      if (operation == 'configure') {
+        final List<Map<String, Object?>> serializedPeople =
+            (request[2]! as List).cast<Map<String, Object?>>();
+        matcher = PersonNameMatcher(<Person>[
+          for (final Map<String, Object?> raw in serializedPeople)
+            if (Person.fromJson(raw) case final Person person) person,
+        ]);
+        replyPort.send(<Object?>['ok', true]);
+        return;
+      }
+      final List<Map<String, String>> documents = (request[2]! as List)
+          .cast<Map<String, String>>();
+      if (operation == 'visible') {
+        replyPort.send(<Object?>[
+          'ok',
+          <String, String>{
+            for (final Map<String, String> document in documents)
+              document['id']!: EntryIndexText.fromMarkdown(
+                const FrontMatterCodec()
+                    .decode(document['markdown'] ?? '')
+                    .markdownBody,
+              ).visibleText,
+          },
+        ]);
+        return;
+      }
+      final PersonNameMatcher configuredMatcher =
+          matcher ?? (throw StateError('人物姓名 matcher 尚未初始化。'));
+      replyPort.send(<Object?>[
+        'ok',
+        <String, List<String>>{
+          for (final Map<String, String> document in documents)
+            document['id']!: configuredMatcher
+                .matchTitleAndBody(
+                  title: document['title'] ?? '',
+                  body: document['body'] ?? '',
+                )
+                .toList(growable: false),
+        },
+      ]);
+    } on Object catch (error) {
+      replyPort.send(<Object?>['error', error.toString()]);
+    }
+  });
+}
+
+final class _PeopleAnalysisWorker {
+  _PeopleAnalysisWorker._(this._isolate, this._sendPort);
+
+  final Isolate _isolate;
+  final SendPort _sendPort;
+  bool _closed = false;
+  ReceivePort? _pendingReply;
+  Completer<Object?>? _pendingCompleter;
+
+  static Future<_PeopleAnalysisWorker> start() async {
+    final ReceivePort ready = ReceivePort();
+    final Isolate isolate = await Isolate.spawn(
+      _peopleAnalysisWorkerMain,
+      ready.sendPort,
+    );
+    final SendPort sendPort = await ready.first as SendPort;
+    ready.close();
+    return _PeopleAnalysisWorker._(isolate, sendPort);
+  }
+
+  Future<void> configurePeople(List<Person> people) async {
+    final Object? result = await _request(<Object?>[
+      'configure',
+      people.map((Person person) => person.toJson()).toList(growable: false),
+    ]);
+    if (result != true) {
+      throw StateError('人物姓名 matcher 初始化失敗。');
+    }
+  }
+
+  Future<Map<String, String>> extractVisibleText(
+    Map<String, String> markdownByEntryId,
+  ) async {
+    final Object? result = await _request(<Object?>[
+      'visible',
+      <Map<String, String>>[
+        for (final MapEntry<String, String> entry in markdownByEntryId.entries)
+          <String, String>{'id': entry.key, 'markdown': entry.value},
+      ],
+    ]);
+    return (result! as Map).cast<String, String>();
+  }
+
+  Future<Map<String, List<String>>> match(
+    List<PeopleAnalysisSourceDocument> documents,
+  ) async {
+    final Object? result = await _request(<Object?>[
+      'match',
+      <Map<String, String>>[
+        for (final PeopleAnalysisSourceDocument document in documents)
+          <String, String>{
+            'id': document.entryId,
+            'title': document.titleText,
+            'body': document.bodyVisibleText,
+          },
+      ],
+    ]);
+    return (result! as Map).cast<String, List<String>>();
+  }
+
+  Future<Object?> _request(List<Object?> payload) async {
+    if (_closed) {
+      throw StateError('人物分析 worker 已關閉。');
+    }
+    final ReceivePort reply = ReceivePort();
+    final Completer<Object?> completer = Completer<Object?>();
+    _pendingReply = reply;
+    _pendingCompleter = completer;
+    reply.listen((Object? message) {
+      if (!completer.isCompleted) {
+        final List<Object?> envelope = (message! as List).cast<Object?>();
+        if (envelope.first == 'ok') {
+          completer.complete(envelope[1]);
+        } else {
+          completer.completeError(StateError(envelope[1]! as String));
+        }
+      }
+      reply.close();
+      if (identical(_pendingReply, reply)) {
+        _pendingReply = null;
+        _pendingCompleter = null;
+      }
+    });
+    _sendPort.send(<Object?>[reply.sendPort, ...payload]);
+    return completer.future;
+  }
+
+  void close() {
+    if (_closed) {
+      return;
+    }
+    _closed = true;
+    final Completer<Object?>? pending = _pendingCompleter;
+    if (pending != null && !pending.isCompleted) {
+      pending.completeError(const _PeopleAnalyticsCancelled());
+    }
+    _pendingReply?.close();
+    _pendingReply = null;
+    _pendingCompleter = null;
+    _sendPort.send(null);
+    _isolate.kill(priority: Isolate.immediate);
+  }
+}
+
+enum PeopleAnalyticsProgressState { idle, analyzing, ready }
+
+enum PeopleAnalyticsProgressPhase { preparingIndex, analyzingMentions }
+
+final class PeopleAnalyticsProgress {
+  const PeopleAnalyticsProgress({
+    required this.state,
+    this.phase = PeopleAnalyticsProgressPhase.analyzingMentions,
+    this.processedDocuments = 0,
+    this.totalDocuments = 0,
+  });
+
+  const PeopleAnalyticsProgress.idle()
+    : this(state: PeopleAnalyticsProgressState.idle);
+
+  final PeopleAnalyticsProgressState state;
+  final PeopleAnalyticsProgressPhase phase;
+  final int processedDocuments;
+  final int totalDocuments;
+}
+
+@visibleForTesting
+final class PeopleAnalyticsDebugMetrics {
+  const PeopleAnalyticsDebugMetrics({
+    required this.scannedDocuments,
+    required this.batchWrites,
+    required this.workerStarts,
+  });
+
+  final int scannedDocuments;
+  final int batchWrites;
+  final int workerStarts;
+}
+
+final class _PeopleAnalyticsJob {
+  _PeopleAnalyticsJob(this.vaultId);
+
+  final VaultId vaultId;
+  bool cancelled = false;
+  bool matcherConfigured = false;
+  _PeopleAnalysisWorker? worker;
+
+  void cancel() {
+    cancelled = true;
+    worker?.close();
+    worker = null;
+  }
 }
 
 class _ScannedEntry {
@@ -201,6 +425,29 @@ class VaultRepository {
   final AppLockService _appLockService;
 
   RecoveryMetadata? _cachedRecoveryMetadata;
+
+  /// 解鎖後首次讀取名冊才填入；避免解鎖熱路徑解密。
+  List<Person>? _peopleCatalogCache;
+  VaultId? _peopleCatalogVaultId;
+  Future<void>? _peopleAnalyticsRebuildInFlight;
+  _PeopleAnalyticsJob? _peopleAnalyticsJob;
+  final StreamController<PeopleAnalyticsProgress>
+  _peopleAnalyticsProgressController =
+      StreamController<PeopleAnalyticsProgress>.broadcast();
+  int _peopleAnalysisScannedDocuments = 0;
+  int _peopleAnalysisBatchWrites = 0;
+  int _peopleAnalysisWorkerStarts = 0;
+
+  Stream<PeopleAnalyticsProgress> get peopleAnalyticsProgress =>
+      _peopleAnalyticsProgressController.stream;
+
+  @visibleForTesting
+  PeopleAnalyticsDebugMetrics get peopleAnalyticsDebugMetrics =>
+      PeopleAnalyticsDebugMetrics(
+        scannedDocuments: _peopleAnalysisScannedDocuments,
+        batchWrites: _peopleAnalysisBatchWrites,
+        workerStarts: _peopleAnalysisWorkerStarts,
+      );
 
   Future<void> initialize() async {
     await _pathStrategy.ensureBaseDirectories();
@@ -1112,6 +1359,7 @@ class VaultRepository {
       previewMarkdown: searchFields.previewMarkdown,
       titleSearchText: searchFields.titleSearchText,
       bodySearchText: searchFields.bodySearchText,
+      bodyVisibleText: searchFields.bodyVisibleText,
       contentHash: await _hashString(markdown),
       encryptedFileSize: fileBytes.lengthInBytes,
       encryptedModifiedAt: DateTime.now(),
@@ -1181,6 +1429,7 @@ class VaultRepository {
           previewMarkdown: scanned.searchFields.previewMarkdown,
           titleSearchText: scanned.searchFields.titleSearchText,
           bodySearchText: scanned.searchFields.bodySearchText,
+          bodyVisibleText: scanned.searchFields.bodyVisibleText,
           contentHash: await _hashString(scanned.markdown),
           encryptedFileSize: scanned.encryptedFileSize,
           encryptedModifiedAt: scanned.encryptedModifiedAt,
@@ -1239,6 +1488,7 @@ class VaultRepository {
             previewMarkdown: searchFields.previewMarkdown,
             titleSearchText: searchFields.titleSearchText,
             bodySearchText: searchFields.bodySearchText,
+            bodyVisibleText: searchFields.bodyVisibleText,
             contentHash: await _hashString(markdown),
             encryptedFileSize: await entity.length(),
             encryptedModifiedAt: await entity.lastModified(),
@@ -1793,6 +2043,11 @@ class VaultRepository {
       return const <File>[];
     }
 
+    final File peopleCatalog = File(await _pathStrategy.peopleCatalogPath());
+    final List<File> preferred = <File>[
+      if (peopleCatalog.existsSync()) peopleCatalog,
+    ];
+
     await for (final FileSystemEntity entity in vaultRoot.list(
       recursive: true,
       followLinks: false,
@@ -1819,7 +2074,7 @@ class VaultRepository {
     entryEncrypted.sort(pathSort);
     otherEncrypted.sort(pathSort);
 
-    return <File>[...entryEncrypted, ...otherEncrypted];
+    return <File>[...preferred, ...entryEncrypted, ...otherEncrypted];
   }
 
   bool _isUnderVaultContentSubdir(String absolutePath, String vaultRootPath) {
@@ -2240,8 +2495,23 @@ class VaultRepository {
         .replaceAll(RegExp(r'-$'), '');
   }
 
-  Future<void> closeUnlockedResources() {
-    return _indexDatabaseManager.close();
+  Future<void> closeUnlockedResources() async {
+    _peopleCatalogCache = null;
+    _peopleCatalogVaultId = null;
+    _peopleAnalyticsJob?.cancel();
+    _peopleAnalyticsJob = null;
+    final Future<void>? inFlight = _peopleAnalyticsRebuildInFlight;
+    if (inFlight != null) {
+      try {
+        await inFlight;
+      } on Object {
+        // 衍生分析失敗不妨礙鎖定與釋放 session 資源。
+      }
+    }
+    _peopleAnalyticsProgressController.add(
+      const PeopleAnalyticsProgress.idle(),
+    );
+    await _indexDatabaseManager.close();
   }
 
   Future<void> clearTrustedDeviceAccess() async {
@@ -2358,20 +2628,507 @@ class VaultRepository {
   /// 解鎖後 attach 搜尋索引：開啟連線、必要時重置損壞 schema、同步標籤樣式。
   ///
   /// 不會全量 [rebuildIndex]；vault 變更後的重建由還原、金鑰替換或手動修復觸發。
+  /// 人物：只確保 analytics 表存在，不解密名冊、不背景全量 rebuild。
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
     if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
+      await _requireOpenIndex().ensurePeopleAnalyticsTable();
       return;
     }
+    await _requireOpenIndex().ensurePeopleAnalyticsTable();
     await syncTagStylesBetweenVaultAndIndex();
+  }
+
+  Future<List<Person>> listPeople(UnlockedVaultSession session) async {
+    final List<Person>? cached = _peopleCatalogCache;
+    if (cached != null && _peopleCatalogVaultId == session.vaultId) {
+      return List<Person>.unmodifiable(cached);
+    }
+    final List<Person> people = await PeopleStore(
+      pathStrategy: _pathStrategy,
+      cryptoService: _cryptoService,
+    ).read(session);
+    _peopleCatalogCache = people;
+    _peopleCatalogVaultId = session.vaultId;
+    return List<Person>.unmodifiable(people);
+  }
+
+  Future<Person> createPerson(
+    UnlockedVaultSession session,
+    PersonDraft draft, {
+    bool confirmWarnings = false,
+  }) =>
+      _savePersonDraft(session, draft: draft, confirmWarnings: confirmWarnings);
+
+  Future<Person> updatePerson(
+    UnlockedVaultSession session,
+    PersonId personId,
+    PersonDraft draft, {
+    bool confirmWarnings = false,
+    bool addOldNameAsAlias = false,
+  }) => _savePersonDraft(
+    session,
+    personId: personId,
+    draft: draft,
+    confirmWarnings: confirmWarnings,
+    addOldNameAsAlias: addOldNameAsAlias,
+  );
+
+  Future<Person> _savePersonDraft(
+    UnlockedVaultSession session, {
+    required PersonDraft draft,
+    PersonId? personId,
+    required bool confirmWarnings,
+    bool addOldNameAsAlias = false,
+  }) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final List<Person> existing = List<Person>.from(await listPeople(session));
+    final int existingIndex = existing.indexWhere(
+      (Person item) => item.id == personId,
+    );
+    if (personId != null && existingIndex < 0) {
+      throw StateError('找不到要更新的人物');
+    }
+    final Person? previous = existingIndex >= 0
+        ? existing[existingIndex]
+        : null;
+
+    final String name = draft.name.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (name.isEmpty) {
+      throw ArgumentError('人物姓名不可為空白');
+    }
+    final List<String> baseAliases = draft.aliases
+        .map((String a) => a.trim().replaceAll(RegExp(r'\s+'), ' '))
+        .where((String a) => a.isNotEmpty)
+        .toList();
+    final List<String> aliases;
+    if (addOldNameAsAlias &&
+        previous != null &&
+        normalizePersonName(previous.name) != normalizePersonName(name)) {
+      final String oldName = previous.name.trim();
+      if (oldName.isNotEmpty &&
+          !baseAliases.any(
+            (String a) =>
+                normalizePersonName(a) == normalizePersonName(oldName),
+          ) &&
+          normalizePersonName(oldName) != normalizePersonName(name)) {
+        aliases = <String>[oldName, ...baseAliases];
+      } else {
+        aliases = baseAliases;
+      }
+    } else {
+      aliases = baseAliases;
+    }
+
+    if (!isValidAcquaintanceYear(draft.acquaintanceYear)) {
+      throw ArgumentError('認識年份無效');
+    }
+
+    final List<PersonNameIssue> issues = collectPersonNameIssues(
+      name: name,
+      aliases: aliases,
+      existingPeople: existing,
+      excludingPersonId: personId,
+    );
+    final PersonNameValidationException validation =
+        PersonNameValidationException(issues);
+    if (validation.hasConflict ||
+        (validation.requiresConfirmation && !confirmWarnings)) {
+      throw validation;
+    }
+
+    final DateTime now = DateTime.now();
+    final Person normalized = Person(
+      id: previous?.id ?? generatePersonId(),
+      name: name,
+      aliases: aliases,
+      relationships: draft.relationships,
+      relationshipDescription: draft.relationshipDescription.trim(),
+      notes: draft.notes.trim(),
+      friendliness: draft.friendliness,
+      accentArgb: draft.accentArgb,
+      birthday: draft.birthday,
+      acquaintanceYear: draft.acquaintanceYear,
+      createdAt: previous?.createdAt ?? now,
+      updatedAt: now,
+    );
+
+    if (existingIndex >= 0) {
+      existing[existingIndex] = normalized;
+    } else {
+      existing.add(normalized);
+    }
+
+    await PeopleStore(
+      pathStrategy: _pathStrategy,
+      cryptoService: _cryptoService,
+    ).write(session, metadata: metadata, people: existing);
+    _peopleCatalogCache = existing;
+    _peopleCatalogVaultId = session.vaultId;
+    return normalized;
+  }
+
+  Future<void> deletePerson(UnlockedVaultSession session, PersonId id) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final List<Person> existing = List<Person>.from(await listPeople(session));
+    existing.removeWhere((Person person) => person.id == id);
+    await PeopleStore(
+      pathStrategy: _pathStrategy,
+      cryptoService: _cryptoService,
+    ).write(session, metadata: metadata, people: existing);
+    _peopleCatalogCache = existing;
+    _peopleCatalogVaultId = session.vaultId;
+  }
+
+  /// 統計過期或尚未建立時自動全量重建；並行呼叫會共用同一個 in-flight Future。
+  Future<void> ensurePeopleAnalyticsReady(UnlockedVaultSession session) async {
+    while (true) {
+      final Future<void>? inFlight = _peopleAnalyticsRebuildInFlight;
+      if (inFlight != null) {
+        final _PeopleAnalyticsJob? job = _peopleAnalyticsJob;
+        if (job?.vaultId == session.vaultId) {
+          await inFlight;
+          return;
+        }
+        job?.cancel();
+        try {
+          await inFlight;
+        } on Object {
+          // 切換 vault 時舊工作取消屬預期行為。
+        }
+      }
+      if (_peopleAnalyticsRebuildInFlight != null) {
+        continue;
+      }
+
+      final _PeopleAnalyticsJob job = _PeopleAnalyticsJob(session.vaultId);
+      _peopleAnalyticsJob = job;
+      final Future<void> started = _runPeopleAnalyticsJob(session, job);
+      _peopleAnalyticsRebuildInFlight = started;
+      try {
+        await started;
+      } finally {
+        if (identical(_peopleAnalyticsRebuildInFlight, started)) {
+          _peopleAnalyticsRebuildInFlight = null;
+          _peopleAnalyticsJob = null;
+        }
+      }
+      return;
+    }
+  }
+
+  Future<void> _runPeopleAnalyticsJob(
+    UnlockedVaultSession session,
+    _PeopleAnalyticsJob job,
+  ) async {
+    await _openIndexForSession(session);
+    await _requireOpenIndex().ensurePeopleAnalyticsTable();
+    if (job.cancelled) {
+      throw const _PeopleAnalyticsCancelled();
+    }
+    await _refreshPeopleAnalyticsBody(session, job);
+  }
+
+  Future<void> _refreshPeopleAnalyticsBody(
+    UnlockedVaultSession session,
+    _PeopleAnalyticsJob job,
+  ) async {
+    try {
+      await _refreshPeopleAnalyticsBodyWithWorker(session, job);
+    } finally {
+      job.worker?.close();
+      job.worker = null;
+    }
+  }
+
+  Future<void> _refreshPeopleAnalyticsBodyWithWorker(
+    UnlockedVaultSession session,
+    _PeopleAnalyticsJob job,
+  ) async {
+    _peopleAnalysisScannedDocuments = 0;
+    _peopleAnalysisBatchWrites = 0;
+    _peopleAnalysisWorkerStarts = 0;
+    final IndexDatabase indexDb = _requireOpenIndex();
+    try {
+      await _backfillPeopleVisibleText(session, job, indexDb);
+    } on Object {
+      job.worker?.close();
+      job.worker = null;
+      rethrow;
+    }
+    if (job.cancelled) {
+      throw const _PeopleAnalyticsCancelled();
+    }
+    final List<Person> people = await listPeople(session);
+    final List<String> fingerprintParts = <String>[
+      for (final Person person in people)
+        '${person.id}:${person.sortedNormalizedNames.join('|')}',
+    ]..sort();
+    final String catalogFingerprint = await _hashString(
+      fingerprintParts.join('\n'),
+    );
+    final bool needsReset = await indexDb.needsPeopleAnalyticsReset(
+      catalogFingerprint,
+    );
+    if (needsReset) {
+      await indexDb.resetPeopleAnalytics();
+      await indexDb.beginPeopleAnalyticsRebuild(catalogFingerprint);
+    }
+    final int initialPending = await indexDb
+        .countChangedPeopleAnalysisDocuments();
+    if (initialPending == 0) {
+      if (needsReset || await indexDb.isPeopleAnalyticsStale()) {
+        await indexDb.markPeopleAnalyticsReady(catalogFingerprint);
+      }
+      _peopleAnalyticsProgressController.add(
+        const PeopleAnalyticsProgress(
+          state: PeopleAnalyticsProgressState.ready,
+        ),
+      );
+      return;
+    }
+    if (!needsReset) {
+      await indexDb.setPeopleAnalyticsStale(true);
+    }
+    _peopleAnalyticsProgressController.add(
+      PeopleAnalyticsProgress(
+        state: PeopleAnalyticsProgressState.analyzing,
+        totalDocuments: initialPending,
+      ),
+    );
+    try {
+      final PersonNameMatcher matcher = PersonNameMatcher(people);
+      var processed = 0;
+      EntryId? afterEntryId;
+      while (true) {
+        if (job.cancelled) {
+          throw const _PeopleAnalyticsCancelled();
+        }
+        final List<PeopleAnalysisSourceDocument> changed = await indexDb
+            .changedPeopleAnalysisDocuments(afterEntryId: afterEntryId);
+        if (changed.isEmpty) {
+          if (await indexDb.countChangedPeopleAnalysisDocuments() == 0) {
+            break;
+          }
+          afterEntryId = null;
+          continue;
+        }
+        afterEntryId = changed.last.entryId;
+        final int payloadLength = changed.fold<int>(
+          0,
+          (int total, PeopleAnalysisSourceDocument document) =>
+              total +
+              document.titleText.length +
+              document.bodyVisibleText.length,
+        );
+        final bool useWorker = changed.length > 8 || payloadLength > 32 * 1024;
+        final Map<String, List<String>>? backgroundHits;
+        if (useWorker) {
+          if (job.worker == null) {
+            job.worker = await _PeopleAnalysisWorker.start();
+            _peopleAnalysisWorkerStarts += 1;
+          }
+          if (!job.matcherConfigured) {
+            await job.worker!.configurePeople(people);
+            job.matcherConfigured = true;
+          }
+          backgroundHits = await job.worker!.match(changed);
+        } else {
+          backgroundHits = null;
+        }
+        if (job.cancelled) {
+          throw const _PeopleAnalyticsCancelled();
+        }
+        final List<PeopleAnalysisDocumentResult> results =
+            <PeopleAnalysisDocumentResult>[
+              for (final PeopleAnalysisSourceDocument document in changed)
+                PeopleAnalysisDocumentResult(
+                  document: document,
+                  personIds: backgroundHits == null
+                      ? matcher.matchTitleAndBody(
+                          title: document.titleText,
+                          body: document.bodyVisibleText,
+                        )
+                      : (backgroundHits[document.entryId] ?? const <String>[])
+                            .toSet(),
+                ),
+            ];
+        await indexDb.replacePeopleAnalyticsForDocuments(results);
+        _peopleAnalysisScannedDocuments += changed.length;
+        _peopleAnalysisBatchWrites += 1;
+        processed += changed.length;
+        _peopleAnalyticsProgressController.add(
+          PeopleAnalyticsProgress(
+            state: PeopleAnalyticsProgressState.analyzing,
+            processedDocuments: processed,
+            totalDocuments: initialPending,
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+      if (job.cancelled) {
+        throw const _PeopleAnalyticsCancelled();
+      }
+      await indexDb.markPeopleAnalyticsReady(catalogFingerprint);
+      _peopleAnalyticsProgressController.add(
+        PeopleAnalyticsProgress(
+          state: PeopleAnalyticsProgressState.ready,
+          processedDocuments: processed,
+          totalDocuments: initialPending,
+        ),
+      );
+    } on _PeopleAnalyticsCancelled {
+      await indexDb.setPeopleAnalyticsStale(true);
+      rethrow;
+    } on Object {
+      await indexDb.setPeopleAnalyticsStale(true);
+      rethrow;
+    } finally {
+      job.worker?.close();
+      job.worker = null;
+    }
+  }
+
+  Future<void> _backfillPeopleVisibleText(
+    UnlockedVaultSession session,
+    _PeopleAnalyticsJob job,
+    IndexDatabase indexDb,
+  ) async {
+    final int initialMissing = await indexDb
+        .countMissingPeopleVisibleTextDocuments();
+    if (initialMissing == 0) {
+      return;
+    }
+    job.worker ??= await _PeopleAnalysisWorker.start();
+    _peopleAnalysisWorkerStarts += 1;
+    var processed = 0;
+    EntryId? afterEntryId;
+    while (true) {
+      if (job.cancelled) {
+        throw const _PeopleAnalyticsCancelled();
+      }
+      final List<PeopleVisibleTextSourceDocument> documents = await indexDb
+          .missingPeopleVisibleTextDocuments(afterEntryId: afterEntryId);
+      if (documents.isEmpty) {
+        if (await indexDb.countMissingPeopleVisibleTextDocuments() == 0) {
+          break;
+        }
+        if (afterEntryId == null) {
+          throw StateError('部分日記索引無法補建可見正文。');
+        }
+        afterEntryId = null;
+        continue;
+      }
+      afterEntryId = documents.last.entryId;
+      final Map<String, String> markdownByEntryId = <String, String>{};
+      final Map<String, String> visibleTextByEntryId = <String, String>{};
+      var payloadLength = 0;
+
+      Future<void> flushWorkerPayload() async {
+        if (markdownByEntryId.isEmpty) {
+          return;
+        }
+        final _PeopleAnalysisWorker? worker = job.worker;
+        if (job.cancelled || worker == null) {
+          throw const _PeopleAnalyticsCancelled();
+        }
+        visibleTextByEntryId.addAll(
+          await worker.extractVisibleText(markdownByEntryId),
+        );
+        markdownByEntryId.clear();
+        payloadLength = 0;
+      }
+
+      for (final PeopleVisibleTextSourceDocument document in documents) {
+        if (job.cancelled) {
+          throw const _PeopleAnalyticsCancelled();
+        }
+        final File file = File(document.filePath);
+        if (!file.existsSync()) {
+          continue;
+        }
+        final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+          await file.readAsBytes(),
+        );
+        final String markdown = await _cryptoService.decryptMarkdown(
+          headerBytes: parsed.headerBytes,
+          ciphertextBytes: parsed.ciphertextBytes,
+          context: _decryptionContext(session),
+        );
+        markdownByEntryId[document.entryId] = markdown;
+        payloadLength += markdown.length;
+        if (markdownByEntryId.length >= 8 || payloadLength >= 32 * 1024) {
+          await flushWorkerPayload();
+        }
+      }
+      await flushWorkerPayload();
+      if (job.cancelled) {
+        throw const _PeopleAnalyticsCancelled();
+      }
+      final Map<PeopleVisibleTextSourceDocument, String> updates =
+          <PeopleVisibleTextSourceDocument, String>{
+            for (final PeopleVisibleTextSourceDocument document in documents)
+              if (visibleTextByEntryId[document.entryId] case final String text)
+                document: text,
+          };
+      await indexDb.updatePeopleVisibleTextDocuments(updates);
+      processed += documents.length;
+      _peopleAnalyticsProgressController.add(
+        PeopleAnalyticsProgress(
+          state: PeopleAnalyticsProgressState.analyzing,
+          phase: PeopleAnalyticsProgressPhase.preparingIndex,
+          processedDocuments: processed.clamp(0, initialMissing),
+          totalDocuments: initialMissing,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  Future<Map<PersonId, PersonMentionStats>> allPersonMentionStats(
+    UnlockedVaultSession session, {
+    DateTime? now,
+  }) async {
+    await ensurePeopleAnalyticsReady(session);
+    return _requireOpenIndex().allPersonMentionStats(now: now);
+  }
+
+  Future<List<EntryIndexRecord>> relatedEntriesForPerson(
+    UnlockedVaultSession session,
+    PersonId personId,
+  ) async {
+    await ensurePeopleAnalyticsReady(session);
+    return _requireOpenIndex().relatedEntriesForPerson(personId);
+  }
+
+  Future<List<PersonScopedMentionRank>> topMentionedPeople(
+    UnlockedVaultSession session, {
+    required int limit,
+    String? yearPrefix,
+    String? monthPrefix,
+  }) async {
+    await ensurePeopleAnalyticsReady(session);
+    return _requireOpenIndex().topMentionedPeople(
+      limit: limit,
+      yearPrefix: yearPrefix,
+      monthPrefix: monthPrefix,
+    );
   }
 
   /// 測試用：清除索引中的 Keystore 後綴同步欄位。
   @visibleForTesting
   Future<void> deleteKeystoreWrapModeSuffixForTest() async {
     await _requireOpenIndex().deleteAppValue(kKeystoreWrapModeKey);
+  }
+
+  @visibleForTesting
+  Future<int> pendingPeopleAnalysisDocumentCountForTest(
+    UnlockedVaultSession session,
+  ) async {
+    await _openIndexForSession(session);
+    return _requireOpenIndex().countChangedPeopleAnalysisDocuments();
   }
 
   Future<void> _openIndexForSession(UnlockedVaultSession session) {
@@ -2393,11 +3150,15 @@ class VaultRepository {
   }
 
   _EntrySearchFields _buildEntrySearchFields(DiaryEntry entry) {
+    final EntryIndexText indexText = EntryIndexText.fromMarkdown(
+      entry.markdownBody,
+    );
     return _EntrySearchFields(
-      previewText: previewTextFromMarkdown(entry.markdownBody),
+      previewText: indexText.previewText,
       previewMarkdown: previewMarkdownExcerpt(entry.markdownBody),
       titleSearchText: _titleSearchText(entry.title),
-      bodySearchText: _bodySearchText(entry.markdownBody),
+      bodySearchText: indexText.searchText,
+      bodyVisibleText: indexText.visibleText,
     );
   }
 
@@ -2407,9 +3168,5 @@ class VaultRepository {
       return '';
     }
     return normalizeSearchText(trimmed);
-  }
-
-  String _bodySearchText(String markdownBody) {
-    return normalizeSearchText(searchableTextFromMarkdown(markdownBody));
   }
 }

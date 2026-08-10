@@ -7,6 +7,7 @@ import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/database_providers.dart';
@@ -63,6 +64,7 @@ Future<AppSessionState> finishRestoreSession(
         ..invalidate(allEntryIndexRecordsProvider)
         ..invalidate(tagCatalogProvider);
       ref.read(entryIndexRevisionProvider.notifier).bump();
+      ref.invalidate(peopleCatalogProvider);
     }
     ref.invalidate(sessionStartupProvider);
     ref.invalidate(effectiveAppSessionProvider);

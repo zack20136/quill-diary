@@ -5,7 +5,7 @@ Quill Diary 是以 Android 為主要目標平台的離線加密日記 App。這�
 ## 專案定位
 
 - Flutter App，主要技術棧為 `flutter_riverpod`、`go_router`、`drift`、`sqlite3`
-- 日記、附件、草稿與搜尋索引都圍繞同一套本機加密模型運作
+- 日記、人物名冊、附件、草稿與搜尋索引都圍繞同一套本機加密模型運作
 - 支援可信裝置、生物辨識、復原金鑰與解鎖 session 管理
 - 提供本機完整備份、Google Drive 加密備份、Markdown / HTML 匯入匯出
 - 已接入 Google Play Billing 的一次性支持流程
@@ -27,6 +27,7 @@ Quill Diary 是以 Android 為主要目標平台的離線加密日記 App。這�
 - 以復原金鑰為根的本機加密日記庫
 - 可信裝置、裝置鎖、生物辨識三種解鎖模式
 - 只在有效解鎖 session 期間可用的加密搜尋索引
+- 與日記格式解耦的人物名冊，以及依姓名／別名產生的可重建查詢快取
 - Markdown 編輯、任務清單混排、預覽與本地加密草稿
 - 完整備份 / 還原，以及 Markdown / HTML 可攜式匯入匯出
 - Google Drive `appDataFolder` 加密備份與還原，不是跨裝置即時同步

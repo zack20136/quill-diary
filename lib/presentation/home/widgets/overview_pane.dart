@@ -11,7 +11,9 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
@@ -21,6 +23,8 @@ import '../models/overview_models.dart';
 import '../overview_export.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:go_router/go_router.dart';
+import 'package:quill_diary/app/router.dart';
 import 'entry_widgets.dart';
 import 'home_scroll_affordance.dart';
 import 'home_shared_widgets.dart';
@@ -179,6 +183,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
 
   @override
   Widget build(BuildContext context) {
+    final HomeTab activeTab = ref.watch(homeTabProvider);
     final bool canReadEntries =
         widget.sessionState.isUnlocked && widget.sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> allEntriesAsync = ref.watch(
@@ -189,6 +194,21 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
     );
     final String? selectedTag = ref.watch(overviewTagFilterProvider);
     final MemoryScope scope = ref.watch(memoryScopeProvider);
+    final DateTime focusedMonthForPeople = ref.watch(
+      memoryFocusedMonthProvider,
+    );
+    final int focusedYearForPeople = ref.watch(memoryFocusedYearProvider);
+    // 僅總覽 tab 才 watch 人物 Top5，避免 IndexedStack 預載解密／rebuild。
+    final AsyncValue<List<OverviewPersonRankItem>>? peopleTopAsync =
+        activeTab == HomeTab.overview
+        ? ref.watch(
+            overviewPeopleTop5Provider((
+              scope: scope,
+              focusedYear: focusedYearForPeople,
+              focusedMonth: focusedMonthForPeople.month,
+            )),
+          )
+        : null;
 
     if (!canReadEntries) {
       return HomeBlockedEntriesPane(sessionState: widget.sessionState);
@@ -370,6 +390,79 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                     }).toList(),
                                   ),
                           ),
+                          if (peopleTopAsync != null)
+                            peopleTopAsync.when(
+                              data: (List<OverviewPersonRankItem> people) {
+                                if (people.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    const SizedBox(
+                                      height: HomeLayout.sectionGap,
+                                    ),
+                                    HomeSectionCard(
+                                      title:
+                                          context.l10n.homePopularPeopleTitle,
+                                      stripeColor: cs.primary,
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: people.map((
+                                          OverviewPersonRankItem item,
+                                        ) {
+                                          final (
+                                            Color chipBg,
+                                            Color chipFg,
+                                          ) = chipFillFromAccentColor(
+                                            personAccentColor(item.person),
+                                            cs,
+                                            context.appColors,
+                                          );
+                                          return FilterChip(
+                                            label: Text(
+                                              '${item.person.name} ${item.mentionCount}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    color: chipFg,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                            selected: false,
+                                            showCheckmark: false,
+                                            backgroundColor: chipBg,
+                                            selectedColor: chipBg,
+                                            side: tagChipBorderSide(
+                                              context.appColors,
+                                              cs,
+                                              chipBg,
+                                              chipFg,
+                                              width: 0.92,
+                                              accentBorderAlpha:
+                                                  kTagChipBorderAlpha,
+                                            ),
+                                            onSelected: (_) => unawaited(
+                                              context.push(
+                                                AppRouter.personDetailLocation(
+                                                  item.person.id,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (Object error, StackTrace stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
                         ],
                       ),
                     ),

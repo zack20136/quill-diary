@@ -12,6 +12,7 @@ import 'vault_recovery_service.dart';
 import 'vault_repair_service.dart';
 import 'vault_repository.dart';
 import 'vault_restore_service.dart';
+import 'vault_people_service.dart';
 import 'vault_tag_service.dart';
 import 'vault_transfer_service.dart';
 import '../crypto/crypto_providers.dart';
@@ -58,6 +59,10 @@ final vaultEntryStoreProvider = Provider<VaultEntryStore>((Ref ref) {
 
 final vaultTagServiceProvider = Provider<VaultTagService>((Ref ref) {
   return VaultTagService(ref.watch(vaultRepositoryProvider));
+});
+
+final vaultPeopleServiceProvider = Provider<VaultPeopleService>((Ref ref) {
+  return VaultPeopleService(ref.watch(vaultRepositoryProvider));
 });
 
 final vaultRepairServiceProvider = Provider<VaultRepairService>((Ref ref) {

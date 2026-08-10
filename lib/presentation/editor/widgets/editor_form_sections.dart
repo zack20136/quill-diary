@@ -8,9 +8,11 @@ import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
+import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 import 'editor_hybrid_body.dart';
 import 'editor_keyboard_chrome.dart';
 import 'editor_markdown_preview.dart';
+import 'editor_mention_text_field.dart';
 
 class EditorTitleSection extends StatelessWidget {
   const EditorTitleSection({
@@ -24,6 +26,8 @@ class EditorTitleSection extends StatelessWidget {
     required this.showUnsavedTag,
     required this.showMetadataTags,
     required this.tagAccentArgbMap,
+    this.mentionController,
+    this.onMentionKeyEvent,
   });
 
   final bool previewMode;
@@ -35,6 +39,9 @@ class EditorTitleSection extends StatelessWidget {
   final bool showUnsavedTag;
   final bool showMetadataTags;
   final Map<String, int> tagAccentArgbMap;
+  final EditorPersonMentionController? mentionController;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)?
+  onMentionKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -97,39 +104,51 @@ class EditorTitleSection extends StatelessWidget {
       );
     }
 
+    final InputDecoration titleDecoration = InputDecoration(
+      hintText: context.l10n.editorTitleHint,
+      filled: false,
+      fillColor: Colors.transparent,
+      errorText: showEntryRequiredHint
+          ? context.l10n.editorEntryRequiredError
+          : null,
+      hintStyle: theme.textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        fontStyle: FontStyle.italic,
+        color: context.appColors.mutedForeground,
+      ),
+      errorStyle: theme.textTheme.labelSmall?.copyWith(
+        color: theme.colorScheme.error,
+        fontWeight: FontWeight.w600,
+      ),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      errorBorder: InputBorder.none,
+      focusedErrorBorder: InputBorder.none,
+      contentPadding: EdgeInsets.zero,
+      isDense: true,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        TextField(
-          controller: titleController,
-          textInputAction: TextInputAction.next,
-          style: titleStyle,
-          decoration: InputDecoration(
-            hintText: context.l10n.editorTitleHint,
-            filled: false,
-            fillColor: Colors.transparent,
-            errorText: showEntryRequiredHint
-                ? context.l10n.editorEntryRequiredError
-                : null,
-            hintStyle: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontStyle: FontStyle.italic,
-              color: context.appColors.mutedForeground,
-            ),
-            errorStyle: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.w600,
-            ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isDense: true,
+        if (mentionController == null)
+          TextField(
+            controller: titleController,
+            textInputAction: TextInputAction.next,
+            style: titleStyle,
+            decoration: titleDecoration,
+          )
+        else
+          EditorMentionTextField(
+            controller: titleController,
+            mentionController: mentionController,
+            onMentionKeyEvent: onMentionKeyEvent,
+            textInputAction: TextInputAction.next,
+            style: titleStyle,
+            decoration: titleDecoration,
           ),
-        ),
         AnimatedSize(
           duration: kEditorChromeEnterDuration,
           reverseDuration: kEditorChromeExitDuration,
@@ -162,6 +181,8 @@ class EditorBodySection extends StatefulWidget {
     required this.onBodyChanged,
     this.onPreviewCheckboxChanged,
     this.hybridBodyKey,
+    this.mentionController,
+    this.onMentionKeyEvent,
   });
 
   final bool previewMode;
@@ -170,6 +191,9 @@ class EditorBodySection extends StatefulWidget {
   final VoidCallback onBodyChanged;
   final ValueChanged<String>? onPreviewCheckboxChanged;
   final GlobalKey<EditorHybridBodyState>? hybridBodyKey;
+  final EditorPersonMentionController? mentionController;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)?
+  onMentionKeyEvent;
 
   @override
   State<EditorBodySection> createState() => _EditorBodySectionState();
@@ -238,6 +262,8 @@ class _EditorBodySectionState extends State<EditorBodySection> {
             bodyController: widget.bodyController,
             typography: widget.typography,
             onBodyChanged: widget.onBodyChanged,
+            mentionController: widget.mentionController,
+            onMentionKeyEvent: widget.onMentionKeyEvent,
           );
 
     final AppColors colors = context.appColors;

@@ -1,4 +1,5 @@
 {
+  "commonMoreActions": "更多操作",
   "@@locale": "zh",
   "appTitle": "Quill Diary",
   "languageNameZh": "繁體中文",
@@ -215,7 +216,167 @@
   "homeNavHome": "首頁",
   "homeNavCalendar": "日曆",
   "homeNavTags": "標籤",
+  "homeNavPeople": "人物",
   "homeNavOverview": "總覽",
+  "homePopularPeopleTitle": "提及最多的人物",
+  "peopleEmptyTitle": "尚未建立人物",
+  "peopleEmptyBody": "建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。",
+  "peopleSearchHint": "搜尋姓名或別名",
+  "peopleCreateAction": "新增人物",
+  "peopleSortLastMention": "最近提及",
+  "peopleSortTotalMentions": "提及篇數",
+  "peopleSortRecentMentions": "近 30 天",
+  "peopleSortName": "姓名",
+  "peopleRelationFamily": "家人",
+  "peopleRelationPartner": "伴侶",
+  "peopleRelationFriend": "朋友",
+  "peopleRelationClassmate": "同學",
+  "peopleRelationColleague": "同事",
+  "peopleRelationCollaborator": "合作夥伴",
+  "peopleRelationOther": "其他",
+  "peopleFieldName": "姓名",
+  "peopleFieldColor": "人物顏色",
+  "peopleColorAutomatic": "自動配色",
+  "peopleColorCustom": "自訂顏色",
+  "peopleChooseCustomColor": "更多顏色",
+  "peopleColorPreset": "顏色 {number}",
+  "@peopleColorPreset": {
+    "placeholders": {"number": {"type": "int"}}
+  },
+  "peopleFieldAliases": "別名",
+  "peopleFieldAliasesHint": "可用逗號分隔多個別名",
+  "peopleAddAliasLabel": "新增別名",
+  "peopleAddAliasAction": "加入別名",
+  "peopleAliasAlreadyAdded": "這個別名已經加入",
+  "peopleRemoveAliasAction": "移除別名「{alias}」",
+  "@peopleRemoveAliasAction": {
+    "placeholders": {"alias": {"type": "String"}}
+  },
+  "peopleFieldRelationships": "關係",
+  "peopleFieldRelationshipDescription": "關係描述",
+  "peopleFieldNotes": "備註",
+  "peopleNoValue": "無",
+  "peopleFieldFriendliness": "熟悉程度",
+  "peopleFieldBirthday": "生日",
+  "peopleFieldAcquaintanceYear": "認識年份",
+  "peopleSectionBasic": "基本資料",
+  "peopleSectionRelationship": "關係",
+  "peopleSectionOther": "其他資訊",
+  "peopleMentionOverviewTitle": "提及概況",
+  "peopleProfileDetailsTitle": "人物資料",
+  "peopleFriendlinessLow": "陌生",
+  "peopleFriendlinessHigh": "很熟",
+  "peopleFriendlinessLevel1": "陌生",
+  "peopleFriendlinessLevel2": "不熟",
+  "peopleFriendlinessLevel3": "認識",
+  "peopleFriendlinessLevel4": "熟悉",
+  "peopleFriendlinessLevel5": "很熟",
+  "peopleAnalysisProgress": "正在分析日記 {processed}／{total}",
+  "@peopleAnalysisProgress": {
+    "placeholders": {
+      "processed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "peopleIndexPreparationProgress": "正在整理日記索引 {processed}／{total}",
+  "@peopleIndexPreparationProgress": {
+    "placeholders": {
+      "processed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "peopleFriendlinessSemantics": "{level}／{max}（{low}–{high}）",
+  "@peopleFriendlinessSemantics": {
+    "placeholders": {
+      "level": {"type": "int"},
+      "max": {"type": "int"},
+      "low": {"type": "String"},
+      "high": {"type": "String"}
+    }
+  },
+  "peopleFriendlinessValueSemantics": "{label}，{level}／{max}",
+  "@peopleFriendlinessValueSemantics": {
+    "placeholders": {
+      "label": {"type": "String"},
+      "level": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "peopleCreateTitle": "新增人物",
+  "peopleEditTitle": "編輯人物",
+  "peopleDetailTitle": "人物",
+  "peopleSaveAction": "儲存",
+  "peopleDeleteAction": "刪除人物",
+  "peopleDeleteConfirmTitle": "刪除人物？",
+  "peopleDeleteConfirmBody": "只會刪除人物名冊與衍生統計，不會修改任何日記內容。",
+  "peopleNameRequired": "請填寫姓名",
+  "peopleNameConflict": "姓名或別名與既有人物重複",
+  "peopleDiscardChangesTitle": "捨棄人物修改？",
+  "peopleDiscardChangesBody": "尚未儲存的修改將會遺失。",
+  "peopleDiscardChangesAction": "捨棄",
+  "peopleSaveFailure": "無法儲存人物：{message}",
+  "@peopleSaveFailure": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "peopleDeleteFailure": "無法刪除人物：{message}",
+  "@peopleDeleteFailure": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "peopleWarningConfirmTitle": "仍要儲存？",
+  "peopleWarningConfirmBody": "姓名過短或與其他人物名稱前綴重疊，可能造成統計誤判。",
+  "peopleRenameKeepAliasTitle": "保留舊姓名為別名？",
+  "peopleRenameKeepAliasBody": "改名後舊姓名會加入別名，既有日記仍可被分析到此人物。",
+  "peopleRenameKeepAliasAction": "保留",
+  "peopleMentionCount": "提及 {count} 篇",
+  "@peopleMentionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "peopleRecentMentionCount": "近 30 天 {count} 篇",
+  "@peopleRecentMentionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "peopleLastMention": "上次提及 {date}",
+  "@peopleLastMention": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "peopleLastMentionNever": "尚未提及",
+  "peopleTotalMentionsLabel": "總提及",
+  "peopleRecentMentionsLabel": "近 30 天",
+  "peopleLastMentionLabel": "上次提及",
+  "peopleMentionEntriesValue": "{count} 篇",
+  "@peopleMentionEntriesValue": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "peopleAnalysisLoading": "正在分析日記",
+  "peopleAnalysisRetry": "重新分析",
+  "peopleRelatedEntriesTitle": "相關日記",
+  "peopleRelatedEntriesEmpty": "尚無相關日記",
+  "peoplePickBirthday": "選擇生日",
+  "peopleClearBirthday": "清除生日",
+  "peopleBirthdayMonth": "月份",
+  "peopleBirthdayDay": "日期",
+  "peopleBirthdayMonthOption": "{month} 月",
+  "@peopleBirthdayMonthOption": {
+    "placeholders": {"month": {"type": "int"}}
+  },
+  "peopleBirthdayDayOption": "{day} 日",
+  "@peopleBirthdayDayOption": {
+    "placeholders": {"day": {"type": "int"}}
+  },
+  "peopleClearAcquaintanceYear": "清除認識年份",
+  "editorMentionEmptyCatalog": "尚無名冊人物。請到人物分頁建立。",
+  "editorMentionNoMatches": "找不到符合的人物",
+  "editorMentionCreatePerson": "建立人物",
   "homeTooltipNewEntry": "新增日記",
   "homeTooltipSettings": "設定",
   "homeTooltipExportHtml": "匯出 HTML",

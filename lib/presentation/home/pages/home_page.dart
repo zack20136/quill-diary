@@ -106,8 +106,18 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-class HomeHeader extends ConsumerWidget {
+class HomeHeader extends ConsumerStatefulWidget {
   const HomeHeader({super.key});
+
+  @override
+  ConsumerState<HomeHeader> createState() => _HomeHeaderState();
+}
+
+class _HomeHeaderState extends ConsumerState<HomeHeader> {
+  final Map<HomeTab, GlobalKey> _tabKeys = <HomeTab, GlobalKey>{
+    for (final HomeTab tab in HomeTab.values) tab: GlobalKey(),
+  };
+  HomeTab? _lastActiveTab;
 
   void _selectTab(WidgetRef ref, HomeTab tab) {
     ref.read(homeEntrySelectionProvider.notifier).clear();
@@ -115,8 +125,38 @@ class HomeHeader extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final HomeTab activeTab = ref.watch(homeTabProvider);
+    if (_lastActiveTab != activeTab) {
+      _lastActiveTab = activeTab;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final BuildContext? tabContext = _tabKeys[activeTab]?.currentContext;
+        if (mounted && tabContext != null) {
+          unawaited(
+            Scrollable.ensureVisible(
+              tabContext,
+              alignment: 0.5,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+            ),
+          );
+        }
+      });
+    }
+
+    (String, IconData) tabVisual(HomeTab tab) => switch (tab) {
+      HomeTab.home => (context.l10n.homeNavHome, Icons.home_rounded),
+      HomeTab.calendar => (
+        context.l10n.homeNavCalendar,
+        Icons.calendar_month_rounded,
+      ),
+      HomeTab.tags => (context.l10n.homeNavTags, Icons.sell_rounded),
+      HomeTab.people => (context.l10n.homeNavPeople, Icons.people_alt_rounded),
+      HomeTab.overview => (
+        context.l10n.homeNavOverview,
+        Icons.insights_rounded,
+      ),
+    };
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -130,54 +170,36 @@ class HomeHeader extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Row(
             children: <Widget>[
-              SizedBox(
-                height: kHomeSearchRowControlHeight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    SizedBox(
-                      width: 50,
-                      child: HomeHeaderTabButton(
-                        label: context.l10n.homeNavHome,
-                        icon: Icons.home_rounded,
-                        active: activeTab == HomeTab.home,
-                        onTap: () => _selectTab(ref, HomeTab.home),
-                      ),
+              Expanded(
+                child: SizedBox(
+                  height: kHomeSearchRowControlHeight,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: <Widget>[
+                        for (
+                          int index = 0;
+                          index < HomeTab.values.length;
+                          index++
+                        ) ...<Widget>[
+                          if (index > 0) const SizedBox(width: 5),
+                          SizedBox(
+                            key: _tabKeys[HomeTab.values[index]],
+                            width: 50,
+                            child: HomeHeaderTabButton(
+                              label: tabVisual(HomeTab.values[index]).$1,
+                              icon: tabVisual(HomeTab.values[index]).$2,
+                              active: activeTab == HomeTab.values[index],
+                              onTap: () =>
+                                  _selectTab(ref, HomeTab.values[index]),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    SizedBox(
-                      width: 50,
-                      child: HomeHeaderTabButton(
-                        label: context.l10n.homeNavCalendar,
-                        icon: Icons.calendar_month_rounded,
-                        active: activeTab == HomeTab.calendar,
-                        onTap: () => _selectTab(ref, HomeTab.calendar),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    SizedBox(
-                      width: 50,
-                      child: HomeHeaderTabButton(
-                        label: context.l10n.homeNavTags,
-                        icon: Icons.sell_rounded,
-                        active: activeTab == HomeTab.tags,
-                        onTap: () => _selectTab(ref, HomeTab.tags),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    SizedBox(
-                      width: 50,
-                      child: HomeHeaderTabButton(
-                        label: context.l10n.homeNavOverview,
-                        icon: Icons.insights_rounded,
-                        active: activeTab == HomeTab.overview,
-                        onTap: () => _selectTab(ref, HomeTab.overview),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              const Spacer(),
               const SizedBox(width: 12),
               HomeHeaderIconButton(
                 tooltip: context.l10n.homeTooltipSettings,

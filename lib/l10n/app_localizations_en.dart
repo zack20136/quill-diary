@@ -9,6 +9,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get commonMoreActions => 'More actions';
+
+  @override
   String get appTitle => 'Quill Diary';
 
   @override
@@ -465,7 +468,325 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeNavTags => 'Tags';
 
   @override
+  String get homeNavPeople => 'People';
+
+  @override
   String get homeNavOverview => 'Overview';
+
+  @override
+  String get homePopularPeopleTitle => 'Top people';
+
+  @override
+  String get peopleEmptyTitle => 'No people yet';
+
+  @override
+  String get peopleEmptyBody =>
+      'After you add people, diary mentions are analyzed by name and alias. In the editor, @ inserts the canonical name as plain text.';
+
+  @override
+  String get peopleSearchHint => 'Search name or alias';
+
+  @override
+  String get peopleCreateAction => 'Add person';
+
+  @override
+  String get peopleSortLastMention => 'Last mentioned';
+
+  @override
+  String get peopleSortTotalMentions => 'Mentions';
+
+  @override
+  String get peopleSortRecentMentions => 'Last 30 days';
+
+  @override
+  String get peopleSortName => 'Name';
+
+  @override
+  String get peopleRelationFamily => 'Family';
+
+  @override
+  String get peopleRelationPartner => 'Partner';
+
+  @override
+  String get peopleRelationFriend => 'Friend';
+
+  @override
+  String get peopleRelationClassmate => 'Classmate';
+
+  @override
+  String get peopleRelationColleague => 'Colleague';
+
+  @override
+  String get peopleRelationCollaborator => 'Collaborator';
+
+  @override
+  String get peopleRelationOther => 'Other';
+
+  @override
+  String get peopleFieldName => 'Name';
+
+  @override
+  String get peopleFieldColor => 'Person color';
+
+  @override
+  String get peopleColorAutomatic => 'Automatic';
+
+  @override
+  String get peopleColorCustom => 'Custom color';
+
+  @override
+  String get peopleChooseCustomColor => 'More colors';
+
+  @override
+  String peopleColorPreset(int number) {
+    return 'Color $number';
+  }
+
+  @override
+  String get peopleFieldAliases => 'Aliases';
+
+  @override
+  String get peopleFieldAliasesHint => 'Separate multiple aliases with commas';
+
+  @override
+  String get peopleAddAliasLabel => 'Add alias';
+
+  @override
+  String get peopleAddAliasAction => 'Add alias';
+
+  @override
+  String get peopleAliasAlreadyAdded => 'This alias has already been added';
+
+  @override
+  String peopleRemoveAliasAction(String alias) {
+    return 'Remove alias “$alias”';
+  }
+
+  @override
+  String get peopleFieldRelationships => 'Relationships';
+
+  @override
+  String get peopleFieldRelationshipDescription => 'Relationship notes';
+
+  @override
+  String get peopleFieldNotes => 'Notes';
+
+  @override
+  String get peopleNoValue => 'None';
+
+  @override
+  String get peopleFieldFriendliness => 'Familiarity';
+
+  @override
+  String get peopleFieldBirthday => 'Birthday';
+
+  @override
+  String get peopleFieldAcquaintanceYear => 'Year met';
+
+  @override
+  String get peopleSectionBasic => 'Basic information';
+
+  @override
+  String get peopleSectionRelationship => 'Relationship';
+
+  @override
+  String get peopleSectionOther => 'Other information';
+
+  @override
+  String get peopleMentionOverviewTitle => 'Mention overview';
+
+  @override
+  String get peopleProfileDetailsTitle => 'Profile details';
+
+  @override
+  String get peopleFriendlinessLow => 'Unfamiliar';
+
+  @override
+  String get peopleFriendlinessHigh => 'Very familiar';
+
+  @override
+  String get peopleFriendlinessLevel1 => 'Unfamiliar';
+
+  @override
+  String get peopleFriendlinessLevel2 => 'Barely know';
+
+  @override
+  String get peopleFriendlinessLevel3 => 'Acquainted';
+
+  @override
+  String get peopleFriendlinessLevel4 => 'Familiar';
+
+  @override
+  String get peopleFriendlinessLevel5 => 'Very familiar';
+
+  @override
+  String peopleAnalysisProgress(int processed, int total) {
+    return 'Analyzing diaries $processed/$total';
+  }
+
+  @override
+  String peopleIndexPreparationProgress(int processed, int total) {
+    return 'Preparing diary index $processed/$total';
+  }
+
+  @override
+  String peopleFriendlinessSemantics(
+    int level,
+    int max,
+    String low,
+    String high,
+  ) {
+    return '$level/$max ($low–$high)';
+  }
+
+  @override
+  String peopleFriendlinessValueSemantics(String label, int level, int max) {
+    return '$label, $level/$max';
+  }
+
+  @override
+  String get peopleCreateTitle => 'Add person';
+
+  @override
+  String get peopleEditTitle => 'Edit person';
+
+  @override
+  String get peopleDetailTitle => 'Person';
+
+  @override
+  String get peopleSaveAction => 'Save';
+
+  @override
+  String get peopleDeleteAction => 'Delete person';
+
+  @override
+  String get peopleDeleteConfirmTitle => 'Delete this person?';
+
+  @override
+  String get peopleDeleteConfirmBody =>
+      'Only the people catalog and derived stats are removed. Diary content is unchanged.';
+
+  @override
+  String get peopleNameRequired => 'Name is required';
+
+  @override
+  String get peopleNameConflict =>
+      'This name or alias is already used by another person';
+
+  @override
+  String get peopleDiscardChangesTitle => 'Discard person changes?';
+
+  @override
+  String get peopleDiscardChangesBody => 'Unsaved changes will be lost.';
+
+  @override
+  String get peopleDiscardChangesAction => 'Discard';
+
+  @override
+  String peopleSaveFailure(String message) {
+    return 'Could not save person: $message';
+  }
+
+  @override
+  String peopleDeleteFailure(String message) {
+    return 'Could not delete person: $message';
+  }
+
+  @override
+  String get peopleWarningConfirmTitle => 'Save anyway?';
+
+  @override
+  String get peopleWarningConfirmBody =>
+      'The name is short or overlaps another person’s name prefix, which may cause false matches.';
+
+  @override
+  String get peopleRenameKeepAliasTitle => 'Keep the old name as an alias?';
+
+  @override
+  String get peopleRenameKeepAliasBody =>
+      'After renaming, the old name becomes an alias so existing diary text can still match this person.';
+
+  @override
+  String get peopleRenameKeepAliasAction => 'Keep';
+
+  @override
+  String peopleMentionCount(int count) {
+    return '$count mentions';
+  }
+
+  @override
+  String peopleRecentMentionCount(int count) {
+    return '$count in last 30 days';
+  }
+
+  @override
+  String peopleLastMention(String date) {
+    return 'Last mentioned $date';
+  }
+
+  @override
+  String get peopleLastMentionNever => 'Not mentioned yet';
+
+  @override
+  String get peopleTotalMentionsLabel => 'Total mentions';
+
+  @override
+  String get peopleRecentMentionsLabel => 'Last 30 days';
+
+  @override
+  String get peopleLastMentionLabel => 'Last mentioned';
+
+  @override
+  String peopleMentionEntriesValue(int count) {
+    return '$count entries';
+  }
+
+  @override
+  String get peopleAnalysisLoading => 'Analyzing entries';
+
+  @override
+  String get peopleAnalysisRetry => 'Analyze again';
+
+  @override
+  String get peopleRelatedEntriesTitle => 'Related entries';
+
+  @override
+  String get peopleRelatedEntriesEmpty => 'No related entries';
+
+  @override
+  String get peoplePickBirthday => 'Pick birthday';
+
+  @override
+  String get peopleClearBirthday => 'Clear birthday';
+
+  @override
+  String get peopleBirthdayMonth => 'Month';
+
+  @override
+  String get peopleBirthdayDay => 'Day';
+
+  @override
+  String peopleBirthdayMonthOption(int month) {
+    return 'Month $month';
+  }
+
+  @override
+  String peopleBirthdayDayOption(int day) {
+    return 'Day $day';
+  }
+
+  @override
+  String get peopleClearAcquaintanceYear => 'Clear year met';
+
+  @override
+  String get editorMentionEmptyCatalog =>
+      'No people yet. Add someone on the People tab.';
+
+  @override
+  String get editorMentionNoMatches => 'No matching people';
+
+  @override
+  String get editorMentionCreatePerson => 'Create person';
 
   @override
   String get homeTooltipNewEntry => 'New Entry';

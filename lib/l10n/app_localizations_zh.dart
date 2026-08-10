@@ -9,6 +9,9 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get commonMoreActions => '更多操作';
+
+  @override
   String get appTitle => 'Quill Diary';
 
   @override
@@ -448,7 +451,319 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeNavTags => '標籤';
 
   @override
+  String get homeNavPeople => '人物';
+
+  @override
   String get homeNavOverview => '總覽';
+
+  @override
+  String get homePopularPeopleTitle => '提及最多的人物';
+
+  @override
+  String get peopleEmptyTitle => '尚未建立人物';
+
+  @override
+  String get peopleEmptyBody => '建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。';
+
+  @override
+  String get peopleSearchHint => '搜尋姓名或別名';
+
+  @override
+  String get peopleCreateAction => '新增人物';
+
+  @override
+  String get peopleSortLastMention => '最近提及';
+
+  @override
+  String get peopleSortTotalMentions => '提及篇數';
+
+  @override
+  String get peopleSortRecentMentions => '近 30 天';
+
+  @override
+  String get peopleSortName => '姓名';
+
+  @override
+  String get peopleRelationFamily => '家人';
+
+  @override
+  String get peopleRelationPartner => '伴侶';
+
+  @override
+  String get peopleRelationFriend => '朋友';
+
+  @override
+  String get peopleRelationClassmate => '同學';
+
+  @override
+  String get peopleRelationColleague => '同事';
+
+  @override
+  String get peopleRelationCollaborator => '合作夥伴';
+
+  @override
+  String get peopleRelationOther => '其他';
+
+  @override
+  String get peopleFieldName => '姓名';
+
+  @override
+  String get peopleFieldColor => '人物顏色';
+
+  @override
+  String get peopleColorAutomatic => '自動配色';
+
+  @override
+  String get peopleColorCustom => '自訂顏色';
+
+  @override
+  String get peopleChooseCustomColor => '更多顏色';
+
+  @override
+  String peopleColorPreset(int number) {
+    return '顏色 $number';
+  }
+
+  @override
+  String get peopleFieldAliases => '別名';
+
+  @override
+  String get peopleFieldAliasesHint => '可用逗號分隔多個別名';
+
+  @override
+  String get peopleAddAliasLabel => '新增別名';
+
+  @override
+  String get peopleAddAliasAction => '加入別名';
+
+  @override
+  String get peopleAliasAlreadyAdded => '這個別名已經加入';
+
+  @override
+  String peopleRemoveAliasAction(String alias) {
+    return '移除別名「$alias」';
+  }
+
+  @override
+  String get peopleFieldRelationships => '關係';
+
+  @override
+  String get peopleFieldRelationshipDescription => '關係描述';
+
+  @override
+  String get peopleFieldNotes => '備註';
+
+  @override
+  String get peopleNoValue => '無';
+
+  @override
+  String get peopleFieldFriendliness => '熟悉程度';
+
+  @override
+  String get peopleFieldBirthday => '生日';
+
+  @override
+  String get peopleFieldAcquaintanceYear => '認識年份';
+
+  @override
+  String get peopleSectionBasic => '基本資料';
+
+  @override
+  String get peopleSectionRelationship => '關係';
+
+  @override
+  String get peopleSectionOther => '其他資訊';
+
+  @override
+  String get peopleMentionOverviewTitle => '提及概況';
+
+  @override
+  String get peopleProfileDetailsTitle => '人物資料';
+
+  @override
+  String get peopleFriendlinessLow => '陌生';
+
+  @override
+  String get peopleFriendlinessHigh => '很熟';
+
+  @override
+  String get peopleFriendlinessLevel1 => '陌生';
+
+  @override
+  String get peopleFriendlinessLevel2 => '不熟';
+
+  @override
+  String get peopleFriendlinessLevel3 => '認識';
+
+  @override
+  String get peopleFriendlinessLevel4 => '熟悉';
+
+  @override
+  String get peopleFriendlinessLevel5 => '很熟';
+
+  @override
+  String peopleAnalysisProgress(int processed, int total) {
+    return '正在分析日記 $processed／$total';
+  }
+
+  @override
+  String peopleIndexPreparationProgress(int processed, int total) {
+    return '正在整理日記索引 $processed／$total';
+  }
+
+  @override
+  String peopleFriendlinessSemantics(
+    int level,
+    int max,
+    String low,
+    String high,
+  ) {
+    return '$level／$max（$low–$high）';
+  }
+
+  @override
+  String peopleFriendlinessValueSemantics(String label, int level, int max) {
+    return '$label，$level／$max';
+  }
+
+  @override
+  String get peopleCreateTitle => '新增人物';
+
+  @override
+  String get peopleEditTitle => '編輯人物';
+
+  @override
+  String get peopleDetailTitle => '人物';
+
+  @override
+  String get peopleSaveAction => '儲存';
+
+  @override
+  String get peopleDeleteAction => '刪除人物';
+
+  @override
+  String get peopleDeleteConfirmTitle => '刪除人物？';
+
+  @override
+  String get peopleDeleteConfirmBody => '只會刪除人物名冊與衍生統計，不會修改任何日記內容。';
+
+  @override
+  String get peopleNameRequired => '請填寫姓名';
+
+  @override
+  String get peopleNameConflict => '姓名或別名與既有人物重複';
+
+  @override
+  String get peopleDiscardChangesTitle => '捨棄人物修改？';
+
+  @override
+  String get peopleDiscardChangesBody => '尚未儲存的修改將會遺失。';
+
+  @override
+  String get peopleDiscardChangesAction => '捨棄';
+
+  @override
+  String peopleSaveFailure(String message) {
+    return '無法儲存人物：$message';
+  }
+
+  @override
+  String peopleDeleteFailure(String message) {
+    return '無法刪除人物：$message';
+  }
+
+  @override
+  String get peopleWarningConfirmTitle => '仍要儲存？';
+
+  @override
+  String get peopleWarningConfirmBody => '姓名過短或與其他人物名稱前綴重疊，可能造成統計誤判。';
+
+  @override
+  String get peopleRenameKeepAliasTitle => '保留舊姓名為別名？';
+
+  @override
+  String get peopleRenameKeepAliasBody => '改名後舊姓名會加入別名，既有日記仍可被分析到此人物。';
+
+  @override
+  String get peopleRenameKeepAliasAction => '保留';
+
+  @override
+  String peopleMentionCount(int count) {
+    return '提及 $count 篇';
+  }
+
+  @override
+  String peopleRecentMentionCount(int count) {
+    return '近 30 天 $count 篇';
+  }
+
+  @override
+  String peopleLastMention(String date) {
+    return '上次提及 $date';
+  }
+
+  @override
+  String get peopleLastMentionNever => '尚未提及';
+
+  @override
+  String get peopleTotalMentionsLabel => '總提及';
+
+  @override
+  String get peopleRecentMentionsLabel => '近 30 天';
+
+  @override
+  String get peopleLastMentionLabel => '上次提及';
+
+  @override
+  String peopleMentionEntriesValue(int count) {
+    return '$count 篇';
+  }
+
+  @override
+  String get peopleAnalysisLoading => '正在分析日記';
+
+  @override
+  String get peopleAnalysisRetry => '重新分析';
+
+  @override
+  String get peopleRelatedEntriesTitle => '相關日記';
+
+  @override
+  String get peopleRelatedEntriesEmpty => '尚無相關日記';
+
+  @override
+  String get peoplePickBirthday => '選擇生日';
+
+  @override
+  String get peopleClearBirthday => '清除生日';
+
+  @override
+  String get peopleBirthdayMonth => '月份';
+
+  @override
+  String get peopleBirthdayDay => '日期';
+
+  @override
+  String peopleBirthdayMonthOption(int month) {
+    return '$month 月';
+  }
+
+  @override
+  String peopleBirthdayDayOption(int day) {
+    return '$day 日';
+  }
+
+  @override
+  String get peopleClearAcquaintanceYear => '清除認識年份';
+
+  @override
+  String get editorMentionEmptyCatalog => '尚無名冊人物。請到人物分頁建立。';
+
+  @override
+  String get editorMentionNoMatches => '找不到符合的人物';
+
+  @override
+  String get editorMentionCreatePerson => '建立人物';
 
   @override
   String get homeTooltipNewEntry => '新增日記';

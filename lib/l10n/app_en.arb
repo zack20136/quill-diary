@@ -1,4 +1,5 @@
 {
+  "commonMoreActions": "More actions",
   "@@locale": "en",
   "appTitle": "Quill Diary",
   "languageNameZh": "繁體中文",
@@ -215,7 +216,167 @@
   "homeNavHome": "Home",
   "homeNavCalendar": "Calendar",
   "homeNavTags": "Tags",
+  "homeNavPeople": "People",
   "homeNavOverview": "Overview",
+  "homePopularPeopleTitle": "Top people",
+  "peopleEmptyTitle": "No people yet",
+  "peopleEmptyBody": "After you add people, diary mentions are analyzed by name and alias. In the editor, @ inserts the canonical name as plain text.",
+  "peopleSearchHint": "Search name or alias",
+  "peopleCreateAction": "Add person",
+  "peopleSortLastMention": "Last mentioned",
+  "peopleSortTotalMentions": "Mentions",
+  "peopleSortRecentMentions": "Last 30 days",
+  "peopleSortName": "Name",
+  "peopleRelationFamily": "Family",
+  "peopleRelationPartner": "Partner",
+  "peopleRelationFriend": "Friend",
+  "peopleRelationClassmate": "Classmate",
+  "peopleRelationColleague": "Colleague",
+  "peopleRelationCollaborator": "Collaborator",
+  "peopleRelationOther": "Other",
+  "peopleFieldName": "Name",
+  "peopleFieldColor": "Person color",
+  "peopleColorAutomatic": "Automatic",
+  "peopleColorCustom": "Custom color",
+  "peopleChooseCustomColor": "More colors",
+  "peopleColorPreset": "Color {number}",
+  "@peopleColorPreset": {
+    "placeholders": {"number": {"type": "int"}}
+  },
+  "peopleFieldAliases": "Aliases",
+  "peopleFieldAliasesHint": "Separate multiple aliases with commas",
+  "peopleAddAliasLabel": "Add alias",
+  "peopleAddAliasAction": "Add alias",
+  "peopleAliasAlreadyAdded": "This alias has already been added",
+  "peopleRemoveAliasAction": "Remove alias “{alias}”",
+  "@peopleRemoveAliasAction": {
+    "placeholders": {"alias": {"type": "String"}}
+  },
+  "peopleFieldRelationships": "Relationships",
+  "peopleFieldRelationshipDescription": "Relationship notes",
+  "peopleFieldNotes": "Notes",
+  "peopleNoValue": "None",
+  "peopleFieldFriendliness": "Familiarity",
+  "peopleFieldBirthday": "Birthday",
+  "peopleFieldAcquaintanceYear": "Year met",
+  "peopleSectionBasic": "Basic information",
+  "peopleSectionRelationship": "Relationship",
+  "peopleSectionOther": "Other information",
+  "peopleMentionOverviewTitle": "Mention overview",
+  "peopleProfileDetailsTitle": "Profile details",
+  "peopleFriendlinessLow": "Unfamiliar",
+  "peopleFriendlinessHigh": "Very familiar",
+  "peopleFriendlinessLevel1": "Unfamiliar",
+  "peopleFriendlinessLevel2": "Barely know",
+  "peopleFriendlinessLevel3": "Acquainted",
+  "peopleFriendlinessLevel4": "Familiar",
+  "peopleFriendlinessLevel5": "Very familiar",
+  "peopleAnalysisProgress": "Analyzing diaries {processed}/{total}",
+  "@peopleAnalysisProgress": {
+    "placeholders": {
+      "processed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "peopleIndexPreparationProgress": "Preparing diary index {processed}/{total}",
+  "@peopleIndexPreparationProgress": {
+    "placeholders": {
+      "processed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "peopleFriendlinessSemantics": "{level}/{max} ({low}–{high})",
+  "@peopleFriendlinessSemantics": {
+    "placeholders": {
+      "level": {"type": "int"},
+      "max": {"type": "int"},
+      "low": {"type": "String"},
+      "high": {"type": "String"}
+    }
+  },
+  "peopleFriendlinessValueSemantics": "{label}, {level}/{max}",
+  "@peopleFriendlinessValueSemantics": {
+    "placeholders": {
+      "label": {"type": "String"},
+      "level": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "peopleCreateTitle": "Add person",
+  "peopleEditTitle": "Edit person",
+  "peopleDetailTitle": "Person",
+  "peopleSaveAction": "Save",
+  "peopleDeleteAction": "Delete person",
+  "peopleDeleteConfirmTitle": "Delete this person?",
+  "peopleDeleteConfirmBody": "Only the people catalog and derived stats are removed. Diary content is unchanged.",
+  "peopleNameRequired": "Name is required",
+  "peopleNameConflict": "This name or alias is already used by another person",
+  "peopleDiscardChangesTitle": "Discard person changes?",
+  "peopleDiscardChangesBody": "Unsaved changes will be lost.",
+  "peopleDiscardChangesAction": "Discard",
+  "peopleSaveFailure": "Could not save person: {message}",
+  "@peopleSaveFailure": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "peopleDeleteFailure": "Could not delete person: {message}",
+  "@peopleDeleteFailure": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "peopleWarningConfirmTitle": "Save anyway?",
+  "peopleWarningConfirmBody": "The name is short or overlaps another person’s name prefix, which may cause false matches.",
+  "peopleRenameKeepAliasTitle": "Keep the old name as an alias?",
+  "peopleRenameKeepAliasBody": "After renaming, the old name becomes an alias so existing diary text can still match this person.",
+  "peopleRenameKeepAliasAction": "Keep",
+  "peopleMentionCount": "{count} mentions",
+  "@peopleMentionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "peopleRecentMentionCount": "{count} in last 30 days",
+  "@peopleRecentMentionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "peopleLastMention": "Last mentioned {date}",
+  "@peopleLastMention": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "peopleLastMentionNever": "Not mentioned yet",
+  "peopleTotalMentionsLabel": "Total mentions",
+  "peopleRecentMentionsLabel": "Last 30 days",
+  "peopleLastMentionLabel": "Last mentioned",
+  "peopleMentionEntriesValue": "{count} entries",
+  "@peopleMentionEntriesValue": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "peopleAnalysisLoading": "Analyzing entries",
+  "peopleAnalysisRetry": "Analyze again",
+  "peopleRelatedEntriesTitle": "Related entries",
+  "peopleRelatedEntriesEmpty": "No related entries",
+  "peoplePickBirthday": "Pick birthday",
+  "peopleClearBirthday": "Clear birthday",
+  "peopleBirthdayMonth": "Month",
+  "peopleBirthdayDay": "Day",
+  "peopleBirthdayMonthOption": "Month {month}",
+  "@peopleBirthdayMonthOption": {
+    "placeholders": {"month": {"type": "int"}}
+  },
+  "peopleBirthdayDayOption": "Day {day}",
+  "@peopleBirthdayDayOption": {
+    "placeholders": {"day": {"type": "int"}}
+  },
+  "peopleClearAcquaintanceYear": "Clear year met",
+  "editorMentionEmptyCatalog": "No people yet. Add someone on the People tab.",
+  "editorMentionNoMatches": "No matching people",
+  "editorMentionCreatePerson": "Create person",
   "homeTooltipNewEntry": "New Entry",
   "homeTooltipSettings": "Settings",
   "homeTooltipExportHtml": "Export HTML",

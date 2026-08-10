@@ -6,6 +6,7 @@ import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'calendar/calendar_pane.dart';
 import 'home_timeline_pane.dart';
 import 'overview_pane.dart';
+import 'people_pane.dart';
 import 'tags_pane.dart';
 
 class HomeTabStack extends ConsumerWidget {
@@ -22,8 +23,9 @@ class HomeTabStack extends ConsumerWidget {
       children: <Widget>[
         HomeTimelinePane(sessionState: sessionState),
         CalendarPane(sessionState: sessionState),
-        OverviewPane(sessionState: sessionState),
         TagsManagePane(sessionState: sessionState),
+        PeoplePane(sessionState: sessionState),
+        OverviewPane(sessionState: sessionState),
       ],
     );
   }

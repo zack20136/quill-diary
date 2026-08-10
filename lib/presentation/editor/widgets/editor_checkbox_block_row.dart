@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
+import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'editor_mention_text_field.dart';
 
 class EditorCheckboxBlockRow extends StatelessWidget {
   const EditorCheckboxBlockRow({
@@ -14,6 +16,8 @@ class EditorCheckboxBlockRow extends StatelessWidget {
     required this.onCheckedChanged,
     required this.onTextChanged,
     this.textFocusNode,
+    this.mentionController,
+    this.onMentionKeyEvent,
     this.onSubmitted,
     this.dragHandle,
   });
@@ -26,6 +30,9 @@ class EditorCheckboxBlockRow extends StatelessWidget {
   final ValueChanged<bool> onCheckedChanged;
   final ValueChanged<String> onTextChanged;
   final FocusNode? textFocusNode;
+  final EditorPersonMentionController? mentionController;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)?
+  onMentionKeyEvent;
   final VoidCallback? onSubmitted;
   final Widget? dragHandle;
 
@@ -57,27 +64,44 @@ class EditorCheckboxBlockRow extends StatelessWidget {
       ),
     );
 
-    final Widget textField = editable
+    const InputDecoration fieldDecoration = InputDecoration(
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      contentPadding: EdgeInsets.zero,
+      isDense: true,
+    );
+    final TextEditingController? controller = textController;
+    final EditorPersonMentionController? mention = mentionController;
+    final Widget textField = !editable
+        ? (block.text.isEmpty
+              ? const SizedBox.shrink()
+              : Text(block.text, style: labelStyle))
+        : (mention == null || controller == null)
         ? TextField(
             focusNode: textFocusNode,
-            controller: textController,
+            controller: controller,
             onChanged: onTextChanged,
             onSubmitted: onSubmitted == null ? null : (_) => onSubmitted!(),
             textInputAction: TextInputAction.next,
             minLines: 1,
             maxLines: null,
             style: labelStyle,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              isDense: true,
-            ),
+            decoration: fieldDecoration,
           )
-        : block.text.isEmpty
-        ? const SizedBox.shrink()
-        : Text(block.text, style: labelStyle);
+        : EditorMentionTextField(
+            focusNode: textFocusNode,
+            controller: controller,
+            mentionController: mention,
+            onMentionKeyEvent: onMentionKeyEvent,
+            onChanged: onTextChanged,
+            onSubmitted: onSubmitted,
+            textInputAction: TextInputAction.next,
+            minLines: 1,
+            maxLines: null,
+            style: labelStyle,
+            decoration: fieldDecoration,
+          );
 
     return Padding(
       padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),

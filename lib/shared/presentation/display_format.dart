@@ -61,6 +61,41 @@ abstract final class DisplayFormat {
     return isEnglishL10n(l10n) ? '$year' : '$year年';
   }
 
+  /// 人物生日只顯示月日。
+  static String formatBirthday(
+    AppLocalizations l10n, {
+    required int month,
+    required int day,
+  }) {
+    if (isEnglishL10n(l10n)) {
+      return '${_englishMonthShort[month - 1]} $day';
+    }
+    return '$month月$day日';
+  }
+
+  /// 相對「今天」的日距（本地日曆）；用於上次提及等摘要。
+  static String formatRelativeDayDistance(
+    AppLocalizations l10n,
+    DateOnly date, {
+    DateTime? now,
+  }) {
+    final DateTime today = DateOnly.fromDateTime(
+      now ?? DateTime.now(),
+    ).toDateTime();
+    final int days = today.difference(date.toDateTime()).inDays;
+    if (days == 0) {
+      return isEnglishL10n(l10n) ? 'today' : '今天';
+    }
+    if (days == 1) {
+      return isEnglishL10n(l10n) ? 'yesterday' : '昨天';
+    }
+    if (days > 1) {
+      return isEnglishL10n(l10n) ? '$days days ago' : '$days 天前';
+    }
+    final int ahead = -days;
+    return isEnglishL10n(l10n) ? 'in $ahead days' : '$ahead 天後';
+  }
+
   static DateTime combineEntryDateTime(
     DateOnly date, {
     required int hour,

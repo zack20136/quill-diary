@@ -6,6 +6,7 @@ typedef EntryId = String;
 typedef AssetId = String;
 typedef BackupId = String;
 typedef DeviceSlotId = String;
+typedef PersonId = String;
 
 /// 穩定前綴 ID 使匯出檔案可讀，並避免跨類型混淆。
 String generateVaultId() => 'vlt_${Ulid().toCanonical().toUpperCase()}';
@@ -18,8 +19,13 @@ String generateBackupId() => 'bkp_${Ulid().toCanonical().toUpperCase()}';
 
 String generateDeviceSlotId() => 'dev_${Ulid().toCanonical().toUpperCase()}';
 
+String generatePersonId() => 'per_${Ulid().toCanonical().toUpperCase()}';
+
 String normalizeText(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+/// 人物姓名／別名正規化（與 [normalizeText] 相同規則）。
+String normalizePersonName(String value) => normalizeText(value);
 
 String normalizeSearchText(String value) {
   return value
@@ -155,6 +161,19 @@ class DateOnly {
   }
 
   factory DateOnly.parse(String value) => DateOnly(value);
+
+  static DateOnly? tryParse(String value) {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
+      return null;
+    }
+    try {
+      final DateTime parsed = DateTime.parse(value);
+      final String canonical = DateFormat('yyyy-MM-dd').format(parsed);
+      return canonical == value ? DateOnly(value) : null;
+    } on FormatException {
+      return null;
+    }
+  }
 
   final String value;
 

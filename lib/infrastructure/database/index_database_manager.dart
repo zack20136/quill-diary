@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import '../../domain/security/unlocked_vault_session.dart';
@@ -14,6 +15,7 @@ class IndexDatabaseManager {
 
   IndexDatabase? _database;
   String? _openVaultId;
+  Future<void> _operationTail = Future<void>.value();
 
   bool get isOpen => _database != null;
 
@@ -25,12 +27,16 @@ class IndexDatabaseManager {
     return database;
   }
 
-  Future<IndexDatabase> openForSession(UnlockedVaultSession session) async {
+  Future<IndexDatabase> openForSession(UnlockedVaultSession session) {
+    return _serialize(() => _openForSessionNow(session));
+  }
+
+  Future<IndexDatabase> _openForSessionNow(UnlockedVaultSession session) async {
     if (_database != null && _openVaultId == session.vaultId) {
       return _database!;
     }
 
-    await close();
+    await _closeNow();
 
     final List<int> keyBytes = await deriveIndexDatabaseKey(
       recoveryWrapKey:
@@ -44,7 +50,7 @@ class IndexDatabaseManager {
       if (!isUnreadableEncryptedIndexError(error)) {
         rethrow;
       }
-      await deleteDatabaseFiles();
+      await _deleteDatabaseFilesNow();
       return await _connectAndInitialize(session: session, keyBytes: keyBytes);
     }
   }
@@ -69,7 +75,9 @@ class IndexDatabaseManager {
     }
   }
 
-  Future<void> close() async {
+  Future<void> close() => _serialize(_closeNow);
+
+  Future<void> _closeNow() async {
     final IndexDatabase? database = _database;
     _database = null;
     _openVaultId = null;
@@ -78,8 +86,10 @@ class IndexDatabaseManager {
     }
   }
 
-  Future<void> deleteDatabaseFiles() async {
-    await close();
+  Future<void> deleteDatabaseFiles() => _serialize(_deleteDatabaseFilesNow);
+
+  Future<void> _deleteDatabaseFilesNow() async {
+    await _closeNow();
     final String path = await _pathStrategy.indexDatabasePath();
     await _deleteIfExists(File(path));
     await _deleteIfExists(File('$path-wal'));
@@ -91,5 +101,23 @@ class IndexDatabaseManager {
     if (file.existsSync()) {
       await file.delete();
     }
+  }
+
+  Future<T> _serialize<T>(Future<T> Function() operation) {
+    final Completer<T> completer = Completer<T>();
+    final Future<void> previous = _operationTail;
+    _operationTail = () async {
+      try {
+        await previous;
+      } on Object {
+        // 前一項操作的錯誤已交還原呼叫端，不阻斷後續佇列。
+      }
+      try {
+        completer.complete(await operation());
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    }();
+    return completer.future;
   }
 }

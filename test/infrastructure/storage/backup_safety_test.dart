@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -38,6 +39,10 @@ void main() {
         markdownBody: 'backup should not include derived index',
       ),
     );
+    await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '備份人物'),
+    );
     final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
     File(p.join(vaultRoot.path, 'index', 'derived.sqlite'))
       ..createSync(recursive: true)
@@ -54,6 +59,7 @@ void main() {
         .toList();
 
     expect(names.any((String name) => name.startsWith('index/')), isFalse);
+    expect(names, contains('people.json.enc'));
     expect(names, contains('recovery.json'));
   });
 

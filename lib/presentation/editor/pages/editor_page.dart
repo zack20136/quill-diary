@@ -37,11 +37,16 @@ import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
+import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
 import '../widgets/editor_attachment_strip.dart';
 import '../widgets/editor_form_sections.dart';
 import '../widgets/editor_hybrid_body.dart';
 import '../widgets/editor_keyboard_chrome.dart';
+import '../widgets/editor_person_suggestion_panel.dart';
+import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import '../widgets/editor_preview_gallery.dart';
 import '../widgets/editor_top_bar.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
@@ -68,6 +73,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   );
   final TextEditingController _tagsController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+  final EditorPersonMentionController _personMentionController =
+      EditorPersonMentionController();
   final GlobalKey<EditorHybridBodyState> _hybridBodyKey =
       GlobalKey<EditorHybridBodyState>();
   final List<PendingAttachment> _pendingAttachments = <PendingAttachment>[];
@@ -171,8 +178,83 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _dateController.dispose();
     _tagsController.dispose();
     _bodyController.dispose();
+    _personMentionController.dispose();
     _savedAssetPathFutures.clear();
     super.dispose();
+  }
+
+  Map<PersonId, int>? _mentionCountByIdHint() {
+    // 勿用 read 啟動尚未建立的 FutureProvider，以免首次 @ 觸發全庫重建。
+    if (!ref.exists(peopleMentionStatsMapProvider)) {
+      return null;
+    }
+    final Map<PersonId, PersonMentionStats>? stats = ref
+        .read(peopleMentionStatsMapProvider)
+        .asData
+        ?.value;
+    if (stats == null) {
+      return null;
+    }
+    return <PersonId, int>{
+      for (final MapEntry<PersonId, PersonMentionStats> e in stats.entries)
+        e.key: e.value.mentionCount,
+    };
+  }
+
+  List<EditorPersonSuggestion> _activePersonSuggestions({
+    List<Person>? catalog,
+  }) {
+    return filterEditorPersonSuggestions(
+      catalog:
+          catalog ??
+          ref.read(peopleCatalogProvider).asData?.value ??
+          const <Person>[],
+      query: _personMentionController.query,
+      mentionCountById: _mentionCountByIdHint(),
+    );
+  }
+
+  KeyEventResult _onPersonMentionKeyEvent(FocusNode _, KeyEvent event) {
+    final List<EditorPersonSuggestion> suggestions = _activePersonSuggestions();
+    final ({KeyEventResult result, bool shouldApplySelection}) handled =
+        _personMentionController.handleKeyEvent(
+          event,
+          suggestionCount: suggestions.length,
+        );
+    if (handled.shouldApplySelection && suggestions.isNotEmpty) {
+      final int index = _personMentionController.highlightIndex.clamp(
+        0,
+        suggestions.length - 1,
+      );
+      _applyPersonMention(suggestions[index]);
+    }
+    return handled.result;
+  }
+
+  void _applyPersonMention(EditorPersonSuggestion suggestion) {
+    _personMentionController.applyCanonicalName(suggestion.person.name);
+    _onDraftChanged();
+  }
+
+  Future<void> _createPersonFromMention() async {
+    final PersonMentionReplacementTarget? target = _personMentionController
+        .captureReplacementTarget();
+    if (target == null) {
+      return;
+    }
+    final Person? person = await showPersonComposerDialog(
+      context,
+      initialName: _personMentionController.query.trim(),
+    );
+    if (!mounted || person == null) {
+      return;
+    }
+    if (_personMentionController.applyCanonicalNameToTarget(
+      target,
+      person.name,
+    )) {
+      _onDraftChanged();
+    }
   }
 
   @override
@@ -676,168 +758,258 @@ class _EditorPageState extends ConsumerState<EditorPage>
                               : null,
                         ),
                         Expanded(
-                          child: SafeArea(
-                            top: false,
-                            child: Builder(
-                              builder: (BuildContext context) {
-                                final bool keyboardVisible =
-                                    MediaQuery.viewInsetsOf(
-                                      this.context,
-                                    ).bottom >
-                                    0;
-                                final bool hideEditorChromeForKeyboard =
-                                    _isEditing && keyboardVisible;
-                                final bool showVisualEditorChrome =
-                                    !hideEditorChromeForKeyboard;
-                                final bool hasNonImageAttachments =
-                                    savedNonImages.isNotEmpty ||
-                                    pendingNonImages.isNotEmpty;
-                                final bool shouldShowSidebarAttachments =
-                                    (!_previewMode || hasNonImageAttachments) &&
-                                    showVisualEditorChrome;
-                                final Widget sidebar = Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    if (shouldShowSidebarAttachments)
-                                      EditorAttachmentStrip(
-                                        savedImages: savedImages,
-                                        pendingImages: pendingImages,
-                                        savedNonImages: savedNonImages,
-                                        pendingNonImages: pendingNonImages,
-                                        editable: _isEditing,
-                                        draggingIndex:
-                                            _draggingEditorImageIndex,
-                                        encryptedPathFuture:
-                                            _cachedEncryptedPathFuture,
-                                        onRemoveSaved: _removeSavedAttachment,
-                                        onRemovePending:
-                                            _removePendingAttachment,
-                                        onReorder:
-                                            (int oldIndex, int newIndex) =>
-                                                _reorderEditorImages(
-                                                  allSaved: allSavedAttachments,
-                                                  oldIndex: oldIndex,
-                                                  newIndex: newIndex,
-                                                ),
-                                        onDragStart: (int index) => setState(
-                                          () =>
-                                              _draggingEditorImageIndex = index,
-                                        ),
-                                        onDragEnd: (int index) {
-                                          if (_draggingEditorImageIndex !=
-                                              null) {
-                                            setState(
-                                              () => _draggingEditorImageIndex =
-                                                  null,
-                                            );
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                );
-                                final Widget
-                                animatedAttachmentArea = AnimatedSwitcher(
-                                  duration: kEditorChromeEnterDuration,
-                                  reverseDuration: kEditorChromeExitDuration,
-                                  switchInCurve: Curves.easeOutCubic,
-                                  switchOutCurve: Curves.easeInCubic,
-                                  transitionBuilder:
-                                      editorKeyboardChromeTransition,
-                                  child: shouldShowSidebarAttachments
-                                      ? Padding(
-                                          key: kEditorAttachmentAreaVisibleKey,
-                                          padding: const EdgeInsets.only(
-                                            bottom: _editorSectionGap,
-                                          ),
-                                          child: sidebar,
-                                        )
-                                      : const SizedBox.shrink(
-                                          key: kEditorAttachmentAreaHiddenKey,
-                                        ),
-                                );
-                                final Widget editorPane = Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    if (_previewMode && showVisualEditorChrome)
-                                      EditorPreviewGallery(
-                                        savedImages: savedImages,
-                                        pendingImages: pendingImages,
-                                        encryptedPathFuture:
-                                            _cachedEncryptedPathFuture,
-                                        onOpenGallery: (int index) => unawaited(
-                                          _openImagePreviewGallery(
+                          child: Stack(
+                            children: <Widget>[
+                              SafeArea(
+                                top: false,
+                                child: Builder(
+                                  builder: (BuildContext context) {
+                                    final bool keyboardVisible =
+                                        MediaQuery.viewInsetsOf(
+                                          this.context,
+                                        ).bottom >
+                                        0;
+                                    final bool hideEditorChromeForKeyboard =
+                                        _isEditing && keyboardVisible;
+                                    final bool showVisualEditorChrome =
+                                        !hideEditorChromeForKeyboard;
+                                    final bool hasNonImageAttachments =
+                                        savedNonImages.isNotEmpty ||
+                                        pendingNonImages.isNotEmpty;
+                                    final bool shouldShowSidebarAttachments =
+                                        (!_previewMode ||
+                                            hasNonImageAttachments) &&
+                                        showVisualEditorChrome;
+                                    final Widget sidebar = Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        if (shouldShowSidebarAttachments)
+                                          EditorAttachmentStrip(
                                             savedImages: savedImages,
                                             pendingImages: pendingImages,
-                                            initialIndex: index,
+                                            savedNonImages: savedNonImages,
+                                            pendingNonImages: pendingNonImages,
+                                            editable: _isEditing,
+                                            draggingIndex:
+                                                _draggingEditorImageIndex,
+                                            encryptedPathFuture:
+                                                _cachedEncryptedPathFuture,
+                                            onRemoveSaved:
+                                                _removeSavedAttachment,
+                                            onRemovePending:
+                                                _removePendingAttachment,
+                                            onReorder:
+                                                (int oldIndex, int newIndex) =>
+                                                    _reorderEditorImages(
+                                                      allSaved:
+                                                          allSavedAttachments,
+                                                      oldIndex: oldIndex,
+                                                      newIndex: newIndex,
+                                                    ),
+                                            onDragStart: (int index) => setState(
+                                              () => _draggingEditorImageIndex =
+                                                  index,
+                                            ),
+                                            onDragEnd: (int index) {
+                                              if (_draggingEditorImageIndex !=
+                                                  null) {
+                                                setState(
+                                                  () =>
+                                                      _draggingEditorImageIndex =
+                                                          null,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                      ],
+                                    );
+                                    final Widget
+                                    animatedAttachmentArea = AnimatedSwitcher(
+                                      duration: kEditorChromeEnterDuration,
+                                      reverseDuration:
+                                          kEditorChromeExitDuration,
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      transitionBuilder:
+                                          editorKeyboardChromeTransition,
+                                      child: shouldShowSidebarAttachments
+                                          ? Padding(
+                                              key:
+                                                  kEditorAttachmentAreaVisibleKey,
+                                              padding: const EdgeInsets.only(
+                                                bottom: _editorSectionGap,
+                                              ),
+                                              child: sidebar,
+                                            )
+                                          : const SizedBox.shrink(
+                                              key:
+                                                  kEditorAttachmentAreaHiddenKey,
+                                            ),
+                                    );
+                                    final Widget editorPane = Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: <Widget>[
+                                        if (_previewMode &&
+                                            showVisualEditorChrome)
+                                          EditorPreviewGallery(
+                                            savedImages: savedImages,
+                                            pendingImages: pendingImages,
+                                            encryptedPathFuture:
+                                                _cachedEncryptedPathFuture,
+                                            onOpenGallery: (int index) =>
+                                                unawaited(
+                                                  _openImagePreviewGallery(
+                                                    savedImages: savedImages,
+                                                    pendingImages:
+                                                        pendingImages,
+                                                    initialIndex: index,
+                                                  ),
+                                                ),
+                                          ),
+                                        Expanded(
+                                          child: ListenableBuilder(
+                                            listenable:
+                                                _personMentionController,
+                                            builder: (BuildContext context, Widget? _) {
+                                              final double mentionPad =
+                                                  _isEditing &&
+                                                      _personMentionController
+                                                          .isActive
+                                                  ? kEditorPersonSuggestionBodyReserve
+                                                  : 0;
+                                              return Padding(
+                                                padding: EdgeInsets.only(
+                                                  bottom:
+                                                      8 +
+                                                      mentionPad +
+                                                      MediaQuery.paddingOf(
+                                                        context,
+                                                      ).bottom,
+                                                ),
+                                                child: EditorBodySection(
+                                                  previewMode: _previewMode,
+                                                  bodyController:
+                                                      _bodyController,
+                                                  typography: typography,
+                                                  hybridBodyKey: _hybridBodyKey,
+                                                  onBodyChanged:
+                                                      _onBodyChangedFromSection,
+                                                  onPreviewCheckboxChanged:
+                                                      _onPreviewCheckboxChanged,
+                                                  mentionController: _isEditing
+                                                      ? _personMentionController
+                                                      : null,
+                                                  onMentionKeyEvent: _isEditing
+                                                      ? _onPersonMentionKeyEvent
+                                                      : null,
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
+                                      ],
+                                    );
+
+                                    return Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        12,
+                                        10,
+                                        12,
+                                        6,
                                       ),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          bottom:
-                                              8 +
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: <Widget>[
+                                          EditorTitleSection(
+                                            previewMode: _previewMode,
+                                            titleController: _titleController,
+                                            bodyController: _bodyController,
+                                            tagsController: _tagsController,
+                                            typography: typography,
+                                            showEntryRequiredHint:
+                                                _showEntryRequiredHint,
+                                            showUnsavedTag: showUnsavedTag,
+                                            showMetadataTags:
+                                                showVisualEditorChrome,
+                                            tagAccentArgbMap:
+                                                _watchedTagAccentArgbMap(),
+                                            mentionController: _isEditing
+                                                ? _personMentionController
+                                                : null,
+                                            onMentionKeyEvent: _isEditing
+                                                ? _onPersonMentionKeyEvent
+                                                : null,
+                                          ),
+                                          const SizedBox(
+                                            height: _editorSectionGap,
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: <Widget>[
+                                                animatedAttachmentArea,
+                                                Expanded(child: editorPane),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              if (_isEditing)
+                                ListenableBuilder(
+                                  listenable: _personMentionController,
+                                  builder: (BuildContext context, Widget? _) {
+                                    if (!_personMentionController.isActive) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    // 僅在 @ 作用中才讀名冊，避免編輯器一打開就解密。
+                                    final AsyncValue<List<Person>>
+                                    catalogAsync = ref.watch(
+                                      peopleCatalogProvider,
+                                    );
+                                    final List<Person> catalog =
+                                        catalogAsync.asData?.value ??
+                                        const <Person>[];
+                                    final List<EditorPersonSuggestion>
+                                    suggestions = _activePersonSuggestions(
+                                      catalog: catalog,
+                                    );
+                                    // Scaffold 縮放 body 後貼鍵盤上方；無鍵盤時避開 home indicator。
+                                    final double keyboardInset =
+                                        MediaQuery.viewInsetsOf(context).bottom;
+                                    final double bottomSafe = keyboardInset > 0
+                                        ? 6
+                                        : 8 +
                                               MediaQuery.paddingOf(
                                                 context,
-                                              ).bottom,
-                                        ),
-                                        child: EditorBodySection(
-                                          previewMode: _previewMode,
-                                          bodyController: _bodyController,
-                                          typography: typography,
-                                          hybridBodyKey: _hybridBodyKey,
-                                          onBodyChanged:
-                                              _onBodyChangedFromSection,
-                                          onPreviewCheckboxChanged:
-                                              _onPreviewCheckboxChanged,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    10,
-                                    12,
-                                    6,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: <Widget>[
-                                      EditorTitleSection(
-                                        previewMode: _previewMode,
-                                        titleController: _titleController,
-                                        bodyController: _bodyController,
-                                        tagsController: _tagsController,
-                                        typography: typography,
-                                        showEntryRequiredHint:
-                                            _showEntryRequiredHint,
-                                        showUnsavedTag: showUnsavedTag,
-                                        showMetadataTags:
-                                            showVisualEditorChrome,
-                                        tagAccentArgbMap:
-                                            _watchedTagAccentArgbMap(),
-                                      ),
-                                      const SizedBox(height: _editorSectionGap),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: <Widget>[
-                                            animatedAttachmentArea,
-                                            Expanded(child: editorPane),
-                                          ],
+                                              ).bottom;
+                                    return Positioned(
+                                      left: 10,
+                                      right: 10,
+                                      bottom: bottomSafe,
+                                      child: EditorPersonSuggestionPanel(
+                                        suggestions: suggestions,
+                                        highlightIndex: _personMentionController
+                                            .highlightIndex,
+                                        catalogEmpty:
+                                            catalogAsync.hasValue &&
+                                            catalog.isEmpty,
+                                        onSelected: _applyPersonMention,
+                                        onCreatePerson: () => unawaited(
+                                          _createPersonFromMention(),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                         ),
                       ],

@@ -11,6 +11,8 @@ class TagAccentDialogShell extends StatelessWidget {
     this.footer,
     this.onClose,
     this.closeEnabled = true,
+    this.expand = false,
+    this.maxWidth = 384,
     required this.child,
     super.key,
   });
@@ -21,6 +23,8 @@ class TagAccentDialogShell extends StatelessWidget {
   final Widget? footer;
   final VoidCallback? onClose;
   final bool closeEnabled;
+  final bool expand;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -29,9 +33,11 @@ class TagAccentDialogShell extends StatelessWidget {
     final AppColors appColors = context.appColors;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 384),
+      constraints: expand
+          ? const BoxConstraints.expand()
+          : BoxConstraints(maxWidth: maxWidth),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(expand ? 0 : 28),
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -80,7 +86,7 @@ class TagAccentDialogShell extends StatelessWidget {
                     ),
                   ],
                 ),
-                child,
+                if (expand) Expanded(child: child) else child,
                 ?footer,
               ],
             ),

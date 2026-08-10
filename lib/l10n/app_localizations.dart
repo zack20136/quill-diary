@@ -98,6 +98,12 @@ abstract class AppLocalizations {
     Locale('en'),
   ];
 
+  /// No description provided for @commonMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get commonMoreActions;
+
   /// No description provided for @appTitle.
   ///
   /// In zh, this message translates to:
@@ -914,11 +920,574 @@ abstract class AppLocalizations {
   /// **'標籤'**
   String get homeNavTags;
 
+  /// No description provided for @homeNavPeople.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物'**
+  String get homeNavPeople;
+
   /// No description provided for @homeNavOverview.
   ///
   /// In zh, this message translates to:
   /// **'總覽'**
   String get homeNavOverview;
+
+  /// No description provided for @homePopularPeopleTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提及最多的人物'**
+  String get homePopularPeopleTitle;
+
+  /// No description provided for @peopleEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未建立人物'**
+  String get peopleEmptyTitle;
+
+  /// No description provided for @peopleEmptyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。'**
+  String get peopleEmptyBody;
+
+  /// No description provided for @peopleSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜尋姓名或別名'**
+  String get peopleSearchHint;
+
+  /// No description provided for @peopleCreateAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增人物'**
+  String get peopleCreateAction;
+
+  /// No description provided for @peopleSortLastMention.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近提及'**
+  String get peopleSortLastMention;
+
+  /// No description provided for @peopleSortTotalMentions.
+  ///
+  /// In zh, this message translates to:
+  /// **'提及篇數'**
+  String get peopleSortTotalMentions;
+
+  /// No description provided for @peopleSortRecentMentions.
+  ///
+  /// In zh, this message translates to:
+  /// **'近 30 天'**
+  String get peopleSortRecentMentions;
+
+  /// No description provided for @peopleSortName.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名'**
+  String get peopleSortName;
+
+  /// No description provided for @peopleRelationFamily.
+  ///
+  /// In zh, this message translates to:
+  /// **'家人'**
+  String get peopleRelationFamily;
+
+  /// No description provided for @peopleRelationPartner.
+  ///
+  /// In zh, this message translates to:
+  /// **'伴侶'**
+  String get peopleRelationPartner;
+
+  /// No description provided for @peopleRelationFriend.
+  ///
+  /// In zh, this message translates to:
+  /// **'朋友'**
+  String get peopleRelationFriend;
+
+  /// No description provided for @peopleRelationClassmate.
+  ///
+  /// In zh, this message translates to:
+  /// **'同學'**
+  String get peopleRelationClassmate;
+
+  /// No description provided for @peopleRelationColleague.
+  ///
+  /// In zh, this message translates to:
+  /// **'同事'**
+  String get peopleRelationColleague;
+
+  /// No description provided for @peopleRelationCollaborator.
+  ///
+  /// In zh, this message translates to:
+  /// **'合作夥伴'**
+  String get peopleRelationCollaborator;
+
+  /// No description provided for @peopleRelationOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get peopleRelationOther;
+
+  /// No description provided for @peopleFieldName.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名'**
+  String get peopleFieldName;
+
+  /// No description provided for @peopleFieldColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物顏色'**
+  String get peopleFieldColor;
+
+  /// No description provided for @peopleColorAutomatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'自動配色'**
+  String get peopleColorAutomatic;
+
+  /// No description provided for @peopleColorCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自訂顏色'**
+  String get peopleColorCustom;
+
+  /// No description provided for @peopleChooseCustomColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多顏色'**
+  String get peopleChooseCustomColor;
+
+  /// No description provided for @peopleColorPreset.
+  ///
+  /// In zh, this message translates to:
+  /// **'顏色 {number}'**
+  String peopleColorPreset(int number);
+
+  /// No description provided for @peopleFieldAliases.
+  ///
+  /// In zh, this message translates to:
+  /// **'別名'**
+  String get peopleFieldAliases;
+
+  /// No description provided for @peopleFieldAliasesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可用逗號分隔多個別名'**
+  String get peopleFieldAliasesHint;
+
+  /// No description provided for @peopleAddAliasLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增別名'**
+  String get peopleAddAliasLabel;
+
+  /// No description provided for @peopleAddAliasAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入別名'**
+  String get peopleAddAliasAction;
+
+  /// No description provided for @peopleAliasAlreadyAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'這個別名已經加入'**
+  String get peopleAliasAlreadyAdded;
+
+  /// No description provided for @peopleRemoveAliasAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'移除別名「{alias}」'**
+  String peopleRemoveAliasAction(String alias);
+
+  /// No description provided for @peopleFieldRelationships.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係'**
+  String get peopleFieldRelationships;
+
+  /// No description provided for @peopleFieldRelationshipDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係描述'**
+  String get peopleFieldRelationshipDescription;
+
+  /// No description provided for @peopleFieldNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'備註'**
+  String get peopleFieldNotes;
+
+  /// No description provided for @peopleNoValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'無'**
+  String get peopleNoValue;
+
+  /// No description provided for @peopleFieldFriendliness.
+  ///
+  /// In zh, this message translates to:
+  /// **'熟悉程度'**
+  String get peopleFieldFriendliness;
+
+  /// No description provided for @peopleFieldBirthday.
+  ///
+  /// In zh, this message translates to:
+  /// **'生日'**
+  String get peopleFieldBirthday;
+
+  /// No description provided for @peopleFieldAcquaintanceYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'認識年份'**
+  String get peopleFieldAcquaintanceYear;
+
+  /// No description provided for @peopleSectionBasic.
+  ///
+  /// In zh, this message translates to:
+  /// **'基本資料'**
+  String get peopleSectionBasic;
+
+  /// No description provided for @peopleSectionRelationship.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係'**
+  String get peopleSectionRelationship;
+
+  /// No description provided for @peopleSectionOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他資訊'**
+  String get peopleSectionOther;
+
+  /// No description provided for @peopleMentionOverviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提及概況'**
+  String get peopleMentionOverviewTitle;
+
+  /// No description provided for @peopleProfileDetailsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物資料'**
+  String get peopleProfileDetailsTitle;
+
+  /// No description provided for @peopleFriendlinessLow.
+  ///
+  /// In zh, this message translates to:
+  /// **'陌生'**
+  String get peopleFriendlinessLow;
+
+  /// No description provided for @peopleFriendlinessHigh.
+  ///
+  /// In zh, this message translates to:
+  /// **'很熟'**
+  String get peopleFriendlinessHigh;
+
+  /// No description provided for @peopleFriendlinessLevel1.
+  ///
+  /// In zh, this message translates to:
+  /// **'陌生'**
+  String get peopleFriendlinessLevel1;
+
+  /// No description provided for @peopleFriendlinessLevel2.
+  ///
+  /// In zh, this message translates to:
+  /// **'不熟'**
+  String get peopleFriendlinessLevel2;
+
+  /// No description provided for @peopleFriendlinessLevel3.
+  ///
+  /// In zh, this message translates to:
+  /// **'認識'**
+  String get peopleFriendlinessLevel3;
+
+  /// No description provided for @peopleFriendlinessLevel4.
+  ///
+  /// In zh, this message translates to:
+  /// **'熟悉'**
+  String get peopleFriendlinessLevel4;
+
+  /// No description provided for @peopleFriendlinessLevel5.
+  ///
+  /// In zh, this message translates to:
+  /// **'很熟'**
+  String get peopleFriendlinessLevel5;
+
+  /// No description provided for @peopleAnalysisProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在分析日記 {processed}／{total}'**
+  String peopleAnalysisProgress(int processed, int total);
+
+  /// No description provided for @peopleIndexPreparationProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理日記索引 {processed}／{total}'**
+  String peopleIndexPreparationProgress(int processed, int total);
+
+  /// No description provided for @peopleFriendlinessSemantics.
+  ///
+  /// In zh, this message translates to:
+  /// **'{level}／{max}（{low}–{high}）'**
+  String peopleFriendlinessSemantics(
+    int level,
+    int max,
+    String low,
+    String high,
+  );
+
+  /// No description provided for @peopleFriendlinessValueSemantics.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}，{level}／{max}'**
+  String peopleFriendlinessValueSemantics(String label, int level, int max);
+
+  /// No description provided for @peopleCreateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增人物'**
+  String get peopleCreateTitle;
+
+  /// No description provided for @peopleEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'編輯人物'**
+  String get peopleEditTitle;
+
+  /// No description provided for @peopleDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物'**
+  String get peopleDetailTitle;
+
+  /// No description provided for @peopleSaveAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'儲存'**
+  String get peopleSaveAction;
+
+  /// No description provided for @peopleDeleteAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除人物'**
+  String get peopleDeleteAction;
+
+  /// No description provided for @peopleDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除人物？'**
+  String get peopleDeleteConfirmTitle;
+
+  /// No description provided for @peopleDeleteConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'只會刪除人物名冊與衍生統計，不會修改任何日記內容。'**
+  String get peopleDeleteConfirmBody;
+
+  /// No description provided for @peopleNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'請填寫姓名'**
+  String get peopleNameRequired;
+
+  /// No description provided for @peopleNameConflict.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名或別名與既有人物重複'**
+  String get peopleNameConflict;
+
+  /// No description provided for @peopleDiscardChangesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'捨棄人物修改？'**
+  String get peopleDiscardChangesTitle;
+
+  /// No description provided for @peopleDiscardChangesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未儲存的修改將會遺失。'**
+  String get peopleDiscardChangesBody;
+
+  /// No description provided for @peopleDiscardChangesAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'捨棄'**
+  String get peopleDiscardChangesAction;
+
+  /// No description provided for @peopleSaveFailure.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法儲存人物：{message}'**
+  String peopleSaveFailure(String message);
+
+  /// No description provided for @peopleDeleteFailure.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法刪除人物：{message}'**
+  String peopleDeleteFailure(String message);
+
+  /// No description provided for @peopleWarningConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍要儲存？'**
+  String get peopleWarningConfirmTitle;
+
+  /// No description provided for @peopleWarningConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名過短或與其他人物名稱前綴重疊，可能造成統計誤判。'**
+  String get peopleWarningConfirmBody;
+
+  /// No description provided for @peopleRenameKeepAliasTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留舊姓名為別名？'**
+  String get peopleRenameKeepAliasTitle;
+
+  /// No description provided for @peopleRenameKeepAliasBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'改名後舊姓名會加入別名，既有日記仍可被分析到此人物。'**
+  String get peopleRenameKeepAliasBody;
+
+  /// No description provided for @peopleRenameKeepAliasAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留'**
+  String get peopleRenameKeepAliasAction;
+
+  /// No description provided for @peopleMentionCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'提及 {count} 篇'**
+  String peopleMentionCount(int count);
+
+  /// No description provided for @peopleRecentMentionCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'近 30 天 {count} 篇'**
+  String peopleRecentMentionCount(int count);
+
+  /// No description provided for @peopleLastMention.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次提及 {date}'**
+  String peopleLastMention(String date);
+
+  /// No description provided for @peopleLastMentionNever.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未提及'**
+  String get peopleLastMentionNever;
+
+  /// No description provided for @peopleTotalMentionsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'總提及'**
+  String get peopleTotalMentionsLabel;
+
+  /// No description provided for @peopleRecentMentionsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'近 30 天'**
+  String get peopleRecentMentionsLabel;
+
+  /// No description provided for @peopleLastMentionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次提及'**
+  String get peopleLastMentionLabel;
+
+  /// No description provided for @peopleMentionEntriesValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 篇'**
+  String peopleMentionEntriesValue(int count);
+
+  /// No description provided for @peopleAnalysisLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在分析日記'**
+  String get peopleAnalysisLoading;
+
+  /// No description provided for @peopleAnalysisRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新分析'**
+  String get peopleAnalysisRetry;
+
+  /// No description provided for @peopleRelatedEntriesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'相關日記'**
+  String get peopleRelatedEntriesTitle;
+
+  /// No description provided for @peopleRelatedEntriesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚無相關日記'**
+  String get peopleRelatedEntriesEmpty;
+
+  /// No description provided for @peoplePickBirthday.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇生日'**
+  String get peoplePickBirthday;
+
+  /// No description provided for @peopleClearBirthday.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除生日'**
+  String get peopleClearBirthday;
+
+  /// No description provided for @peopleBirthdayMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'月份'**
+  String get peopleBirthdayMonth;
+
+  /// No description provided for @peopleBirthdayDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get peopleBirthdayDay;
+
+  /// No description provided for @peopleBirthdayMonthOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{month} 月'**
+  String peopleBirthdayMonthOption(int month);
+
+  /// No description provided for @peopleBirthdayDayOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{day} 日'**
+  String peopleBirthdayDayOption(int day);
+
+  /// No description provided for @peopleClearAcquaintanceYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除認識年份'**
+  String get peopleClearAcquaintanceYear;
+
+  /// No description provided for @editorMentionEmptyCatalog.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚無名冊人物。請到人物分頁建立。'**
+  String get editorMentionEmptyCatalog;
+
+  /// No description provided for @editorMentionNoMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到符合的人物'**
+  String get editorMentionNoMatches;
+
+  /// No description provided for @editorMentionCreatePerson.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立人物'**
+  String get editorMentionCreatePerson;
 
   /// No description provided for @homeTooltipNewEntry.
   ///
