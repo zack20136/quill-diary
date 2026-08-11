@@ -58,6 +58,12 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/appli
 4. 是否使用現有的 helper（`editorTestApp`、`appTestTheme`、`FakeEditorActions` 等），而不是再造一份新的 fake 或 `_wrap`。
 5. 是否真的需要新增測試；若只是重複驗證同一條規則，應刪除或合併（例如兩個 widget 測試都只驗證「backspace 刪除空任務項目」時，保留涵蓋範圍較完整的那一個）。
 
+## 相容性與生命週期案例
+
+- 索引 schema 升級不能只對目前 schema 呼叫初始化。測試應先建立前一版真實缺欄／缺表形狀、插入既有資料，再由新版開啟，確認結構補建且原資料保留。
+- 完整備份結構若新增正式資料，至少要有「建立資料 → 建立備份 → 修改現況 → 還原」的 round-trip，確認還原的是備份當下內容，且仍可正常解密與查詢。
+- lazy provider 或保留式分頁的 widget 測試應同時覆蓋啟動前不讀取、首次進入才讀取，以及離開後是否依產品策略保留或釋放，避免只驗證畫面文字。
+
 ## 維護提醒
 
 - 先整理結構與 helper，再處理重疊案例。

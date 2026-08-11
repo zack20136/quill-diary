@@ -26,7 +26,7 @@ import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
 
-/// 人物分頁；僅在 [HomeTab.people] 活躍時 watch 名冊／統計。
+/// 人物分頁；首次開啟後保留名冊、統計與畫面狀態。
 class PeoplePane extends ConsumerStatefulWidget {
   const PeoplePane({required this.sessionState, super.key});
 
@@ -40,6 +40,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   final Set<PersonRelationship> _relationships = <PersonRelationship>{};
+  bool _hasBeenActivated = false;
   PeopleListSort _sort = PeopleListSort.lastMention;
 
   @override
@@ -52,7 +53,10 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
   @override
   Widget build(BuildContext context) {
     final HomeTab activeTab = ref.watch(homeTabProvider);
-    if (activeTab != HomeTab.people) {
+    if (activeTab == HomeTab.people) {
+      _hasBeenActivated = true;
+    }
+    if (!_hasBeenActivated) {
       return const SizedBox.shrink();
     }
 

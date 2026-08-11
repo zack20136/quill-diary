@@ -66,7 +66,7 @@ Quill Diary 是以 Android 為主要目標平台的離線加密日記 App。這�
 
 ## 授權與品牌
 
-- 原始碼以 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）發布。若你修改並發布本程式，需公開對應完整原始碼。
+- 原始碼以 [GNU Affero General Public License v3.0 or later](LICENSE)（AGPL-3.0-or-later）發布。若你修改並發布本程式，需依授權條款提供對應完整原始碼。
 - **Quill Diary** 名稱、圖示與 Google Play 商店素材屬於作者品牌，不隨 AGPL 一併授權。
 - App 內「支持開發者」屬自願性一次性支持，不提供功能解鎖。
 - 若需閉源商用授權，請透過 [GitHub Issues](https://github.com/zack20136/quill-diary/issues) 聯絡作者。

@@ -11,18 +11,18 @@
 
 ## 1. 本 App 原始碼授權
 
-- **授權**：GNU Affero General Public License v3.0（AGPL-3.0）
+- **授權**：GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）
 - **完整條款**：[LICENSE](../LICENSE)
 - **原始碼專案**：<https://github.com/zack20136/quill-diary>
 
-若你修改並發布本程式，包含重新打包發行 App、提供可互動的網路服務，或以其他方式對外提供修改版本，應依 AGPL-3.0 的要求公開對應完整原始碼。
+若你修改並發布本程式，包含重新打包發行 App、提供可互動的網路服務，或以其他方式對外提供修改版本，應依 AGPL-3.0-or-later 的要求提供對應完整原始碼。
 
 ## 2. 隨 App 打包的字體
 
 | 字體 | 檔案 | 授權 |
 |------|------|------|
-| Inter | `assets/fonts/Inter-Regular.ttf` | [SIL Open Font License 1.1](https://scripts.sil.org/OFL) |
-| Noto Sans TC | `assets/fonts/NotoSansTC-Regular.ttf` | [SIL Open Font License 1.1](https://scripts.sil.org/OFL) |
+| Inter | `assets/fonts/Inter-Regular.ttf` | [SIL Open Font License 1.1](https://openfontlicense.org/) |
+| Noto Sans TC | `assets/fonts/NotoSansTC-Regular.ttf` | [SIL Open Font License 1.1](https://openfontlicense.org/) |
 
 如需進一步確認字體授權細節，請以各字體原始授權條款為準。
 
@@ -36,12 +36,17 @@
 - Google APIs
 - In-App Purchase
 
-本頁不逐一轉載所有依賴套件的完整授權條文。若你需要完整依賴授權清單，應以實際建置環境產生的結果為準，例如執行 `flutter pub licenses`。
+本頁不逐一轉載所有依賴套件的完整授權條文。Flutter 會把套件根目錄的 `LICENSE` 彙入預設 asset bundle，供 `LicenseRegistry` 使用；若需要發行版的外部清單，應依鎖定的實際套件版本檢查各套件授權，或選用並固定專案的授權稽核工具。Dart／Flutter 官方 CLI 並沒有 `flutter pub licenses` 這個指令。
 
 這表示：
 
 - 本頁提供的是對外公開的高層摘要
 - 完整依賴授權列表應以實際版本、實際建置輸出與各套件原始授權為準
+
+官方參考：
+
+- [Flutter `LicenseRegistry`](https://api.flutter.dev/flutter/foundation/LicenseRegistry-class.html)
+- [Dart `pub` 子指令](https://dart.dev/tools/pub/cmd)
 
 ## 4. 品牌與商店素材
 

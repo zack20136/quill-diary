@@ -63,6 +63,55 @@ void main() {
     expect(names, contains('recovery.json'));
   });
 
+  test('完整備份還原會恢復人物名冊當時的內容', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final Person backedUpPerson = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(
+        name: '林小雨',
+        aliases: const <String>['小雨'],
+        relationships: const <PersonRelationship>{PersonRelationship.friend},
+        relationshipDescription: '大學同學',
+        notes: '喜歡登山',
+        friendliness: FriendlinessLevel(4),
+        birthday: PersonBirthday(month: 3, day: 14),
+        acquaintanceYear: 2018,
+      ),
+    );
+    final File backupFile = File(
+      p.join(harness.tempDir.path, 'people_round_trip.zip'),
+    );
+    await archiveIo.writeBackupZip(backupFile);
+
+    await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '備份後新增人物'),
+    );
+    expect(await harness.repository.listPeople(setup.session), hasLength(2));
+
+    await archiveIo.restoreBackupZip(
+      backupFile,
+      preserveTrustedDeviceAccess: true,
+    );
+    final List<Person> restored = await harness.repository.listPeople(
+      setup.session,
+    );
+
+    expect(restored, hasLength(1));
+    expect(restored.single.id, backedUpPerson.id);
+    expect(restored.single.name, '林小雨');
+    expect(restored.single.aliases, const <String>['小雨']);
+    expect(restored.single.relationships, const <PersonRelationship>{
+      PersonRelationship.friend,
+    });
+    expect(restored.single.relationshipDescription, '大學同學');
+    expect(restored.single.notes, '喜歡登山');
+    expect(restored.single.friendliness, FriendlinessLevel(4));
+    expect(restored.single.birthday, PersonBirthday(month: 3, day: 14));
+    expect(restored.single.acquaintanceYear, 2018);
+  });
+
   test('inspectBackup 會拒絕不安全的壓縮檔路徑', () async {
     final File backupFile = File(p.join(harness.tempDir.path, 'unsafe.zip'));
     final Archive archive = Archive()

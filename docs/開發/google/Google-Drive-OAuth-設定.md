@@ -9,11 +9,13 @@
 
 ## 目前實作摘要
 
-Android 原生登入流程由 [`MainActivity.kt`](../../../android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt) 負責，Google Drive 備份只要求：
+主要流程由 [`drive_backup_service.dart`](../../../lib/infrastructure/drive/drive_backup_service.dart) 透過 `google_sign_in` 7 執行：初始化、取得 Google 帳號，再由帳號的 `authorizationClient` 取得 Drive scope 授權。Android 互動式連線前，會先嘗試 [`MainActivity.kt`](../../../android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt) 中保留的原生 Google Sign-In 後備流程；成功後仍回到 Dart 端取得 Drive API 授權。
 
-- Google 帳號 email
-- ID token
-- Drive scope `https://www.googleapis.com/auth/drive.appdata`
+Drive API 實際使用的授權範圍只有：
+
+- `https://www.googleapis.com/auth/drive.appdata`
+
+原生後備流程另會要求 email 與 ID token，但 ID token 沒有傳給 Drive API，也不是存取備份檔的憑證；Drive REST 請求使用的是 scope 授權所產生的存取權杖。
 
 這代表 App 只存取自己在 Google Drive `appDataFolder` 下的資料，不是整個雲端硬碟。
 
@@ -91,20 +93,27 @@ Google Cloud Console 需要至少準備：
 7. 安裝 App，從設定頁執行「連線 Google Drive」
 8. 確認登入完成後，App 能取得帳號與 Drive `appdata` 權限
 
-## 如何判定「已連線」
+## 登入、授權與「已連線」的差異
 
-Android 端目前不是只有看 Google 帳號是否登入，而是同時檢查：
+Google 帳號驗證與 Drive API 授權是兩個步驟：
+
+1. `GoogleSignIn.initialize(...)` 後取得或互動選擇帳號。
+2. 對該帳號呼叫 `authorizationForScopes(...)`；若尚未授權，再呼叫 `authorizeScopes(...)`。
+
+Android 設定頁的非互動式「已連線」快照目前由原生後備層判定，同時檢查：
 
 - `GoogleSignIn.getLastSignedInAccount(...)`
 - `GoogleSignIn.hasPermissions(account, Scope("https://www.googleapis.com/auth/drive.appdata"))`
 
-兩者都成立，才會回報已連線。
+兩者都成立才回報已連線；真正列出、上傳或下載 Drive 備份時，仍會由 Dart 端再次取得可用的 scope 授權。
+
+`google_sign_in_android` 7 已改用 Android Credential Manager，但專案仍直接依賴 `play-services-auth`，保留上述 legacy Google Sign-In 後備與連線快照。Android 官方已將 legacy Google Sign-In 標為淘汰中；若移除這層，必須一起改寫 `MainActivity.kt`、連線狀態讀取、錯誤映射及相關測試。
 
 ## 常見錯誤與實際排查方向
 
 ### `access_denied`
 
-通常代表使用者拒絕授權，或 consent screen / scope 設定仍未完成。
+可能代表使用者或組織政策拒絕授權，也可能是 consent screen／scope 設定未完成。不能只靠錯誤字串斷定單一原因。
 
 先檢查：
 
@@ -114,7 +123,7 @@ Android 端目前不是只有看 Google 帳號是否登入，而是同時檢查�
 
 ### `No credential`
 
-通常表示 Google Sign-In 設定本身就不成立。
+表示 Credential Manager 沒有取得可用憑證；常見排查方向如下，但不能只靠這段訊息斷定是哪一項設定錯誤：
 
 先檢查：
 
@@ -134,7 +143,7 @@ Android 端目前不是只有看 Google 帳號是否登入，而是同時檢查�
 
 ### `[12500] Sign in failed`
 
-這類錯誤多半也是 OAuth 設定不完整或 scope/consent screen 問題。
+這是 legacy 原生後備流程的泛用登入失敗碼，也可能和裝置上的 Google Play services 或帳號狀態有關，不應直接等同 OAuth 設定錯誤。
 
 優先回頭檢查：
 
@@ -145,7 +154,7 @@ Android 端目前不是只有看 Google 帳號是否登入，而是同時檢查�
 
 ### `[16] Account reauth failed`
 
-常見於 release 或 Play 安裝版只補了 upload SHA-1，沒補 Play App Signing SHA-1。
+代表既有帳號重新驗證失敗。若只發生在 Play 安裝版，可優先核對 Play App Signing SHA-1；也要檢查帳號狀態與裝置的 Google Play services。
 
 ### `canceled`
 
@@ -153,13 +162,13 @@ Android 端目前不是只有看 Google 帳號是否登入，而是同時檢查�
 
 ## 重新登入與重設會話
 
-Android 原生流程支援 `resetSession`。當使用者要求重新連線時，程式會先：
+切換帳號時，Android 原生後備流程會依 `resetSession` 先：
 
 1. `revokeAccess()`
 2. `signOut()`
 3. 重新發起登入
 
-這可用來強制要求重新選帳號或重新同意權限。
+若沒有走成功，Dart 端會再以 `disconnect()`，失敗時退回 `signOut()`，清理 `google_sign_in` 會話後重新授權。這可用來強制重新選帳號或重新同意權限。
 
 ## 變更前必查
 
@@ -176,8 +185,16 @@ Android 原生流程支援 `resetSession`。當使用者要求重新連線時，
 
 - [oauth_config.xml](../../../android/app/src/main/res/values/oauth_config.xml)
 - [MainActivity.kt](../../../android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt)
+- [drive_backup_service.dart](../../../lib/infrastructure/drive/drive_backup_service.dart)
 - [google_oauth_config.dart](../../../lib/infrastructure/drive/google_oauth_config.dart)
 - [google_drive_oauth_errors.dart](../../../lib/infrastructure/drive/google_drive_oauth_errors.dart)
+
+## 官方規範參考
+
+- [Android：從 legacy Google Sign-In 遷移到 Credential Manager](https://developer.android.com/identity/sign-in/legacy-gsi-migration)
+- [`google_sign_in` API：驗證與授權分離](https://pub.dev/documentation/google_sign_in/latest/)
+- [`google_sign_in_android` 設定說明](https://pub.dev/packages/google_sign_in_android)
+- [Google Drive `appDataFolder`](https://developers.google.com/workspace/drive/api/guides/appdata)
 
 ---
 

@@ -14,6 +14,8 @@ Quill Diary 的 Billing 流程目前是：
 
 程式設計上屬於 client-only 的一次性支持流程。
 
+這個選擇符合目前「不建立永久權益」的產品邊界，但不是高價值商品或可跨裝置權益的安全驗單架構。Google 官方建議把購買驗證與權益管理移到安全後端；若未來支持會解鎖功能、保存權益或需要防詐，必須先改成後端驗證，不能沿用現在的 client-only 假設。
+
 ## 商品 ID
 
 目前程式碼內建的商品順序如下：
@@ -92,6 +94,8 @@ Play Console 內商品 ID 必須與這份清單完全一致。
 
 最終處理在 Android 上會先 consume，再視需要 complete，完成後把 UI 狀態切到 `thanks`。
 
+Google Play 對 consumable 的 `consume` 同時具有確認購買的效果；Flutter `in_app_purchase` 文件則要求在 `pendingCompletePurchase` 為真時呼叫 `completePurchase`，否則超過三天可能退款。這也是為什麼兩段處理不能只因 UI 已顯示感謝就省略。
+
 ## 隱私與資料邊界
 
 從文案與流程可以確認目前邊界是：
@@ -153,6 +157,12 @@ Play Console 內商品 ID 必須與這份清單完全一致。
 - [billing_providers.dart](../../../lib/application/settings/billing_providers.dart)
 - [support_page.dart](../../../lib/presentation/settings/pages/support_page.dart)
 - [privacy-policy.md](../../privacy-policy.md)
+
+## 官方規範參考
+
+- [Google Play Billing 一次性商品生命週期](https://developer.android.com/google/play/billing/lifecycle/one-time)
+- [Google Play Billing 安全建議](https://developer.android.com/google/play/billing/security)
+- [`in_app_purchase` 套件說明](https://pub.dev/packages/in_app_purchase)
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## 快速摘要
 
-- 日記內容、附件、草稿、搜尋索引與多數設定預設保存在你的裝置上
+- 日記內容、人物名冊、附件、草稿、搜尋索引與多數設定預設保存在你的裝置上
 - 本 App 不內建廣告 SDK，也不以追蹤使用者為目的蒐集資料
 - 只有在你主動使用 Google Drive 備份、系統檔案選取或 Google Play 購買時，才會與對應平台服務互動
 - 本 App 不會把日記明文上傳到開發者控制的伺服器
@@ -44,6 +44,7 @@
 本 App 在你的裝置上可能建立或保存下列資料：
 
 - 正式日記庫（例如 `vault/` 下的加密內容）
+- 加密人物名冊（姓名、別名、關係、生日、備註等由你輸入的資料）
 - 編輯草稿（例如 `drafts/` 下的加密草稿與待上傳附件暫存）
 - 搜尋索引資料庫
 - 復原金鑰相關 metadata 與可信裝置設定
@@ -54,11 +55,13 @@
 
 ## 4. Android 權限
 
-依目前版本實作，本 App 宣告的權限為：
+本 App 的主 Android Manifest 直接宣告下列權限：
 
 - **`android.permission.INTERNET`**：用於 Google Sign-In、Google Drive 備份，以及 Google Play Billing 商品查詢與付款流程
 - **`android.permission.USE_BIOMETRIC`**：用於可信裝置的生物辨識解鎖
 - **`com.android.vending.BILLING`**：用於 App 內「支持開發者」的一次性 Google Play 購買流程
+
+建置時，生物辨識、網路與 Billing 相關依賴另會合併 `android.permission.USE_FINGERPRINT`、`android.permission.ACCESS_NETWORK_STATE` 等相容性或網路狀態權限。系統選檔與 Billing 服務的套件查詢不是聯絡人或廣泛檔案存取權限。
 
 本 App 目前不要求相機、錄音或直接讀取整個媒體庫的權限。圖片與一般檔案附件是透過 Android 系統提供的選取流程取得。
 
@@ -74,7 +77,7 @@
 
 你可以透過下列方式管理或移除資料：
 
-- 在 App 內刪除日記、附件或草稿
+- 在 App 內刪除日記、人物、附件或草稿
 - 刪除本機完整備份檔
 - 刪除 Google Drive 上的加密備份檔
 - 清除 App 資料或解除安裝 App
@@ -82,7 +85,7 @@
 
 補充說明：
 
-- 清除 App 資料或解除安裝後，通常會移除 App 沙盒內的日記庫、草稿、索引與偏好資料
+- 清除 App 資料或解除安裝後，通常會移除 App 沙盒內的日記庫（包含人物名冊）、草稿、索引與偏好資料
 - 若你曾匯出檔案到外部資料夾、Downloads 或其他位置，這些副本需要由你自行刪除
 - 若你曾上傳加密備份到 Google Drive，Drive 內副本也需要由你自行刪除
 
