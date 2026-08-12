@@ -112,13 +112,6 @@ class PersonDetailPage extends ConsumerWidget {
           final List<Widget> summaryItems = <Widget>[
             if (stats != null) ...<Widget>[
               _PersonFactChip(
-                icon: Icons.date_range_outlined,
-                label: context.l10n.peopleRecentMentionsLabel,
-                value: context.l10n.peopleMentionEntriesValue(
-                  stats.recentMentionCount,
-                ),
-              ),
-              _PersonFactChip(
                 icon: Icons.history_rounded,
                 label: context.l10n.peopleLastMentionLabel,
                 value: stats.lastMentionDate == null
@@ -127,6 +120,13 @@ class PersonDetailPage extends ConsumerWidget {
                         context.l10n,
                         stats.lastMentionDate!,
                       ),
+              ),
+              _PersonFactChip(
+                icon: Icons.date_range_outlined,
+                label: context.l10n.peopleRecentMentionsLabel,
+                value: context.l10n.peopleMentionEntriesValue(
+                  stats.recentMentionCount,
+                ),
               ),
               _PersonFactChip(
                 icon: Icons.menu_book_outlined,
@@ -168,23 +168,14 @@ class PersonDetailPage extends ConsumerWidget {
                         color: cs.primary,
                         icon: const Icon(Icons.edit_outlined, size: 26),
                       ),
-                      PopupMenuButton<_PersonDetailAction>(
-                        tooltip: context.l10n.commonMoreActions,
-                        onSelected: (_PersonDetailAction action) {
-                          if (action == _PersonDetailAction.delete) {
-                            unawaited(_delete(context, ref));
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<_PersonDetailAction>>[
-                              PopupMenuItem<_PersonDetailAction>(
-                                value: _PersonDetailAction.delete,
-                                child: Text(
-                                  context.l10n.peopleDeleteAction,
-                                  style: TextStyle(color: cs.error),
-                                ),
-                              ),
-                            ],
+                      IconButton(
+                        tooltip: context.l10n.peopleDeleteAction,
+                        onPressed: () => unawaited(_delete(context, ref)),
+                        color: cs.error,
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 26,
+                        ),
                       ),
                     ],
                   ),
@@ -292,8 +283,6 @@ class PersonDetailPage extends ConsumerWidget {
   }
 }
 
-enum _PersonDetailAction { delete }
-
 class _PersonRelationChip extends StatelessWidget {
   const _PersonRelationChip({required this.label, required this.accent});
 
@@ -382,34 +371,45 @@ class _PersonProfileBodyCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              _PersonFactChip(
-                icon: Icons.favorite_outline_rounded,
-                label: l10n.peopleFieldFriendliness,
-                value: personFriendlinessLabel(l10n, person.friendliness.value),
-              ),
-              _PersonFactChip(
-                icon: Icons.history_rounded,
-                label: l10n.peopleFieldAcquaintanceYear,
-                value: person.acquaintanceYear == null
-                    ? l10n.peopleNoValue
-                    : DisplayFormat.formatYear(l10n, person.acquaintanceYear!),
-              ),
-              _PersonFactChip(
-                icon: Icons.cake_outlined,
-                label: l10n.peopleFieldBirthday,
-                value: person.birthday == null
-                    ? l10n.peopleNoValue
-                    : DisplayFormat.formatBirthday(
-                        l10n,
-                        month: person.birthday!.month,
-                        day: person.birthday!.day,
-                      ),
-              ),
-            ],
+          SizedBox(
+            height: 64,
+            child: ListView.separated(
+              key: const ValueKey<String>('person-profile-facts-strip'),
+              scrollDirection: Axis.horizontal,
+              itemCount: 3,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (BuildContext context, int index) => switch (index) {
+                0 => _PersonFactChip(
+                  icon: Icons.favorite_outline_rounded,
+                  label: l10n.peopleFieldFriendliness,
+                  value: personFriendlinessLabel(
+                    l10n,
+                    person.friendliness.value,
+                  ),
+                ),
+                1 => _PersonFactChip(
+                  icon: Icons.history_rounded,
+                  label: l10n.peopleFieldAcquaintanceYear,
+                  value: person.acquaintanceYear == null
+                      ? l10n.peopleNoValue
+                      : DisplayFormat.formatYear(
+                          l10n,
+                          person.acquaintanceYear!,
+                        ),
+                ),
+                _ => _PersonFactChip(
+                  icon: Icons.cake_outlined,
+                  label: l10n.peopleFieldBirthday,
+                  value: person.birthday == null
+                      ? l10n.peopleNoValue
+                      : DisplayFormat.formatBirthday(
+                          l10n,
+                          month: person.birthday!.month,
+                          day: person.birthday!.day,
+                        ),
+                ),
+              },
+            ),
           ),
           const SizedBox(height: 18),
           Text(

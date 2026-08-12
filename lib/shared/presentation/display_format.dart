@@ -79,21 +79,13 @@ abstract final class DisplayFormat {
     DateOnly date, {
     DateTime? now,
   }) {
-    final DateTime today = DateOnly.fromDateTime(
-      now ?? DateTime.now(),
-    ).toDateTime();
-    final int days = today.difference(date.toDateTime()).inDays;
-    if (days == 0) {
-      return isEnglishL10n(l10n) ? 'today' : '今天';
-    }
-    if (days == 1) {
-      return isEnglishL10n(l10n) ? 'yesterday' : '昨天';
-    }
-    if (days > 1) {
-      return isEnglishL10n(l10n) ? '$days days ago' : '$days 天前';
-    }
-    final int ahead = -days;
-    return isEnglishL10n(l10n) ? 'in $ahead days' : '$ahead 天後';
+    final DateOnly today = DateOnly.fromDateTime(now ?? DateTime.now());
+    final int daysAgo = today.toDateTime().difference(date.toDateTime()).inDays;
+    return switch (daysAgo) {
+      0 => l10n.commonRelativeToday,
+      1 => l10n.commonRelativeYesterday,
+      _ => l10n.commonRelativeDaysAgo(daysAgo.abs()),
+    };
   }
 
   static DateTime combineEntryDateTime(

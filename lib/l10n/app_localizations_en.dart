@@ -72,6 +72,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnitSeconds => 'sec';
 
   @override
+  String get commonRelativeToday => 'today';
+
+  @override
+  String get commonRelativeYesterday => 'yesterday';
+
+  @override
+  String commonRelativeDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get userFacingErrorDefaultMessage =>
       'The operation failed. Please try again later.';
 

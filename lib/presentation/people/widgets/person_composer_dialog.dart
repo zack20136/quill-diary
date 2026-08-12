@@ -31,17 +31,28 @@ Future<Person?> showPersonComposerDialog(
     context: context,
     barrierDismissible: false,
     barrierColor: barrierColor,
+    useSafeArea: false,
     builder: (BuildContext ctx) {
       final bool compact = MediaQuery.sizeOf(ctx).width < 600;
-      return Dialog(
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 24,
-          vertical: compact ? 12 : 24,
-        ),
-        backgroundColor: Colors.transparent,
-        child: PersonComposerDialog(
-          personId: personId,
-          initialName: initialName,
+      return SafeArea(
+        maintainBottomViewPadding: true,
+        child: Builder(
+          builder: (BuildContext safeContext) => MediaQuery.removeViewInsets(
+            context: safeContext,
+            removeBottom: true,
+            child: Dialog(
+              key: const Key('person-composer-dialog'),
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: compact ? 12 : 24,
+                vertical: compact ? 12 : 24,
+              ),
+              backgroundColor: Colors.transparent,
+              child: PersonComposerDialog(
+                personId: personId,
+                initialName: initialName,
+              ),
+            ),
+          ),
         ),
       );
     },
@@ -619,9 +630,9 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               _accentArgb == null
                   ? l10n.peopleColorAutomatic
                   : l10n.peopleColorCustom,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -694,9 +705,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
             ),
             OutlinedButton.icon(
               key: const Key('person-color-custom'),
-              onPressed: _saving
-                  ? null
-                  : () => unawaited(_pickCustomColor()),
+              onPressed: _saving ? null : () => unawaited(_pickCustomColor()),
               icon: const Icon(Icons.palette_outlined, size: 18),
               label: Text(l10n.peopleChooseCustomColor),
             ),

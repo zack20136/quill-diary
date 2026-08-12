@@ -21,6 +21,16 @@
   "commonUnitCharacters": "chars",
   "commonUnitMilliseconds": "ms",
   "commonUnitSeconds": "sec",
+  "commonRelativeToday": "today",
+  "commonRelativeYesterday": "yesterday",
+  "commonRelativeDaysAgo": "{count, plural, =1 {1 day ago} other {{count} days ago}}",
+  "@commonRelativeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "userFacingErrorDefaultMessage": "The operation failed. Please try again later.",
   "userFacingErrorLocalPathLabel": "local path",
   "commonGoogleAccountLabel": "{name} · {email}",

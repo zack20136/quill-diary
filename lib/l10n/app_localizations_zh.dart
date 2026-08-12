@@ -72,6 +72,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonUnitSeconds => '秒';
 
   @override
+  String get commonRelativeToday => '今天';
+
+  @override
+  String get commonRelativeYesterday => '昨天';
+
+  @override
+  String commonRelativeDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 天前',
+      one: '1 天前',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get userFacingErrorDefaultMessage => '操作失敗，請稍後再試。';
 
   @override

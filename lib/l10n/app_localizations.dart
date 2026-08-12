@@ -224,6 +224,24 @@ abstract class AppLocalizations {
   /// **'秒'**
   String get commonUnitSeconds;
 
+  /// No description provided for @commonRelativeToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天'**
+  String get commonRelativeToday;
+
+  /// No description provided for @commonRelativeYesterday.
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天'**
+  String get commonRelativeYesterday;
+
+  /// No description provided for @commonRelativeDaysAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count, plural, =1 {1 天前} other {{count} 天前}}'**
+  String commonRelativeDaysAgo(int count);
+
   /// No description provided for @userFacingErrorDefaultMessage.
   ///
   /// In zh, this message translates to:

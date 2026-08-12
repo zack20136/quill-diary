@@ -939,17 +939,18 @@ class IndexDatabase extends GeneratedDatabase {
     final List<QueryRow> rows = await customSelect(
       '''
         SELECT
-          person_id,
+          epa.person_id,
           COUNT(*) AS mention_count,
-          MAX(entry_date) AS last_mention_date,
+          MAX(e.date) AS last_mention_date,
           SUM(
             CASE
-              WHEN entry_date >= ? AND entry_date <= ? THEN 1
+              WHEN e.date >= ? AND e.date <= ? THEN 1
               ELSE 0
             END
           ) AS recent_mention_count
-        FROM entry_people_analytics
-        GROUP BY person_id;
+        FROM entry_people_analytics epa
+        INNER JOIN entries_index e ON e.id = epa.entry_id
+        GROUP BY epa.person_id;
       ''',
       variables: <Variable<Object>>[
         Variable.withString(windowStart.value),
@@ -1002,23 +1003,24 @@ class IndexDatabase extends GeneratedDatabase {
     final StringBuffer where = StringBuffer();
     final List<Variable<Object>> variables = <Variable<Object>>[];
     if (monthPrefix != null && monthPrefix.isNotEmpty) {
-      where.write('WHERE entry_date LIKE ?');
+      where.write('WHERE e.date LIKE ?');
       variables.add(Variable.withString('$monthPrefix%'));
     } else if (yearPrefix != null && yearPrefix.isNotEmpty) {
-      where.write('WHERE entry_date LIKE ?');
+      where.write('WHERE e.date LIKE ?');
       variables.add(Variable.withString('$yearPrefix%'));
     }
     variables.add(Variable.withInt(limit));
 
     final List<QueryRow> rows = await customSelect('''
         SELECT
-          person_id,
+          epa.person_id,
           COUNT(*) AS mention_count,
-          MAX(entry_date) AS last_mention_date
-        FROM entry_people_analytics
+          MAX(e.date) AS last_mention_date
+        FROM entry_people_analytics epa
+        INNER JOIN entries_index e ON e.id = epa.entry_id
         $where
-        GROUP BY person_id
-        ORDER BY mention_count DESC, last_mention_date DESC, person_id ASC
+        GROUP BY epa.person_id
+        ORDER BY mention_count DESC, last_mention_date DESC, epa.person_id ASC
         LIMIT ?;
       ''', variables: variables).get();
 

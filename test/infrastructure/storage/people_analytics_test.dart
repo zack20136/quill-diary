@@ -296,6 +296,106 @@ void main() {
     expect(related, hasLength(3));
   });
 
+  test('相關日記與上次提及以日記日期為準且不受釘選或衍生日期影響', () async {
+    final Person person = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '小明'),
+    );
+    final String olderId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-07-01',
+      markdownBody: '較舊的日記提到小明。',
+    );
+    final String newerId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-10',
+      markdownBody: '較新的日記提到小明。',
+    );
+    await harness.repository.allPersonMentionStats(setup.session);
+    await harness.repository.setEntriesPinned(<String>[olderId], pinned: true);
+
+    await harness.repository.closeUnlockedResources();
+    final IndexDatabaseManager manager = IndexDatabaseManager(
+      harness.pathStrategy,
+    );
+    final IndexDatabase database = await manager.openForSession(setup.session);
+    await database.customStatement(
+      "UPDATE entry_people_analytics SET entry_date = '2099-01-01' WHERE entry_id = ?;",
+      <Object?>[olderId],
+    );
+    await manager.close();
+
+    final List<EntryIndexRecord> related = await harness.repository
+        .relatedEntriesForPerson(setup.session, person.id);
+    final Map<String, PersonMentionStats> stats = await harness.repository
+        .allPersonMentionStats(setup.session, now: DateTime(2026, 8, 12));
+
+    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+      newerId,
+      olderId,
+    ]);
+    expect(stats[person.id]?.lastMentionDate?.value, '2026-08-10');
+  });
+
+  test('相關日記同日期時依建立時間再依更新時間由新到舊排序', () async {
+    final Person person = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '小明'),
+    );
+    final String olderCreatedId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 10, 10),
+      updatedAt: DateTime.utc(2026, 8, 10, 13),
+      markdownBody: '較早建立但較晚更新，提到小明。',
+    );
+    final String newerUpdatedId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 10, 12),
+      updatedAt: DateTime.utc(2026, 8, 10, 15),
+      markdownBody: '同時建立且較晚更新，提到小明。',
+    );
+    final String olderUpdatedId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-10',
+      createdAt: DateTime.utc(2026, 8, 10, 12),
+      updatedAt: DateTime.utc(2026, 8, 10, 14),
+      markdownBody: '同時建立且較早更新，提到小明。',
+    );
+
+    await harness.repository.allPersonMentionStats(setup.session);
+    await harness.repository.closeUnlockedResources();
+    final IndexDatabaseManager manager = IndexDatabaseManager(
+      harness.pathStrategy,
+    );
+    final IndexDatabase database = await manager.openForSession(setup.session);
+    await database.customStatement(
+      'UPDATE entries_index SET updated_at = ? WHERE id = ?;',
+      <Object?>[
+        DateTime.utc(2026, 8, 10, 15).toIso8601String(),
+        newerUpdatedId,
+      ],
+    );
+    await database.customStatement(
+      'UPDATE entries_index SET updated_at = ? WHERE id = ?;',
+      <Object?>[
+        DateTime.utc(2026, 8, 10, 14).toIso8601String(),
+        olderUpdatedId,
+      ],
+    );
+    await manager.close();
+
+    final List<EntryIndexRecord> related = await harness.repository
+        .relatedEntriesForPerson(setup.session, person.id);
+
+    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+      newerUpdatedId,
+      olderUpdatedId,
+      olderCreatedId,
+    ]);
+  });
+
   test('來源未變時不掃描正文也不寫入分析批次', () async {
     await harness.repository.createPerson(
       setup.session,

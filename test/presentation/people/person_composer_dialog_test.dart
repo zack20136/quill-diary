@@ -23,6 +23,27 @@ Widget _testApp() {
   );
 }
 
+Widget _dialogLauncherApp() {
+  return ProviderScope(
+    child: MaterialApp(
+      theme: appTestTheme(),
+      locale: appZhLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      home: Builder(
+        builder: (BuildContext context) => Scaffold(
+          body: Center(
+            child: FilledButton(
+              onPressed: () => showPersonComposerDialog(context),
+              child: const Text('開啟人物表單'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets('小螢幕與鍵盤開啟時表單可捲動且不會 overflow', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
@@ -44,6 +65,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('關係'), findsWidgets);
     expect(find.byType(Slider), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('鍵盤開啟時人物表單維持原位與固定高度', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 24);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_dialogLauncherApp());
+    await tester.tap(find.text('開啟人物表單'));
+    await tester.pumpAndSettle();
+
+    final Finder dialog = find.byKey(const Key('person-composer-dialog'));
+    final Rect beforeKeyboard = tester.getRect(dialog);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(dialog), beforeKeyboard);
     expect(tester.takeException(), isNull);
   });
 
@@ -110,8 +151,7 @@ void main() {
     expect(relationshipList, findsOneWidget);
     final ListView list = tester.widget<ListView>(relationshipList);
     expect(
-      (list.childrenDelegate as SliverChildBuilderDelegate)
-          .estimatedChildCount,
+      (list.childrenDelegate as SliverChildBuilderDelegate).estimatedChildCount,
       13,
     );
     expect(find.text('家人'), findsOneWidget);
@@ -124,9 +164,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilterChip, '合作夥伴'));
     await tester.pump();
     expect(
-      tester.widget<FilterChip>(
-        find.widgetWithText(FilterChip, '合作夥伴'),
-      ).selected,
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, '合作夥伴'))
+          .selected,
       isTrue,
     );
     expect(tester.takeException(), isNull);
@@ -232,9 +272,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('人物顏色預設為自動配色，選色後仍可切回自動', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('人物顏色預設為自動配色，選色後仍可切回自動', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
@@ -252,9 +290,7 @@ void main() {
           .estimatedChildCount,
       39,
     );
-    final Finder automatic = find.byKey(
-      const Key('person-color-automatic'),
-    );
+    final Finder automatic = find.byKey(const Key('person-color-automatic'));
     expect(tester.widget<ChoiceChip>(automatic).selected, isTrue);
 
     await tester.tap(find.byKey(const Key('person-color-preset-0')));

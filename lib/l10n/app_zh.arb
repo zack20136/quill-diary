@@ -21,6 +21,16 @@
   "commonUnitCharacters": "字",
   "commonUnitMilliseconds": "毫秒",
   "commonUnitSeconds": "秒",
+  "commonRelativeToday": "今天",
+  "commonRelativeYesterday": "昨天",
+  "commonRelativeDaysAgo": "{count, plural, =1 {1 天前} other {{count} 天前}}",
+  "@commonRelativeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "userFacingErrorDefaultMessage": "操作失敗，請稍後再試。",
   "userFacingErrorLocalPathLabel": "本機路徑",
   "commonGoogleAccountLabel": "{name} · {email}",
