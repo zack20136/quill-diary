@@ -416,10 +416,9 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                           final (
                                             Color chipBg,
                                             Color chipFg,
-                                          ) = chipFillFromAccentColor(
-                                            personAccentColor(item.person),
-                                            cs,
-                                            context.appColors,
+                                          ) = personLabelColorPair(
+                                            item.person,
+                                            context.appColors.sectionInset,
                                           );
                                           return FilterChip(
                                             label: Text(

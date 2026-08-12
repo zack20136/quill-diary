@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -22,7 +23,10 @@ void main() {
     updatedAt: timestamp,
   );
 
-  Widget testApp({Map<PersonId, PersonMentionStats> stats = const {}}) {
+  Widget testApp({
+    Map<PersonId, PersonMentionStats> stats = const {},
+    Brightness brightness = Brightness.light,
+  }) {
     return ProviderScope(
       overrides: [
         personDetailProvider(person.id).overrideWith((Ref ref) async => person),
@@ -32,7 +36,7 @@ void main() {
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async => stats),
       ],
       child: MaterialApp(
-        theme: appTestTheme(),
+        theme: appTestTheme(brightness: brightness),
         locale: appZhLocale,
         supportedLocales: appSupportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -108,5 +112,71 @@ void main() {
       tester.getCenter(find.text('上次提及')).dx,
       lessThan(tester.getCenter(find.text('近 30 天')).dx),
     );
+  });
+
+  testWidgets('深色模式下提及概況與人物資料沿用相關日記背景色', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      testApp(
+        brightness: Brightness.dark,
+        stats: <PersonId, PersonMentionStats>{
+          person.id: PersonMentionStats(
+            personId: person.id,
+            mentionCount: 1,
+            recentMentionCount: 1,
+          ),
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final AppColors colors = appTestTheme(
+      brightness: Brightness.dark,
+    ).extension<AppColors>()!;
+
+    for (final String key in <String>[
+      'person-mention-overview-card',
+      'person-profile-details-card',
+    ]) {
+      final Finder decoratedBox = find.descendant(
+        of: find.byKey(ValueKey<String>(key)),
+        matching: find.byType(DecoratedBox),
+      );
+      final BoxDecoration decoration =
+          tester.widget<DecoratedBox>(decoratedBox.first).decoration
+              as BoxDecoration;
+      expect(decoration.color, colors.sectionCard);
+    }
+  });
+
+  testWidgets('深色模式下人物摘要小卡沿用單篇相關日記背景色', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      testApp(
+        brightness: Brightness.dark,
+        stats: <PersonId, PersonMentionStats>{
+          person.id: PersonMentionStats(
+            personId: person.id,
+            mentionCount: 1,
+            recentMentionCount: 1,
+          ),
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final AppColors colors = appTestTheme(
+      brightness: Brightness.dark,
+    ).extension<AppColors>()!;
+    for (final String key in <String>[
+      'person-last-mention-fact',
+      'person-friendliness-fact',
+    ]) {
+      final DecoratedBox box = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byKey(ValueKey<String>(key)),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      expect((box.decoration as BoxDecoration).color, colors.sectionInset);
+    }
   });
 }

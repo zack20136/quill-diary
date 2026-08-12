@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// 品牌種子色（天藍）。
-const Color kBrandSeedColor = Color(0xFF4A7FE8);
-
 /// 手調淺色色票：淺藍底、天藍強調色。
 const ColorScheme kAppLightColorScheme = ColorScheme(
   brightness: Brightness.light,
@@ -42,10 +39,10 @@ const ColorScheme kAppLightColorScheme = ColorScheme(
   surfaceTint: Color(0xFF3B6DB5),
 );
 
-/// 手調深色色票：深藍灰底、柔和天藍強調色（與淺色互為 inverse 配對）。
+/// 手調深色色票：深藍灰底、柔和天藍強調色；與淺色分別獨立調校。
 const ColorScheme kAppDarkColorScheme = ColorScheme(
   brightness: Brightness.dark,
-  primary: Color(0xFFA8C8FF),
+  primary: Color(0xFF91AFE0),
   onPrimary: Color(0xFF002F66),
   primaryContainer: Color(0xFF1E3A66),
   onPrimaryContainer: Color(0xFFD6E6FF),
@@ -57,7 +54,7 @@ const ColorScheme kAppDarkColorScheme = ColorScheme(
   onTertiary: Color(0xFF1A2838),
   tertiaryContainer: Color(0xFF243248),
   onTertiaryContainer: Color(0xFFD6E6FF),
-  error: Color(0xFFFF9A94),
+  error: Color(0xFFE48782),
   onError: Color(0xFF2D1518),
   errorContainer: Color(0xFF1A2433),
   onErrorContainer: Color(0xFFFFB4AB),

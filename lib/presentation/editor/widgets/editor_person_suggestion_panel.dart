@@ -141,6 +141,7 @@ class _EditorPersonSuggestionPanelState
 
     // 固定單列高度，鍵盤開著時也只佔鍵盤上方一小條，避免蓋住輸入區。
     return Material(
+      key: const ValueKey<String>('editor-person-suggestion-background'),
       color: cs.surfaceContainerHigh,
       elevation: 4,
       shadowColor: cs.shadow.withValues(alpha: 0.22),
@@ -220,10 +221,9 @@ class _PersonSuggestionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color chipBg, Color chipFg) = chipFillFromAccentColor(
-      personAccentColor(suggestion.person),
-      colorScheme,
-      appColors,
+    final (Color chipBg, Color chipFg) = personLabelColorPair(
+      suggestion.person,
+      appColors.sectionInset,
     );
     final String label = suggestion.matchedAlias == null
         ? suggestion.person.name

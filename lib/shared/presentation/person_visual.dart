@@ -16,6 +16,12 @@ Color personAvatarBackgroundColor(Person person, Color surface) =>
       surface,
     );
 
+/// 人物標籤沿用人物管理頁頭像的底色與前景色，避免不同畫面各自轉色。
+(Color, Color) personLabelColorPair(Person person, Color surface) => (
+  personAvatarBackgroundColor(person, surface),
+  personAccentColor(person),
+);
+
 /// 依人物 ID 穩定選色，確保未自訂顏色的人物每次顯示一致。
 Color defaultPersonAccentColor(PersonId personId) {
   if (personId.isEmpty || kDefaultTagAccentPresets.isEmpty) {

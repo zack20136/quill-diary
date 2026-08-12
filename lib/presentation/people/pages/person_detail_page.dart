@@ -112,6 +112,7 @@ class PersonDetailPage extends ConsumerWidget {
           final List<Widget> summaryItems = <Widget>[
             if (stats != null) ...<Widget>[
               _PersonFactChip(
+                key: const ValueKey<String>('person-last-mention-fact'),
                 icon: Icons.history_rounded,
                 label: context.l10n.peopleLastMentionLabel,
                 value: stats.lastMentionDate == null
@@ -233,6 +234,9 @@ class PersonDetailPage extends ConsumerWidget {
                     if (summaryItems.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 14),
                       _PersonDetailSectionCard(
+                        key: const ValueKey<String>(
+                          'person-mention-overview-card',
+                        ),
                         title: context.l10n.peopleMentionOverviewTitle,
                         child: SizedBox(
                           height: 64,
@@ -316,7 +320,11 @@ class _PersonRelationChip extends StatelessWidget {
 }
 
 class _PersonDetailSectionCard extends StatelessWidget {
-  const _PersonDetailSectionCard({required this.title, required this.child});
+  const _PersonDetailSectionCard({
+    required this.title,
+    required this.child,
+    super.key,
+  });
 
   final String title;
   final Widget child;
@@ -328,7 +336,9 @@ class _PersonDetailSectionCard extends StatelessWidget {
     final AppColors colors = context.appColors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.previewPanel,
+        color: theme.brightness == Brightness.dark
+            ? colors.sectionCard
+            : colors.previewPanel,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
         border: Border.fromBorderSide(colors.outlineBorder()),
       ),
@@ -367,6 +377,7 @@ class _PersonProfileBodyCard extends StatelessWidget {
     final Color accent = personAccentColor(person);
 
     return _PersonDetailSectionCard(
+      key: const ValueKey<String>('person-profile-details-card'),
       title: l10n.peopleProfileDetailsTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -380,6 +391,7 @@ class _PersonProfileBodyCard extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (BuildContext context, int index) => switch (index) {
                 0 => _PersonFactChip(
+                  key: const ValueKey<String>('person-friendliness-fact'),
                   icon: Icons.favorite_outline_rounded,
                   label: l10n.peopleFieldFriendliness,
                   value: personFriendlinessLabel(
@@ -507,6 +519,7 @@ class _PersonFactChip extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    super.key,
   });
 
   final IconData icon;
@@ -517,10 +530,13 @@ class _PersonFactChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final AppColors colors = context.appColors;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.9),
+        color: theme.brightness == Brightness.dark
+            ? colors.sectionInset
+            : cs.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
         border: Border.all(color: cs.outlineVariant),
       ),

@@ -268,6 +268,7 @@ class _EditorBodySectionState extends State<EditorBodySection> {
 
     final AppColors colors = context.appColors;
     return DecoratedBox(
+      key: const ValueKey<String>('editor-body-section-background'),
       decoration: BoxDecoration(
         color: colors.previewPanel,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),

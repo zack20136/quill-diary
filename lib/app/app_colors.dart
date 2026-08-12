@@ -113,14 +113,13 @@ class AppColors extends ThemeExtension<AppColors> {
     final Color sectionCard = scheme.surface;
     final Color sectionInset = isLight
         ? scheme.surfaceContainerLow
-        : Color.alphaBlend(
-            scheme.primary.withValues(alpha: 0.06),
-            scheme.surfaceContainer,
-          );
-    final Color previewPanel = Color.alphaBlend(
-      scheme.surfaceContainerHighest.withValues(alpha: 0.2),
-      scheme.surface.withValues(alpha: 0.88),
-    );
+        : scheme.surfaceContainerHigh;
+    final Color previewPanel = isLight
+        ? Color.alphaBlend(
+            scheme.surfaceContainerHighest.withValues(alpha: 0.2),
+            scheme.surface.withValues(alpha: 0.88),
+          )
+        : scheme.surfaceContainerHigh;
     final Color metricTile = Color.alphaBlend(
       scheme.onSurface.withValues(alpha: isLight ? 0.03 : 0.04),
       sectionCard,
@@ -417,7 +416,5 @@ class AppColors extends ThemeExtension<AppColors> {
 }
 
 extension AppThemeContext on BuildContext {
-  ColorScheme get appColorScheme => Theme.of(this).colorScheme;
-
   AppColors get appColors => Theme.of(this).extension<AppColors>()!;
 }

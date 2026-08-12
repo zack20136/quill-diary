@@ -335,6 +335,7 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         DecoratedBox(
+          key: const ValueKey<String>('personalization-typography-preview'),
           decoration: BoxDecoration(
             color: context.appColors.previewPanel,
             borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
