@@ -19,9 +19,9 @@ import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/shared/utils/diary_presence_tag_counts.dart';
 import 'package:quill_diary/shared/utils/entry_sorting.dart';
 import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
+import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_layout.dart';
-import 'entry_widgets.dart';
 import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
@@ -191,6 +191,25 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     );
   }
 
+  Future<void> _deleteTagFromRow(
+    String label, {
+    required UnlockedVaultSession session,
+  }) async {
+    try {
+      await _deleteTag(label, session: session);
+    } on Object catch (error) {
+      if (mounted) {
+        showAppFeedbackSnackBar(
+          context,
+          context.l10n.tagDeleteFailure(
+            userFacingErrorMessage(error, l10n: context.l10n),
+          ),
+          tone: AppFeedbackTone.error,
+        );
+      }
+    }
+  }
+
   List<EntryIndexRecord> _entriesMatchingTag(
     List<EntryIndexRecord> all,
     String displayLabel,
@@ -240,6 +259,14 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
           tone: AppFeedbackTone.success,
         );
       }
+    } on Object catch (error) {
+      if (mounted) {
+        showAppFeedbackSnackBar(
+          context,
+          userFacingErrorMessage(error, l10n: context.l10n),
+          tone: AppFeedbackTone.error,
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _seedingDefaultTags = false);
@@ -247,41 +274,49 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
   }
 
-  Widget _tagDiaryPreviewPanel(
+  List<Widget> _tagDiaryPreviewSlivers(
     List<EntryIndexRecord> records,
     ThemeData theme,
     ColorScheme cs,
   ) {
     if (_selectedTagLabel == null) {
-      return HomeSectionCard(
-        title: context.l10n.homeTagPreviewTitle,
-        stripeColor: cs.primary,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(Icons.swipe_vertical_rounded, size: 40, color: cs.outline),
-              const SizedBox(height: 12),
-              Text(
-                context.l10n.homeTagPreviewTitle,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+      return <Widget>[
+        SliverToBoxAdapter(
+          child: HomeSectionCard(
+            title: context.l10n.homeTagPreviewTitle,
+            stripeColor: cs.primary,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.swipe_vertical_rounded,
+                    size: 40,
+                    color: cs.outline,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.homeTagPreviewTitle,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    context.l10n.homeTagListGuide,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.42,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                context.l10n.homeTagListGuide,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.42,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      );
+      ];
     }
 
     final List<EntryIndexRecord> matched = _entriesMatchingTag(
@@ -290,26 +325,32 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     );
 
     if (matched.isEmpty) {
-      return HomeSectionCard(
+      return <Widget>[
+        SliverToBoxAdapter(
+          child: HomeSectionCard(
+            title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
+            stripeColor: cs.primary,
+            titleTrail: HomeDiarySectionCloseButton(
+              onPressed: () => setState(() => _selectedTagLabel = null),
+            ),
+            child: HomePaneEmptyHint(
+              text: context.l10n.homeTagIndexEmptyForTag(_selectedTagLabel!),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return <Widget>[
+      HomeDiarySliverSection(
         title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
         stripeColor: cs.primary,
         titleTrail: HomeDiarySectionCloseButton(
           onPressed: () => setState(() => _selectedTagLabel = null),
         ),
-        child: HomePaneEmptyHint(
-          text: context.l10n.homeTagIndexEmptyForTag(_selectedTagLabel!),
-        ),
-      );
-    }
-
-    return HomeDiaryListSectionCard(
-      title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
-      stripeColor: cs.primary,
-      titleTrail: HomeDiarySectionCloseButton(
-        onPressed: () => setState(() => _selectedTagLabel = null),
+        entries: matched,
       ),
-      child: HomeCompactEntryList(entries: matched),
-    );
+    ];
   }
 
   void _setTagListThumbDragging(bool dragging) {
@@ -408,6 +449,17 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                         q.isEmpty || item.label.toLowerCase().contains(q),
                   )
                   .toList();
+              if (list.isEmpty && q.isNotEmpty) {
+                return HomeScrollbarGutter(
+                  child: HomeStateCard(
+                    icon: Icons.search_off_rounded,
+                    title: context.l10n.homeSearchNoResultsTitle,
+                    message: context.l10n.homeSearchNoResultsMessage,
+                    actionLabel: context.l10n.commonClearSearchTooltip,
+                    onAction: _searchCtrl.clear,
+                  ),
+                );
+              }
               final UnlockedVaultSession? session = widget.sessionState.session;
               final List<Widget> tagTiles = <Widget>[
                 for (int i = 0; i < list.length; i++) ...<Widget>[
@@ -463,7 +515,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               shape: BoxShape.circle,
                               color: bg,
                               border: () {
-                                final BorderSide? side = tagChipBorderSide(
+                                final BorderSide? side = tagBorderSide(
                                   context.appColors,
                                   cs,
                                   bg,
@@ -531,7 +583,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                   tooltip: context.l10n.homeTooltipDeleteTag,
                                   onPressed: session == null
                                       ? null
-                                      : () => _deleteTag(
+                                      : () => _deleteTagFromRow(
                                           e.label,
                                           session: session,
                                         ),
@@ -593,9 +645,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                           const SliverToBoxAdapter(
                             child: SizedBox(height: HomeLayout.sectionGap),
                           ),
-                          SliverToBoxAdapter(
-                            child: _tagDiaryPreviewPanel(records, theme, cs),
-                          ),
+                          ..._tagDiaryPreviewSlivers(records, theme, cs),
                           const SliverToBoxAdapter(child: SizedBox(height: 24)),
                         ],
                       );
@@ -611,7 +661,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
               child: HomeStateCard(
                 icon: Icons.error_outline_rounded,
                 title: context.l10n.commonReadFailureTitle,
-                message: '$err',
+                message: userFacingErrorMessage(err, l10n: context.l10n),
               ),
             ),
           ),

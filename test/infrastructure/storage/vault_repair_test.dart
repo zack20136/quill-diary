@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -187,5 +188,80 @@ void main() {
 
     expect(report.entryCount, 2);
     expect((await harness.repository.listEntries()).length, 2);
+  });
+
+  test('修復會同步重建人物分析', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final Person person = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '張1a'),
+    );
+    await harness.saveSimpleEntry(setup, markdownBody: '今天跟張1a去哪。');
+
+    await harness.repository.repairVaultWithReport(setup.session);
+
+    expect(harness.repository.peopleAnalyticsDebugMetrics.scannedDocuments, 1);
+    expect(
+      (await harness.repository.allPersonMentionStats(
+        setup.session,
+      ))[person.id]?.mentionCount,
+      1,
+    );
+    expect(harness.repository.peopleAnalyticsDebugMetrics.scannedDocuments, 0);
+  });
+
+  test('空日記庫修復也會完成人物分析', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+
+    final VaultRepairReport report = await harness.repository
+        .repairVaultWithReport(setup.session);
+
+    expect(report.entryCount, 0);
+    expect(harness.repository.peopleAnalyticsDebugMetrics.scannedDocuments, 0);
+    expect(
+      await harness.repository.allPersonMentionStats(setup.session),
+      isEmpty,
+    );
+  });
+
+  test('修復會先停止既有分析再建立完整結果', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final Person person = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: 'test'),
+    );
+    for (var index = 0; index < 9; index++) {
+      await harness.saveSimpleEntry(
+        setup,
+        date: '2026-06-${(index + 1).toString().padLeft(2, '0')}',
+        markdownBody: '${List<String>.filled(12000, '內容').join()} test',
+      );
+    }
+
+    final Future<PeopleAnalyticsProgress> analyzing = harness
+        .repository
+        .peopleAnalyticsProgress
+        .firstWhere(
+          (PeopleAnalyticsProgress progress) =>
+              progress.state == PeopleAnalyticsProgressState.analyzing,
+        );
+    final Future<bool> oldAnalysisWasCancelled = harness.repository
+        .allPersonMentionStats(setup.session)
+        .then<bool>((_) => false, onError: (_) => true);
+    await analyzing;
+
+    await harness.repository.repairVaultWithReport(setup.session);
+
+    expect(await oldAnalysisWasCancelled, isTrue);
+    expect(harness.repository.peopleAnalyticsDebugMetrics.scannedDocuments, 9);
+    expect(
+      (await harness.repository.allPersonMentionStats(
+        setup.session,
+      ))[person.id]?.mentionCount,
+      9,
+    );
   });
 }

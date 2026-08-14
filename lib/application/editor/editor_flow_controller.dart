@@ -448,9 +448,9 @@ class EditorFlowController {
   void _refreshCaches({EntryId? editedEntryId}) {
     _ref
       ..invalidate(homeEntryIndexListProvider)
-      ..invalidate(calendarMonthEntryDatesProvider)
-      ..invalidate(calendarMonthEntriesProvider)
+      ..invalidate(calendarGridEntriesProvider)
       ..invalidate(calendarEntriesProvider)
+      ..invalidate(entryDateBoundsProvider)
       ..invalidate(allEntryIndexRecordsProvider)
       ..invalidate(editorDraftKeysProvider);
     _ref.read(entryIndexRevisionProvider.notifier).bump();

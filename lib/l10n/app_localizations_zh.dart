@@ -1074,6 +1074,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeCalendarMonthFormatLabel => '月';
 
   @override
+  String homeCalendarEntryCount(int count) {
+    return '$count 篇日記';
+  }
+
+  @override
+  String get homeCalendarSelectedStatus => '已選取';
+
+  @override
   String get homeCalendarWeekdaySun => '日';
 
   @override

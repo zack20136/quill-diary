@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
@@ -10,7 +11,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/widgets/people_pane.dart';
+import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 
 import '../../helpers/app_test_theme.dart';
 
@@ -20,6 +21,19 @@ void main() {
     var statsReads = 0;
     final ProviderContainer container = ProviderContainer(
       overrides: [
+        homeEntriesProvider.overrideWith(
+          (Ref ref) =>
+              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+        ),
+        homeEntryIndexListProvider.overrideWith(
+          (Ref ref) async => const HomeEntryQueryResult(
+            query: '',
+            entries: <EntryIndexRecord>[],
+          ),
+        ),
+        homePinnedEntryIdsProvider.overrideWith(
+          (Ref ref) async => const <EntryId>{},
+        ),
         peopleCatalogProvider.overrideWith((Ref ref) async {
           catalogReads += 1;
           return const <Person>[];
@@ -54,7 +68,7 @@ void main() {
           locale: appZhLocale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(body: PeoplePane(sessionState: sessionState)),
+          home: Scaffold(body: HomeTabStack(sessionState: sessionState)),
         ),
       ),
     );
@@ -76,5 +90,76 @@ void main() {
 
     expect(catalogReads, 1);
     expect(statsReads, 1);
+  });
+
+  testWidgets('總覽人物排行首次進入才載入且離開後保持訂閱', (WidgetTester tester) async {
+    final List<MemoryScope> readScopes = <MemoryScope>[];
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        homeEntriesProvider.overrideWith(
+          (Ref ref) =>
+              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+        ),
+        homeEntryIndexListProvider.overrideWith(
+          (Ref ref) async => const HomeEntryQueryResult(
+            query: '',
+            entries: <EntryIndexRecord>[],
+          ),
+        ),
+        homePinnedEntryIdsProvider.overrideWith(
+          (Ref ref) async => const <EntryId>{},
+        ),
+        allEntryIndexRecordsProvider.overrideWith(
+          (Ref ref) async => const <EntryIndexRecord>[],
+        ),
+        memoryEntriesProvider.overrideWith(
+          (Ref ref) async => const <EntryIndexRecord>[],
+        ),
+        overviewPeopleTop5Provider.overrideWith((Ref ref, key) async {
+          readScopes.add(key.scope);
+          return const <OverviewPersonRankItem>[];
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final AppSessionState sessionState = AppSessionState(
+      status: AppLockStatus.unlocked,
+      session: UnlockedVaultSession(
+        vaultId: 'vlt_overview_pane_lifecycle',
+        trustedDevice: true,
+        recoveryWrapKey: const <int>[1, 2, 3],
+      ),
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: appTestTheme(),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(body: HomeTabStack(sessionState: sessionState)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(readScopes, isEmpty);
+
+    container.read(homeTabProvider.notifier).set(HomeTab.overview);
+    await tester.pumpAndSettle();
+    expect(readScopes, <MemoryScope>[MemoryScope.month]);
+
+    container.read(homeTabProvider.notifier).set(HomeTab.home);
+    await tester.pumpAndSettle();
+    container.read(homeTabProvider.notifier).set(HomeTab.overview);
+    await tester.pumpAndSettle();
+    expect(readScopes, <MemoryScope>[MemoryScope.month]);
+
+    container.read(memoryScopeProvider.notifier).set(MemoryScope.all);
+    await tester.pumpAndSettle();
+    expect(readScopes, <MemoryScope>[MemoryScope.month, MemoryScope.all]);
   });
 }

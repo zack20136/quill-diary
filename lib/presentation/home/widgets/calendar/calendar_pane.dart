@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../domain/shared/value_objects.dart';
+import '../../../../domain/diary/diary_date_policy.dart';
 import '../../../../infrastructure/database/index_database.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/presentation/display_format.dart';
@@ -14,7 +15,6 @@ import '../../home_layout.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import '../../../../application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import '../entry_widgets.dart';
 import '../home_scroll_affordance.dart';
 import '../home_shared_widgets.dart';
 import 'calendar_day_cell.dart';
@@ -107,7 +107,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     final bool canReadEntries =
         widget.sessionState.isUnlocked && widget.sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> monthEntriesAsync = ref.watch(
-      calendarMonthEntriesProvider,
+      calendarGridEntriesProvider,
     );
     final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(
       calendarEntriesProvider,
@@ -125,6 +125,27 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
           orElse: () => const <String, int>{},
         );
     final DateTime today = DateTime.now();
+    final ({DateOnly earliest, DateOnly latest})? storedBounds = ref
+        .watch(entryDateBoundsProvider)
+        .value;
+    final ({DateTime first, DateTime last}) policyRange =
+        DiaryDatePolicy.selectableRange();
+    DateTime firstCalendarDay = policyRange.first;
+    DateTime lastCalendarDay = policyRange.last;
+    final Iterable<DateTime> datesToInclude = <DateTime>[
+      visibleMonth,
+      selectedDate.toDateTime(),
+      if (storedBounds != null) storedBounds.earliest.toDateTime(),
+      if (storedBounds != null) storedBounds.latest.toDateTime(),
+    ];
+    for (final DateTime date in datesToInclude) {
+      if (date.isBefore(firstCalendarDay)) {
+        firstCalendarDay = date;
+      }
+      if (date.isAfter(lastCalendarDay)) {
+        lastCalendarDay = date;
+      }
+    }
 
     if (!canReadEntries) {
       return HomeBlockedEntriesPane(sessionState: widget.sessionState);
@@ -192,8 +213,8 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                             child: Opacity(
                               opacity: monthGridLoading ? 0.45 : 1,
                               child: TableCalendar<Object>(
-                                firstDay: DateTime(2020),
-                                lastDay: DateTime(2100),
+                                firstDay: firstCalendarDay,
+                                lastDay: lastCalendarDay,
                                 focusedDay: visibleMonth,
                                 calendarFormat: CalendarFormat.month,
                                 availableCalendarFormats:
@@ -301,6 +322,11 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                     selectedDate.value ==
                                     DateOnly.fromDateTime(day).value,
                                 onPageChanged: (DateTime focusedDay) {
+                                  final DateOnly nextSelectedDate =
+                                      calendarSelectedDateForMonth(
+                                        selectedDate,
+                                        focusedDay,
+                                      );
                                   ref
                                       .read(
                                         calendarVisibleMonthProvider.notifier,
@@ -311,6 +337,11 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                           focusedDay.month,
                                         ),
                                       );
+                                  ref
+                                      .read(
+                                        calendarSelectedDateProvider.notifier,
+                                      )
+                                      .set(nextSelectedDate);
                                 },
                                 onDaySelected:
                                     (
@@ -500,49 +531,61 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
             const SliverToBoxAdapter(
               child: SizedBox(height: HomeLayout.sectionGap),
             ),
-            SliverToBoxAdapter(
-              child: entriesAsync.when(
-                skipLoadingOnReload: true,
-                data: (List<EntryIndexRecord> entries) {
-                  final String dateLabel = DisplayFormat.formatDateOnly(
-                    context.l10n,
-                    selectedDate,
-                  );
-                  return HomeDiaryListSectionCard(
-                    title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
+            entriesAsync.when<Widget>(
+              skipLoadingOnReload: true,
+              data: (List<EntryIndexRecord> entries) {
+                final String dateLabel = DisplayFormat.formatDateOnly(
+                  context.l10n,
+                  selectedDate,
+                );
+                final String title = context.l10n.homeDiarySectionTitleForDate(
+                  dateLabel,
+                );
+                if (entries.isNotEmpty) {
+                  return HomeDiarySliverSection(
+                    title: title,
                     stripeColor: cs.primary,
-                    child: entries.isEmpty
-                        ? HomePaneEmptyHint(
-                            text: context.l10n.homeEmptyDayMessage(dateLabel),
-                          )
-                        : HomeCompactEntryList(entries: entries),
+                    entries: entries,
                   );
-                },
-                loading: () {
-                  final String dateLabel = DisplayFormat.formatDateOnly(
-                    context.l10n,
-                    selectedDate,
-                  );
-                  return HomeDiaryListSectionCard(
+                }
+                return SliverToBoxAdapter(
+                  child: HomeSectionCard(
+                    title: title,
+                    stripeColor: cs.primary,
+                    child: HomePaneEmptyHint(
+                      text: context.l10n.homeEmptyDayMessage(dateLabel),
+                    ),
+                  ),
+                );
+              },
+              loading: () {
+                final String dateLabel = DisplayFormat.formatDateOnly(
+                  context.l10n,
+                  selectedDate,
+                );
+                return SliverToBoxAdapter(
+                  child: HomeSectionCard(
                     title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
                     stripeColor: cs.primary,
                     child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-                error: (Object error, StackTrace _) {
-                  final String dateLabel = DisplayFormat.formatDateOnly(
-                    context.l10n,
-                    selectedDate,
-                  );
-                  return HomeDiaryListSectionCard(
+                  ),
+                );
+              },
+              error: (Object error, StackTrace _) {
+                final String dateLabel = DisplayFormat.formatDateOnly(
+                  context.l10n,
+                  selectedDate,
+                );
+                return SliverToBoxAdapter(
+                  child: HomeSectionCard(
                     title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
                     stripeColor: cs.primary,
                     child: Text(
                       userFacingErrorMessage(error, l10n: context.l10n),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],

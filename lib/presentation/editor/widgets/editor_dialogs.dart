@@ -112,7 +112,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
         },
         deleteIconColor: fg.withValues(alpha: 0.82),
         backgroundColor: bg,
-        side: tagChipBorderSide(colors, theme.colorScheme, bg, fg, width: 0.95),
+        side: tagBorderSide(colors, theme.colorScheme, bg, fg, width: 0.95),
       ),
     );
   }
@@ -146,7 +146,7 @@ class _TagsStudioDialogState extends ConsumerState<_TagsStudioDialog> {
           _addChosen(label);
         });
       },
-      side: tagChipBorderSide(colors, theme.colorScheme, bg0, fg0, width: 0.95),
+      side: tagBorderSide(colors, theme.colorScheme, bg0, fg0, width: 0.95),
       elevation: 0,
       shadowColor: Colors.transparent,
       backgroundColor: bg0,

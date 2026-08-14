@@ -8,9 +8,10 @@ import '../../../infrastructure/storage/storage_providers.dart';
 import '../../utils/user_facing_error.dart';
 import '../app_feedback.dart';
 import '../../../app/app_colors.dart';
+import '../accent_visual.dart';
 import '../tag_visual.dart';
-import 'tag_accent_dialog_shell.dart';
-import 'tag_accent_wheel_dialog.dart';
+import 'accent_color_wheel_dialog.dart';
+import 'accent_dialog_shell.dart';
 import 'tag_chip.dart';
 
 /// 建立或編輯標籤名稱與強調色的對話框。
@@ -56,9 +57,9 @@ class _TagAccentComposerDialogState
     if (widget.initialAccentArgb != null) {
       _accent = Color(widget.initialAccentArgb!);
       _isCustom =
-          widget.initialAccentIsCustom ?? !tagAccentMatchesPreset(_accent);
+          widget.initialAccentIsCustom ?? !accentMatchesPreset(_accent);
     } else {
-      _accent = kDefaultTagAccentPresets.first;
+      _accent = kAccentColorPresets.first;
       _isCustom = false;
     }
     _nameCtrl.addListener(_onNameChanged);
@@ -79,9 +80,17 @@ class _TagAccentComposerDialogState
     if (_deleting || _saving) {
       return;
     }
-    final Color? picked = await showTagAccentWheelDialog(
+    final Color? picked = await showAccentColorWheelDialog(
       context,
       initialColor: _accent,
+      title: context.l10n.tagCustomColorDialogTitle,
+      previewLabel: context.l10n.tagPreviewLabel,
+      previewText: _nameCtrl.text.trim().isEmpty
+          ? context.l10n.tagUnnamedPreview
+          : _nameCtrl.text.trim(),
+      copiedMessage: context.l10n.tagColorCodeCopiedMessage,
+      cancelLabel: context.l10n.commonActionCancel,
+      saveLabel: context.l10n.tagSaveButton,
     );
     if (!mounted || picked == null) {
       return;
@@ -213,16 +222,15 @@ class _TagAccentComposerDialogState
       ' ',
     );
     final AppColors appColors = context.appColors;
-    final (Color previewBg, Color previewFg) = chipFillFromAccentColor(
+    final (Color previewBg, Color previewFg) = accentColorPair(
       _accent,
-      cs,
-      appColors,
+      appColors.sectionInset,
     );
     final bool canDelete = widget.onDelete != null;
     final bool busy = _deleting || _saving;
     final bool customSelected = _isCustom;
 
-    return TagAccentDialogShell(
+    return AccentDialogShell(
       icon: Icons.color_lens_rounded,
       title: widget.titleText ?? l10n.tagAddTitle,
       closeEnabled: !busy,
@@ -335,19 +343,18 @@ class _TagAccentComposerDialogState
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                itemCount: kDefaultTagAccentPresets.length,
+                itemCount: kAccentColorPresets.length,
                 separatorBuilder: (BuildContext context, int index) =>
                     const SizedBox(width: 12),
                 itemBuilder: (BuildContext context, int index) {
-                  final Color c = kDefaultTagAccentPresets[index];
-                  final (Color chipBg, Color chipFg) = chipFillFromAccentColor(
+                  final Color c = kAccentColorPresets[index];
+                  final (Color chipBg, Color chipFg) = accentColorPair(
                     c,
-                    cs,
-                    appColors,
+                    appColors.sectionInset,
                   );
                   final bool selected =
                       !_isCustom && colorArgb32(c) == colorArgb32(_accent);
-                  final BorderSide? unselectedSide = tagChipBorderSide(
+                  final BorderSide? unselectedSide = tagBorderSide(
                     appColors,
                     cs,
                     chipBg,
@@ -429,7 +436,7 @@ class _TagAccentComposerDialogState
                           width: 2.5,
                         );
                       }
-                      final BorderSide? side = tagChipBorderSide(
+                      final BorderSide? side = tagBorderSide(
                         appColors,
                         cs,
                         previewBg,

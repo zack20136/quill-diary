@@ -12,12 +12,12 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_wheel_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
@@ -600,11 +600,19 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     } else if (_loaded != null) {
       initialColor = defaultPersonAccentColor(_loaded!.id);
     } else {
-      initialColor = kDefaultTagAccentPresets.first;
+      initialColor = kAccentColorPresets.first;
     }
-    final Color? picked = await showTagAccentWheelDialog(
+    final Color? picked = await showAccentColorWheelDialog(
       context,
       initialColor: initialColor,
+      title: context.l10n.peopleChooseCustomColor,
+      previewLabel: context.l10n.tagPreviewLabel,
+      previewText: _nameCtrl.text.trim().isEmpty
+          ? context.l10n.peopleEmptyTitle
+          : _nameCtrl.text.trim(),
+      copiedMessage: context.l10n.tagColorCodeCopiedMessage,
+      cancelLabel: context.l10n.commonActionCancel,
+      saveLabel: context.l10n.tagSaveButton,
     );
     if (picked != null && mounted) {
       setState(() => _accentArgb = colorArgb32(picked));
@@ -642,17 +650,16 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           child: ListView.separated(
             key: const Key('person-color-list'),
             scrollDirection: Axis.horizontal,
-            itemCount: kDefaultTagAccentPresets.length,
+            itemCount: kAccentColorPresets.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (BuildContext context, int index) {
               final int presetIndex = index;
-              final Color color = kDefaultTagAccentPresets[presetIndex];
+              final Color color = kAccentColorPresets[presetIndex];
               final int argb = colorArgb32(color);
               final bool selected = _accentArgb == argb;
-              final (Color fill, Color foreground) = chipFillFromAccentColor(
+              final (Color fill, Color foreground) = accentColorPair(
                 color,
-                cs,
-                appColors,
+                appColors.sectionInset,
               );
               final String label = l10n.peopleColorPreset(presetIndex + 1);
               return Tooltip(
@@ -986,7 +993,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         personDetailProvider(widget.personId!),
       );
       if (personAsync.isLoading) {
-        return TagAccentDialogShell(
+        return AccentDialogShell(
           icon: Icons.person_rounded,
           title: context.l10n.peopleEditTitle,
           onClose: () => unawaited(_requestClose()),
@@ -1006,7 +1013,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
             }
           });
         }
-        return TagAccentDialogShell(
+        return AccentDialogShell(
           icon: Icons.person_rounded,
           title: context.l10n.peopleEditTitle,
           onClose: () => unawaited(_requestClose()),
@@ -1021,7 +1028,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           setState(() => _hydrate(person));
         }
       });
-      return TagAccentDialogShell(
+      return AccentDialogShell(
         icon: Icons.person_rounded,
         title: context.l10n.peopleEditTitle,
         onClose: () => unawaited(_requestClose()),
@@ -1061,7 +1068,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
             : MediaQuery.sizeOf(context).height -
                   MediaQuery.viewInsetsOf(context).bottom;
         final double bodyHeight = (availableHeight - 166).clamp(80.0, 680.0);
-        return TagAccentDialogShell(
+        return AccentDialogShell(
           maxWidth: 560,
           icon: Icons.person_rounded,
           title: title,

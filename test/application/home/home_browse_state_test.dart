@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 import '../../helpers/presentation/home/home_test_helpers.dart';
@@ -43,9 +45,10 @@ void main() {
       );
       addTearDown(staleCacheContainer.dispose);
 
-      final List<EntryIndexRecord> entries = await staleCacheContainer.read(
+      final HomeEntryQueryResult result = await staleCacheContainer.read(
         homeEntryIndexListProvider.future,
       );
+      final List<EntryIndexRecord> entries = result.entries;
 
       expect(entries, hasLength(1));
       expect(entries.first.id, 'jrn_RESTORED');
@@ -97,9 +100,9 @@ void main() {
     });
 
     test('轉入 unlocking 期間仍保留上一個可查詢 session', () async {
-      final List<EntryIndexRecord> before = await container.read(
+      final List<EntryIndexRecord> before = (await container.read(
         homeEntryIndexListProvider.future,
-      );
+      )).entries;
       expect(before, hasLength(1));
 
       sessionController.adopt(
@@ -107,10 +110,55 @@ void main() {
       );
 
       expect(container.read(indexQueryableVaultSessionProvider), isNotNull);
-      final List<EntryIndexRecord> duringUnlocking = await container.read(
+      final List<EntryIndexRecord> duringUnlocking = (await container.read(
         homeEntryIndexListProvider.future,
-      );
+      )).entries;
       expect(duringUnlocking, hasLength(1));
+    });
+  });
+
+  group('日曆索引查詢', () {
+    test('日期邊界保留基準範圍外的既有日記', () async {
+      final FakeEntryIndexVaultRepository repository =
+          FakeEntryIndexVaultRepository(
+            allEntries: <EntryIndexRecord>[
+              buildEntryIndexRecord(
+                id: 'legacy',
+                date: const DateOnly('1988-02-29'),
+              ),
+              buildEntryIndexRecord(
+                id: 'future',
+                date: const DateOnly('2035-06-01'),
+              ),
+            ],
+          );
+      final ProviderContainer container = buildUnlockedHomeContainer(
+        repository,
+      );
+      addTearDown(container.dispose);
+
+      final bounds = await container.read(entryDateBoundsProvider.future);
+
+      expect(bounds?.earliest.value, '1988-02-29');
+      expect(bounds?.latest.value, '2035-06-01');
+    });
+
+    test('月份查詢使用畫面六週的起訖日期', () async {
+      final FakeEntryIndexVaultRepository repository =
+          FakeEntryIndexVaultRepository();
+      final ProviderContainer container = buildUnlockedHomeContainer(
+        repository,
+      );
+      addTearDown(container.dispose);
+      container
+          .read(calendarVisibleMonthProvider.notifier)
+          .set(DateTime(2026, 8));
+
+      await container.read(calendarGridEntriesProvider.future);
+
+      expect(repository.listEntryDateRanges, hasLength(1));
+      expect(repository.listEntryDateRanges.single.first.value, '2026-07-26');
+      expect(repository.listEntryDateRanges.single.last.value, '2026-09-05');
     });
   });
 }

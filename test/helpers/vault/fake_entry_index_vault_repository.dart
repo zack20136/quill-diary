@@ -19,7 +19,6 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
     this.searchResponses = const <String, List<EntryIndexRecord>>{},
     this.entriesByDate = const <DateOnly, List<EntryIndexRecord>>{},
     this.entriesByMonth = const <DateTime, List<EntryIndexRecord>>{},
-    this.monthDatesByMonth = const <DateTime, List<DateOnly>>{},
     this.tagCatalog = const <TagCatalogItem>[],
   }) : allEntries = List<EntryIndexRecord>.from(allEntries),
        super(
@@ -35,17 +34,16 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
   final Map<String, List<EntryIndexRecord>> searchResponses;
   final Map<DateOnly, List<EntryIndexRecord>> entriesByDate;
   final Map<DateTime, List<EntryIndexRecord>> entriesByMonth;
-  final Map<DateTime, List<DateOnly>> monthDatesByMonth;
   final List<TagCatalogItem> tagCatalog;
 
   int ensureIndexReadyCalls = 0;
   int listEntriesCalls = 0;
   int listEntriesForMonthCalls = 0;
-  int monthEntryDatesCalls = 0;
   final List<String?> listEntriesSearchQueries = <String?>[];
   final List<DateOnly?> listEntriesDates = <DateOnly?>[];
   final List<DateTime> listEntriesForMonths = <DateTime>[];
-  final List<DateTime> monthEntryDateMonths = <DateTime>[];
+  final List<({DateOnly first, DateOnly last})> listEntryDateRanges =
+      <({DateOnly first, DateOnly last})>[];
 
   @override
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
@@ -82,11 +80,29 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
   }
 
   @override
-  Future<List<DateOnly>> monthEntryDates(DateTime month) async {
-    monthEntryDatesCalls++;
-    final DateTime key = _monthKey(month);
-    monthEntryDateMonths.add(key);
-    return monthDatesByMonth[key] ?? const <DateOnly>[];
+  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+    required DateOnly firstDate,
+    required DateOnly lastDate,
+  }) async {
+    listEntryDateRanges.add((first: firstDate, last: lastDate));
+    return allEntries
+        .where(
+          (EntryIndexRecord entry) =>
+              entry.date.value.compareTo(firstDate.value) >= 0 &&
+              entry.date.value.compareTo(lastDate.value) <= 0,
+        )
+        .toList();
+  }
+
+  @override
+  Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() async {
+    if (allEntries.isEmpty) {
+      return null;
+    }
+    final List<DateOnly> dates =
+        allEntries.map((EntryIndexRecord entry) => entry.date).toList()
+          ..sort((DateOnly a, DateOnly b) => a.value.compareTo(b.value));
+    return (earliest: dates.first, latest: dates.last);
   }
 
   @override

@@ -909,12 +909,22 @@ class VaultRepository {
     );
   }
 
-  Future<List<DateOnly>> monthEntryDates(DateTime month) {
-    return _requireOpenIndex().monthEntryDates(month);
-  }
-
   Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) {
     return _requireOpenIndex().listEntriesForMonth(month);
+  }
+
+  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+    required DateOnly firstDate,
+    required DateOnly lastDate,
+  }) {
+    return _requireOpenIndex().listEntriesForDateRange(
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+  }
+
+  Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() {
+    return _requireOpenIndex().entryDateBounds();
   }
 
   Future<DiaryEntry?> loadEntry(
@@ -1532,6 +1542,7 @@ class VaultRepository {
   ) async {
     final Stopwatch stopwatch = Stopwatch()..start();
     await _openIndexForSession(session);
+    await _cancelPeopleAnalyticsRebuild();
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
 
     final _EntryRepairStats entryStats = await _scanAndRepairEntries(
@@ -1588,6 +1599,7 @@ class VaultRepository {
       indexEntries.map((_ScannedEntry item) => item.entry.id),
     );
     await _writeEncryptedManifest(session, metadata);
+    await ensurePeopleAnalyticsReady(session);
 
     stopwatch.stop();
     return VaultRepairReport(
@@ -2635,6 +2647,7 @@ class VaultRepository {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
       await _requireOpenIndex().ensurePeopleAnalyticsTable();
+      await syncTagStylesBetweenVaultAndIndex();
       return;
     }
     await _requireOpenIndex().ensurePeopleAnalyticsTable();
@@ -2816,6 +2829,24 @@ class VaultRepository {
         }
       }
       return;
+    }
+  }
+
+  Future<void> _cancelPeopleAnalyticsRebuild() async {
+    final Future<void>? inFlight = _peopleAnalyticsRebuildInFlight;
+    if (inFlight == null) {
+      return;
+    }
+    _peopleAnalyticsJob?.cancel();
+    try {
+      await inFlight;
+    } on _PeopleAnalyticsCancelled {
+      // 修復會在索引重建後重新分析，取消舊工作屬預期行為。
+    } finally {
+      if (identical(_peopleAnalyticsRebuildInFlight, inFlight)) {
+        _peopleAnalyticsRebuildInFlight = null;
+        _peopleAnalyticsJob = null;
+      }
     }
   }
 

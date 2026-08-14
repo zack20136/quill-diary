@@ -13,7 +13,6 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -183,100 +182,165 @@ class PersonDetailPage extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: ListViewWithScrollbar(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-                  children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: personAvatarBackgroundColor(
-                            person,
-                            context.appColors.sectionInset,
-                          ),
-                          foregroundColor: accent,
-                          child: Text(
-                            personInitials(person.name),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: accent,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                person.name,
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.2,
-                                ),
+                child: AppScrollbar(
+                  child: CustomScrollView(
+                    slivers: <Widget>[
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                        sliver: SliverMainAxisGroup(
+                          slivers: <Widget>[
+                            SliverToBoxAdapter(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: <Widget>[
+                                      CircleAvatar(
+                                        radius: 28,
+                                        backgroundColor:
+                                            personAvatarBackgroundColor(
+                                              person,
+                                              context.appColors.sectionInset,
+                                            ),
+                                        foregroundColor: accent,
+                                        child: Text(
+                                          personInitials(person.name),
+                                          style: theme.textTheme.titleLarge
+                                              ?.copyWith(
+                                                color: accent,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text(
+                                              person.name,
+                                              style: theme
+                                                  .textTheme
+                                                  .headlineSmall
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w800,
+                                                    height: 1.2,
+                                                  ),
+                                            ),
+                                            if (person
+                                                .aliases
+                                                .isNotEmpty) ...<Widget>[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                person.aliases.join('、'),
+                                                style: theme
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      color:
+                                                          cs.onSurfaceVariant,
+                                                      height: 1.35,
+                                                    ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (summaryItems.isNotEmpty) ...<Widget>[
+                                    const SizedBox(height: 14),
+                                    _PersonDetailSectionCard(
+                                      key: const ValueKey<String>(
+                                        'person-mention-overview-card',
+                                      ),
+                                      title: context
+                                          .l10n
+                                          .peopleMentionOverviewTitle,
+                                      child: SizedBox(
+                                        height: 64,
+                                        child: ListView.separated(
+                                          key: const ValueKey<String>(
+                                            'person-summary-strip',
+                                          ),
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: summaryItems.length,
+                                          separatorBuilder: (_, _) =>
+                                              const SizedBox(width: 8),
+                                          itemBuilder:
+                                              (
+                                                BuildContext context,
+                                                int index,
+                                              ) => summaryItems[index],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 16),
+                                  _PersonProfileBodyCard(person: person),
+                                  const SizedBox(height: 16),
+                                ],
                               ),
-                              if (person.aliases.isNotEmpty) ...<Widget>[
-                                const SizedBox(height: 4),
-                                Text(
-                                  person.aliases.join('、'),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                    height: 1.35,
+                            ),
+                            relatedAsync.when<Widget>(
+                              loading: () => SliverToBoxAdapter(
+                                child: HomeSectionCard(
+                                  title: context.l10n.peopleRelatedEntriesTitle,
+                                  stripeColor: cs.primary,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 24),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (summaryItems.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 14),
-                      _PersonDetailSectionCard(
-                        key: const ValueKey<String>(
-                          'person-mention-overview-card',
-                        ),
-                        title: context.l10n.peopleMentionOverviewTitle,
-                        child: SizedBox(
-                          height: 64,
-                          child: ListView.separated(
-                            key: const ValueKey<String>('person-summary-strip'),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: summaryItems.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (BuildContext context, int index) =>
-                                summaryItems[index],
-                          ),
+                              ),
+                              error: (Object error, StackTrace _) =>
+                                  SliverToBoxAdapter(
+                                    child: HomeSectionCard(
+                                      title: context
+                                          .l10n
+                                          .peopleRelatedEntriesTitle,
+                                      stripeColor: cs.primary,
+                                      child: Text(
+                                        userFacingErrorMessage(
+                                          error,
+                                          l10n: context.l10n,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              data: (List<EntryIndexRecord> entries) {
+                                if (entries.isEmpty) {
+                                  return SliverToBoxAdapter(
+                                    child: HomeSectionCard(
+                                      title: context
+                                          .l10n
+                                          .peopleRelatedEntriesTitle,
+                                      stripeColor: cs.primary,
+                                      child: HomePaneEmptyHint(
+                                        text: context
+                                            .l10n
+                                            .peopleRelatedEntriesEmpty,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return HomeDiarySliverSection(
+                                  title: context.l10n.peopleRelatedEntriesTitle,
+                                  stripeColor: cs.primary,
+                                  entries: entries,
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    _PersonProfileBodyCard(person: person),
-                    const SizedBox(height: 16),
-                    HomeSectionCard(
-                      title: context.l10n.peopleRelatedEntriesTitle,
-                      stripeColor: cs.primary,
-                      child: relatedAsync.when(
-                        loading: () => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                        error: (Object error, StackTrace _) => Text(
-                          userFacingErrorMessage(error, l10n: context.l10n),
-                        ),
-                        data: (List<EntryIndexRecord> entries) {
-                          if (entries.isEmpty) {
-                            return HomePaneEmptyHint(
-                              text: context.l10n.peopleRelatedEntriesEmpty,
-                            );
-                          }
-                          return HomeCompactEntryList(entries: entries);
-                        },
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -288,30 +352,29 @@ class PersonDetailPage extends ConsumerWidget {
 }
 
 class _PersonRelationChip extends StatelessWidget {
-  const _PersonRelationChip({required this.label, required this.accent});
+  const _PersonRelationChip({
+    required this.label,
+    required this.colors,
+    super.key,
+  });
 
   final String label;
-  final Color accent;
+  final (Color, Color) colors;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final Color bg = accent.withValues(alpha: 0.16);
-    final Color fg = Color.alphaBlend(
-      accent.withValues(alpha: 0.85),
-      theme.colorScheme.onSurface,
-    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bg,
+        color: colors.$1,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style: theme.textTheme.labelLarge?.copyWith(
-          color: fg,
+          color: colors.$2,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -374,7 +437,10 @@ class _PersonProfileBodyCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppLocalizations l10n = context.l10n;
-    final Color accent = personAccentColor(person);
+    final (Color, Color) personColors = personLabelColorPair(
+      person,
+      context.appColors.sectionInset,
+    );
 
     return _PersonDetailSectionCard(
       key: const ValueKey<String>('person-profile-details-card'),
@@ -448,8 +514,11 @@ class _PersonProfileBodyCard extends StatelessWidget {
                     in PersonRelationship.values)
                   if (person.relationships.contains(relationship))
                     _PersonRelationChip(
+                      key: ValueKey<String>(
+                        'person-relation-chip-${relationship.name}',
+                      ),
                       label: personRelationshipLabel(l10n, relationship),
-                      accent: accent,
+                      colors: personColors,
                     ),
               ],
             ),

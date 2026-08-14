@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../l10n/l10n.dart';
 import '../../../app/app_colors.dart';
 
-/// 標籤強調色 Composer / 色輪對話框共用的 gradient 外殼與標題列。
-class TagAccentDialogShell extends StatelessWidget {
-  const TagAccentDialogShell({
+/// Accent 選色與人物表單共用的漸層外殼與標題列。
+class AccentDialogShell extends StatelessWidget {
+  const AccentDialogShell({
     required this.icon,
     required this.title,
     this.footer,

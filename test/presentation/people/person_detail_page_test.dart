@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
+import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
 
@@ -19,6 +20,8 @@ void main() {
     friendliness: FriendlinessLevel(4),
     acquaintanceYear: 2020,
     birthday: PersonBirthday(month: 8, day: 12),
+    relationships: const <PersonRelationship>{PersonRelationship.classmate},
+    accentArgb: 0xFF54A890,
     createdAt: timestamp,
     updatedAt: timestamp,
   );
@@ -179,4 +182,35 @@ void main() {
       expect((box.decoration as BoxDecoration).color, colors.sectionInset);
     }
   });
+
+  for (final Brightness brightness in Brightness.values) {
+    testWidgets('${brightness == Brightness.light ? '淺色' : '深色'}模式關係標籤沿用人物頭像配色', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(testApp(brightness: brightness));
+      await tester.pumpAndSettle();
+
+      final AppColors colors = appTestTheme(
+        brightness: brightness,
+      ).extension<AppColors>()!;
+      final (Color expectedBackground, Color expectedForeground) =
+          personLabelColorPair(person, colors.sectionInset);
+      final Finder relationChip = find.byKey(
+        const ValueKey<String>('person-relation-chip-classmate'),
+      );
+      final Container container = tester.widget<Container>(
+        find.descendant(
+          of: relationChip,
+          matching: find.byType(Container),
+        ),
+      );
+      final BoxDecoration decoration = container.decoration! as BoxDecoration;
+      final Text label = tester.widget<Text>(
+        find.descendant(of: relationChip, matching: find.text('同學')),
+      );
+
+      expect(decoration.color, expectedBackground);
+      expect(label.style?.color, expectedForeground);
+    });
+  }
 }

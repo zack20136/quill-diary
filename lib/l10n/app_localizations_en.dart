@@ -1101,6 +1101,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeCalendarMonthFormatLabel => 'Month';
 
   @override
+  String homeCalendarEntryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+      zero: '0 entries',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeCalendarSelectedStatus => 'selected';
+
+  @override
   String get homeCalendarWeekdaySun => 'Sun';
 
   @override

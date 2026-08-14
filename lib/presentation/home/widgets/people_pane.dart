@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -40,7 +39,6 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   final Set<PersonRelationship> _relationships = <PersonRelationship>{};
-  bool _hasBeenActivated = false;
   PeopleListSort _sort = PeopleListSort.lastMention;
 
   @override
@@ -52,14 +50,6 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
 
   @override
   Widget build(BuildContext context) {
-    final HomeTab activeTab = ref.watch(homeTabProvider);
-    if (activeTab == HomeTab.people) {
-      _hasBeenActivated = true;
-    }
-    if (!_hasBeenActivated) {
-      return const SizedBox.shrink();
-    }
-
     if (!widget.sessionState.isUnlocked ||
         widget.sessionState.session == null) {
       return Center(child: Text(context.l10n.homeUnlockingTitle));

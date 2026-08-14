@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
 
@@ -58,7 +60,7 @@ void main() {
 
     expect(find.text('基本資料'), findsOneWidget);
     expect(find.byType(Dialog), findsOneWidget);
-    expect(find.byType(TagAccentDialogShell), findsOneWidget);
+    expect(find.byType(AccentDialogShell), findsOneWidget);
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.text('儲存'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
@@ -265,7 +267,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.getSize(find.byType(TagAccentDialogShell)).width,
+      tester.getSize(find.byType(AccentDialogShell)).width,
       lessThanOrEqualTo(560),
     );
     expect(find.byType(Divider), findsNWidgets(2));
@@ -296,6 +298,28 @@ void main() {
     await tester.tap(find.byKey(const Key('person-color-preset-0')));
     await tester.pumpAndSettle();
     expect(tester.widget<ChoiceChip>(automatic).selected, isFalse);
+
+    final ThemeData theme = appTestTheme();
+    final AppColors colors = theme.extension<AppColors>()!;
+    final Color accent = kAccentColorPresets.first;
+    final (Color expectedBackground, Color expectedForeground) =
+        accentColorPair(accent, colors.sectionInset);
+    final Finder selectedPreset = find.byKey(
+      const Key('person-color-preset-0'),
+    );
+    final AnimatedContainer colorCircle = tester.widget<AnimatedContainer>(
+      find.descendant(
+        of: selectedPreset,
+        matching: find.byType(AnimatedContainer),
+      ),
+    );
+    final BoxDecoration decoration = colorCircle.decoration as BoxDecoration;
+    final Icon checkIcon = tester.widget<Icon>(
+      find.descendant(of: selectedPreset, matching: find.byIcon(Icons.check_rounded)),
+    );
+    expect(decoration.color, expectedBackground);
+    expect(decoration.border?.top.color, theme.colorScheme.primary);
+    expect(checkIcon.color, expectedForeground);
 
     await tester.tap(automatic);
     await tester.pumpAndSettle();

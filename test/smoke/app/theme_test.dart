@@ -44,10 +44,6 @@ void main() {
 
     expect(light.scaffoldBackground, isNot(dark.scaffoldBackground));
     expect(light.foreground, isNot(dark.foreground));
-    expect(
-      light.tagAccentBackgroundAlpha,
-      isNot(dark.tagAccentBackgroundAlpha),
-    );
   });
 
   test('深色內容背景統一使用不透明的 surfaceContainerHigh', () {

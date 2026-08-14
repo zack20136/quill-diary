@@ -2,37 +2,66 @@ import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../l10n/l10n.dart';
 import '../../../app/app_colors.dart';
 import '../app_feedback.dart';
-import '../tag_visual.dart';
-import 'tag_accent_dialog_shell.dart';
+import '../accent_visual.dart';
+import 'accent_dialog_shell.dart';
 import 'tag_chip.dart';
 
-Future<Color?> showTagAccentWheelDialog(
+Future<Color?> showAccentColorWheelDialog(
   BuildContext context, {
   required Color initialColor,
+  required String title,
+  required String previewLabel,
+  required String previewText,
+  required String copiedMessage,
+  required String cancelLabel,
+  required String saveLabel,
 }) {
   return showDialog<Color>(
     context: context,
     barrierDismissible: true,
     barrierColor: context.appColors.scrim,
     builder: (BuildContext dialogContext) {
-      return TagAccentWheelDialog(initialColor: initialColor);
+      return AccentColorWheelDialog(
+        initialColor: initialColor,
+        title: title,
+        previewLabel: previewLabel,
+        previewText: previewText,
+        copiedMessage: copiedMessage,
+        cancelLabel: cancelLabel,
+        saveLabel: saveLabel,
+      );
     },
   );
 }
 
-class TagAccentWheelDialog extends StatefulWidget {
-  const TagAccentWheelDialog({super.key, required this.initialColor});
+class AccentColorWheelDialog extends StatefulWidget {
+  const AccentColorWheelDialog({
+    super.key,
+    required this.initialColor,
+    required this.title,
+    required this.previewLabel,
+    required this.previewText,
+    required this.copiedMessage,
+    required this.cancelLabel,
+    required this.saveLabel,
+  });
 
   final Color initialColor;
+  final String title;
+  final String previewLabel;
+  final String previewText;
+  final String copiedMessage;
+  final String cancelLabel;
+  final String saveLabel;
 
   @override
-  State<TagAccentWheelDialog> createState() => _TagAccentWheelDialogState();
+  State<AccentColorWheelDialog> createState() =>
+      _AccentColorWheelDialogState();
 }
 
-class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
+class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
   late Color _picked;
 
   @override
@@ -48,13 +77,12 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
     }
     showAppFeedbackSnackBar(
       context,
-      context.l10n.tagColorCodeCopiedMessage,
+      widget.copiedMessage,
       tone: AppFeedbackTone.success,
     );
   }
 
   Widget _previewPanel(
-    AppLocalizations l10n,
     ThemeData theme,
     ColorScheme cs,
     (Color, Color) previewPair,
@@ -70,14 +98,14 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
         child: Row(
           children: <Widget>[
             Text(
-              l10n.tagPreviewLabel,
+              widget.previewLabel,
               style: theme.textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: cs.outline,
               ),
             ),
             const Spacer(),
-            TagChip.pair(label: l10n.tagUnnamedPreview, pair: previewPair),
+            TagChip.pair(label: widget.previewText, pair: previewPair),
           ],
         ),
       ),
@@ -86,22 +114,20 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors appColors = context.appColors;
-    final (Color previewBg, Color previewFg) = chipFillFromAccentColor(
+    final (Color previewBg, Color previewFg) = accentColorPair(
       _picked,
-      cs,
-      appColors,
+      appColors.sectionInset,
     );
 
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
-      child: TagAccentDialogShell(
+      child: AccentDialogShell(
         icon: Icons.palette_outlined,
-        title: l10n.tagCustomColorDialogTitle,
+        title: widget.title,
         onClose: () => Navigator.of(context).pop(),
         footer: Column(
           mainAxisSize: MainAxisSize.min,
@@ -113,7 +139,7 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
-                    l10n.commonActionCancel,
+                    widget.cancelLabel,
                     style: TextStyle(color: cs.onSurfaceVariant),
                   ),
                 ),
@@ -127,7 +153,7 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
                   ),
                   icon: const Icon(Icons.check_rounded, size: 20),
                   onPressed: () => Navigator.of(context).pop(_picked),
-                  label: Text(l10n.tagSaveButton),
+                  label: Text(widget.saveLabel),
                 ),
               ],
             ),
@@ -195,7 +221,7 @@ class _TagAccentWheelDialogState extends State<TagAccentWheelDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            _previewPanel(l10n, theme, cs, (previewBg, previewFg)),
+            _previewPanel(theme, cs, (previewBg, previewFg)),
           ],
         ),
       ),

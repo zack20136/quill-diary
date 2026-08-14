@@ -46,25 +46,58 @@ void main() {
       expect(matcher.match('見到王小明'), <String>{'long'});
     });
 
-    test('拉丁名稱緊連也可分別命中', () {
+    test('中文、英數與混合姓名在中文、空白及標點旁皆可命中', () {
       final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
-        _person(id: 'p1', name: 'test'),
-        _person(id: 'p2', name: '65485'),
+        _person(id: 'test', name: 'test'),
+        _person(id: 'xiaoming', name: '小明'),
+        _person(id: 'mixed', name: '張1a'),
       ]);
-      expect(matcher.match('test65485'), <String>{'p1', 'p2'});
-      expect(matcher.match('test gsdfgsdfg te test test65485'), <String>{
-        'p1',
-        'p2',
-      });
+      final Map<String, Set<String>> cases = <String, Set<String>>{
+        '今天跟test去哪': <String>{'test'},
+        '今天跟小明去哪': <String>{'xiaoming'},
+        '今天跟小明、test去哪': <String>{'xiaoming', 'test'},
+        '今天跟小明 test去哪': <String>{'xiaoming', 'test'},
+        '今天跟 test 去哪': <String>{'test'},
+        '今天跟張1a去哪': <String>{'mixed'},
+        '今天跟小明test去哪': <String>{'xiaoming', 'test'},
+      };
+
+      for (final MapEntry<String, Set<String>> testCase in cases.entries) {
+        expect(
+          matcher.match(testCase.key),
+          testCase.value,
+          reason: testCase.key,
+        );
+      }
     });
 
-    test('拉丁名稱不在 alnum run 中間誤命中', () {
+    test('姓名首尾與其他 ASCII 英數相連時不誤命中', () {
       final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
-        _person(id: 'p1', name: 'test'),
+        _person(id: 'test', name: 'test'),
+        _person(id: 'number', name: '65485'),
+        _person(id: 'mixed', name: '張1a'),
       ]);
+      expect(matcher.match('testing'), isEmpty);
       expect(matcher.match('latest'), isEmpty);
       expect(matcher.match('contest'), isEmpty);
-      expect(matcher.match('met test today'), <String>{'p1'});
+      expect(matcher.match('test123'), isEmpty);
+      expect(matcher.match('test65485'), isEmpty);
+      expect(matcher.match('atest'), isEmpty);
+      expect(matcher.match('張1abc'), isEmpty);
+      expect(matcher.match('met test today'), <String>{'test'});
+      expect(matcher.match('TEST去哪'), <String>{'test'});
+    });
+
+    test('標題與正文命中結果取聯集', () {
+      final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
+        _person(id: 'test', name: 'test'),
+        _person(id: 'mixed', name: '張1a'),
+      ]);
+
+      expect(
+        matcher.matchTitleAndBody(title: '和 TEST 見面', body: '後來張1a也到了'),
+        <String>{'test', 'mixed'},
+      );
     });
   });
 }

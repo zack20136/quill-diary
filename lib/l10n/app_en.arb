@@ -656,6 +656,11 @@
     }
   },
   "homeCalendarMonthFormatLabel": "Month",
+  "homeCalendarEntryCount": "{count, plural, =0 {0 entries} =1 {1 entry} other {{count} entries}}",
+  "@homeCalendarEntryCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "homeCalendarSelectedStatus": "selected",
   "homeCalendarWeekdaySun": "Sun",
   "homeCalendarWeekdayMon": "Mon",
   "homeCalendarWeekdayTue": "Tue",

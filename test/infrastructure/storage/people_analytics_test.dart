@@ -296,6 +296,42 @@ void main() {
     expect(related, hasLength(3));
   });
 
+  test('混合姓名會同步出現在統計、相關日記與月份排行', () async {
+    final Person person = await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '張1a'),
+    );
+    final String matchedId = await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-12',
+      markdownBody: '今天跟張1a去哪。',
+    );
+    await harness.saveSimpleEntry(
+      setup,
+      date: '2026-08-13',
+      markdownBody: '張1abc不是同一個完整姓名。',
+    );
+
+    final Map<String, PersonMentionStats> stats = await harness.repository
+        .allPersonMentionStats(setup.session, now: DateTime(2026, 8, 14));
+    final List<EntryIndexRecord> related = await harness.repository
+        .relatedEntriesForPerson(setup.session, person.id);
+    final List<PersonScopedMentionRank> ranks = await harness.repository
+        .topMentionedPeople(
+          setup.session,
+          limit: 5,
+          monthPrefix: '2026-08',
+        );
+
+    expect(stats[person.id]?.mentionCount, 1);
+    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+      matchedId,
+    ]);
+    expect(ranks.map((PersonScopedMentionRank rank) => rank.personId), <String>[
+      person.id,
+    ]);
+  });
+
   test('相關日記與上次提及以日記日期為準且不受釘選或衍生日期影響', () async {
     final Person person = await harness.repository.createPerson(
       setup.session,

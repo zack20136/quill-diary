@@ -30,26 +30,41 @@ final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
   return ref.read(vaultTagServiceProvider).listPinnedEntryIds();
 });
 
-final homeEntryIndexListProvider = FutureProvider<List<EntryIndexRecord>>((
+final class HomeEntryQueryResult {
+  const HomeEntryQueryResult({required this.query, required this.entries});
+
+  final String query;
+  final List<EntryIndexRecord> entries;
+}
+
+final homeEntryIndexListProvider = FutureProvider<HomeEntryQueryResult>((
   Ref ref,
 ) async {
   ref.watch(entryIndexRevisionProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <EntryIndexRecord>[];
+    return const HomeEntryQueryResult(query: '', entries: <EntryIndexRecord>[]);
   }
 
   final String query = ref.watch(homeSearchQueryProvider);
   if (query.trim().isEmpty) {
-    return ref.read(vaultEntryStoreProvider).listEntries();
+    return HomeEntryQueryResult(
+      query: query,
+      entries: await ref.read(vaultEntryStoreProvider).listEntries(),
+    );
   }
 
-  return ref.read(vaultEntryStoreProvider).listEntries(searchQuery: query);
+  return HomeEntryQueryResult(
+    query: query,
+    entries: await ref
+        .read(vaultEntryStoreProvider)
+        .listEntries(searchQuery: query),
+  );
 });
 
 final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
   Ref ref,
 ) {
-  final AsyncValue<List<EntryIndexRecord>> raw = ref.watch(
+  final AsyncValue<HomeEntryQueryResult> raw = ref.watch(
     homeEntryIndexListProvider,
   );
   final HomeEntrySortState sortState = ref.watch(
@@ -67,8 +82,11 @@ final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
       : (ref.watch(homePinnedEntryIdsProvider).value ?? const <EntryId>{});
 
   return raw.whenData(
-    (List<EntryIndexRecord> list) =>
-        sortHomeEntries(list: list, sortState: sortState, pinnedIds: pinnedIds),
+    (HomeEntryQueryResult result) => sortHomeEntries(
+      list: result.entries,
+      sortState: sortState,
+      pinnedIds: pinnedIds,
+    ),
   );
 });
 
@@ -90,27 +108,27 @@ final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   return entries..sort(compareEntriesNewestFirst);
 });
 
-final calendarMonthEntryDatesProvider = FutureProvider<List<DateOnly>>((
-  Ref ref,
-) async {
-  final DateTime month = ref.watch(calendarVisibleMonthProvider);
-  if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <DateOnly>[];
-  }
-
-  return ref.read(vaultEntryStoreProvider).monthEntryDates(month);
-});
-
-final calendarMonthEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
+final calendarGridEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,
 ) async {
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryIndexRecord>[];
   }
-
-  return ref.read(vaultEntryStoreProvider).listEntriesForMonth(month);
+  final ({DateOnly first, DateOnly last}) range = calendarGridDateRange(month);
+  return ref
+      .read(vaultEntryStoreProvider)
+      .listEntriesForDateRange(firstDate: range.first, lastDate: range.last);
 });
+
+final entryDateBoundsProvider =
+    FutureProvider<({DateOnly earliest, DateOnly latest})?>((Ref ref) async {
+      ref.watch(entryIndexRevisionProvider);
+      if (ref.watch(indexQueryableVaultSessionProvider) == null) {
+        return null;
+      }
+      return ref.read(vaultEntryStoreProvider).entryDateBounds();
+    });
 
 final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
   final List<EntryIndexRecord> entries = await ref.watch(
@@ -157,9 +175,9 @@ void refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
   ref
     ..invalidate(homeEntryIndexListProvider)
     ..invalidate(homePinnedEntryIdsProvider)
-    ..invalidate(calendarMonthEntryDatesProvider)
-    ..invalidate(calendarMonthEntriesProvider)
+    ..invalidate(calendarGridEntriesProvider)
     ..invalidate(calendarEntriesProvider)
+    ..invalidate(entryDateBoundsProvider)
     ..invalidate(allEntryIndexRecordsProvider)
     ..invalidate(tagCatalogProvider);
 
@@ -169,8 +187,4 @@ void refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
   if (id != null && id.isNotEmpty) {
     ref.invalidate(entryProvider(id));
   }
-}
-
-void refreshEntryIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
-  refreshHomeIndexCaches(ref, editedEntryId: editedEntryId);
 }

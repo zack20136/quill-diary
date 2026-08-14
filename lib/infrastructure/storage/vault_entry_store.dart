@@ -18,11 +18,19 @@ class VaultEntryStore {
   Future<List<EntryIndexRecord>> listEntriesByDate(DateOnly date) =>
       _repository.listEntries(date: date);
 
-  Future<List<DateOnly>> monthEntryDates(DateTime month) =>
-      _repository.monthEntryDates(month);
-
   Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) =>
       _repository.listEntriesForMonth(month);
+
+  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+    required DateOnly firstDate,
+    required DateOnly lastDate,
+  }) => _repository.listEntriesForDateRange(
+    firstDate: firstDate,
+    lastDate: lastDate,
+  );
+
+  Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() =>
+      _repository.entryDateBounds();
 
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,

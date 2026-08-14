@@ -65,6 +65,7 @@ class VaultTestHarness {
     String title = 'Test Entry',
     String date = '2026-05-24',
     String markdownBody = 'body',
+    List<String> tags = const <String>[],
     DateTime? createdAt,
     DateTime? updatedAt,
   }) async {
@@ -80,6 +81,7 @@ class VaultTestHarness {
         createdAt: timestamp,
         updatedAt: updatedAt ?? timestamp,
         markdownBody: markdownBody,
+        tags: tags,
       ),
     );
     return entryId;

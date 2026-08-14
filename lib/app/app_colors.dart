@@ -38,12 +38,6 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.galleryForeground,
     required this.feedbackSuccessBackground,
     required this.feedbackSuccessForeground,
-    required this.tagAccentBackgroundAlpha,
-    required this.tagAccentForegroundUseLightenBlend,
-    required this.tagAccentForegroundBlendTarget,
-    required this.tagAccentForegroundOnDarkLerp,
-    required this.tagAccentForegroundLightHighLerp,
-    required this.tagAccentForegroundLightLowLerp,
     required this.tagNeutralChipBorder,
     required this.tagUnsavedAccent,
   });
@@ -82,12 +76,6 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color galleryForeground;
   final Color feedbackSuccessBackground;
   final Color feedbackSuccessForeground;
-  final double tagAccentBackgroundAlpha;
-  final bool tagAccentForegroundUseLightenBlend;
-  final Color tagAccentForegroundBlendTarget;
-  final double tagAccentForegroundOnDarkLerp;
-  final double tagAccentForegroundLightHighLerp;
-  final double tagAccentForegroundLightLowLerp;
   final Color? tagNeutralChipBorder;
   final Color tagUnsavedAccent;
 
@@ -189,14 +177,6 @@ class AppColors extends ThemeExtension<AppColors> {
       feedbackSuccessForeground: isLight
           ? const Color(0xFF294239)
           : const Color(0xFFD6E7E0),
-      tagAccentBackgroundAlpha: isLight ? 0.12 : 0.24,
-      tagAccentForegroundUseLightenBlend: !isLight,
-      tagAccentForegroundBlendTarget: isLight
-          ? const Color(0xFF121212)
-          : const Color(0xFFFFFFFF),
-      tagAccentForegroundOnDarkLerp: 0.26,
-      tagAccentForegroundLightHighLerp: 0.44,
-      tagAccentForegroundLightLowLerp: 0.20,
       tagNeutralChipBorder: isLight ? scheme.outlineVariant : null,
       tagUnsavedAccent: scheme.error,
     );
@@ -241,12 +221,6 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? galleryForeground,
     Color? feedbackSuccessBackground,
     Color? feedbackSuccessForeground,
-    double? tagAccentBackgroundAlpha,
-    bool? tagAccentForegroundUseLightenBlend,
-    Color? tagAccentForegroundBlendTarget,
-    double? tagAccentForegroundOnDarkLerp,
-    double? tagAccentForegroundLightHighLerp,
-    double? tagAccentForegroundLightLowLerp,
     Color? tagNeutralChipBorder,
     Color? tagUnsavedAccent,
   }) {
@@ -291,21 +265,6 @@ class AppColors extends ThemeExtension<AppColors> {
           feedbackSuccessBackground ?? this.feedbackSuccessBackground,
       feedbackSuccessForeground:
           feedbackSuccessForeground ?? this.feedbackSuccessForeground,
-      tagAccentBackgroundAlpha:
-          tagAccentBackgroundAlpha ?? this.tagAccentBackgroundAlpha,
-      tagAccentForegroundUseLightenBlend:
-          tagAccentForegroundUseLightenBlend ??
-          this.tagAccentForegroundUseLightenBlend,
-      tagAccentForegroundBlendTarget:
-          tagAccentForegroundBlendTarget ?? this.tagAccentForegroundBlendTarget,
-      tagAccentForegroundOnDarkLerp:
-          tagAccentForegroundOnDarkLerp ?? this.tagAccentForegroundOnDarkLerp,
-      tagAccentForegroundLightHighLerp:
-          tagAccentForegroundLightHighLerp ??
-          this.tagAccentForegroundLightHighLerp,
-      tagAccentForegroundLightLowLerp:
-          tagAccentForegroundLightLowLerp ??
-          this.tagAccentForegroundLightLowLerp,
       tagNeutralChipBorder: tagNeutralChipBorder ?? this.tagNeutralChipBorder,
       tagUnsavedAccent: tagUnsavedAccent ?? this.tagUnsavedAccent,
     );
@@ -388,25 +347,6 @@ class AppColors extends ThemeExtension<AppColors> {
         feedbackSuccessForeground,
         other.feedbackSuccessForeground,
       )!,
-      tagAccentBackgroundAlpha: t < 0.5
-          ? tagAccentBackgroundAlpha
-          : other.tagAccentBackgroundAlpha,
-      tagAccentForegroundUseLightenBlend: t < 0.5
-          ? tagAccentForegroundUseLightenBlend
-          : other.tagAccentForegroundUseLightenBlend,
-      tagAccentForegroundBlendTarget: lerpColor(
-        tagAccentForegroundBlendTarget,
-        other.tagAccentForegroundBlendTarget,
-      )!,
-      tagAccentForegroundOnDarkLerp: t < 0.5
-          ? tagAccentForegroundOnDarkLerp
-          : other.tagAccentForegroundOnDarkLerp,
-      tagAccentForegroundLightHighLerp: t < 0.5
-          ? tagAccentForegroundLightHighLerp
-          : other.tagAccentForegroundLightHighLerp,
-      tagAccentForegroundLightLowLerp: t < 0.5
-          ? tagAccentForegroundLightLowLerp
-          : other.tagAccentForegroundLightLowLerp,
       tagNeutralChipBorder: t < 0.5
           ? tagNeutralChipBorder
           : other.tagNeutralChipBorder,

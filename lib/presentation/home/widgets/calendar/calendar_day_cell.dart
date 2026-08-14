@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../infrastructure/database/index_database.dart';
+import '../../../../domain/shared/value_objects.dart';
 import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/tag_visual.dart';
+import '../../../../shared/presentation/display_format.dart';
+import '../../../../l10n/l10n.dart';
 import '../../home_entry_presenters.dart';
 import 'calendar_layout_policy.dart';
 
@@ -60,54 +63,68 @@ class CalendarDayCell extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      height: rowHeight,
-      width: double.infinity,
-      child: Opacity(
-        opacity: contentOpacity,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: cellColor,
-            border: isSelected
-                ? Border.all(color: colors.calendarTodayMarker, width: 1.2)
-                : null,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 3, 3, 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                CalendarDayNumberBadge(
-                  day: day.day,
-                  date: day,
-                  isSelected: isSelected,
-                  isToday: isToday,
+    final String semanticsLabel = <String>[
+      DisplayFormat.formatDateOnly(context.l10n, DateOnly.fromDateTime(day)),
+      context.l10n.homeCalendarEntryCount(entries.length),
+      if (isToday) context.l10n.commonRelativeToday,
+      if (isSelected) context.l10n.homeCalendarSelectedStatus,
+    ].join('，');
+
+    return Semantics(
+      container: true,
+      selected: isSelected,
+      label: semanticsLabel,
+      child: ExcludeSemantics(
+        child: SizedBox(
+          height: rowHeight,
+          width: double.infinity,
+          child: Opacity(
+            opacity: contentOpacity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: cellColor,
+                border: isSelected
+                    ? Border.all(color: colors.calendarTodayMarker, width: 1.2)
+                    : null,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 3, 3, 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    CalendarDayNumberBadge(
+                      day: day.day,
+                      date: day,
+                      isSelected: isSelected,
+                      isToday: isToday,
+                    ),
+                    if (visibleEntries.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 2),
+                      for (final EntryIndexRecord entry in visibleEntries)
+                        CalendarEntryPreviewRow(
+                          label: calendarEntryPreviewLabel(
+                            entryListHeadline(entry),
+                          ),
+                          tagLabel: firstNonemptyTag(entry.tags),
+                          accents: tagAccents,
+                          colors: colors,
+                          fontSize: entryFontSize,
+                        ),
+                      if (entries.length > kCalendarMaxEntriesPerCell)
+                        Text(
+                          '+${entries.length - kCalendarMaxEntriesPerCell}',
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: entryFontSize - 0.5,
+                            height: 1,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ],
                 ),
-                if (visibleEntries.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 2),
-                  for (final EntryIndexRecord entry in visibleEntries)
-                    CalendarEntryPreviewRow(
-                      label: calendarEntryPreviewLabel(
-                        entryListHeadline(entry),
-                      ),
-                      tagLabel: firstNonemptyTag(entry.tags),
-                      accents: tagAccents,
-                      colors: colors,
-                      fontSize: entryFontSize,
-                    ),
-                  if (entries.length > kCalendarMaxEntriesPerCell)
-                    Text(
-                      '+${entries.length - kCalendarMaxEntriesPerCell}',
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: entryFontSize - 0.5,
-                        height: 1,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ],
+              ),
             ),
           ),
         ),

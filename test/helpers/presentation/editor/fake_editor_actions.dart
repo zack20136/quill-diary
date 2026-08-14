@@ -49,7 +49,8 @@ class FakeEditorActions implements EditorActionPort {
     ),
   ];
 
-  final DiaryEntry? existingEntry;
+  DiaryEntry? existingEntry;
+  int loadEntryCallCount = 0;
   int writeDraftCount = 0;
   int saveEntryCallCount = 0;
   DiaryEntry? savedEntryDraft;
@@ -83,7 +84,10 @@ class FakeEditorActions implements EditorActionPort {
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,
     EntryId entryId,
-  ) async => existingEntry ?? defaultEntry;
+  ) async {
+    loadEntryCallCount++;
+    return existingEntry ?? defaultEntry;
+  }
 
   @override
   Future<String> materializePendingFileForPreview(

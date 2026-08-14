@@ -656,6 +656,11 @@
     }
   },
   "homeCalendarMonthFormatLabel": "月",
+  "homeCalendarEntryCount": "{count} 篇日記",
+  "@homeCalendarEntryCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "homeCalendarSelectedStatus": "已選取",
   "homeCalendarWeekdaySun": "日",
   "homeCalendarWeekdayMon": "一",
   "homeCalendarWeekdayTue": "二",

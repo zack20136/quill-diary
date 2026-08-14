@@ -8,6 +8,28 @@ enum HomeTab { home, calendar, tags, people, overview }
 
 enum MemoryScope { all, month, year }
 
+({DateOnly first, DateOnly last}) calendarGridDateRange(DateTime month) {
+  final DateTime firstOfMonth = DateTime(month.year, month.month);
+  final DateTime firstGridDay = firstOfMonth.subtract(
+    Duration(days: firstOfMonth.weekday % DateTime.daysPerWeek),
+  );
+  return (
+    first: DateOnly.fromDateTime(firstGridDay),
+    last: DateOnly.fromDateTime(firstGridDay.add(const Duration(days: 41))),
+  );
+}
+
+DateOnly calendarSelectedDateForMonth(DateOnly selected, DateTime month) {
+  final int lastDayOfMonth = DateTime(month.year, month.month + 1, 0).day;
+  return DateOnly.fromDateTime(
+    DateTime(
+      month.year,
+      month.month,
+      selected.toDateTime().day.clamp(1, lastDayOfMonth),
+    ),
+  );
+}
+
 class HomeTabController extends Notifier<HomeTab> {
   @override
   HomeTab build() => HomeTab.home;

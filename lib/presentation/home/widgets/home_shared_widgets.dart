@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'entry_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
@@ -231,27 +233,74 @@ class HomeDiarySectionCloseButton extends StatelessWidget {
   }
 }
 
-class HomeDiaryListSectionCard extends StatelessWidget {
-  const HomeDiaryListSectionCard({
+class HomeDiarySliverSection extends StatelessWidget {
+  const HomeDiarySliverSection({
     required this.title,
-    required this.child,
+    required this.entries,
     this.stripeColor,
     this.titleTrail,
     super.key,
   });
 
   final String title;
-  final Widget child;
+  final List<EntryIndexRecord> entries;
   final Color? stripeColor;
   final Widget? titleTrail;
 
   @override
   Widget build(BuildContext context) {
-    return HomeSectionCard(
-      title: title,
-      stripeColor: stripeColor,
-      titleTrail: titleTrail,
-      child: child,
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color stripe = stripeColor ?? cs.primary;
+    return DecoratedSliver(
+      decoration: BoxDecoration(
+        color: context.appColors.sectionCard,
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.08),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      sliver: SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        sliver: SliverMainAxisGroup(
+          slivers: <Widget>[
+            SliverToBoxAdapter(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 4,
+                    height: 22,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      color: stripe,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  ?titleTrail,
+                ],
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
+            HomeCompactEntrySliverList(entries: entries),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -349,21 +398,30 @@ class HomeHeaderTabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color foreground = active ? cs.onPrimary : cs.onSurfaceVariant;
-    return Tooltip(
-      message: label,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          height: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-          decoration: BoxDecoration(
-            color: active ? cs.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            height: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+            decoration: BoxDecoration(
+              color: active ? cs.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Center(
+              child: ExcludeSemantics(
+                child: Icon(icon, size: 20, color: foreground),
+              ),
+            ),
           ),
-          child: Center(child: Icon(icon, size: 20, color: foreground)),
         ),
       ),
     );

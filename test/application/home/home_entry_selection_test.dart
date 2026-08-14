@@ -7,6 +7,32 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
 
 void main() {
+  group('日曆瀏覽規則', () {
+    test('月份網格固定涵蓋從星期日起算的六週', () {
+      final range = calendarGridDateRange(DateTime(2026, 8));
+
+      expect(range.first.value, '2026-07-26');
+      expect(range.last.value, '2026-09-05');
+    });
+
+    test('切換月份保留日號並在月底截斷', () {
+      expect(
+        calendarSelectedDateForMonth(
+          const DateOnly('2026-01-31'),
+          DateTime(2026, 2),
+        ).value,
+        '2026-02-28',
+      );
+      expect(
+        calendarSelectedDateForMonth(
+          const DateOnly('2024-01-31'),
+          DateTime(2024, 2),
+        ).value,
+        '2024-02-29',
+      );
+    });
+  });
+
   group('HomeEntrySelectionController', () {
     late ProviderContainer container;
 

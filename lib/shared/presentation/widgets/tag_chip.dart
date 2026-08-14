@@ -35,14 +35,14 @@ class TagChip extends StatelessWidget {
     final AppColors colors = context.appColors;
     final BorderSide? borderSide = switch (bordered) {
       false => null,
-      true => tagChipBorderSide(
+      true => tagBorderSide(
         colors,
         scheme,
         background,
         foreground,
         width: 0.9,
       ),
-      null => tagChipBorderSide(
+      null => tagBorderSide(
         colors,
         scheme,
         background,

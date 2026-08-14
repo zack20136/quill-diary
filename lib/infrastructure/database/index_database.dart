@@ -6,6 +6,9 @@ import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/shared/value_objects.dart';
 
+String escapeSqlLikeSearchText(String value) =>
+    value.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
+
 /// 日記列表預覽用的圖片附件路徑（GROUP_CONCAT 串接）。
 const String _kPreviewImagePathsSelect = '''
   (
@@ -535,9 +538,10 @@ class IndexDatabase extends GeneratedDatabase {
   Future<List<EntryIndexRecord>> _searchEntriesByLike(
     String normalizedQuery,
   ) async {
-    final String likeQuery = '%$normalizedQuery%';
+    final String escapedQuery = escapeSqlLikeSearchText(normalizedQuery);
+    final String likeQuery = '%$escapedQuery%';
     final List<QueryRow> rows = await customSelect(
-      '''
+      """
         SELECT
           e.*,
           GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
@@ -547,17 +551,17 @@ class IndexDatabase extends GeneratedDatabase {
         FROM entries_index e
         LEFT JOIN entry_tags t ON t.entry_id = e.id
         WHERE (
-          COALESCE(e.title_search_text, '') LIKE ? OR
-          COALESCE(e.body_search_text, '') LIKE ? OR
+          COALESCE(e.title_search_text, '') LIKE ? ESCAPE '\\' OR
+          COALESCE(e.body_search_text, '') LIKE ? ESCAPE '\\' OR
           EXISTS (
             SELECT 1
             FROM entry_tags et
-            WHERE et.entry_id = e.id AND et.tag_normalized LIKE ?
+            WHERE et.entry_id = e.id AND et.tag_normalized LIKE ? ESCAPE '\\'
           )
         )
         GROUP BY e.id
         ORDER BY e.date DESC, e.created_at DESC, e.updated_at DESC;
-      ''',
+      """,
       variables: <Variable<Object>>[
         Variable.withString(likeQuery),
         Variable.withString(likeQuery),
@@ -612,21 +616,43 @@ class IndexDatabase extends GeneratedDatabase {
     return rows.map(EntryIndexRecord.fromRow).toList();
   }
 
-  Future<List<DateOnly>> monthEntryDates(DateTime month) async {
-    final String prefix =
-        '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+    required DateOnly firstDate,
+    required DateOnly lastDate,
+  }) async {
     final List<QueryRow> rows = await customSelect(
       '''
-        SELECT DISTINCT date
-        FROM entries_index
-        WHERE date LIKE ?
-        ORDER BY date ASC;
+        SELECT
+          e.*,
+          GROUP_CONCAT(t.tag, CHAR(10)) AS tags_joined,
+          $_kImageAttachmentCountSelect,
+          $_kFileAttachmentCountSelect,
+          $_kPreviewImagePathsSelect
+        FROM entries_index e
+        LEFT JOIN entry_tags t ON t.entry_id = e.id
+        WHERE e.date BETWEEN ? AND ?
+        GROUP BY e.id
+        ORDER BY e.date ASC, e.created_at DESC, e.updated_at DESC;
       ''',
-      variables: <Variable<Object>>[Variable.withString('$prefix%')],
+      variables: <Variable<Object>>[
+        Variable.withString(firstDate.value),
+        Variable.withString(lastDate.value),
+      ],
     ).get();
-    return rows
-        .map((QueryRow row) => DateOnly.parse(row.read<String>('date')))
-        .toList();
+    return rows.map(EntryIndexRecord.fromRow).toList();
+  }
+
+  Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() async {
+    final QueryRow row = await customSelect('''
+        SELECT MIN(date) AS earliest_date, MAX(date) AS latest_date
+        FROM entries_index;
+      ''').getSingle();
+    final String? earliest = row.readNullable<String>('earliest_date');
+    final String? latest = row.readNullable<String>('latest_date');
+    if (earliest == null || latest == null) {
+      return null;
+    }
+    return (earliest: DateOnly.parse(earliest), latest: DateOnly.parse(latest));
   }
 
   Future<List<AssetAttachment>> attachmentsForEntry(EntryId entryId) async {

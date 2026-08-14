@@ -568,9 +568,9 @@ class SettingsFlowController {
     _ref
       ..invalidate(homeEntryIndexListProvider)
       ..invalidate(homePinnedEntryIdsProvider)
-      ..invalidate(calendarMonthEntryDatesProvider)
-      ..invalidate(calendarMonthEntriesProvider)
+      ..invalidate(calendarGridEntriesProvider)
       ..invalidate(calendarEntriesProvider)
+      ..invalidate(entryDateBoundsProvider)
       ..invalidate(allEntryIndexRecordsProvider)
       ..invalidate(tagCatalogProvider)
       ..invalidate(trustedDeviceAccessProvider);

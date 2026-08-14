@@ -48,6 +48,7 @@ final entryProvider = FutureProvider.family<DiaryEntry?, EntryId>((
   Ref ref,
   EntryId entryId,
 ) async {
+  ref.watch(entryIndexRevisionProvider);
   final session = await ref.watch(activeVaultSessionProvider.future);
   if (session == null) {
     return null;

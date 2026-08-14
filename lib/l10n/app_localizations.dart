@@ -1984,6 +1984,18 @@ abstract class AppLocalizations {
   /// **'月'**
   String get homeCalendarMonthFormatLabel;
 
+  /// No description provided for @homeCalendarEntryCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 篇日記'**
+  String homeCalendarEntryCount(int count);
+
+  /// No description provided for @homeCalendarSelectedStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'已選取'**
+  String get homeCalendarSelectedStatus;
+
   /// No description provided for @homeCalendarWeekdaySun.
   ///
   /// In zh, this message translates to:

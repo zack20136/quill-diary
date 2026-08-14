@@ -324,7 +324,7 @@ class _TagsWrap extends StatelessWidget {
           if (showUnsavedTag)
             TagChip.pair(
               label: context.l10n.editorUnsavedDraftLabel,
-              pair: tagUnsavedPair(theme.colorScheme, context.appColors),
+              pair: tagUnsavedPair(context.appColors),
             ),
           if (showCharCount && bodyCharCount > 0)
             TagChip.pair(

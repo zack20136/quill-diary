@@ -14,6 +14,7 @@ import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/diary/diary_date_policy.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -1060,18 +1061,21 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   Future<void> _pickEntryDate() async {
     DateTime anchor;
+    DateOnly? currentDate;
     try {
-      final DateOnly parsed = DateOnly.parse(_dateController.text.trim());
-      final DateTime base = parsed.toDateTime();
+      currentDate = DateOnly.tryParse(_dateController.text.trim());
+      final DateTime base = currentDate?.toDateTime() ?? DateTime.now();
       anchor = DateTime(base.year, base.month, base.day);
     } catch (_) {
       anchor = DateTime.now();
     }
+    final ({DateTime first, DateTime last}) range =
+        DiaryDatePolicy.selectableRange(includedDate: currentDate);
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: anchor,
-      firstDate: DateTime(1970),
-      lastDate: DateTime(2100, 12, 31),
+      firstDate: range.first,
+      lastDate: range.last,
     );
     if (!mounted || picked == null) {
       return;

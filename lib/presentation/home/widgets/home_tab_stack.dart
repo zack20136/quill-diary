@@ -9,24 +9,39 @@ import 'overview_pane.dart';
 import 'people_pane.dart';
 import 'tags_pane.dart';
 
-class HomeTabStack extends ConsumerWidget {
+class HomeTabStack extends ConsumerStatefulWidget {
   const HomeTabStack({required this.sessionState, super.key});
 
   final AppSessionState sessionState;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeTabStack> createState() => _HomeTabStackState();
+}
+
+class _HomeTabStackState extends ConsumerState<HomeTabStack> {
+  final Set<HomeTab> _visitedTabs = <HomeTab>{HomeTab.home};
+
+  Widget _paneFor(HomeTab tab) {
+    if (!_visitedTabs.contains(tab)) {
+      return const SizedBox.shrink();
+    }
+    return switch (tab) {
+      HomeTab.home => HomeTimelinePane(sessionState: widget.sessionState),
+      HomeTab.calendar => CalendarPane(sessionState: widget.sessionState),
+      HomeTab.tags => TagsManagePane(sessionState: widget.sessionState),
+      HomeTab.people => PeoplePane(sessionState: widget.sessionState),
+      HomeTab.overview => OverviewPane(sessionState: widget.sessionState),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final HomeTab activeTab = ref.watch(homeTabProvider);
+    _visitedTabs.add(activeTab);
 
     return IndexedStack(
       index: activeTab.index,
-      children: <Widget>[
-        HomeTimelinePane(sessionState: sessionState),
-        CalendarPane(sessionState: sessionState),
-        TagsManagePane(sessionState: sessionState),
-        PeoplePane(sessionState: sessionState),
-        OverviewPane(sessionState: sessionState),
-      ],
+      children: HomeTab.values.map(_paneFor).toList(growable: false),
     );
   }
 }

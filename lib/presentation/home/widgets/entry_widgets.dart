@@ -288,8 +288,8 @@ class HomeEntryCard extends StatelessWidget {
   }
 }
 
-class HomeCompactEntryList extends ConsumerWidget {
-  const HomeCompactEntryList({required this.entries, super.key});
+class HomeCompactEntrySliverList extends ConsumerWidget {
+  const HomeCompactEntrySliverList({required this.entries, super.key});
 
   final List<EntryIndexRecord> entries;
 
@@ -316,8 +316,10 @@ class HomeCompactEntryList extends ConsumerWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
 
-    return Column(
-      children: entries.map((EntryIndexRecord entry) {
+    return SliverList.builder(
+      itemCount: entries.length,
+      itemBuilder: (BuildContext context, int index) {
+        final EntryIndexRecord entry = entries[index];
         final String? trimmedTitle = entry.title?.trim();
         final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
         final bool showPreview =
@@ -379,7 +381,7 @@ class HomeCompactEntryList extends ConsumerWidget {
             ),
           ),
         );
-      }).toList(),
+      },
     );
   }
 }
@@ -427,7 +429,7 @@ class HomeEntryListTagsWrap extends StatelessWidget {
             if (showUnsavedDraft)
               TagChip.pair(
                 label: context.l10n.homeUnsavedDraftLabel,
-                pair: tagUnsavedPair(theme.colorScheme, context.appColors),
+                pair: tagUnsavedPair(context.appColors),
                 compact: compactTags,
               ),
             if (charCount > 0)

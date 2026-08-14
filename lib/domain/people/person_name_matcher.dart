@@ -1,11 +1,10 @@
 import '../shared/value_objects.dart';
 import 'person.dart';
 
-/// 純規則姓名比對：只接受已正規化文字與人物名稱。
+/// 純規則姓名比對：中文、英數與混合姓名共用最長優先的非重疊掃描。
 ///
-/// - 純 CJK（不含 ASCII 字母數字）名稱：任意位置子字串、最長優先非重疊。
-/// - 含拉丁／數字名稱：僅在 ASCII 字母數字 run 起點起，由左最長優先串接
-///   （如 `test65485` 可同時命中 `test` 與 `65485`；`latest` 不誤吃 `test`）。
+/// 姓名首尾若與相鄰文字同為 ASCII 英數就不算完整邊界；中文、空白與
+/// 標點皆可作為邊界，避免 `test` 誤命中 `testing`，同時支援 `張1a`。
 final class PersonNameMatcher {
   PersonNameMatcher(Iterable<Person> people) {
     for (final Person person in people) {
@@ -13,20 +12,16 @@ final class PersonNameMatcher {
         if (name.isEmpty) {
           continue;
         }
-        final List<int> runes = name.runes.toList(growable: false);
-        final bool hasAscii = runes.any(_isAsciiLetterOrDigit);
-        (hasAscii ? _alnumRoot : _cjkRoot).insert(runes, person.id);
+        _root.insert(name.runes.toList(growable: false), person.id);
       }
     }
   }
 
-  final _PersonNameTrieNode _cjkRoot = _PersonNameTrieNode();
-  final _PersonNameTrieNode _alnumRoot = _PersonNameTrieNode();
+  final _PersonNameTrieNode _root = _PersonNameTrieNode();
 
   /// 回傳文字中命中的人物 ID（同篇多次／多別名只算一次）。
   Set<PersonId> match(String normalizedText) {
-    if (normalizedText.isEmpty ||
-        (_cjkRoot.children.isEmpty && _alnumRoot.children.isEmpty)) {
+    if (normalizedText.isEmpty || _root.children.isEmpty) {
       return const <PersonId>{};
     }
     final String haystack = normalizePersonName(normalizedText);
@@ -38,28 +33,7 @@ final class PersonNameMatcher {
     final List<int> runes = haystack.runes.toList(growable: false);
     int index = 0;
     while (index < runes.length) {
-      if (_isAsciiLetterOrDigit(runes[index])) {
-        final int runEnd = _alnumRunEnd(runes, index);
-        int pos = index;
-        while (pos < runEnd) {
-          final _TrieMatch? best = _longestMatchAt(
-            runes,
-            pos,
-            _alnumRoot,
-            maxEnd: runEnd,
-          );
-          if (best == null) {
-            // 無法再由左串接：不在 run 中間任意 offset 重試拉丁匹配。
-            break;
-          }
-          hits.addAll(best.personIds);
-          pos += best.length;
-        }
-        index = runEnd;
-        continue;
-      }
-
-      final _TrieMatch? best = _longestMatchAt(runes, index, _cjkRoot);
+      final _TrieMatch? best = _longestValidMatchAt(runes, index, _root);
       if (best == null) {
         index += 1;
         continue;
@@ -99,33 +73,38 @@ final class _TrieMatch {
   final int length;
 }
 
-_TrieMatch? _longestMatchAt(
+_TrieMatch? _longestValidMatchAt(
   List<int> haystack,
   int start,
-  _PersonNameTrieNode root, {
-  int? maxEnd,
-}) {
-  final int limit = maxEnd ?? haystack.length;
+  _PersonNameTrieNode root,
+) {
   _PersonNameTrieNode? node = root;
   _TrieMatch? longest;
-  for (int index = start; index < limit; index++) {
+  for (int index = start; index < haystack.length; index++) {
     node = node?.children[haystack[index]];
     if (node == null) {
       break;
     }
-    if (node.personIds.isNotEmpty) {
+    if (node.personIds.isNotEmpty &&
+        _hasValidAsciiBoundaries(haystack, start, index)) {
       longest = _TrieMatch(node.personIds, index - start + 1);
     }
   }
   return longest;
 }
 
-int _alnumRunEnd(List<int> runes, int start) {
-  int end = start;
-  while (end < runes.length && _isAsciiLetterOrDigit(runes[end])) {
-    end += 1;
+bool _hasValidAsciiBoundaries(List<int> runes, int start, int end) {
+  if (start > 0 &&
+      _isAsciiLetterOrDigit(runes[start - 1]) &&
+      _isAsciiLetterOrDigit(runes[start])) {
+    return false;
   }
-  return end;
+  if (end + 1 < runes.length &&
+      _isAsciiLetterOrDigit(runes[end]) &&
+      _isAsciiLetterOrDigit(runes[end + 1])) {
+    return false;
+  }
+  return true;
 }
 
 bool _isAsciiLetterOrDigit(int code) {

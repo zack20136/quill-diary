@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show Timer, unawaited;
 import 'package:quill_diary/l10n/l10n.dart';
 
 import 'package:flutter/material.dart';
@@ -30,10 +30,11 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
   ProviderSubscription<String>? _searchQuerySubscription;
-  ProviderSubscription<AsyncValue<List<EntryIndexRecord>>>?
+  ProviderSubscription<AsyncValue<HomeEntryQueryResult>>?
   _entryIndexListSubscription;
+  Timer? _searchDebounce;
   bool _syncingController = false;
-  bool _awaitingSearchResync = false;
+  String? _pendingSelectionSearchQuery;
 
   @override
   void initState() {
@@ -50,28 +51,27 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
           return;
         }
         if (ref.read(homeEntrySelectionProvider).isActive) {
-          _awaitingSearchResync = true;
-          final List<EntryIndexRecord>? current = ref
-              .read(homeEntryIndexListProvider)
-              .value;
-          if (current != null) {
-            _applySearchResync(current);
-          }
+          _pendingSelectionSearchQuery = next;
           return;
         }
-        _pruneSelectionToVisibleEntries();
+        _pendingSelectionSearchQuery = null;
       },
       fireImmediately: true,
     );
     _entryIndexListSubscription = ref
-        .listenManual<AsyncValue<List<EntryIndexRecord>>>(
+        .listenManual<AsyncValue<HomeEntryQueryResult>>(
           homeEntryIndexListProvider,
-          (_, AsyncValue<List<EntryIndexRecord>> next) {
-            if (!_awaitingSearchResync ||
+          (_, AsyncValue<HomeEntryQueryResult> next) {
+            final String? pendingQuery = _pendingSelectionSearchQuery;
+            if (pendingQuery == null ||
                 !ref.read(homeEntrySelectionProvider).isActive) {
               return;
             }
-            next.whenData(_applySearchResync);
+            next.whenData((HomeEntryQueryResult result) {
+              if (result.query == pendingQuery) {
+                _applySearchResync(result.entries);
+              }
+            });
           },
         );
   }
@@ -81,7 +81,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
       homeEntrySelectionProvider,
     );
     if (!selection.isActive) {
-      _awaitingSearchResync = false;
+      _pendingSelectionSearchQuery = null;
       return;
     }
     resyncHomeSelectionDisplayOrder(
@@ -91,20 +91,12 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
           ref.read(homePinnedEntryIdsProvider).value ?? const <EntryId>{},
       rawEntries: rawEntries,
     );
-    _awaitingSearchResync = false;
-  }
-
-  void _pruneSelectionToVisibleEntries() {
-    final List<EntryIndexRecord>? visible = ref.read(homeEntriesProvider).value;
-    if (visible == null) {
-      return;
-    }
-    ref
-        .read(homeEntrySelectionProvider.notifier)
-        .pruneToVisible(visible.map((EntryIndexRecord item) => item.id));
+    _pendingSelectionSearchQuery = null;
   }
 
   void _syncSearchController(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = null;
     if (_searchController.text == value) {
       return;
     }
@@ -120,16 +112,28 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     if (_syncingController) {
       return;
     }
+    _searchDebounce?.cancel();
+    _searchDebounce = null;
     if (ref.read(homeSearchQueryProvider) == value) {
       return;
     }
-    ref.read(homeSearchQueryProvider.notifier).update(value);
+    if (value.isEmpty) {
+      ref.read(homeSearchQueryProvider.notifier).update(value);
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      _searchDebounce = null;
+      if (mounted && ref.read(homeSearchQueryProvider) != value) {
+        ref.read(homeSearchQueryProvider.notifier).update(value);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchQuerySubscription?.close();
     _entryIndexListSubscription?.close();
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();

@@ -11,6 +11,7 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
@@ -25,7 +26,6 @@ import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/router.dart';
-import 'entry_widgets.dart';
 import 'home_scroll_affordance.dart';
 import 'home_shared_widgets.dart';
 
@@ -103,7 +103,7 @@ List<Widget> overviewDiarySectionSlivers({
     return <Widget>[
       const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
       SliverToBoxAdapter(
-        child: HomeDiaryListSectionCard(
+        child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
           titleTrail: titleTrail,
@@ -117,11 +117,11 @@ List<Widget> overviewDiarySectionSlivers({
     return <Widget>[
       const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
       SliverToBoxAdapter(
-        child: HomeDiaryListSectionCard(
+        child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
           titleTrail: titleTrail,
-          child: Text('$diaryError'),
+          child: Text(userFacingErrorMessage(diaryError, l10n: context.l10n)),
         ),
       ),
     ];
@@ -133,7 +133,7 @@ List<Widget> overviewDiarySectionSlivers({
     return <Widget>[
       const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
       SliverToBoxAdapter(
-        child: HomeDiaryListSectionCard(
+        child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
           titleTrail: titleTrail,
@@ -145,13 +145,11 @@ List<Widget> overviewDiarySectionSlivers({
 
   return <Widget>[
     const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
-    SliverToBoxAdapter(
-      child: HomeDiaryListSectionCard(
-        title: diarySectionTitle,
-        stripeColor: cs.primary,
-        titleTrail: titleTrail,
-        child: HomeCompactEntryList(entries: entries),
-      ),
+    HomeDiarySliverSection(
+      title: diarySectionTitle,
+      stripeColor: cs.primary,
+      titleTrail: titleTrail,
+      entries: entries,
     ),
     const SliverToBoxAdapter(child: SizedBox(height: 24)),
   ];
@@ -183,7 +181,6 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
 
   @override
   Widget build(BuildContext context) {
-    final HomeTab activeTab = ref.watch(homeTabProvider);
     final bool canReadEntries =
         widget.sessionState.isUnlocked && widget.sessionState.session != null;
     final AsyncValue<List<EntryIndexRecord>> allEntriesAsync = ref.watch(
@@ -198,17 +195,14 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
       memoryFocusedMonthProvider,
     );
     final int focusedYearForPeople = ref.watch(memoryFocusedYearProvider);
-    // 僅總覽 tab 才 watch 人物 Top5，避免 IndexedStack 預載解密／rebuild。
-    final AsyncValue<List<OverviewPersonRankItem>>? peopleTopAsync =
-        activeTab == HomeTab.overview
-        ? ref.watch(
-            overviewPeopleTop5Provider((
-              scope: scope,
-              focusedYear: focusedYearForPeople,
-              focusedMonth: focusedMonthForPeople.month,
-            )),
-          )
-        : null;
+    final peopleTopKey = (
+      scope: scope,
+      focusedYear: focusedYearForPeople,
+      focusedMonth: focusedMonthForPeople.month,
+    );
+    final AsyncValue<List<OverviewPersonRankItem>> peopleTopAsync = ref.watch(
+      overviewPeopleTop5Provider(peopleTopKey),
+    );
 
     if (!canReadEntries) {
       return HomeBlockedEntriesPane(sessionState: widget.sessionState);
@@ -366,7 +360,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         backgroundColor: chipBg,
                                         selectedColor: chipBg,
                                         checkmarkColor: chipFg,
-                                        side: tagChipBorderSide(
+                                        side: tagBorderSide(
                                           context.appColors,
                                           cs,
                                           chipBg,
@@ -374,7 +368,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                           width: isSelected ? 1.05 : 0.92,
                                           accentBorderAlpha: isSelected
                                               ? 0.48
-                                              : kTagChipBorderAlpha,
+                                              : kAccentBorderAlpha,
                                         ),
                                         onSelected: (_) {
                                           final notifier = ref.read(
@@ -390,8 +384,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                     }).toList(),
                                   ),
                           ),
-                          if (peopleTopAsync != null)
-                            peopleTopAsync.when(
+                          peopleTopAsync.when(
                               data: (List<OverviewPersonRankItem> people) {
                                 if (people.isEmpty) {
                                   return const SizedBox.shrink();
@@ -435,14 +428,14 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                             showCheckmark: false,
                                             backgroundColor: chipBg,
                                             selectedColor: chipBg,
-                                            side: tagChipBorderSide(
+                                            side: tagBorderSide(
                                               context.appColors,
                                               cs,
                                               chipBg,
                                               chipFg,
                                               width: 0.92,
                                               accentBorderAlpha:
-                                                  kTagChipBorderAlpha,
+                                                  kAccentBorderAlpha,
                                             ),
                                             onSelected: (_) => unawaited(
                                               context.push(
@@ -459,8 +452,39 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                 );
                               },
                               loading: () => const SizedBox.shrink(),
-                              error: (Object error, StackTrace stackTrace) =>
-                                  const SizedBox.shrink(),
+                              error: (Object error, StackTrace _) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  const SizedBox(height: HomeLayout.sectionGap),
+                                  HomeSectionCard(
+                                    title: context.l10n.homePopularPeopleTitle,
+                                    stripeColor: cs.primary,
+                                    child: Row(
+                                      children: <Widget>[
+                                        Expanded(
+                                          child: Text(
+                                            userFacingErrorMessage(
+                                              error,
+                                              l10n: context.l10n,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        TextButton(
+                                          onPressed: () => ref.invalidate(
+                                            overviewPeopleTop5Provider(
+                                              peopleTopKey,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            context.l10n.peopleAnalysisRetry,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                         ],
                       ),

@@ -58,9 +58,9 @@ Future<AppSessionState> finishRestoreSession(
       ref
         ..invalidate(homeEntryIndexListProvider)
         ..invalidate(homePinnedEntryIdsProvider)
-        ..invalidate(calendarMonthEntryDatesProvider)
-        ..invalidate(calendarMonthEntriesProvider)
+        ..invalidate(calendarGridEntriesProvider)
         ..invalidate(calendarEntriesProvider)
+        ..invalidate(entryDateBoundsProvider)
         ..invalidate(allEntryIndexRecordsProvider)
         ..invalidate(tagCatalogProvider);
       ref.read(entryIndexRevisionProvider.notifier).bump();
