@@ -11,8 +11,7 @@ class EditorDraftSnapshot {
     required this.entryMinute,
     required this.tags,
     required this.markdownBody,
-    required this.keptAttachmentIds,
-    required this.pendingFingerprints,
+    required this.attachmentIds,
   });
 
   final String? title;
@@ -21,23 +20,25 @@ class EditorDraftSnapshot {
   final int entryMinute;
   final List<String> tags;
   final String markdownBody;
-  final List<AssetId> keptAttachmentIds;
-  final List<String> pendingFingerprints;
+  final List<AssetId> attachmentIds;
 }
 
 class EditorDraftPendingAttachment {
   const EditorDraftPendingAttachment({
+    required this.assetId,
     required this.relativePath,
     required this.mimeType,
     required this.originalFilename,
   });
 
+  final AssetId assetId;
   final String relativePath;
   final String mimeType;
   final String originalFilename;
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
+      'asset_id': assetId,
       'relative_path': relativePath,
       'mime_type': mimeType,
       'original_filename': originalFilename,
@@ -46,6 +47,9 @@ class EditorDraftPendingAttachment {
 
   factory EditorDraftPendingAttachment.fromJson(Map<String, Object?> json) {
     return EditorDraftPendingAttachment(
+      assetId: (json['asset_id'] ?? '').toString().trim().isEmpty
+          ? generateAssetId()
+          : (json['asset_id'] ?? '').toString(),
       relativePath: (json['relative_path'] ?? '').toString(),
       mimeType: (json['mime_type'] ?? '').toString(),
       originalFilename: (json['original_filename'] ?? '').toString(),
@@ -61,7 +65,7 @@ class EditorDraftRecord {
     required this.entryMinute,
     required this.tags,
     required this.markdownBody,
-    required this.keptAttachmentIds,
+    required this.attachmentIds,
     required this.pendingAttachments,
     required this.provisionalEntryId,
     required this.createdAt,
@@ -74,7 +78,7 @@ class EditorDraftRecord {
   final int entryMinute;
   final List<String> tags;
   final String markdownBody;
-  final List<AssetId> keptAttachmentIds;
+  final List<AssetId> attachmentIds;
   final List<EditorDraftPendingAttachment> pendingAttachments;
   final EntryId provisionalEntryId;
   final DateTime createdAt;
@@ -88,7 +92,7 @@ class EditorDraftRecord {
       'entry_minute': entryMinute,
       'tags': tags,
       'markdown_body': markdownBody,
-      'kept_attachment_ids': keptAttachmentIds,
+      'attachment_ids': attachmentIds,
       'pending_attachments': pendingAttachments
           .map((EditorDraftPendingAttachment attachment) => attachment.toJson())
           .toList(),
@@ -103,6 +107,35 @@ class EditorDraftRecord {
         json['pending_attachments'] is List<Object?>
         ? json['pending_attachments'] as List<Object?>
         : const <Object?>[];
+    final List<EditorDraftPendingAttachment> pendingAttachments = rawPending
+        .whereType<Map<Object?, Object?>>()
+        .map(
+          (Map<Object?, Object?> raw) => EditorDraftPendingAttachment.fromJson(
+            raw.map((Object? key, Object? value) => MapEntry('$key', value)),
+          ),
+        )
+        .where(
+          (EditorDraftPendingAttachment attachment) =>
+              attachment.relativePath.trim().isNotEmpty,
+        )
+        .toList();
+    final bool hasAttachmentOrder = json['attachment_ids'] is List<Object?>;
+    final List<AssetId> attachmentIds =
+        (hasAttachmentOrder
+                ? json['attachment_ids'] as List<Object?>
+                : json['kept_attachment_ids'] is List<Object?>
+                ? json['kept_attachment_ids'] as List<Object?>
+                : const <Object?>[])
+            .map((Object? id) => '$id'.trim())
+            .where((String id) => id.isNotEmpty)
+            .toList();
+    if (!hasAttachmentOrder) {
+      attachmentIds.addAll(
+        pendingAttachments.map(
+          (EditorDraftPendingAttachment attachment) => attachment.assetId,
+        ),
+      );
+    }
     return EditorDraftRecord(
       title: (json['title'] ?? '').toString().trim().isEmpty
           ? null
@@ -118,28 +151,8 @@ class EditorDraftRecord {
               .where((String tag) => tag.isNotEmpty)
               .toList(),
       markdownBody: (json['markdown_body'] ?? '').toString(),
-      keptAttachmentIds:
-          (json['kept_attachment_ids'] is List<Object?>
-                  ? json['kept_attachment_ids'] as List<Object?>
-                  : const <Object?>[])
-              .map((Object? id) => '$id')
-              .where((String id) => id.trim().isNotEmpty)
-              .toList(),
-      pendingAttachments: rawPending
-          .whereType<Map<Object?, Object?>>()
-          .map(
-            (Map<Object?, Object?> raw) =>
-                EditorDraftPendingAttachment.fromJson(
-                  raw.map(
-                    (Object? key, Object? value) => MapEntry('$key', value),
-                  ),
-                ),
-          )
-          .where(
-            (EditorDraftPendingAttachment attachment) =>
-                attachment.relativePath.trim().isNotEmpty,
-          )
-          .toList(),
+      attachmentIds: attachmentIds,
+      pendingAttachments: pendingAttachments,
       provisionalEntryId:
           (json['provisional_entry_id'] ?? '').toString().trim().isEmpty
           ? generateEntryId()
@@ -168,19 +181,6 @@ List<String> parseEditorTagsCsv(String tagsRaw) {
   return out;
 }
 
-String draftPendingAttachmentFingerprint(
-  EditorDraftPendingAttachment attachment,
-) {
-  return '${attachment.relativePath}|${attachment.mimeType}|${attachment.originalFilename}';
-}
-
-String pendingAttachmentFingerprint(PendingAttachment attachment) {
-  final String sourceKey = attachment.bytes != null
-      ? 'bytes:${attachment.bytes!.length}'
-      : attachment.sourcePath ?? '';
-  return '$sourceKey|${attachment.mimeType}|${attachment.originalFilename}';
-}
-
 EditorDraftSnapshot editorDraftSnapshotFromEntry(DiaryEntry entry) {
   return EditorDraftSnapshot(
     title: entry.normalizedTitle,
@@ -189,8 +189,7 @@ EditorDraftSnapshot editorDraftSnapshotFromEntry(DiaryEntry entry) {
     entryMinute: entry.createdAt.minute,
     tags: List<String>.from(entry.tags),
     markdownBody: normalizeEditorBodyMarkdownForSave(entry.markdownBody),
-    keptAttachmentIds: List<AssetId>.from(entry.attachmentIds),
-    pendingFingerprints: const <String>[],
+    attachmentIds: List<AssetId>.from(entry.attachmentIds),
   );
 }
 
@@ -202,10 +201,7 @@ EditorDraftSnapshot editorDraftSnapshotFromRecord(EditorDraftRecord record) {
     entryMinute: record.entryMinute,
     tags: List<String>.from(record.tags),
     markdownBody: normalizeEditorBodyMarkdownForSave(record.markdownBody),
-    keptAttachmentIds: List<AssetId>.from(record.keptAttachmentIds),
-    pendingFingerprints: record.pendingAttachments
-        .map(draftPendingAttachmentFingerprint)
-        .toList(),
+    attachmentIds: List<AssetId>.from(record.attachmentIds),
   );
 }
 
@@ -216,13 +212,9 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
   required int entryMinute,
   required String tagsRaw,
   required String bodyRaw,
-  required List<AssetId> keptAttachmentIds,
-  required List<PendingAttachment> pendingAttachments,
+  required List<AssetId> attachmentIds,
 }) {
   final String trimmedTitle = titleRaw.trim();
-  final List<String> pendingFingerprints = pendingAttachments
-      .map(pendingAttachmentFingerprint)
-      .toList();
   return EditorDraftSnapshot(
     title: trimmedTitle.isEmpty ? null : trimmedTitle,
     dateValue: dateRaw.trim(),
@@ -230,8 +222,7 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
     entryMinute: entryMinute,
     tags: parseEditorTagsCsv(tagsRaw),
     markdownBody: normalizeEditorBodyMarkdownForSave(bodyRaw),
-    keptAttachmentIds: List<AssetId>.from(keptAttachmentIds),
-    pendingFingerprints: pendingFingerprints,
+    attachmentIds: List<AssetId>.from(attachmentIds),
   );
 }
 
@@ -243,6 +234,7 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
     EditorDraftPendingAttachment attachment,
   ) {
     return PendingAttachment(
+      assetId: attachment.assetId,
       sourcePath: absolutePathBuilder(attachment.relativePath),
       pendingRelativePath: attachment.relativePath,
       mimeType: attachment.mimeType,
@@ -254,8 +246,7 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
 bool editorDraftIsEmpty(EditorDraftSnapshot draft) {
   return draft.title == null &&
       draft.markdownBody.isEmpty &&
-      draft.keptAttachmentIds.isEmpty &&
-      draft.pendingFingerprints.isEmpty;
+      draft.attachmentIds.isEmpty;
 }
 
 bool editorDraftIsDirty({
@@ -271,8 +262,7 @@ bool editorDraftIsDirty({
       current.entryMinute != saved.entryMinute ||
       !_listEquals(current.tags, saved.tags) ||
       current.markdownBody != saved.markdownBody ||
-      !_listEquals(current.keptAttachmentIds, saved.keptAttachmentIds) ||
-      !_listEquals(current.pendingFingerprints, saved.pendingFingerprints);
+      !_listEquals(current.attachmentIds, saved.attachmentIds);
 }
 
 bool _listEquals<T>(List<T> a, List<T> b) {

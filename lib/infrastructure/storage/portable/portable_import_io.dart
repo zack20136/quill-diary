@@ -449,6 +449,7 @@ class PortableImportIo {
         final String fileName = 'embedded_${embeddedIndex++}.$extension';
         attachments.add(
           PendingAttachment(
+            assetId: generateAssetId(),
             bytes: decoded.bytes,
             mimeType: decoded.mimeType,
             originalFilename: fileName,
@@ -482,6 +483,7 @@ class PortableImportIo {
       final String originalFilename = p.basename(sourceFile.path);
       attachments.add(
         PendingAttachment(
+          assetId: generateAssetId(),
           sourcePath: sourceFile.path,
           mimeType: mimeTypeFromFileName(originalFilename),
           originalFilename: originalFilename,

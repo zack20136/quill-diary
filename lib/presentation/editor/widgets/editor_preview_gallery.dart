@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
@@ -9,20 +10,18 @@ import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dar
 class EditorPreviewGallery extends StatelessWidget {
   const EditorPreviewGallery({
     super.key,
-    required this.savedImages,
-    required this.pendingImages,
+    required this.images,
     required this.encryptedPathFuture,
     required this.onOpenGallery,
   });
 
-  final List<AssetAttachment> savedImages;
-  final List<PendingAttachment> pendingImages;
+  final List<EditorAttachmentItem> images;
   final Future<String> Function(AssetAttachment attachment) encryptedPathFuture;
   final ValueChanged<int> onOpenGallery;
 
   @override
   Widget build(BuildContext context) {
-    final int total = savedImages.length + pendingImages.length;
+    final int total = images.length;
     if (total == 0) {
       return const SizedBox.shrink();
     }
@@ -51,19 +50,26 @@ class EditorPreviewGallery extends StatelessWidget {
                   const SizedBox(width: 10),
               itemBuilder: (BuildContext context, int index) {
                 final bool first = index == 0;
-                if (index < savedImages.length) {
-                  return _previewPhotoTileSaved(
-                    savedImages[index],
-                    thumbSide,
-                    leadingInset: first ? 0 : 6,
-                    onTap: () => onOpenGallery(index),
-                  );
-                }
-                return _previewPhotoTilePending(
-                  pendingImages[index - savedImages.length],
-                  thumbSide,
-                  leadingInset: first ? 0 : 6,
-                  onTap: () => onOpenGallery(index),
+                final EditorAttachmentItem item = images[index];
+                final Widget tile = switch (item) {
+                  SavedEditorAttachmentItem(:final attachment) =>
+                    _previewPhotoTileSaved(
+                      attachment,
+                      thumbSide,
+                      leadingInset: first ? 0 : 6,
+                      onTap: () => onOpenGallery(index),
+                    ),
+                  PendingEditorAttachmentItem(:final attachment) =>
+                    _previewPhotoTilePending(
+                      attachment,
+                      thumbSide,
+                      leadingInset: first ? 0 : 6,
+                      onTap: () => onOpenGallery(index),
+                    ),
+                };
+                return KeyedSubtree(
+                  key: ValueKey<String>('editor-preview-image-${item.assetId}'),
+                  child: tile,
                 );
               },
             ),

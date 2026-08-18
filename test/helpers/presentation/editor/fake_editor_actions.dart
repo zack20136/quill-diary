@@ -10,17 +10,22 @@ import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 class FakeEditorActions implements EditorActionPort {
-  FakeEditorActions({this.existingEntry});
+  FakeEditorActions({
+    this.existingEntry,
+    this.draft,
+    List<AssetAttachment>? attachments,
+    this.materializedPreviewPath,
+  }) : attachments = attachments ?? defaultAttachments;
 
   static final DiaryEntry defaultEntry = DiaryEntry(
     id: 'entry-1',
     vaultId: 'vault-1',
-    title: '皜祈岫璅?',
+    title: '測試標題',
     date: DateOnly.parse('2026-06-18'),
     createdAt: DateTime(2026, 6, 18, 8),
     updatedAt: DateTime(2026, 6, 18, 9),
-    markdownBody: '?扳?',
-    tags: const <String>['璅惜'],
+    markdownBody: '測試內容',
+    tags: const <String>['測試標籤'],
     attachmentIds: const <AssetId>['image-1', 'file-1'],
   );
 
@@ -50,10 +55,14 @@ class FakeEditorActions implements EditorActionPort {
   ];
 
   DiaryEntry? existingEntry;
+  EditorDraftRecord? draft;
+  List<AssetAttachment> attachments;
+  String? materializedPreviewPath;
   int loadEntryCallCount = 0;
   int writeDraftCount = 0;
   int saveEntryCallCount = 0;
   DiaryEntry? savedEntryDraft;
+  EditorDraftRecord? writtenDraft;
 
   @override
   Future<String> assetAbsolutePath({
@@ -78,7 +87,7 @@ class FakeEditorActions implements EditorActionPort {
 
   @override
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) async =>
-      defaultAttachments;
+      attachments;
 
   @override
   Future<DiaryEntry?> loadEntry(
@@ -94,7 +103,7 @@ class FakeEditorActions implements EditorActionPort {
     String draftKey,
     String relativePath,
     UnlockedVaultSession session,
-  ) async => 'C:/drafts/preview/$relativePath';
+  ) async => materializedPreviewPath ?? 'C:/drafts/preview/$relativePath';
 
   @override
   Future<String> pendingAbsolutePath(
@@ -112,7 +121,7 @@ class FakeEditorActions implements EditorActionPort {
   Future<EditorDraftRecord?> readDraft(
     String draftKey,
     UnlockedVaultSession session,
-  ) async => null;
+  ) async => draft;
 
   @override
   Future<Uint8List?> readDecryptedAssetBytes(
@@ -154,5 +163,6 @@ class FakeEditorActions implements EditorActionPort {
     UnlockedVaultSession session,
   ) async {
     writeDraftCount++;
+    writtenDraft = record;
   }
 }

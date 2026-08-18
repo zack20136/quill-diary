@@ -35,6 +35,7 @@ import 'package:quill_diary/application/session/providers/session_providers.dart
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
@@ -82,7 +83,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   final Map<String, Future<String>> _savedAssetPathFutures =
       <String, Future<String>>{};
 
-  List<AssetId> _keptExistingAttachmentIds = <AssetId>[];
+  List<AssetId> _attachmentIds = <AssetId>[];
   late bool _previewMode;
   TimeOfDay _entryTime = TimeOfDay.now();
   bool _didLoadExisting = false;
@@ -117,18 +118,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool get _hasTitle => _titleController.text.trim().isNotEmpty;
   bool get _hasBody => _bodyController.text.trim().isNotEmpty;
   bool get _canSaveEntry => _hasTitle || _hasBody;
-
-  Iterable<PendingAttachment> get _pendingImageAttachments =>
-      _pendingAttachments.where(
-        (PendingAttachment attachment) =>
-            attachment.mimeType.startsWith('image/'),
-      );
-
-  Iterable<PendingAttachment> get _pendingNonImageAttachments =>
-      _pendingAttachments.where(
-        (PendingAttachment attachment) =>
-            !attachment.mimeType.startsWith('image/'),
-      );
 
   Map<String, int> _watchedTagAccentArgbMap() {
     return ref
@@ -326,7 +315,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           entryTime: _entryTime,
           tagsRaw: _tagsController.text,
           markdownBodyRaw: markdown,
-          keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
+          attachmentIds: List<AssetId>.from(_attachmentIds),
           pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
           provisionalEntryId: entry.id,
           switchToPreview: true,
@@ -359,8 +348,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       entryMinute: _entryTime.minute,
       tagsRaw: _tagsController.text,
       bodyRaw: _bodyController.text,
-      keptAttachmentIds: _keptExistingAttachmentIds,
-      pendingAttachments: _pendingAttachments,
+      attachmentIds: _attachmentIds,
     );
   }
 
@@ -417,7 +405,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           draftKey: _draftKey,
           snapshot: _currentDraftSnapshot(),
           tagsRaw: _tagsController.text,
-          keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
+          attachmentIds: List<AssetId>.from(_attachmentIds),
           pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
           session: session,
           createdAt: _draftCreatedAt ?? DateTime.now(),
@@ -505,7 +493,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _dateController.text = entry.date.value;
     _tagsController.text = entry.tags.join(', ');
     _bodyController.text = entry.markdownBody;
-    _keptExistingAttachmentIds = List<AssetId>.from(entry.attachmentIds);
+    _attachmentIds = List<AssetId>.from(entry.attachmentIds);
     _pendingAttachments.clear();
     _savedAssetPathFutures.clear();
     _entryTime = TimeOfDay(
@@ -528,7 +516,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _dateController.text = record.dateValue;
     _tagsController.text = record.tags.join(', ');
     _bodyController.text = record.markdownBody;
-    _keptExistingAttachmentIds = List<AssetId>.from(record.keptAttachmentIds);
+    _attachmentIds = List<AssetId>.from(record.attachmentIds);
     _pendingAttachments
       ..clear()
       ..addAll(decision.pendingAttachments);
@@ -542,8 +530,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       entryMinute: record.entryMinute,
       tagsRaw: record.tags.join(', '),
       bodyRaw: record.markdownBody,
-      keptAttachmentIds: record.keptAttachmentIds,
-      pendingAttachments: decision.pendingAttachments,
+      attachmentIds: record.attachmentIds,
     );
     _showEntryRequiredHint = false;
     _suppressTagDraftListener = false;
@@ -610,7 +597,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _tagsController.clear();
     _bodyController.clear();
     _pendingAttachments.clear();
-    _keptExistingAttachmentIds = <AssetId>[];
+    _attachmentIds = <AssetId>[];
     _savedAssetPathFutures.clear();
     _lastSavedSnapshot = null;
     _lastPersistedDraftSnapshot = null;
@@ -688,15 +675,20 @@ class _EditorPageState extends ConsumerState<EditorPage>
                 : ref.watch(entryAttachmentsProvider(widget.entryId!));
             final List<AssetAttachment> allSavedAttachments =
                 attachmentsAsync.asData?.value ?? const <AssetAttachment>[];
-            final List<AssetAttachment> savedImages = _orderedSavedImages(
-              allSavedAttachments,
-            );
-            final List<AssetAttachment> savedNonImages =
-                _savedNonImageAttachments(allSavedAttachments);
-            final List<PendingAttachment> pendingImages =
-                _pendingImageAttachments.toList();
-            final List<PendingAttachment> pendingNonImages =
-                _pendingNonImageAttachments.toList();
+            final List<EditorAttachmentItem> orderedAttachments =
+                _orderedAttachments(allSavedAttachments);
+            final List<EditorAttachmentItem> images = orderedAttachments
+                .where(
+                  (EditorAttachmentItem item) =>
+                      item.mimeType.startsWith('image/'),
+                )
+                .toList();
+            final List<EditorAttachmentItem> nonImages = orderedAttachments
+                .where(
+                  (EditorAttachmentItem item) =>
+                      !item.mimeType.startsWith('image/'),
+                )
+                .toList();
             final EditorTypographyPreferences typography =
                 watchPersonalizationPreferences(ref).typography;
             final bool showUnsavedTag =
@@ -775,8 +767,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                     final bool showVisualEditorChrome =
                                         !hideEditorChromeForKeyboard;
                                     final bool hasNonImageAttachments =
-                                        savedNonImages.isNotEmpty ||
-                                        pendingNonImages.isNotEmpty;
+                                        nonImages.isNotEmpty;
                                     final bool shouldShowSidebarAttachments =
                                         (!_previewMode ||
                                             hasNonImageAttachments) &&
@@ -787,24 +778,18 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                       children: <Widget>[
                                         if (shouldShowSidebarAttachments)
                                           EditorAttachmentStrip(
-                                            savedImages: savedImages,
-                                            pendingImages: pendingImages,
-                                            savedNonImages: savedNonImages,
-                                            pendingNonImages: pendingNonImages,
+                                            images: images,
+                                            nonImages: nonImages,
                                             editable: _isEditing,
                                             draggingIndex:
                                                 _draggingEditorImageIndex,
                                             encryptedPathFuture:
                                                 _cachedEncryptedPathFuture,
-                                            onRemoveSaved:
-                                                _removeSavedAttachment,
-                                            onRemovePending:
-                                                _removePendingAttachment,
+                                            onRemove: _removeAttachment,
                                             onReorder:
                                                 (int oldIndex, int newIndex) =>
                                                     _reorderEditorImages(
-                                                      allSaved:
-                                                          allSavedAttachments,
+                                                      images: images,
                                                       oldIndex: oldIndex,
                                                       newIndex: newIndex,
                                                     ),
@@ -855,16 +840,13 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                         if (_previewMode &&
                                             showVisualEditorChrome)
                                           EditorPreviewGallery(
-                                            savedImages: savedImages,
-                                            pendingImages: pendingImages,
+                                            images: images,
                                             encryptedPathFuture:
                                                 _cachedEncryptedPathFuture,
                                             onOpenGallery: (int index) =>
                                                 unawaited(
                                                   _openImagePreviewGallery(
-                                                    savedImages: savedImages,
-                                                    pendingImages:
-                                                        pendingImages,
+                                                    images: images,
                                                     initialIndex: index,
                                                   ),
                                                 ),
@@ -1262,7 +1244,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           entryTime: _entryTime,
           tagsRaw: _tagsController.text,
           markdownBodyRaw: _bodyController.text,
-          keptAttachmentIds: List<AssetId>.from(_keptExistingAttachmentIds),
+          attachmentIds: List<AssetId>.from(_attachmentIds),
           pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
           provisionalEntryId: _provisionalEntryId ??=
               widget.entryId ?? generateEntryId(),
@@ -1275,7 +1257,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       }
       setState(() {
         _savedAssetPathFutures.clear();
-        _keptExistingAttachmentIds = List<AssetId>.from(saved.attachmentIds);
+        _attachmentIds = List<AssetId>.from(saved.attachmentIds);
         _pendingAttachments.clear();
         _entryTime = TimeOfDay(
           hour: saved.createdAt.hour,
@@ -1298,118 +1280,58 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
   }
 
-  void _removePendingAttachment(PendingAttachment attachment) {
+  void _removeAttachment(EditorAttachmentItem item) {
     setState(() {
-      _pendingAttachments.remove(attachment);
-    });
-    _scheduleDraftPersist();
-  }
-
-  void _removeSavedAttachment(AssetAttachment attachment) {
-    setState(() {
-      _savedAssetPathFutures.removeWhere(
-        (String id, Future<String> _) => id == attachment.id,
-      );
-      _keptExistingAttachmentIds.remove(attachment.id);
-    });
-    _scheduleDraftPersist();
-  }
-
-  List<AssetAttachment> _orderedSavedImages(List<AssetAttachment> all) {
-    if (all.isEmpty || _keptExistingAttachmentIds.isEmpty) {
-      return <AssetAttachment>[];
-    }
-    final Map<AssetId, AssetAttachment> byId = <AssetId, AssetAttachment>{
-      for (final AssetAttachment attachment in all) attachment.id: attachment,
-    };
-    final List<AssetAttachment> ordered = <AssetAttachment>[];
-    for (final AssetId id in _keptExistingAttachmentIds) {
-      final AssetAttachment? attachment = byId[id];
-      if (attachment != null && attachment.mimeType.startsWith('image/')) {
-        ordered.add(attachment);
+      _attachmentIds.remove(item.assetId);
+      switch (item) {
+        case SavedEditorAttachmentItem(:final attachment):
+          _savedAssetPathFutures.removeWhere(
+            (String id, Future<String> _) => id == attachment.id,
+          );
+        case PendingEditorAttachmentItem(:final attachment):
+          _pendingAttachments.remove(attachment);
       }
-    }
-    return ordered;
+    });
+    _scheduleDraftPersist();
   }
 
-  List<AssetAttachment> _savedNonImageAttachments(List<AssetAttachment> all) {
-    return all
-        .where(
-          (AssetAttachment attachment) =>
-              !attachment.mimeType.startsWith('image/') &&
-              _keptExistingAttachmentIds.contains(attachment.id),
-        )
-        .toList();
+  List<EditorAttachmentItem> _orderedAttachments(
+    List<AssetAttachment> allSaved,
+  ) {
+    return resolveEditorAttachmentItems(
+      attachmentIds: _attachmentIds,
+      savedAttachments: allSaved,
+      pendingAttachments: _pendingAttachments,
+    );
   }
 
   void _reorderEditorImages({
-    required List<AssetAttachment> allSaved,
+    required List<EditorAttachmentItem> images,
     required int oldIndex,
     required int newIndex,
   }) {
-    final List<AssetAttachment> savedImages = _orderedSavedImages(allSaved);
-    final List<PendingAttachment> pendingImages = _pendingImageAttachments
-        .toList();
-    final List<Object> slots = <Object>[
-      ...savedImages.map((AssetAttachment attachment) => attachment.id),
-      ...pendingImages,
-    ];
-    if (oldIndex < 0 ||
-        oldIndex >= slots.length ||
-        newIndex < 0 ||
-        newIndex > slots.length) {
-      return;
-    }
-
-    final Object moved = slots.removeAt(oldIndex);
-    slots.insert(newIndex, moved);
-
-    final List<AssetId> newImageKeptIds = <AssetId>[];
-    final List<PendingAttachment> newImagePending = <PendingAttachment>[];
-    for (final Object slot in slots) {
-      if (slot is PendingAttachment) {
-        newImagePending.add(slot);
-      } else if (slot is String) {
-        newImageKeptIds.add(slot);
-      }
-    }
-
-    final Map<AssetId, AssetAttachment> byId = <AssetId, AssetAttachment>{
-      for (final AssetAttachment attachment in allSaved)
-        attachment.id: attachment,
-    };
-    final List<AssetId> nonImageKeptIds = _keptExistingAttachmentIds.where((
-      AssetId id,
-    ) {
-      final AssetAttachment? attachment = byId[id];
-      return attachment != null && !attachment.mimeType.startsWith('image/');
-    }).toList();
-    final List<PendingAttachment> nonImagePending = _pendingNonImageAttachments
-        .toList();
-
     setState(() {
       _draggingEditorImageIndex = null;
-      _keptExistingAttachmentIds = <AssetId>[
-        ...newImageKeptIds,
-        ...nonImageKeptIds,
-      ];
-      _pendingAttachments
-        ..clear()
-        ..addAll(<PendingAttachment>[...newImagePending, ...nonImagePending]);
+      _attachmentIds = reorderEditorImageAttachmentIds(
+        attachmentIds: _attachmentIds,
+        imageIds: images
+            .map((EditorAttachmentItem item) => item.assetId)
+            .toList(),
+        oldIndex: oldIndex,
+        newIndex: newIndex,
+      );
     });
     _scheduleDraftPersist();
   }
 
   Future<void> _openImagePreviewGallery({
-    required List<AssetAttachment> savedImages,
-    required List<PendingAttachment> pendingImages,
+    required List<EditorAttachmentItem> images,
     required int initialIndex,
   }) async {
     final PreparedEditorGallery gallery = await _editorFlow
         .preparePreviewGalleryItems(
           dateValue: _dateController.text,
-          savedImages: savedImages,
-          pendingImages: pendingImages,
+          images: images,
           initialIndex: initialIndex,
         );
     if (!mounted || gallery.items.isEmpty) {
@@ -1528,6 +1450,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
     setState(() {
       _pendingAttachments.addAll(staged);
+      _attachmentIds.addAll(
+        staged.map((PendingAttachment attachment) => attachment.assetId),
+      );
     });
     _scheduleDraftPersist();
   }
@@ -1565,6 +1490,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     setState(() {
       _pendingAttachments.addAll(staged);
+      _attachmentIds.addAll(
+        staged.map((PendingAttachment attachment) => attachment.assetId),
+      );
     });
     _scheduleDraftPersist();
   }

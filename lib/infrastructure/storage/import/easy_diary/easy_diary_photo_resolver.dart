@@ -212,6 +212,7 @@ Future<ResolvedEasyDiaryAttachments> resolveEasyDiaryPhotoAttachments({
 
     attachments.add(
       PendingAttachment(
+        assetId: generateAssetId(),
         sourcePath: photoFile.path,
         mimeType: mimeType,
         originalFilename: preferredImageFilename(

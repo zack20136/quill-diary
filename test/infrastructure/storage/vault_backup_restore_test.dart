@@ -242,7 +242,7 @@ void main() {
         entryMinute: 0,
         tags: const <String>['草稿標籤'],
         markdownBody: 'draft body',
-        keptAttachmentIds: const <String>[],
+        attachmentIds: const <String>[],
         pendingAttachments: const <EditorDraftPendingAttachment>[],
         provisionalEntryId: generateEntryId(),
         createdAt: DateTime.parse('2026-05-25T10:00:00Z'),

@@ -2,38 +2,32 @@ import 'package:flutter/material.dart';
 
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 
 class EditorAttachmentStrip extends StatelessWidget {
   const EditorAttachmentStrip({
     super.key,
-    required this.savedImages,
-    required this.pendingImages,
-    required this.savedNonImages,
-    required this.pendingNonImages,
+    required this.images,
+    required this.nonImages,
     required this.editable,
     required this.draggingIndex,
     required this.encryptedPathFuture,
-    required this.onRemoveSaved,
-    required this.onRemovePending,
+    required this.onRemove,
     required this.onReorder,
     required this.onDragStart,
     required this.onDragEnd,
   });
 
-  final List<AssetAttachment> savedImages;
-  final List<PendingAttachment> pendingImages;
-  final List<AssetAttachment> savedNonImages;
-  final List<PendingAttachment> pendingNonImages;
+  final List<EditorAttachmentItem> images;
+  final List<EditorAttachmentItem> nonImages;
   final bool editable;
   final int? draggingIndex;
   final Future<String> Function(AssetAttachment attachment) encryptedPathFuture;
-  final ValueChanged<AssetAttachment> onRemoveSaved;
-  final ValueChanged<PendingAttachment> onRemovePending;
+  final ValueChanged<EditorAttachmentItem> onRemove;
   final void Function(int oldIndex, int newIndex) onReorder;
   final ValueChanged<int> onDragStart;
   final ValueChanged<int> onDragEnd;
@@ -44,33 +38,24 @@ class EditorAttachmentStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasNonImageAttachments =
-        savedNonImages.isNotEmpty || pendingNonImages.isNotEmpty;
-    if (savedImages.isEmpty &&
-        pendingImages.isEmpty &&
-        !hasNonImageAttachments) {
+    final bool hasNonImageAttachments = nonImages.isNotEmpty;
+    if (images.isEmpty && !hasNonImageAttachments) {
       return const SizedBox.shrink();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        if (savedImages.isNotEmpty || pendingImages.isNotEmpty)
-          _buildImageStrip(context),
+        if (images.isNotEmpty) _buildImageStrip(context),
         if (hasNonImageAttachments) ...<Widget>[
-          if (savedImages.isNotEmpty || pendingImages.isNotEmpty)
-            const SizedBox(height: 6),
+          if (images.isNotEmpty) const SizedBox(height: 6),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: <Widget>[
-              ...savedNonImages.map(
-                (AssetAttachment attachment) =>
-                    _savedNonImageChip(attachment, editable: editable),
-              ),
-              ...pendingNonImages.map(
-                (PendingAttachment attachment) =>
-                    _pendingNonImageChip(attachment, editable: editable),
+              ...nonImages.map(
+                (EditorAttachmentItem item) =>
+                    _nonImageChip(item, editable: editable),
               ),
             ],
           ),
@@ -80,28 +65,31 @@ class EditorAttachmentStrip extends StatelessWidget {
   }
 
   Widget _buildImageStrip(BuildContext context) {
-    final int itemCount = savedImages.length + pendingImages.length;
+    final int itemCount = images.length;
 
     Widget buildThumbContent(int index) {
       final bool isDragPlaceholder = draggingIndex == index;
-      if (index < savedImages.length) {
-        return _savedImageThumbnailTile(
-          context,
-          savedImages[index],
-          editable: editable,
-          draggable: editable && itemCount > 1,
-          isDragPlaceholder: isDragPlaceholder,
-        );
-      }
-      final PendingAttachment attachment =
-          pendingImages[index - savedImages.length];
-      return _pendingImageThumbnailTile(
-        context,
-        attachment,
-        editable: editable,
-        draggable: editable && itemCount > 1,
-        isDragPlaceholder: isDragPlaceholder,
-      );
+      final EditorAttachmentItem item = images[index];
+      return switch (item) {
+        SavedEditorAttachmentItem(:final attachment) =>
+          _savedImageThumbnailTile(
+            context,
+            attachment,
+            editable: editable,
+            draggable: editable && itemCount > 1,
+            isDragPlaceholder: isDragPlaceholder,
+            onDelete: () => onRemove(item),
+          ),
+        PendingEditorAttachmentItem(:final attachment) =>
+          _pendingImageThumbnailTile(
+            context,
+            attachment,
+            editable: editable,
+            draggable: editable && itemCount > 1,
+            isDragPlaceholder: isDragPlaceholder,
+            onDelete: () => onRemove(item),
+          ),
+      };
     }
 
     Widget buildStripItem(int index) {
@@ -128,18 +116,9 @@ class EditorAttachmentStrip extends StatelessWidget {
                     onReorderItem: onReorder,
                     itemCount: itemCount,
                     itemBuilder: (BuildContext context, int index) {
-                      final Key itemKey;
-                      if (index < savedImages.length) {
-                        itemKey = ValueKey<String>(
-                          'saved-image-${savedImages[index].id}',
-                        );
-                      } else {
-                        final PendingAttachment attachment =
-                            pendingImages[index - savedImages.length];
-                        itemKey = ValueKey<String>(
-                          'pending-image-${pendingAttachmentFingerprint(attachment)}',
-                        );
-                      }
+                      final Key itemKey = ValueKey<String>(
+                        'editor-image-${images[index].assetId}',
+                      );
                       return KeyedSubtree(
                         key: itemKey,
                         child: _editorImageStripSlot(
@@ -250,6 +229,7 @@ class EditorAttachmentStrip extends StatelessWidget {
     required bool editable,
     required bool draggable,
     required bool isDragPlaceholder,
+    required VoidCallback onDelete,
   }) {
     final ThemeData theme = Theme.of(context);
     if (isDragPlaceholder) {
@@ -270,11 +250,7 @@ class EditorAttachmentStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
             ),
             if (editable)
-              _editorImageDeleteBadge(
-                context,
-                theme,
-                onTap: () => onRemoveSaved(attachment),
-              ),
+              _editorImageDeleteBadge(context, theme, onTap: onDelete),
             if (draggable) _dragIndicator(context, theme),
           ],
         ),
@@ -295,6 +271,7 @@ class EditorAttachmentStrip extends StatelessWidget {
     required bool editable,
     required bool draggable,
     required bool isDragPlaceholder,
+    required VoidCallback onDelete,
   }) {
     final ThemeData theme = Theme.of(context);
     if (isDragPlaceholder) {
@@ -314,37 +291,23 @@ class EditorAttachmentStrip extends StatelessWidget {
             borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
           ),
           if (editable)
-            _editorImageDeleteBadge(
-              context,
-              theme,
-              onTap: () => onRemovePending(attachment),
-            ),
+            _editorImageDeleteBadge(context, theme, onTap: onDelete),
           if (draggable) _dragIndicator(context, theme),
         ],
       ),
     );
   }
 
-  Widget _savedNonImageChip(
-    AssetAttachment attachment, {
-    required bool editable,
-  }) {
-    return Chip(
-      label: Text(
+  Widget _nonImageChip(EditorAttachmentItem item, {required bool editable}) {
+    final String label = switch (item) {
+      SavedEditorAttachmentItem(:final attachment) =>
         attachment.originalFilename ?? attachment.safeFilename,
-        overflow: TextOverflow.ellipsis,
-      ),
-      onDeleted: editable ? () => onRemoveSaved(attachment) : null,
-    );
-  }
-
-  Widget _pendingNonImageChip(
-    PendingAttachment attachment, {
-    required bool editable,
-  }) {
+      PendingEditorAttachmentItem(:final attachment) =>
+        attachment.originalFilename,
+    };
     return Chip(
-      label: Text(attachment.originalFilename, overflow: TextOverflow.ellipsis),
-      onDeleted: editable ? () => onRemovePending(attachment) : null,
+      label: Text(label, overflow: TextOverflow.ellipsis),
+      onDeleted: editable ? () => onRemove(item) : null,
     );
   }
 

@@ -39,6 +39,7 @@ import 'vault_state_keys.dart';
 /// UI 中已選取但尚未寫入加密 vault 的附件。
 class PendingAttachment {
   PendingAttachment({
+    required this.assetId,
     this.bytes,
     this.sourcePath,
     this.pendingRelativePath,
@@ -49,6 +50,8 @@ class PendingAttachment {
              (sourcePath != null && sourcePath.trim().isNotEmpty),
          'PendingAttachment 需要 bytes 或 sourcePath',
        );
+
+  final AssetId assetId;
 
   /// 內嵌或已讀入記憶體的附件（例如 HTML 資料 URI）。
   final Uint8List? bytes;
@@ -1276,6 +1279,18 @@ class VaultRepository {
           for (final AssetAttachment attachment in existingFromDb)
             attachment.id: attachment,
         };
+    final Set<AssetId> pendingIds = <AssetId>{};
+    for (final PendingAttachment pending in pendingAttachments) {
+      if (pending.assetId.trim().isEmpty) {
+        throw ArgumentError('暫存附件 ID 不可為空白');
+      }
+      if (!pendingIds.add(pending.assetId)) {
+        throw ArgumentError('暫存附件 ID 不可重複：${pending.assetId}');
+      }
+      if (existingById.containsKey(pending.assetId)) {
+        throw ArgumentError('暫存附件 ID 不可與既有附件重複：${pending.assetId}');
+      }
+    }
     final Set<AssetId> seenKeptIds = <AssetId>{};
     final List<AssetAttachment> existingKept = <AssetAttachment>[];
     for (final AssetId id in draft.attachmentIds) {
@@ -1303,10 +1318,27 @@ class VaultRepository {
       vaultId: metadata.vaultId,
     );
 
-    final List<AssetAttachment> allAttachments = <AssetAttachment>[
-      ...existingKept,
-      ...newAttachments,
-    ];
+    final Map<AssetId, AssetAttachment> availableById =
+        <AssetId, AssetAttachment>{
+          for (final AssetAttachment attachment in existingKept)
+            attachment.id: attachment,
+          for (final AssetAttachment attachment in newAttachments)
+            attachment.id: attachment,
+        };
+    final Set<AssetId> seenOrderedIds = <AssetId>{};
+    final List<AssetAttachment> allAttachments = <AssetAttachment>[];
+    for (final AssetId id in draft.attachmentIds) {
+      final AssetAttachment? attachment = availableById[id];
+      if (attachment != null && seenOrderedIds.add(id)) {
+        allAttachments.add(attachment);
+      }
+    }
+    // 匯入流程不一定預先知道新附件 ID，未列入順序的新附件依輸入順序附加。
+    for (final AssetAttachment attachment in newAttachments) {
+      if (seenOrderedIds.add(attachment.id)) {
+        allAttachments.add(attachment);
+      }
+    }
     final DateTime attachmentOrderBase = draft.createdAt;
     final List<AssetAttachment> orderedAttachments = <AssetAttachment>[
       for (int i = 0; i < allAttachments.length; i++)
@@ -2203,7 +2235,7 @@ class VaultRepository {
   }) async {
     final List<AssetAttachment> results = <AssetAttachment>[];
     for (final PendingAttachment pending in pendingAttachments) {
-      final AssetId assetId = generateAssetId();
+      final AssetId assetId = pending.assetId;
       final String originalFilename = p.basename(
         pending.originalFilename.trim(),
       );

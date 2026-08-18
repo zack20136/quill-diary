@@ -39,7 +39,7 @@ void main() {
         entryTime: const TimeOfDay(hour: 8, minute: 0),
         tagsRaw: '標籤',
         markdownBodyRaw: '前言\n- [ ] 任務三',
-        keptAttachmentIds: const <AssetId>[],
+        attachmentIds: const <AssetId>[],
         pendingAttachments: const <PendingAttachment>[],
         provisionalEntryId: 'entry-new',
         switchToPreview: true,

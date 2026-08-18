@@ -4,6 +4,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -38,6 +39,7 @@ Future<PendingAttachment?> stagePickedImage({
     final String previewPath = await draftStore
         .materializePendingFileForPreview(draftKey, relativePath, session);
     return PendingAttachment(
+      assetId: generateAssetId(),
       sourcePath: previewPath,
       pendingRelativePath: relativePath,
       mimeType: prepared.mimeType,

@@ -13,6 +13,7 @@ import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'editor_actions.dart';
+import 'editor_attachment_items.dart';
 import 'editor_body_blocks.dart';
 import 'editor_draft_models.dart';
 
@@ -58,7 +59,7 @@ class EditorPersistDraftRequest {
     required this.draftKey,
     required this.snapshot,
     required this.tagsRaw,
-    required this.keptAttachmentIds,
+    required this.attachmentIds,
     required this.pendingAttachments,
     required this.session,
     required this.createdAt,
@@ -69,7 +70,7 @@ class EditorPersistDraftRequest {
   final String draftKey;
   final EditorDraftSnapshot snapshot;
   final String tagsRaw;
-  final List<AssetId> keptAttachmentIds;
+  final List<AssetId> attachmentIds;
   final List<PendingAttachment> pendingAttachments;
   final UnlockedVaultSession session;
   final DateTime createdAt;
@@ -97,7 +98,7 @@ class EditorSaveRequest {
     required this.entryTime,
     required this.tagsRaw,
     required this.markdownBodyRaw,
-    required this.keptAttachmentIds,
+    required this.attachmentIds,
     required this.pendingAttachments,
     required this.provisionalEntryId,
     required this.switchToPreview,
@@ -111,7 +112,7 @@ class EditorSaveRequest {
   final TimeOfDay entryTime;
   final String tagsRaw;
   final String markdownBodyRaw;
-  final List<AssetId> keptAttachmentIds;
+  final List<AssetId> attachmentIds;
   final List<PendingAttachment> pendingAttachments;
   final EntryId provisionalEntryId;
   final bool switchToPreview;
@@ -159,6 +160,7 @@ class EditorFlowController {
       }
       pendingAttachments.add(
         EditorDraftPendingAttachment(
+          assetId: attachment.assetId,
           relativePath: relativePath,
           mimeType: attachment.mimeType,
           originalFilename: attachment.originalFilename,
@@ -173,7 +175,7 @@ class EditorFlowController {
       entryMinute: request.snapshot.entryMinute,
       tags: parseEditorTagsCsv(request.tagsRaw),
       markdownBody: request.snapshot.markdownBody,
-      keptAttachmentIds: List<AssetId>.from(request.keptAttachmentIds),
+      attachmentIds: List<AssetId>.from(request.attachmentIds),
       pendingAttachments: pendingAttachments,
       provisionalEntryId: request.provisionalEntryId,
       createdAt: request.createdAt,
@@ -252,7 +254,7 @@ class EditorFlowController {
       updatedAt: now,
       tags: parseEditorTagsCsv(request.tagsRaw),
       markdownBody: normalizeEditorBodyMarkdownForSave(request.markdownBodyRaw),
-      attachmentIds: List<AssetId>.from(request.keptAttachmentIds),
+      attachmentIds: List<AssetId>.from(request.attachmentIds),
     );
     final DiaryEntry saved = await _actions.saveEntry(
       request.session,
@@ -328,6 +330,7 @@ class EditorFlowController {
       session,
     );
     return PendingAttachment(
+      assetId: generateAssetId(),
       sourcePath: previewPath,
       pendingRelativePath: relativePath,
       mimeType: _mimeTypeFromPath(trimmed),
@@ -350,45 +353,46 @@ class EditorFlowController {
 
   Future<PreparedEditorGallery> preparePreviewGalleryItems({
     required String dateValue,
-    required List<AssetAttachment> savedImages,
-    required List<PendingAttachment> pendingImages,
+    required List<EditorAttachmentItem> images,
     required int initialIndex,
   }) async {
     final List<GalleryImageItem> items = <GalleryImageItem>[];
-    for (final AssetAttachment attachment in savedImages) {
-      final String path = await assetEncryptedPath(
-        dateValue: dateValue,
-        attachment: attachment,
-      );
-      if (path.trim().isEmpty) {
-        continue;
+    for (final EditorAttachmentItem item in images) {
+      switch (item) {
+        case SavedEditorAttachmentItem(:final attachment):
+          final String path = await assetEncryptedPath(
+            dateValue: dateValue,
+            attachment: attachment,
+          );
+          if (path.trim().isEmpty) {
+            continue;
+          }
+          items.add(
+            GalleryImageItem.encrypted(
+              path: path,
+              fileName: galleryDownloadFileName(
+                attachment.originalFilename ?? attachment.safeFilename,
+                attachment.mimeType,
+              ),
+              mimeType: attachment.mimeType,
+            ),
+          );
+        case PendingEditorAttachmentItem(:final attachment):
+          final String? path = attachment.sourcePath?.trim();
+          if (path == null || path.isEmpty) {
+            continue;
+          }
+          items.add(
+            GalleryImageItem.local(
+              path: path,
+              fileName: galleryDownloadFileName(
+                attachment.originalFilename,
+                attachment.mimeType,
+              ),
+              mimeType: attachment.mimeType,
+            ),
+          );
       }
-      items.add(
-        GalleryImageItem.encrypted(
-          path: path,
-          fileName: galleryDownloadFileName(
-            attachment.originalFilename ?? attachment.safeFilename,
-            attachment.mimeType,
-          ),
-          mimeType: attachment.mimeType,
-        ),
-      );
-    }
-    for (final PendingAttachment attachment in pendingImages) {
-      final String? path = attachment.sourcePath?.trim();
-      if (path == null || path.isEmpty) {
-        continue;
-      }
-      items.add(
-        GalleryImageItem.local(
-          path: path,
-          fileName: galleryDownloadFileName(
-            attachment.originalFilename,
-            attachment.mimeType,
-          ),
-          mimeType: attachment.mimeType,
-        ),
-      );
     }
     return PreparedEditorGallery(
       items: items,
