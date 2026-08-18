@@ -830,6 +830,30 @@ abstract class AppLocalizations {
   /// **'編輯'**
   String get editorTooltipEdit;
 
+  /// No description provided for @editorAttachmentImagesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'圖片 {count}'**
+  String editorAttachmentImagesLabel(int count);
+
+  /// No description provided for @editorAttachmentFilesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'附件 {count}'**
+  String editorAttachmentFilesLabel(int count);
+
+  /// No description provided for @editorAttachmentPendingLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增'**
+  String get editorAttachmentPendingLabel;
+
+  /// No description provided for @editorAttachmentDragTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'長按拖曳以調整順序'**
+  String get editorAttachmentDragTooltip;
+
   /// No description provided for @editorRestoreDraftTitle.
   ///
   /// In zh, this message translates to:

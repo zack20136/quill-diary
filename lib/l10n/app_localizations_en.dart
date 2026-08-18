@@ -424,6 +424,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorTooltipEdit => 'Edit';
 
   @override
+  String editorAttachmentImagesLabel(int count) {
+    return 'Images $count';
+  }
+
+  @override
+  String editorAttachmentFilesLabel(int count) {
+    return 'Attachments $count';
+  }
+
+  @override
+  String get editorAttachmentPendingLabel => 'New';
+
+  @override
+  String get editorAttachmentDragTooltip => 'Long-press and drag to reorder';
+
+  @override
   String get editorRestoreDraftTitle => 'Unfinished Draft Found';
 
   @override

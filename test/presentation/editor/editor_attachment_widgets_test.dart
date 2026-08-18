@@ -17,6 +17,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -57,7 +58,9 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  testWidgets('編輯頁將新圖片拖到舊圖片前方後重建與草稿皆維持順序', (tester) async {
+  Future<FakeEditorActions> pumpMixedAttachmentEditor(
+    WidgetTester tester,
+  ) async {
     final EditorDraftRecord draft = EditorDraftRecord(
       title: '測試日記',
       dateValue: '2026-06-18',
@@ -65,11 +68,7 @@ void main() {
       entryMinute: 0,
       tags: const <String>[],
       markdownBody: '內容\n',
-      attachmentIds: const <AssetId>[
-        'image-1',
-        'file-1',
-        'pending-image',
-      ],
+      attachmentIds: const <AssetId>['image-1', 'file-1', 'pending-image'],
       pendingAttachments: const <EditorDraftPendingAttachment>[
         EditorDraftPendingAttachment(
           assetId: 'pending-image',
@@ -107,16 +106,31 @@ void main() {
         ],
         child: editorTestApp(
           viewport: const Size(1200, 800),
-          child: const EditorPage(
-            entryId: 'entry-1',
-            startInEditMode: true,
-          ),
+          child: const EditorPage(entryId: 'entry-1', startInEditMode: true),
         ),
       ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('還原草稿'));
     await tester.pumpAndSettle();
+    return actions;
+  }
+
+  testWidgets('編輯頁將新圖片拖到舊圖片前方後重建與草稿皆維持順序', (tester) async {
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+
+    expect(find.text('圖片 2'), findsOneWidget);
+    expect(find.text('附件 1'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('editor-pending-pending-image')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(
+        find.byKey(const ValueKey<String>('editor-image-delete-pending-image')),
+      ),
+      const Size(44, 44),
+    );
 
     final ReorderableListView list = tester.widget<ReorderableListView>(
       find.byType(ReorderableListView),
@@ -136,6 +150,56 @@ void main() {
       'pending-image',
       'file-1',
       'image-1',
+    ]);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('編輯頁移除新圖片後保留舊圖片與一般附件順序', (tester) async {
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('editor-image-delete-pending-image')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('editor-image-pending-image')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('editor-image-image-1')),
+      findsOneWidget,
+    );
+    expect(actions.writtenDraft?.attachmentIds, const <AssetId>[
+      'image-1',
+      'file-1',
+    ]);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('編輯頁移除舊圖片後保留一般附件與新圖片順序', (tester) async {
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('editor-image-delete-image-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('editor-image-image-1')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('editor-image-pending-image')),
+      findsOneWidget,
+    );
+    expect(actions.writtenDraft?.attachmentIds, const <AssetId>[
+      'file-1',
+      'pending-image',
     ]);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -169,6 +233,41 @@ void main() {
       find.byKey(const ValueKey<String>('editor-preview-image-saved-image')),
     );
     expect(pendingPosition.dx, lessThan(savedPosition.dx));
+  });
+
+  testWidgets('暫存一般附件會顯示附件數量與新增標記', (tester) async {
+    final PendingAttachment pendingFile = PendingAttachment(
+      assetId: 'pending-file',
+      sourcePath: pendingAttachment.sourcePath,
+      mimeType: 'application/pdf',
+      originalFilename: 'document.pdf',
+    );
+
+    await tester.pumpWidget(
+      editorTestApp(
+        child: EditorAttachmentStrip(
+          images: const <EditorAttachmentItem>[],
+          nonImages: <EditorAttachmentItem>[
+            PendingEditorAttachmentItem(pendingFile),
+          ],
+          editable: true,
+          draggingIndex: null,
+          encryptedPathFuture: (_) async => '',
+          onRemove: (_) {},
+          onReorder: (_, _) {},
+          onDragStart: (_) {},
+          onDragEnd: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('附件 1'), findsOneWidget);
+    expect(find.text('新增'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('editor-attachment-pending-file')),
+      findsOneWidget,
+    );
   });
 }
 

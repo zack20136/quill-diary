@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
@@ -48,14 +53,19 @@ class EditorAttachmentStrip extends StatelessWidget {
       children: <Widget>[
         if (images.isNotEmpty) _buildImageStrip(context),
         if (hasNonImageAttachments) ...<Widget>[
-          if (images.isNotEmpty) const SizedBox(height: 6),
+          if (images.isNotEmpty) const SizedBox(height: 10),
+          _sectionLabel(
+            context,
+            context.l10n.editorAttachmentFilesLabel(nonImages.length),
+          ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: <Widget>[
               ...nonImages.map(
                 (EditorAttachmentItem item) =>
-                    _nonImageChip(item, editable: editable),
+                    _nonImageChip(context, item, editable: editable),
               ),
             ],
           ),
@@ -93,13 +103,20 @@ class EditorAttachmentStrip extends StatelessWidget {
     }
 
     Widget buildStripItem(int index) {
-      return _editorImageStripSlot(child: buildThumbContent(index));
+      return KeyedSubtree(
+        key: ValueKey<String>('editor-image-${images[index].assetId}'),
+        child: _editorImageStripSlot(child: buildThumbContent(index)),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const SizedBox(height: 4),
+        _sectionLabel(
+          context,
+          context.l10n.editorAttachmentImagesLabel(itemCount),
+        ),
+        const SizedBox(height: 6),
         SizedBox(
           width: double.infinity,
           child: SizedBox(
@@ -111,7 +128,10 @@ class EditorAttachmentStrip extends StatelessWidget {
                     buildDefaultDragHandles: false,
                     clipBehavior: Clip.none,
                     proxyDecorator: _decorateEditorImageDragProxy,
-                    onReorderStart: onDragStart,
+                    onReorderStart: (int index) {
+                      unawaited(HapticFeedback.selectionClick());
+                      onDragStart(index);
+                    },
                     onReorderEnd: onDragEnd,
                     onReorderItem: onReorder,
                     itemCount: itemCount,
@@ -119,12 +139,17 @@ class EditorAttachmentStrip extends StatelessWidget {
                       final Key itemKey = ValueKey<String>(
                         'editor-image-${images[index].assetId}',
                       );
+                      final Widget draggable =
+                          ReorderableDelayedDragStartListener(
+                            index: index,
+                            child: buildThumbContent(index),
+                          );
                       return KeyedSubtree(
                         key: itemKey,
                         child: _editorImageStripSlot(
-                          child: ReorderableDelayedDragStartListener(
-                            index: index,
-                            child: buildThumbContent(index),
+                          child: Tooltip(
+                            message: context.l10n.editorAttachmentDragTooltip,
+                            child: draggable,
                           ),
                         ),
                       );
@@ -152,6 +177,17 @@ class EditorAttachmentStrip extends StatelessWidget {
       width: _slotWidth,
       height: _thumbSize,
       child: Align(alignment: Alignment.centerLeft, child: child),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Text(
+      label,
+      key: ValueKey<String>('editor-attachment-section-$label'),
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 
@@ -250,7 +286,12 @@ class EditorAttachmentStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
             ),
             if (editable)
-              _editorImageDeleteBadge(context, theme, onTap: onDelete),
+              _editorImageDeleteBadge(
+                context,
+                theme,
+                assetId: attachment.id,
+                onTap: onDelete,
+              ),
             if (draggable) _dragIndicator(context, theme),
           ],
         ),
@@ -290,24 +331,75 @@ class EditorAttachmentStrip extends StatelessWidget {
             size: 64,
             borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
           ),
+          _pendingBadge(context, attachment.assetId),
           if (editable)
-            _editorImageDeleteBadge(context, theme, onTap: onDelete),
+            _editorImageDeleteBadge(
+              context,
+              theme,
+              assetId: attachment.assetId,
+              onTap: onDelete,
+            ),
           if (draggable) _dragIndicator(context, theme),
         ],
       ),
     );
   }
 
-  Widget _nonImageChip(EditorAttachmentItem item, {required bool editable}) {
+  Widget _nonImageChip(
+    BuildContext context,
+    EditorAttachmentItem item, {
+    required bool editable,
+  }) {
     final String label = switch (item) {
       SavedEditorAttachmentItem(:final attachment) =>
         attachment.originalFilename ?? attachment.safeFilename,
       PendingEditorAttachmentItem(:final attachment) =>
         attachment.originalFilename,
     };
+    final bool pending = item is PendingEditorAttachmentItem;
     return Chip(
-      label: Text(label, overflow: TextOverflow.ellipsis),
+      key: ValueKey<String>('editor-attachment-${item.assetId}'),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+          if (pending) ...<Widget>[
+            const SizedBox(width: 6),
+            _pendingLabel(context),
+          ],
+        ],
+      ),
       onDeleted: editable ? () => onRemove(item) : null,
+    );
+  }
+
+  Widget _pendingBadge(BuildContext context, AssetId assetId) {
+    return Positioned(
+      key: ValueKey<String>('editor-pending-$assetId'),
+      left: 4,
+      top: 4,
+      child: _pendingLabel(context),
+    );
+  }
+
+  Widget _pendingLabel(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          context.l10n.editorAttachmentPendingLabel,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: cs.onSecondaryContainer,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+          ),
+        ),
+      ),
     );
   }
 
@@ -339,24 +431,28 @@ class EditorAttachmentStrip extends StatelessWidget {
   Widget _editorImageDeleteBadge(
     BuildContext context,
     ThemeData theme, {
+    required AssetId assetId,
     required VoidCallback onTap,
   }) {
     return Positioned(
-      right: 0,
-      top: 0,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Icon(
-            Icons.cancel_rounded,
-            size: 20,
-            color: theme.colorScheme.error.withValues(alpha: 0.9),
-            shadows: <Shadow>[
-              Shadow(blurRadius: 4, color: context.appColors.shadow),
-            ],
-          ),
+      right: -6,
+      top: -6,
+      child: IconButton(
+        key: ValueKey<String>('editor-image-delete-$assetId'),
+        tooltip: context.l10n.editorTooltipDelete,
+        onPressed: onTap,
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+        style: IconButton.styleFrom(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: Icon(
+          Icons.cancel_rounded,
+          size: 20,
+          color: theme.colorScheme.error.withValues(alpha: 0.9),
+          shadows: <Shadow>[
+            Shadow(blurRadius: 4, color: context.appColors.shadow),
+          ],
         ),
       ),
     );

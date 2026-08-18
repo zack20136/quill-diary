@@ -408,6 +408,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorTooltipEdit => '編輯';
 
   @override
+  String editorAttachmentImagesLabel(int count) {
+    return '圖片 $count';
+  }
+
+  @override
+  String editorAttachmentFilesLabel(int count) {
+    return '附件 $count';
+  }
+
+  @override
+  String get editorAttachmentPendingLabel => '新增';
+
+  @override
+  String get editorAttachmentDragTooltip => '長按拖曳以調整順序';
+
+  @override
   String get editorRestoreDraftTitle => '發現未完成的草稿';
 
   @override

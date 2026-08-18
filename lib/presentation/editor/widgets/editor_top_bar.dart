@@ -4,9 +4,10 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 abstract final class _EditorChromeMetrics {
   static const double iconSize = 26;
-  static const double buttonSize = 40;
-  static const double toolbarHeight = 40;
+  static const double compactButtonSize = 44;
+  static const double toolbarHeight = 44;
   static const double toolbarIconGap = 8;
+  static const double wideToolbarBreakpoint = 720;
   static const EdgeInsets horizontalPadding = EdgeInsets.symmetric(
     horizontal: 4,
   );
@@ -22,6 +23,7 @@ class EditorTopBar extends StatelessWidget {
     required this.timestampLabel,
     required this.onClose,
     required this.onSave,
+    required this.onInvalidSave,
     required this.onDelete,
     required this.onEnterEditMode,
     this.bottomToolbar,
@@ -34,6 +36,7 @@ class EditorTopBar extends StatelessWidget {
   final String timestampLabel;
   final VoidCallback? onClose;
   final VoidCallback? onSave;
+  final VoidCallback? onInvalidSave;
   final VoidCallback? onDelete;
   final VoidCallback? onEnterEditMode;
   final Widget? bottomToolbar;
@@ -43,9 +46,6 @@ class EditorTopBar extends StatelessWidget {
     final ThemeData barTheme = Theme.of(context);
     final AppLocalizations l10n = context.l10n;
     final ColorScheme cs = barTheme.colorScheme;
-    final Color saveButtonColor = cs.primary;
-    final Color deleteButtonColor = cs.error;
-    final bool canSave = !saving && canSaveEntry;
 
     return SafeArea(
       bottom: false,
@@ -72,7 +72,7 @@ class EditorTopBar extends StatelessWidget {
                       child: Text(
                         timestampLabel,
                         style: barTheme.textTheme.titleSmall?.copyWith(
-                          color: barTheme.colorScheme.onSurfaceVariant,
+                          color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                         ),
@@ -94,27 +94,41 @@ class EditorTopBar extends StatelessWidget {
                       key: const Key('editor-top-bar-delete'),
                       tooltip: l10n.editorTooltipDelete,
                       onPressed: saving ? null : onDelete,
-                      foregroundColor: deleteButtonColor,
+                      foregroundColor: cs.error,
                       icon: Icons.delete_outline,
                     ),
                 ] else ...<Widget>[
                   _EditorChromeIconButton(
                     key: const Key('editor-top-bar-save'),
-                    tooltip: canSave
+                    tooltip: canSaveEntry
                         ? l10n.editorTooltipSave
                         : l10n.editorTooltipSaveNeedsEntry,
-                    onPressed: saving ? null : onSave,
-                    foregroundColor: canSave
-                        ? saveButtonColor
-                        : cs.onSurfaceVariant.withValues(alpha: 0.45),
+                    onPressed: saving
+                        ? null
+                        : canSaveEntry
+                        ? onSave
+                        : onInvalidSave,
+                    foregroundColor: canSaveEntry
+                        ? cs.primary
+                        : cs.onSurfaceVariant,
                     icon: Icons.save_outlined,
+                    iconWidget: saving
+                        ? SizedBox.square(
+                            key: const Key('editor-top-bar-saving'),
+                            dimension: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: cs.primary,
+                            ),
+                          )
+                        : null,
                   ),
                   if (canDelete)
                     _EditorChromeIconButton(
                       key: const Key('editor-top-bar-delete'),
                       tooltip: l10n.editorTooltipDelete,
                       onPressed: saving ? null : onDelete,
-                      foregroundColor: deleteButtonColor,
+                      foregroundColor: cs.error,
                       icon: Icons.delete_outline,
                     ),
                 ],
@@ -124,7 +138,7 @@ class EditorTopBar extends StatelessWidget {
               const SizedBox(height: 4),
               _EditorChromeDivider(
                 key: const Key('editor-chrome-toolbar-divider'),
-                colorScheme: barTheme.colorScheme,
+                colorScheme: cs,
               ),
               const SizedBox(height: 4),
               bottomToolbar!,
@@ -132,7 +146,7 @@ class EditorTopBar extends StatelessWidget {
             const SizedBox(height: 4),
             _EditorChromeDivider(
               key: const Key('editor-chrome-divider'),
-              colorScheme: barTheme.colorScheme,
+              colorScheme: cs,
             ),
           ],
         ),
@@ -164,56 +178,147 @@ class EditorActionToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final List<_EditorToolbarAction> actions = <_EditorToolbarAction>[
+      _EditorToolbarAction(
+        keyName: 'date',
+        label: l10n.editorTooltipDate,
+        icon: Icons.calendar_today_outlined,
+        onPressed: onPickDate,
+      ),
+      _EditorToolbarAction(
+        keyName: 'time',
+        label: l10n.editorTooltipTime,
+        icon: Icons.schedule_outlined,
+        onPressed: onPickTime,
+      ),
+      _EditorToolbarAction(
+        keyName: 'tags',
+        label: l10n.editorTooltipEditTags,
+        icon: Icons.sell_outlined,
+        onPressed: onEditTags,
+      ),
+      _EditorToolbarAction(
+        keyName: 'task',
+        label: l10n.editorTooltipInsertCheckbox,
+        icon: Icons.check_box_outlined,
+        onPressed: onInsertCheckbox,
+      ),
+      _EditorToolbarAction(
+        keyName: 'images',
+        label: l10n.editorTooltipUploadImages,
+        icon: Icons.image_outlined,
+        onPressed: onPickImage,
+      ),
+      _EditorToolbarAction(
+        keyName: 'attachment',
+        label: l10n.editorTooltipAddAttachment,
+        icon: Icons.attach_file,
+        onPressed: onPickFile,
+      ),
+    ];
 
     return SizedBox(
       key: const Key('editor-action-toolbar'),
       height: _EditorChromeMetrics.toolbarHeight,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          if (constraints.maxWidth >=
+              _EditorChromeMetrics.wideToolbarBreakpoint) {
+            return Row(
+              key: const Key('editor-action-toolbar-wide'),
+              children: <Widget>[
+                for (final _EditorToolbarAction action in actions)
+                  Expanded(
+                    child: _EditorChromeLabeledButton(
+                      action: action,
+                      onPressed: saving ? null : action.onPressed,
+                    ),
+                  ),
+              ],
+            );
+          }
+
+          final Widget compactRow = Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipDate,
-                onPressed: saving ? null : onPickDate,
-                icon: Icons.calendar_today_outlined,
-              ),
-              const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipTime,
-                onPressed: saving ? null : onPickTime,
-                icon: Icons.schedule_outlined,
-              ),
-              const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipEditTags,
-                onPressed: saving ? null : onEditTags,
-                icon: Icons.sell_outlined,
-              ),
-              const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipInsertCheckbox,
-                onPressed: saving ? null : onInsertCheckbox,
-                icon: Icons.check_box_outlined,
-              ),
-              const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipUploadImages,
-                onPressed: saving ? null : onPickImage,
-                icon: Icons.image_outlined,
-              ),
-              const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
-              _EditorChromeIconButton(
-                tooltip: l10n.editorTooltipAddAttachment,
-                onPressed: saving ? null : onPickFile,
-                icon: Icons.attach_file,
-              ),
+              for (int index = 0; index < actions.length; index++) ...<Widget>[
+                if (index > 0)
+                  const SizedBox(width: _EditorChromeMetrics.toolbarIconGap),
+                _EditorChromeIconButton(
+                  key: Key('editor-toolbar-${actions[index].keyName}'),
+                  tooltip: actions[index].label,
+                  onPressed: saving ? null : actions[index].onPressed,
+                  icon: actions[index].icon,
+                ),
+              ],
             ],
-          ),
-        ),
+          );
+          final double compactContentWidth =
+              actions.length * _EditorChromeMetrics.compactButtonSize +
+              (actions.length - 1) * _EditorChromeMetrics.toolbarIconGap;
+          final Widget scrollable = SingleChildScrollView(
+            key: const Key('editor-action-toolbar-compact'),
+            scrollDirection: Axis.horizontal,
+            child: compactRow,
+          );
+          if (constraints.maxWidth >= compactContentWidth) {
+            return Align(alignment: Alignment.centerLeft, child: scrollable);
+          }
+          return ShaderMask(
+            shaderCallback: (Rect bounds) => const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: <Color>[Colors.black, Colors.black, Colors.transparent],
+              stops: <double>[0, 0.9, 1],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: scrollable,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EditorToolbarAction {
+  const _EditorToolbarAction({
+    required this.keyName,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String keyName;
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+}
+
+class _EditorChromeLabeledButton extends StatelessWidget {
+  const _EditorChromeLabeledButton({
+    required this.action,
+    required this.onPressed,
+  });
+
+  final _EditorToolbarAction action;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      key: Key('editor-toolbar-${action.keyName}'),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, _EditorChromeMetrics.toolbarHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: Icon(action.icon, size: 21),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(action.label, maxLines: 1),
       ),
     );
   }
@@ -241,12 +346,14 @@ class _EditorChromeIconButton extends StatelessWidget {
     required this.onPressed,
     required this.icon,
     this.foregroundColor,
+    this.iconWidget,
   });
 
   final String tooltip;
   final VoidCallback? onPressed;
   final IconData icon;
   final Color? foregroundColor;
+  final Widget? iconWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -259,19 +366,16 @@ class _EditorChromeIconButton extends StatelessWidget {
             : cs.onSurfaceVariant.withValues(alpha: 0.38));
 
     return IconButton(
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
       tooltip: tooltip,
       onPressed: onPressed,
       style: IconButton.styleFrom(
-        fixedSize: const Size(
-          _EditorChromeMetrics.buttonSize,
-          _EditorChromeMetrics.buttonSize,
-        ),
+        fixedSize: const Size.square(_EditorChromeMetrics.compactButtonSize),
+        minimumSize: const Size.square(_EditorChromeMetrics.compactButtonSize),
+        padding: EdgeInsets.zero,
         foregroundColor: resolvedForeground,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      icon: Icon(icon, size: _EditorChromeMetrics.iconSize),
+      icon: iconWidget ?? Icon(icon, size: _EditorChromeMetrics.iconSize),
     );
   }
 }

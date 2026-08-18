@@ -181,6 +181,24 @@
   "editorTooltipInsertCheckbox": "插入任務項目",
   "editorTooltipDelete": "刪除",
   "editorTooltipEdit": "編輯",
+  "editorAttachmentImagesLabel": "圖片 {count}",
+  "@editorAttachmentImagesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorAttachmentFilesLabel": "附件 {count}",
+  "@editorAttachmentFilesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorAttachmentPendingLabel": "新增",
+  "editorAttachmentDragTooltip": "長按拖曳以調整順序",
   "editorRestoreDraftTitle": "發現未完成的草稿",
   "editorRestoreDraftDecline": "不使用",
   "editorRestoreDraftAccept": "還原草稿",

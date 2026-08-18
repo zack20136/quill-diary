@@ -181,6 +181,24 @@
   "editorTooltipInsertCheckbox": "Insert Task Item",
   "editorTooltipDelete": "Delete",
   "editorTooltipEdit": "Edit",
+  "editorAttachmentImagesLabel": "Images {count}",
+  "@editorAttachmentImagesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorAttachmentFilesLabel": "Attachments {count}",
+  "@editorAttachmentFilesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorAttachmentPendingLabel": "New",
+  "editorAttachmentDragTooltip": "Long-press and drag to reorder",
   "editorRestoreDraftTitle": "Unfinished Draft Found",
   "editorRestoreDraftDecline": "Ignore",
   "editorRestoreDraftAccept": "Restore Draft",

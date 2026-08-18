@@ -735,6 +735,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           onClose: () => unawaited(_requestClose()),
                           onSave: () =>
                               unawaited(_saveCurrentEntry(session, entry)),
+                          onInvalidSave: _notifyEntryRequired,
                           onDelete: () =>
                               unawaited(_deleteCurrentEntry(session)),
                           onEnterEditMode: _enterEditMode,
