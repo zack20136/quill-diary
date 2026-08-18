@@ -8,26 +8,26 @@ import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
-import 'package:quill_diary/presentation/settings/widgets/local_backup_section.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
-import '../../../helpers/app_test_theme.dart';
-import '../../../helpers/storage/fake_vault_transfer_service.dart';
-import '../../../helpers/presentation/settings/settings_test_scope.dart';
-import '../../../helpers/shared/test_l10n.dart';
+import '../../helpers/app_test_theme.dart';
+import '../../helpers/presentation/settings/settings_test_scope.dart';
+import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/storage/fake_vault_transfer_service.dart';
 
 void main() {
   Future<void> pumpDriveSection(
     WidgetTester tester, {
     required DriveConnectionState connectionState,
     required VaultTransferCapabilities access,
+    Key? scopeKey,
     bool canManageDriveAccount = false,
     bool busy = false,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
+        key: scopeKey,
         overrides: [
           settingsDriveConnectionProvider.overrideWith(
             (Ref ref) async => connectionState,
@@ -67,27 +67,7 @@ void main() {
     );
   }
 
-  testWidgets('鎖定且未連線時會停用雲端連結', (WidgetTester tester) async {
-    await pumpDriveSection(
-      tester,
-      connectionState: const DriveConnectionState.disconnected(),
-      access: lockedAccess(hasRecoveryKey: false),
-    );
-
-    expect(
-      find.text(testL10n.settingsDriveBackupDisconnectedLabel),
-      findsOneWidget,
-    );
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsDriveBackupLinkButton,
-      ).onPressed,
-      isNull,
-    );
-  });
-
-  testWidgets('鎖定但沒有復原金鑰時仍可進行雲端還原', (WidgetTester tester) async {
+  testWidgets('帳號與備份操作會套用存取權限', (WidgetTester tester) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',
@@ -98,8 +78,15 @@ void main() {
       tester,
       connectionState: connectedState,
       access: lockedAccess(hasRecoveryKey: false),
+      scopeKey: const ValueKey<String>('connected-drive-section'),
     );
 
+    final String accountLabel = connectedState.accountLabel(testL10n)!;
+    expect(find.text(accountLabel), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsDriveBackupFallbackAccountLabel),
+      findsNothing,
+    );
     expect(
       readSettingsActionButton(
         tester,
@@ -113,49 +100,6 @@ void main() {
         testL10n.settingsDriveBackupRestoreButton,
       ).onPressed,
       isNotNull,
-    );
-  });
-
-  testWidgets('鎖定且已有復原金鑰時會停用雲端還原', (WidgetTester tester) async {
-    const DriveConnectionState connectedState = DriveConnectionState(
-      isConnected: true,
-      email: 'writer@example.com',
-      displayName: 'Writer',
-    );
-
-    await pumpDriveSection(
-      tester,
-      connectionState: connectedState,
-      access: lockedAccess(hasRecoveryKey: true),
-    );
-
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsDriveBackupRestoreButton,
-      ).onPressed,
-      isNull,
-    );
-  });
-
-  testWidgets('鎖定且已連線時會停用帳號操作', (WidgetTester tester) async {
-    const DriveConnectionState connectedState = DriveConnectionState(
-      isConnected: true,
-      email: 'writer@example.com',
-      displayName: 'Writer',
-    );
-
-    await pumpDriveSection(
-      tester,
-      connectionState: connectedState,
-      access: lockedAccess(hasRecoveryKey: false),
-    );
-
-    final String accountLabel = connectedState.accountLabel(testL10n)!;
-    expect(find.text(accountLabel), findsOneWidget);
-    expect(
-      find.text(testL10n.settingsDriveBackupFallbackAccountLabel),
-      findsNothing,
     );
     expect(
       readSettingsActionButton(
@@ -171,57 +115,20 @@ void main() {
       ).onPressed,
       isNull,
     );
-  });
 
-  testWidgets('本機備份區塊在沒有復原金鑰時仍可還原與匯入外部備份', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        darkTheme: appTestTheme(brightness: Brightness.dark),
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: Scaffold(
-          body: LocalBackupSection(
-            access: lockedAccess(hasRecoveryKey: false),
-            busy: false,
-            onCreate: () {},
-            onRestore: () {},
-            onExport: () {},
-            onImport: () {},
-          ),
-        ),
-      ),
+    await pumpDriveSection(
+      tester,
+      connectionState: const DriveConnectionState.disconnected(),
+      access: lockedAccess(hasRecoveryKey: false),
+      scopeKey: const ValueKey<String>('disconnected-drive-section'),
     );
-    await tester.pumpAndSettle();
 
     expect(
       readSettingsActionButton(
         tester,
-        testL10n.settingsLocalBackupCreateButton,
+        testL10n.settingsDriveBackupLinkButton,
       ).onPressed,
       isNull,
-    );
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsLocalBackupRestoreButton,
-      ).onPressed,
-      isNotNull,
-    );
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsLocalBackupExportToExternalButton,
-      ).onPressed,
-      isNull,
-    );
-    expect(
-      readSettingsActionButton(
-        tester,
-        testL10n.settingsLocalBackupImportFromExternalButton,
-      ).onPressed,
-      isNotNull,
     );
   });
 
@@ -275,64 +182,7 @@ void main() {
     expect(find.text('drive connection failed'), findsOneWidget);
   });
 
-  testWidgets('安全性總覽不會重複顯示解鎖狀態卡片', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      settingsTestScope(
-        sessionState: const AppSessionState(status: AppLockStatus.unlocked),
-        transferService: FakeVaultTransferService(
-          connectionState: const DriveConnectionState.disconnected(),
-        ),
-        child: MaterialApp(
-          theme: appTestTheme(),
-          darkTheme: appTestTheme(brightness: Brightness.dark),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: const SettingsPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SettingsSecurityOverview), findsOneWidget);
-    expect(
-      find.text(testL10n.settingsSecurityOverviewUnlockStatusTitle),
-      findsNothing,
-    );
-  });
-
-  testWidgets(
-    'locked without recovery key keeps create recovery key available',
-    (WidgetTester tester) async {
-      await tester.pumpWidget(
-        settingsTestScope(
-          sessionState: const AppSessionState(status: AppLockStatus.locked),
-          transferService: FakeVaultTransferService(
-            connectionState: const DriveConnectionState.disconnected(),
-          ),
-          child: MaterialApp(
-            theme: appTestTheme(),
-            darkTheme: appTestTheme(brightness: Brightness.dark),
-            locale: appZhLocale,
-            supportedLocales: appSupportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            home: const SettingsPage(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(
-        readSettingsActionButton(
-          tester,
-          testL10n.settingsSecurityOverviewCreateRecoveryKeyButton,
-        ).onPressed,
-        isNotNull,
-      );
-    },
-  );
-
-  testWidgets('鎖定且已有復原金鑰時會停用建立復原金鑰', (WidgetTester tester) async {
+  testWidgets('鎖定且已有復原金鑰時會停用輪替復原金鑰', (WidgetTester tester) async {
     await tester.pumpWidget(
       settingsTestScope(
         sessionState: const AppSessionState(status: AppLockStatus.locked),

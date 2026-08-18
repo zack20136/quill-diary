@@ -106,6 +106,11 @@ void main() {
       tester,
       find.text(testL10n.settingsLegalSourceCodeTitle),
     );
+    expect(find.text(testL10n.settingsLegalSectionTitle), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsLegalSourceCodeTitle),
+      findsOneWidget,
+    );
     await tester.tap(find.text(testL10n.settingsLegalSourceCodeTitle));
     await tester.pumpAndSettle();
 

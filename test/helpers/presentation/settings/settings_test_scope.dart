@@ -7,7 +7,6 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -26,7 +25,6 @@ import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
-import '../../app_test_theme.dart';
 import '../../session/fake_session_vault_repository.dart';
 import '../../storage/fake_vault_transfer_service.dart';
 import '../../vault/test_vault_path_strategy.dart';
@@ -230,30 +228,6 @@ Widget settingsTestScope({
   );
 }
 
-Future<void> pumpSettingsPage(
-  WidgetTester tester, {
-  required DriveConnectionState connectionState,
-  required AppSessionState sessionState,
-  required FakeVaultTransferService transferService,
-  RecoveryMetadata? recoveryMetadata,
-}) async {
-  await tester.pumpWidget(
-    settingsTestScope(
-      driveConnectionState: connectionState,
-      sessionState: sessionState,
-      transferService: transferService,
-      recoveryMetadata: recoveryMetadata,
-      child: MaterialApp(
-        theme: appTestTheme(),
-        darkTheme: appTestTheme(brightness: Brightness.dark),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: SettingsPage(),
-      ),
-    ),
-  );
-}
-
 Finder settingsActionButton(String label) {
   return find.byWidgetPredicate(
     (Widget widget) => widget is SettingsActionButton && widget.label == label,
@@ -279,13 +253,4 @@ Future<void> scrollSettingsPageUntilVisible(
     );
     await tester.pumpAndSettle();
   }
-}
-
-Future<File> createTempBackupFile(
-  Directory tempDir, {
-  String name = 'drive-backup.zip',
-}) async {
-  final File file = File('${tempDir.path}/$name');
-  await file.writeAsString('backup');
-  return file;
 }
