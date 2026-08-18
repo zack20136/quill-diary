@@ -15,7 +15,9 @@ class FakeEditorActions implements EditorActionPort {
     this.draft,
     List<AssetAttachment>? attachments,
     this.materializedPreviewPath,
-  }) : attachments = attachments ?? defaultAttachments;
+  }) : attachments = List<AssetAttachment>.from(
+         attachments ?? defaultAttachments,
+       );
 
   static final DiaryEntry defaultEntry = DiaryEntry(
     id: 'entry-1',
@@ -63,12 +65,17 @@ class FakeEditorActions implements EditorActionPort {
   int saveEntryCallCount = 0;
   DiaryEntry? savedEntryDraft;
   EditorDraftRecord? writtenDraft;
+  final List<({DateOnly date, AssetId assetId})> assetPathRequests =
+      <({DateOnly date, AssetId assetId})>[];
 
   @override
   Future<String> assetAbsolutePath({
     required DateOnly date,
     required AssetAttachment attachment,
-  }) async => 'C:/vault/${attachment.id}';
+  }) async {
+    assetPathRequests.add((date: date, assetId: attachment.id));
+    return 'C:/vault/${attachment.id}';
+  }
 
   @override
   Future<void> clearAllMaterializedPendingFiles() async {}

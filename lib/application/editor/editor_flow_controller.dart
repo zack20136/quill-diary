@@ -339,12 +339,12 @@ class EditorFlowController {
   }
 
   Future<String> assetEncryptedPath({
-    required String dateValue,
+    required String savedAttachmentDateValue,
     required AssetAttachment attachment,
   }) async {
     DateOnly date;
     try {
-      date = DateOnly.parse(dateValue.trim());
+      date = DateOnly.parse(savedAttachmentDateValue.trim());
     } catch (_) {
       date = DateOnly.fromDateTime(DateTime.now());
     }
@@ -352,7 +352,7 @@ class EditorFlowController {
   }
 
   Future<PreparedEditorGallery> preparePreviewGalleryItems({
-    required String dateValue,
+    required String savedAttachmentDateValue,
     required List<EditorAttachmentItem> images,
     required int initialIndex,
   }) async {
@@ -361,7 +361,7 @@ class EditorFlowController {
       switch (item) {
         case SavedEditorAttachmentItem(:final attachment):
           final String path = await assetEncryptedPath(
-            dateValue: dateValue,
+            savedAttachmentDateValue: savedAttachmentDateValue,
             attachment: attachment,
           );
           if (path.trim().isEmpty) {

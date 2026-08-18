@@ -13,6 +13,7 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
@@ -167,113 +168,28 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
 
   Future<void> _pickBirthday() async {
     final DateTime now = DateTime.now();
-    int selectedMonth = _birthday?.month ?? now.month;
-    int selectedDay = _birthday?.day ?? now.day;
-    final PersonBirthday? picked = await showDialog<PersonBirthday>(
+    final AppMonthDay? picked = await showAppMonthDayPickerDialog(
       context: context,
-      builder: (BuildContext dialogContext) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setDialogState) {
-          final int daysInMonth = DateTime(2000, selectedMonth + 1, 0).day;
-          return AlertDialog(
-            title: Text(context.l10n.peoplePickBirthday),
-            content: Row(
-              children: <Widget>[
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    initialValue: selectedMonth,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.peopleBirthdayMonth,
-                    ),
-                    items: <DropdownMenuItem<int>>[
-                      for (int month = 1; month <= 12; month++)
-                        DropdownMenuItem<int>(
-                          value: month,
-                          child: Text(
-                            context.l10n.peopleBirthdayMonthOption(month),
-                          ),
-                        ),
-                    ],
-                    onChanged: (int? month) {
-                      if (month == null) {
-                        return;
-                      }
-                      setDialogState(() {
-                        selectedMonth = month;
-                        final int maxDay = DateTime(2000, month + 1, 0).day;
-                        selectedDay = selectedDay.clamp(1, maxDay);
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    key: ValueKey<String>(
-                      'birthday-day-$selectedMonth-$selectedDay',
-                    ),
-                    initialValue: selectedDay,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.peopleBirthdayDay,
-                    ),
-                    items: <DropdownMenuItem<int>>[
-                      for (int day = 1; day <= daysInMonth; day++)
-                        DropdownMenuItem<int>(
-                          value: day,
-                          child: Text(
-                            context.l10n.peopleBirthdayDayOption(day),
-                          ),
-                        ),
-                    ],
-                    onChanged: (int? day) {
-                      if (day != null) {
-                        setDialogState(() => selectedDay = day);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(context.l10n.commonActionCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(
-                  dialogContext,
-                  PersonBirthday(month: selectedMonth, day: selectedDay),
-                ),
-                child: Text(context.l10n.commonActionApply),
-              ),
-            ],
-          );
-        },
-      ),
+      initialMonth: _birthday?.month ?? now.month,
+      initialDay: _birthday?.day ?? now.day,
+      title: context.l10n.peoplePickBirthday,
     );
     if (picked != null && mounted) {
-      setState(() => _birthday = picked);
+      setState(() {
+        _birthday = PersonBirthday(month: picked.month, day: picked.day);
+      });
     }
   }
 
   Future<void> _pickAcquaintanceYear() async {
     final DateTime now = DateTime.now();
     final int initialYear = _acquaintanceYear ?? now.year;
-    final int? pickedYear = await showDialog<int>(
+    final int? pickedYear = await showAppYearPickerDialog(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(context.l10n.peopleFieldAcquaintanceYear),
-        content: SizedBox(
-          width: 320,
-          height: 320,
-          child: YearPicker(
-            firstDate: DateTime(1),
-            lastDate: DateTime(now.year),
-            selectedDate: DateTime(initialYear),
-            onChanged: (DateTime value) =>
-                Navigator.pop(dialogContext, value.year),
-          ),
-        ),
-      ),
+      initialYear: initialYear,
+      firstYear: 1900,
+      lastYear: now.year,
+      title: context.l10n.peopleFieldAcquaintanceYear,
     );
     if (pickedYear == null || !mounted) {
       return;

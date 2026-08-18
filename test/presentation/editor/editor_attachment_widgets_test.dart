@@ -116,6 +116,65 @@ void main() {
     return actions;
   }
 
+  testWidgets('編輯器套用日期後更新欄位並寫入草稿', (tester) async {
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+    final int writesBeforePicking = actions.writeDraftCount;
+
+    await tester.tap(find.byKey(const Key('editor-toolbar-date')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('app-date-picker-day-view')), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-day-19')),
+    );
+    await tester.tap(find.byKey(const Key('app-date-picker-apply')));
+    await tester.pumpAndSettle();
+
+    expect(actions.writeDraftCount, greaterThan(writesBeforePicking));
+    expect(actions.writtenDraft?.dateValue, '2026-06-19');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('修改日記年份後既有圖片仍從已儲存日期載入', (tester) async {
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+    expect(
+      actions.assetPathRequests.any(
+        (request) => request.date.value == '2026-06-18',
+      ),
+      isTrue,
+    );
+    actions.assetPathRequests.clear();
+
+    await tester.tap(find.byKey(const Key('editor-toolbar-date')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('app-date-picker-period-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('app-date-picker-year-chooser')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-year-2025')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-month-6')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('app-date-picker-apply')));
+    await tester.pumpAndSettle();
+
+    expect(actions.writtenDraft?.dateValue, '2025-06-18');
+    expect(actions.assetPathRequests, isEmpty);
+    expect(
+      find.byKey(const ValueKey<String>('editor-image-image-1')),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
   testWidgets('編輯頁將新圖片拖到舊圖片前方後重建與草稿皆維持順序', (tester) async {
     final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
 

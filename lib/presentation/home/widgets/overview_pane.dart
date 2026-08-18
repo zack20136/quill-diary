@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/diary/diary_date_policy.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
@@ -385,107 +387,103 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                   ),
                           ),
                           peopleTopAsync.when(
-                              data: (List<OverviewPersonRankItem> people) {
-                                if (people.isEmpty) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    const SizedBox(
-                                      height: HomeLayout.sectionGap,
-                                    ),
-                                    HomeSectionCard(
-                                      title:
-                                          context.l10n.homePopularPeopleTitle,
-                                      stripeColor: cs.primary,
-                                      child: Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: people.map((
-                                          OverviewPersonRankItem item,
-                                        ) {
-                                          final (
-                                            Color chipBg,
-                                            Color chipFg,
-                                          ) = personLabelColorPair(
-                                            item.person,
-                                            context.appColors.sectionInset,
-                                          );
-                                          return FilterChip(
-                                            label: Text(
-                                              '${item.person.name} ${item.mentionCount}',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .labelMedium
-                                                  ?.copyWith(
-                                                    color: chipFg,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                            ),
-                                            selected: false,
-                                            showCheckmark: false,
-                                            backgroundColor: chipBg,
-                                            selectedColor: chipBg,
-                                            side: tagBorderSide(
-                                              context.appColors,
-                                              cs,
-                                              chipBg,
-                                              chipFg,
-                                              width: 0.92,
-                                              accentBorderAlpha:
-                                                  kAccentBorderAlpha,
-                                            ),
-                                            onSelected: (_) => unawaited(
-                                              context.push(
-                                                AppRouter.personDetailLocation(
-                                                  item.person.id,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                              loading: () => const SizedBox.shrink(),
-                              error: (Object error, StackTrace _) => Column(
+                            data: (List<OverviewPersonRankItem> people) {
+                              if (people.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: <Widget>[
                                   const SizedBox(height: HomeLayout.sectionGap),
                                   HomeSectionCard(
                                     title: context.l10n.homePopularPeopleTitle,
                                     stripeColor: cs.primary,
-                                    child: Row(
-                                      children: <Widget>[
-                                        Expanded(
-                                          child: Text(
-                                            userFacingErrorMessage(
-                                              error,
-                                              l10n: context.l10n,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: people.map((
+                                        OverviewPersonRankItem item,
+                                      ) {
+                                        final (
+                                          Color chipBg,
+                                          Color chipFg,
+                                        ) = personLabelColorPair(
+                                          item.person,
+                                          context.appColors.sectionInset,
+                                        );
+                                        return FilterChip(
+                                          label: Text(
+                                            '${item.person.name} ${item.mentionCount}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium
+                                                ?.copyWith(
+                                                  color: chipFg,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                          ),
+                                          selected: false,
+                                          showCheckmark: false,
+                                          backgroundColor: chipBg,
+                                          selectedColor: chipBg,
+                                          side: tagBorderSide(
+                                            context.appColors,
+                                            cs,
+                                            chipBg,
+                                            chipFg,
+                                            width: 0.92,
+                                            accentBorderAlpha:
+                                                kAccentBorderAlpha,
+                                          ),
+                                          onSelected: (_) => unawaited(
+                                            context.push(
+                                              AppRouter.personDetailLocation(
+                                                item.person.id,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        TextButton(
-                                          onPressed: () => ref.invalidate(
-                                            overviewPeopleTop5Provider(
-                                              peopleTopKey,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            context.l10n.peopleAnalysisRetry,
-                                          ),
-                                        ),
-                                      ],
+                                        );
+                                      }).toList(),
                                     ),
                                   ),
                                 ],
-                              ),
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (Object error, StackTrace _) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                const SizedBox(height: HomeLayout.sectionGap),
+                                HomeSectionCard(
+                                  title: context.l10n.homePopularPeopleTitle,
+                                  stripeColor: cs.primary,
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Text(
+                                          userFacingErrorMessage(
+                                            error,
+                                            l10n: context.l10n,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      TextButton(
+                                        onPressed: () => ref.invalidate(
+                                          overviewPeopleTop5Provider(
+                                            peopleTopKey,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          context.l10n.peopleAnalysisRetry,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -708,6 +706,61 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
             final int? maxYear = years.isEmpty ? null : years.last;
             final ThemeData theme = Theme.of(context);
             final ColorScheme cs = theme.colorScheme;
+            Future<void> pickFocusedPeriod() async {
+              if (scope == MemoryScope.month) {
+                final ({DateTime first, DateTime last}) policyRange =
+                    DiaryDatePolicy.selectableRange();
+                DateTime firstMonth = DateTime(
+                  policyRange.first.year,
+                  policyRange.first.month,
+                );
+                DateTime lastMonth = DateTime(
+                  policyRange.last.year,
+                  policyRange.last.month,
+                );
+                if (minYear != null && minYear < firstMonth.year) {
+                  firstMonth = DateTime(minYear);
+                }
+                if (maxYear != null && maxYear > lastMonth.year) {
+                  lastMonth = DateTime(maxYear, DateTime.december);
+                }
+                if (focusedMonth.isBefore(firstMonth)) {
+                  firstMonth = DateTime(focusedMonth.year, focusedMonth.month);
+                }
+                if (focusedMonth.isAfter(lastMonth)) {
+                  lastMonth = DateTime(focusedMonth.year, focusedMonth.month);
+                }
+                final DateTime? picked = await showAppYearMonthPickerDialog(
+                  context: context,
+                  initialMonth: focusedMonth,
+                  firstMonth: firstMonth,
+                  lastMonth: lastMonth,
+                );
+                if (picked != null && context.mounted) {
+                  ref.read(memoryFocusedMonthProvider.notifier).set(picked);
+                }
+                return;
+              }
+              if (minYear == null || maxYear == null) {
+                return;
+              }
+              final int firstYear = focusedYear < minYear
+                  ? focusedYear
+                  : minYear;
+              final int lastYear = focusedYear > maxYear
+                  ? focusedYear
+                  : maxYear;
+              final int? picked = await showAppYearPickerDialog(
+                context: context,
+                initialYear: focusedYear,
+                firstYear: firstYear,
+                lastYear: lastYear,
+              );
+              if (picked != null && context.mounted) {
+                ref.read(memoryFocusedYearProvider.notifier).set(picked);
+              }
+            }
+
             return Material(
               color: Color.alphaBlend(
                 cs.secondary.withValues(alpha: 0.06),
@@ -728,6 +781,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                   child: Row(
                     children: <Widget>[
                       IconButton(
+                        key: const Key('overview-period-previous'),
                         onPressed: scope == MemoryScope.month
                             ? () => ref
                                   .read(memoryFocusedMonthProvider.notifier)
@@ -749,24 +803,48 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                       ),
                       Expanded(
                         child: Center(
-                          child: Text(
-                            scope == MemoryScope.month
-                                ? DisplayFormat.formatYearMonth(
-                                    context.l10n,
-                                    focusedMonth.year,
-                                    focusedMonth.month,
-                                  )
-                                : DisplayFormat.formatYear(
-                                    context.l10n,
-                                    focusedYear,
+                          child: TextButton(
+                            key: const Key('overview-focused-period-button'),
+                            onPressed:
+                                scope == MemoryScope.month || years.isNotEmpty
+                                ? () => unawaited(pickFocusedPeriod())
+                                : null,
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size.fromHeight(44),
+                              foregroundColor: cs.onSurface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Flexible(
+                                  child: Text(
+                                    scope == MemoryScope.month
+                                        ? DisplayFormat.formatYearMonth(
+                                            context.l10n,
+                                            focusedMonth.year,
+                                            focusedMonth.month,
+                                          )
+                                        : DisplayFormat.formatYear(
+                                            context.l10n,
+                                            focusedYear,
+                                          ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
                                   ),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(Icons.arrow_drop_down, size: 20),
+                              ],
                             ),
                           ),
                         ),
                       ),
                       IconButton(
+                        key: const Key('overview-period-next'),
                         onPressed: scope == MemoryScope.month
                             ? () => ref
                                   .read(memoryFocusedMonthProvider.notifier)

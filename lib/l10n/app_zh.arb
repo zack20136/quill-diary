@@ -391,16 +391,6 @@
   "peopleRelatedEntriesEmpty": "尚無相關日記",
   "peoplePickBirthday": "選擇生日",
   "peopleClearBirthday": "清除生日",
-  "peopleBirthdayMonth": "月份",
-  "peopleBirthdayDay": "日期",
-  "peopleBirthdayMonthOption": "{month} 月",
-  "@peopleBirthdayMonthOption": {
-    "placeholders": {"month": {"type": "int"}}
-  },
-  "peopleBirthdayDayOption": "{day} 日",
-  "@peopleBirthdayDayOption": {
-    "placeholders": {"day": {"type": "int"}}
-  },
   "peopleClearAcquaintanceYear": "清除認識年份",
   "editorMentionEmptyCatalog": "尚無名冊人物。請到人物分頁建立。",
   "editorMentionNoMatches": "找不到符合的人物",
@@ -674,6 +664,31 @@
     }
   },
   "homeCalendarMonthFormatLabel": "月",
+  "datePickerChooseDate": "選擇日期",
+  "datePickerChooseYearMonth": "選擇年月",
+  "datePickerChooseYear": "選擇年份",
+  "datePickerYearLabel": "年份",
+  "datePickerMonthLabel": "月份",
+  "datePickerDayLabel": "日期",
+  "datePickerPreviousYear": "上一年",
+  "datePickerNextYear": "下一年",
+  "datePickerPreviousMonth": "上個月",
+  "datePickerNextMonth": "下個月",
+  "datePickerMonthOption": "{month} 月",
+  "@datePickerMonthOption": {
+    "placeholders": {"month": {"type": "int"}}
+  },
+  "datePickerDayOption": "{day} 日",
+  "@datePickerDayOption": {
+    "placeholders": {"day": {"type": "int"}}
+  },
+  "datePickerWeekdaySun": "日",
+  "datePickerWeekdayMon": "一",
+  "datePickerWeekdayTue": "二",
+  "datePickerWeekdayWed": "三",
+  "datePickerWeekdayThu": "四",
+  "datePickerWeekdayFri": "五",
+  "datePickerWeekdaySat": "六",
   "homeCalendarEntryCount": "{count} 篇日記",
   "@homeCalendarEntryCount": {
     "placeholders": {"count": {"type": "int"}}

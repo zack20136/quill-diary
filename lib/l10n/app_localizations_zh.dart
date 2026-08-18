@@ -771,22 +771,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleClearBirthday => '清除生日';
 
   @override
-  String get peopleBirthdayMonth => '月份';
-
-  @override
-  String get peopleBirthdayDay => '日期';
-
-  @override
-  String peopleBirthdayMonthOption(int month) {
-    return '$month 月';
-  }
-
-  @override
-  String peopleBirthdayDayOption(int day) {
-    return '$day 日';
-  }
-
-  @override
   String get peopleClearAcquaintanceYear => '清除認識年份';
 
   @override
@@ -1088,6 +1072,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeCalendarMonthFormatLabel => '月';
+
+  @override
+  String get datePickerChooseDate => '選擇日期';
+
+  @override
+  String get datePickerChooseYearMonth => '選擇年月';
+
+  @override
+  String get datePickerChooseYear => '選擇年份';
+
+  @override
+  String get datePickerYearLabel => '年份';
+
+  @override
+  String get datePickerMonthLabel => '月份';
+
+  @override
+  String get datePickerDayLabel => '日期';
+
+  @override
+  String get datePickerPreviousYear => '上一年';
+
+  @override
+  String get datePickerNextYear => '下一年';
+
+  @override
+  String get datePickerPreviousMonth => '上個月';
+
+  @override
+  String get datePickerNextMonth => '下個月';
+
+  @override
+  String datePickerMonthOption(int month) {
+    return '$month 月';
+  }
+
+  @override
+  String datePickerDayOption(int day) {
+    return '$day 日';
+  }
+
+  @override
+  String get datePickerWeekdaySun => '日';
+
+  @override
+  String get datePickerWeekdayMon => '一';
+
+  @override
+  String get datePickerWeekdayTue => '二';
+
+  @override
+  String get datePickerWeekdayWed => '三';
+
+  @override
+  String get datePickerWeekdayThu => '四';
+
+  @override
+  String get datePickerWeekdayFri => '五';
+
+  @override
+  String get datePickerWeekdaySat => '六';
 
   @override
   String homeCalendarEntryCount(int count) {

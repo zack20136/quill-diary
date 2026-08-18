@@ -252,9 +252,12 @@ void main() {
     await tester.tap(birthdayField);
     await tester.pumpAndSettle();
     expect(find.text('選擇生日'), findsOneWidget);
-    expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
-    expect(find.text('月份'), findsOneWidget);
-    expect(find.text('日期'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<int>), findsNothing);
+    expect(find.byKey(const Key('app-date-picker-day-view')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('app-date-picker-period-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('app-date-picker-month-view')), findsOneWidget);
+    expect(find.byKey(const ValueKey('app-date-picker-month-12')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -271,6 +274,68 @@ void main() {
       lessThanOrEqualTo(560),
     );
     expect(find.byType(Divider), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('生日與認識年份可套用並清除', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_testApp());
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+
+    Finder fieldFor(String label) => find.ancestor(
+      of: find.text(label),
+      matching: find.byType(InkWell),
+    );
+
+    await tester.tap(fieldFor('生日'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('app-date-picker-period-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-month-12')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-day-31')),
+    );
+    await tester.tap(find.byKey(const Key('app-date-picker-apply')));
+    await tester.pumpAndSettle();
+    expect(find.text('12月31日'), findsOneWidget);
+
+    await tester.tap(fieldFor('認識年份'));
+    await tester.pumpAndSettle();
+    final GridView yearGrid = tester.widget<GridView>(
+      find.byKey(const Key('app-date-picker-year-grid')),
+    );
+    yearGrid.controller!.jumpTo(0);
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey<String>('app-date-picker-year-1900')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('app-date-picker-year-1899')),
+      findsNothing,
+    );
+    yearGrid.controller!.jumpTo(yearGrid.controller!.position.maxScrollExtent);
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('app-date-picker-year-2024')),
+    );
+    await tester.tap(find.byKey(const Key('app-date-picker-apply')));
+    await tester.pumpAndSettle();
+    expect(find.text('2024年'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('清除生日'));
+    await tester.tap(find.byTooltip('清除認識年份'));
+    await tester.pumpAndSettle();
+    expect(find.text('12月31日'), findsNothing);
+    expect(find.text('2024年'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

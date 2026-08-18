@@ -6,6 +6,7 @@ import '../../../../domain/shared/value_objects.dart';
 import '../../../../domain/diary/diary_date_policy.dart';
 import '../../../../infrastructure/database/index_database.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../shared/presentation/date_picker/app_date_picker_dialog.dart';
 import '../../../../shared/presentation/display_format.dart';
 import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/page_style.dart';
@@ -100,6 +101,30 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
       rowHeight: rowHeight,
       tagAccents: tagAccents,
     );
+  }
+
+  Future<void> _chooseVisibleMonth({
+    required DateTime visibleMonth,
+    required DateOnly selectedDate,
+    required DateTime firstMonth,
+    required DateTime lastMonth,
+  }) async {
+    final DateTime? picked = await showAppYearMonthPickerDialog(
+      context: context,
+      initialMonth: visibleMonth,
+      firstMonth: firstMonth,
+      lastMonth: lastMonth,
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    ref
+        .read(calendarVisibleMonthProvider.notifier)
+        .set(DateTime(picked.year, picked.month));
+    ref
+        .read(calendarSelectedDateProvider.notifier)
+        .set(calendarSelectedDateForMonth(selectedDate, picked));
   }
 
   @override
@@ -370,6 +395,73 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                     },
                                 eventLoader: (_) => const <Object>[],
                                 calendarBuilders: CalendarBuilders<Object>(
+                                  headerTitleBuilder:
+                                      (BuildContext context, DateTime month) {
+                                        return Tooltip(
+                                          message: context
+                                              .l10n
+                                              .datePickerChooseYearMonth,
+                                          child: Material(
+                                            type: MaterialType.transparency,
+                                            child: InkWell(
+                                              key: const Key(
+                                                'calendar-month-title-button',
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              onTap: () => _chooseVisibleMonth(
+                                                visibleMonth: month,
+                                                selectedDate: selectedDate,
+                                                firstMonth: DateTime(
+                                                  firstCalendarDay.year,
+                                                  firstCalendarDay.month,
+                                                ),
+                                                lastMonth: DateTime(
+                                                  lastCalendarDay.year,
+                                                  lastCalendarDay.month,
+                                                ),
+                                              ),
+                                              child: SizedBox(
+                                                height: 44,
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: <Widget>[
+                                                    Text(
+                                                      calendarMonthTitle(
+                                                        context.l10n,
+                                                        month,
+                                                      ),
+                                                      style:
+                                                          theme
+                                                              .textTheme
+                                                              .titleMedium
+                                                              ?.copyWith(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                              ) ??
+                                                          const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(width: 2),
+                                                    Icon(
+                                                      Icons.arrow_drop_down,
+                                                      size: 20,
+                                                      color:
+                                                          cs.onSurfaceVariant,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
                                   dowBuilder:
                                       (BuildContext context, DateTime day) {
                                         final bool isSun = calendarIsSunday(

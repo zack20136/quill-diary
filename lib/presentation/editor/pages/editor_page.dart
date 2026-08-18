@@ -21,6 +21,7 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
@@ -105,6 +106,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   EditorDraftSnapshot? _lastPersistedDraftSnapshot;
   UnlockedVaultSession? _activeSession;
   DiaryEntry? _activeEntry;
+  DateOnly? _persistedEntryDate;
   EntryId? _provisionalEntryId;
   DateTime? _draftCreatedAt;
 
@@ -135,7 +137,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _provisionalEntryId = widget.entryId ?? generateEntryId();
     _draftCreatedAt = DateTime.now();
-    _dateController.addListener(_clearSavedAssetEncryptedPathFutures);
     _tagsController.addListener(_onDraftChanged);
     _titleController.addListener(_onDraftChanged);
     _bodyController.addListener(_onBodyControllerChanged);
@@ -159,7 +160,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _sessionSubscription.close();
     _persistDraftBeforeDispose();
     _draftPersistQueued = false;
-    _dateController.removeListener(_clearSavedAssetEncryptedPathFutures);
     _dateController.removeListener(_onDraftChanged);
     _tagsController.removeListener(_onDraftChanged);
     _titleController.removeListener(_onDraftChanged);
@@ -501,6 +501,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       minute: entry.createdAt.minute,
     );
     _provisionalEntryId = entry.id;
+    _persistedEntryDate = entry.date;
     _draftCreatedAt = entry.createdAt;
     _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
     _showEntryRequiredHint = false;
@@ -609,6 +610,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _entryTime = TimeOfDay.now();
     _provisionalEntryId = widget.entryId ?? generateEntryId();
+    _persistedEntryDate = null;
     _draftCreatedAt = DateTime.now();
     if (mounted) {
       setState(() {});
@@ -1054,11 +1056,12 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     final ({DateTime first, DateTime last}) range =
         DiaryDatePolicy.selectableRange(includedDate: currentDate);
-    final DateTime? picked = await showDatePicker(
+    final DateTime? picked = await showAppDatePickerDialog(
       context: context,
       initialDate: anchor,
       firstDate: range.first,
       lastDate: range.last,
+      title: context.l10n.editorTooltipDate,
     );
     if (!mounted || picked == null) {
       return;
@@ -1267,6 +1270,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         _lastSavedSnapshot = editorDraftSnapshotFromEntry(saved);
         _lastPersistedDraftSnapshot = null;
         _provisionalEntryId = saved.id;
+        _persistedEntryDate = saved.date;
         _draftCreatedAt = saved.createdAt;
         _activeEntry = saved;
         _previewMode = result.switchToPreview;
@@ -1331,7 +1335,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }) async {
     final PreparedEditorGallery gallery = await _editorFlow
         .preparePreviewGalleryItems(
-          dateValue: _dateController.text,
+          savedAttachmentDateValue: _savedAttachmentDateValue,
           images: images,
           initialIndex: initialIndex,
         );
@@ -1348,18 +1352,14 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
   }
 
-  void _clearSavedAssetEncryptedPathFutures() {
-    if (_savedAssetPathFutures.isEmpty) {
-      return;
-    }
-    setState(_savedAssetPathFutures.clear);
-  }
+  String get _savedAttachmentDateValue =>
+      _persistedEntryDate?.value ?? _dateController.text;
 
   Future<String> _cachedEncryptedPathFuture(AssetAttachment attachment) {
     return _savedAssetPathFutures.putIfAbsent(
       attachment.id,
       () => _editorFlow.assetEncryptedPath(
-        dateValue: _dateController.text,
+        savedAttachmentDateValue: _savedAttachmentDateValue,
         attachment: attachment,
       ),
     );

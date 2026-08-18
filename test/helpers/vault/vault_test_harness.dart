@@ -25,6 +25,7 @@ class VaultTestHarness {
   static Future<VaultTestHarness> create({
     RecordingDeviceKeyManager? deviceKeyManager,
     FakeAppLockService? appLockService,
+    CryptoService? cryptoService,
   }) async {
     final VaultTestHarness harness = VaultTestHarness._();
     harness.tempDir = await Directory.systemTemp.createTemp('qld_vault_test_');
@@ -34,7 +35,7 @@ class VaultTestHarness {
     harness.repository = VaultRepository(
       pathStrategy: harness.pathStrategy,
       frontMatterCodec: const FrontMatterCodec(),
-      cryptoService: LocalCryptoService(),
+      cryptoService: cryptoService ?? LocalCryptoService(),
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
       deviceKeyManager: harness.deviceKeyManager,
       appLockService: harness.appLockService,

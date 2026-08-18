@@ -793,22 +793,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get peopleClearBirthday => 'Clear birthday';
 
   @override
-  String get peopleBirthdayMonth => 'Month';
-
-  @override
-  String get peopleBirthdayDay => 'Day';
-
-  @override
-  String peopleBirthdayMonthOption(int month) {
-    return 'Month $month';
-  }
-
-  @override
-  String peopleBirthdayDayOption(int day) {
-    return 'Day $day';
-  }
-
-  @override
   String get peopleClearAcquaintanceYear => 'Clear year met';
 
   @override
@@ -1115,6 +1099,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeCalendarMonthFormatLabel => 'Month';
+
+  @override
+  String get datePickerChooseDate => 'Choose date';
+
+  @override
+  String get datePickerChooseYearMonth => 'Choose year and month';
+
+  @override
+  String get datePickerChooseYear => 'Choose year';
+
+  @override
+  String get datePickerYearLabel => 'Year';
+
+  @override
+  String get datePickerMonthLabel => 'Month';
+
+  @override
+  String get datePickerDayLabel => 'Day';
+
+  @override
+  String get datePickerPreviousYear => 'Previous year';
+
+  @override
+  String get datePickerNextYear => 'Next year';
+
+  @override
+  String get datePickerPreviousMonth => 'Previous month';
+
+  @override
+  String get datePickerNextMonth => 'Next month';
+
+  @override
+  String datePickerMonthOption(int month) {
+    return 'Month $month';
+  }
+
+  @override
+  String datePickerDayOption(int day) {
+    return 'Day $day';
+  }
+
+  @override
+  String get datePickerWeekdaySun => 'Sun';
+
+  @override
+  String get datePickerWeekdayMon => 'Mon';
+
+  @override
+  String get datePickerWeekdayTue => 'Tue';
+
+  @override
+  String get datePickerWeekdayWed => 'Wed';
+
+  @override
+  String get datePickerWeekdayThu => 'Thu';
+
+  @override
+  String get datePickerWeekdayFri => 'Fri';
+
+  @override
+  String get datePickerWeekdaySat => 'Sat';
 
   @override
   String homeCalendarEntryCount(int count) {

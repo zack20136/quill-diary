@@ -391,16 +391,6 @@
   "peopleRelatedEntriesEmpty": "No related entries",
   "peoplePickBirthday": "Pick birthday",
   "peopleClearBirthday": "Clear birthday",
-  "peopleBirthdayMonth": "Month",
-  "peopleBirthdayDay": "Day",
-  "peopleBirthdayMonthOption": "Month {month}",
-  "@peopleBirthdayMonthOption": {
-    "placeholders": {"month": {"type": "int"}}
-  },
-  "peopleBirthdayDayOption": "Day {day}",
-  "@peopleBirthdayDayOption": {
-    "placeholders": {"day": {"type": "int"}}
-  },
   "peopleClearAcquaintanceYear": "Clear year met",
   "editorMentionEmptyCatalog": "No people yet. Add someone on the People tab.",
   "editorMentionNoMatches": "No matching people",
@@ -674,6 +664,31 @@
     }
   },
   "homeCalendarMonthFormatLabel": "Month",
+  "datePickerChooseDate": "Choose date",
+  "datePickerChooseYearMonth": "Choose year and month",
+  "datePickerChooseYear": "Choose year",
+  "datePickerYearLabel": "Year",
+  "datePickerMonthLabel": "Month",
+  "datePickerDayLabel": "Day",
+  "datePickerPreviousYear": "Previous year",
+  "datePickerNextYear": "Next year",
+  "datePickerPreviousMonth": "Previous month",
+  "datePickerNextMonth": "Next month",
+  "datePickerMonthOption": "Month {month}",
+  "@datePickerMonthOption": {
+    "placeholders": {"month": {"type": "int"}}
+  },
+  "datePickerDayOption": "Day {day}",
+  "@datePickerDayOption": {
+    "placeholders": {"day": {"type": "int"}}
+  },
+  "datePickerWeekdaySun": "Sun",
+  "datePickerWeekdayMon": "Mon",
+  "datePickerWeekdayTue": "Tue",
+  "datePickerWeekdayWed": "Wed",
+  "datePickerWeekdayThu": "Thu",
+  "datePickerWeekdayFri": "Fri",
+  "datePickerWeekdaySat": "Sat",
   "homeCalendarEntryCount": "{count, plural, =0 {0 entries} =1 {1 entry} other {{count} entries}}",
   "@homeCalendarEntryCount": {
     "placeholders": {"count": {"type": "int"}}

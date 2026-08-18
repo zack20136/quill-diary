@@ -1305,10 +1305,12 @@ class VaultRepository {
     final List<AssetAttachment> removedAttachments = existingFromDb
         .where((AssetAttachment a) => !keepExistingIds.contains(a.id))
         .toList(growable: false);
-    await _deleteAttachmentsOnDisk(
-      date: previousDate,
-      attachments: removedAttachments,
-    );
+    final Set<String> obsoletePathsAfterSave = <String>{};
+    for (final AssetAttachment attachment in removedAttachments) {
+      obsoletePathsAfterSave.add(
+        await _assetAbsolutePathFor(date: previousDate, attachment: attachment),
+      );
+    }
 
     final List<AssetAttachment> newAttachments = await _storePendingAttachments(
       entry: draft,
@@ -1360,11 +1362,14 @@ class VaultRepository {
           date: previousRecord.date,
           attachment: attachment,
         );
-        await _relocateAssetFileIfNeeded(
+        final bool copied = await _copyAssetFileIfNeeded(
           date: normalized.date,
           attachment: attachment,
           currentPath: oldPath,
         );
+        if (copied) {
+          obsoletePathsAfterSave.add(oldPath);
+        }
       }
     }
 
@@ -1389,7 +1394,7 @@ class VaultRepository {
     final Uint8List fileBytes = encryption.toFileBytes();
     await _atomicWriteBytes(File(filePath), fileBytes);
     if (previousRecord != null && previousRecord.filePath != filePath) {
-      await deleteFileIfExists(previousRecord.filePath);
+      obsoletePathsAfterSave.add(previousRecord.filePath);
     }
 
     final _EntrySearchFields searchFields = _buildEntrySearchFields(normalized);
@@ -1419,6 +1424,7 @@ class VaultRepository {
     );
     await _writeEncryptedManifest(session, metadata);
     await ensureTagCatalogLabels(normalized.tags);
+    await _deleteObsoleteFilesAfterSave(obsoletePathsAfterSave);
     return normalized;
   }
 
@@ -1975,6 +1981,27 @@ class VaultRepository {
     return true;
   }
 
+  Future<bool> _copyAssetFileIfNeeded({
+    required DateOnly date,
+    required AssetAttachment attachment,
+    required String currentPath,
+  }) async {
+    final String newPath = await _assetAbsolutePathFor(
+      date: date,
+      attachment: attachment,
+    );
+    if (p.normalize(currentPath) == p.normalize(newPath)) {
+      return false;
+    }
+    final File oldFile = File(currentPath);
+    if (!oldFile.existsSync()) {
+      return false;
+    }
+    await File(newPath).parent.create(recursive: true);
+    await oldFile.copy(newPath);
+    return true;
+  }
+
   DecryptionContext _decryptionContext(UnlockedVaultSession session) {
     return DecryptionContext(
       vaultId: session.vaultId,
@@ -2499,6 +2526,17 @@ class VaultRepository {
         attachment: attachment,
       );
       await deleteFileIfExists(assetPath);
+    }
+  }
+
+  Future<void> _deleteObsoleteFilesAfterSave(Iterable<String> paths) async {
+    // 儲存結果已可讀取後，舊檔清理失敗只會留下可修復的孤兒檔，不應把成功儲存回報為失敗。
+    for (final String path in paths) {
+      try {
+        await deleteFileIfExists(path);
+      } on FileSystemException {
+        continue;
+      }
     }
   }
 

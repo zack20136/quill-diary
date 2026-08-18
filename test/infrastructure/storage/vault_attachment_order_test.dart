@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
@@ -10,15 +14,25 @@ import '../../helpers/vault/vault_test_harness.dart';
 void main() {
   late VaultTestHarness harness;
   late RecoverySetupResult setup;
+  late _FailingMarkdownCryptoService cryptoService;
 
   setUp(() async {
-    harness = await VaultTestHarness.create();
+    cryptoService = _FailingMarkdownCryptoService();
+    harness = await VaultTestHarness.create(cryptoService: cryptoService);
     setup = await harness.repository.setupRecoveryKey();
   });
 
   tearDown(() async {
     await harness.dispose();
   });
+
+  Future<String> assetPath(DateOnly date, AssetAttachment attachment) {
+    return harness.pathStrategy.assetAbsolutePath(
+      date: date,
+      assetId: attachment.id,
+      extension: 'jpg',
+    );
+  }
 
   test('新附件排到既有附件前方後重新載入仍保留順序', () async {
     final DiaryEntry original = await harness.repository.saveEntry(
@@ -105,6 +119,77 @@ void main() {
 
     expect(saved.attachmentIds, <AssetId>['first', 'second']);
   });
+
+  test('日記換日期成功後附件會移到新日期並清除舊檔', () async {
+    final DiaryEntry original = await harness.repository.saveEntry(
+      setup.session,
+      _entry(
+        vaultId: setup.session.vaultId,
+        attachmentIds: const <AssetId>['saved-image'],
+      ),
+      pendingAttachments: <PendingAttachment>[_pending('saved-image', 1)],
+    );
+    final AssetAttachment attachment =
+        (await harness.repository.loadAttachments(original.id)).single;
+    final String oldPath = await assetPath(original.date, attachment);
+    const DateOnly newDate = DateOnly('2025-08-18');
+    final String newPath = await assetPath(newDate, attachment);
+
+    await harness.repository.saveEntry(
+      setup.session,
+      original.copyWith(date: newDate),
+    );
+
+    expect(File(oldPath).existsSync(), isFalse);
+    expect(File(newPath).existsSync(), isTrue);
+    expect(
+      (await harness.repository.loadEntry(
+        setup.session,
+        original.id,
+      ))?.date.value,
+      newDate.value,
+    );
+  });
+
+  test('日記換日期儲存失敗時保留舊日記與所有舊附件', () async {
+    final DiaryEntry original = await harness.repository.saveEntry(
+      setup.session,
+      _entry(
+        vaultId: setup.session.vaultId,
+        attachmentIds: const <AssetId>['kept-image', 'removed-image'],
+      ),
+      pendingAttachments: <PendingAttachment>[
+        _pending('kept-image', 1),
+        _pending('removed-image', 2),
+      ],
+    );
+    final List<AssetAttachment> attachments = await harness.repository
+        .loadAttachments(original.id);
+    final List<String> oldPaths = <String>[
+      for (final AssetAttachment attachment in attachments)
+        await assetPath(original.date, attachment),
+    ];
+    cryptoService.failNextMarkdownEncryption = true;
+
+    await expectLater(
+      harness.repository.saveEntry(
+        setup.session,
+        original.copyWith(
+          date: const DateOnly('2025-08-18'),
+          attachmentIds: const <AssetId>['kept-image'],
+        ),
+      ),
+      throwsStateError,
+    );
+
+    expect(oldPaths.every((String path) => File(path).existsSync()), isTrue);
+    final DiaryEntry? loaded = await harness.repository.loadEntry(
+      setup.session,
+      original.id,
+    );
+    expect(loaded?.date.value, original.date.value);
+    expect(loaded?.attachmentIds, <AssetId>['kept-image', 'removed-image']);
+  });
 }
 
 DiaryEntry _entry({
@@ -130,4 +215,33 @@ PendingAttachment _pending(AssetId assetId, int byte) {
     mimeType: 'image/jpeg',
     originalFilename: '$assetId.jpg',
   );
+}
+
+class _FailingMarkdownCryptoService extends LocalCryptoService {
+  bool failNextMarkdownEncryption = false;
+
+  @override
+  Future<EncryptionResult> encryptMarkdown({
+    required String documentId,
+    required String vaultId,
+    required String markdown,
+    required List<int> recoveryWrapKey,
+    required KdfDescriptor recoverySlotKdf,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) {
+    if (failNextMarkdownEncryption) {
+      failNextMarkdownEncryption = false;
+      throw StateError('模擬日記加密失敗');
+    }
+    return super.encryptMarkdown(
+      documentId: documentId,
+      vaultId: vaultId,
+      markdown: markdown,
+      recoveryWrapKey: recoveryWrapKey,
+      recoverySlotKdf: recoverySlotKdf,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

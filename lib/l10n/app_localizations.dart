@@ -1483,30 +1483,6 @@ abstract class AppLocalizations {
   /// **'清除生日'**
   String get peopleClearBirthday;
 
-  /// No description provided for @peopleBirthdayMonth.
-  ///
-  /// In zh, this message translates to:
-  /// **'月份'**
-  String get peopleBirthdayMonth;
-
-  /// No description provided for @peopleBirthdayDay.
-  ///
-  /// In zh, this message translates to:
-  /// **'日期'**
-  String get peopleBirthdayDay;
-
-  /// No description provided for @peopleBirthdayMonthOption.
-  ///
-  /// In zh, this message translates to:
-  /// **'{month} 月'**
-  String peopleBirthdayMonthOption(int month);
-
-  /// No description provided for @peopleBirthdayDayOption.
-  ///
-  /// In zh, this message translates to:
-  /// **'{day} 日'**
-  String peopleBirthdayDayOption(int day);
-
   /// No description provided for @peopleClearAcquaintanceYear.
   ///
   /// In zh, this message translates to:
@@ -2007,6 +1983,120 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'月'**
   String get homeCalendarMonthFormatLabel;
+
+  /// No description provided for @datePickerChooseDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇日期'**
+  String get datePickerChooseDate;
+
+  /// No description provided for @datePickerChooseYearMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇年月'**
+  String get datePickerChooseYearMonth;
+
+  /// No description provided for @datePickerChooseYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇年份'**
+  String get datePickerChooseYear;
+
+  /// No description provided for @datePickerYearLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'年份'**
+  String get datePickerYearLabel;
+
+  /// No description provided for @datePickerMonthLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'月份'**
+  String get datePickerMonthLabel;
+
+  /// No description provided for @datePickerDayLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get datePickerDayLabel;
+
+  /// No description provided for @datePickerPreviousYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一年'**
+  String get datePickerPreviousYear;
+
+  /// No description provided for @datePickerNextYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一年'**
+  String get datePickerNextYear;
+
+  /// No description provided for @datePickerPreviousMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'上個月'**
+  String get datePickerPreviousMonth;
+
+  /// No description provided for @datePickerNextMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'下個月'**
+  String get datePickerNextMonth;
+
+  /// No description provided for @datePickerMonthOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{month} 月'**
+  String datePickerMonthOption(int month);
+
+  /// No description provided for @datePickerDayOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{day} 日'**
+  String datePickerDayOption(int day);
+
+  /// No description provided for @datePickerWeekdaySun.
+  ///
+  /// In zh, this message translates to:
+  /// **'日'**
+  String get datePickerWeekdaySun;
+
+  /// No description provided for @datePickerWeekdayMon.
+  ///
+  /// In zh, this message translates to:
+  /// **'一'**
+  String get datePickerWeekdayMon;
+
+  /// No description provided for @datePickerWeekdayTue.
+  ///
+  /// In zh, this message translates to:
+  /// **'二'**
+  String get datePickerWeekdayTue;
+
+  /// No description provided for @datePickerWeekdayWed.
+  ///
+  /// In zh, this message translates to:
+  /// **'三'**
+  String get datePickerWeekdayWed;
+
+  /// No description provided for @datePickerWeekdayThu.
+  ///
+  /// In zh, this message translates to:
+  /// **'四'**
+  String get datePickerWeekdayThu;
+
+  /// No description provided for @datePickerWeekdayFri.
+  ///
+  /// In zh, this message translates to:
+  /// **'五'**
+  String get datePickerWeekdayFri;
+
+  /// No description provided for @datePickerWeekdaySat.
+  ///
+  /// In zh, this message translates to:
+  /// **'六'**
+  String get datePickerWeekdaySat;
 
   /// No description provided for @homeCalendarEntryCount.
   ///
