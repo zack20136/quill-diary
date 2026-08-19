@@ -487,6 +487,83 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     ],
   ),
   AboutPageTabSpec(
+    label: l10n.aboutTabPeopleLabel,
+    heroIcon: Icons.people_alt_outlined,
+    heroTitle: l10n.aboutTabPeopleHeroTitle,
+    heroBody: l10n.aboutTabPeopleHeroBody,
+    chips: <String>[
+      l10n.aboutTabPeopleChip0,
+      l10n.aboutTabPeopleChip1,
+      l10n.aboutTabPeopleChip2,
+      l10n.aboutTabPeopleChip3,
+    ],
+    sections: <AboutPageSectionSpec>[
+      AboutPageSectionSpec(
+        title: l10n.aboutTabPeopleSection0Title,
+        subtitle: l10n.aboutTabPeopleSection0Subtitle,
+        items: <AboutPageItemSpec>[
+          AboutPageItemSpec(
+            icon: Icons.badge_outlined,
+            title: l10n.aboutTabPeopleSection0Item0Title,
+            body: l10n.aboutTabPeopleSection0Item0Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.handshake_outlined,
+            title: l10n.aboutTabPeopleSection0Item1Title,
+            body: l10n.aboutTabPeopleSection0Item1Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.cake_outlined,
+            title: l10n.aboutTabPeopleSection0Item2Title,
+            body: l10n.aboutTabPeopleSection0Item2Body,
+          ),
+        ],
+      ),
+      AboutPageSectionSpec(
+        title: l10n.aboutTabPeopleSection1Title,
+        subtitle: l10n.aboutTabPeopleSection1Subtitle,
+        items: <AboutPageItemSpec>[
+          AboutPageItemSpec(
+            icon: Icons.auto_graph_outlined,
+            title: l10n.aboutTabPeopleSection1Item0Title,
+            body: l10n.aboutTabPeopleSection1Item0Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.history_rounded,
+            title: l10n.aboutTabPeopleSection1Item1Title,
+            body: l10n.aboutTabPeopleSection1Item1Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.alternate_email_rounded,
+            title: l10n.aboutTabPeopleSection1Item2Title,
+            body: l10n.aboutTabPeopleSection1Item2Body,
+          ),
+        ],
+      ),
+      AboutPageSectionSpec(
+        title: l10n.aboutTabPeopleSection2Title,
+        subtitle: l10n.aboutTabPeopleSection2Subtitle,
+        items: <AboutPageItemSpec>[
+          AboutPageItemSpec(
+            icon: Icons.edit_note_outlined,
+            title: l10n.aboutTabPeopleSection2Item0Title,
+            body: l10n.aboutTabPeopleSection2Item0Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.person_remove_outlined,
+            title: l10n.aboutTabPeopleSection2Item1Title,
+            body: l10n.aboutTabPeopleSection2Item1Body,
+          ),
+          AboutPageItemSpec(
+            icon: Icons.rule_outlined,
+            title: l10n.aboutTabPeopleSection2Item2Title,
+            body: l10n.aboutTabPeopleSection2Item2Body,
+          ),
+        ],
+      ),
+    ],
+  ),
+  AboutPageTabSpec(
     label: l10n.aboutTabBackupRestoreLabel,
     heroIcon: Icons.storage_rounded,
     heroTitle: l10n.aboutTabBackupRestoreHeroTitle,

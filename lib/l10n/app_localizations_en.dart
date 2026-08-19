@@ -2497,7 +2497,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item1Body =>
-      'The home screen offers list, calendar, tag, and overview views. Browse by time, revisit by date, or organize your life through tags and stats.';
+      'The home screen offers list, calendar, tag, people, and overview views. Browse by time, revisit by date, or organize your life through tags, people, and stats.';
 
   @override
   String get aboutTabIntroSection1Item2Title => 'Find What You Wrote Before';
@@ -3052,6 +3052,115 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutTabEditorSection2Item2Body =>
       'If an entry still has a local draft, list and view modes show an unsaved marker reminding you that the content has not been saved yet.';
+
+  @override
+  String get aboutTabPeopleLabel => 'People';
+
+  @override
+  String get aboutTabPeopleHeroTitle =>
+      'Keep the important people in your diary organized';
+
+  @override
+  String get aboutTabPeopleHeroBody =>
+      'Create profiles for family, friends, and other important people. The app gathers mentions from saved entries so you can revisit your shared moments and stories more easily.';
+
+  @override
+  String get aboutTabPeopleChip0 => 'Names & Aliases';
+
+  @override
+  String get aboutTabPeopleChip1 => 'Relationships & Notes';
+
+  @override
+  String get aboutTabPeopleChip2 => 'Mention Insights';
+
+  @override
+  String get aboutTabPeopleChip3 => 'Quick @ Insert';
+
+  @override
+  String get aboutTabPeopleSection0Title => 'Create and Organize People';
+
+  @override
+  String get aboutTabPeopleSection0Subtitle =>
+      'Keep the details that help identify each person and describe your relationship.';
+
+  @override
+  String get aboutTabPeopleSection0Item0Title => 'Names and Aliases';
+
+  @override
+  String get aboutTabPeopleSection0Item0Body =>
+      'Create a person with their main name and add nicknames or other names. When renaming someone, keep the old name as an alias so past entries can still be recognized.';
+
+  @override
+  String get aboutTabPeopleSection0Item1Title =>
+      'Relationships and Familiarity';
+
+  @override
+  String get aboutTabPeopleSection0Item1Body =>
+      'Record one or more relationships, add a description and familiarity level, then use a color and notes as helpful reminders.';
+
+  @override
+  String get aboutTabPeopleSection0Item2Title => 'Birthday and Year Met';
+
+  @override
+  String get aboutTabPeopleSection0Item2Body =>
+      'Optionally record the month and day of a birthday and the year you met to preserve important moments in the relationship.';
+
+  @override
+  String get aboutTabPeopleSection1Title => 'Revisit Your Shared Stories';
+
+  @override
+  String get aboutTabPeopleSection1Subtitle =>
+      'People connect with saved entries, helping you look back on interactions from different angles.';
+
+  @override
+  String get aboutTabPeopleSection1Item0Title => 'Recognize Names and Aliases';
+
+  @override
+  String get aboutTabPeopleSection1Item0Body =>
+      'The app looks for a person\'s main name and aliases in saved entries and gathers the records related to them.';
+
+  @override
+  String get aboutTabPeopleSection1Item1Title => 'Review Mentions and Entries';
+
+  @override
+  String get aboutTabPeopleSection1Item1Body =>
+      'A person\'s page shows total mentions, mentions in the past 30 days, the latest mention, and related entries. The people list can also be sorted using these details.';
+
+  @override
+  String get aboutTabPeopleSection1Item2Title => 'Insert a Name Quickly with @';
+
+  @override
+  String get aboutTabPeopleSection1Item2Body =>
+      'Type @ in the entry editor to choose a person and insert their main name. It remains ordinary text and does not turn the entry into a special format.';
+
+  @override
+  String get aboutTabPeopleSection2Title => 'Good to Know';
+
+  @override
+  String get aboutTabPeopleSection2Subtitle =>
+      'People helps organize your diary without replacing or rewriting saved content.';
+
+  @override
+  String get aboutTabPeopleSection2Item0Title => 'Insights Use Saved Entries';
+
+  @override
+  String get aboutTabPeopleSection2Item0Body =>
+      'Mention insights use formally saved entries only. Changes still in a draft appear after the entry is saved.';
+
+  @override
+  String get aboutTabPeopleSection2Item1Title =>
+      'Deleting a Person Keeps Your Entries';
+
+  @override
+  String get aboutTabPeopleSection2Item1Body =>
+      'Deleting a person removes their profile and related insights, while the original entry text and content remain unchanged.';
+
+  @override
+  String get aboutTabPeopleSection2Item2Title => 'Clearer Names Match Better';
+
+  @override
+  String get aboutTabPeopleSection2Item2Body =>
+      'Very short or overlapping names and aliases can cause incorrect matches. More specific names help keep mention insights accurate.';
 
   @override
   String get aboutTabBackupRestoreLabel => 'Backup & Restore';

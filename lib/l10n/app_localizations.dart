@@ -4226,7 +4226,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'主畫面提供列表、日曆、標籤與總覽四種入口。您可以依時間瀏覽、按日期回看，或從標籤和統計整理自己的生活軌跡。'**
+  /// **'主畫面提供列表、日曆、標籤、人物與總覽五種入口。您可以依時間瀏覽、按日期回看，或從標籤、人物和統計整理自己的生活軌跡。'**
   String get aboutTabIntroSection1Item1Body;
 
   /// No description provided for @aboutTabIntroSection1Item2Title.
@@ -5140,6 +5140,192 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。'**
   String get aboutTabEditorSection2Item2Body;
+
+  /// No description provided for @aboutTabPeopleLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物管理'**
+  String get aboutTabPeopleLabel;
+
+  /// No description provided for @aboutTabPeopleHeroTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'把日記裡重要的人整理成自己的名冊'**
+  String get aboutTabPeopleHeroTitle;
+
+  /// No description provided for @aboutTabPeopleHeroBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'為家人、朋友或生活中重要的人建立資料，App 會從已儲存的日記整理相關提及，讓您更容易回顧彼此的互動與故事。'**
+  String get aboutTabPeopleHeroBody;
+
+  /// No description provided for @aboutTabPeopleChip0.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名與別名'**
+  String get aboutTabPeopleChip0;
+
+  /// No description provided for @aboutTabPeopleChip1.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係與備註'**
+  String get aboutTabPeopleChip1;
+
+  /// No description provided for @aboutTabPeopleChip2.
+  ///
+  /// In zh, this message translates to:
+  /// **'提及統計'**
+  String get aboutTabPeopleChip2;
+
+  /// No description provided for @aboutTabPeopleChip3.
+  ///
+  /// In zh, this message translates to:
+  /// **'@ 快速插入'**
+  String get aboutTabPeopleChip3;
+
+  /// No description provided for @aboutTabPeopleSection0Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立與整理人物資料'**
+  String get aboutTabPeopleSection0Title;
+
+  /// No description provided for @aboutTabPeopleSection0Subtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'記下辨識人物與理解彼此關係時真正有幫助的資訊。'**
+  String get aboutTabPeopleSection0Subtitle;
+
+  /// No description provided for @aboutTabPeopleSection0Item0Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名與別名'**
+  String get aboutTabPeopleSection0Item0Title;
+
+  /// No description provided for @aboutTabPeopleSection0Item0Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'用正式姓名建立人物，也能加入暱稱或其他稱呼。重新命名時可保留舊名字為別名，讓過去日記仍能被辨識。'**
+  String get aboutTabPeopleSection0Item0Body;
+
+  /// No description provided for @aboutTabPeopleSection0Item1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係與熟悉程度'**
+  String get aboutTabPeopleSection0Item1Title;
+
+  /// No description provided for @aboutTabPeopleSection0Item1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'可記錄一種或多種關係、補充關係說明與熟悉程度，再用顏色和備註留下更容易辨認的線索。'**
+  String get aboutTabPeopleSection0Item1Body;
+
+  /// No description provided for @aboutTabPeopleSection0Item2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'生日與認識年份'**
+  String get aboutTabPeopleSection0Item2Title;
+
+  /// No description provided for @aboutTabPeopleSection0Item2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'可選擇記下生日的月日與認識年份，方便保存彼此關係中的重要時間。'**
+  String get aboutTabPeopleSection0Item2Body;
+
+  /// No description provided for @aboutTabPeopleSection1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'從日記回顧彼此的故事'**
+  String get aboutTabPeopleSection1Title;
+
+  /// No description provided for @aboutTabPeopleSection1Subtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物資料會和已儲存的日記連在一起，幫助您從不同角度回看互動。'**
+  String get aboutTabPeopleSection1Subtitle;
+
+  /// No description provided for @aboutTabPeopleSection1Item0Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'辨識正式姓名與別名'**
+  String get aboutTabPeopleSection1Item0Title;
+
+  /// No description provided for @aboutTabPeopleSection1Item0Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'App 會在已儲存的日記中尋找人物的正式姓名與別名，整理出與這個人有關的紀錄。'**
+  String get aboutTabPeopleSection1Item0Body;
+
+  /// No description provided for @aboutTabPeopleSection1Item1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看提及與相關日記'**
+  String get aboutTabPeopleSection1Item1Title;
+
+  /// No description provided for @aboutTabPeopleSection1Item1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物頁會顯示提及總數、近 30 天提及、最近提及時間與相關日記；人物清單也能依這些資訊排序。'**
+  String get aboutTabPeopleSection1Item1Body;
+
+  /// No description provided for @aboutTabPeopleSection1Item2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'用 @ 快速帶入姓名'**
+  String get aboutTabPeopleSection1Item2Title;
+
+  /// No description provided for @aboutTabPeopleSection1Item2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'在日記編輯器輸入 @，可選擇人物並插入正式姓名。插入後仍是一般文字，不會把日記變成特殊格式。'**
+  String get aboutTabPeopleSection1Item2Body;
+
+  /// No description provided for @aboutTabPeopleSection2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用前要知道的事'**
+  String get aboutTabPeopleSection2Title;
+
+  /// No description provided for @aboutTabPeopleSection2Subtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物管理協助整理日記，但不會取代或改寫您保存的內容。'**
+  String get aboutTabPeopleSection2Subtitle;
+
+  /// No description provided for @aboutTabPeopleSection2Item0Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'統計來自已儲存日記'**
+  String get aboutTabPeopleSection2Item0Title;
+
+  /// No description provided for @aboutTabPeopleSection2Item0Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'人物提及只根據正式儲存的日記整理；仍在編輯中的草稿，要等正式儲存後才會反映在統計中。'**
+  String get aboutTabPeopleSection2Item0Body;
+
+  /// No description provided for @aboutTabPeopleSection2Item1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除人物不會刪除日記'**
+  String get aboutTabPeopleSection2Item1Title;
+
+  /// No description provided for @aboutTabPeopleSection2Item1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除人物只會移除人物名冊與相關統計，原本的日記文字和內容都會保留。'**
+  String get aboutTabPeopleSection2Item1Body;
+
+  /// No description provided for @aboutTabPeopleSection2Item2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'名稱越明確越容易辨識'**
+  String get aboutTabPeopleSection2Item2Title;
+
+  /// No description provided for @aboutTabPeopleSection2Item2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'過短或彼此重疊的姓名與別名可能造成誤判。使用較明確的稱呼，能讓人物提及整理得更準確。'**
+  String get aboutTabPeopleSection2Item2Body;
 
   /// No description provided for @aboutTabBackupRestoreLabel.
   ///
