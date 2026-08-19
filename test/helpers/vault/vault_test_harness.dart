@@ -8,6 +8,7 @@ import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 
 import '../session/fake_app_lock_service.dart';
 import 'fake_device_key_manager.dart';
@@ -26,6 +27,8 @@ class VaultTestHarness {
     RecordingDeviceKeyManager? deviceKeyManager,
     FakeAppLockService? appLockService,
     CryptoService? cryptoService,
+    VaultRepairFileOperations repairFileOperations =
+        const VaultRepairFileOperations(),
   }) async {
     final VaultTestHarness harness = VaultTestHarness._();
     harness.tempDir = await Directory.systemTemp.createTemp('qld_vault_test_');
@@ -39,6 +42,7 @@ class VaultTestHarness {
       indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
       deviceKeyManager: harness.deviceKeyManager,
       appLockService: harness.appLockService,
+      repairFileOperations: repairFileOperations,
     );
     await harness.repository.initialize();
     return harness;

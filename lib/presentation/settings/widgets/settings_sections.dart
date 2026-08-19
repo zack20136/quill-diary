@@ -805,7 +805,7 @@ class SettingsSecurityOverview extends StatelessWidget {
             SettingsActionButton(
               label: l10n.settingsSecurityOverviewRepairVaultButton,
               icon: Icons.build_outlined,
-              appearance: SettingsActionButtonAppearance.outlined,
+              appearance: SettingsActionButtonAppearance.tonal,
               onPressed: busy ? null : onRepairVault,
             ),
             if (onRetryTrustedUnlock != null)

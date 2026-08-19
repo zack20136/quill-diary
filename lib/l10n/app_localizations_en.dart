@@ -2035,10 +2035,95 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRepairVaultReadyMessage =>
-      'You can repair anytime to restore vault data and search.';
+      'You can repair and tidy your diary anytime.';
 
   @override
-  String get settingsRepairVaultLockedMessage => 'Unlock to repair the vault.';
+  String get settingsRepairVaultLockedMessage => 'Unlock to repair your diary.';
+
+  @override
+  String get settingsRepairVaultConfirmTitle => 'Repair your diary?';
+
+  @override
+  String get settingsRepairVaultConfirmBody =>
+      'The app will check your entries and attachments, fix common problems, and refresh search data. Files that cannot be verified will be kept and not deleted.';
+
+  @override
+  String get settingsRepairVaultProgressScanningEntries => 'Checking entries…';
+
+  @override
+  String get settingsRepairVaultProgressCheckingAttachments =>
+      'Checking attachments…';
+
+  @override
+  String get settingsRepairVaultProgressRebuildingIndex => 'Refreshing search…';
+
+  @override
+  String get settingsRepairVaultProgressRebuildingPeople =>
+      'Updating people data…';
+
+  @override
+  String get settingsRepairVaultProgressCleaning => 'Finishing up…';
+
+  @override
+  String get settingsRepairVaultResultTitle => 'Repair complete';
+
+  @override
+  String get settingsRepairVaultResultClean =>
+      'Your diary has been repaired and is in good shape.';
+
+  @override
+  String settingsRepairVaultResultWarning(int count) {
+    return 'Repair is complete, but $count items could not be fixed automatically. Related files were kept to prevent data loss.';
+  }
+
+  @override
+  String settingsRepairVaultResultCheckedEntries(int entryCount) {
+    return 'Checked $entryCount entries.';
+  }
+
+  @override
+  String settingsRepairVaultResultIssueCount(String label, int count) {
+    return '$label: $count';
+  }
+
+  @override
+  String get settingsRepairIssueInvalidEntryMetadata =>
+      'Some entry information is incomplete';
+
+  @override
+  String get settingsRepairIssueUnreadableEntry =>
+      'Some entries could not be opened';
+
+  @override
+  String get settingsRepairIssueEntryIdentityMismatch =>
+      'Some entry information needs attention';
+
+  @override
+  String get settingsRepairIssueConflictingEntry =>
+      'Different copies of the same entry were found';
+
+  @override
+  String get settingsRepairIssueMissingAsset => 'Some attachments are missing';
+
+  @override
+  String get settingsRepairIssueUnreadableAsset =>
+      'Some attachments could not be opened';
+
+  @override
+  String get settingsRepairIssueAssetIdentityMismatch =>
+      'Some attachment content looks unusual';
+
+  @override
+  String get settingsRepairIssueConflictingAsset =>
+      'Different copies of the same attachment were found';
+
+  @override
+  String get settingsRepairIssueUnverifiedOrphanAsset =>
+      'Some attachments could not be matched to an entry';
+
+  @override
+  String get settingsRepairIssueCleanupFailure =>
+      'Some files could not be tidied';
 
   @override
   String get settingsUnlockRequiredToChangeSettingMessage =>
@@ -2059,18 +2144,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String settingsRepairVaultSuccess(int entryCount, String duration) {
-    return 'Vault repaired: $entryCount entries in $duration';
-  }
-
-  @override
-  String settingsRepairVaultSuccessChanges(
-    int relocatedEntries,
-    int removedDuplicates,
-    int removedOrphanAssets,
-    int skippedCorruptEntries,
+  String settingsRepairVaultCompletedWithIssues(
+    int entryCount,
+    int issueCount,
+    String finishedAt,
   ) {
-    return '(Moved $relocatedEntries entries, removed $removedDuplicates duplicate entry files and $removedOrphanAssets orphan attachments; skipped $skippedCorruptEntries corrupt files)';
+    return 'Last repair: $entryCount entries, $issueCount items need attention, $finishedAt.';
   }
 
   @override

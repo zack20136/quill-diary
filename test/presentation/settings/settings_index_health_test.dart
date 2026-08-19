@@ -7,17 +7,25 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 
-VaultRepairReport _repairReport({int skippedCorruptEntries = 0}) {
-  return VaultRepairReport(
-    entryCount: 3,
-    duration: const Duration(seconds: 1),
-    finishedAt: DateTime.parse('2026-05-19T12:00:00Z'),
-    relocatedEntries: 0,
-    removedDuplicateEntries: 0,
-    skippedCorruptEntries: skippedCorruptEntries,
-    tagsAdded: 0,
-    relocatedAssets: 0,
-    removedOrphanAssets: 0,
+VaultRepairSummary _repairSummary({int entryIssueCount = 0}) {
+  return VaultRepairSummary.fromReport(
+    VaultRepairReport(
+      entryCount: 3,
+      duration: const Duration(seconds: 1),
+      finishedAt: DateTime.parse('2026-05-19T12:00:00Z'),
+      relocatedEntries: 0,
+      removedDuplicateEntries: 0,
+      tagsAdded: 0,
+      relocatedAssets: 0,
+      removedOrphanAssets: 0,
+      issues: <VaultRepairIssue>[
+        for (var index = 0; index < entryIssueCount; index++)
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.unreadableEntry,
+            reference: 'entry-$index',
+          ),
+      ],
+    ),
   );
 }
 
@@ -61,13 +69,13 @@ void main() {
   });
 
   test('修復報告有殘留問題時索引健康為需注意', () {
-    final VaultRepairReport report = _repairReport(skippedCorruptEntries: 2);
+    final VaultRepairSummary summary = _repairSummary(entryIssueCount: 2);
     expect(
       settingsIndexHealthLevel(
         l10n: testL10n,
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
         hasUnlockedSession: true,
-        repairReport: report,
+        repairSummary: summary,
       ),
       SettingsHealthLevel.warning,
     );
@@ -76,9 +84,9 @@ void main() {
         testL10n,
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
         hasUnlockedSession: true,
-        repairReport: report,
+        repairSummary: summary,
       ),
-      isNot(testL10n.settingsRepairVaultReadyMessage),
+      contains('有 2 個項目需要注意'),
     );
   });
 

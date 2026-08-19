@@ -8,6 +8,7 @@ import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import '../crypto/crypto_service.dart';
+import 'shared/media_type_utils.dart';
 import 'vault_path_strategy.dart';
 
 /// 管理本地加密草稿與待上傳附件暫存。
@@ -151,7 +152,7 @@ class EditorDraftStore {
       documentId: 'draft_pending_${draftKey}_$storedName',
       vaultId: metadata.vaultId,
       plaintextBytes: sourceBytes,
-      contentType: _mimeTypeFromFileName(baseName),
+      contentType: mimeTypeFromFileName(baseName),
       recoveryWrapKey: recoveryWrapKey,
       recoverySlotKdf: metadata.kdf,
       createdAt: now,
@@ -344,21 +345,5 @@ class EditorDraftStore {
       return 'attachment.bin';
     }
     return trimmed.replaceAll(RegExp(r'[^\w.\-]'), '_');
-  }
-
-  String _mimeTypeFromFileName(String fileName) {
-    switch (p.extension(fileName).toLowerCase()) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.png':
-        return 'image/png';
-      case '.webp':
-        return 'image/webp';
-      case '.gif':
-        return 'image/gif';
-      default:
-        return 'application/octet-stream';
-    }
   }
 }

@@ -61,12 +61,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     required SettingsPageCapabilities pageAccess,
     required AsyncValue<bool> trustedDeviceAccessAsync,
     required AsyncValue<AppUnlockMode> unlockModeAsync,
+    required AsyncValue<VaultRepairSummary?> repairSummaryAsync,
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final bool hasUnlockedSession = pageAccess.hasUnlockedSession;
     final AppUnlockMode mode =
         unlockModeAsync.asData?.value ?? AppUnlockMode.none;
     final AppLocalizations l10n = pageContext.l10n;
+    final VaultRepairSummary? repairSummary = repairSummaryAsync.asData?.value;
     return SettingsSectionCard(
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
@@ -92,13 +94,13 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                       l10n,
                       sessionState: sessionState,
                       hasUnlockedSession: hasUnlockedSession,
-                      repairReport: _lastVaultRepairReport,
+                      repairSummary: repairSummary,
                     ),
                     indexHealthLevel: settingsIndexHealthLevel(
                       l10n: l10n,
                       sessionState: sessionState,
                       hasUnlockedSession: hasUnlockedSession,
-                      repairReport: _lastVaultRepairReport,
+                      repairSummary: repairSummary,
                     ),
                     backupStatus: backupStatus,
                     busy: _busy,
@@ -111,7 +113,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                         ? () => _runBusy(_rotateRecoveryKey)
                         : null,
                     onRepairVault: hasUnlockedSession
-                        ? () => _runBusy(_repairVault)
+                        ? () => unawaited(_repairVault())
                         : null,
                     onRetryTrustedUnlock:
                         sessionState?.status == AppLockStatus.locked
@@ -393,15 +395,36 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _repairVault() async {
-    final AppLocalizations l10n = pageContext.l10n;
-    final SettingsRepairVaultResult result = await _settingsFlow.repairVault(
-      l10n,
-    );
-    if (!isMounted) {
+    final BuildContext context = pageContext;
+    final AppLocalizations l10n = context.l10n;
+    if (!await showRepairVaultConfirmDialog(context) || !context.mounted) {
       return;
     }
-    updatePageState(() => _lastVaultRepairReport = result.report);
-    _showFeedback(result.feedback);
+    VaultRepairReport? completed;
+    await _runBusy(() async {
+      completed = await _settingsFlow.repairVault(
+        onProgress: (VaultRepairPhase phase) {
+          if (!isMounted) return;
+          updatePageState(() {
+            _busyMessage = switch (phase) {
+              VaultRepairPhase.scanningEntries =>
+                l10n.settingsRepairVaultProgressScanningEntries,
+              VaultRepairPhase.checkingAttachments =>
+                l10n.settingsRepairVaultProgressCheckingAttachments,
+              VaultRepairPhase.rebuildingIndex =>
+                l10n.settingsRepairVaultProgressRebuildingIndex,
+              VaultRepairPhase.rebuildingPeopleAnalytics =>
+                l10n.settingsRepairVaultProgressRebuildingPeople,
+              VaultRepairPhase.cleaning =>
+                l10n.settingsRepairVaultProgressCleaning,
+            };
+          });
+        },
+      );
+    }, message: l10n.settingsRepairVaultProgressScanningEntries);
+    if (completed != null && context.mounted) {
+      await showRepairVaultResultDialog(context, completed!);
+    }
   }
 
   String _formatLocalBackupTime(LocalBackupFile backup) {

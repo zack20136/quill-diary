@@ -60,7 +60,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _busy = false;
   String? _busyMessage;
   double? _busyProgress;
-  VaultRepairReport? _lastVaultRepairReport;
 
   SettingsFlowController get _settingsFlow =>
       ref.read(settingsFlowControllerProvider);
@@ -95,6 +94,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
     final AsyncValue<AppUnlockMode> unlockModeAsync = ref.watch(
       unlockModeProvider,
+    );
+    final AsyncValue<VaultRepairSummary?> repairSummaryAsync = ref.watch(
+      vaultRepairSummaryProvider,
     );
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final RecoveryMetadata? recoveryMetadata =
@@ -136,6 +138,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     pageAccess: pageAccess,
                     trustedDeviceAccessAsync: trustedDeviceAccessAsync,
                     unlockModeAsync: unlockModeAsync,
+                    repairSummaryAsync: repairSummaryAsync,
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(

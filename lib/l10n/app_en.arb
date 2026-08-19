@@ -1159,8 +1159,33 @@
   "settingsRestoreBulletTrustedAutoUnlockFallback": "If auto-unlock fails, enter the recovery key saved when this backup was created.",
   "settingsRestoreBulletRecoveryKeyAfterRestore": "After restore, enter the recovery key saved when this backup was created.",
   "settingsRestoreBulletRewrapNote": "The first unlock after restore may take longer. Keep the app open.",
-  "settingsRepairVaultReadyMessage": "You can repair anytime to restore vault data and search.",
-  "settingsRepairVaultLockedMessage": "Unlock to repair the vault.",
+  "settingsRepairVaultReadyMessage": "You can repair and tidy your diary anytime.",
+  "settingsRepairVaultLockedMessage": "Unlock to repair your diary.",
+  "settingsRepairVaultConfirmTitle": "Repair your diary?",
+  "settingsRepairVaultConfirmBody": "The app will check your entries and attachments, fix common problems, and refresh search data. Files that cannot be verified will be kept and not deleted.",
+  "settingsRepairVaultProgressScanningEntries": "Checking entries…",
+  "settingsRepairVaultProgressCheckingAttachments": "Checking attachments…",
+  "settingsRepairVaultProgressRebuildingIndex": "Refreshing search…",
+  "settingsRepairVaultProgressRebuildingPeople": "Updating people data…",
+  "settingsRepairVaultProgressCleaning": "Finishing up…",
+  "settingsRepairVaultResultTitle": "Repair complete",
+  "settingsRepairVaultResultClean": "Your diary has been repaired and is in good shape.",
+  "settingsRepairVaultResultWarning": "Repair is complete, but {count} items could not be fixed automatically. Related files were kept to prevent data loss.",
+  "@settingsRepairVaultResultWarning": {"placeholders": {"count": {"type": "int"}}},
+  "settingsRepairVaultResultCheckedEntries": "Checked {entryCount} entries.",
+  "@settingsRepairVaultResultCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
+  "settingsRepairVaultResultIssueCount": "{label}: {count}",
+  "@settingsRepairVaultResultIssueCount": {"placeholders": {"label": {"type": "String"}, "count": {"type": "int"}}},
+  "settingsRepairIssueInvalidEntryMetadata": "Some entry information is incomplete",
+  "settingsRepairIssueUnreadableEntry": "Some entries could not be opened",
+  "settingsRepairIssueEntryIdentityMismatch": "Some entry information needs attention",
+  "settingsRepairIssueConflictingEntry": "Different copies of the same entry were found",
+  "settingsRepairIssueMissingAsset": "Some attachments are missing",
+  "settingsRepairIssueUnreadableAsset": "Some attachments could not be opened",
+  "settingsRepairIssueAssetIdentityMismatch": "Some attachment content looks unusual",
+  "settingsRepairIssueConflictingAsset": "Different copies of the same attachment were found",
+  "settingsRepairIssueUnverifiedOrphanAsset": "Some attachments could not be matched to an entry",
+  "settingsRepairIssueCleanupFailure": "Some files could not be tidied",
   "settingsUnlockRequiredToChangeSettingMessage": "Unlock the diary vault to change this setting.",
   "settingsIndexLinkDriveProgress": "Linking Google Account…",
   "settingsIndexSwitchDriveAccountProgress": "Switching account…",
@@ -1176,34 +1201,8 @@
       }
     }
   },
-  "settingsRepairVaultSuccess": "Vault repaired: {entryCount} entries in {duration}",
-  "@settingsRepairVaultSuccess": {
-    "placeholders": {
-      "entryCount": {
-        "type": "int"
-      },
-      "duration": {
-        "type": "String"
-      }
-    }
-  },
-  "settingsRepairVaultSuccessChanges": "(Moved {relocatedEntries} entries, removed {removedDuplicates} duplicate entry files and {removedOrphanAssets} orphan attachments; skipped {skippedCorruptEntries} corrupt files)",
-  "@settingsRepairVaultSuccessChanges": {
-    "placeholders": {
-      "relocatedEntries": {
-        "type": "int"
-      },
-      "removedDuplicates": {
-        "type": "int"
-      },
-      "removedOrphanAssets": {
-        "type": "int"
-      },
-      "skippedCorruptEntries": {
-        "type": "int"
-      }
-    }
-  },
+  "settingsRepairVaultCompletedWithIssues": "Last repair: {entryCount} entries, {issueCount} items need attention, {finishedAt}.",
+  "@settingsRepairVaultCompletedWithIssues": {"placeholders": {"entryCount": {"type": "int"}, "issueCount": {"type": "int"}, "finishedAt": {"type": "String"}}},
   "settingsSupportNavButtonLabel": "Support",
   "settingsSupportPageTitle": "Support the Developer",
   "settingsSupportHeroTitle": "Support If You Like It",

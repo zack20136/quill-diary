@@ -200,11 +200,14 @@ class _FlowRepairService extends VaultRepairService {
   _FlowRepairService(this.report) : super(FakeSessionVaultRepository());
 
   final VaultRepairReport report;
+  VaultRepairProgressCallback? receivedProgress;
 
   @override
   Future<VaultRepairReport> repairVaultWithReport(
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    VaultRepairProgressCallback? onProgress,
+  }) async {
+    receivedProgress = onProgress;
     return report;
   }
 }
@@ -570,25 +573,22 @@ void main() {
       );
     });
 
-    test('repairVault 成功回傳 success', () async {
+    test('repairVault 回傳報告並轉送進度', () async {
+      final VaultRepairReport report = VaultRepairReport(
+        entryCount: 9,
+        relocatedEntries: 0,
+        removedDuplicateEntries: 0,
+        removedOrphanAssets: 0,
+        tagsAdded: 0,
+        relocatedAssets: 0,
+        issues: const <VaultRepairIssue>[],
+        duration: const Duration(seconds: 2),
+        finishedAt: DateTime(2026, 7, 10),
+      );
+      final _FlowRepairService repairService = _FlowRepairService(report);
       final ProviderContainer container = ProviderContainer(
         overrides: [
-          vaultRepairServiceProvider.overrideWithValue(
-            _FlowRepairService(
-              VaultRepairReport(
-                entryCount: 9,
-                relocatedEntries: 0,
-                removedDuplicateEntries: 0,
-                removedOrphanAssets: 0,
-                skippedCorruptEntries: 0,
-                tagsAdded: 0,
-                relocatedAssets: 0,
-                warnings: const <String>[],
-                duration: const Duration(seconds: 2),
-                finishedAt: DateTime(2026, 7, 10),
-              ),
-            ),
-          ),
+          vaultRepairServiceProvider.overrideWithValue(repairService),
         ],
       );
       addTearDown(container.dispose);
@@ -599,11 +599,14 @@ void main() {
         settingsFlowControllerProvider,
       );
 
-      final SettingsRepairVaultResult result = await controller.repairVault(
-        l10n,
+      final List<VaultRepairPhase> phases = <VaultRepairPhase>[];
+      final VaultRepairReport result = await controller.repairVault(
+        onProgress: phases.add,
       );
 
-      expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
+      expect(result, same(report));
+      repairService.receivedProgress!(VaultRepairPhase.scanningEntries);
+      expect(phases, <VaultRepairPhase>[VaultRepairPhase.scanningEntries]);
     });
 
     test('rotateRecoveryKey 成功回傳 recovery key 與 success feedback', () async {

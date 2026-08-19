@@ -163,19 +163,11 @@ String settingsDriveSwitchAccountSuccess(
   return l10n.settingsDriveBackupSwitchAccountSuccess(accountLabel);
 }
 
-bool repairReportNeedsAttention(VaultRepairReport report) {
-  return report.skippedCorruptEntries > 0 ||
-      report.removedDuplicateEntries > 0 ||
-      report.removedOrphanAssets > 0 ||
-      report.relocatedEntries > 0 ||
-      report.warnings.isNotEmpty;
-}
-
 SettingsHealthLevel settingsIndexHealthLevel({
   required AppLocalizations l10n,
   required AppSessionState? sessionState,
   required bool hasUnlockedSession,
-  VaultRepairReport? repairReport,
+  VaultRepairSummary? repairSummary,
 }) {
   if (isIndexRelatedSessionMessage(l10n, sessionState?.message)) {
     return SettingsHealthLevel.error;
@@ -183,7 +175,7 @@ SettingsHealthLevel settingsIndexHealthLevel({
   if (!hasUnlockedSession) {
     return SettingsHealthLevel.warning;
   }
-  if (repairReport != null && repairReportNeedsAttention(repairReport)) {
+  if (repairSummary?.hasUnresolvedIssues ?? false) {
     return SettingsHealthLevel.warning;
   }
   return SettingsHealthLevel.ok;
@@ -193,7 +185,7 @@ String settingsIndexStatusMessage(
   AppLocalizations l10n, {
   required AppSessionState? sessionState,
   required bool hasUnlockedSession,
-  VaultRepairReport? repairReport,
+  VaultRepairSummary? repairSummary,
 }) {
   if (isIndexRelatedSessionMessage(l10n, sessionState?.message)) {
     final String? trimmedMessage = sessionState?.message?.trim();
@@ -202,15 +194,53 @@ String settingsIndexStatusMessage(
     }
     return sessionIndexDatabaseUnreadableMessage(l10n);
   }
-  if (repairReport != null) {
+  if (repairSummary != null) {
+    final int issueCount = repairSummary.issueCounts.values.fold(
+      0,
+      (int total, int count) => total + count,
+    );
+    if (issueCount > 0) {
+      return l10n.settingsRepairVaultCompletedWithIssues(
+        repairSummary.entryCount,
+        issueCount,
+        DisplayFormat.formatDateTime(l10n, repairSummary.finishedAt),
+      );
+    }
     return l10n.settingsRepairVaultCompleted(
-      repairReport.entryCount,
-      DisplayFormat.formatDateTime(l10n, repairReport.finishedAt),
+      repairSummary.entryCount,
+      DisplayFormat.formatDateTime(l10n, repairSummary.finishedAt),
     );
   }
   return hasUnlockedSession
       ? l10n.settingsRepairVaultReadyMessage
       : l10n.settingsRepairVaultLockedMessage;
+}
+
+String settingsRepairIssueLabel(
+  AppLocalizations l10n,
+  VaultRepairIssueKind kind,
+) {
+  return switch (kind) {
+    VaultRepairIssueKind.invalidEntryMetadata =>
+      l10n.settingsRepairIssueInvalidEntryMetadata,
+    VaultRepairIssueKind.unreadableEntry =>
+      l10n.settingsRepairIssueUnreadableEntry,
+    VaultRepairIssueKind.entryIdentityMismatch =>
+      l10n.settingsRepairIssueEntryIdentityMismatch,
+    VaultRepairIssueKind.conflictingEntry =>
+      l10n.settingsRepairIssueConflictingEntry,
+    VaultRepairIssueKind.missingAsset => l10n.settingsRepairIssueMissingAsset,
+    VaultRepairIssueKind.unreadableAsset =>
+      l10n.settingsRepairIssueUnreadableAsset,
+    VaultRepairIssueKind.assetIdentityMismatch =>
+      l10n.settingsRepairIssueAssetIdentityMismatch,
+    VaultRepairIssueKind.conflictingAsset =>
+      l10n.settingsRepairIssueConflictingAsset,
+    VaultRepairIssueKind.unverifiedOrphanAsset =>
+      l10n.settingsRepairIssueUnverifiedOrphanAsset,
+    VaultRepairIssueKind.cleanupFailure =>
+      l10n.settingsRepairIssueCleanupFailure,
+  };
 }
 
 String driveAwarePostRestoreSnackBarMessage({

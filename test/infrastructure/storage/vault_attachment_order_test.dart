@@ -211,7 +211,7 @@ DiaryEntry _entry({
 PendingAttachment _pending(AssetId assetId, int byte) {
   return PendingAttachment(
     assetId: assetId,
-    bytes: Uint8List.fromList(<int>[byte]),
+    bytes: Uint8List.fromList(<int>[0xFF, 0xD8, 0xFF, byte]),
     mimeType: 'image/jpeg',
     originalFilename: '$assetId.jpg',
   );

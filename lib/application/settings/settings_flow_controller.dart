@@ -55,16 +55,6 @@ class SettingsRecoveryKeyResult {
   final SettingsFlowFeedback feedback;
 }
 
-class SettingsRepairVaultResult {
-  const SettingsRepairVaultResult({
-    required this.report,
-    required this.feedback,
-  });
-
-  final VaultRepairReport report;
-  final SettingsFlowFeedback feedback;
-}
-
 enum SettingsRestorePrimaryAction { retryVerification, openSettingsRecovery }
 
 enum SettingsRestoreNavigationTarget { home, settings }
@@ -339,43 +329,21 @@ class SettingsFlowController {
     );
   }
 
-  Future<SettingsRepairVaultResult> repairVault(AppLocalizations l10n) async {
+  Future<VaultRepairReport> repairVault({
+    VaultRepairProgressCallback? onProgress,
+  }) async {
     final VaultRepairReport report = await _ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
               .read(vaultRepairServiceProvider)
-              .repairVaultWithReport(session);
+              .repairVaultWithReport(session, onProgress: onProgress);
         });
     _ref.read(entryIndexRevisionProvider.notifier).bump();
     _ref.invalidate(recoveryMetadataProvider);
     _ref.invalidate(tagAccentArgbMapProvider);
-    return SettingsRepairVaultResult(
-      report: report,
-      feedback: SettingsFlowFeedback(
-        _repairVaultSuccessMessage(l10n, report),
-        tone: SettingsFlowFeedbackTone.success,
-      ),
-    );
-  }
-
-  String _repairVaultSuccessMessage(
-    AppLocalizations l10n,
-    VaultRepairReport report,
-  ) {
-    final String base = l10n.settingsRepairVaultSuccess(
-      report.entryCount,
-      DisplayFormat.formatDurationMs(l10n, report.duration.inMilliseconds),
-    );
-    final bool hasChanges =
-        report.relocatedEntries > 0 ||
-        report.removedDuplicateEntries > 0 ||
-        report.removedOrphanAssets > 0 ||
-        report.skippedCorruptEntries > 0;
-    if (!hasChanges) {
-      return base;
-    }
-    return '$base ${l10n.settingsRepairVaultSuccessChanges(report.relocatedEntries, report.removedDuplicateEntries, report.removedOrphanAssets, report.skippedCorruptEntries)}';
+    _ref.invalidate(vaultRepairSummaryProvider);
+    return report;
   }
 
   Future<void> retryTrustedUnlock() async {

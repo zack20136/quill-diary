@@ -1,12 +1,97 @@
 import 'package:flutter/material.dart';
 
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import '../backup/backup_pick_dialog.dart';
 import '../backup/backup_pick_list_item.dart';
+
+Future<bool> showRepairVaultConfirmDialog(BuildContext context) async {
+  final AppLocalizations l10n = context.l10n;
+  return await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Text(l10n.settingsRepairVaultConfirmTitle),
+          content: Text(l10n.settingsRepairVaultConfirmBody),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.commonActionCancel),
+            ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.settingsSecurityOverviewRepairVaultButton),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}
+
+Future<void> showRepairVaultResultDialog(
+  BuildContext context,
+  VaultRepairReport report,
+) {
+  final AppLocalizations l10n = context.l10n;
+  final int issueCount = report.issues.length;
+  final List<({VaultRepairIssueKind kind, int count})> issueGroups = [
+    for (final VaultRepairIssueKind kind in VaultRepairIssueKind.values)
+      if (report.issueCount(kind) case final int count when count > 0)
+        (kind: kind, count: count),
+  ];
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      icon: Icon(
+        report.hasUnresolvedIssues
+            ? Icons.warning_amber_rounded
+            : Icons.check_circle_outline_rounded,
+        color: report.hasUnresolvedIssues
+            ? Theme.of(context).colorScheme.tertiary
+            : Theme.of(context).colorScheme.primary,
+      ),
+      title: Text(l10n.settingsRepairVaultResultTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            report.hasUnresolvedIssues
+                ? l10n.settingsRepairVaultResultWarning(issueCount)
+                : l10n.settingsRepairVaultResultClean,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.settingsRepairVaultResultCheckedEntries(report.entryCount),
+          ),
+          if (report.hasUnresolvedIssues) ...<Widget>[
+            const SizedBox(height: 8),
+            for (final group in issueGroups)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  l10n.settingsRepairVaultResultIssueCount(
+                    settingsRepairIssueLabel(l10n, group.kind),
+                    group.count,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+      actions: <Widget>[
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.commonActionClose),
+        ),
+      ],
+    ),
+  );
+}
 
 Future<bool> showSettingsDeleteBackupDialog({
   required BuildContext context,

@@ -34,7 +34,13 @@ import 'tag_styles_store.dart';
 import 'shared/media_type_utils.dart';
 import 'shared/vault_file_ops.dart';
 import 'vault_path_strategy.dart';
+import 'vault_repair_file_operations.dart';
 import 'vault_state_keys.dart';
+
+const String _kLastRepairSummaryKey = 'last_repair_summary';
+final RegExp _strictIsoDateTimePattern = RegExp(
+  r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(?:(Z)|([+-])(\d{2}):(\d{2}))?$',
+);
 
 /// UI 中已選取但尚未寫入加密 vault 的附件。
 class PendingAttachment {
@@ -73,6 +79,36 @@ class RecoverySetupResult {
   final UnlockedVaultSession session;
 }
 
+enum VaultRepairIssueKind {
+  invalidEntryMetadata,
+  unreadableEntry,
+  entryIdentityMismatch,
+  conflictingEntry,
+  missingAsset,
+  unreadableAsset,
+  assetIdentityMismatch,
+  conflictingAsset,
+  unverifiedOrphanAsset,
+  cleanupFailure,
+}
+
+enum VaultRepairPhase {
+  scanningEntries,
+  checkingAttachments,
+  rebuildingIndex,
+  rebuildingPeopleAnalytics,
+  cleaning,
+}
+
+typedef VaultRepairProgressCallback = void Function(VaultRepairPhase phase);
+
+class VaultRepairIssue {
+  const VaultRepairIssue({required this.kind, required this.reference});
+
+  final VaultRepairIssueKind kind;
+  final String reference;
+}
+
 class VaultRepairReport {
   const VaultRepairReport({
     required this.entryCount,
@@ -80,11 +116,10 @@ class VaultRepairReport {
     required this.finishedAt,
     required this.relocatedEntries,
     required this.removedDuplicateEntries,
-    required this.skippedCorruptEntries,
     required this.tagsAdded,
     required this.relocatedAssets,
     required this.removedOrphanAssets,
-    this.warnings = const <String>[],
+    this.issues = const <VaultRepairIssue>[],
   });
 
   final int entryCount;
@@ -92,11 +127,100 @@ class VaultRepairReport {
   final DateTime finishedAt;
   final int relocatedEntries;
   final int removedDuplicateEntries;
-  final int skippedCorruptEntries;
   final int tagsAdded;
   final int relocatedAssets;
   final int removedOrphanAssets;
-  final List<String> warnings;
+  final List<VaultRepairIssue> issues;
+
+  bool get hasUnresolvedIssues => issues.isNotEmpty;
+
+  int issueCount(VaultRepairIssueKind kind) =>
+      issues.where((VaultRepairIssue issue) => issue.kind == kind).length;
+}
+
+class VaultRepairSummary {
+  const VaultRepairSummary({
+    required this.entryCount,
+    required this.finishedAt,
+    required this.issueCounts,
+    this.relocatedEntries = 0,
+    this.removedDuplicateEntries = 0,
+    this.tagsAdded = 0,
+    this.relocatedAssets = 0,
+    this.removedOrphanAssets = 0,
+  });
+
+  final int entryCount;
+  final DateTime finishedAt;
+  final Map<VaultRepairIssueKind, int> issueCounts;
+  final int relocatedEntries;
+  final int removedDuplicateEntries;
+  final int tagsAdded;
+  final int relocatedAssets;
+  final int removedOrphanAssets;
+
+  bool get hasUnresolvedIssues =>
+      issueCounts.values.any((int count) => count > 0);
+
+  factory VaultRepairSummary.fromReport(VaultRepairReport report) {
+    final Map<VaultRepairIssueKind, int> counts = <VaultRepairIssueKind, int>{};
+    for (final VaultRepairIssue issue in report.issues) {
+      counts.update(issue.kind, (int value) => value + 1, ifAbsent: () => 1);
+    }
+    return VaultRepairSummary(
+      entryCount: report.entryCount,
+      finishedAt: report.finishedAt,
+      issueCounts: counts,
+      relocatedEntries: report.relocatedEntries,
+      removedDuplicateEntries: report.removedDuplicateEntries,
+      tagsAdded: report.tagsAdded,
+      relocatedAssets: report.relocatedAssets,
+      removedOrphanAssets: report.removedOrphanAssets,
+    );
+  }
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'entry_count': entryCount,
+    'finished_at': finishedAt.toIso8601String(),
+    'relocated_entries': relocatedEntries,
+    'removed_duplicate_entries': removedDuplicateEntries,
+    'tags_added': tagsAdded,
+    'relocated_assets': relocatedAssets,
+    'removed_orphan_assets': removedOrphanAssets,
+    'issue_counts': <String, int>{
+      for (final MapEntry<VaultRepairIssueKind, int> item
+          in issueCounts.entries)
+        item.key.name: item.value,
+    },
+  };
+
+  static VaultRepairSummary? fromJson(Map<String, Object?> json) {
+    final DateTime? finishedAt = DateTime.tryParse(
+      '${json['finished_at'] ?? ''}',
+    );
+    final Object? rawCounts = json['issue_counts'];
+    if (finishedAt == null || rawCounts is! Map<Object?, Object?>) return null;
+    final Map<VaultRepairIssueKind, int> counts = <VaultRepairIssueKind, int>{};
+    for (final MapEntry<Object?, Object?> item in rawCounts.entries) {
+      final VaultRepairIssueKind? kind = VaultRepairIssueKind.values
+          .where((VaultRepairIssueKind value) => value.name == '${item.key}')
+          .firstOrNull;
+      final int? count = int.tryParse('${item.value}');
+      if (kind != null && count != null && count >= 0) counts[kind] = count;
+    }
+    return VaultRepairSummary(
+      entryCount: int.tryParse('${json['entry_count'] ?? 0}') ?? 0,
+      finishedAt: finishedAt,
+      issueCounts: counts,
+      relocatedEntries: int.tryParse('${json['relocated_entries'] ?? 0}') ?? 0,
+      removedDuplicateEntries:
+          int.tryParse('${json['removed_duplicate_entries'] ?? 0}') ?? 0,
+      tagsAdded: int.tryParse('${json['tags_added'] ?? 0}') ?? 0,
+      relocatedAssets: int.tryParse('${json['relocated_assets'] ?? 0}') ?? 0,
+      removedOrphanAssets:
+          int.tryParse('${json['removed_orphan_assets'] ?? 0}') ?? 0,
+    );
+  }
 }
 
 class _EntrySearchFields {
@@ -337,6 +461,7 @@ class _ScannedEntry {
     required this.filePath,
     required this.markdown,
     required this.attachments,
+    required this.attachmentPaths,
     required this.searchFields,
     required this.encryptedFileSize,
     required this.encryptedModifiedAt,
@@ -346,6 +471,7 @@ class _ScannedEntry {
   final String filePath;
   final String markdown;
   final List<AssetAttachment> attachments;
+  final Map<AssetId, String> attachmentPaths;
   final _EntrySearchFields searchFields;
   final int encryptedFileSize;
   final DateTime encryptedModifiedAt;
@@ -356,49 +482,105 @@ class _RawScannedEntry {
     required this.entry,
     required this.filePath,
     required this.markdown,
-    required this.attachments,
+    required this.attachmentExtensions,
     required this.searchFields,
     required this.encryptedFileSize,
     required this.encryptedModifiedAt,
-    required this.needsVaultIdRewrite,
+    required this.plaintextHash,
+    required this.canonicalPath,
   });
 
   final DiaryEntry entry;
   final String filePath;
   final String markdown;
-  final List<AssetAttachment> attachments;
+  final Map<AssetId, String> attachmentExtensions;
   final _EntrySearchFields searchFields;
   final int encryptedFileSize;
   final DateTime encryptedModifiedAt;
-  final bool needsVaultIdRewrite;
+  final String plaintextHash;
+  final String canonicalPath;
+}
+
+class _AssetReference {
+  const _AssetReference({
+    required this.entryId,
+    required this.date,
+    required this.extension,
+  });
+
+  final EntryId entryId;
+  final DateOnly date;
+  final String extension;
+}
+
+class _ValidatedAssetFile {
+  const _ValidatedAssetFile({
+    required this.id,
+    required this.path,
+    required this.extension,
+    required this.mimeType,
+    required this.createdAt,
+    required this.modifiedAt,
+    required this.byteSize,
+    required this.plaintextHash,
+  });
+
+  final AssetId id;
+  final String path;
+  final String extension;
+  final String mimeType;
+  final DateTime createdAt;
+  final DateTime modifiedAt;
+  final int byteSize;
+  final String plaintextHash;
+}
+
+class _RepairCleanupTarget {
+  const _RepairCleanupTarget({
+    required this.path,
+    required this.fileId,
+    required this.contentType,
+    required this.plaintextHash,
+    required this.isAttachment,
+    this.countsAsDuplicateEntry = false,
+    this.countsAsOrphanAsset = false,
+  });
+
+  final String path;
+  final String fileId;
+  final String contentType;
+  final String plaintextHash;
+  final bool isAttachment;
+  final bool countsAsDuplicateEntry;
+  final bool countsAsOrphanAsset;
 }
 
 class _EntryRepairStats {
   const _EntryRepairStats({
     required this.scanned,
     required this.relocatedEntries,
-    required this.removedDuplicateEntries,
-    required this.skippedCorruptEntries,
-    required this.warnings,
+    required this.issues,
+    required this.cleanupTargets,
+    required this.assetReferences,
   });
 
   final List<_ScannedEntry> scanned;
   final int relocatedEntries;
-  final int removedDuplicateEntries;
-  final int skippedCorruptEntries;
-  final List<String> warnings;
+  final List<VaultRepairIssue> issues;
+  final Map<String, _RepairCleanupTarget> cleanupTargets;
+  final Map<AssetId, List<_AssetReference>> assetReferences;
 }
 
 class _AssetRepairStats {
   const _AssetRepairStats({
     required this.relocatedAssets,
-    required this.removedOrphanAssets,
-    required this.warnings,
+    required this.issues,
+    required this.cleanupTargets,
   });
 
   final int relocatedAssets;
-  final int removedOrphanAssets;
-  final List<String> warnings;
+  final List<VaultRepairIssue> issues;
+  final Map<String, _RepairCleanupTarget> cleanupTargets;
 }
 
 /// 加密 vault 儲存的主要協調層。
@@ -413,12 +595,15 @@ class VaultRepository {
     required IndexDatabaseManager indexDatabaseManager,
     required DeviceKeyManager deviceKeyManager,
     required AppLockService appLockService,
+    VaultRepairFileOperations repairFileOperations =
+        const VaultRepairFileOperations(),
   }) : _pathStrategy = pathStrategy,
        _frontMatterCodec = frontMatterCodec,
        _cryptoService = cryptoService,
        _indexDatabaseManager = indexDatabaseManager,
        _deviceKeyManager = deviceKeyManager,
-       _appLockService = appLockService;
+       _appLockService = appLockService,
+       _repairFileOperations = repairFileOperations;
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
@@ -426,6 +611,8 @@ class VaultRepository {
   final IndexDatabaseManager _indexDatabaseManager;
   final DeviceKeyManager _deviceKeyManager;
   final AppLockService _appLockService;
+  final VaultRepairFileOperations _repairFileOperations;
+  Future<void> _mutationTail = Future<void>.value();
 
   RecoveryMetadata? _cachedRecoveryMetadata;
 
@@ -1263,6 +1450,14 @@ class VaultRepository {
     UnlockedVaultSession session,
     DiaryEntry draft, {
     List<PendingAttachment> pendingAttachments = const <PendingAttachment>[],
+  }) => _serializeVaultMutation(
+    () => _saveEntry(session, draft, pendingAttachments: pendingAttachments),
+  );
+
+  Future<DiaryEntry> _saveEntry(
+    UnlockedVaultSession session,
+    DiaryEntry draft, {
+    required List<PendingAttachment> pendingAttachments,
   }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
@@ -1341,13 +1536,7 @@ class VaultRepository {
         allAttachments.add(attachment);
       }
     }
-    final DateTime attachmentOrderBase = draft.createdAt;
-    final List<AssetAttachment> orderedAttachments = <AssetAttachment>[
-      for (int i = 0; i < allAttachments.length; i++)
-        allAttachments[i].copyWith(
-          createdAt: attachmentOrderBase.add(Duration(milliseconds: i)),
-        ),
-    ];
+    final List<AssetAttachment> orderedAttachments = allAttachments;
     final DiaryEntry normalized = draft.copyWith(
       vaultId: metadata.vaultId,
       attachmentIds: orderedAttachments
@@ -1428,7 +1617,10 @@ class VaultRepository {
     return normalized;
   }
 
-  Future<void> deleteEntry(
+  Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) =>
+      _serializeVaultMutation(() => _deleteEntry(session, entryId));
+
+  Future<void> _deleteEntry(
     UnlockedVaultSession session,
     EntryId entryId,
   ) async {
@@ -1453,23 +1645,78 @@ class VaultRepository {
     return _requireOpenIndex().searchEntries(query);
   }
 
-  Future<void> rebuildIndex(UnlockedVaultSession session) async {
-    await _rebuildIndex(session);
+  Future<VaultRepairSummary?> readLastRepairSummary() async {
+    final String? raw = await _requireOpenIndex().getAppValue(
+      _kLastRepairSummaryKey,
+    );
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final Object? decoded = jsonDecode(raw);
+      if (decoded is! Map<String, Object?>) return null;
+      return VaultRepairSummary.fromJson(decoded);
+    } on FormatException {
+      return null;
+    }
   }
 
-  Future<void> _rebuildIndex(
-    UnlockedVaultSession session, {
-    List<_ScannedEntry>? preScannedEntries,
-  }) async {
+  Future<void> rebuildIndex(UnlockedVaultSession session) =>
+      _serializeVaultMutation(() => _rebuildIndexFromVault(session));
+
+  Future<void> _rebuildIndexFromVault(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final ({List<File> entries, List<File> assets}) inventory =
+        await _snapshotRepairInventory();
+    final _EntryRepairStats entryStats = await _scanEntries(
+      session,
+      metadata,
+      inventory.entries,
+      repair: false,
+    );
+    final bool hasEntryIssues = _hasUnresolvedEntryIssues(entryStats.issues);
+    final _AssetRepairStats assetStats = await _scanAssets(
+      session: session,
+      metadata: metadata,
+      entries: entryStats.scanned,
+      references: entryStats.assetReferences,
+      files: inventory.assets,
+      hasUnresolvedEntryIssues: hasEntryIssues,
+      repair: false,
+    );
+    final List<_ScannedEntry> indexEntries = _indexableEntries(
+      entryStats.scanned,
+    );
+    await _writeRebuiltIndex(indexEntries, prunePinnedEntries: !hasEntryIssues);
+    final List<VaultRepairIssue> issues = <VaultRepairIssue>[
+      ...entryStats.issues,
+      ...assetStats.issues,
+    ];
+    if (issues.isNotEmpty) {
+      await _storeRepairSummary(
+        VaultRepairReport(
+          entryCount: indexEntries.length,
+          duration: Duration.zero,
+          finishedAt: DateTime.now(),
+          relocatedEntries: 0,
+          removedDuplicateEntries: 0,
+          tagsAdded: 0,
+          relocatedAssets: 0,
+          removedOrphanAssets: 0,
+          issues: issues,
+        ),
+      );
+    }
+  }
+
+  Future<void> _writeRebuiltIndex(
+    List<_ScannedEntry> entries, {
+    required bool prunePinnedEntries,
+  }) async {
     final IndexDatabase indexDb = _requireOpenIndex();
-    await indexDb.rebuild();
-
     final Set<String> collectedTagLabels = <String>{};
-
-    if (preScannedEntries != null) {
-      for (final _ScannedEntry scanned in preScannedEntries) {
+    await indexDb.transaction(() async {
+      await indexDb.rebuild();
+      for (final _ScannedEntry scanned in entries) {
         await indexDb.upsertEntry(
           entry: scanned.entry,
           filePath: scanned.filePath,
@@ -1485,110 +1732,111 @@ class VaultRepository {
         await indexDb.replaceAttachments(
           scanned.entry.id,
           scanned.attachments,
-          <AssetId, String>{
-            for (final AssetAttachment attachment in scanned.attachments)
-              attachment.id: await _pathStrategy.assetAbsolutePath(
-                date: scanned.entry.date,
-                assetId: attachment.id,
-                extension: p
-                    .extension(attachment.safeFilename)
-                    .replaceFirst('.', ''),
-              ),
-          },
+          scanned.attachmentPaths,
         );
         collectedTagLabels.addAll(scanned.entry.tags);
       }
-    } else {
-      final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-      final Directory entriesDirectory = Directory(
-        p.join(vaultRoot.path, 'entries'),
+      await indexDb.setAppValue(
+        kLastRebuildAtKey,
+        DateTime.now().toIso8601String(),
       );
-      if (entriesDirectory.existsSync()) {
-        await for (final FileSystemEntity entity in entriesDirectory.list(
-          recursive: true,
-          followLinks: false,
-        )) {
-          if (entity is! File || !entity.path.endsWith('.md.enc')) {
-            continue;
-          }
-
-          final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-            await entity.readAsBytes(),
-          );
-          final String markdown = await _cryptoService.decryptMarkdown(
-            headerBytes: parsed.headerBytes,
-            ciphertextBytes: parsed.ciphertextBytes,
-            context: _decryptionContext(session),
-          );
-          final DiaryEntry entry = _frontMatterCodec
-              .decode(markdown)
-              .copyWith(vaultId: metadata.vaultId);
-          final List<AssetAttachment> attachments =
-              await _findAttachmentsForEntry(entry);
-          final _EntrySearchFields searchFields = _buildEntrySearchFields(
-            entry,
-          );
-
-          await indexDb.upsertEntry(
-            entry: entry,
-            filePath: entity.path,
-            previewText: searchFields.previewText,
-            previewMarkdown: searchFields.previewMarkdown,
-            titleSearchText: searchFields.titleSearchText,
-            bodySearchText: searchFields.bodySearchText,
-            bodyVisibleText: searchFields.bodyVisibleText,
-            contentHash: await _hashString(markdown),
-            encryptedFileSize: await entity.length(),
-            encryptedModifiedAt: await entity.lastModified(),
-          );
-          await indexDb
-              .replaceAttachments(entry.id, attachments, <AssetId, String>{
-                for (final AssetAttachment attachment in attachments)
-                  attachment.id: await _pathStrategy.assetAbsolutePath(
-                    date: entry.date,
-                    assetId: attachment.id,
-                    extension: p
-                        .extension(attachment.safeFilename)
-                        .replaceFirst('.', ''),
-                  ),
-              });
-          collectedTagLabels.addAll(entry.tags);
-        }
-      }
-    }
+      await indexDb.setAppValue(
+        kIndexGenerationKey,
+        IndexDatabase.indexGeneration.toString(),
+      );
+    });
 
     await listTagCatalog();
     if (collectedTagLabels.isNotEmpty) {
       await ensureTagCatalogLabels(collectedTagLabels);
     }
-    await indexDb.setAppValue(
-      kLastRebuildAtKey,
-      DateTime.now().toIso8601String(),
-    );
-    await indexDb.setAppValue(
-      kIndexGenerationKey,
-      IndexDatabase.indexGeneration.toString(),
-    );
     await syncTagStylesBetweenVaultAndIndex();
-    await _prunePinnedEntriesToExisting(
-      (await listEntries()).map((EntryIndexRecord item) => item.id),
+    if (prunePinnedEntries) {
+      await _prunePinnedEntriesToExisting(
+        entries.map((_ScannedEntry item) => item.entry.id),
+      );
+    }
+  }
+
+  Future<({List<File> entries, List<File> assets})>
+  _snapshotRepairInventory() async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    return (
+      entries: await _repairFileOperations.snapshotFiles(
+        Directory(p.join(vaultRoot.path, 'entries')),
+        '.md.enc',
+      ),
+      assets: await _repairFileOperations.snapshotFiles(
+        Directory(p.join(vaultRoot.path, 'assets')),
+        '.enc',
+      ),
     );
   }
 
+  bool _hasUnresolvedEntryIssues(List<VaultRepairIssue> issues) {
+    return issues.any(
+      (VaultRepairIssue issue) => switch (issue.kind) {
+        VaultRepairIssueKind.invalidEntryMetadata ||
+        VaultRepairIssueKind.unreadableEntry ||
+        VaultRepairIssueKind.entryIdentityMismatch ||
+        VaultRepairIssueKind.conflictingEntry => true,
+        _ => false,
+      },
+    );
+  }
+
+  List<_ScannedEntry> _indexableEntries(List<_ScannedEntry> scannedEntries) {
+    return <_ScannedEntry>[
+      for (final _ScannedEntry scanned in scannedEntries)
+        _ScannedEntry(
+          entry: scanned.entry,
+          filePath: scanned.filePath,
+          markdown: scanned.markdown,
+          attachments: <AssetAttachment>[
+            for (final AssetId id in scanned.entry.attachmentIds)
+              if (scanned.attachments
+                      .where((AssetAttachment item) => item.id == id)
+                      .firstOrNull
+                  case final AssetAttachment attachment)
+                attachment,
+          ],
+          attachmentPaths: <AssetId, String>{
+            for (final AssetId id in scanned.entry.attachmentIds)
+              if (scanned.attachmentPaths[id] case final String path) id: path,
+          },
+          searchFields: scanned.searchFields,
+          encryptedFileSize: scanned.encryptedFileSize,
+          encryptedModifiedAt: scanned.encryptedModifiedAt,
+        ),
+    ];
+  }
+
   Future<VaultRepairReport> repairVaultWithReport(
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    VaultRepairProgressCallback? onProgress,
+  }) => _serializeVaultMutation(
+    () => _repairVaultWithReport(session, onProgress: onProgress),
+  );
+
+  Future<VaultRepairReport> _repairVaultWithReport(
+    UnlockedVaultSession session, {
+    VaultRepairProgressCallback? onProgress,
+  }) async {
     final Stopwatch stopwatch = Stopwatch()..start();
     await _openIndexForSession(session);
     await _cancelPeopleAnalyticsRebuild();
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final ({List<File> entries, List<File> assets}) inventory =
+        await _snapshotRepairInventory();
 
-    final _EntryRepairStats entryStats = await _scanAndRepairEntries(
+    onProgress?.call(VaultRepairPhase.scanningEntries);
+    final _EntryRepairStats entryStats = await _scanEntries(
       session,
       metadata,
+      inventory.entries,
+      repair: true,
     );
 
-    await listTagCatalog();
     final Set<String> catalogNorms = (await listTagCatalog())
         .map((TagCatalogItem item) => item.normalized)
         .toSet();
@@ -1606,113 +1854,240 @@ class VaultRepository {
       tagsAdded++;
       catalogNorms.add(normalized);
     }
-    if (collectedTagLabels.isNotEmpty) {
-      await ensureTagCatalogLabels(collectedTagLabels);
-    }
+    onProgress?.call(VaultRepairPhase.checkingAttachments);
+    final bool hasEntryIssues = _hasUnresolvedEntryIssues(entryStats.issues);
+    final _AssetRepairStats assetStats = await _scanAssets(
+      session: session,
+      metadata: metadata,
+      entries: entryStats.scanned,
+      references: entryStats.assetReferences,
+      files: inventory.assets,
+      hasUnresolvedEntryIssues: hasEntryIssues,
+      repair: true,
+    );
 
-    final _AssetRepairStats assetStats = await _repairAssets(
+    final List<_ScannedEntry> indexEntries = _indexableEntries(
       entryStats.scanned,
     );
 
-    final List<_ScannedEntry> indexEntries = <_ScannedEntry>[];
-    for (final _ScannedEntry scanned in entryStats.scanned) {
-      final List<AssetAttachment> attachments = await _findAttachmentsForEntry(
-        scanned.entry,
-      );
-      indexEntries.add(
-        _ScannedEntry(
-          entry: scanned.entry,
-          filePath: scanned.filePath,
-          markdown: scanned.markdown,
-          attachments: attachments,
-          searchFields: scanned.searchFields,
-          encryptedFileSize: scanned.encryptedFileSize,
-          encryptedModifiedAt: scanned.encryptedModifiedAt,
-        ),
+    onProgress?.call(VaultRepairPhase.rebuildingIndex);
+    await _writeRebuiltIndex(indexEntries, prunePinnedEntries: false);
+    if (!hasEntryIssues) {
+      await _prunePinnedEntriesToExisting(
+        indexEntries.map((_ScannedEntry item) => item.entry.id),
       );
     }
-
-    await _rebuildIndex(session, preScannedEntries: indexEntries);
-    await _prunePinnedEntriesToExisting(
-      indexEntries.map((_ScannedEntry item) => item.entry.id),
-    );
     await _writeEncryptedManifest(session, metadata);
+    onProgress?.call(VaultRepairPhase.rebuildingPeopleAnalytics);
     await ensurePeopleAnalyticsReady(session);
 
+    final List<VaultRepairIssue> issues = <VaultRepairIssue>[
+      ...entryStats.issues,
+      ...assetStats.issues,
+    ];
+    onProgress?.call(VaultRepairPhase.cleaning);
+    var removedDuplicateEntries = 0;
+    var removedOrphanAssets = 0;
+    final Map<String, _RepairCleanupTarget> cleanupTargets =
+        <String, _RepairCleanupTarget>{
+          ...entryStats.cleanupTargets,
+          ...assetStats.cleanupTargets,
+        };
+    for (final _RepairCleanupTarget target in cleanupTargets.values) {
+      try {
+        final VaultRepairDeleteResult result = await _repairFileOperations
+            .deleteIfValid(
+              path: target.path,
+              validate: (String path) => _validateRepairFile(
+                path,
+                session: session,
+                metadata: metadata,
+                expectedId: target.fileId,
+                expectedContentType: target.contentType,
+                expectedPlaintextHash: target.plaintextHash,
+                validateAttachmentContent: target.isAttachment,
+              ),
+            );
+        if (result == VaultRepairDeleteResult.validationFailed) {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.cleanupFailure,
+              reference: await _vaultRelativeReference(target.path),
+            ),
+          );
+          continue;
+        }
+        if (result != VaultRepairDeleteResult.deleted) continue;
+        if (target.countsAsDuplicateEntry) {
+          removedDuplicateEntries++;
+        }
+        if (target.countsAsOrphanAsset) removedOrphanAssets++;
+      } on Object {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.cleanupFailure,
+            reference: await _vaultRelativeReference(target.path),
+          ),
+        );
+      }
+    }
+
     stopwatch.stop();
-    return VaultRepairReport(
+    var report = VaultRepairReport(
       entryCount: indexEntries.length,
       duration: stopwatch.elapsed,
       finishedAt: DateTime.now(),
       relocatedEntries: entryStats.relocatedEntries,
-      removedDuplicateEntries: entryStats.removedDuplicateEntries,
-      skippedCorruptEntries: entryStats.skippedCorruptEntries,
+      removedDuplicateEntries: removedDuplicateEntries,
       tagsAdded: tagsAdded,
       relocatedAssets: assetStats.relocatedAssets,
-      removedOrphanAssets: assetStats.removedOrphanAssets,
-      warnings: <String>[...entryStats.warnings, ...assetStats.warnings],
+      removedOrphanAssets: removedOrphanAssets,
+      issues: issues,
     );
+    if (!await _storeRepairSummary(report)) {
+      report = VaultRepairReport(
+        entryCount: report.entryCount,
+        duration: report.duration,
+        finishedAt: report.finishedAt,
+        relocatedEntries: report.relocatedEntries,
+        removedDuplicateEntries: report.removedDuplicateEntries,
+        tagsAdded: report.tagsAdded,
+        relocatedAssets: report.relocatedAssets,
+        removedOrphanAssets: report.removedOrphanAssets,
+        issues: <VaultRepairIssue>[
+          ...report.issues,
+          const VaultRepairIssue(
+            kind: VaultRepairIssueKind.cleanupFailure,
+            reference: 'index/last_repair_summary',
+          ),
+        ],
+      );
+    }
+    return report;
   }
 
-  Future<_EntryRepairStats> _scanAndRepairEntries(
+  Future<_EntryRepairStats> _scanEntries(
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
-  ) async {
+    List<File> files, {
+    required bool repair,
+  }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory entriesDirectory = Directory(
       p.join(vaultRoot.path, 'entries'),
     );
-    if (!entriesDirectory.existsSync()) {
+    if (files.isEmpty) {
       return const _EntryRepairStats(
         scanned: <_ScannedEntry>[],
         relocatedEntries: 0,
-        removedDuplicateEntries: 0,
-        skippedCorruptEntries: 0,
-        warnings: <String>[],
+        issues: <VaultRepairIssue>[],
+        cleanupTargets: <String, _RepairCleanupTarget>{},
+        assetReferences: <AssetId, List<_AssetReference>>{},
       );
     }
 
     final List<_RawScannedEntry> rawScans = <_RawScannedEntry>[];
-    final List<String> warnings = <String>[];
-    var skippedCorruptEntries = 0;
+    final List<VaultRepairIssue> issues = <VaultRepairIssue>[];
+    final String normalizedEntriesRoot = p.normalize(entriesDirectory.path);
 
-    await for (final FileSystemEntity entity in entriesDirectory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      if (entity is! File || !entity.path.endsWith('.md.enc')) {
-        continue;
-      }
-
+    for (final File entity in files) {
+      final String reference = await _vaultRelativeReference(entity.path);
       try {
         final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
           await entity.readAsBytes(),
         );
+        if (parsed.header.vaultId != metadata.vaultId ||
+            parsed.header.contentType != 'text/markdown') {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.entryIdentityMismatch,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
         final String markdown = await _cryptoService.decryptMarkdown(
           headerBytes: parsed.headerBytes,
           ciphertextBytes: parsed.ciphertextBytes,
           context: _decryptionContext(session),
         );
-        final DiaryEntry decoded = _frontMatterCodec.decode(markdown);
-        final DiaryEntry entry = decoded.copyWith(vaultId: metadata.vaultId);
-        final List<AssetAttachment> attachments =
-            await _findAttachmentsForEntry(entry);
+        final DecodedFrontMatterDocument decoded = _frontMatterCodec
+            .decodeDocument(markdown);
+        final String rawId = '${decoded.frontMatter['id'] ?? ''}'.trim();
+        final String rawDate = '${decoded.frontMatter['date'] ?? ''}'.trim();
+        final String rawCreatedAt = '${decoded.frontMatter['created_at'] ?? ''}'
+            .trim();
+        final String rawUpdatedAt = '${decoded.frontMatter['updated_at'] ?? ''}'
+            .trim();
+        final DateOnly? date = DateOnly.tryParse(rawDate);
+        final List<AssetId> attachmentIds = decoded.entry.attachmentIds;
+        if (!_isSafePathSegment(rawId) ||
+            date == null ||
+            _tryParseStrictIsoDateTime(rawCreatedAt) == null ||
+            _tryParseStrictIsoDateTime(rawUpdatedAt) == null ||
+            attachmentIds.toSet().length != attachmentIds.length ||
+            attachmentIds.any((AssetId id) => !_isSafePathSegment(id))) {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.invalidEntryMetadata,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
+        if (parsed.header.fileId != rawId) {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.entryIdentityMismatch,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
+        final DiaryEntry entry = decoded.entry.copyWith(
+          vaultId: metadata.vaultId,
+        );
+        final String canonicalPath = p.normalize(
+          await _pathStrategy.entryAbsolutePath(date: date, entryId: rawId),
+        );
+        if (!p.isWithin(normalizedEntriesRoot, canonicalPath)) {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.invalidEntryMetadata,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
+        final Map<AssetId, String> attachmentExtensions = <AssetId, String>{};
+        for (var index = 0; index < attachmentIds.length; index++) {
+          final String path = index < decoded.attachmentPaths.length
+              ? decoded.attachmentPaths[index]
+              : '';
+          attachmentExtensions[attachmentIds[index]] = p
+              .extension(path)
+              .replaceFirst('.', '')
+              .toLowerCase();
+        }
         rawScans.add(
           _RawScannedEntry(
             entry: entry,
             filePath: entity.path,
             markdown: markdown,
-            attachments: attachments,
+            attachmentExtensions: attachmentExtensions,
             searchFields: _buildEntrySearchFields(entry),
             encryptedFileSize: await entity.length(),
             encryptedModifiedAt: await entity.lastModified(),
-            needsVaultIdRewrite: decoded.vaultId != metadata.vaultId,
+            plaintextHash: await _hashString(markdown),
+            canonicalPath: canonicalPath,
           ),
         );
       } on Object {
-        skippedCorruptEntries++;
-        warnings.add(
-          p.relative(entity.path, from: vaultRoot.path).replaceAll('\\', '/'),
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.unreadableEntry,
+            reference: reference,
+          ),
         );
       }
     }
@@ -1725,18 +2100,53 @@ class VaultRepository {
           .add(raw);
     }
 
-    final List<String> pathsToDelete = <String>[];
-    var removedDuplicateEntries = 0;
+    final Map<String, _RepairCleanupTarget> cleanupTargets =
+        <String, _RepairCleanupTarget>{};
+    final Set<EntryId> conflictingEntryIds = <EntryId>{};
     final List<_RawScannedEntry> authoritative = <_RawScannedEntry>[];
     for (final List<_RawScannedEntry> group in entriesById.values) {
-      group.sort(
-        (_RawScannedEntry a, _RawScannedEntry b) =>
-            b.entry.updatedAt.compareTo(a.entry.updatedAt),
+      group.sort((_RawScannedEntry a, _RawScannedEntry b) {
+        final int updated = b.entry.updatedAt.compareTo(a.entry.updatedAt);
+        if (updated != 0) return updated;
+        final bool aCanonical = p.normalize(a.filePath) == a.canonicalPath;
+        final bool bCanonical = p.normalize(b.filePath) == b.canonicalPath;
+        if (aCanonical != bCanonical) return aCanonical ? -1 : 1;
+        final int modified = b.encryptedModifiedAt.compareTo(
+          a.encryptedModifiedAt,
+        );
+        return modified != 0 ? modified : a.filePath.compareTo(b.filePath);
+      });
+      final Set<String> hashes = group
+          .map((_RawScannedEntry entry) => entry.plaintextHash)
+          .toSet();
+      if (hashes.length > 1) {
+        authoritative.add(group.first);
+        conflictingEntryIds.add(group.first.entry.id);
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.conflictingEntry,
+            reference: group.first.entry.id,
+          ),
+        );
+        continue;
+      }
+      final _RawScannedEntry canonical = group.firstWhere(
+        (_RawScannedEntry entry) =>
+            p.normalize(entry.filePath) == entry.canonicalPath,
+        orElse: () => group.first,
       );
-      authoritative.add(group.first);
-      for (var index = 1; index < group.length; index++) {
-        pathsToDelete.add(group[index].filePath);
-        removedDuplicateEntries++;
+      authoritative.add(canonical);
+      for (final _RawScannedEntry duplicate in group.where(
+        (_RawScannedEntry entry) => !identical(entry, canonical),
+      )) {
+        cleanupTargets[duplicate.filePath] = _RepairCleanupTarget(
+          path: duplicate.filePath,
+          fileId: duplicate.entry.id,
+          contentType: 'text/markdown',
+          plaintextHash: duplicate.plaintextHash,
+          isAttachment: false,
+          countsAsDuplicateEntry: true,
+        );
       }
     }
 
@@ -1750,43 +2160,56 @@ class VaultRepository {
       final String currentPath = p.normalize(raw.filePath);
       final String normalizedCanonical = p.normalize(canonicalPath);
       var finalPath = currentPath;
-      var finalMarkdown = raw.markdown;
+      final String finalMarkdown = raw.markdown;
       var finalSize = raw.encryptedFileSize;
       var finalModified = raw.encryptedModifiedAt;
 
-      if (currentPath != normalizedCanonical || raw.needsVaultIdRewrite) {
-        if (!raw.needsVaultIdRewrite && currentPath != normalizedCanonical) {
-          final File sourceFile = File(currentPath);
-          if (sourceFile.existsSync()) {
-            final Directory parent = File(normalizedCanonical).parent;
-            await parent.create(recursive: true);
-            await sourceFile.rename(normalizedCanonical);
+      if (repair &&
+          currentPath != normalizedCanonical &&
+          !conflictingEntryIds.contains(raw.entry.id)) {
+        try {
+          final VaultRepairCopyResult result = await _repairFileOperations
+              .copyAtomicallyIfAbsent(
+                sourcePath: currentPath,
+                targetPath: normalizedCanonical,
+                validate: (String copiedPath) => _validateRepairFile(
+                  copiedPath,
+                  session: session,
+                  metadata: metadata,
+                  expectedId: raw.entry.id,
+                  expectedContentType: 'text/markdown',
+                  expectedPlaintextHash: raw.plaintextHash,
+                  validateAttachmentContent: false,
+                ),
+              );
+          if (result == VaultRepairCopyResult.targetExists) {
+            issues.add(
+              VaultRepairIssue(
+                kind: VaultRepairIssueKind.conflictingEntry,
+                reference: raw.entry.id,
+              ),
+            );
+          } else {
+            final File target = File(normalizedCanonical);
+            cleanupTargets[currentPath] = _RepairCleanupTarget(
+              path: currentPath,
+              fileId: raw.entry.id,
+              contentType: 'text/markdown',
+              plaintextHash: raw.plaintextHash,
+              isAttachment: false,
+            );
             finalPath = normalizedCanonical;
-            finalSize = await File(finalPath).length();
-            finalModified = await File(finalPath).lastModified();
+            finalSize = await target.length();
+            finalModified = await target.lastModified();
             relocatedEntries++;
           }
-        } else {
-          finalPath = await _persistEntryForRepair(
-            session: session,
-            metadata: metadata,
-            entry: raw.entry,
-            attachments: raw.attachments,
-            targetPath: normalizedCanonical,
-            deletePathAfter: currentPath != normalizedCanonical
-                ? currentPath
-                : null,
+        } on Object {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.cleanupFailure,
+              reference: await _vaultRelativeReference(normalizedCanonical),
+            ),
           );
-          finalMarkdown = _frontMatterCodec.encode(
-            raw.entry,
-            attachments: raw.attachments,
-          );
-          final File repairedFile = File(finalPath);
-          finalSize = await repairedFile.length();
-          finalModified = await repairedFile.lastModified();
-          if (currentPath != normalizedCanonical) {
-            relocatedEntries++;
-          }
         }
       }
 
@@ -1795,7 +2218,8 @@ class VaultRepository {
           entry: raw.entry,
           filePath: finalPath,
           markdown: finalMarkdown,
-          attachments: raw.attachments,
+          attachments: <AssetAttachment>[],
+          attachmentPaths: <AssetId, String>{},
           searchFields: raw.searchFields,
           encryptedFileSize: finalSize,
           encryptedModifiedAt: finalModified,
@@ -1803,182 +2227,372 @@ class VaultRepository {
       );
     }
 
-    for (final String path in pathsToDelete) {
-      await deleteFileIfExists(path);
+    final Map<AssetId, List<_AssetReference>> assetReferences =
+        <AssetId, List<_AssetReference>>{};
+    for (final _RawScannedEntry raw in authoritative) {
+      for (final AssetId assetId in raw.entry.attachmentIds) {
+        assetReferences
+            .putIfAbsent(assetId, () => <_AssetReference>[])
+            .add(
+              _AssetReference(
+                entryId: raw.entry.id,
+                date: raw.entry.date,
+                extension: raw.attachmentExtensions[assetId] ?? '',
+              ),
+            );
+      }
     }
 
     return _EntryRepairStats(
       scanned: scanned,
       relocatedEntries: relocatedEntries,
-      removedDuplicateEntries: removedDuplicateEntries,
-      skippedCorruptEntries: skippedCorruptEntries,
-      warnings: warnings,
+      issues: issues,
+      cleanupTargets: cleanupTargets,
+      assetReferences: assetReferences,
     );
   }
 
-  Future<String> _persistEntryForRepair({
+  Future<_AssetRepairStats> _scanAssets({
     required UnlockedVaultSession session,
     required RecoveryMetadata metadata,
-    required DiaryEntry entry,
-    required List<AssetAttachment> attachments,
-    required String targetPath,
-    String? deletePathAfter,
+    required List<_ScannedEntry> entries,
+    required Map<AssetId, List<_AssetReference>> references,
+    required List<File> files,
+    required bool hasUnresolvedEntryIssues,
+    required bool repair,
   }) async {
-    final List<int> recoveryWrapKey = _requireRecoveryWrapKey(session);
-    final String markdown = _frontMatterCodec.encode(
-      entry,
-      attachments: attachments,
-    );
-    final EncryptionResult encryption = await _cryptoService.encryptMarkdown(
-      documentId: entry.id,
-      vaultId: metadata.vaultId,
-      markdown: markdown,
-      recoveryWrapKey: recoveryWrapKey,
-      recoverySlotKdf: metadata.kdf,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-    );
-    await _atomicWriteBytes(File(targetPath), encryption.toFileBytes());
-    if (deletePathAfter != null &&
-        p.normalize(deletePathAfter) != p.normalize(targetPath)) {
-      await deleteFileIfExists(deletePathAfter);
-    }
-    return targetPath;
-  }
-
-  Future<_AssetRepairStats> _repairAssets(List<_ScannedEntry> entries) async {
-    final Set<String> referencedAssetIds = <String>{};
-    final Map<String, DateOnly> assetDates = <String, DateOnly>{};
-    for (final _ScannedEntry scanned in entries) {
-      for (final AssetId assetId in scanned.entry.attachmentIds) {
-        referencedAssetIds.add(assetId);
-        assetDates[assetId] = scanned.entry.date;
+    final List<VaultRepairIssue> issues = <VaultRepairIssue>[];
+    final Map<String, _RepairCleanupTarget> cleanupTargets =
+        <String, _RepairCleanupTarget>{};
+    if (files.isEmpty) {
+      for (final AssetId id in references.keys) {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.missingAsset,
+            reference: id,
+          ),
+        );
       }
-    }
-
-    final List<String> warnings = <String>[];
-    for (final String assetId in referencedAssetIds) {
-      final bool foundOnDisk = await _assetExistsAnywhere(assetId);
-      if (!foundOnDisk) {
-        warnings.add('missing_asset:$assetId');
-      }
-    }
-
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory assetsDirectory = Directory(
-      p.join(vaultRoot.path, 'assets'),
-    );
-    if (!assetsDirectory.existsSync()) {
       return _AssetRepairStats(
         relocatedAssets: 0,
-        removedOrphanAssets: 0,
-        warnings: warnings,
+        issues: issues,
+        cleanupTargets: cleanupTargets,
       );
     }
 
+    final Map<AssetId, List<_ValidatedAssetFile>> filesById =
+        <AssetId, List<_ValidatedAssetFile>>{};
+    final Map<AssetId, List<String>> invalidPathsById =
+        <AssetId, List<String>>{};
     var relocatedAssets = 0;
-    var removedOrphanAssets = 0;
-
-    await for (final FileSystemEntity entity in assetsDirectory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      if (entity is! File || !entity.path.endsWith('.enc')) {
-        continue;
-      }
-
+    for (final File entity in files) {
       final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
       final String assetId = p.basenameWithoutExtension(fileName);
-      if (!referencedAssetIds.contains(assetId)) {
-        await entity.delete();
-        removedOrphanAssets++;
+      final String reference = await _vaultRelativeReference(entity.path);
+      if (!_isSafePathSegment(assetId)) {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.assetIdentityMismatch,
+            reference: reference,
+          ),
+        );
         continue;
       }
+      try {
+        final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+          await entity.readAsBytes(),
+        );
+        final String fileExtension = p
+            .extension(fileName)
+            .replaceFirst('.', '')
+            .toLowerCase();
+        if (parsed.header.fileId != assetId ||
+            parsed.header.vaultId != metadata.vaultId ||
+            parsed.header.contentType.trim().isEmpty ||
+            parsed.header.createdAt.millisecondsSinceEpoch <= 0 ||
+            !contentTypeMatchesExtension(
+              parsed.header.contentType,
+              fileExtension,
+            )) {
+          invalidPathsById
+              .putIfAbsent(assetId, () => <String>[])
+              .add(entity.path);
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.assetIdentityMismatch,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
+        final List<int> plaintext = await _cryptoService.decryptBytes(
+          headerBytes: parsed.headerBytes,
+          ciphertextBytes: parsed.ciphertextBytes,
+          context: _decryptionContext(session),
+        );
+        if (!attachmentContentMatchesMimeType(
+          plaintext,
+          parsed.header.contentType,
+        )) {
+          invalidPathsById
+              .putIfAbsent(assetId, () => <String>[])
+              .add(entity.path);
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.assetIdentityMismatch,
+              reference: reference,
+            ),
+          );
+          continue;
+        }
+        filesById
+            .putIfAbsent(assetId, () => <_ValidatedAssetFile>[])
+            .add(
+              _ValidatedAssetFile(
+                id: assetId,
+                path: entity.path,
+                extension: fileExtension,
+                mimeType: parsed.header.contentType,
+                createdAt: parsed.header.createdAt,
+                modifiedAt: await entity.lastModified(),
+                byteSize: plaintext.length,
+                plaintextHash: await _hashBytes(plaintext),
+              ),
+            );
+      } on Object {
+        invalidPathsById
+            .putIfAbsent(assetId, () => <String>[])
+            .add(entity.path);
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.unreadableAsset,
+            reference: reference,
+          ),
+        );
+      }
+    }
 
-      final DateOnly? date = assetDates[assetId];
-      if (date == null) {
+    for (final MapEntry<AssetId, List<_ValidatedAssetFile>> group
+        in filesById.entries) {
+      final AssetId assetId = group.key;
+      group.value.sort((_ValidatedAssetFile a, _ValidatedAssetFile b) {
+        final int created = a.createdAt.compareTo(b.createdAt);
+        if (created != 0) return created;
+        final int modified = a.modifiedAt.compareTo(b.modifiedAt);
+        return modified != 0
+            ? modified
+            : p.normalize(a.path).compareTo(p.normalize(b.path));
+      });
+      final List<_AssetReference>? assetReferences = references[assetId];
+      if (assetReferences == null || assetReferences.isEmpty) {
+        for (final _ValidatedAssetFile file in group.value) {
+          if (hasUnresolvedEntryIssues) {
+            issues.add(
+              VaultRepairIssue(
+                kind: VaultRepairIssueKind.unverifiedOrphanAsset,
+                reference: await _vaultRelativeReference(file.path),
+              ),
+            );
+          } else if (repair) {
+            cleanupTargets[file.path] = _RepairCleanupTarget(
+              path: file.path,
+              fileId: file.id,
+              contentType: file.mimeType,
+              plaintextHash: file.plaintextHash,
+              isAttachment: true,
+              countsAsOrphanAsset: true,
+            );
+          }
+        }
         continue;
       }
-
-      final String extension = p.extension(fileName).replaceFirst('.', '');
+      final Set<String> owners = assetReferences
+          .map((_AssetReference item) => '${item.entryId}:${item.date.value}')
+          .toSet();
+      if (owners.length != 1) {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.conflictingAsset,
+            reference: assetId,
+          ),
+        );
+        continue;
+      }
+      if (assetReferences.any(
+        (_AssetReference reference) => !contentTypeMatchesExtension(
+          group.value.first.mimeType,
+          reference.extension,
+        ),
+      )) {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.assetIdentityMismatch,
+            reference: assetId,
+          ),
+        );
+        continue;
+      }
+      final Set<String> contents = group.value
+          .map(
+            (_ValidatedAssetFile file) =>
+                '${file.mimeType}:${file.plaintextHash}',
+          )
+          .toSet();
+      String extension = assetReferences
+          .map((_AssetReference item) => item.extension)
+          .firstWhere((String value) => value.isNotEmpty, orElse: () => '');
+      extension = extension.isEmpty
+          ? extensionFromMimeType(group.value.first.mimeType)
+          : extension;
+      if (extension.isEmpty) extension = group.value.first.extension;
+      final DateOnly date = assetReferences.first.date;
       final String canonicalPath = await _pathStrategy.assetAbsolutePath(
         date: date,
         assetId: assetId,
         extension: extension.isEmpty ? 'bin' : extension,
       );
-      if (p.normalize(entity.path) == p.normalize(canonicalPath)) {
+      _ValidatedAssetFile? canonical;
+      for (final _ValidatedAssetFile file in group.value) {
+        if (p.normalize(file.path) == p.normalize(canonicalPath)) {
+          canonical = file;
+          break;
+        }
+      }
+      group.value.sort((_ValidatedAssetFile a, _ValidatedAssetFile b) {
+        final bool aCanonical =
+            p.normalize(a.path) == p.normalize(canonicalPath);
+        final bool bCanonical =
+            p.normalize(b.path) == p.normalize(canonicalPath);
+        if (aCanonical != bCanonical) return aCanonical ? -1 : 1;
+        final int created = a.createdAt.compareTo(b.createdAt);
+        if (created != 0) return created;
+        final int modified = a.modifiedAt.compareTo(b.modifiedAt);
+        return modified != 0
+            ? modified
+            : p.normalize(a.path).compareTo(p.normalize(b.path));
+      });
+      canonical = group.value
+          .where(
+            (_ValidatedAssetFile file) =>
+                p.normalize(file.path) == p.normalize(canonicalPath),
+          )
+          .firstOrNull;
+      if (contents.length > 1) {
+        issues.add(
+          VaultRepairIssue(
+            kind: VaultRepairIssueKind.conflictingAsset,
+            reference: assetId,
+          ),
+        );
+        if (canonical != null) {
+          _attachResolvedAsset(entries, assetReferences.first, canonical);
+        }
         continue;
       }
-
-      final bool moved = await _relocateAssetFileIfNeeded(
-        date: date,
-        attachment: AssetAttachment(
-          id: assetId,
-          entryId: '',
-          mimeType: mimeTypeFromExtension(extension),
-          safeFilename: fileName,
-          byteSize: await entity.length(),
-          createdAt: await entity.lastModified(),
-          sha256: '',
-        ),
-        currentPath: entity.path,
-      );
-      if (moved) {
-        relocatedAssets++;
+      _ValidatedAssetFile selected = canonical ?? group.value.first;
+      if (repair && canonical == null) {
+        try {
+          final VaultRepairCopyResult result = await _repairFileOperations
+              .copyAtomicallyIfAbsent(
+                sourcePath: selected.path,
+                targetPath: canonicalPath,
+                validate: (String copiedPath) => _validateRepairFile(
+                  copiedPath,
+                  session: session,
+                  metadata: metadata,
+                  expectedId: selected.id,
+                  expectedContentType: selected.mimeType,
+                  expectedPlaintextHash: selected.plaintextHash,
+                  validateAttachmentContent: true,
+                ),
+              );
+          if (result == VaultRepairCopyResult.targetExists) {
+            issues.add(
+              VaultRepairIssue(
+                kind: VaultRepairIssueKind.conflictingAsset,
+                reference: assetId,
+              ),
+            );
+            continue;
+          }
+          selected = _ValidatedAssetFile(
+            id: selected.id,
+            path: canonicalPath,
+            extension: extension,
+            mimeType: selected.mimeType,
+            createdAt: selected.createdAt,
+            modifiedAt: await File(canonicalPath).lastModified(),
+            byteSize: selected.byteSize,
+            plaintextHash: selected.plaintextHash,
+          );
+          relocatedAssets++;
+        } on Object {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.cleanupFailure,
+              reference: await _vaultRelativeReference(canonicalPath),
+            ),
+          );
+          _attachResolvedAsset(entries, assetReferences.first, selected);
+          continue;
+        }
+      }
+      _attachResolvedAsset(entries, assetReferences.first, selected);
+      if (repair) {
+        for (final _ValidatedAssetFile duplicate in group.value.where(
+          (_ValidatedAssetFile file) =>
+              p.normalize(file.path) != p.normalize(selected.path),
+        )) {
+          cleanupTargets[duplicate.path] = _RepairCleanupTarget(
+            path: duplicate.path,
+            fileId: duplicate.id,
+            contentType: duplicate.mimeType,
+            plaintextHash: duplicate.plaintextHash,
+            isAttachment: true,
+          );
+        }
       }
     }
 
+    for (final AssetId id in references.keys) {
+      if (!filesById.containsKey(id)) {
+        if (!invalidPathsById.containsKey(id)) {
+          issues.add(
+            VaultRepairIssue(
+              kind: VaultRepairIssueKind.missingAsset,
+              reference: id,
+            ),
+          );
+        }
+      }
+    }
     return _AssetRepairStats(
       relocatedAssets: relocatedAssets,
-      removedOrphanAssets: removedOrphanAssets,
-      warnings: warnings,
+      issues: issues,
+      cleanupTargets: cleanupTargets,
     );
   }
 
-  Future<bool> _assetExistsAnywhere(String assetId) async {
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory assetsDirectory = Directory(
-      p.join(vaultRoot.path, 'assets'),
+  void _attachResolvedAsset(
+    List<_ScannedEntry> entries,
+    _AssetReference reference,
+    _ValidatedAssetFile file,
+  ) {
+    final _ScannedEntry entry = entries.firstWhere(
+      (_ScannedEntry item) => item.entry.id == reference.entryId,
     );
-    if (!assetsDirectory.existsSync()) {
-      return false;
-    }
-
-    await for (final FileSystemEntity entity in assetsDirectory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      if (entity is! File || !entity.path.endsWith('.enc')) {
-        continue;
-      }
-      final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
-      if (p.basenameWithoutExtension(fileName) == assetId) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> _relocateAssetFileIfNeeded({
-    required DateOnly date,
-    required AssetAttachment attachment,
-    required String currentPath,
-  }) async {
-    final String newPath = await _assetAbsolutePathFor(
-      date: date,
-      attachment: attachment,
+    entry.attachments.add(
+      AssetAttachment(
+        id: file.id,
+        entryId: reference.entryId,
+        mimeType: file.mimeType,
+        safeFilename: '${file.id}.${file.extension}',
+        byteSize: file.byteSize,
+        createdAt: file.createdAt,
+        sha256: file.plaintextHash,
+      ),
     );
-    if (p.normalize(currentPath) == p.normalize(newPath)) {
-      return false;
-    }
-    final File oldFile = File(currentPath);
-    if (!oldFile.existsSync()) {
-      return false;
-    }
-    final Directory newParent = File(newPath).parent;
-    await newParent.create(recursive: true);
-    await oldFile.rename(newPath);
-    return true;
+    entry.attachmentPaths[file.id] = file.path;
   }
 
   Future<bool> _copyAssetFileIfNeeded({
@@ -2228,10 +2842,11 @@ class VaultRepository {
     RecoveryMetadata metadata,
   ) async {
     final List<EntryIndexRecord> entries = await listEntries();
+    final int assetCount = await _requireOpenIndex().countAttachments();
     final Map<String, Object?> manifest = <String, Object?>{
       'vault_id': metadata.vaultId,
       'entry_count': entries.length,
-      'asset_count': 0,
+      'asset_count': assetCount,
       'oldest_entry_date': entries.isEmpty ? null : entries.last.date.value,
       'newest_entry_date': entries.isEmpty ? null : entries.first.date.value,
       'app_version': '1.0.0',
@@ -2275,6 +2890,15 @@ class VaultRepository {
       final List<int> sourceBytes = pending.bytes != null
           ? pending.bytes!
           : await File(pending.sourcePath!).readAsBytes();
+      if (!contentTypeMatchesExtension(pending.mimeType, extension) ||
+          !attachmentContentMatchesMimeType(sourceBytes, pending.mimeType)) {
+        throw ArgumentError.value(
+          originalFilename,
+          'pendingAttachments',
+          '附件內容、MIME 與副檔名不一致。',
+        );
+      }
+      final DateTime createdAt = DateTime.now();
       final EncryptionResult encrypted = await _cryptoService.encryptBytes(
         documentId: assetId,
         vaultId: vaultId,
@@ -2282,8 +2906,8 @@ class VaultRepository {
         contentType: pending.mimeType,
         recoveryWrapKey: recoveryWrapKey,
         recoverySlotKdf: recoverySlotKdf,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: createdAt,
+        updatedAt: createdAt,
       );
       final String assetPath = await _pathStrategy.assetAbsolutePath(
         date: entry.date,
@@ -2299,52 +2923,12 @@ class VaultRepository {
           originalFilename: originalFilename.isEmpty ? null : originalFilename,
           safeFilename: safeFilename,
           byteSize: sourceBytes.length,
-          createdAt: DateTime.now(),
+          createdAt: createdAt,
           sha256: await _hashBytes(sourceBytes),
         ),
       );
     }
     return results;
-  }
-
-  Future<List<AssetAttachment>> _findAttachmentsForEntry(
-    DiaryEntry entry,
-  ) async {
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory assetsDirectory = Directory(
-      p.join(vaultRoot.path, 'assets'),
-    );
-    if (!assetsDirectory.existsSync()) {
-      return const <AssetAttachment>[];
-    }
-
-    final List<AssetAttachment> matches = <AssetAttachment>[];
-    await for (final FileSystemEntity entity in assetsDirectory.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      if (entity is! File || !entity.path.endsWith('.enc')) {
-        continue;
-      }
-
-      final String fileName = p.basename(entity.path).replaceFirst('.enc', '');
-      final String assetId = p.basenameWithoutExtension(fileName);
-      if (!entry.attachmentIds.contains(assetId)) {
-        continue;
-      }
-      matches.add(
-        AssetAttachment(
-          id: assetId,
-          entryId: entry.id,
-          mimeType: mimeTypeFromExtension(p.extension(fileName)),
-          safeFilename: fileName,
-          byteSize: await entity.length(),
-          createdAt: await entity.lastModified(),
-          sha256: '',
-        ),
-      );
-    }
-    return matches;
   }
 
   Future<void> _rewrapVaultRecoveryKey({
@@ -2538,6 +3122,102 @@ class VaultRepository {
         continue;
       }
     }
+  }
+
+  bool _isSafePathSegment(String value) {
+    final String trimmed = value.trim();
+    final String windowsStem = trimmed.split('.').first.toUpperCase();
+    final bool isWindowsDeviceName =
+        <String>{'CON', 'PRN', 'AUX', 'NUL'}.contains(windowsStem) ||
+        RegExp(r'^(COM|LPT)[1-9]$').hasMatch(windowsStem);
+    return trimmed.isNotEmpty &&
+        trimmed != '.' &&
+        trimmed != '..' &&
+        !isWindowsDeviceName &&
+        !trimmed.contains(RegExp(r'[/\\<>:"|?*\x00-\x1F]')) &&
+        !trimmed.endsWith('.') &&
+        !trimmed.endsWith(' ');
+  }
+
+  DateTime? _tryParseStrictIsoDateTime(String value) {
+    final RegExpMatch? match = _strictIsoDateTimePattern.firstMatch(value);
+    if (match == null ||
+        DateOnly.tryParse(value.substring(0, 10)) == null ||
+        int.parse(match.group(4)!) > 23 ||
+        int.parse(match.group(5)!) > 59 ||
+        int.parse(match.group(6)!) > 59 ||
+        (match.group(10) != null && int.parse(match.group(10)!) > 23) ||
+        (match.group(11) != null && int.parse(match.group(11)!) > 59)) {
+      return null;
+    }
+    return DateTime.tryParse(value);
+  }
+
+  Future<bool> _validateRepairFile(
+    String path, {
+    required UnlockedVaultSession session,
+    required RecoveryMetadata metadata,
+    required String expectedId,
+    required String expectedContentType,
+    required String expectedPlaintextHash,
+    required bool validateAttachmentContent,
+  }) async {
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+      await File(path).readAsBytes(),
+    );
+    if (parsed.header.fileId != expectedId ||
+        parsed.header.vaultId != metadata.vaultId ||
+        parsed.header.contentType != expectedContentType) {
+      return false;
+    }
+    final List<int> plaintext = await _cryptoService.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: _decryptionContext(session),
+    );
+    if (validateAttachmentContent &&
+        !attachmentContentMatchesMimeType(plaintext, expectedContentType)) {
+      return false;
+    }
+    return await _hashBytes(plaintext) == expectedPlaintextHash;
+  }
+
+  Future<String> _vaultRelativeReference(String absolutePath) async {
+    final Directory root = await _pathStrategy.vaultRootDirectory();
+    return p
+        .relative(p.normalize(absolutePath), from: p.normalize(root.path))
+        .replaceAll('\\', '/');
+  }
+
+  Future<bool> _storeRepairSummary(VaultRepairReport report) async {
+    final VaultRepairSummary summary = VaultRepairSummary.fromReport(report);
+    try {
+      await _requireOpenIndex().setAppValue(
+        _kLastRepairSummaryKey,
+        jsonEncode(summary.toJson()),
+      );
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<T> _serializeVaultMutation<T>(Future<T> Function() operation) {
+    final Completer<T> completer = Completer<T>();
+    final Future<void> previous = _mutationTail;
+    _mutationTail = () async {
+      try {
+        await previous;
+      } on Object {
+        // 前一項錯誤已交還原呼叫端，不阻斷後續 vault 寫入。
+      }
+      try {
+        completer.complete(await operation());
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    }();
+    return completer.future;
   }
 
   Future<void> _atomicWriteBytes(File file, Uint8List bytes) async {

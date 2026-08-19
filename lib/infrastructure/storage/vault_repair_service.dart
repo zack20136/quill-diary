@@ -10,6 +10,10 @@ class VaultRepairService {
       _repository.rebuildIndex(session);
 
   Future<VaultRepairReport> repairVaultWithReport(
-    UnlockedVaultSession session,
-  ) => _repository.repairVaultWithReport(session);
+    UnlockedVaultSession session, {
+    VaultRepairProgressCallback? onProgress,
+  }) => _repository.repairVaultWithReport(session, onProgress: onProgress);
+
+  Future<VaultRepairSummary?> readLastRepairSummary() =>
+      _repository.readLastRepairSummary();
 }

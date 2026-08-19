@@ -661,7 +661,7 @@ class IndexDatabase extends GeneratedDatabase {
         SELECT *
         FROM entry_attachments
         WHERE entry_id = ?
-        ORDER BY created_at ASC;
+        ORDER BY rowid ASC;
       ''',
       variables: <Variable<Object>>[Variable.withString(entryId)],
     ).get();
@@ -1117,6 +1117,13 @@ class IndexDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM entry_attachments;');
     await customStatement('DELETE FROM entry_people_analytics;');
     await customStatement('DELETE FROM people_analysis_documents;');
+  }
+
+  Future<int> countAttachments() async {
+    final QueryRow row = await customSelect(
+      'SELECT COUNT(*) AS total FROM entry_attachments;',
+    ).getSingle();
+    return row.read<int>('total');
   }
 
   Future<void> setAppValue(String key, String value) async {

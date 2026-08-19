@@ -3478,14 +3478,146 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRepairVaultReadyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'可隨時修復，讓日記庫與搜尋恢復正常。'**
+  /// **'可隨時修復並整理日記庫。'**
   String get settingsRepairVaultReadyMessage;
 
   /// No description provided for @settingsRepairVaultLockedMessage.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後可修復日記庫。'**
+  /// **'解鎖後即可修復日記庫。'**
   String get settingsRepairVaultLockedMessage;
+
+  /// No description provided for @settingsRepairVaultConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復日記庫？'**
+  String get settingsRepairVaultConfirmTitle;
+
+  /// No description provided for @settingsRepairVaultConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'系統會檢查日記和附件、修正常見問題，並重新整理搜尋資料。無法確認的檔案會保留，不會直接刪除。'**
+  String get settingsRepairVaultConfirmBody;
+
+  /// No description provided for @settingsRepairVaultProgressScanningEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在檢查日記…'**
+  String get settingsRepairVaultProgressScanningEntries;
+
+  /// No description provided for @settingsRepairVaultProgressCheckingAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在檢查附件…'**
+  String get settingsRepairVaultProgressCheckingAttachments;
+
+  /// No description provided for @settingsRepairVaultProgressRebuildingIndex.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理搜尋資料…'**
+  String get settingsRepairVaultProgressRebuildingIndex;
+
+  /// No description provided for @settingsRepairVaultProgressRebuildingPeople.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在更新人物資料…'**
+  String get settingsRepairVaultProgressRebuildingPeople;
+
+  /// No description provided for @settingsRepairVaultProgressCleaning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在完成整理…'**
+  String get settingsRepairVaultProgressCleaning;
+
+  /// No description provided for @settingsRepairVaultResultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復完成'**
+  String get settingsRepairVaultResultTitle;
+
+  /// No description provided for @settingsRepairVaultResultClean.
+  ///
+  /// In zh, this message translates to:
+  /// **'日記庫已修復完成，目前狀態良好。'**
+  String get settingsRepairVaultResultClean;
+
+  /// No description provided for @settingsRepairVaultResultWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復已完成，但有 {count} 個項目無法自動處理。為避免資料遺失，相關檔案都已保留。'**
+  String settingsRepairVaultResultWarning(int count);
+
+  /// No description provided for @settingsRepairVaultResultCheckedEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'已檢查 {entryCount} 篇日記。'**
+  String settingsRepairVaultResultCheckedEntries(int entryCount);
+
+  /// No description provided for @settingsRepairVaultResultIssueCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}：{count} 個'**
+  String settingsRepairVaultResultIssueCount(String label, int count);
+
+  /// No description provided for @settingsRepairIssueInvalidEntryMetadata.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分日記資料不完整'**
+  String get settingsRepairIssueInvalidEntryMetadata;
+
+  /// No description provided for @settingsRepairIssueUnreadableEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分日記無法開啟'**
+  String get settingsRepairIssueUnreadableEntry;
+
+  /// No description provided for @settingsRepairIssueEntryIdentityMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分日記資料需要確認'**
+  String get settingsRepairIssueEntryIdentityMismatch;
+
+  /// No description provided for @settingsRepairIssueConflictingEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'發現內容不同的重複日記'**
+  String get settingsRepairIssueConflictingEntry;
+
+  /// No description provided for @settingsRepairIssueMissingAsset.
+  ///
+  /// In zh, this message translates to:
+  /// **'有附件找不到'**
+  String get settingsRepairIssueMissingAsset;
+
+  /// No description provided for @settingsRepairIssueUnreadableAsset.
+  ///
+  /// In zh, this message translates to:
+  /// **'有附件無法開啟'**
+  String get settingsRepairIssueUnreadableAsset;
+
+  /// No description provided for @settingsRepairIssueAssetIdentityMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'有附件內容異常'**
+  String get settingsRepairIssueAssetIdentityMismatch;
+
+  /// No description provided for @settingsRepairIssueConflictingAsset.
+  ///
+  /// In zh, this message translates to:
+  /// **'發現內容不同的重複附件'**
+  String get settingsRepairIssueConflictingAsset;
+
+  /// No description provided for @settingsRepairIssueUnverifiedOrphanAsset.
+  ///
+  /// In zh, this message translates to:
+  /// **'有附件無法確認所屬日記'**
+  String get settingsRepairIssueUnverifiedOrphanAsset;
+
+  /// No description provided for @settingsRepairIssueCleanupFailure.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分檔案尚未整理完成'**
+  String get settingsRepairIssueCleanupFailure;
 
   /// No description provided for @settingsUnlockRequiredToChangeSettingMessage.
   ///
@@ -3514,24 +3646,17 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRepairVaultCompleted.
   ///
   /// In zh, this message translates to:
-  /// **'最近修復完成：{entryCount} 篇日記，{finishedAt}。'**
+  /// **'最近一次修復：{entryCount} 篇日記，{finishedAt}。'**
   String settingsRepairVaultCompleted(int entryCount, String finishedAt);
 
-  /// No description provided for @settingsRepairVaultSuccess.
+  /// No description provided for @settingsRepairVaultCompletedWithIssues.
   ///
   /// In zh, this message translates to:
-  /// **'日記庫已修復：{entryCount} 篇日記，耗時 {duration}'**
-  String settingsRepairVaultSuccess(int entryCount, String duration);
-
-  /// No description provided for @settingsRepairVaultSuccessChanges.
-  ///
-  /// In zh, this message translates to:
-  /// **'（搬移 {relocatedEntries} 篇、刪除 {removedDuplicates} 個重複日記檔與 {removedOrphanAssets} 個孤立附件；跳過 {skippedCorruptEntries} 個損壞檔）'**
-  String settingsRepairVaultSuccessChanges(
-    int relocatedEntries,
-    int removedDuplicates,
-    int removedOrphanAssets,
-    int skippedCorruptEntries,
+  /// **'最近一次修復：{entryCount} 篇日記，有 {issueCount} 個項目需要注意，{finishedAt}。'**
+  String settingsRepairVaultCompletedWithIssues(
+    int entryCount,
+    int issueCount,
+    String finishedAt,
   );
 
   /// No description provided for @settingsSupportNavButtonLabel.

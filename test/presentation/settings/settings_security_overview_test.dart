@@ -121,4 +121,27 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('可用的修復日記庫操作使用 tonal 按鈕', (WidgetTester tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+    );
+
+    expect(
+      find.widgetWithText(
+        FilledButton,
+        testL10n.settingsSecurityOverviewRepairVaultButton,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(
+        OutlinedButton,
+        testL10n.settingsSecurityOverviewRepairVaultButton,
+      ),
+      findsNothing,
+    );
+  });
 }

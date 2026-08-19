@@ -1940,10 +1940,83 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreBulletRewrapNote => '還原後首次解鎖可能需要較久，請保持 App 開啟。';
 
   @override
-  String get settingsRepairVaultReadyMessage => '可隨時修復，讓日記庫與搜尋恢復正常。';
+  String get settingsRepairVaultReadyMessage => '可隨時修復並整理日記庫。';
 
   @override
-  String get settingsRepairVaultLockedMessage => '解鎖後可修復日記庫。';
+  String get settingsRepairVaultLockedMessage => '解鎖後即可修復日記庫。';
+
+  @override
+  String get settingsRepairVaultConfirmTitle => '修復日記庫？';
+
+  @override
+  String get settingsRepairVaultConfirmBody =>
+      '系統會檢查日記和附件、修正常見問題，並重新整理搜尋資料。無法確認的檔案會保留，不會直接刪除。';
+
+  @override
+  String get settingsRepairVaultProgressScanningEntries => '正在檢查日記…';
+
+  @override
+  String get settingsRepairVaultProgressCheckingAttachments => '正在檢查附件…';
+
+  @override
+  String get settingsRepairVaultProgressRebuildingIndex => '正在整理搜尋資料…';
+
+  @override
+  String get settingsRepairVaultProgressRebuildingPeople => '正在更新人物資料…';
+
+  @override
+  String get settingsRepairVaultProgressCleaning => '正在完成整理…';
+
+  @override
+  String get settingsRepairVaultResultTitle => '修復完成';
+
+  @override
+  String get settingsRepairVaultResultClean => '日記庫已修復完成，目前狀態良好。';
+
+  @override
+  String settingsRepairVaultResultWarning(int count) {
+    return '修復已完成，但有 $count 個項目無法自動處理。為避免資料遺失，相關檔案都已保留。';
+  }
+
+  @override
+  String settingsRepairVaultResultCheckedEntries(int entryCount) {
+    return '已檢查 $entryCount 篇日記。';
+  }
+
+  @override
+  String settingsRepairVaultResultIssueCount(String label, int count) {
+    return '$label：$count 個';
+  }
+
+  @override
+  String get settingsRepairIssueInvalidEntryMetadata => '部分日記資料不完整';
+
+  @override
+  String get settingsRepairIssueUnreadableEntry => '部分日記無法開啟';
+
+  @override
+  String get settingsRepairIssueEntryIdentityMismatch => '部分日記資料需要確認';
+
+  @override
+  String get settingsRepairIssueConflictingEntry => '發現內容不同的重複日記';
+
+  @override
+  String get settingsRepairIssueMissingAsset => '有附件找不到';
+
+  @override
+  String get settingsRepairIssueUnreadableAsset => '有附件無法開啟';
+
+  @override
+  String get settingsRepairIssueAssetIdentityMismatch => '有附件內容異常';
+
+  @override
+  String get settingsRepairIssueConflictingAsset => '發現內容不同的重複附件';
+
+  @override
+  String get settingsRepairIssueUnverifiedOrphanAsset => '有附件無法確認所屬日記';
+
+  @override
+  String get settingsRepairIssueCleanupFailure => '部分檔案尚未整理完成';
 
   @override
   String get settingsUnlockRequiredToChangeSettingMessage => '解鎖後可調整此設定。';
@@ -1959,22 +2032,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsRepairVaultCompleted(int entryCount, String finishedAt) {
-    return '最近修復完成：$entryCount 篇日記，$finishedAt。';
+    return '最近一次修復：$entryCount 篇日記，$finishedAt。';
   }
 
   @override
-  String settingsRepairVaultSuccess(int entryCount, String duration) {
-    return '日記庫已修復：$entryCount 篇日記，耗時 $duration';
-  }
-
-  @override
-  String settingsRepairVaultSuccessChanges(
-    int relocatedEntries,
-    int removedDuplicates,
-    int removedOrphanAssets,
-    int skippedCorruptEntries,
+  String settingsRepairVaultCompletedWithIssues(
+    int entryCount,
+    int issueCount,
+    String finishedAt,
   ) {
-    return '（搬移 $relocatedEntries 篇、刪除 $removedDuplicates 個重複日記檔與 $removedOrphanAssets 個孤立附件；跳過 $skippedCorruptEntries 個損壞檔）';
+    return '最近一次修復：$entryCount 篇日記，有 $issueCount 個項目需要注意，$finishedAt。';
   }
 
   @override
