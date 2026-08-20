@@ -43,7 +43,7 @@ void main() {
             busy: false,
             onCreateRecoveryKey: () {},
             onRotateRecoveryKey: () {},
-            onRepairVault: () {},
+            onInspectVault: () {},
             lockPanel: null,
           ),
         ),
@@ -122,7 +122,7 @@ void main() {
     );
   });
 
-  testWidgets('可用的修復日記庫操作使用 tonal 按鈕', (WidgetTester tester) async {
+  testWidgets('可用的檢查日記庫操作使用 tonal 按鈕', (WidgetTester tester) async {
     await pumpOverview(
       tester,
       indexHealthLevel: SettingsHealthLevel.ok,
@@ -132,16 +132,37 @@ void main() {
     expect(
       find.widgetWithText(
         FilledButton,
-        testL10n.settingsSecurityOverviewRepairVaultButton,
+        testL10n.settingsSecurityOverviewInspectVaultButton,
       ),
       findsOneWidget,
     );
     expect(
       find.widgetWithText(
         OutlinedButton,
-        testL10n.settingsSecurityOverviewRepairVaultButton,
+        testL10n.settingsSecurityOverviewInspectVaultButton,
       ),
       findsNothing,
     );
+    expect(
+      find.text(testL10n.settingsSecurityOverviewRepairVaultButton),
+      findsNothing,
+    );
+  });
+
+  testWidgets('設定卡不再顯示查看異常日記按鈕', (WidgetTester tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.warning,
+      indexMessage: testL10n.settingsInspectVaultCompletedWithIssues(
+        2,
+        '2026/08/20 10:00',
+      ),
+    );
+
+    expect(
+      find.text(testL10n.settingsSecurityOverviewInspectVaultButton),
+      findsOneWidget,
+    );
+    expect(find.textContaining('異常日記'), findsNothing);
   });
 }

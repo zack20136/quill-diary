@@ -23,6 +23,7 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -98,6 +99,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final AsyncValue<VaultRepairSummary?> repairSummaryAsync = ref.watch(
       vaultRepairSummaryProvider,
     );
+    final AsyncValue<VaultInspectSummary?> inspectSummaryAsync = ref.watch(
+      vaultInspectSummaryProvider,
+    );
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final RecoveryMetadata? recoveryMetadata =
         recoveryMetadataAsync.asData?.value;
@@ -139,6 +143,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     trustedDeviceAccessAsync: trustedDeviceAccessAsync,
                     unlockModeAsync: unlockModeAsync,
                     repairSummaryAsync: repairSummaryAsync,
+                    inspectSummaryAsync: inspectSummaryAsync,
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
@@ -240,7 +245,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             if (_busy)
               SettingsBlockingProgressOverlay(
+                title: l10n.settingsProgressWorkingTitle,
                 message: _busyMessage ?? l10n.settingsProgressDefault,
+                hint: l10n.settingsProgressKeepAppOpenHint,
                 progress: _busyProgress,
               ),
           ],

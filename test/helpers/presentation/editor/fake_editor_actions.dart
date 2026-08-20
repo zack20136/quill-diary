@@ -141,6 +141,7 @@ class FakeEditorActions implements EditorActionPort {
     UnlockedVaultSession session,
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
+    List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
   }) async {
     saveEntryCallCount++;
     savedEntryDraft = draft;

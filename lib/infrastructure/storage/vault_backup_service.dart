@@ -50,13 +50,15 @@ class VaultBackupService {
 
   Future<BackupPersistResult> saveBackupToAppLocal({
     BackupTaskProgressListener? onProgress,
+    String? fileName,
   }) {
     return _runInspectedBackupPipeline(
+      fileName: fileName,
       onProgress: onProgress,
       deliver:
           (
             File stagingZip,
-            String fileName,
+            String deliveredFileName,
             BackupTaskProgressListener? deliverProgress,
           ) async {
             final Directory backupsDirectory = await _pathStrategy
@@ -64,7 +66,7 @@ class VaultBackupService {
             await backupsDirectory.create(recursive: true);
             final String destinationPath = p.join(
               backupsDirectory.path,
-              fileName,
+              deliveredFileName,
             );
             await copyFileToPath(
               stagingZip,
@@ -75,6 +77,15 @@ class VaultBackupService {
             await _pruneExcessAppLocalBackupsFromSorted(backups);
             return destinationPath;
           },
+    );
+  }
+
+  Future<BackupPersistResult> saveBackupBeforeRepair({
+    BackupTaskProgressListener? onProgress,
+  }) {
+    return saveBackupToAppLocal(
+      onProgress: onProgress,
+      fileName: VaultBackupPolicy.backupBeforeRepairFileName(DateTime.now()),
     );
   }
 
@@ -235,9 +246,11 @@ class VaultBackupService {
     )
     deliver,
     BackupTaskProgressListener? onProgress,
+    String? fileName,
   }) async {
-    final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
-    final File staging = await _createTempFile(fileName);
+    final String resolvedFileName =
+        fileName ?? VaultBackupPolicy.backupFileName(DateTime.now());
+    final File staging = await _createTempFile(resolvedFileName);
     try {
       await _archiveIo.writeBackupZip(
         staging,
@@ -256,7 +269,7 @@ class VaultBackupService {
       }
       final String? saved = await deliver(
         staging,
-        fileName,
+        resolvedFileName,
         remapBackupTaskProgress(
           onProgress,
           start: backupPipelineZipEndFraction,

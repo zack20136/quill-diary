@@ -62,6 +62,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     required AsyncValue<bool> trustedDeviceAccessAsync,
     required AsyncValue<AppUnlockMode> unlockModeAsync,
     required AsyncValue<VaultRepairSummary?> repairSummaryAsync,
+    required AsyncValue<VaultInspectSummary?> inspectSummaryAsync,
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final bool hasUnlockedSession = pageAccess.hasUnlockedSession;
@@ -69,6 +70,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         unlockModeAsync.asData?.value ?? AppUnlockMode.none;
     final AppLocalizations l10n = pageContext.l10n;
     final VaultRepairSummary? repairSummary = repairSummaryAsync.asData?.value;
+    final VaultInspectSummary? inspectSummary =
+        inspectSummaryAsync.asData?.value;
     return SettingsSectionCard(
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
@@ -95,12 +98,14 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                       sessionState: sessionState,
                       hasUnlockedSession: hasUnlockedSession,
                       repairSummary: repairSummary,
+                      inspectSummary: inspectSummary,
                     ),
                     indexHealthLevel: settingsIndexHealthLevel(
                       l10n: l10n,
                       sessionState: sessionState,
                       hasUnlockedSession: hasUnlockedSession,
                       repairSummary: repairSummary,
+                      inspectSummary: inspectSummary,
                     ),
                     backupStatus: backupStatus,
                     busy: _busy,
@@ -112,8 +117,8 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                             pageAccess.vaultTransferCapabilities.canBackup
                         ? () => _runBusy(_rotateRecoveryKey)
                         : null,
-                    onRepairVault: hasUnlockedSession
-                        ? () => unawaited(_repairVault())
+                    onInspectVault: hasUnlockedSession
+                        ? () => unawaited(_inspectVault())
                         : null,
                     onRetryTrustedUnlock:
                         sessionState?.status == AppLockStatus.locked
@@ -394,36 +399,116 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     }
   }
 
-  Future<void> _repairVault() async {
+  Future<void> _inspectVault() async {
     final BuildContext context = pageContext;
     final AppLocalizations l10n = context.l10n;
-    if (!await showRepairVaultConfirmDialog(context) || !context.mounted) {
-      return;
-    }
-    VaultRepairReport? completed;
+    final bool confirmed = await showInspectVaultConfirmDialog(
+      context,
+      repairSummary: pageRef.read(vaultRepairSummaryProvider).asData?.value,
+    );
+    if (!confirmed || !context.mounted) return;
+    VaultInspectReport? completed;
     await _runBusy(() async {
-      completed = await _settingsFlow.repairVault(
+      completed = await _settingsFlow.inspectVault(
         onProgress: (VaultRepairPhase phase) {
           if (!isMounted) return;
           updatePageState(() {
+            _busyProgress = vaultInspectProgressFraction(phase);
             _busyMessage = switch (phase) {
               VaultRepairPhase.scanningEntries =>
-                l10n.settingsRepairVaultProgressScanningEntries,
+                l10n.settingsInspectVaultProgressScanningEntries,
               VaultRepairPhase.checkingAttachments =>
-                l10n.settingsRepairVaultProgressCheckingAttachments,
+                l10n.settingsInspectVaultProgressCheckingAttachments,
               VaultRepairPhase.rebuildingIndex =>
-                l10n.settingsRepairVaultProgressRebuildingIndex,
+                l10n.settingsInspectVaultProgressRebuildingIndex,
               VaultRepairPhase.rebuildingPeopleAnalytics =>
-                l10n.settingsRepairVaultProgressRebuildingPeople,
+                l10n.settingsInspectVaultProgressRebuildingPeople,
               VaultRepairPhase.cleaning =>
-                l10n.settingsRepairVaultProgressCleaning,
+                l10n.settingsInspectVaultProgressRebuildingIndex,
             };
           });
         },
       );
-    }, message: l10n.settingsRepairVaultProgressScanningEntries);
+    },
+      message: l10n.settingsInspectVaultProgressScanningEntries,
+      initialProgress: vaultInspectProgressFraction(
+        VaultRepairPhase.scanningEntries,
+      ),
+    );
+    if (completed == null || !context.mounted) return;
+    final bool? shouldRepair = await showInspectVaultResultDialog(
+      context,
+      completed!,
+    );
+    if (shouldRepair == true && context.mounted) {
+      await _repairVaultAfterBackup();
+    }
+  }
+
+  Future<void> _repairVaultAfterBackup() async {
+    final BuildContext context = pageContext;
+    final AppLocalizations l10n = context.l10n;
+    VaultRepairReport? completed;
+    try {
+      await _runBusy(() async {
+        completed = await _settingsFlow.repairVaultAfterVerifiedBackup(
+          onProgress: (VaultMaintenanceFlowPhase phase) {
+            if (!isMounted) return;
+            updatePageState(() {
+              _busyProgress = vaultMaintenanceProgressFraction(phase);
+              _busyMessage = switch (phase) {
+                VaultMaintenanceFlowPhase.creatingBackup =>
+                  l10n.settingsRepairVaultProgressCreatingBackup,
+                VaultMaintenanceFlowPhase.repairingEntries ||
+                VaultMaintenanceFlowPhase.inspectingEntries =>
+                  l10n.settingsRepairVaultProgressRepairingEntries,
+                VaultMaintenanceFlowPhase.repairingAttachments ||
+                VaultMaintenanceFlowPhase.inspectingAttachments =>
+                  l10n.settingsRepairVaultProgressRepairingAttachments,
+                VaultMaintenanceFlowPhase.updatingSearch ||
+                VaultMaintenanceFlowPhase.rebuildingIndex ||
+                VaultMaintenanceFlowPhase.rebuildingPeople =>
+                  l10n.settingsRepairVaultProgressUpdatingSearch,
+              };
+            });
+          },
+        );
+      },
+        message: l10n.settingsRepairVaultProgressCreatingBackup,
+        initialProgress: vaultMaintenanceProgressFraction(
+          VaultMaintenanceFlowPhase.creatingBackup,
+        ),
+      );
+    } on VaultRepairBackupException catch (error) {
+      if (!context.mounted) return;
+      final String message = switch (error.result.status) {
+        BackupPersistStatus.cancelled =>
+          l10n.settingsRepairVaultBackupCancelled,
+        BackupPersistStatus.inspectFailed =>
+          l10n.settingsRepairVaultBackupInspectFailed(error.result.message),
+        BackupPersistStatus.success => l10n.settingsRepairVaultBackupFailed,
+      };
+      _showFeedback(
+        SettingsFlowFeedback(message, tone: SettingsFlowFeedbackTone.error),
+      );
+      return;
+    }
     if (completed != null && context.mounted) {
-      await showRepairVaultResultDialog(context, completed!);
+      await showRepairVaultResultDialog(
+        context: context,
+        report: completed!,
+        canSalvage: _settingsFlow.canSalvageFindings,
+        onSalvage: (List<VaultFinding> findings) async =>
+            (await _settingsFlow.prepareSalvageDraft(findings))?.token,
+        onDelete: (List<VaultFinding> findings) async {
+          try {
+            await _settingsFlow.permanentlyDeleteAbnormalFindings(findings);
+            return true;
+          } on Object {
+            return false;
+          }
+        },
+      );
     }
   }
 
@@ -659,12 +744,13 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   Future<void> _runBusy(
     Future<void> Function() action, {
     String? message,
+    double? initialProgress,
   }) async {
     final AppLocalizations l10n = pageContext.l10n;
     updatePageState(() {
       _busy = true;
       _busyMessage = message;
-      _busyProgress = null;
+      _busyProgress = initialProgress;
     });
     try {
       await action();

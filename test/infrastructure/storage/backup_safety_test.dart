@@ -24,7 +24,7 @@ void main() {
     await harness.dispose();
   });
 
-  test('writeBackupZip 會排除衍生的本機索引檔', () async {
+  test('writeBackupZip 會排除索引與隔離區檔案但保留正式資料', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
     await harness.repository.saveEntry(
@@ -47,6 +47,12 @@ void main() {
     File(p.join(vaultRoot.path, 'index', 'derived.sqlite'))
       ..createSync(recursive: true)
       ..writeAsBytesSync(const <int>[9, 9, 9]);
+    File(p.join(vaultRoot.path, 'quarantine', 'damaged.bin'))
+      ..createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[8, 8, 8]);
+    File(p.join(vaultRoot.path, 'assets', '2026', '06', 'photo.png.enc'))
+      ..createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[7, 7, 7]);
 
     final File backupFile = File(p.join(harness.tempDir.path, 'no_index.zip'));
     await archiveIo.writeBackupZip(backupFile);
@@ -59,6 +65,15 @@ void main() {
         .toList();
 
     expect(names.any((String name) => name.startsWith('index/')), isFalse);
+    expect(names.any((String name) => name.startsWith('quarantine/')), isFalse);
+    expect(
+      names.any((String name) => name.startsWith('entries/')),
+      isTrue,
+    );
+    expect(
+      names.any((String name) => name.startsWith('assets/')),
+      isTrue,
+    );
     expect(names, contains('people.json.enc'));
     expect(names, contains('recovery.json'));
   });

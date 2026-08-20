@@ -70,6 +70,7 @@ class EditorDraftRecord {
     required this.provisionalEntryId,
     required this.createdAt,
     required this.updatedAt,
+    this.salvageSourceFindings = const <Map<String, Object?>>[],
   });
 
   final String? title;
@@ -83,6 +84,8 @@ class EditorDraftRecord {
   final EntryId provisionalEntryId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// 手動修復來源 findings；一般草稿為空。
+  final List<Map<String, Object?>> salvageSourceFindings;
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
@@ -99,6 +102,8 @@ class EditorDraftRecord {
       'provisional_entry_id': provisionalEntryId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      if (salvageSourceFindings.isNotEmpty)
+        'salvage_source_findings': salvageSourceFindings,
     };
   }
 
@@ -136,6 +141,17 @@ class EditorDraftRecord {
         ),
       );
     }
+    final List<Map<String, Object?>> salvageFindings = <Map<String, Object?>>[];
+    final Object? rawSalvage = json['salvage_source_findings'];
+    if (rawSalvage is List<Object?>) {
+      for (final Object? item in rawSalvage) {
+        if (item is Map<String, Object?>) {
+          salvageFindings.add(item);
+        } else if (item is Map) {
+          salvageFindings.add(item.cast<String, Object?>());
+        }
+      }
+    }
     return EditorDraftRecord(
       title: (json['title'] ?? '').toString().trim().isEmpty
           ? null
@@ -161,6 +177,7 @@ class EditorDraftRecord {
           DateTime.tryParse('${json['created_at'] ?? ''}') ?? DateTime.now(),
       updatedAt:
           DateTime.tryParse('${json['updated_at'] ?? ''}') ?? DateTime.now(),
+      salvageSourceFindings: salvageFindings,
     );
   }
 }

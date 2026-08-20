@@ -15,6 +15,11 @@ abstract final class VaultBackupPolicy {
     return 'backup_${_formatTimestamp(timestamp)}.$fileExtension';
   }
 
+  /// 修復前備份命名為 `backup_before_repair_YYYY-MM-DD_HH-MM-SS.zip`。
+  static String backupBeforeRepairFileName(DateTime timestamp) {
+    return 'backup_before_repair_${_formatTimestamp(timestamp)}.$fileExtension';
+  }
+
   /// Markdown 匯出封存檔命名為 `markdown_YYYY-MM-DD_HH-MM-SS.zip`。
   static String markdownPortableFileName(DateTime timestamp) {
     return 'markdown_${_formatTimestamp(timestamp)}.$fileExtension';

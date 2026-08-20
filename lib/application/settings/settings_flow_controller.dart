@@ -13,9 +13,12 @@ import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
@@ -32,6 +35,17 @@ final settingsFlowControllerProvider = Provider<SettingsFlowController>((
 ) {
   return SettingsFlowController(ref);
 });
+
+/// 修復前備份未通過驗證時拋出，呼叫端不得繼續修復。
+class VaultRepairBackupException implements Exception {
+  const VaultRepairBackupException(this.result);
+
+  final BackupPersistResult result;
+
+  @override
+  String toString() =>
+      'VaultRepairBackupException(${result.status.name}: ${result.message})';
+}
 
 enum SettingsFlowFeedbackTone { info, success, warning, error }
 
@@ -329,6 +343,62 @@ class SettingsFlowController {
     );
   }
 
+  Future<VaultInspectReport> inspectVault({
+    VaultRepairProgressCallback? onProgress,
+  }) async {
+    final VaultInspectReport report = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(vaultRepairServiceProvider)
+              .inspectVaultWithReport(session, onProgress: onProgress);
+        });
+    _refreshVaultMaintenanceCaches();
+    return report;
+  }
+
+  Future<VaultRepairReport> repairVaultAfterVerifiedBackup({
+    VaultMaintenanceFlowProgressCallback? onProgress,
+  }) async {
+    onProgress?.call(VaultMaintenanceFlowPhase.creatingBackup);
+    final BackupPersistResult backupResult = await _ref
+        .read(vaultBackupServiceProvider)
+        .saveBackupBeforeRepair();
+    if (backupResult.status != BackupPersistStatus.success) {
+      throw VaultRepairBackupException(backupResult);
+    }
+    final String backupFileName = DisplayFormat.formatSavedFileNameForDisplay(
+      backupResult.savedPath ?? '',
+    );
+    final VaultRepairReport report = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(vaultRepairServiceProvider)
+              .repairVaultWithReport(
+                session,
+                backupFileName: backupFileName,
+                onProgress: (VaultRepairPhase phase) {
+                  onProgress?.call(switch (phase) {
+                    VaultRepairPhase.scanningEntries =>
+                      VaultMaintenanceFlowPhase.repairingEntries,
+                    VaultRepairPhase.checkingAttachments =>
+                      VaultMaintenanceFlowPhase.repairingAttachments,
+                    VaultRepairPhase.rebuildingIndex ||
+                    VaultRepairPhase.rebuildingPeopleAnalytics ||
+                    VaultRepairPhase.cleaning =>
+                      VaultMaintenanceFlowPhase.updatingSearch,
+                  });
+                },
+              );
+        });
+    await _ref.read(backupStatusStoreProvider).recordLocalBackupSuccess();
+    _ref.invalidate(backupStatusProvider);
+    _refreshVaultMaintenanceCaches();
+    return report.copyWith(backupFileName: backupFileName);
+  }
+
+  /// 測試／內部用：不建立修復前備份。正式 UI 請走 [repairVaultAfterVerifiedBackup]。
   Future<VaultRepairReport> repairVault({
     VaultRepairProgressCallback? onProgress,
   }) async {
@@ -339,11 +409,64 @@ class SettingsFlowController {
               .read(vaultRepairServiceProvider)
               .repairVaultWithReport(session, onProgress: onProgress);
         });
-    _ref.read(entryIndexRevisionProvider.notifier).bump();
-    _ref.invalidate(recoveryMetadataProvider);
-    _ref.invalidate(tagAccentArgbMapProvider);
-    _ref.invalidate(vaultRepairSummaryProvider);
+    _refreshVaultMaintenanceCaches();
     return report;
+  }
+
+  Future<VaultSalvageDraft?> prepareSalvageDraft(
+    List<VaultFinding> findings,
+  ) async {
+    return _ref.read(appSessionProvider.notifier).runSensitiveTask((
+      UnlockedVaultSession session,
+    ) async {
+      final VaultSalvageDraft? draft = await _ref
+          .read(vaultRepairServiceProvider)
+          .tryCreateSalvageDraft(session, findings: findings);
+      if (draft == null) return null;
+      await _ref
+          .read(editorDraftStoreProvider)
+          .write(
+            VaultSalvageDraft.draftKeyForToken(draft.token),
+            draft.record,
+            session,
+          );
+      return draft;
+    });
+  }
+
+  Future<bool> canSalvageFindings(List<VaultFinding> findings) async {
+    return _ref.read(appSessionProvider.notifier).runSensitiveTask((
+      UnlockedVaultSession session,
+    ) {
+      return _ref
+          .read(vaultRepairServiceProvider)
+          .canSalvageFindings(session, findings);
+    });
+  }
+
+  /// 永久刪除無法安全開啟的異常項對應檔案，並更新最近摘要。
+  Future<int> permanentlyDeleteAbnormalFindings(
+    List<VaultFinding> findings,
+  ) async {
+    final int deleted = await _ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((UnlockedVaultSession session) {
+          return _ref
+              .read(vaultRepairServiceProvider)
+              .permanentlyDeleteAbnormalFindings(session, findings: findings);
+        });
+    _refreshVaultMaintenanceCaches();
+    return deleted;
+  }
+
+  void _refreshVaultMaintenanceCaches() {
+    _refreshCaches();
+    _ref
+      ..invalidate(recoveryMetadataProvider)
+      ..invalidate(tagAccentArgbMapProvider)
+      ..invalidate(vaultRepairSummaryProvider)
+      ..invalidate(vaultInspectSummaryProvider)
+      ..invalidate(peopleCatalogProvider);
   }
 
   Future<void> retryTrustedUnlock() async {

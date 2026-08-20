@@ -49,10 +49,12 @@ class VaultEntryStore {
     UnlockedVaultSession session, {
     required DiaryEntry draft,
     List<PendingAttachment> pendingAttachments = const <PendingAttachment>[],
+    List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
   }) => _repository.saveEntry(
     session,
     draft,
     pendingAttachments: pendingAttachments,
+    retireFindingsAfterSave: retireFindingsAfterSave,
   );
 
   Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) =>

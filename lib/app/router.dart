@@ -21,12 +21,21 @@ class AppRouter {
 
   static String personDetailLocation(String id) => '/people/$id';
 
+  static String editorEditLocation(String entryId) => '/editor/$entryId?edit=1';
+  static String editorSalvageLocation(String token) => '/editor?salvage=$token';
+
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: homeRoute,
       routes: <RouteBase>[
         GoRoute(path: homeRoute, builder: (_, _) => const HomePage()),
-        GoRoute(path: editorRoute, builder: (_, _) => const EditorPage()),
+        GoRoute(
+          path: editorRoute,
+          builder: (_, GoRouterState state) => EditorPage(
+            salvageToken: state.uri.queryParameters['salvage'],
+            startInEditMode: state.uri.queryParameters['salvage'] != null,
+          ),
+        ),
         GoRoute(
           path: editorDetailRoute,
           builder: (_, GoRouterState state) => EditorPage(

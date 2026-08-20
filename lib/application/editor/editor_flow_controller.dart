@@ -12,6 +12,7 @@ import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'editor_actions.dart';
 import 'editor_attachment_items.dart';
 import 'editor_body_blocks.dart';
@@ -65,6 +66,7 @@ class EditorPersistDraftRequest {
     required this.createdAt,
     required this.provisionalEntryId,
     required this.existingEntryId,
+    this.salvageSourceFindings = const <Map<String, Object?>>[],
   });
 
   final String draftKey;
@@ -76,6 +78,7 @@ class EditorPersistDraftRequest {
   final DateTime createdAt;
   final EntryId provisionalEntryId;
   final EntryId? existingEntryId;
+  final List<Map<String, Object?>> salvageSourceFindings;
 }
 
 class EditorPersistDraftResult {
@@ -102,6 +105,7 @@ class EditorSaveRequest {
     required this.pendingAttachments,
     required this.provisionalEntryId,
     required this.switchToPreview,
+    this.retireFindingsAfterSave = const <VaultFinding>[],
   });
 
   final String draftKey;
@@ -116,6 +120,7 @@ class EditorSaveRequest {
   final List<PendingAttachment> pendingAttachments;
   final EntryId provisionalEntryId;
   final bool switchToPreview;
+  final List<VaultFinding> retireFindingsAfterSave;
 }
 
 class EditorSaveResult {
@@ -180,6 +185,9 @@ class EditorFlowController {
       provisionalEntryId: request.provisionalEntryId,
       createdAt: request.createdAt,
       updatedAt: now,
+      salvageSourceFindings: List<Map<String, Object?>>.from(
+        request.salvageSourceFindings,
+      ),
     );
     await _actions.writeDraft(request.draftKey, record, request.session);
     _ref.invalidate(editorDraftKeysProvider);
@@ -262,9 +270,15 @@ class EditorFlowController {
       pendingAttachments: List<PendingAttachment>.from(
         request.pendingAttachments,
       ),
+      retireFindingsAfterSave: List<VaultFinding>.from(
+        request.retireFindingsAfterSave,
+      ),
     );
     await discardDraft(request.draftKey);
-    _refreshCaches(editedEntryId: saved.id);
+    _refreshCaches(
+      editedEntryId: saved.id,
+      refreshVaultMaintenance: request.retireFindingsAfterSave.isNotEmpty,
+    );
     return EditorSaveResult(
       savedEntry: saved,
       routeLocation: request.switchToPreview
@@ -449,7 +463,10 @@ class EditorFlowController {
     }
   }
 
-  void _refreshCaches({EntryId? editedEntryId}) {
+  void _refreshCaches({
+    EntryId? editedEntryId,
+    bool refreshVaultMaintenance = false,
+  }) {
     _ref
       ..invalidate(homeEntryIndexListProvider)
       ..invalidate(calendarGridEntriesProvider)
@@ -457,6 +474,11 @@ class EditorFlowController {
       ..invalidate(entryDateBoundsProvider)
       ..invalidate(allEntryIndexRecordsProvider)
       ..invalidate(editorDraftKeysProvider);
+    if (refreshVaultMaintenance) {
+      _ref
+        ..invalidate(vaultRepairSummaryProvider)
+        ..invalidate(vaultInspectSummaryProvider);
+    }
     _ref.read(entryIndexRevisionProvider.notifier).bump();
     final EntryId? id = editedEntryId?.trim();
     if (id != null && id.isNotEmpty) {

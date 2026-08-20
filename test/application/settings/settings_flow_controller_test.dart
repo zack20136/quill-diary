@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
@@ -40,31 +41,42 @@ import '../../helpers/session/fake_session_vault_repository.dart';
 import '../../helpers/vault/test_vault_path_strategy.dart';
 
 class _FlowBackupService extends VaultBackupService {
-  _FlowBackupService({this.driveBackups = const <DriveBackupFile>[]})
-    : super(
-        archiveIo: VaultArchiveIo(
-          pathStrategy: DummyVaultPathStrategy(),
-          repository: FakeSessionVaultRepository(),
-          frontMatterCodec: const FrontMatterCodec(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
-        ),
-        driveBackupService: _UnusedDriveBackupService(),
-        externalDirectoryStore: ExternalDirectoryStore(
-          DummyVaultPathStrategy(),
-        ),
-        pathStrategy: DummyVaultPathStrategy(),
-      );
+  _FlowBackupService({
+    this.driveBackups = const <DriveBackupFile>[],
+    this.beforeRepairResult,
+  }) : super(
+         archiveIo: VaultArchiveIo(
+           pathStrategy: DummyVaultPathStrategy(),
+           repository: FakeSessionVaultRepository(),
+           frontMatterCodec: const FrontMatterCodec(),
+           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
+           editorDraftStore: EditorDraftStore(
+             pathStrategy: DummyVaultPathStrategy(),
+             cryptoService: LocalCryptoService(),
+           ),
+         ),
+         driveBackupService: _UnusedDriveBackupService(),
+         externalDirectoryStore: ExternalDirectoryStore(
+           DummyVaultPathStrategy(),
+         ),
+         pathStrategy: DummyVaultPathStrategy(),
+       );
 
   final List<DriveBackupFile> driveBackups;
+  final BackupPersistResult? beforeRepairResult;
   int deleteAppLocalBackupCalls = 0;
   int deleteDriveBackupCalls = 0;
 
   @override
   Future<List<DriveBackupFile>> listDriveBackups() async => driveBackups;
+
+  @override
+  Future<BackupPersistResult> saveBackupBeforeRepair({
+    BackupTaskProgressListener? onProgress,
+  }) async {
+    return beforeRepairResult ??
+        const BackupPersistResult(status: BackupPersistStatus.cancelled);
+  }
 
   @override
   Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
@@ -197,18 +209,38 @@ class _FlowPortableTransferService extends PortableTransferService {
 }
 
 class _FlowRepairService extends VaultRepairService {
-  _FlowRepairService(this.report) : super(FakeSessionVaultRepository());
+  _FlowRepairService(this.report, {this.inspectReport})
+    : super(FakeSessionVaultRepository());
 
   final VaultRepairReport report;
+  final VaultInspectReport? inspectReport;
   VaultRepairProgressCallback? receivedProgress;
+  bool repairCalled = false;
+
+  @override
+  Future<VaultInspectReport> inspectVaultWithReport(
+    UnlockedVaultSession session, {
+    VaultRepairProgressCallback? onProgress,
+  }) async {
+    receivedProgress = onProgress;
+    return inspectReport ??
+        VaultInspectReport(
+          entryCount: report.entryCount,
+          duration: report.duration,
+          finishedAt: report.finishedAt,
+          findings: report.findings,
+        );
+  }
 
   @override
   Future<VaultRepairReport> repairVaultWithReport(
     UnlockedVaultSession session, {
     VaultRepairProgressCallback? onProgress,
+    String? backupFileName,
   }) async {
+    repairCalled = true;
     receivedProgress = onProgress;
-    return report;
+    return report.copyWith(backupFileName: backupFileName);
   }
 }
 
@@ -604,9 +636,108 @@ void main() {
         onProgress: phases.add,
       );
 
-      expect(result, same(report));
+      expect(result.entryCount, report.entryCount);
       repairService.receivedProgress!(VaultRepairPhase.scanningEntries);
       expect(phases, <VaultRepairPhase>[VaultRepairPhase.scanningEntries]);
+    });
+
+    test('備份驗證失敗時不會呼叫修復', () async {
+      final VaultRepairReport report = VaultRepairReport(
+        entryCount: 1,
+        relocatedEntries: 0,
+        removedDuplicateEntries: 0,
+        removedOrphanAssets: 0,
+        tagsAdded: 0,
+        relocatedAssets: 0,
+        duration: Duration.zero,
+        finishedAt: DateTime(2026, 7, 10),
+      );
+      final _FlowRepairService repairService = _FlowRepairService(report);
+      final _FlowBackupService backupService = _FlowBackupService(
+        beforeRepairResult: const BackupPersistResult(
+          status: BackupPersistStatus.inspectFailed,
+          message: 'bad zip',
+        ),
+      );
+      final ProviderContainer container = ProviderContainer(
+        overrides: [
+          vaultRepairServiceProvider.overrideWithValue(repairService),
+          vaultBackupServiceProvider.overrideWithValue(backupService),
+        ],
+      );
+      addTearDown(container.dispose);
+      container
+          .read(appSessionProvider.notifier)
+          .activateSession(_kUnlockedSession);
+      final SettingsFlowController controller = container.read(
+        settingsFlowControllerProvider,
+      );
+
+      await expectLater(
+        controller.repairVaultAfterVerifiedBackup(),
+        throwsA(isA<VaultRepairBackupException>()),
+      );
+      expect(repairService.repairCalled, isFalse);
+    });
+
+    test('備份成功後才呼叫修復並附上備份檔名', () async {
+      final VaultRepairReport report = VaultRepairReport(
+        entryCount: 1,
+        relocatedEntries: 0,
+        removedDuplicateEntries: 0,
+        removedOrphanAssets: 0,
+        tagsAdded: 0,
+        relocatedAssets: 0,
+        duration: Duration.zero,
+        finishedAt: DateTime(2026, 7, 10),
+      );
+      final _FlowRepairService repairService = _FlowRepairService(report);
+      final Directory tempDir = await Directory.systemTemp.createTemp(
+        'quill-repair-backup-',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final String backupPath = p.join(
+        tempDir.path,
+        'backup_before_repair_2026-07-10_12-00-00.zip',
+      );
+      await File(backupPath).writeAsBytes(<int>[1]);
+      final _FlowBackupService backupService = _FlowBackupService(
+        beforeRepairResult: BackupPersistResult(
+          status: BackupPersistStatus.success,
+          savedPath: backupPath,
+        ),
+      );
+      final ProviderContainer container = ProviderContainer(
+        overrides: [
+          vaultRepairServiceProvider.overrideWithValue(repairService),
+          vaultBackupServiceProvider.overrideWithValue(backupService),
+          backupStatusStoreProvider.overrideWithValue(
+            BackupStatusStore(
+              storageFile: File(p.join(tempDir.path, 'backup_status.json')),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container
+          .read(appSessionProvider.notifier)
+          .activateSession(_kUnlockedSession);
+      final SettingsFlowController controller = container.read(
+        settingsFlowControllerProvider,
+      );
+
+      final List<VaultMaintenanceFlowPhase> phases =
+          <VaultMaintenanceFlowPhase>[];
+      final VaultRepairReport result = await controller
+          .repairVaultAfterVerifiedBackup(onProgress: phases.add);
+
+      expect(repairService.repairCalled, isTrue);
+      expect(result.backupFileName, contains('backup_before_repair_'));
+      expect(phases.first, VaultMaintenanceFlowPhase.creatingBackup);
     });
 
     test('rotateRecoveryKey 成功回傳 recovery key 與 success feedback', () async {

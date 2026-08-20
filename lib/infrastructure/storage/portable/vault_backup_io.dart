@@ -58,7 +58,8 @@ class VaultBackupIo {
           );
           final String relative = p.relative(entity.path, from: vaultRoot.path);
           final List<String> segments = p.split(relative);
-          if (segments.isNotEmpty && segments.first == 'index') {
+          if (segments.isNotEmpty &&
+              (segments.first == 'index' || segments.first == 'quarantine')) {
             return ZipFileOperation.skip;
           }
           return ZipFileOperation.include;

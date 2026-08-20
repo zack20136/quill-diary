@@ -56,3 +56,12 @@ final vaultRepairSummaryProvider =
       if (!session.isUnlocked || session.session == null) return null;
       return ref.read(vaultRepairServiceProvider).readLastRepairSummary();
     });
+
+final vaultInspectSummaryProvider =
+    FutureProvider.autoDispose<VaultInspectSummary?>((Ref ref) async {
+      final AppSessionState session = await ref.watch(
+        effectiveAppSessionProvider.future,
+      );
+      if (!session.isUnlocked || session.session == null) return null;
+      return ref.read(vaultRepairServiceProvider).readLastInspectSummary();
+    });

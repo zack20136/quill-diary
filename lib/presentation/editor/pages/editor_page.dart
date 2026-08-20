@@ -18,6 +18,8 @@ import 'package:quill_diary/domain/diary/diary_date_policy.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -58,9 +60,15 @@ import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 part '../widgets/editor_dialogs.dart';
 
 class EditorPage extends ConsumerStatefulWidget {
-  const EditorPage({super.key, this.entryId, this.startInEditMode = false});
+  const EditorPage({
+    super.key,
+    this.entryId,
+    this.salvageToken,
+    this.startInEditMode = false,
+  });
 
   final String? entryId;
+  final String? salvageToken;
   final bool startInEditMode;
 
   @override
@@ -109,6 +117,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   DateOnly? _persistedEntryDate;
   EntryId? _provisionalEntryId;
   DateTime? _draftCreatedAt;
+  List<VaultFinding> _salvageRetireFindings = <VaultFinding>[];
 
   static const String _newDraftKey = '__new__';
 
@@ -116,7 +125,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
       ref.read(editorFlowControllerProvider);
 
   bool get _isEditing => !_previewMode;
-  String get _draftKey => widget.entryId ?? _newDraftKey;
+  String get _draftKey => widget.salvageToken == null
+      ? widget.entryId ?? _newDraftKey
+      : VaultSalvageDraft.draftKeyForToken(widget.salvageToken!);
   bool get _hasTitle => _titleController.text.trim().isNotEmpty;
   bool get _hasBody => _bodyController.text.trim().isNotEmpty;
   bool get _canSaveEntry => _hasTitle || _hasBody;
@@ -135,7 +146,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _previewMode = widget.entryId != null && !widget.startInEditMode;
-    _provisionalEntryId = widget.entryId ?? generateEntryId();
+    _provisionalEntryId =
+        widget.salvageToken ?? widget.entryId ?? generateEntryId();
     _draftCreatedAt = DateTime.now();
     _tagsController.addListener(_onDraftChanged);
     _titleController.addListener(_onDraftChanged);
@@ -412,6 +424,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
           provisionalEntryId: _provisionalEntryId ??=
               widget.entryId ?? generateEntryId(),
           existingEntryId: widget.entryId,
+          salvageSourceFindings: <Map<String, Object?>>[
+            for (final VaultFinding finding in _salvageRetireFindings)
+              finding.toJson(),
+          ],
         ),
       );
       _draftCreatedAt = result.record.createdAt;
@@ -523,6 +539,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
       ..addAll(decision.pendingAttachments);
     _entryTime = TimeOfDay(hour: record.entryHour, minute: record.entryMinute);
     _provisionalEntryId = record.provisionalEntryId;
+    _salvageRetireFindings = <VaultFinding>[
+      for (final Map<String, Object?> json in record.salvageSourceFindings)
+        if (VaultFinding.fromJson(json) case final VaultFinding finding)
+          finding,
+    ];
     _draftCreatedAt = record.createdAt;
     _lastPersistedDraftSnapshot = buildEditorDraftSnapshot(
       titleRaw: record.title ?? '',
@@ -549,13 +570,22 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     _handlingDraftRestore = true;
+    final bool isSalvage = widget.salvageToken != null;
     final EditorDraftRestoreDecision decision = await _editorFlow
         .restoreDraftIfNeeded(
           draftKey: _draftKey,
           session: session,
           existingEntry: entry,
-          decideRestore: (EditorDraftRecord record) =>
-              _showRestoreDraftDialog(record, hasExistingEntry: entry != null),
+          decideRestore: (EditorDraftRecord record) async {
+            // salvage 草稿是使用者剛建立的修復內容，直接套用，不跳出一般草稿確認。
+            if (isSalvage) {
+              return true;
+            }
+            return _showRestoreDraftDialog(
+              record,
+              hasExistingEntry: entry != null,
+            );
+          },
         );
     _handlingDraftRestore = false;
     if (!mounted) {
@@ -1253,6 +1283,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           provisionalEntryId: _provisionalEntryId ??=
               widget.entryId ?? generateEntryId(),
           switchToPreview: true,
+          retireFindingsAfterSave: _salvageRetireFindings,
         ),
       );
       final DiaryEntry saved = result.savedEntry;

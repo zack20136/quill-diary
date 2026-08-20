@@ -76,6 +76,7 @@ abstract interface class EditorActionPort {
     UnlockedVaultSession session,
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
+    List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
   });
 
   Future<String> assetAbsolutePath({
@@ -207,6 +208,7 @@ class EditorActions implements EditorActionPort {
     UnlockedVaultSession session,
     DiaryEntry draft, {
     required List<PendingAttachment> pendingAttachments,
+    List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
   }) {
     return _ref
         .read(vaultEntryStoreProvider)
@@ -214,6 +216,7 @@ class EditorActions implements EditorActionPort {
           session,
           draft: draft,
           pendingAttachments: pendingAttachments,
+          retireFindingsAfterSave: retireFindingsAfterSave,
         );
   }
 

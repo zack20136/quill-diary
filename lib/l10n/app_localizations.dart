@@ -536,6 +536,40 @@ abstract class AppLocalizations {
   /// **'正在處理，請稍候…'**
   String get settingsProgressDefault;
 
+  /// No description provided for @settingsProgressWorkingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在處理'**
+  String get settingsProgressWorkingTitle;
+
+  /// No description provided for @settingsProgressKeepAppOpenHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'請保持 App 開啟'**
+  String get settingsProgressKeepAppOpenHint;
+
+  /// No description provided for @settingsProgressPercent.
+  ///
+  /// In zh, this message translates to:
+  /// **'{percent}%'**
+  String settingsProgressPercent(int percent);
+
+  /// No description provided for @settingsProgressSemanticDeterminate.
+  ///
+  /// In zh, this message translates to:
+  /// **'{title}。{stage}。進度 {percent}%'**
+  String settingsProgressSemanticDeterminate(
+    String title,
+    String stage,
+    int percent,
+  );
+
+  /// No description provided for @settingsProgressSemanticIndeterminate.
+  ///
+  /// In zh, this message translates to:
+  /// **'{title}。{stage}。進度尚無法估算'**
+  String settingsProgressSemanticIndeterminate(String title, String stage);
+
   /// No description provided for @personalizationImageCompressOriginalDescription.
   ///
   /// In zh, this message translates to:
@@ -2706,6 +2740,12 @@ abstract class AppLocalizations {
   /// **'修復日記庫'**
   String get settingsSecurityOverviewRepairVaultButton;
 
+  /// No description provided for @settingsSecurityOverviewInspectVaultButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'檢查日記庫'**
+  String get settingsSecurityOverviewInspectVaultButton;
+
   /// No description provided for @settingsSecurityOverviewHealthLevelOk.
   ///
   /// In zh, this message translates to:
@@ -3478,26 +3518,404 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRepairVaultReadyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'可隨時修復並整理日記庫。'**
+  /// **'可隨時檢查並整理日記庫。'**
   String get settingsRepairVaultReadyMessage;
 
   /// No description provided for @settingsRepairVaultLockedMessage.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後即可修復日記庫。'**
+  /// **'解鎖後即可檢查日記庫。'**
   String get settingsRepairVaultLockedMessage;
 
-  /// No description provided for @settingsRepairVaultConfirmTitle.
+  /// No description provided for @settingsInspectVaultConfirmTitle.
   ///
   /// In zh, this message translates to:
-  /// **'修復日記庫？'**
-  String get settingsRepairVaultConfirmTitle;
+  /// **'檢查日記庫'**
+  String get settingsInspectVaultConfirmTitle;
 
-  /// No description provided for @settingsRepairVaultConfirmBody.
+  /// No description provided for @settingsInspectVaultConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'系統會檢查日記和附件、修正常見問題，並重新整理搜尋資料。無法確認的檔案會保留，不會直接刪除。'**
-  String get settingsRepairVaultConfirmBody;
+  /// **'開始檢查前，可先確認上次修復紀錄。'**
+  String get settingsInspectVaultConfirmBody;
+
+  /// No description provided for @settingsInspectVaultConfirmButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'開始檢查'**
+  String get settingsInspectVaultConfirmButton;
+
+  /// No description provided for @settingsInspectVaultPreflightCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前狀態'**
+  String get settingsInspectVaultPreflightCurrent;
+
+  /// No description provided for @settingsInspectVaultPreflightTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'時間：{finishedAt}'**
+  String settingsInspectVaultPreflightTime(String finishedAt);
+
+  /// No description provided for @settingsInspectVaultPreflightSourceInspect.
+  ///
+  /// In zh, this message translates to:
+  /// **'來源：檢查'**
+  String get settingsInspectVaultPreflightSourceInspect;
+
+  /// No description provided for @settingsInspectVaultPreflightSourceRepair.
+  ///
+  /// In zh, this message translates to:
+  /// **'來源：修復'**
+  String get settingsInspectVaultPreflightSourceRepair;
+
+  /// No description provided for @settingsInspectVaultPreflightEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'影響日記：{count} 篇'**
+  String settingsInspectVaultPreflightEntries(int count);
+
+  /// No description provided for @settingsInspectVaultPreflightLastRepair.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次修復'**
+  String get settingsInspectVaultPreflightLastRepair;
+
+  /// No description provided for @settingsInspectVaultPreflightNoRepair.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未執行過修復。'**
+  String get settingsInspectVaultPreflightNoRepair;
+
+  /// No description provided for @settingsRepairDetailCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已完成'**
+  String get settingsRepairDetailCompleted;
+
+  /// No description provided for @settingsRepairDetailGlobal.
+  ///
+  /// In zh, this message translates to:
+  /// **'全域清理'**
+  String get settingsRepairDetailGlobal;
+
+  /// No description provided for @settingsRepairDetailUnresolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍需處理'**
+  String get settingsRepairDetailUnresolved;
+
+  /// No description provided for @settingsRepairDetailAggregateFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'此紀錄只保存彙總資料，逐篇明細會從下一次修復開始提供。'**
+  String get settingsRepairDetailAggregateFallback;
+
+  /// No description provided for @settingsRepairDetailPurgedOldQuarantine.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除舊隔離檔：{count}'**
+  String settingsRepairDetailPurgedOldQuarantine(int count);
+
+  /// No description provided for @settingsLastRepairLogEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未執行過修復。'**
+  String get settingsLastRepairLogEmpty;
+
+  /// No description provided for @settingsLastRepairLogFinishedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次修復時間：{finishedAt}'**
+  String settingsLastRepairLogFinishedAt(String finishedAt);
+
+  /// No description provided for @settingsLastRepairLogCheckedEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'當時檢查 {entryCount} 篇日記。'**
+  String settingsLastRepairLogCheckedEntries(int entryCount);
+
+  /// No description provided for @settingsLastRepairLogBackupFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復前備份：{fileName}'**
+  String settingsLastRepairLogBackupFile(String fileName);
+
+  /// No description provided for @settingsLastRepairLogRelocatedEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移回正確位置的日記：{count}'**
+  String settingsLastRepairLogRelocatedEntries(int count);
+
+  /// No description provided for @settingsLastRepairLogRelocatedAssets.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移回正確位置的附件：{count}'**
+  String settingsLastRepairLogRelocatedAssets(int count);
+
+  /// No description provided for @settingsLastRepairLogRecoveredAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已從可驗證副本恢復的附件：{count}'**
+  String settingsLastRepairLogRecoveredAttachments(int count);
+
+  /// No description provided for @settingsLastRepairLogRemovedBrokenReferences.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移除失效附件引用：{count}'**
+  String settingsLastRepairLogRemovedBrokenReferences(int count);
+
+  /// No description provided for @settingsLastRepairLogSplitAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拆分共用附件：{count}'**
+  String settingsLastRepairLogSplitAttachments(int count);
+
+  /// No description provided for @settingsLastRepairLogRemovedDuplicates.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移除重複日記檔：{count}'**
+  String settingsLastRepairLogRemovedDuplicates(int count);
+
+  /// No description provided for @settingsLastRepairLogRemovedOrphans.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移除孤立附件：{count}'**
+  String settingsLastRepairLogRemovedOrphans(int count);
+
+  /// No description provided for @settingsLastRepairLogQuarantined.
+  ///
+  /// In zh, this message translates to:
+  /// **'已隔離異常檔：{count}'**
+  String settingsLastRepairLogQuarantined(int count);
+
+  /// No description provided for @settingsLastRepairLogPurgedBadAssets.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除損壞附件：{count}'**
+  String settingsLastRepairLogPurgedBadAssets(int count);
+
+  /// No description provided for @settingsLastRepairLogUnresolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍未解決：{count} 篇'**
+  String settingsLastRepairLogUnresolved(int count);
+
+  /// No description provided for @settingsLastRepairLogNoActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'當時沒有需要自動處理的項目。'**
+  String get settingsLastRepairLogNoActions;
+
+  /// No description provided for @settingsRepairDetailButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'詳細資料'**
+  String get settingsRepairDetailButton;
+
+  /// No description provided for @settingsRepairDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復詳細資料'**
+  String get settingsRepairDetailTitle;
+
+  /// No description provided for @settingsRepairDetailEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'沒有可顯示的逐篇修復紀錄。'**
+  String get settingsRepairDetailEmpty;
+
+  /// No description provided for @settingsRepairDetailGlobalOrphans.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除孤立附件：{count}'**
+  String settingsRepairDetailGlobalOrphans(int count);
+
+  /// No description provided for @settingsRepairDetailGlobalPurgedBad.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除損壞附件：{count}'**
+  String settingsRepairDetailGlobalPurgedBad(int count);
+
+  /// No description provided for @settingsRepairDetailRecoveredAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已自動恢復圖片：{count}'**
+  String settingsRepairDetailRecoveredAttachments(int count);
+
+  /// No description provided for @settingsRepairDetailRemovedMissingAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移除遺失圖片引用：{count}'**
+  String settingsRepairDetailRemovedMissingAttachments(int count);
+
+  /// No description provided for @settingsRepairDetailPurgedBadAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除損壞圖片：{count}'**
+  String settingsRepairDetailPurgedBadAttachments(int count);
+
+  /// No description provided for @settingsRepairDetailSplitAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拆分共用附件：{count}'**
+  String settingsRepairDetailSplitAttachments(int count);
+
+  /// No description provided for @settingsRepairDetailRelocatedEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'已整理日記檔：{count}'**
+  String settingsRepairDetailRelocatedEntries(int count);
+
+  /// No description provided for @settingsRepairDetailQuarantinedItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'已隔離異常檔：{count}'**
+  String settingsRepairDetailQuarantinedItems(int count);
+
+  /// No description provided for @settingsRepairDetailCleanupFailures.
+  ///
+  /// In zh, this message translates to:
+  /// **'自動處理失敗：{count}'**
+  String settingsRepairDetailCleanupFailures(int count);
+
+  /// No description provided for @settingsMaintenanceProgressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在處理日記庫…'**
+  String get settingsMaintenanceProgressTitle;
+
+  /// No description provided for @settingsInspectVaultProgressScanningEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在檢查日記…'**
+  String get settingsInspectVaultProgressScanningEntries;
+
+  /// No description provided for @settingsInspectVaultProgressCheckingAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在檢查附件…'**
+  String get settingsInspectVaultProgressCheckingAttachments;
+
+  /// No description provided for @settingsInspectVaultProgressRebuildingIndex.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理搜尋資料…'**
+  String get settingsInspectVaultProgressRebuildingIndex;
+
+  /// No description provided for @settingsInspectVaultProgressRebuildingPeople.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在更新人物資料…'**
+  String get settingsInspectVaultProgressRebuildingPeople;
+
+  /// No description provided for @settingsInspectVaultResultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'檢查完成'**
+  String get settingsInspectVaultResultTitle;
+
+  /// No description provided for @settingsInspectVaultResultClean.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前狀態良好。'**
+  String get settingsInspectVaultResultClean;
+
+  /// No description provided for @settingsInspectVaultResultWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'發現 {count} 篇日記需要處理。修復會先建立並驗證本機備份，再整理可修復的項目。'**
+  String settingsInspectVaultResultWarning(int count);
+
+  /// No description provided for @settingsInspectVaultResultCheckedEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'已檢查 {entryCount} 篇日記。'**
+  String settingsInspectVaultResultCheckedEntries(int entryCount);
+
+  /// No description provided for @settingsInspectVaultHandleLaterButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'稍後處理'**
+  String get settingsInspectVaultHandleLaterButton;
+
+  /// No description provided for @settingsInspectVaultRepairAfterBackupButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'備份後修復'**
+  String get settingsInspectVaultRepairAfterBackupButton;
+
+  /// No description provided for @settingsInspectVaultUnrecognizedEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法辨識的日記'**
+  String get settingsInspectVaultUnrecognizedEntry;
+
+  /// No description provided for @settingsInspectVaultEntryDateUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期不明'**
+  String get settingsInspectVaultEntryDateUnknown;
+
+  /// No description provided for @settingsInspectVaultPlannedQuarantine.
+  ///
+  /// In zh, this message translates to:
+  /// **'預計隔離無法確認的資料'**
+  String get settingsInspectVaultPlannedQuarantine;
+
+  /// No description provided for @settingsInspectVaultPlannedRemoveReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'預計移除失效附件引用'**
+  String get settingsInspectVaultPlannedRemoveReference;
+
+  /// No description provided for @settingsInspectVaultPlannedSplitAttachment.
+  ///
+  /// In zh, this message translates to:
+  /// **'預計拆分共用附件'**
+  String get settingsInspectVaultPlannedSplitAttachment;
+
+  /// No description provided for @settingsInspectVaultPlannedRelocate.
+  ///
+  /// In zh, this message translates to:
+  /// **'預計移回正確位置'**
+  String get settingsInspectVaultPlannedRelocate;
+
+  /// No description provided for @settingsInspectVaultPlannedDeleteDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'預計清理重複檔'**
+  String get settingsInspectVaultPlannedDeleteDuplicate;
+
+  /// No description provided for @settingsInspectVaultPlannedNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'需進一步確認'**
+  String get settingsInspectVaultPlannedNone;
+
+  /// No description provided for @settingsRepairVaultProgressCreatingBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在建立修復前備份…'**
+  String get settingsRepairVaultProgressCreatingBackup;
+
+  /// No description provided for @settingsRepairVaultProgressRepairingEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在修復日記…'**
+  String get settingsRepairVaultProgressRepairingEntries;
+
+  /// No description provided for @settingsRepairVaultProgressRepairingAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理附件…'**
+  String get settingsRepairVaultProgressRepairingAttachments;
+
+  /// No description provided for @settingsRepairVaultProgressUpdatingSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在更新搜尋資料…'**
+  String get settingsRepairVaultProgressUpdatingSearch;
 
   /// No description provided for @settingsRepairVaultProgressScanningEntries.
   ///
@@ -3544,7 +3962,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRepairVaultResultWarning.
   ///
   /// In zh, this message translates to:
-  /// **'修復已完成，但有 {count} 個項目無法自動處理。為避免資料遺失，相關檔案都已保留。'**
+  /// **'修復已完成，但有 {count} 篇日記尚未解決。可手動修復可讀內容，或永久刪除無法復原的檔案。'**
   String settingsRepairVaultResultWarning(int count);
 
   /// No description provided for @settingsRepairVaultResultCheckedEntries.
@@ -3558,6 +3976,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{label}：{count} 個'**
   String settingsRepairVaultResultIssueCount(String label, int count);
+
+  /// No description provided for @settingsRepairVaultResultQuarantinedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已隔離 {count} 項。'**
+  String settingsRepairVaultResultQuarantinedCount(int count);
+
+  /// No description provided for @settingsRepairVaultResultBackupFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復前備份：{fileName}'**
+  String settingsRepairVaultResultBackupFile(String fileName);
+
+  /// No description provided for @settingsRepairVaultResultMissingAttachment.
+  ///
+  /// In zh, this message translates to:
+  /// **'附件已遺失'**
+  String get settingsRepairVaultResultMissingAttachment;
+
+  /// No description provided for @settingsRepairVaultResultSalvageButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'手動修復'**
+  String get settingsRepairVaultResultSalvageButton;
+
+  /// No description provided for @settingsRepairVaultResultSalvageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法取出可讀內容，請改用永久刪除或從備份還原。'**
+  String get settingsRepairVaultResultSalvageFailed;
+
+  /// No description provided for @settingsRepairVaultBackupFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復前備份失敗，已中止修復，正式資料未變更。'**
+  String get settingsRepairVaultBackupFailed;
+
+  /// No description provided for @settingsRepairVaultBackupCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消修復前備份，未進行修復。'**
+  String get settingsRepairVaultBackupCancelled;
+
+  /// No description provided for @settingsRepairVaultBackupInspectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'修復前備份驗證失敗：{message}'**
+  String settingsRepairVaultBackupInspectFailed(String message);
 
   /// No description provided for @settingsRepairIssueInvalidEntryMetadata.
   ///
@@ -3643,21 +4109,89 @@ abstract class AppLocalizations {
   /// **'正在中斷連線…'**
   String get settingsIndexDisconnectDriveProgress;
 
+  /// No description provided for @settingsInspectVaultCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近一次檢查：{finishedAt}。已檢查 {entryCount} 篇日記，未發現異常。'**
+  String settingsInspectVaultCompleted(int entryCount, String finishedAt);
+
+  /// No description provided for @settingsInspectVaultCompletedWithIssues.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近一次檢查：{finishedAt}。{issueCount} 篇日記需要處理。'**
+  String settingsInspectVaultCompletedWithIssues(
+    int issueCount,
+    String finishedAt,
+  );
+
   /// No description provided for @settingsRepairVaultCompleted.
   ///
   /// In zh, this message translates to:
-  /// **'最近一次修復：{entryCount} 篇日記，{finishedAt}。'**
+  /// **'最近一次修復：{finishedAt}。已檢查 {entryCount} 篇日記，未發現異常。'**
   String settingsRepairVaultCompleted(int entryCount, String finishedAt);
 
   /// No description provided for @settingsRepairVaultCompletedWithIssues.
   ///
   /// In zh, this message translates to:
-  /// **'最近一次修復：{entryCount} 篇日記，有 {issueCount} 個項目需要注意，{finishedAt}。'**
+  /// **'最近一次修復：{finishedAt}。{issueCount} 篇日記需要處理。'**
   String settingsRepairVaultCompletedWithIssues(
-    int entryCount,
     int issueCount,
     String finishedAt,
   );
+
+  /// No description provided for @settingsAbnormalEntriesPageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'異常日記'**
+  String get settingsAbnormalEntriesPageTitle;
+
+  /// No description provided for @settingsAbnormalEntriesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前沒有未解決的異常。'**
+  String get settingsAbnormalEntriesEmpty;
+
+  /// No description provided for @settingsAbnormalEntriesDeleteButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'永久刪除'**
+  String get settingsAbnormalEntriesDeleteButton;
+
+  /// No description provided for @settingsAbnormalEntriesDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'永久刪除這些檔案？'**
+  String get settingsAbnormalEntriesDeleteConfirmTitle;
+
+  /// No description provided for @settingsAbnormalEntriesDeleteConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'將永久刪除與此異常相關的正式檔案，無法復原。若仍需要內容，請先用本機備份還原。'**
+  String get settingsAbnormalEntriesDeleteConfirmBody;
+
+  /// No description provided for @settingsAbnormalEntriesDeleteSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已永久刪除相關檔案。'**
+  String get settingsAbnormalEntriesDeleteSuccess;
+
+  /// No description provided for @settingsAbnormalEntriesDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除失敗，請稍後再試。'**
+  String get settingsAbnormalEntriesDeleteFailed;
+
+  /// No description provided for @settingsAbnormalEntriesAttachmentPhoto.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片'**
+  String get settingsAbnormalEntriesAttachmentPhoto;
+
+  /// No description provided for @settingsAbnormalEntriesAttachmentFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'附件'**
+  String get settingsAbnormalEntriesAttachmentFile;
 
   /// No description provided for @settingsSupportNavButtonLabel.
   ///

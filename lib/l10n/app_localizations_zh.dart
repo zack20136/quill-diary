@@ -249,6 +249,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsProgressDefault => '正在處理，請稍候…';
 
   @override
+  String get settingsProgressWorkingTitle => '正在處理';
+
+  @override
+  String get settingsProgressKeepAppOpenHint => '請保持 App 開啟';
+
+  @override
+  String settingsProgressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String settingsProgressSemanticDeterminate(
+    String title,
+    String stage,
+    int percent,
+  ) {
+    return '$title。$stage。進度 $percent%';
+  }
+
+  @override
+  String settingsProgressSemanticIndeterminate(String title, String stage) {
+    return '$title。$stage。進度尚無法估算';
+  }
+
+  @override
   String get personalizationImageCompressOriginalDescription =>
       '不壓縮，保留原始解析度與檔案大小。適合需要最高畫質、可接受較大日記庫時使用。';
 
@@ -1470,6 +1495,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSecurityOverviewRepairVaultButton => '修復日記庫';
 
   @override
+  String get settingsSecurityOverviewInspectVaultButton => '檢查日記庫';
+
+  @override
   String get settingsSecurityOverviewHealthLevelOk => '正常';
 
   @override
@@ -1940,17 +1968,260 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreBulletRewrapNote => '還原後首次解鎖可能需要較久，請保持 App 開啟。';
 
   @override
-  String get settingsRepairVaultReadyMessage => '可隨時修復並整理日記庫。';
+  String get settingsRepairVaultReadyMessage => '可隨時檢查並整理日記庫。';
 
   @override
-  String get settingsRepairVaultLockedMessage => '解鎖後即可修復日記庫。';
+  String get settingsRepairVaultLockedMessage => '解鎖後即可檢查日記庫。';
 
   @override
-  String get settingsRepairVaultConfirmTitle => '修復日記庫？';
+  String get settingsInspectVaultConfirmTitle => '檢查日記庫';
 
   @override
-  String get settingsRepairVaultConfirmBody =>
-      '系統會檢查日記和附件、修正常見問題，並重新整理搜尋資料。無法確認的檔案會保留，不會直接刪除。';
+  String get settingsInspectVaultConfirmBody => '開始檢查前，可先確認上次修復紀錄。';
+
+  @override
+  String get settingsInspectVaultConfirmButton => '開始檢查';
+
+  @override
+  String get settingsInspectVaultPreflightCurrent => '目前狀態';
+
+  @override
+  String settingsInspectVaultPreflightTime(String finishedAt) {
+    return '時間：$finishedAt';
+  }
+
+  @override
+  String get settingsInspectVaultPreflightSourceInspect => '來源：檢查';
+
+  @override
+  String get settingsInspectVaultPreflightSourceRepair => '來源：修復';
+
+  @override
+  String settingsInspectVaultPreflightEntries(int count) {
+    return '影響日記：$count 篇';
+  }
+
+  @override
+  String get settingsInspectVaultPreflightLastRepair => '上次修復';
+
+  @override
+  String get settingsInspectVaultPreflightNoRepair => '尚未執行過修復。';
+
+  @override
+  String get settingsRepairDetailCompleted => '已完成';
+
+  @override
+  String get settingsRepairDetailGlobal => '全域清理';
+
+  @override
+  String get settingsRepairDetailUnresolved => '仍需處理';
+
+  @override
+  String get settingsRepairDetailAggregateFallback =>
+      '此紀錄只保存彙總資料，逐篇明細會從下一次修復開始提供。';
+
+  @override
+  String settingsRepairDetailPurgedOldQuarantine(int count) {
+    return '已清除舊隔離檔：$count';
+  }
+
+  @override
+  String get settingsLastRepairLogEmpty => '尚未執行過修復。';
+
+  @override
+  String settingsLastRepairLogFinishedAt(String finishedAt) {
+    return '上次修復時間：$finishedAt';
+  }
+
+  @override
+  String settingsLastRepairLogCheckedEntries(int entryCount) {
+    return '當時檢查 $entryCount 篇日記。';
+  }
+
+  @override
+  String settingsLastRepairLogBackupFile(String fileName) {
+    return '修復前備份：$fileName';
+  }
+
+  @override
+  String settingsLastRepairLogRelocatedEntries(int count) {
+    return '已移回正確位置的日記：$count';
+  }
+
+  @override
+  String settingsLastRepairLogRelocatedAssets(int count) {
+    return '已移回正確位置的附件：$count';
+  }
+
+  @override
+  String settingsLastRepairLogRecoveredAttachments(int count) {
+    return '已從可驗證副本恢復的附件：$count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedBrokenReferences(int count) {
+    return '已移除失效附件引用：$count';
+  }
+
+  @override
+  String settingsLastRepairLogSplitAttachments(int count) {
+    return '已拆分共用附件：$count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedDuplicates(int count) {
+    return '已移除重複日記檔：$count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedOrphans(int count) {
+    return '已移除孤立附件：$count';
+  }
+
+  @override
+  String settingsLastRepairLogQuarantined(int count) {
+    return '已隔離異常檔：$count';
+  }
+
+  @override
+  String settingsLastRepairLogPurgedBadAssets(int count) {
+    return '已清除損壞附件：$count';
+  }
+
+  @override
+  String settingsLastRepairLogUnresolved(int count) {
+    return '仍未解決：$count 篇';
+  }
+
+  @override
+  String get settingsLastRepairLogNoActions => '當時沒有需要自動處理的項目。';
+
+  @override
+  String get settingsRepairDetailButton => '詳細資料';
+
+  @override
+  String get settingsRepairDetailTitle => '修復詳細資料';
+
+  @override
+  String get settingsRepairDetailEmpty => '沒有可顯示的逐篇修復紀錄。';
+
+  @override
+  String settingsRepairDetailGlobalOrphans(int count) {
+    return '已清除孤立附件：$count';
+  }
+
+  @override
+  String settingsRepairDetailGlobalPurgedBad(int count) {
+    return '已清除損壞附件：$count';
+  }
+
+  @override
+  String settingsRepairDetailRecoveredAttachments(int count) {
+    return '已自動恢復圖片：$count';
+  }
+
+  @override
+  String settingsRepairDetailRemovedMissingAttachments(int count) {
+    return '已移除遺失圖片引用：$count';
+  }
+
+  @override
+  String settingsRepairDetailPurgedBadAttachments(int count) {
+    return '已清除損壞圖片：$count';
+  }
+
+  @override
+  String settingsRepairDetailSplitAttachments(int count) {
+    return '已拆分共用附件：$count';
+  }
+
+  @override
+  String settingsRepairDetailRelocatedEntries(int count) {
+    return '已整理日記檔：$count';
+  }
+
+  @override
+  String settingsRepairDetailQuarantinedItems(int count) {
+    return '已隔離異常檔：$count';
+  }
+
+  @override
+  String settingsRepairDetailCleanupFailures(int count) {
+    return '自動處理失敗：$count';
+  }
+
+  @override
+  String get settingsMaintenanceProgressTitle => '正在處理日記庫…';
+
+  @override
+  String get settingsInspectVaultProgressScanningEntries => '正在檢查日記…';
+
+  @override
+  String get settingsInspectVaultProgressCheckingAttachments => '正在檢查附件…';
+
+  @override
+  String get settingsInspectVaultProgressRebuildingIndex => '正在整理搜尋資料…';
+
+  @override
+  String get settingsInspectVaultProgressRebuildingPeople => '正在更新人物資料…';
+
+  @override
+  String get settingsInspectVaultResultTitle => '檢查完成';
+
+  @override
+  String get settingsInspectVaultResultClean => '目前狀態良好。';
+
+  @override
+  String settingsInspectVaultResultWarning(int count) {
+    return '發現 $count 篇日記需要處理。修復會先建立並驗證本機備份，再整理可修復的項目。';
+  }
+
+  @override
+  String settingsInspectVaultResultCheckedEntries(int entryCount) {
+    return '已檢查 $entryCount 篇日記。';
+  }
+
+  @override
+  String get settingsInspectVaultHandleLaterButton => '稍後處理';
+
+  @override
+  String get settingsInspectVaultRepairAfterBackupButton => '備份後修復';
+
+  @override
+  String get settingsInspectVaultUnrecognizedEntry => '無法辨識的日記';
+
+  @override
+  String get settingsInspectVaultEntryDateUnknown => '日期不明';
+
+  @override
+  String get settingsInspectVaultPlannedQuarantine => '預計隔離無法確認的資料';
+
+  @override
+  String get settingsInspectVaultPlannedRemoveReference => '預計移除失效附件引用';
+
+  @override
+  String get settingsInspectVaultPlannedSplitAttachment => '預計拆分共用附件';
+
+  @override
+  String get settingsInspectVaultPlannedRelocate => '預計移回正確位置';
+
+  @override
+  String get settingsInspectVaultPlannedDeleteDuplicate => '預計清理重複檔';
+
+  @override
+  String get settingsInspectVaultPlannedNone => '需進一步確認';
+
+  @override
+  String get settingsRepairVaultProgressCreatingBackup => '正在建立修復前備份…';
+
+  @override
+  String get settingsRepairVaultProgressRepairingEntries => '正在修復日記…';
+
+  @override
+  String get settingsRepairVaultProgressRepairingAttachments => '正在整理附件…';
+
+  @override
+  String get settingsRepairVaultProgressUpdatingSearch => '正在更新搜尋資料…';
 
   @override
   String get settingsRepairVaultProgressScanningEntries => '正在檢查日記…';
@@ -1975,7 +2246,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsRepairVaultResultWarning(int count) {
-    return '修復已完成，但有 $count 個項目無法自動處理。為避免資料遺失，相關檔案都已保留。';
+    return '修復已完成，但有 $count 篇日記尚未解決。可手動修復可讀內容，或永久刪除無法復原的檔案。';
   }
 
   @override
@@ -1986,6 +2257,37 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String settingsRepairVaultResultIssueCount(String label, int count) {
     return '$label：$count 個';
+  }
+
+  @override
+  String settingsRepairVaultResultQuarantinedCount(int count) {
+    return '已隔離 $count 項。';
+  }
+
+  @override
+  String settingsRepairVaultResultBackupFile(String fileName) {
+    return '修復前備份：$fileName';
+  }
+
+  @override
+  String get settingsRepairVaultResultMissingAttachment => '附件已遺失';
+
+  @override
+  String get settingsRepairVaultResultSalvageButton => '手動修復';
+
+  @override
+  String get settingsRepairVaultResultSalvageFailed =>
+      '無法取出可讀內容，請改用永久刪除或從備份還原。';
+
+  @override
+  String get settingsRepairVaultBackupFailed => '修復前備份失敗，已中止修復，正式資料未變更。';
+
+  @override
+  String get settingsRepairVaultBackupCancelled => '已取消修復前備份，未進行修復。';
+
+  @override
+  String settingsRepairVaultBackupInspectFailed(String message) {
+    return '修復前備份驗證失敗：$message';
   }
 
   @override
@@ -2031,18 +2333,58 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsIndexDisconnectDriveProgress => '正在中斷連線…';
 
   @override
+  String settingsInspectVaultCompleted(int entryCount, String finishedAt) {
+    return '最近一次檢查：$finishedAt。已檢查 $entryCount 篇日記，未發現異常。';
+  }
+
+  @override
+  String settingsInspectVaultCompletedWithIssues(
+    int issueCount,
+    String finishedAt,
+  ) {
+    return '最近一次檢查：$finishedAt。$issueCount 篇日記需要處理。';
+  }
+
+  @override
   String settingsRepairVaultCompleted(int entryCount, String finishedAt) {
-    return '最近一次修復：$entryCount 篇日記，$finishedAt。';
+    return '最近一次修復：$finishedAt。已檢查 $entryCount 篇日記，未發現異常。';
   }
 
   @override
   String settingsRepairVaultCompletedWithIssues(
-    int entryCount,
     int issueCount,
     String finishedAt,
   ) {
-    return '最近一次修復：$entryCount 篇日記，有 $issueCount 個項目需要注意，$finishedAt。';
+    return '最近一次修復：$finishedAt。$issueCount 篇日記需要處理。';
   }
+
+  @override
+  String get settingsAbnormalEntriesPageTitle => '異常日記';
+
+  @override
+  String get settingsAbnormalEntriesEmpty => '目前沒有未解決的異常。';
+
+  @override
+  String get settingsAbnormalEntriesDeleteButton => '永久刪除';
+
+  @override
+  String get settingsAbnormalEntriesDeleteConfirmTitle => '永久刪除這些檔案？';
+
+  @override
+  String get settingsAbnormalEntriesDeleteConfirmBody =>
+      '將永久刪除與此異常相關的正式檔案，無法復原。若仍需要內容，請先用本機備份還原。';
+
+  @override
+  String get settingsAbnormalEntriesDeleteSuccess => '已永久刪除相關檔案。';
+
+  @override
+  String get settingsAbnormalEntriesDeleteFailed => '刪除失敗，請稍後再試。';
+
+  @override
+  String get settingsAbnormalEntriesAttachmentPhoto => '照片';
+
+  @override
+  String get settingsAbnormalEntriesAttachmentFile => '附件';
 
   @override
   String get settingsSupportNavButtonLabel => '支持';

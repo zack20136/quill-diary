@@ -697,7 +697,7 @@ class SettingsSecurityOverview extends StatelessWidget {
     required this.busy,
     required this.onCreateRecoveryKey,
     required this.onRotateRecoveryKey,
-    required this.onRepairVault,
+    required this.onInspectVault,
     this.onRetryTrustedUnlock,
     required this.lockPanel,
     super.key,
@@ -714,7 +714,7 @@ class SettingsSecurityOverview extends StatelessWidget {
   final bool busy;
   final VoidCallback? onCreateRecoveryKey;
   final VoidCallback? onRotateRecoveryKey;
-  final VoidCallback? onRepairVault;
+  final VoidCallback? onInspectVault;
   final VoidCallback? onRetryTrustedUnlock;
   final Widget? lockPanel;
 
@@ -803,10 +803,10 @@ class SettingsSecurityOverview extends StatelessWidget {
                   : onCreateRecoveryKey,
             ),
             SettingsActionButton(
-              label: l10n.settingsSecurityOverviewRepairVaultButton,
-              icon: Icons.build_outlined,
+              label: l10n.settingsSecurityOverviewInspectVaultButton,
+              icon: Icons.fact_check_outlined,
               appearance: SettingsActionButtonAppearance.tonal,
-              onPressed: busy ? null : onRepairVault,
+              onPressed: busy ? null : onInspectVault,
             ),
             if (onRetryTrustedUnlock != null)
               SettingsActionButton(
@@ -933,14 +933,26 @@ class _SecurityOverviewTile extends StatelessWidget {
   }
 }
 
+/// 阻塞式長流程進度遮罩：一律使用線性進度條，有比例才顯示百分比。
 class SettingsBlockingProgressOverlay extends StatelessWidget {
   const SettingsBlockingProgressOverlay({
     required this.message,
+    this.title,
+    this.hint,
     this.progress,
     super.key,
   });
 
+  /// 目前階段說明（例如「正在檢查附件」）。
   final String message;
+
+  /// 卡片標題；未提供時使用預設「正在處理」。
+  final String? title;
+
+  /// 次要提示（例如「請保持 App 開啟」）。
+  final String? hint;
+
+  /// `null` 表示尚無法估算，顯示 indeterminate 線性條。
   final double? progress;
 
   @override
@@ -948,46 +960,110 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors colors = context.appColors;
+    final AppLocalizations l10n = context.l10n;
     final double? clampedProgress = progress?.clamp(0.0, 1.0);
+    final int? percent = clampedProgress == null
+        ? null
+        : (clampedProgress * 100).round();
+    final String resolvedTitle =
+        (title ?? l10n.settingsProgressWorkingTitle).trim();
+    final String stage = message.trim();
+    final String? resolvedHint = hint?.trim();
+    final bool showStage =
+        stage.isNotEmpty && stage != resolvedTitle;
+    final String percentLabel = percent == null
+        ? ''
+        : l10n.settingsProgressPercent(percent);
+    final String semanticLabel = percent == null
+        ? l10n.settingsProgressSemanticIndeterminate(
+            resolvedTitle,
+            showStage ? stage : resolvedTitle,
+          )
+        : l10n.settingsProgressSemanticDeterminate(
+            resolvedTitle,
+            showStage ? stage : resolvedTitle,
+            percent,
+          );
+
     return Positioned.fill(
       child: ColoredBox(
         color: colors.overlayDim,
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                border: Border.fromBorderSide(colors.outlineBorder()),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    if (clampedProgress == null)
-                      const SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(strokeWidth: 3),
-                      )
-                    else
-                      LinearProgressIndicator(
-                        value: clampedProgress,
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    const SizedBox(height: 14),
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium,
+          child: Semantics(
+            liveRegion: true,
+            label: semanticLabel,
+            child: ExcludeSemantics(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 280, maxWidth: 360),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+                    border: Border.fromBorderSide(colors.outlineBorder()),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                resolvedTitle,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (percentLabel.isNotEmpty) ...<Widget>[
+                              const SizedBox(width: 12),
+                              Text(
+                                percentLabel,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: const <FontFeature>[
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: clampedProgress,
+                            minHeight: 8,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        if (showStage) ...<Widget>[
+                          const SizedBox(height: 12),
+                          Text(
+                            stage,
+                            textAlign: TextAlign.start,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                        if (resolvedHint != null &&
+                            resolvedHint.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 6),
+                          Text(
+                            resolvedHint,
+                            textAlign: TextAlign.start,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

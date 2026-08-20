@@ -255,6 +255,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProgressDefault => 'Working…';
 
   @override
+  String get settingsProgressWorkingTitle => 'Working';
+
+  @override
+  String get settingsProgressKeepAppOpenHint => 'Please keep the app open';
+
+  @override
+  String settingsProgressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String settingsProgressSemanticDeterminate(
+    String title,
+    String stage,
+    int percent,
+  ) {
+    return '$title. $stage. Progress $percent%';
+  }
+
+  @override
+  String settingsProgressSemanticIndeterminate(String title, String stage) {
+    return '$title. $stage. Progress unavailable';
+  }
+
+  @override
   String get personalizationImageCompressOriginalDescription =>
       'Keep the original resolution and file size with no compression. Best when you want maximum image quality and can accept a larger vault.';
 
@@ -1532,6 +1557,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSecurityOverviewRepairVaultButton => 'Repair Vault';
 
   @override
+  String get settingsSecurityOverviewInspectVaultButton => 'Check Vault';
+
+  @override
   String get settingsSecurityOverviewHealthLevelOk => 'OK';
 
   @override
@@ -2035,17 +2063,277 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRepairVaultReadyMessage =>
-      'You can repair and tidy your diary anytime.';
+      'You can check and tidy your diary anytime.';
 
   @override
-  String get settingsRepairVaultLockedMessage => 'Unlock to repair your diary.';
+  String get settingsRepairVaultLockedMessage => 'Unlock to check your diary.';
 
   @override
-  String get settingsRepairVaultConfirmTitle => 'Repair your diary?';
+  String get settingsInspectVaultConfirmTitle => 'Check vault';
 
   @override
-  String get settingsRepairVaultConfirmBody =>
-      'The app will check your entries and attachments, fix common problems, and refresh search data. Files that cannot be verified will be kept and not deleted.';
+  String get settingsInspectVaultConfirmBody =>
+      'Before checking, you can review the last repair record.';
+
+  @override
+  String get settingsInspectVaultConfirmButton => 'Start check';
+
+  @override
+  String get settingsInspectVaultPreflightCurrent => 'Current status';
+
+  @override
+  String settingsInspectVaultPreflightTime(String finishedAt) {
+    return 'Time: $finishedAt';
+  }
+
+  @override
+  String get settingsInspectVaultPreflightSourceInspect => 'Source: check';
+
+  @override
+  String get settingsInspectVaultPreflightSourceRepair => 'Source: repair';
+
+  @override
+  String settingsInspectVaultPreflightEntries(int count) {
+    return 'Affected entries: $count';
+  }
+
+  @override
+  String get settingsInspectVaultPreflightLastRepair => 'Last repair';
+
+  @override
+  String get settingsInspectVaultPreflightNoRepair =>
+      'No repair has been run yet.';
+
+  @override
+  String get settingsRepairDetailCompleted => 'Completed';
+
+  @override
+  String get settingsRepairDetailGlobal => 'Global cleanup';
+
+  @override
+  String get settingsRepairDetailUnresolved => 'Still needs attention';
+
+  @override
+  String get settingsRepairDetailAggregateFallback =>
+      'This record only contains aggregate data. Per-entry details will be available from the next repair.';
+
+  @override
+  String settingsRepairDetailPurgedOldQuarantine(int count) {
+    return 'Old quarantined files purged: $count';
+  }
+
+  @override
+  String get settingsLastRepairLogEmpty => 'No repair has been run yet.';
+
+  @override
+  String settingsLastRepairLogFinishedAt(String finishedAt) {
+    return 'Last repair: $finishedAt';
+  }
+
+  @override
+  String settingsLastRepairLogCheckedEntries(int entryCount) {
+    return 'Checked $entryCount entries at that time.';
+  }
+
+  @override
+  String settingsLastRepairLogBackupFile(String fileName) {
+    return 'Pre-repair backup: $fileName';
+  }
+
+  @override
+  String settingsLastRepairLogRelocatedEntries(int count) {
+    return 'Entries moved to the correct location: $count';
+  }
+
+  @override
+  String settingsLastRepairLogRelocatedAssets(int count) {
+    return 'Attachments moved to the correct location: $count';
+  }
+
+  @override
+  String settingsLastRepairLogRecoveredAttachments(int count) {
+    return 'Attachments recovered from verified copies: $count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedBrokenReferences(int count) {
+    return 'Broken attachment references removed: $count';
+  }
+
+  @override
+  String settingsLastRepairLogSplitAttachments(int count) {
+    return 'Shared attachments split: $count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedDuplicates(int count) {
+    return 'Duplicate entry files removed: $count';
+  }
+
+  @override
+  String settingsLastRepairLogRemovedOrphans(int count) {
+    return 'Orphan attachments removed: $count';
+  }
+
+  @override
+  String settingsLastRepairLogQuarantined(int count) {
+    return 'Abnormal files quarantined: $count';
+  }
+
+  @override
+  String settingsLastRepairLogPurgedBadAssets(int count) {
+    return 'Damaged attachments removed: $count';
+  }
+
+  @override
+  String settingsLastRepairLogUnresolved(int count) {
+    return 'Still unresolved: $count entries';
+  }
+
+  @override
+  String get settingsLastRepairLogNoActions =>
+      'Nothing needed automatic repair at that time.';
+
+  @override
+  String get settingsRepairDetailButton => 'Details';
+
+  @override
+  String get settingsRepairDetailTitle => 'Repair details';
+
+  @override
+  String get settingsRepairDetailEmpty =>
+      'No per-entry repair details to show.';
+
+  @override
+  String settingsRepairDetailGlobalOrphans(int count) {
+    return 'Orphan attachments removed: $count';
+  }
+
+  @override
+  String settingsRepairDetailGlobalPurgedBad(int count) {
+    return 'Damaged attachments removed: $count';
+  }
+
+  @override
+  String settingsRepairDetailRecoveredAttachments(int count) {
+    return 'Images recovered automatically: $count';
+  }
+
+  @override
+  String settingsRepairDetailRemovedMissingAttachments(int count) {
+    return 'Missing image references removed: $count';
+  }
+
+  @override
+  String settingsRepairDetailPurgedBadAttachments(int count) {
+    return 'Damaged images removed: $count';
+  }
+
+  @override
+  String settingsRepairDetailSplitAttachments(int count) {
+    return 'Shared attachments split: $count';
+  }
+
+  @override
+  String settingsRepairDetailRelocatedEntries(int count) {
+    return 'Entry files cleaned up: $count';
+  }
+
+  @override
+  String settingsRepairDetailQuarantinedItems(int count) {
+    return 'Abnormal files quarantined: $count';
+  }
+
+  @override
+  String settingsRepairDetailCleanupFailures(int count) {
+    return 'Automatic cleanup failed: $count';
+  }
+
+  @override
+  String get settingsMaintenanceProgressTitle => 'Working on your diary…';
+
+  @override
+  String get settingsInspectVaultProgressScanningEntries => 'Checking entries…';
+
+  @override
+  String get settingsInspectVaultProgressCheckingAttachments =>
+      'Checking attachments…';
+
+  @override
+  String get settingsInspectVaultProgressRebuildingIndex =>
+      'Refreshing search…';
+
+  @override
+  String get settingsInspectVaultProgressRebuildingPeople =>
+      'Updating people data…';
+
+  @override
+  String get settingsInspectVaultResultTitle => 'Check complete';
+
+  @override
+  String get settingsInspectVaultResultClean => 'Everything looks good.';
+
+  @override
+  String settingsInspectVaultResultWarning(int count) {
+    return 'Found $count entries that need attention. Repair will create and verify a local backup first, then tidy what can be fixed automatically.';
+  }
+
+  @override
+  String settingsInspectVaultResultCheckedEntries(int entryCount) {
+    return 'Checked $entryCount entries.';
+  }
+
+  @override
+  String get settingsInspectVaultHandleLaterButton => 'Later';
+
+  @override
+  String get settingsInspectVaultRepairAfterBackupButton =>
+      'Back up and repair';
+
+  @override
+  String get settingsInspectVaultUnrecognizedEntry => 'Unrecognized entry';
+
+  @override
+  String get settingsInspectVaultEntryDateUnknown => 'Unknown date';
+
+  @override
+  String get settingsInspectVaultPlannedQuarantine =>
+      'Will quarantine unverifiable data';
+
+  @override
+  String get settingsInspectVaultPlannedRemoveReference =>
+      'Will remove broken attachment references';
+
+  @override
+  String get settingsInspectVaultPlannedSplitAttachment =>
+      'Will split shared attachments';
+
+  @override
+  String get settingsInspectVaultPlannedRelocate =>
+      'Will move files back to the correct location';
+
+  @override
+  String get settingsInspectVaultPlannedDeleteDuplicate =>
+      'Will clean up duplicate files';
+
+  @override
+  String get settingsInspectVaultPlannedNone => 'Needs further review';
+
+  @override
+  String get settingsRepairVaultProgressCreatingBackup =>
+      'Creating pre-repair backup…';
+
+  @override
+  String get settingsRepairVaultProgressRepairingEntries =>
+      'Repairing entries…';
+
+  @override
+  String get settingsRepairVaultProgressRepairingAttachments =>
+      'Organizing attachments…';
+
+  @override
+  String get settingsRepairVaultProgressUpdatingSearch =>
+      'Updating search data…';
 
   @override
   String get settingsRepairVaultProgressScanningEntries => 'Checking entries…';
@@ -2073,7 +2361,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsRepairVaultResultWarning(int count) {
-    return 'Repair is complete, but $count items could not be fixed automatically. Related files were kept to prevent data loss.';
+    return 'Repair finished, but $count entries remain unresolved. You can manually salvage readable content, or permanently delete files that cannot be recovered.';
   }
 
   @override
@@ -2084,6 +2372,40 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String settingsRepairVaultResultIssueCount(String label, int count) {
     return '$label: $count';
+  }
+
+  @override
+  String settingsRepairVaultResultQuarantinedCount(int count) {
+    return 'Quarantined $count items.';
+  }
+
+  @override
+  String settingsRepairVaultResultBackupFile(String fileName) {
+    return 'Pre-repair backup: $fileName';
+  }
+
+  @override
+  String get settingsRepairVaultResultMissingAttachment =>
+      'Attachment is missing';
+
+  @override
+  String get settingsRepairVaultResultSalvageButton => 'Manual repair';
+
+  @override
+  String get settingsRepairVaultResultSalvageFailed =>
+      'No readable content could be recovered. Permanently delete the files or restore from a backup.';
+
+  @override
+  String get settingsRepairVaultBackupFailed =>
+      'Pre-repair backup failed. Repair was cancelled and live data was not changed.';
+
+  @override
+  String get settingsRepairVaultBackupCancelled =>
+      'Pre-repair backup was cancelled. Repair did not run.';
+
+  @override
+  String settingsRepairVaultBackupInspectFailed(String message) {
+    return 'Pre-repair backup validation failed: $message';
   }
 
   @override
@@ -2139,18 +2461,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsIndexDisconnectDriveProgress => 'Disconnecting…';
 
   @override
+  String settingsInspectVaultCompleted(int entryCount, String finishedAt) {
+    return 'Last check: $finishedAt. Checked $entryCount entries; no issues found.';
+  }
+
+  @override
+  String settingsInspectVaultCompletedWithIssues(
+    int issueCount,
+    String finishedAt,
+  ) {
+    return 'Last check: $finishedAt. $issueCount entries need attention.';
+  }
+
+  @override
   String settingsRepairVaultCompleted(int entryCount, String finishedAt) {
-    return 'Last repair: $entryCount entries, $finishedAt.';
+    return 'Last repair: $finishedAt. Checked $entryCount entries; no issues found.';
   }
 
   @override
   String settingsRepairVaultCompletedWithIssues(
-    int entryCount,
     int issueCount,
     String finishedAt,
   ) {
-    return 'Last repair: $entryCount entries, $issueCount items need attention, $finishedAt.';
+    return 'Last repair: $finishedAt. $issueCount entries need attention.';
   }
+
+  @override
+  String get settingsAbnormalEntriesPageTitle => 'Problem entries';
+
+  @override
+  String get settingsAbnormalEntriesEmpty =>
+      'There are no unresolved problems.';
+
+  @override
+  String get settingsAbnormalEntriesDeleteButton => 'Delete permanently';
+
+  @override
+  String get settingsAbnormalEntriesDeleteConfirmTitle =>
+      'Permanently delete these files?';
+
+  @override
+  String get settingsAbnormalEntriesDeleteConfirmBody =>
+      'Related vault files for this problem will be permanently deleted and cannot be undone. Restore from a local backup first if you still need the content.';
+
+  @override
+  String get settingsAbnormalEntriesDeleteSuccess =>
+      'Related files were permanently deleted.';
+
+  @override
+  String get settingsAbnormalEntriesDeleteFailed =>
+      'Deletion failed. Please try again later.';
+
+  @override
+  String get settingsAbnormalEntriesAttachmentPhoto => 'Photo';
+
+  @override
+  String get settingsAbnormalEntriesAttachmentFile => 'Attachment';
 
   @override
   String get settingsSupportNavButtonLabel => 'Support';
