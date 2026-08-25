@@ -318,24 +318,34 @@ class _PeopleAnalysisProgress extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: HomeScrollbarGutter(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+        child: Center(
+          child: FractionallySizedBox(
+            widthFactor: 0.9,
+            child: Align(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(
+                      value: progress.totalDocuments == 0
+                          ? null
+                          : progress.processedDocuments / progress.totalDocuments,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 6),
-            LinearProgressIndicator(
-              value: progress.totalDocuments == 0
-                  ? null
-                  : progress.processedDocuments / progress.totalDocuments,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ],
+          ),
         ),
       ),
     );

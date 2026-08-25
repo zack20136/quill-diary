@@ -92,6 +92,25 @@ void main() {
     expect(find.text(testL10n.settingsProgressPercent(100)), findsOneWidget);
   });
 
+  testWidgets('進度卡依可用寬度縮放且不超過最大寬度', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(host(message: '正在處理'));
+
+    final Finder card = find.bySemanticsLabel(
+      testL10n.settingsProgressSemanticIndeterminate('正在處理', '正在處理'),
+    );
+    expect(tester.getSize(card).width, 288);
+    expect(tester.getTopLeft(card).dx, 16);
+
+    await tester.binding.setSurfaceSize(const Size(800, 568));
+    await tester.pump();
+
+    expect(tester.getSize(card).width, 360);
+    expect(tester.getTopLeft(card).dx, 220);
+  });
+
   testWidgets('語意標籤會帶入標題、階段與百分比', (WidgetTester tester) async {
     await tester.pumpWidget(
       host(

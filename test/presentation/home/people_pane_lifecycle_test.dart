@@ -92,6 +92,68 @@ void main() {
     expect(statsReads, 1);
   });
 
+  testWidgets('人物分析進度依可用寬度縮放且不貼齊邊緣', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        peopleCatalogProvider.overrideWith(
+          (Ref ref) async => const <Person>[],
+        ),
+        peopleMentionStatsMapProvider.overrideWith(
+          (Ref ref) async => const <PersonId, PersonMentionStats>{},
+        ),
+        peopleAnalyticsProgressProvider.overrideWith(
+          (Ref ref) => Stream<PeopleAnalyticsProgress>.value(
+            const PeopleAnalyticsProgress(
+              state: PeopleAnalyticsProgressState.analyzing,
+              processedDocuments: 2,
+              totalDocuments: 5,
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(homeTabProvider.notifier).set(HomeTab.people);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: appTestTheme(),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: HomeTabStack(
+              sessionState: AppSessionState(
+                status: AppLockStatus.unlocked,
+                session: UnlockedVaultSession(
+                  vaultId: 'vlt_people_progress',
+                  trustedDevice: true,
+                  recoveryWrapKey: const <int>[1, 2, 3],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final Finder progressBar = find.byType(LinearProgressIndicator);
+    expect(tester.getSize(progressBar).width, 345.6);
+    expect(tester.getTopLeft(progressBar).dx, closeTo(19.2, 0.001));
+    expect(tester.getSize(progressBar).width, lessThan(400));
+
+    await tester.binding.setSurfaceSize(const Size(800, 800));
+    await tester.pump();
+
+    expect(tester.getSize(progressBar).width, 360);
+  });
+
   testWidgets('總覽人物排行首次進入才載入且離開後保持訂閱', (WidgetTester tester) async {
     final List<MemoryScope> readScopes = <MemoryScope>[];
     final ProviderContainer container = ProviderContainer(

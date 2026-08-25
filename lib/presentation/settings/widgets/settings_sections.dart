@@ -989,79 +989,86 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
       child: ColoredBox(
         color: colors.overlayDim,
         child: Center(
-          child: Semantics(
-            liveRegion: true,
-            label: semanticLabel,
-            child: ExcludeSemantics(
+          child: FractionallySizedBox(
+            widthFactor: 0.9,
+            child: Align(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 280, maxWidth: 360),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-                    border: Border.fromBorderSide(colors.outlineBorder()),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Semantics(
+                  liveRegion: true,
+                  label: semanticLabel,
+                  child: ExcludeSemantics(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(
+                          PageStyle.radiusCard,
+                        ),
+                        border: Border.fromBorderSide(colors.outlineBorder()),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            Expanded(
-                              child: Text(
-                                resolvedTitle,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  resolvedTitle,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
+                              ),
+                              if (percentLabel.isNotEmpty) ...<Widget>[
+                                const SizedBox(width: 12),
+                                Text(
+                                  percentLabel,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: const <FontFeature>[
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: clampedProgress,
+                              minHeight: 8,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                          if (showStage) ...<Widget>[
+                            const SizedBox(height: 12),
+                            Text(
+                              stage,
+                              textAlign: TextAlign.start,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                          if (resolvedHint != null &&
+                              resolvedHint.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 6),
+                            Text(
+                              resolvedHint,
+                              textAlign: TextAlign.start,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
                               ),
                             ),
-                            if (percentLabel.isNotEmpty) ...<Widget>[
-                              const SizedBox(width: 12),
-                              Text(
-                                percentLabel,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontFeatures: const <FontFeature>[
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          ],
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: clampedProgress,
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        if (showStage) ...<Widget>[
-                          const SizedBox(height: 12),
-                          Text(
-                            stage,
-                            textAlign: TextAlign.start,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
-                        if (resolvedHint != null &&
-                            resolvedHint.isNotEmpty) ...<Widget>[
-                          const SizedBox(height: 6),
-                          Text(
-                            resolvedHint,
-                            textAlign: TextAlign.start,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
