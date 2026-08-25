@@ -16,6 +16,9 @@ import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.d
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
@@ -192,7 +195,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
         Expanded(
           child: catalogAsync.when(
             skipLoadingOnReload: true,
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const AppLoadingState(),
             error: (Object error, StackTrace _) => Center(
               child: Padding(
                 padding: EdgeInsets.only(right: HomeLayout.bodyPadding.right),
@@ -228,11 +231,12 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                         ),
                         if (catalogEmpty) ...<Widget>[
                           const SizedBox(height: 14),
-                          FilledButton.icon(
+                          AppActionButton(
                             onPressed: () =>
                                 unawaited(showPersonComposerDialog(context)),
-                            icon: const Icon(Icons.person_add_alt_1_rounded),
-                            label: Text(context.l10n.peopleCreateAction),
+                            icon: Icons.person_add_alt_1_rounded,
+                            label: context.l10n.peopleCreateAction,
+                            appearance: AppActionButtonAppearance.primary,
                           ),
                         ],
                       ],
@@ -304,7 +308,6 @@ class _PeopleAnalysisProgress extends ConsumerWidget {
     if (progress?.state != PeopleAnalyticsProgressState.analyzing) {
       return const SizedBox.shrink();
     }
-    final ColorScheme colors = Theme.of(context).colorScheme;
     final String label =
         progress!.phase == PeopleAnalyticsProgressPhase.preparingIndex
         ? context.l10n.peopleIndexPreparationProgress(
@@ -318,34 +321,11 @@ class _PeopleAnalysisProgress extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: HomeScrollbarGutter(
-        child: Center(
-          child: FractionallySizedBox(
-            widthFactor: 0.9,
-            child: Align(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(
-                      label,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: progress.totalDocuments == 0
-                          ? null
-                          : progress.processedDocuments / progress.totalDocuments,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        child: AppProgressPanel(
+          label: label,
+          value: progress.totalDocuments == 0
+              ? null
+              : progress.processedDocuments / progress.totalDocuments,
         ),
       ),
     );

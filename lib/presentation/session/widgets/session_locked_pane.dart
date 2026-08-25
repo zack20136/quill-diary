@@ -7,6 +7,8 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 
 const IconData kSessionRetryVerificationIcon = Icons.verified_user_outlined;
 
@@ -21,13 +23,13 @@ class SessionRetryVerificationButton extends StatelessWidget {
   final bool busy;
 
   @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: busy ? null : onPressed,
-      icon: const Icon(kSessionRetryVerificationIcon),
-      label: Text(context.l10n.homeRetryVerification),
-    );
-  }
+  Widget build(BuildContext context) => AppActionButton(
+    label: context.l10n.homeRetryVerification,
+    icon: kSessionRetryVerificationIcon,
+    onPressed: onPressed,
+    appearance: AppActionButtonAppearance.primary,
+    loading: busy,
+  );
 }
 
 class SessionBlockedPane extends ConsumerWidget {
@@ -41,20 +43,10 @@ class SessionBlockedPane extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
 
     if (sessionState.status == AppLockStatus.unlocking) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const CircularProgressIndicator(),
-          const SizedBox(height: 20),
-          Text(
+      return AppLoadingState(
+        layout: AppLoadingStateLayout.inline,
+        message:
             sessionState.message ?? sessionTrustedUnlockInProgressMessage(l10n),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.45,
-            ),
-          ),
-        ],
       );
     }
 

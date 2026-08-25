@@ -6,13 +6,14 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<void> showRecoveryKeySaveDialog(
   BuildContext context, {
   required String title,
   required String recoveryKey,
 }) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (BuildContext dialogContext) =>
         RecoveryKeySaveDialog(title: title, recoveryKey: recoveryKey),
@@ -51,8 +52,8 @@ class RecoveryKeySaveDialog extends StatelessWidget {
       theme.textTheme.titleMedium ?? const TextStyle(),
     ).copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.1, height: 1.55);
 
-    return AlertDialog(
-      title: Text(title),
+    return AppDialogShell(
+      title: title,
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

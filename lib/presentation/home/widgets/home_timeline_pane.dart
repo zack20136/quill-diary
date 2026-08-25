@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_export_actions.dart';
 import '../home_pin_actions.dart';
@@ -291,13 +293,13 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                     data: (List<EntryIndexRecord> loadedEntries) {
                       if (loadedEntries.isEmpty) {
                         if (searchQuery.isNotEmpty) {
-                          return HomeStateCard(
+                          return AppStateCard(
                             icon: Icons.search_off_rounded,
                             title: context.l10n.homeSearchNoResultsTitle,
                             message: context.l10n.homeSearchNoResultsMessage,
                           );
                         }
-                        return HomeStateCard(
+                        return AppStateCard(
                           icon: Icons.auto_stories_outlined,
                           title: context.l10n.homeEmptyDiaryTitle,
                           message: context.l10n.homeEmptyDiaryMessage,
@@ -308,9 +310,8 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         controller: _scrollController,
                       );
                     },
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (Object error, StackTrace _) => HomeStateCard(
+                    loading: () => const AppLoadingState(),
+                    error: (Object error, StackTrace _) => AppStateCard(
                       icon: Icons.error_outline,
                       title: context.l10n.commonReadFailureTitle,
                       message: userFacingErrorMessage(

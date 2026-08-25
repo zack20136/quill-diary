@@ -15,6 +15,9 @@ import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 
@@ -36,25 +39,17 @@ class SettingsSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final AppColors colors = context.appColors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.sectionCard,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(colors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 if (icon != null) ...<Widget>[
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: colors.sectionInset,
+                      color: context.appColors.sectionInset,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Padding(
@@ -89,8 +84,7 @@ class SettingsSectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             child,
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -99,26 +93,19 @@ class SettingsSectionCard extends StatelessWidget {
 class SettingsActionGroup extends StatelessWidget {
   const SettingsActionGroup({required this.actions, super.key});
 
-  final List<SettingsActionButton> actions;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.appColors.sectionInset,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
+    return AppInsetPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
             for (int index = 0; index < actions.length; index++) ...<Widget>[
               if (index > 0) const SizedBox(height: 10),
               actions[index],
             ],
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -178,10 +165,10 @@ class SettingsStatusPanel extends StatelessWidget {
           const Center(child: CircularProgressIndicator()),
           if (onCancelUnlock != null) ...<Widget>[
             const SizedBox(height: 14),
-            SettingsActionButton(
+            AppActionButton(
               label: l10n.settingsSecurityLockCancelUnlockButton,
               icon: Icons.close_rounded,
-              appearance: SettingsActionButtonAppearance.outlined,
+              appearance: AppActionButtonAppearance.outlined,
               onPressed: busy ? null : onCancelUnlock,
             ),
           ],
@@ -207,10 +194,10 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SettingsActionButton(
+          AppActionButton(
             label: l10n.settingsSecurityLockUnlockWithRecoveryButton,
             icon: Icons.lock_open_rounded,
-            appearance: SettingsActionButtonAppearance.filled,
+            appearance: AppActionButtonAppearance.primary,
             onPressed: busy ? null : onUnlockWithRecovery,
           ),
         ],
@@ -250,10 +237,10 @@ class RecoveryKeySectionBody extends StatelessWidget {
           ),
           if (showActions) ...<Widget>[
             const SizedBox(height: 14),
-            SettingsActionButton(
+            AppActionButton(
               label: l10n.settingsRecoveryKeyCreateButton,
               icon: Icons.key_outlined,
-              appearance: SettingsActionButtonAppearance.filled,
+              appearance: AppActionButtonAppearance.primary,
               onPressed: busy ? null : onCreateRecoveryKey,
             ),
           ],
@@ -289,10 +276,10 @@ class RecoveryKeySectionBody extends StatelessWidget {
         ),
         if (showActions && onRotateRecoveryKey != null) ...<Widget>[
           const SizedBox(height: 14),
-          SettingsActionButton(
+          AppActionButton(
             label: l10n.settingsRecoveryKeyRotateButton,
             icon: Icons.lock_reset_outlined,
-            appearance: SettingsActionButtonAppearance.tonal,
+            appearance: AppActionButtonAppearance.tonal,
             onPressed: busy ? null : onRotateRecoveryKey,
           ),
         ],
@@ -550,99 +537,6 @@ class _SettingsSegment extends StatelessWidget {
   }
 }
 
-enum SettingsActionButtonAppearance { outlined, tonal, filled, destructive }
-
-class SettingsActionButton extends StatelessWidget {
-  const SettingsActionButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.emphasized = false,
-    this.appearance = SettingsActionButtonAppearance.outlined,
-    this.fullWidth = false,
-    super.key,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool emphasized;
-  final SettingsActionButtonAppearance appearance;
-  final bool fullWidth;
-
-  SettingsActionButtonAppearance get _resolvedAppearance {
-    if (emphasized) {
-      return SettingsActionButtonAppearance.filled;
-    }
-    return appearance;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final bool isDark = colorScheme.brightness == Brightness.dark;
-    final ({Color background, Color foreground}) filledColors = isDark
-        ? (
-            background: colorScheme.primaryContainer,
-            foreground: colorScheme.onPrimaryContainer,
-          )
-        : (background: colorScheme.primary, foreground: colorScheme.onPrimary);
-    final ({Color background, Color foreground}) tonalColors = isDark
-        ? (
-            background: colorScheme.surfaceContainerHighest,
-            foreground: colorScheme.onSurface,
-          )
-        : (
-            background: colorScheme.secondaryContainer,
-            foreground: colorScheme.onSecondaryContainer,
-          );
-    final Widget button = switch (_resolvedAppearance) {
-      SettingsActionButtonAppearance.filled => FilledButton.icon(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: filledColors.background,
-          foregroundColor: filledColors.foreground,
-        ),
-        icon: Icon(icon),
-        label: Text(label),
-      ),
-      SettingsActionButtonAppearance.tonal => FilledButton.icon(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: tonalColors.background,
-          foregroundColor: tonalColors.foreground,
-          side: isDark
-              ? BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
-                )
-              : null,
-        ),
-        icon: Icon(icon),
-        label: Text(label),
-      ),
-      SettingsActionButtonAppearance.destructive => OutlinedButton.icon(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(foregroundColor: colorScheme.error),
-        icon: Icon(icon, color: colorScheme.error),
-        label: Text(label),
-      ),
-      SettingsActionButtonAppearance.outlined => OutlinedButton.icon(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.onSurface,
-          side: BorderSide(color: colorScheme.outline),
-        ),
-        icon: Icon(icon),
-        label: Text(label),
-      ),
-    };
-    if (!fullWidth) {
-      return button;
-    }
-    return SizedBox(width: double.infinity, child: button);
-  }
-}
-
 class SettingsFactChip extends StatelessWidget {
   const SettingsFactChip({required this.label, required this.value, super.key});
 
@@ -665,20 +559,6 @@ class SettingsFactChip extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class SettingsSectionLoading extends StatelessWidget {
-  const SettingsSectionLoading({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 18),
-        child: CircularProgressIndicator(),
       ),
     );
   }
@@ -785,8 +665,8 @@ class SettingsSecurityOverview extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         SettingsActionGroup(
-          actions: <SettingsActionButton>[
-            SettingsActionButton(
+          actions: <Widget>[
+            AppActionButton(
               label: hasRecoveryKey
                   ? l10n.settingsSecurityOverviewRotateRecoveryKeyButton
                   : l10n.settingsSecurityOverviewCreateRecoveryKeyButton,
@@ -794,25 +674,25 @@ class SettingsSecurityOverview extends StatelessWidget {
                   ? Icons.lock_reset_outlined
                   : Icons.key_outlined,
               appearance: hasRecoveryKey
-                  ? SettingsActionButtonAppearance.tonal
-                  : SettingsActionButtonAppearance.filled,
+                  ? AppActionButtonAppearance.tonal
+                  : AppActionButtonAppearance.primary,
               onPressed: busy
                   ? null
                   : hasRecoveryKey
                   ? onRotateRecoveryKey
                   : onCreateRecoveryKey,
             ),
-            SettingsActionButton(
+            AppActionButton(
               label: l10n.settingsSecurityOverviewInspectVaultButton,
               icon: Icons.fact_check_outlined,
-              appearance: SettingsActionButtonAppearance.tonal,
+              appearance: AppActionButtonAppearance.tonal,
               onPressed: busy ? null : onInspectVault,
             ),
             if (onRetryTrustedUnlock != null)
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsSecurityLockRetryVerificationButton,
                 icon: kSessionRetryVerificationIcon,
-                appearance: SettingsActionButtonAppearance.filled,
+                appearance: AppActionButtonAppearance.primary,
                 onPressed: busy ? null : onRetryTrustedUnlock,
               ),
           ],
@@ -989,91 +869,24 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
       child: ColoredBox(
         color: colors.overlayDim,
         child: Center(
-          child: FractionallySizedBox(
-            widthFactor: 0.9,
-            child: Align(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: Semantics(
-                  liveRegion: true,
-                  label: semanticLabel,
-                  child: ExcludeSemantics(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: cs.surface,
-                        borderRadius: BorderRadius.circular(
-                          PageStyle.radiusCard,
-                        ),
-                        border: Border.fromBorderSide(colors.outlineBorder()),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  resolvedTitle,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (percentLabel.isNotEmpty) ...<Widget>[
-                                const SizedBox(width: 12),
-                                Text(
-                                  percentLabel,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    color: cs.primary,
-                                    fontWeight: FontWeight.w600,
-                                    fontFeatures: const <FontFeature>[
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: clampedProgress,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                          if (showStage) ...<Widget>[
-                            const SizedBox(height: 12),
-                            Text(
-                              stage,
-                              textAlign: TextAlign.start,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                          if (resolvedHint != null &&
-                              resolvedHint.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 6),
-                            Text(
-                              resolvedHint,
-                              textAlign: TextAlign.start,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                          ],
-                        ),
-                      ),
+          child: AppProgressCard(
+            title: resolvedTitle,
+            message: showStage ? stage : resolvedTitle,
+            hint: resolvedHint,
+            semanticLabel: semanticLabel,
+            value: clampedProgress,
+            trailing: percentLabel.isEmpty
+                ? null
+                : Text(
+                    percentLabel,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            ),
           ),
         ),
       ),

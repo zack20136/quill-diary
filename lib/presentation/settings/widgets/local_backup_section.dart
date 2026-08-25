@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'settings_sections.dart';
 
@@ -40,32 +41,32 @@ class LocalBackupSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SettingsActionGroup(
-            actions: <SettingsActionButton>[
-              SettingsActionButton(
+            actions: <Widget>[
+              AppActionButton(
                 label: l10n.settingsLocalBackupCreateButton,
                 icon: Icons.archive_outlined,
-                appearance: SettingsActionButtonAppearance.filled,
+                appearance: AppActionButtonAppearance.primary,
                 fullWidth: true,
                 onPressed: busy || !access.canBackup ? null : onCreate,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsLocalBackupRestoreButton,
                 icon: Icons.restore_rounded,
-                appearance: SettingsActionButtonAppearance.tonal,
+                appearance: AppActionButtonAppearance.tonal,
                 fullWidth: true,
                 onPressed: busy || !access.canRestore ? null : onRestore,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsLocalBackupExportToExternalButton,
                 icon: Icons.file_upload_outlined,
-                appearance: SettingsActionButtonAppearance.filled,
+                appearance: AppActionButtonAppearance.primary,
                 fullWidth: true,
                 onPressed: busy || !access.canBackup ? null : onExport,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsLocalBackupImportFromExternalButton,
                 icon: Icons.file_download_outlined,
-                appearance: SettingsActionButtonAppearance.tonal,
+                appearance: AppActionButtonAppearance.tonal,
                 fullWidth: true,
                 onPressed: busy || !access.canRestore ? null : onImport,
               ),

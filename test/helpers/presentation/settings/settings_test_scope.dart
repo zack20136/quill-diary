@@ -7,7 +7,7 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
@@ -228,17 +228,17 @@ Widget settingsTestScope({
   );
 }
 
-Finder settingsActionButton(String label) {
+Finder appActionButton(String label) {
   return find.byWidgetPredicate(
-    (Widget widget) => widget is SettingsActionButton && widget.label == label,
+    (Widget widget) => widget is AppActionButton && widget.label == label,
   );
 }
 
-SettingsActionButton readSettingsActionButton(
+AppActionButton readAppActionButton(
   WidgetTester tester,
   String label,
 ) {
-  return tester.widget<SettingsActionButton>(settingsActionButton(label));
+  return tester.widget<AppActionButton>(appActionButton(label));
 }
 
 Future<void> scrollSettingsPageUntilVisible(

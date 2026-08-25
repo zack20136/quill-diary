@@ -12,6 +12,8 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
@@ -109,7 +111,7 @@ List<Widget> overviewDiarySectionSlivers({
           title: diarySectionTitle,
           stripeColor: cs.primary,
           titleTrail: titleTrail,
-          child: const Center(child: CircularProgressIndicator()),
+          child: const AppLoadingState(),
         ),
       ),
     ];
@@ -214,7 +216,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
       data: (List<EntryIndexRecord> allEntries) {
         if (allEntries.isEmpty) {
           return HomeScrollbarGutter(
-            child: HomeStateCard(
+            child: AppStateCard(
               icon: Icons.insights_outlined,
               title: context.l10n.homeNoAnalysisTitle,
               message: context.l10n.homeNoAnalysisMessage,
@@ -582,11 +584,9 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
           ),
         );
       },
-      loading: () => const HomeScrollbarGutter(
-        child: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () => const HomeScrollbarGutter(child: AppLoadingState()),
       error: (Object error, StackTrace _) => HomeScrollbarGutter(
-        child: HomeStateCard(
+        child: AppStateCard(
           icon: Icons.error_outline,
           title: context.l10n.commonReadFailureTitle,
           message: userFacingErrorMessage(error, l10n: context.l10n),

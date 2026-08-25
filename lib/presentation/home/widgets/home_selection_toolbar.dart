@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
@@ -322,24 +323,12 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
 }
 
 Future<bool?> confirmDeleteHomeEntries(BuildContext context, int count) {
-  return showDialog<bool>(
+  return showAppConfirmDialog(
     context: context,
-    builder: (BuildContext dialogContext) => AlertDialog(
-      title: Text(context.l10n.commonConfirmDeleteTitle),
-      content: Text(context.l10n.commonConfirmDeleteEntries(count)),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(context.l10n.commonActionCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(dialogContext).colorScheme.error,
-          ),
-          child: Text(context.l10n.commonActionDelete),
-        ),
-      ],
-    ),
+    title: context.l10n.commonConfirmDeleteTitle,
+    content: Text(context.l10n.commonConfirmDeleteEntries(count)),
+    cancelLabel: context.l10n.commonActionCancel,
+    confirmLabel: context.l10n.commonActionDelete,
+    confirmStyle: AppConfirmStyle.destructive,
   );
 }

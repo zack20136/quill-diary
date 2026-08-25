@@ -33,6 +33,8 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/utils/external_url.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
@@ -164,7 +166,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             onModeSelected: (AppUnlockMode selected) =>
                                 _runBusy(() => _applyUnlockMode(selected)),
                           ),
-                      loading: () => const SettingsSectionLoading(),
+                      loading: () => const AppLoadingState(),
                       error: (Object error, StackTrace _) => AppFeedbackBanner(
                         icon: Icons.error_outline_rounded,
                         message: userFacingErrorMessage(error, l10n: l10n),
@@ -181,11 +183,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         : transferAccess.backupDisabledReason ??
                               l10n.vaultTransferNeedsUnlockForBackup,
                     child: SettingsActionGroup(
-                      actions: <SettingsActionButton>[
-                        SettingsActionButton(
+                      actions: <Widget>[
+                        AppActionButton(
                           label: l10n.settingsImportExportImportButton,
                           icon: Icons.file_download_outlined,
-                          appearance: SettingsActionButtonAppearance.tonal,
+                          appearance: AppActionButtonAppearance.tonal,
                           fullWidth: true,
                           onPressed: _busy || !transferAccess.canBackup
                               ? null
@@ -195,10 +197,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       l10n.settingsImportExportImportProgress,
                                 ),
                         ),
-                        SettingsActionButton(
+                        AppActionButton(
                           label: l10n.settingsImportExportExportButton,
                           icon: Icons.file_upload_outlined,
-                          appearance: SettingsActionButtonAppearance.filled,
+                          appearance: AppActionButtonAppearance.primary,
                           fullWidth: true,
                           onPressed: _busy || !transferAccess.canBackup
                               ? null

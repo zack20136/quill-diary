@@ -12,7 +12,6 @@ class AccentDialogShell extends StatelessWidget {
     this.onClose,
     this.closeEnabled = true,
     this.expand = false,
-    this.maxWidth = 384,
     required this.child,
     super.key,
   });
@@ -24,7 +23,6 @@ class AccentDialogShell extends StatelessWidget {
   final VoidCallback? onClose;
   final bool closeEnabled;
   final bool expand;
-  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +31,7 @@ class AccentDialogShell extends StatelessWidget {
     final AppColors appColors = context.appColors;
 
     return ConstrainedBox(
-      constraints: expand
-          ? const BoxConstraints.expand()
-          : BoxConstraints(maxWidth: maxWidth),
+      constraints: expand ? const BoxConstraints.expand() : const BoxConstraints(),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(expand ? 0 : 28),
         child: DecoratedBox(

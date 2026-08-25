@@ -10,6 +10,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'entry_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
@@ -49,7 +50,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
 
   Widget _buildBody(BuildContext context) {
     if (sessionState.status == AppLockStatus.unlocking) {
-      return HomeStateCard(
+      return AppStateCard(
         icon: Icons.sync_rounded,
         title: context.l10n.homeUnlockingTitle,
         message:
@@ -60,7 +61,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
 
     if (sessionState.status == AppLockStatus.locked) {
       final AppLocalizations l10n = context.l10n;
-      return HomeStateCard(
+      return AppStateCard(
         icon: Icons.lock_outline,
         title: l10n.sessionBlockedLockedTitle,
         message: sessionState.message?.isNotEmpty == true
@@ -94,7 +95,7 @@ class HomeBlockedEntriesPane extends StatelessWidget {
             AppLockStatus.fatalError => l10n.sessionBlockedFatalErrorSubtitle,
             _ => '',
           };
-    return HomeStateCard(
+    return AppStateCard(
       icon: blockedIconForStatus(sessionState.status),
       title: blockedTitle,
       message: blockedSubtitle,
@@ -103,25 +104,6 @@ class HomeBlockedEntriesPane extends StatelessWidget {
       onAction: offerSettings
           ? () => unawaited(context.push(AppRouter.settingsRoute))
           : null,
-    );
-  }
-}
-
-class HomeSectionShell extends StatelessWidget {
-  const HomeSectionShell({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return Material(
-      color: context.appColors.sectionCard,
-      elevation: 1,
-      shadowColor: cs.shadow.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(padding: const EdgeInsets.all(14), child: child),
     );
   }
 }
@@ -299,81 +281,6 @@ class HomeDiarySliverSection extends StatelessWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
             HomeCompactEntrySliverList(entries: entries),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class HomeStateCard extends StatelessWidget {
-  const HomeStateCard({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.actionIcon,
-    this.actionOutlined = false,
-    this.onAction,
-    super.key,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final IconData? actionIcon;
-  final bool actionOutlined;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return HomeSectionShell(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primaryContainer.withValues(
-                    alpha: 0.55,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Icon(icon, size: 32, color: theme.colorScheme.primary),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.45,
-                ),
-              ),
-              if (actionLabel != null && onAction != null) ...<Widget>[
-                const SizedBox(height: 20),
-                actionOutlined
-                    ? OutlinedButton.icon(
-                        onPressed: onAction,
-                        icon: Icon(actionIcon ?? kSessionRetryVerificationIcon),
-                        label: Text(actionLabel!),
-                      )
-                    : FilledButton.icon(
-                        onPressed: onAction,
-                        icon: Icon(actionIcon ?? Icons.settings_outlined),
-                        label: Text(actionLabel!),
-                      ),
-              ],
-            ],
-          ),
         ),
       ),
     );

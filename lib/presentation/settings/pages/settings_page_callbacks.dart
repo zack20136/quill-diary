@@ -79,7 +79,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       child: pageRef
           .watch(backupStatusProvider)
           .when(
-            loading: () => const SettingsSectionLoading(),
+            loading: () => const AppLoadingState(),
             error: (Object error, StackTrace _) => AppFeedbackBanner(
               icon: Icons.error_outline_rounded,
               message: userFacingErrorMessage(error, l10n: l10n),
@@ -167,7 +167,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                                         })
                                       : null,
                                 ),
-                            loading: () => const SettingsSectionLoading(),
+                            loading: () => const AppLoadingState(),
                             error: (Object error, StackTrace _) =>
                                 AppFeedbackBanner(
                                   icon: Icons.error_outline_rounded,
@@ -179,7 +179,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
                                 ),
                           ),
                   ),
-                  loading: () => const SettingsSectionLoading(),
+                  loading: () => const AppLoadingState(),
                   error: (Object error, StackTrace _) => AppFeedbackBanner(
                     icon: Icons.error_outline_rounded,
                     message: userFacingErrorMessage(error, l10n: l10n),

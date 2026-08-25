@@ -82,9 +82,7 @@ void main() {
   testWidgets('只有檢查摘要且無修復紀錄時可開始檢查', (WidgetTester tester) async {
     bool? result;
     await pumpLauncher(tester, (BuildContext context) async {
-      result = await showInspectVaultConfirmDialog(
-        context,
-      );
+      result = await showInspectVaultConfirmDialog(context);
     });
 
     expect(
@@ -137,6 +135,8 @@ void main() {
   });
 
   testWidgets('較新的乾淨檢查不會隱藏較舊修復的問題與明細', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final VaultFinding finding = const VaultFinding(
       kind: VaultRepairIssueKind.unreadableEntry,
       plannedAction: VaultPlannedAction.quarantine,
@@ -168,8 +168,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(testL10n.settingsRepairDetailButton), findsOneWidget);
+    final Finder dialogSurfaces = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is Material && widget.type == MaterialType.card,
+      ),
+    );
+    expect(tester.getSize(dialogSurfaces).width, 720);
     await tester.tap(find.text(testL10n.settingsRepairDetailButton));
     await tester.pumpAndSettle();
+    expect(tester.getSize(dialogSurfaces.last).width, 640);
     expect(find.text(testL10n.settingsRepairDetailUnresolved), findsOneWidget);
     expect(find.text('仍需處理的日記'), findsOneWidget);
   });

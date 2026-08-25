@@ -18,7 +18,6 @@ import 'package:quill_diary/domain/diary/diary_date_policy.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -28,6 +27,8 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/shared/utils/diary_presence_tag_counts.dart';
 import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
@@ -1031,8 +1032,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                       ],
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                  loading: () => const AppLoadingState(),
                   error: (Object error, StackTrace _) => Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -1045,8 +1045,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
               ),
             );
           },
-          loading: () =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          loading: () => const Scaffold(
+            body: AppLoadingState(layout: AppLoadingStateLayout.page),
+          ),
           error: (Object error, StackTrace _) => Scaffold(
             appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
             body: Center(
@@ -1055,8 +1056,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
           ),
         );
       },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(
+        body: AppLoadingState(layout: AppLoadingStateLayout.page),
+      ),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(title: Text(context.l10n.editorPageTitle)),
         body: Center(
@@ -1198,7 +1200,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     EditorDraftRecord record, {
     required bool hasExistingEntry,
   }) {
-    return showDialog<bool>(
+    return showAppDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
@@ -1211,7 +1213,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<bool?> _showDiscardDraftDialog() {
-    return showDialog<bool>(
+    return showAppDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
         return const _DiscardDraftDialog();
@@ -1223,27 +1225,15 @@ class _EditorPageState extends ConsumerState<EditorPage>
     if (widget.entryId == null || _saving) {
       return;
     }
-    final bool? confirmed = await showDialog<bool>(
+    final bool confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(context.l10n.editorConfirmDeleteTitle),
-        content: Text(context.l10n.editorConfirmDeleteBody),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l10n.commonActionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: Text(context.l10n.commonActionDelete),
-          ),
-        ],
-      ),
+      title: context.l10n.editorConfirmDeleteTitle,
+      content: Text(context.l10n.editorConfirmDeleteBody),
+      cancelLabel: context.l10n.commonActionCancel,
+      confirmLabel: context.l10n.commonActionDelete,
+      confirmStyle: AppConfirmStyle.destructive,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     await _editorFlow.deleteEntry(session: session, entryId: widget.entryId!);

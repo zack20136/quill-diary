@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
@@ -57,7 +59,7 @@ class DriveBackupSection extends ConsumerWidget {
           : ref
                 .watch(settingsDriveConnectionProvider)
                 .when(
-                  loading: () => const SettingsSectionLoading(),
+                  loading: () => const AppLoadingState(),
                   error: (Object error, StackTrace _) =>
                       _DriveConnectionErrorContent(
                         message: userFacingErrorMessage(error, l10n: l10n),
@@ -115,10 +117,10 @@ class _DriveConnectionErrorContent extends StatelessWidget {
           tone: AppFeedbackTone.error,
         ),
         const SizedBox(height: 10),
-        SettingsActionButton(
+        AppActionButton(
           label: l10n.settingsDriveBackupConnectionRetryButton,
           icon: Icons.refresh_rounded,
-          appearance: SettingsActionButtonAppearance.outlined,
+          appearance: AppActionButtonAppearance.outlined,
           fullWidth: true,
           onPressed: busy ? null : onRetry,
         ),
@@ -187,41 +189,41 @@ class _DriveBackupContent extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         SettingsActionGroup(
-          actions: <SettingsActionButton>[
+          actions: <Widget>[
             if (!isConnected)
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsDriveBackupLinkButton,
                 icon: Icons.link_rounded,
-                appearance: SettingsActionButtonAppearance.filled,
+                appearance: AppActionButtonAppearance.primary,
                 fullWidth: true,
                 onPressed: canUseAccountActions ? onLink : null,
               ),
-            if (isConnected) ...<SettingsActionButton>[
-              SettingsActionButton(
+            if (isConnected) ...<Widget>[
+              AppActionButton(
                 label: l10n.settingsDriveBackupUploadButton,
                 icon: Icons.cloud_upload_outlined,
-                appearance: SettingsActionButtonAppearance.filled,
+                appearance: AppActionButtonAppearance.primary,
                 fullWidth: true,
                 onPressed: busy || !access.canBackup ? null : onUpload,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsDriveBackupRestoreButton,
                 icon: Icons.cloud_download_outlined,
-                appearance: SettingsActionButtonAppearance.tonal,
+                appearance: AppActionButtonAppearance.tonal,
                 fullWidth: true,
                 onPressed: busy || !access.canRestore ? null : onRestore,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsDriveBackupSwitchAccountButton,
                 icon: Icons.swap_horiz_rounded,
-                appearance: SettingsActionButtonAppearance.outlined,
+                appearance: AppActionButtonAppearance.outlined,
                 fullWidth: true,
                 onPressed: canUseAccountActions ? onSwitchAccount : null,
               ),
-              SettingsActionButton(
+              AppActionButton(
                 label: l10n.settingsDriveBackupDisconnectButton,
                 icon: Icons.link_off_rounded,
-                appearance: SettingsActionButtonAppearance.destructive,
+                appearance: AppActionButtonAppearance.destructive,
                 fullWidth: true,
                 onPressed: canUseAccountActions ? onDisconnect : null,
               ),

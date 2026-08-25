@@ -10,6 +10,8 @@ import '../../../../shared/presentation/date_picker/app_date_picker_dialog.dart'
 import '../../../../shared/presentation/display_format.dart';
 import '../../../../app/app_colors.dart';
 import '../../../../shared/presentation/page_style.dart';
+import '../../../../shared/presentation/widgets/app_state_card.dart';
+import '../../../../shared/presentation/widgets/app_loading_state.dart';
 import '../../../../../application/tag/tag_providers.dart';
 import '../../../../shared/utils/user_facing_error.dart';
 import '../../home_layout.dart';
@@ -178,7 +180,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
 
     if (monthEntriesAsync.hasError && !monthEntriesAsync.hasValue) {
       return HomeScrollbarGutter(
-        child: HomeStateCard(
+        child: AppStateCard(
           icon: Icons.error_outline,
           title: context.l10n.commonReadFailureTitle,
           message: userFacingErrorMessage(
@@ -659,7 +661,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                   child: HomeSectionCard(
                     title: context.l10n.homeDiarySectionTitleForDate(dateLabel),
                     stripeColor: cs.primary,
-                    child: const Center(child: CircularProgressIndicator()),
+                    child: const AppLoadingState(),
                   ),
                 );
               },

@@ -8,6 +8,7 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
@@ -107,51 +108,40 @@ Future<bool> confirmLargeHtmlExport(
   BuildContext context,
   HtmlExportEstimate estimate,
 ) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(dialogContext.l10n.homeHtmlExportLargeTitle),
-          content: Column(
+  return showAppConfirmDialog(
+    context: context,
+    title: context.l10n.homeHtmlExportLargeTitle,
+    cancelLabel: context.l10n.commonActionCancel,
+    confirmLabel: context.l10n.homeHtmlExportProceed,
+    content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
                 homeHtmlExportSelectionSummary(
-                  dialogContext.l10n,
+                  context.l10n,
                   estimate.entryCount,
                   estimate.imageCount,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                dialogContext.l10n.homeHtmlExportImageSize(
+                context.l10n.homeHtmlExportImageSize(
                   DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
                 ),
               ),
               Text(
-                dialogContext.l10n.homeHtmlExportEstimatedSize(
+                context.l10n.homeHtmlExportEstimatedSize(
                   DisplayFormat.formatBytesForDisplay(
                     estimate.estimatedHtmlBytes,
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              Text(dialogContext.l10n.homeHtmlExportEmbeddedHint),
+              Text(context.l10n.homeHtmlExportEmbeddedHint),
             ],
           ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(dialogContext.l10n.commonActionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(dialogContext.l10n.homeHtmlExportProceed),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  );
 }
 
 Future<void> deleteSelectedHomeEntries(

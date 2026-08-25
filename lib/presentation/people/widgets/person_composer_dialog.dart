@@ -19,6 +19,7 @@ import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
@@ -211,24 +212,13 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     String body, {
     required String confirmLabel,
   }) async {
-    final bool? ok = await showDialog<bool>(
+    return showAppConfirmDialog(
       context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.l10n.commonActionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
+      title: title,
+      content: Text(body),
+      cancelLabel: context.l10n.commonActionCancel,
+      confirmLabel: confirmLabel,
     );
-    return ok == true;
   }
 
   bool get _hasUnsavedChanges {
@@ -985,7 +975,6 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
                   MediaQuery.viewInsetsOf(context).bottom;
         final double bodyHeight = (availableHeight - 166).clamp(80.0, 680.0);
         return AccentDialogShell(
-          maxWidth: 560,
           icon: Icons.person_rounded,
           title: title,
           closeEnabled: !_saving,

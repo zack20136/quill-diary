@@ -2,6 +2,8 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
@@ -33,24 +35,15 @@ class PersonDetailPage extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final bool? confirmed = await showDialog<bool>(
+    final bool confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: Text(ctx.l10n.peopleDeleteConfirmTitle),
-        content: Text(ctx.l10n.peopleDeleteConfirmBody),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.l10n.commonActionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.commonActionDelete),
-          ),
-        ],
-      ),
+      title: context.l10n.peopleDeleteConfirmTitle,
+      content: Text(context.l10n.peopleDeleteConfirmBody),
+      cancelLabel: context.l10n.commonActionCancel,
+      confirmLabel: context.l10n.commonActionDelete,
+      confirmStyle: AppConfirmStyle.destructive,
     );
-    if (confirmed != true) {
+    if (!confirmed) {
       return;
     }
     final AppSessionState state = await ref.read(
@@ -96,7 +89,8 @@ class PersonDetailPage extends ConsumerWidget {
 
     return Scaffold(
       body: personAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+            const AppLoadingState(layout: AppLoadingStateLayout.page),
         error: (Object error, StackTrace _) => Center(
           child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
         ),
@@ -290,12 +284,7 @@ class PersonDetailPage extends ConsumerWidget {
                                 child: HomeSectionCard(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 24),
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  ),
+                                  child: const AppLoadingState(),
                                 ),
                               ),
                               error: (Object error, StackTrace _) =>

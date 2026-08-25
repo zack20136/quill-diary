@@ -261,7 +261,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('寬螢幕表單維持有限寬度', (WidgetTester tester) async {
+  testWidgets('寬螢幕表單不再使用固定最大寬度', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 800);
     addTearDown(tester.view.reset);
@@ -271,7 +271,7 @@ void main() {
 
     expect(
       tester.getSize(find.byType(AccentDialogShell)).width,
-      lessThanOrEqualTo(560),
+      876,
     );
     expect(find.byType(Divider), findsNWidgets(2));
     expect(tester.takeException(), isNull);

@@ -14,6 +14,9 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/shared/utils/diary_presence_tag_counts.dart';
@@ -85,7 +88,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       return;
     }
     final Color dialogBarrierColor = context.appColors.scrim;
-    final String? savedLabel = await showDialog<String>(
+    final String? savedLabel = await showAppDialog<String>(
       context: context,
       barrierDismissible: true,
       barrierColor: dialogBarrierColor,
@@ -137,27 +140,15 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     String label, {
     required UnlockedVaultSession session,
   }) async {
-    final bool? confirmed = await showDialog<bool>(
+    final bool confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(dialogContext.l10n.homeDeleteTagTitle),
-        content: Text(dialogContext.l10n.homeDeleteTagConfirm(label)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(dialogContext.l10n.commonActionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: Text(dialogContext.l10n.commonActionDelete),
-          ),
-        ],
-      ),
+      title: context.l10n.homeDeleteTagTitle,
+      content: Text(context.l10n.homeDeleteTagConfirm(label)),
+      cancelLabel: context.l10n.commonActionCancel,
+      confirmLabel: context.l10n.commonActionDelete,
+      confirmStyle: AppConfirmStyle.destructive,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
 
@@ -432,7 +423,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   );
               if (mergedTags.isEmpty) {
                 return HomeScrollbarGutter(
-                  child: HomeStateCard(
+                  child: AppStateCard(
                     icon: Icons.label_outline_rounded,
                     title: context.l10n.homeNoTagsTitle,
                     message: context.l10n.homeNoTagsMessage,
@@ -451,7 +442,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   .toList();
               if (list.isEmpty && q.isNotEmpty) {
                 return HomeScrollbarGutter(
-                  child: HomeStateCard(
+                  child: AppStateCard(
                     icon: Icons.search_off_rounded,
                     title: context.l10n.homeSearchNoResultsTitle,
                     message: context.l10n.homeSearchNoResultsMessage,
@@ -654,11 +645,9 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 ),
               );
             },
-            loading: () => const HomeScrollbarGutter(
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            loading: () => const HomeScrollbarGutter(child: AppLoadingState()),
             error: (Object err, StackTrace _) => HomeScrollbarGutter(
-              child: HomeStateCard(
+              child: AppStateCard(
                 icon: Icons.error_outline_rounded,
                 title: context.l10n.commonReadFailureTitle,
                 message: userFacingErrorMessage(err, l10n: context.l10n),

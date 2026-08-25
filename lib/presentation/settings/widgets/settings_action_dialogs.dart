@@ -13,6 +13,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import '../backup/backup_pick_dialog.dart';
 import '../backup/backup_pick_list_item.dart';
 
@@ -23,10 +24,10 @@ Future<bool> showInspectVaultConfirmDialog(
 }) async {
   final AppLocalizations l10n = context.l10n;
   repairSummary ??= lastRepairSummary;
-  return await showDialog<bool>(
+  return await showAppDialog<bool>(
         context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(l10n.settingsInspectVaultConfirmTitle),
+        builder: (BuildContext dialogContext) => AppDialogShell(
+          title: l10n.settingsInspectVaultConfirmTitle,
           content: SizedBox(
             width: double.maxFinite,
             child: ConstrainedBox(
@@ -54,6 +55,7 @@ Future<bool> showInspectVaultConfirmDialog(
                             showRepairDetailDialog(
                               dialogContext,
                               repairSummary,
+                              layer: AppDialogLayer.nested,
                             ),
                           ),
                           child: Text(l10n.settingsRepairDetailButton),
@@ -82,13 +84,15 @@ Future<bool> showInspectVaultConfirmDialog(
 
 Future<void> showRepairDetailDialog(
   BuildContext context,
-  VaultRepairSummary? summary,
-) {
+  VaultRepairSummary? summary, {
+  AppDialogLayer layer = AppDialogLayer.root,
+}) {
   final AppLocalizations l10n = context.l10n;
-  return showDialog<void>(
+  return showAppDialog<void>(
+    layer: layer,
     context: context,
-    builder: (BuildContext dialogContext) => AlertDialog(
-      title: Text(l10n.settingsRepairDetailTitle),
+    builder: (BuildContext dialogContext) => AppDialogShell(
+      title: l10n.settingsRepairDetailTitle,
       content: SizedBox(
         width: double.maxFinite,
         child: ConstrainedBox(
@@ -271,9 +275,7 @@ class _RepairDetailContent extends StatelessWidget {
       Text(l10n.settingsRepairDetailGlobalPurgedBad(value.purgedBadAssets)),
     if (value.purgedOldQuarantine > 0)
       Text(
-        l10n.settingsRepairDetailPurgedOldQuarantine(
-          value.purgedOldQuarantine,
-        ),
+        l10n.settingsRepairDetailPurgedOldQuarantine(value.purgedOldQuarantine),
       ),
     if (value.splitAttachments > 0)
       Text(l10n.settingsRepairDetailSplitAttachments(value.splitAttachments)),
@@ -346,9 +348,9 @@ Future<bool?> showInspectVaultResultDialog(
   final Map<String, List<VaultFinding>> groups = groupVaultFindings(
     report.findings,
   );
-  return showDialog<bool>(
+  return showAppDialog<bool>(
     context: context,
-    builder: (BuildContext dialogContext) => AlertDialog(
+    builder: (BuildContext dialogContext) => AppDialogShell(
       icon: Icon(
         groups.isEmpty
             ? Icons.check_circle_outline_rounded
@@ -357,7 +359,7 @@ Future<bool?> showInspectVaultResultDialog(
             ? Theme.of(context).colorScheme.primary
             : Theme.of(context).colorScheme.tertiary,
       ),
-      title: Text(l10n.settingsInspectVaultResultTitle),
+      title: l10n.settingsInspectVaultResultTitle,
       content: SizedBox(
         width: double.maxFinite,
         child: ConstrainedBox(
@@ -429,7 +431,7 @@ Future<void> showRepairVaultResultDialog({
   required Future<String?> Function(List<VaultFinding> findings) onSalvage,
   required Future<bool> Function(List<VaultFinding> findings) onDelete,
 }) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (_) => _RepairVaultResultDialog(
       report: report,
@@ -503,10 +505,11 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
   Future<void> _delete(MapEntry<String, List<VaultFinding>> group) async {
     final AppLocalizations l10n = context.l10n;
     final bool confirmed =
-        await showDialog<bool>(
+        await showAppDialog<bool>(
+          layer: AppDialogLayer.nested,
           context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: Text(l10n.settingsAbnormalEntriesDeleteConfirmTitle),
+          builder: (BuildContext dialogContext) => AppDialogShell(
+            title: l10n.settingsAbnormalEntriesDeleteConfirmTitle,
             content: Text(l10n.settingsAbnormalEntriesDeleteConfirmBody),
             actions: <Widget>[
               TextButton(
@@ -544,8 +547,8 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
     final VaultRepairSummary detailSummary = VaultRepairSummary.fromReport(
       widget.report,
     );
-    return AlertDialog(
-      title: Text(l10n.settingsRepairVaultResultTitle),
+    return AppDialogShell(
+      title: l10n.settingsRepairVaultResultTitle,
       content: SizedBox(
         width: double.maxFinite,
         child: ConstrainedBox(
@@ -576,7 +579,11 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
                     alignment: Alignment.centerLeft,
                     child: TextButton(
                       onPressed: () => unawaited(
-                        showRepairDetailDialog(context, detailSummary),
+                        showRepairDetailDialog(
+                          context,
+                          detailSummary,
+                          layer: AppDialogLayer.nested,
+                        ),
                       ),
                       child: Text(l10n.settingsRepairDetailButton),
                     ),
@@ -722,68 +729,37 @@ Future<bool> showSettingsDeleteBackupDialog({
   required String title,
   required String body,
 }) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(context.l10n.commonActionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(context.l10n.commonActionDelete),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  return showAppConfirmDialog(
+    context: context,
+    title: title,
+    content: Text(body),
+    cancelLabel: context.l10n.commonActionCancel,
+    confirmLabel: context.l10n.commonActionDelete,
+    confirmStyle: AppConfirmStyle.destructive,
+  );
 }
 
 Future<bool> showDisconnectDriveDialog(BuildContext context) async {
   final AppLocalizations l10n = context.l10n;
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(l10n.settingsDriveBackupDisconnectConfirmTitle),
-          content: Text(l10n.settingsDriveBackupDisconnectConfirmBody),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.commonActionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.settingsDriveBackupDisconnectButton),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  return showAppConfirmDialog(
+    context: context,
+    title: l10n.settingsDriveBackupDisconnectConfirmTitle,
+    content: Text(l10n.settingsDriveBackupDisconnectConfirmBody),
+    cancelLabel: l10n.commonActionCancel,
+    confirmLabel: l10n.settingsDriveBackupDisconnectButton,
+    confirmStyle: AppConfirmStyle.destructive,
+  );
 }
 
 Future<bool> showRotateRecoveryKeyDialog(BuildContext context) async {
   final AppLocalizations l10n = context.l10n;
-  return await showDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(l10n.settingsRecoveryKeyRotateDialogTitle),
-          content: Text(l10n.settingsRecoveryKeyRotateDialogBody),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.commonActionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.settingsActionUpdate),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  return showAppConfirmDialog(
+    context: context,
+    title: l10n.settingsRecoveryKeyRotateDialogTitle,
+    content: Text(l10n.settingsRecoveryKeyRotateDialogBody),
+    cancelLabel: l10n.commonActionCancel,
+    confirmLabel: l10n.settingsActionUpdate,
+  );
 }
 
 Future<bool> showRestoreConfirmDialog(
@@ -791,7 +767,7 @@ Future<bool> showRestoreConfirmDialog(
   RestorePrecheck precheck, {
   String? driveBackupName,
 }) async {
-  return await showDialog<bool>(
+  return await showAppDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => _RestoreConfirmDialog(
           precheck: precheck,
@@ -824,12 +800,10 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
     final List<RestorePrecheckSummaryItem> summaryItems =
         buildRestorePrecheckSummaryItems(l10n, precheck);
 
-    return AlertDialog(
-      title: Text(
-        widget.driveBackupName == null
-            ? l10n.settingsRestoreDialogConfirmLocalTitle
-            : l10n.settingsRestoreDialogConfirmDriveTitle,
-      ),
+    return AppDialogShell(
+      title: widget.driveBackupName == null
+          ? l10n.settingsRestoreDialogConfirmLocalTitle
+          : l10n.settingsRestoreDialogConfirmDriveTitle,
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

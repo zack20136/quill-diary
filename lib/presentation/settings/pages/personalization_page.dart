@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -51,7 +52,7 @@ class PersonalizationPage extends ConsumerWidget {
       ),
       body: SafeArea(
         child: prefsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const AppLoadingState(layout: AppLoadingStateLayout.page),
           error: (_, _) =>
               Center(child: Text(context.l10n.personalizationLoadErrorMessage)),
           data: (PersonalizationPreferences prefs) {

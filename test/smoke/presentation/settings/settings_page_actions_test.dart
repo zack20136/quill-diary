@@ -129,10 +129,10 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+      appActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
     await tester.tap(
-      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+      appActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
     await tester.pumpAndSettle();
 
@@ -159,10 +159,10 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+      appActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
     await tester.tap(
-      settingsActionButton(testL10n.settingsDriveBackupDisconnectButton),
+      appActionButton(testL10n.settingsDriveBackupDisconnectButton),
     );
     await tester.pumpAndSettle();
     await tester.tap(
@@ -209,10 +209,10 @@ void main() {
 
     await scrollSettingsPageUntilVisible(
       tester,
-      settingsActionButton(testL10n.settingsDriveBackupRestoreButton),
+      appActionButton(testL10n.settingsDriveBackupRestoreButton),
     );
     await tester.tap(
-      settingsActionButton(testL10n.settingsDriveBackupRestoreButton),
+      appActionButton(testL10n.settingsDriveBackupRestoreButton),
     );
     await tester.pumpAndSettle();
 

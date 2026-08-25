@@ -88,28 +88,28 @@ void main() {
       findsNothing,
     );
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupUploadButton,
       ).onPressed,
       isNull,
     );
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupRestoreButton,
       ).onPressed,
       isNotNull,
     );
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupSwitchAccountButton,
       ).onPressed,
       isNull,
     );
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupDisconnectButton,
       ).onPressed,
@@ -124,7 +124,7 @@ void main() {
     );
 
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupLinkButton,
       ).onPressed,
@@ -173,7 +173,7 @@ void main() {
       findsNothing,
     );
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsDriveBackupConnectionRetryButton,
       ).onPressed,
@@ -212,7 +212,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      readSettingsActionButton(
+      readAppActionButton(
         tester,
         testL10n.settingsSecurityOverviewRotateRecoveryKeyButton,
       ).onPressed,

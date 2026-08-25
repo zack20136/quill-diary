@@ -810,8 +810,8 @@ class _RestoreDraftDialog extends StatelessWidget {
       context.l10n,
       record.updatedAt,
     );
-    return AlertDialog(
-      title: Text(context.l10n.editorRestoreDraftTitle),
+    return AppDialogShell(
+      title: context.l10n.editorRestoreDraftTitle,
       content: Text(
         hasExistingEntry
             ? context.l10n.editorRestoreDraftOverwrite(titleText, updatedAtText)
@@ -837,8 +837,8 @@ class _DiscardDraftDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n.editorDiscardDraftTitle),
+    return AppDialogShell(
+      title: context.l10n.editorDiscardDraftTitle,
       content: Text(context.l10n.editorDiscardDraftBody),
       actions: <Widget>[
         TextButton(

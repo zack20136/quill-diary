@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 
 Future<bool> showPostRestoreOutcomeDialog(
   BuildContext context, {
   required SettingsRestorePrompt outcome,
 }) async {
-  final bool? primaryPressed = await showDialog<bool>(
+  final bool? primaryPressed = await showAppDialog<bool>(
     context: context,
     barrierDismissible: false,
     builder: (BuildContext dialogContext) {
       final ThemeData theme = Theme.of(dialogContext);
-      return AlertDialog(
+      return AppDialogShell(
         icon: Icon(
           outcome.isError
               ? Icons.error_outline_rounded
@@ -21,7 +23,7 @@ Future<bool> showPostRestoreOutcomeDialog(
               ? theme.colorScheme.error
               : theme.colorScheme.primary,
         ),
-        title: Text(outcome.title),
+        title: outcome.title,
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,15 +48,15 @@ Future<bool> showPostRestoreOutcomeDialog(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
           ),
-          FilledButton.icon(
+          AppActionButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon: Icon(
-              outcome.primaryAction ==
-                      SettingsRestorePrimaryAction.retryVerification
-                  ? kSessionRetryVerificationIcon
-                  : Icons.key_outlined,
-            ),
-            label: Text(outcome.primaryActionLabel),
+            icon:
+                outcome.primaryAction ==
+                    SettingsRestorePrimaryAction.retryVerification
+                ? kSessionRetryVerificationIcon
+                : Icons.key_outlined,
+            label: outcome.primaryActionLabel,
+            appearance: AppActionButtonAppearance.primary,
           ),
         ],
       );

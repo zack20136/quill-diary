@@ -7,6 +7,8 @@ import 'package:quill_diary/infrastructure/preferences/personalization_preferenc
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
@@ -233,7 +235,7 @@ class PersonalizationTypographySectionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsActionButton(
+        AppActionButton(
           label: context.l10n.personalizationTypographyResetButton,
           icon: Icons.restore_rounded,
           fullWidth: true,
@@ -387,12 +389,10 @@ Future<void> confirmAndResetTypography({
   required PersonalizationPreferencesController controller,
 }) async {
   final bool confirmed =
-      await showDialog<bool>(
+      await showAppDialog<bool>(
         context: context,
-        builder: (BuildContext dialogContext) => AlertDialog(
-          title: Text(
-            dialogContext.l10n.personalizationTypographyResetConfirmTitle,
-          ),
+        builder: (BuildContext dialogContext) => AppDialogShell(
+          title: dialogContext.l10n.personalizationTypographyResetConfirmTitle,
           content: Text(
             dialogContext.l10n.personalizationTypographyResetConfirmBody,
           ),

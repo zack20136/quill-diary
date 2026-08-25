@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/app/router.dart';
@@ -95,7 +96,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
       },
       loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+          const Scaffold(body: AppLoadingState(layout: AppLoadingStateLayout.page)),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
         body: Center(

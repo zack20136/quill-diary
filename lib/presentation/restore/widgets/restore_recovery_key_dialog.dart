@@ -4,6 +4,7 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import '../../settings/restore_precheck_presenter.dart';
 
 Future<String?> showRestoreRecoveryKeyDialog(
@@ -11,7 +12,7 @@ Future<String?> showRestoreRecoveryKeyDialog(
   required RestorePrecheck precheck,
   String? validationError,
 }) async {
-  return showDialog<String>(
+  return showAppDialog<String>(
     context: context,
     barrierDismissible: false,
     builder: (BuildContext dialogContext) => _RestoreRecoveryKeyDialog(
@@ -69,8 +70,8 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
     final ThemeData theme = Theme.of(context);
     final String hint = widget.precheck.backupRecoveryHint;
 
-    return AlertDialog(
-      title: Text(l10n.settingsRestoreDialogRecoveryKeyTitle),
+    return AppDialogShell(
+      title: l10n.settingsRestoreDialogRecoveryKeyTitle,
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
