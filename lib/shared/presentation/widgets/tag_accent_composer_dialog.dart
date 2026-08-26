@@ -105,7 +105,7 @@ class _TagAccentComposerDialogState
     final AppLocalizations l10n = context.l10n;
     final String name = _nameCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (name.isEmpty) {
-      showAppFeedbackSnackBar(context, l10n.tagNameRequiredMessage);
+      showAppFeedbackToast(context, l10n.tagNameRequiredMessage);
       return;
     }
 
@@ -135,7 +135,7 @@ class _TagAccentComposerDialogState
       }
     } catch (error) {
       if (mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           l10n.tagSaveFailure(userFacingErrorMessage(error, l10n: l10n)),
           tone: AppFeedbackTone.error,
@@ -161,7 +161,7 @@ class _TagAccentComposerDialogState
       }
     } catch (error) {
       if (mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           l10n.tagDeleteFailure(userFacingErrorMessage(error, l10n: l10n)),
           tone: AppFeedbackTone.error,

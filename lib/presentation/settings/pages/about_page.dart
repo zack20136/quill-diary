@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import '../about_tab_catalog.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import '../widgets/settings_info_cards.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class SettingsAboutPage extends ConsumerWidget {
   const SettingsAboutPage({super.key});
@@ -25,8 +24,6 @@ class SettingsAboutPage extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.aboutPageTitle),
-          elevation: 0,
-          scrolledUnderElevation: 0,
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -53,7 +50,7 @@ class _AboutTabBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: ListViewWithScrollbar(
+      child: AppScrollablePageBody(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: <Widget>[
           SettingsGradientHeroCard(
@@ -89,15 +86,9 @@ class _SectionCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(context.appColors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
+    return AppCard(
+      backgroundColor: cs.surface,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
@@ -125,7 +116,6 @@ class _SectionCard extends StatelessWidget {
               );
             }),
           ],
-        ),
       ),
     );
   }
@@ -141,14 +131,10 @@ class _ItemPanel extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+    return AppInsetPanel(
+      backgroundColor: cs.surfaceContainerLow,
+      padding: const EdgeInsets.all(14),
+      child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             DecoratedBox(
@@ -187,7 +173,6 @@ class _ItemPanel extends StatelessWidget {
               ),
             ),
           ],
-        ),
       ),
     );
   }

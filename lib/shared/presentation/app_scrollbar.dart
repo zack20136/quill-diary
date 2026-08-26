@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import 'page_style.dart';
+
 /// 全站 scrollbar 尺寸常數。
 abstract final class AppScrollbarMetrics {
   static const double thickness = 6;
@@ -162,6 +164,12 @@ class _AppScrollbarState extends State<AppScrollbar>
     });
   }
 
+  void _scheduleRebuild() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   void _handleControllerChanged() {
     final ScrollController? controller = widget.controller;
     if (controller == null || !controller.hasClients) {
@@ -177,9 +185,7 @@ class _AppScrollbarState extends State<AppScrollbar>
     if (widget.controller == null) {
       _notificationMetrics = notification.metrics;
       _syncThumbExtent(notification.metrics);
-      if (mounted) {
-        setState(() {});
-      }
+      _scheduleRebuild();
       return false;
     }
     _syncThumbExtent(notification.metrics);
@@ -213,15 +219,10 @@ class _AppScrollbarState extends State<AppScrollbar>
 
     if (firstValidMetrics) {
       _hasInitializedThumbExtent = true;
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _displayedThumbExtent = targetThumbExtent;
-        _fromThumbExtent = targetThumbExtent;
-        _toThumbExtent = targetThumbExtent;
-        _extentAnimation.value = 1;
-      });
+      _displayedThumbExtent = targetThumbExtent;
+      _fromThumbExtent = targetThumbExtent;
+      _toThumbExtent = targetThumbExtent;
+      _scheduleRebuild();
       return;
     }
 
@@ -231,7 +232,11 @@ class _AppScrollbarState extends State<AppScrollbar>
 
     _fromThumbExtent = _displayedThumbExtent;
     _toThumbExtent = targetThumbExtent;
-    unawaited(_extentAnimation.forward(from: 0));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && (_displayedThumbExtent - _toThumbExtent).abs() > 0.5) {
+        unawaited(_extentAnimation.forward(from: 0));
+      }
+    });
   }
 
   double _naturalThumbExtent(ScrollMetrics metrics) {
@@ -507,26 +512,37 @@ double _lerpDouble(double from, double to, double t) {
   return from + (to - from) * t;
 }
 
-class ListViewWithScrollbar extends StatefulWidget {
-  const ListViewWithScrollbar({
-    required this.padding,
+class AppScrollablePageBody extends StatefulWidget {
+  const AppScrollablePageBody({
+    this.padding = const EdgeInsets.fromLTRB(
+      PageStyle.pageHorizontalPadding,
+      PageStyle.pageTopPadding,
+      PageStyle.pageHorizontalPadding,
+      PageStyle.pageBottomPadding,
+    ),
     required this.children,
+    this.controller,
     super.key,
   });
 
   final EdgeInsetsGeometry padding;
   final List<Widget> children;
+  final ScrollController? controller;
 
   @override
-  State<ListViewWithScrollbar> createState() => _ListViewWithScrollbarState();
+  State<AppScrollablePageBody> createState() =>
+      _AppScrollablePageBodyState();
 }
 
-class _ListViewWithScrollbarState extends State<ListViewWithScrollbar> {
-  late final ScrollController _controller = ScrollController();
+class _AppScrollablePageBodyState extends State<AppScrollablePageBody> {
+  ScrollController? _ownedController;
+
+  ScrollController get _controller =>
+      widget.controller ?? (_ownedController ??= ScrollController());
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ownedController?.dispose();
     super.dispose();
   }
 
@@ -536,18 +552,26 @@ class _ListViewWithScrollbarState extends State<ListViewWithScrollbar> {
       Directionality.of(context),
     );
 
-    return Padding(
-      padding: EdgeInsets.only(left: resolved.left, top: resolved.top),
-      child: AppScrollbar(
-        controller: _controller,
-        crossAxisEdgeInset: AppScrollbarMetrics.settingsCrossAxisEdgeInset,
-        child: ListView(
-          controller: _controller,
-          padding: EdgeInsets.only(
-            right: resolved.right,
-            bottom: resolved.bottom,
+    return SafeArea(
+      child: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: (OverscrollIndicatorNotification notification) {
+          notification.disallowIndicator();
+          return false;
+        },
+        child: Padding(
+          padding: EdgeInsets.only(left: resolved.left, top: resolved.top),
+          child: AppScrollbar(
+            controller: _controller,
+            crossAxisEdgeInset: AppScrollbarMetrics.settingsCrossAxisEdgeInset,
+            child: ListView(
+              controller: _controller,
+              padding: EdgeInsets.only(
+                right: resolved.right,
+                bottom: resolved.bottom,
+              ),
+              children: widget.children,
+            ),
           ),
-          children: widget.children,
         ),
       ),
     );

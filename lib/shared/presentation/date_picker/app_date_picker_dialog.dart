@@ -629,12 +629,6 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            if (_hasDay)
-              _buildBackHeader(
-                context.l10n.datePickerDayLabel,
-                () => setState(() => _view = _AppDatePickerView.day),
-              ),
-            if (_hasDay) const SizedBox(height: 8),
             if (_hasYear) _buildYearControl(),
             if (_hasYear) const SizedBox(height: 18),
             Text(

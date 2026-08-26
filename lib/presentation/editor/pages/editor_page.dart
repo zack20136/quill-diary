@@ -23,6 +23,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
@@ -30,8 +31,7 @@ import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dial
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/shared/utils/diary_presence_tag_counts.dart';
-import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
@@ -349,7 +349,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     setState(() => _showEntryRequiredHint = true);
-    showAppFeedbackSnackBar(context, context.l10n.editorSaveNeedsEntryMessage);
+    showAppFeedbackToast(context, context.l10n.editorSaveNeedsEntryMessage);
   }
 
   EditorDraftSnapshot _currentDraftSnapshot() {
@@ -1119,15 +1119,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
     } catch (_) {
       anchor = DateTime.now();
     }
-    final TimeOfDay? picked = await showTimePicker(
+    final TimeOfDay? picked = await showAppTimePickerDialog(
       context: context,
       initialTime: TimeOfDay.fromDateTime(anchor),
-      builder: (BuildContext context, Widget? child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
+      title: context.l10n.editorTooltipTime,
     );
     if (!mounted || picked == null) {
       return;

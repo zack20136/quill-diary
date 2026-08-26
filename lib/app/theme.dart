@@ -76,6 +76,8 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       iconTheme: IconThemeData(color: appColors.foreground),
       actionsIconTheme: IconThemeData(color: appColors.foreground),
       centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
     ),
     cardTheme: CardThemeData(

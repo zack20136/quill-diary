@@ -68,7 +68,7 @@ Future<void> exportEntriesAsHtml(
     if (savedPath == null || !context.mounted) {
       return;
     }
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       context.l10n.homeHtmlExportSuccess(
         DisplayFormat.formatSavedFileNameForDisplay(savedPath),
@@ -79,7 +79,7 @@ Future<void> exportEntriesAsHtml(
     if (!context.mounted) {
       return;
     }
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       userFacingErrorMessage(error, l10n: context.l10n),
       tone: AppFeedbackTone.error,
@@ -88,7 +88,7 @@ Future<void> exportEntriesAsHtml(
     if (!context.mounted) {
       return;
     }
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       userFacingErrorMessage(error, l10n: context.l10n),
       tone: AppFeedbackTone.error,
@@ -172,7 +172,7 @@ Future<void> deleteSelectedHomeEntries(
     return;
   }
   refreshHomeIndexCaches(ref);
-  showAppFeedbackSnackBar(
+  showAppFeedbackToast(
     context,
     context.l10n.homeEntriesDeletedSuccess(selectedIds.length),
     tone: AppFeedbackTone.success,

@@ -26,12 +26,47 @@ class AppStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     return AppCard(
-      elevated: true,
+      style: AppSurfaceStyle.elevated,
       padding: const EdgeInsets.all(34),
-      child: Center(
-        child: Column(
+      child: AppStateView(
+        icon: icon,
+        title: title,
+        message: message,
+        actionLabel: actionLabel,
+        actionIcon: actionIcon,
+        actionAppearance: actionAppearance,
+        onAction: onAction,
+      ),
+    );
+  }
+}
+
+class AppStateView extends StatelessWidget {
+  const AppStateView({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.actionIcon,
+    this.actionAppearance = AppActionButtonAppearance.primary,
+    this.onAction,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final AppActionButtonAppearance actionAppearance;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Center(
+      child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             DecoratedBox(
@@ -71,7 +106,6 @@ class AppStateCard extends StatelessWidget {
               ),
             ],
           ],
-        ),
       ),
     );
   }

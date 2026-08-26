@@ -4,6 +4,7 @@ import 'package:quill_diary/application/settings/vault_transfer_capabilities.dar
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'settings_sections.dart';
 
@@ -40,7 +41,7 @@ class LocalBackupSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SettingsActionGroup(
+          AppActionGroup(
             actions: <Widget>[
               AppActionButton(
                 label: l10n.settingsLocalBackupCreateButton,

@@ -32,9 +32,9 @@ import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_di
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/external_url.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
@@ -122,8 +122,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settingsPageTitle),
-        elevation: 0,
-        scrolledUnderElevation: 0,
       ),
       body: SafeArea(
         child: Stack(
@@ -133,7 +131,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 notification.disallowIndicator();
                 return false;
               },
-              child: ListViewWithScrollbar(
+              child: AppScrollablePageBody(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: <Widget>[
                   const _SettingsTopNavSection(),
@@ -182,7 +180,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ? l10n.settingsImportExportSectionDescriptionEnabled
                         : transferAccess.backupDisabledReason ??
                               l10n.vaultTransferNeedsUnlockForBackup,
-                    child: SettingsActionGroup(
+                    child: AppActionGroup(
                       actions: <Widget>[
                         AppActionButton(
                           label: l10n.settingsImportExportImportButton,

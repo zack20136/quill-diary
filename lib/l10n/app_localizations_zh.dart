@@ -30,6 +30,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonActionApply => '套用';
 
   @override
+  String get commonActionConfirm => '確定';
+
+  @override
   String get commonActionClose => '關閉';
 
   @override
@@ -1115,6 +1118,36 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get datePickerDayLabel => '日期';
+
+  @override
+  String get timePickerChooseTime => '選擇時間';
+
+  @override
+  String get timePickerHourLabel => '小時';
+
+  @override
+  String get timePickerMinuteLabel => '分鐘';
+
+  @override
+  String get timePickerAm => 'AM';
+
+  @override
+  String get timePickerPm => 'PM';
+
+  @override
+  String get timePickerInvalidTime => '請輸入有效的時間';
+
+  @override
+  String get timePickerInputHint => '請輸入 1–12 的小時與 0–59 的分鐘';
+
+  @override
+  String get timePickerSwitchToInput => '切換為數字輸入';
+
+  @override
+  String get timePickerSwitchToDial => '切換為鐘面選擇';
+
+  @override
+  String get timePickerDialSemantics => '時間選擇鐘面';
 
   @override
   String get datePickerPreviousYear => '上一年';

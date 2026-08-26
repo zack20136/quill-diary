@@ -23,7 +23,7 @@ void main() {
 
   Future<void> pumpDialogLauncher(
     WidgetTester tester, {
-    required AppDialogLayer layer,
+    required AppDialogSize size,
   }) async {
     await tester.pumpWidget(
       host(
@@ -31,7 +31,7 @@ void main() {
           builder: (BuildContext context) => FilledButton(
             onPressed: () => showAppDialog<void>(
               context: context,
-              layer: layer,
+              size: size,
               builder: (_) =>
                   const AppDialogShell(title: '確認操作', content: Text('內容')),
             ),
@@ -287,7 +287,7 @@ void main() {
   testWidgets('dialog shell 在窄寬與寬螢幕均使用九成寬度', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await pumpDialogLauncher(tester, layer: AppDialogLayer.root);
+    await pumpDialogLauncher(tester, size: AppDialogSize.standard);
 
     expect(tester.getSize(dialogSurface()).width, 288);
     expect(find.text('確認操作'), findsOneWidget);
@@ -296,10 +296,10 @@ void main() {
     expect(tester.getSize(dialogSurface()).width, 720);
   });
 
-  testWidgets('巢狀 dialog 可明確使用八成寬度', (tester) async {
+  testWidgets('compact dialog 在窄寬與寬螢幕均使用八成寬度', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await pumpDialogLauncher(tester, layer: AppDialogLayer.nested);
+    await pumpDialogLauncher(tester, size: AppDialogSize.compact);
 
     expect(tester.getSize(dialogSurface()).width, 256);
     await tester.binding.setSurfaceSize(const Size(800, 568));

@@ -11,7 +11,6 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 

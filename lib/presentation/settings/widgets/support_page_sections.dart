@@ -6,6 +6,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 import '../support_page_copy.dart';
 
@@ -190,15 +191,10 @@ class SupportInfoCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(context.appColors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+    return AppCard(
+      backgroundColor: cs.surface,
+      padding: const EdgeInsets.all(16),
+      child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Icon(icon, color: cs.onSurfaceVariant, size: 22),
@@ -225,7 +221,6 @@ class SupportInfoCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
       ),
     );
   }

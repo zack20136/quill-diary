@@ -3,7 +3,6 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/presentation/home/providers/home_bottom_chrome_provider.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -58,10 +57,11 @@ void main() {
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
 
-    showAppFeedbackSnackBar(dialogContext, toastMessage);
+    showAppFeedbackToast(dialogContext, toastMessage);
     await tester.pump(_toastAnimation);
 
     expect(find.text(toastMessage), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
     expect(find.text('對話框'), findsOneWidget);
 
     await _pumpToastLifecycle(tester);
@@ -82,11 +82,11 @@ void main() {
       ),
     );
 
-    showAppFeedbackSnackBar(hostContext, '第一則');
+    showAppFeedbackToast(hostContext, '第一則');
     await tester.pump(_toastAnimation);
     expect(find.text('第一則'), findsOneWidget);
 
-    showAppFeedbackSnackBar(hostContext, '第二則');
+    showAppFeedbackToast(hostContext, '第二則');
     await tester.pump(_toastAnimation);
 
     expect(find.text('第一則'), findsNothing);
@@ -95,7 +95,7 @@ void main() {
     await _pumpToastLifecycle(tester);
   });
 
-  testWidgets('toast 顯示與關閉時更新 homeBottomChromeSnackBarCountProvider', (
+  testWidgets('toast 顯示與關閉時更新共用 feedback 顯示計數', (
     WidgetTester tester,
   ) async {
     late BuildContext hostContext;
@@ -115,14 +115,14 @@ void main() {
     );
 
     final ProviderContainer container = ProviderScope.containerOf(hostContext);
-    expect(container.read(homeBottomChromeSnackBarCountProvider), 0);
+    expect(container.read(appFeedbackVisibilityCountProvider), 0);
 
-    showAppFeedbackSnackBar(hostContext, '通知');
+    showAppFeedbackToast(hostContext, '通知');
     await tester.pump();
-    expect(container.read(homeBottomChromeSnackBarCountProvider), 1);
+    expect(container.read(appFeedbackVisibilityCountProvider), 1);
 
     await _pumpToastLifecycle(tester);
     expect(find.text('通知'), findsNothing);
-    expect(container.read(homeBottomChromeSnackBarCountProvider), 0);
+    expect(container.read(appFeedbackVisibilityCountProvider), 0);
   });
 }

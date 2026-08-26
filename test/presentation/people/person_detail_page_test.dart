@@ -140,14 +140,11 @@ void main() {
       'person-mention-overview-card',
       'person-profile-details-card',
     ]) {
-      final Finder decoratedBox = find.descendant(
+      final Finder material = find.descendant(
         of: find.byKey(ValueKey<String>(key)),
-        matching: find.byType(DecoratedBox),
+        matching: find.byType(Material),
       );
-      final BoxDecoration decoration =
-          tester.widget<DecoratedBox>(decoratedBox.first).decoration
-              as BoxDecoration;
-      expect(decoration.color, colors.sectionCard);
+      expect(tester.widget<Material>(material.first).color, colors.sectionCard);
     }
   });
 

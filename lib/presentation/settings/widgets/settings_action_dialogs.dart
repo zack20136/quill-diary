@@ -14,6 +14,7 @@ import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dar
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import '../backup/backup_pick_dialog.dart';
 import '../backup/backup_pick_list_item.dart';
 
@@ -55,7 +56,7 @@ Future<bool> showInspectVaultConfirmDialog(
                             showRepairDetailDialog(
                               dialogContext,
                               repairSummary,
-                              layer: AppDialogLayer.nested,
+                              size: AppDialogSize.compact,
                             ),
                           ),
                           child: Text(l10n.settingsRepairDetailButton),
@@ -85,11 +86,11 @@ Future<bool> showInspectVaultConfirmDialog(
 Future<void> showRepairDetailDialog(
   BuildContext context,
   VaultRepairSummary? summary, {
-  AppDialogLayer layer = AppDialogLayer.root,
+  AppDialogSize size = AppDialogSize.standard,
 }) {
   final AppLocalizations l10n = context.l10n;
   return showAppDialog<void>(
-    layer: layer,
+    size: size,
     context: context,
     builder: (BuildContext dialogContext) => AppDialogShell(
       title: l10n.settingsRepairDetailTitle,
@@ -152,14 +153,10 @@ class _DialogSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+    return AppInsetPanel(
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      radius: 12,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
@@ -171,7 +168,6 @@ class _DialogSection extends StatelessWidget {
             const SizedBox(height: 6),
             ...children,
           ],
-        ),
       ),
     );
   }
@@ -506,7 +502,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
     final AppLocalizations l10n = context.l10n;
     final bool confirmed =
         await showAppDialog<bool>(
-          layer: AppDialogLayer.nested,
+          size: AppDialogSize.compact,
           context: context,
           builder: (BuildContext dialogContext) => AppDialogShell(
             title: l10n.settingsAbnormalEntriesDeleteConfirmTitle,
@@ -582,7 +578,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
                         showRepairDetailDialog(
                           context,
                           detailSummary,
-                          layer: AppDialogLayer.nested,
+                          size: AppDialogSize.compact,
                         ),
                       ),
                       child: Text(l10n.settingsRepairDetailButton),

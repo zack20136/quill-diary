@@ -11,6 +11,7 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'entry_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
@@ -145,52 +146,21 @@ class HomeSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final Color stripe = stripeColor ?? cs.primary;
-
-    return Material(
-      color: context.appColors.sectionCard,
-      elevation: 1,
-      shadowColor: cs.shadow.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: padding,
-        child: Column(
+    return AppCard(
+      style: AppSurfaceStyle.elevated,
+      padding: padding,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,
           children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 4,
-                  height: 22,
-                  margin: const EdgeInsets.only(top: 2),
-                  decoration: BoxDecoration(
-                    color: stripe,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                ?titleTrail,
-              ],
+            AppSectionHeader(
+              title: title,
+              stripeColor: stripeColor,
+              trailing: titleTrail,
             ),
             const SizedBox(height: 14),
             if (expandChild) Expanded(child: child) else child,
           ],
-        ),
       ),
     );
   }

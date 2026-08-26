@@ -19,9 +19,8 @@ import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/shared/utils/diary_presence_tag_counts.dart';
-import 'package:quill_diary/shared/utils/entry_sorting.dart';
-import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
+import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_layout.dart';
@@ -173,7 +172,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       setState(() => _selectedTagLabel = null);
     }
 
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       entryCount == 0
           ? context.l10n.homeTagDeleted(label)
@@ -190,7 +189,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       await _deleteTag(label, session: session);
     } on Object catch (error) {
       if (mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           context.l10n.tagDeleteFailure(
             userFacingErrorMessage(error, l10n: context.l10n),
@@ -244,7 +243,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
         return;
       }
       if (created) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           context.l10n.homeCreateDefaultTagsSuccess,
           tone: AppFeedbackTone.success,
@@ -252,7 +251,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       }
     } on Object catch (error) {
       if (mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           userFacingErrorMessage(error, l10n: context.l10n),
           tone: AppFeedbackTone.error,

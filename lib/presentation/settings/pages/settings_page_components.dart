@@ -5,18 +5,9 @@ class _SettingsTopNavSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    final AppColors colors = context.appColors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(colors.outlineBorder()),
-      ),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 10),
-        child: _SettingsAppBarNavActions(),
-      ),
+    return const AppCard(
+      padding: EdgeInsets.symmetric(vertical: 10),
+      child: _SettingsAppBarNavActions(),
     );
   }
 }

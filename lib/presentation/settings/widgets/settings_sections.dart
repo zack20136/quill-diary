@@ -36,79 +36,12 @@ class SettingsSectionCard extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                if (icon != null) ...<Widget>[
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: context.appColors.sectionInset,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Icon(icon, color: cs.primary, size: 22),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            child,
-        ],
-      ),
+  Widget build(BuildContext context) => AppSectionCard(
+    title: title,
+    description: description,
+    icon: icon,
+    child: child,
     );
-  }
-}
-
-class SettingsActionGroup extends StatelessWidget {
-  const SettingsActionGroup({required this.actions, super.key});
-
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppInsetPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-            for (int index = 0; index < actions.length; index++) ...<Widget>[
-              if (index > 0) const SizedBox(height: 10),
-              actions[index],
-            ],
-        ],
-      ),
-    );
-  }
 }
 
 class SettingsStatusPanel extends StatelessWidget {
@@ -664,7 +597,7 @@ class SettingsSecurityOverview extends StatelessWidget {
               .toList(growable: false),
         ),
         const SizedBox(height: 14),
-        SettingsActionGroup(
+        AppActionGroup(
           actions: <Widget>[
             AppActionButton(
               label: hasRecoveryKey

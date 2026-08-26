@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/app/router.dart';
@@ -11,7 +12,6 @@ import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_layout.dart';
-import '../providers/home_bottom_chrome_provider.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import '../widgets/home_circle_action_button.dart';
 import '../widgets/home_selection_toolbar.dart';
@@ -41,7 +41,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
         final HomeTab activeTab = ref.watch(homeTabProvider);
         final bool showFab = activeTab == HomeTab.home && !selection.isActive;
-        final bool snackBarLifted = homeBottomChromeLifted(ref);
+        final bool snackBarLifted =
+            ref.watch(appFeedbackVisibilityCountProvider) > 0;
         final double addButtonBottom =
             HomeLayout.bottomActionsInsetFor(snackBarVisible: snackBarLifted) +
             HomeLayout.bodyPadding.bottom;

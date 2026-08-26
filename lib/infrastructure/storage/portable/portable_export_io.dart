@@ -11,7 +11,7 @@ import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../database/index_database.dart';
 import '../../markdown/front_matter_codec.dart';
-import '../../../shared/utils/entry_sorting.dart';
+import '../../database/entry_index_sorting.dart';
 import '../shared/vault_file_ops.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';

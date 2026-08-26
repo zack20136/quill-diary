@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
@@ -15,7 +17,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/presentation/diary/widgets/diary_entry_sliver_section.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -63,7 +65,7 @@ class PersonDetailPage extends ConsumerWidget {
       }
     } on Object catch (error) {
       if (context.mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           context.l10n.peopleDeleteFailure(
             userFacingErrorMessage(error, l10n: context.l10n),
@@ -91,13 +93,19 @@ class PersonDetailPage extends ConsumerWidget {
       body: personAsync.when(
         loading: () =>
             const AppLoadingState(layout: AppLoadingStateLayout.page),
-        error: (Object error, StackTrace _) => Center(
-          child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+        error: (Object error, StackTrace _) => AppStateView(
+          icon: Icons.error_outline_rounded,
+          title: context.l10n.sessionBlockedFatalErrorTitle,
+          message: userFacingErrorMessage(error, l10n: context.l10n),
         ),
         data: (Person? person) {
           if (person == null) {
             return SafeArea(
-              child: Center(child: Text(context.l10n.peopleEmptyTitle)),
+              child: AppStateView(
+                icon: Icons.person_off_outlined,
+                title: context.l10n.peopleEmptyTitle,
+                message: context.l10n.peopleEmptyTitle,
+              ),
             );
           }
           final Color accent = personAccentColor(person);
@@ -281,7 +289,7 @@ class PersonDetailPage extends ConsumerWidget {
                             ),
                             relatedAsync.when<Widget>(
                               loading: () => SliverToBoxAdapter(
-                                child: HomeSectionCard(
+                                child: AppSectionCard(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
                                   child: const AppLoadingState(),
@@ -289,7 +297,7 @@ class PersonDetailPage extends ConsumerWidget {
                               ),
                               error: (Object error, StackTrace _) =>
                                   SliverToBoxAdapter(
-                                    child: HomeSectionCard(
+                                    child: AppSectionCard(
                                       title: context
                                           .l10n
                                           .peopleRelatedEntriesTitle,
@@ -305,20 +313,24 @@ class PersonDetailPage extends ConsumerWidget {
                               data: (List<EntryIndexRecord> entries) {
                                 if (entries.isEmpty) {
                                   return SliverToBoxAdapter(
-                                    child: HomeSectionCard(
+                                    child: AppSectionCard(
                                       title: context
                                           .l10n
                                           .peopleRelatedEntriesTitle,
                                       stripeColor: cs.primary,
-                                      child: HomePaneEmptyHint(
-                                        text: context
-                                            .l10n
-                                            .peopleRelatedEntriesEmpty,
+                                      child: Text(
+                                        context.l10n.peopleRelatedEntriesEmpty,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                            ),
                                       ),
                                     ),
                                   );
                                 }
-                                return HomeDiarySliverSection(
+                                return DiaryEntrySliverSection(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
                                   entries: entries,
@@ -384,32 +396,26 @@ class _PersonDetailSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
     final AppColors colors = context.appColors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark
-            ? colors.sectionCard
-            : colors.previewPanel,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        border: Border.fromBorderSide(colors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-        child: Column(
+    return AppCard(
+      radius: PageStyle.radiusPanel,
+      backgroundColor: theme.brightness == Brightness.dark
+          ? colors.sectionCard
+          : colors.previewPanel,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
               title,
               style: theme.textTheme.titleSmall?.copyWith(
-                color: cs.primary,
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 12),
             child,
           ],
-        ),
       ),
     );
   }

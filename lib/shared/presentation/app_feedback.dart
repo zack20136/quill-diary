@@ -1,10 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/presentation/home/providers/home_bottom_chrome_provider.dart';
-import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'page_style.dart';
 
 enum AppFeedbackTone { info, success, warning, error }
@@ -99,6 +98,57 @@ class AppFeedbackBanner extends StatelessWidget {
 
 const Duration _kFeedbackToastAnimationDuration = Duration(milliseconds: 250);
 const Duration _kFeedbackToastDisplayDuration = Duration(seconds: 4);
+
+final appFeedbackVisibilityCountProvider =
+    NotifierProvider<_AppFeedbackVisibilityCount, int>(
+      _AppFeedbackVisibilityCount.new,
+    );
+
+class _AppFeedbackVisibilityCount extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void register() => state++;
+
+  void unregister() {
+    if (ref.mounted && state > 0) {
+      state--;
+    }
+  }
+}
+
+class _AppFeedbackVisibilityLease {
+  _AppFeedbackVisibilityLease(this._notifier);
+
+  final _AppFeedbackVisibilityCount _notifier;
+  bool _released = false;
+
+  void bind(Future<void> dismissed) {
+    unawaited(dismissed.whenComplete(_release));
+  }
+
+  void _release() {
+    if (_released) return;
+    _released = true;
+    _notifier.unregister();
+  }
+}
+
+_AppFeedbackVisibilityLease? _beginFeedbackVisibility(
+  BuildContext context,
+) {
+  final ProviderContainer container;
+  try {
+    container = ProviderScope.containerOf(context);
+  } catch (_) {
+    return null;
+  }
+  final _AppFeedbackVisibilityCount notifier = container.read(
+    appFeedbackVisibilityCountProvider.notifier,
+  );
+  notifier.register();
+  return _AppFeedbackVisibilityLease(notifier);
+}
 
 /// Root overlay 通知；能蓋過 dialog，取代 Scaffold SnackBar。
 final _AppFeedbackOverlayHost _feedbackOverlayHost = _AppFeedbackOverlayHost();
@@ -254,14 +304,14 @@ class _AppFeedbackToastState extends State<_AppFeedbackToast>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      left: HomeLayout.bodyHorizontal,
-      right: HomeLayout.bodyHorizontal,
+      left: PageStyle.feedbackHorizontalInset,
+      right: PageStyle.feedbackHorizontalInset,
       bottom: 0,
       child: SafeArea(
         top: false,
         child: Padding(
           padding: const EdgeInsets.only(
-            bottom: HomeLayout.snackBarBottomPadding,
+            bottom: PageStyle.feedbackBottomInset,
           ),
           child: SlideTransition(
             position: _slide,
@@ -277,7 +327,19 @@ class _AppFeedbackToastState extends State<_AppFeedbackToast>
                     horizontal: 16,
                     vertical: 14,
                   ),
-                  child: Text(widget.message, style: widget.textStyle),
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        widget.icon,
+                        size: 20,
+                        color: widget.foregroundColor,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(widget.message, style: widget.textStyle),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -288,7 +350,7 @@ class _AppFeedbackToastState extends State<_AppFeedbackToast>
   }
 }
 
-void showAppFeedbackSnackBar(
+void showAppFeedbackToast(
   BuildContext context,
   String message, {
   AppFeedbackTone tone = AppFeedbackTone.info,
@@ -299,7 +361,9 @@ void showAppFeedbackSnackBar(
   }
   final ThemeData theme = Theme.of(context);
   final AppFeedbackColors colors = resolveAppFeedbackColors(context, tone);
-  final HomeBottomChromeSnackBarLift? lift = beginHomeSnackBarLift(context);
+  final _AppFeedbackVisibilityLease? visibility = _beginFeedbackVisibility(
+    context,
+  );
   final Future<void> dismissed = _feedbackOverlayHost.show(
     context: context,
     message: message,
@@ -307,5 +371,5 @@ void showAppFeedbackSnackBar(
     icon: icon ?? defaultAppFeedbackIcon(tone),
     textStyle: theme.textTheme.bodyMedium?.copyWith(color: colors.foreground),
   );
-  lift?.bind(dismissed);
+  visibility?.bind(dismissed);
 }

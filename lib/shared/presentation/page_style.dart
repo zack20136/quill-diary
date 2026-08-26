@@ -7,4 +7,11 @@ abstract final class PageStyle {
   static const double radiusEntry = 22;
   static const double radiusThumbSmall = 12;
   static const double radiusThumb = 14;
+
+  static const double pageHorizontalPadding = 16;
+  static const double pageTopPadding = 12;
+  static const double pageBottomPadding = 24;
+  static const double sectionGap = 16;
+  static const double feedbackHorizontalInset = 16;
+  static const double feedbackBottomInset = 16;
 }

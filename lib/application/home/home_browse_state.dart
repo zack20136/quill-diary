@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/shared/utils/entry_sorting.dart';
+import 'package:quill_diary/application/home/home_entry_sorting.dart';
 
 enum HomeTab { home, calendar, tags, people, overview }
 

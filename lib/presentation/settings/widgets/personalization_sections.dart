@@ -420,7 +420,7 @@ Future<void> confirmAndResetTypography({
   if (!context.mounted) {
     return;
   }
-  showAppFeedbackSnackBar(
+  showAppFeedbackToast(
     context,
     context.l10n.personalizationTypographyResetSuccess,
     tone: AppFeedbackTone.success,

@@ -75,7 +75,7 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
     if (!mounted) {
       return;
     }
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       widget.copiedMessage,
       tone: AppFeedbackTone.success,

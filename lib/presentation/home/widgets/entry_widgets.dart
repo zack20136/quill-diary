@@ -10,7 +10,7 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_date_time_column.dart';
+import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
@@ -529,7 +529,7 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EntryDateTimeColumn(
+    return DiaryEntryDateTime(
       date: entry.date,
       at: entry.createdAt,
       compact: compact,

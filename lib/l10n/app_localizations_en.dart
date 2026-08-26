@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonActionApply => 'Apply';
 
   @override
+  String get commonActionConfirm => 'OK';
+
+  @override
   String get commonActionClose => 'Close';
 
   @override
@@ -1142,6 +1145,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get datePickerDayLabel => 'Day';
+
+  @override
+  String get timePickerChooseTime => 'Choose time';
+
+  @override
+  String get timePickerHourLabel => 'Hour';
+
+  @override
+  String get timePickerMinuteLabel => 'Minute';
+
+  @override
+  String get timePickerAm => 'AM';
+
+  @override
+  String get timePickerPm => 'PM';
+
+  @override
+  String get timePickerInvalidTime => 'Enter a valid time';
+
+  @override
+  String get timePickerInputHint =>
+      'Enter an hour from 1–12 and minutes from 0–59';
+
+  @override
+  String get timePickerSwitchToInput => 'Switch to number input';
+
+  @override
+  String get timePickerSwitchToDial => 'Switch to clock dial';
+
+  @override
+  String get timePickerDialSemantics => 'Time selection dial';
 
   @override
   String get datePickerPreviousYear => 'Previous year';

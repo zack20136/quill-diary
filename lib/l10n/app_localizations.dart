@@ -140,6 +140,12 @@ abstract class AppLocalizations {
   /// **'套用'**
   String get commonActionApply;
 
+  /// No description provided for @commonActionConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'確定'**
+  String get commonActionConfirm;
+
   /// No description provided for @commonActionClose.
   ///
   /// In zh, this message translates to:
@@ -2053,6 +2059,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'日期'**
   String get datePickerDayLabel;
+
+  /// No description provided for @timePickerChooseTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇時間'**
+  String get timePickerChooseTime;
+
+  /// No description provided for @timePickerHourLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'小時'**
+  String get timePickerHourLabel;
+
+  /// No description provided for @timePickerMinuteLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'分鐘'**
+  String get timePickerMinuteLabel;
+
+  /// No description provided for @timePickerAm.
+  ///
+  /// In zh, this message translates to:
+  /// **'AM'**
+  String get timePickerAm;
+
+  /// No description provided for @timePickerPm.
+  ///
+  /// In zh, this message translates to:
+  /// **'PM'**
+  String get timePickerPm;
+
+  /// No description provided for @timePickerInvalidTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'請輸入有效的時間'**
+  String get timePickerInvalidTime;
+
+  /// No description provided for @timePickerInputHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'請輸入 1–12 的小時與 0–59 的分鐘'**
+  String get timePickerInputHint;
+
+  /// No description provided for @timePickerSwitchToInput.
+  ///
+  /// In zh, this message translates to:
+  /// **'切換為數字輸入'**
+  String get timePickerSwitchToInput;
+
+  /// No description provided for @timePickerSwitchToDial.
+  ///
+  /// In zh, this message translates to:
+  /// **'切換為鐘面選擇'**
+  String get timePickerSwitchToDial;
+
+  /// No description provided for @timePickerDialSemantics.
+  ///
+  /// In zh, this message translates to:
+  /// **'時間選擇鐘面'**
+  String get timePickerDialSemantics;
 
   /// No description provided for @datePickerPreviousYear.
   ///

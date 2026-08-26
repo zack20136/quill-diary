@@ -12,7 +12,7 @@ void showGalleryDownloadSnackBar(
   String message, {
   AppFeedbackTone tone = AppFeedbackTone.success,
 }) {
-  showAppFeedbackSnackBar(context, message, tone: tone);
+  showAppFeedbackToast(context, message, tone: tone);
 }
 
 Future<void> downloadGalleryImage({

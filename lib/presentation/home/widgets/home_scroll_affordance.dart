@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import '../home_layout.dart';
-import '../providers/home_bottom_chrome_provider.dart';
 import 'home_circle_action_button.dart';
 
 const double _kBackToTopShowOffset = 160;
@@ -130,7 +130,8 @@ class _HomeBackToTopOverlayState extends ConsumerState<_HomeBackToTopOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final bool snackBarLifted = homeBottomChromeLifted(ref);
+    final bool snackBarLifted =
+        ref.watch(appFeedbackVisibilityCountProvider) > 0;
     final double backToTopBottom = HomeLayout.bottomActionsInsetFor(
       snackBarVisible: snackBarLifted,
     );

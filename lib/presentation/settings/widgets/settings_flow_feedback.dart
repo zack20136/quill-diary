@@ -11,7 +11,7 @@ void showSettingsFlowFeedback(
   if (!context.mounted || feedback == null) {
     return;
   }
-  showAppFeedbackSnackBar(
+  showAppFeedbackToast(
     context,
     feedback.message,
     tone: switch (feedback.tone) {

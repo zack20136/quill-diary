@@ -91,58 +91,6 @@ class SettingsGradientHeroCard extends StatelessWidget {
   }
 }
 
-class SettingsTitleBodyCard extends StatelessWidget {
-  const SettingsTitleBodyCard({
-    super.key,
-    required this.title,
-    required this.body,
-    this.titleStyle,
-  });
-
-  final String title;
-  final String body;
-  final TextStyle? titleStyle;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final AppColors colors = context.appColors;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(colors.outlineBorder()),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              title,
-              style:
-                  titleStyle ??
-                  theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _FactChip extends StatelessWidget {
   const _FactChip({required this.label});
 

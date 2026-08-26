@@ -2,12 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/shared/utils/entry_sorting.dart';
+import 'package:quill_diary/application/home/home_entry_sorting.dart';
 
 final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
   Ref ref,

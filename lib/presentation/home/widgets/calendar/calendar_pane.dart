@@ -9,9 +9,9 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/presentation/date_picker/app_date_picker_dialog.dart';
 import '../../../../shared/presentation/display_format.dart';
 import '../../../../app/app_colors.dart';
-import '../../../../shared/presentation/page_style.dart';
 import '../../../../shared/presentation/widgets/app_state_card.dart';
 import '../../../../shared/presentation/widgets/app_loading_state.dart';
+import '../../../../shared/presentation/widgets/app_surface.dart';
 import '../../../../../application/tag/tag_providers.dart';
 import '../../../../shared/utils/user_facing_error.dart';
 import '../../home_layout.dart';
@@ -30,29 +30,15 @@ class CalendarSectionShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AppColors colors = context.appColors;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.sectionCard,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.all(color: colors.outlineMuted),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return AppCard(
+      style: AppSurfaceStyle.outlinedElevated,
+      padding: const EdgeInsets.fromLTRB(
+        kCalendarShellPaddingHorizontal,
+        kCalendarShellPaddingTop,
+        kCalendarShellPaddingHorizontal,
+        kCalendarShellPaddingBottom,
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          kCalendarShellPaddingHorizontal,
-          kCalendarShellPaddingTop,
-          kCalendarShellPaddingHorizontal,
-          kCalendarShellPaddingBottom,
-        ),
-        child: child,
-      ),
+      child: child,
     );
   }
 }

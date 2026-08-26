@@ -6,6 +6,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
@@ -188,7 +189,7 @@ class _DriveBackupContent extends StatelessWidget {
           accountLabel: connectionState.accountLabel(l10n),
         ),
         const SizedBox(height: 10),
-        SettingsActionGroup(
+        AppActionGroup(
           actions: <Widget>[
             if (!isConnected)
               AppActionButton(

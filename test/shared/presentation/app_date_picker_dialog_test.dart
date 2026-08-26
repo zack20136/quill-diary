@@ -272,8 +272,9 @@ void main() {
         background: colors.surfaceContainerLow,
         foreground: colors.onSurfaceVariant,
       );
+      expect(find.byKey(const Key('app-date-picker-back')), findsNothing);
+      expect(find.byKey(const Key('app-date-picker-back-label')), findsNothing);
       for (final String key in <String>[
-        'app-date-picker-back-label',
         'app-date-picker-year-label',
         'app-date-picker-month-label',
       ]) {

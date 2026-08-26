@@ -20,6 +20,7 @@ import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
@@ -196,7 +197,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       return;
     }
     if (!isValidAcquaintanceYear(pickedYear)) {
-      showAppFeedbackSnackBar(
+      showAppFeedbackToast(
         context,
         context.l10n.peopleSaveFailure(
           context.l10n.peopleFieldAcquaintanceYear,
@@ -274,12 +275,12 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     final AppLocalizations l10n = context.l10n;
     final String name = _nameCtrl.text.trim();
     if (name.isEmpty) {
-      showAppFeedbackSnackBar(context, l10n.peopleNameRequired);
+      showAppFeedbackToast(context, l10n.peopleNameRequired);
       return;
     }
     if (_acquaintanceYear != null &&
         !isValidAcquaintanceYear(_acquaintanceYear)) {
-      showAppFeedbackSnackBar(
+      showAppFeedbackToast(
         context,
         l10n.peopleSaveFailure(l10n.peopleFieldAcquaintanceYear),
       );
@@ -360,7 +361,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           }
         } on Object catch (retryError) {
           if (mounted) {
-            showAppFeedbackSnackBar(
+            showAppFeedbackToast(
               context,
               context.l10n.peopleSaveFailure(
                 userFacingErrorMessage(retryError, l10n: context.l10n),
@@ -369,11 +370,11 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           }
         }
       } else if (error.hasConflict && mounted) {
-        showAppFeedbackSnackBar(context, context.l10n.peopleNameConflict);
+        showAppFeedbackToast(context, context.l10n.peopleNameConflict);
       }
     } on Object catch (error) {
       if (mounted) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           context.l10n.peopleSaveFailure(
             userFacingErrorMessage(error, l10n: context.l10n),
@@ -872,19 +873,12 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               child: Text(l10n.commonActionCancel),
             ),
             const Spacer(),
-            FilledButton.icon(
-              icon: _saving
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: cs.onPrimary,
-                      ),
-                    )
-                  : const Icon(Icons.check_rounded, size: 20),
+            AppActionButton(
+              label: l10n.peopleSaveAction,
+              icon: Icons.check_rounded,
+              appearance: AppActionButtonAppearance.primary,
+              loading: _saving,
               onPressed: _saving ? null : () => unawaited(_save()),
-              label: Text(l10n.peopleSaveAction),
             ),
           ],
         ),

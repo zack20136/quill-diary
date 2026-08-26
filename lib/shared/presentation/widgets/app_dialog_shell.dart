@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Dialog 顯示層級決定可用寬度比例。
-enum AppDialogLayer { root, nested }
+/// Dialog 的可見寬度尺寸。
+enum AppDialogSize { standard, compact }
 
 /// 將各種 dialog 的實際寬度統一為對應層級比例。
-class AppDialogWidth extends StatelessWidget {
-  const AppDialogWidth({required this.child, required this.layer, super.key});
+class _AppDialogWidth extends StatelessWidget {
+  const _AppDialogWidth({required this.child, required this.size});
 
   final Widget child;
-  final AppDialogLayer layer;
+  final AppDialogSize size;
 
-  double get _widthFactor => switch (layer) {
-    AppDialogLayer.root => 0.9,
-    AppDialogLayer.nested => 0.8,
+  double get _widthFactor => switch (size) {
+    AppDialogSize.standard => 0.9,
+    AppDialogSize.compact => 0.8,
   };
 
   @override
@@ -26,14 +26,14 @@ class AppDialogWidth extends StatelessWidget {
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
-  AppDialogLayer layer = AppDialogLayer.root,
+  AppDialogSize size = AppDialogSize.standard,
   bool barrierDismissible = true,
   Color? barrierColor,
   bool useSafeArea = true,
 }) => showDialog<T>(
   context: context,
   builder: (BuildContext dialogContext) =>
-      AppDialogWidth(layer: layer, child: builder(dialogContext)),
+      _AppDialogWidth(size: size, child: builder(dialogContext)),
   barrierDismissible: barrierDismissible,
   barrierColor: barrierColor,
   useSafeArea: useSafeArea,
@@ -73,15 +73,14 @@ class AppDialogShell extends StatelessWidget {
 enum AppConfirmStyle { primary, destructive }
 
 /// 統一取消與確認操作的標準 dialog。
-class AppConfirmDialog extends StatelessWidget {
-  const AppConfirmDialog({
+class _AppConfirmDialog extends StatelessWidget {
+  const _AppConfirmDialog({
     required this.title,
     required this.content,
     required this.cancelLabel,
     required this.confirmLabel,
     this.confirmStyle = AppConfirmStyle.primary,
     this.icon,
-    super.key,
   });
 
   final String title;
@@ -126,13 +125,13 @@ Future<bool> showAppConfirmDialog({
   required String cancelLabel,
   required String confirmLabel,
   AppConfirmStyle confirmStyle = AppConfirmStyle.primary,
-  AppDialogLayer layer = AppDialogLayer.nested,
+  AppDialogSize size = AppDialogSize.compact,
   Widget? icon,
 }) async =>
     await showAppDialog<bool>(
       context: context,
-      layer: layer,
-      builder: (_) => AppConfirmDialog(
+      size: size,
+      builder: (_) => _AppConfirmDialog(
         title: title,
         content: content,
         cancelLabel: cancelLabel,

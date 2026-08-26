@@ -14,12 +14,13 @@ import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dial
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/shared/utils/tag_catalog_merge.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_export_actions.dart';
@@ -1009,17 +1010,9 @@ class OverviewMetricShell extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    final AppColors colors = context.appColors;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.sectionCard,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(colors.outlineBorder(opacity: 0.42)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        child: Column(
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
@@ -1066,7 +1059,6 @@ class OverviewMetricShell extends StatelessWidget {
             const SizedBox(height: 18),
             child,
           ],
-        ),
       ),
     );
   }

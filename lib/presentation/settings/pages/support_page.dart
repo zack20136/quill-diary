@@ -41,7 +41,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     ) {
       if (previous?.purchasePhase != SponsorPurchasePhase.thanks &&
           next.purchasePhase == SponsorPurchasePhase.thanks) {
-        showAppFeedbackSnackBar(
+        showAppFeedbackToast(
           context,
           l10n.settingsSupportThanksMessage,
           tone: AppFeedbackTone.success,
@@ -53,11 +53,9 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settingsSupportPageTitle),
-        elevation: 0,
-        scrolledUnderElevation: 0,
       ),
       body: SafeArea(
-        child: ListViewWithScrollbar(
+        child: AppScrollablePageBody(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: <Widget>[
             SettingsGradientHeroCard(

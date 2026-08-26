@@ -18,6 +18,7 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
+import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
 import 'package:quill_diary/presentation/settings/pages/about_page.dart';
 import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
@@ -117,6 +118,30 @@ void main() {
 
     await pumpRoute(tester, AppRouter.supportRoute);
     expect(find.byType(SupportPage), findsOneWidget);
+  });
+
+  testWidgets('主要路由在窄版與寬版視窗都不會 overflow', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final List<(String, Finder)> routes = <(String, Finder)>[
+      (AppRouter.homeRoute, find.byType(HomePage)),
+      (AppRouter.editorRoute, find.byType(EditorPage)),
+      (AppRouter.personDetailLocation('missing'), find.byType(PersonDetailPage)),
+      (AppRouter.settingsRoute, find.byType(SettingsPage)),
+      (AppRouter.aboutRoute, find.byType(SettingsAboutPage)),
+      (AppRouter.personalizationRoute, find.byType(PersonalizationPage)),
+      (AppRouter.supportRoute, find.byType(SupportPage)),
+    ];
+
+    for (final Size size in const <Size>[Size(320, 568), Size(800, 600)]) {
+      await tester.binding.setSurfaceSize(size);
+      for (final (String location, Finder pageFinder) in routes) {
+        await pumpRoute(tester, location);
+        expect(pageFinder, findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
   });
 }
 

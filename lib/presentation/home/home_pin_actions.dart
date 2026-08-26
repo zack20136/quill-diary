@@ -31,7 +31,7 @@ Future<void> togglePinSelectedHomeEntries(
     if (!context.mounted) {
       return;
     }
-    showAppFeedbackSnackBar(
+    showAppFeedbackToast(
       context,
       userFacingErrorMessage(error, l10n: context.l10n),
       tone: AppFeedbackTone.error,
@@ -48,7 +48,7 @@ Future<void> togglePinSelectedHomeEntries(
   if (!context.mounted) {
     return;
   }
-  showAppFeedbackSnackBar(
+  showAppFeedbackToast(
     context,
     pin
         ? context.l10n.homePinEntriesSuccess(count)

@@ -209,11 +209,9 @@ class _FlowPortableTransferService extends PortableTransferService {
 }
 
 class _FlowRepairService extends VaultRepairService {
-  _FlowRepairService(this.report, {this.inspectReport})
-    : super(FakeSessionVaultRepository());
+  _FlowRepairService(this.report) : super(FakeSessionVaultRepository());
 
   final VaultRepairReport report;
-  final VaultInspectReport? inspectReport;
   VaultRepairProgressCallback? receivedProgress;
   bool repairCalled = false;
 
@@ -223,13 +221,12 @@ class _FlowRepairService extends VaultRepairService {
     VaultRepairProgressCallback? onProgress,
   }) async {
     receivedProgress = onProgress;
-    return inspectReport ??
-        VaultInspectReport(
-          entryCount: report.entryCount,
-          duration: report.duration,
-          finishedAt: report.finishedAt,
-          findings: report.findings,
-        );
+    return VaultInspectReport(
+      entryCount: report.entryCount,
+      duration: report.duration,
+      finishedAt: report.finishedAt,
+      findings: report.findings,
+    );
   }
 
   @override

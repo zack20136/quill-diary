@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -47,20 +48,21 @@ class PersonalizationPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.personalizationPageTitle),
-        elevation: 0,
-        scrolledUnderElevation: 0,
       ),
       body: SafeArea(
         child: prefsAsync.when(
           loading: () => const AppLoadingState(layout: AppLoadingStateLayout.page),
-          error: (_, _) =>
-              Center(child: Text(context.l10n.personalizationLoadErrorMessage)),
+          error: (_, _) => AppStateView(
+            icon: Icons.error_outline_rounded,
+            title: context.l10n.sessionBlockedFatalErrorTitle,
+            message: context.l10n.personalizationLoadErrorMessage,
+          ),
           data: (PersonalizationPreferences prefs) {
             final PersonalizationPreferencesController controller = ref.read(
               personalizationPreferencesProvider.notifier,
             );
 
-            return ListViewWithScrollbar(
+            return AppScrollablePageBody(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               children: <Widget>[
                 SettingsSectionCard(
