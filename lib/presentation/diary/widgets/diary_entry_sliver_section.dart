@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
+import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 
 import 'diary_entry_date_time.dart';
 
@@ -83,6 +84,14 @@ class _DiaryEntryCard extends StatelessWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                             height: 1.4,
                           ),
+                        ),
+                      ],
+                      if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 10),
+                        EntryPreviewImageStrip(
+                          paths: entry.previewImagePaths,
+                          thumbSize: 76,
+                          lazyLoad: true,
                         ),
                       ],
                     ],

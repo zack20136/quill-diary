@@ -12,7 +12,7 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
@@ -276,7 +276,7 @@ class HomeEntryCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   Padding(
                     padding: EdgeInsets.only(left: selectionLeadingWidth),
-                    child: HomeEntryPreviewImageStrip(
+                    child: EntryPreviewImageStrip(
                       paths: entry.previewImagePaths,
                       thumbSize: 76,
                       lazyLoad: true,
@@ -373,7 +373,7 @@ class HomeCompactEntrySliverList extends ConsumerWidget {
                       ],
                       if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
                         const SizedBox(height: 8),
-                        HomeEntryPreviewImageStrip(
+                        EntryPreviewImageStrip(
                           paths: entry.previewImagePaths,
                           thumbSize: 52,
                         ),
@@ -538,61 +538,6 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
       at: entry.createdAt,
       compact: compact,
       maxWidth: compact ? 88 : 112,
-    );
-  }
-}
-
-class HomeEntryPreviewImageStrip extends StatelessWidget {
-  const HomeEntryPreviewImageStrip({
-    required this.paths,
-    this.thumbSize = 72,
-    this.lazyLoad = false,
-    super.key,
-  });
-
-  final List<String> paths;
-  final double thumbSize;
-  final bool lazyLoad;
-
-  @override
-  Widget build(BuildContext context) {
-    if (paths.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return SizedBox(
-      height: thumbSize,
-      child: ClipRect(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.hardEdge,
-          child: Row(
-            children: <Widget>[
-              for (int i = 0; i < paths.length; i++)
-                Padding(
-                  padding: EdgeInsets.only(
-                    right: i < paths.length - 1 ? 10 : 0,
-                  ),
-                  child: lazyLoad
-                      ? LazyEntryCoverThumbnail(
-                          encryptedFilePath: paths[i],
-                          size: thumbSize,
-                          staggerIndex: i,
-                          borderRadius: BorderRadius.circular(
-                            PageStyle.radiusThumbSmall,
-                          ),
-                        )
-                      : EntryCoverThumbnail(
-                          encryptedFilePath: paths[i],
-                          size: thumbSize,
-                          borderRadius: BorderRadius.circular(
-                            PageStyle.radiusThumbSmall,
-                          ),
-                        ),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

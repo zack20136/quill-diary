@@ -687,7 +687,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
           );
         }
 
+        // 預覽勾選會 save 並 invalidate entryProvider；勿在 reload 時整頁換成 loading，
+        // 否則畫面會閃爍、捲動重置，看起來像核取方塊「跳來跳去」。
         return entryAsync.when(
+          skipLoadingOnReload: true,
           data: (DiaryEntry? entry) {
             _loadExistingEntryIfNeeded(entry);
             _activeSession = session;
