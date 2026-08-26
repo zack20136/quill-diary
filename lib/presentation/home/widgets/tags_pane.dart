@@ -320,9 +320,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
           child: HomeSectionCard(
             title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
             stripeColor: cs.primary,
-            titleTrail: HomeDiarySectionCloseButton(
-              onPressed: () => setState(() => _selectedTagLabel = null),
-            ),
             child: HomePaneEmptyHint(
               text: context.l10n.homeTagIndexEmptyForTag(_selectedTagLabel!),
             ),
@@ -335,9 +332,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       HomeDiarySliverSection(
         title: context.l10n.homeDiarySectionTag(_selectedTagLabel!),
         stripeColor: cs.primary,
-        titleTrail: HomeDiarySectionCloseButton(
-          onPressed: () => setState(() => _selectedTagLabel = null),
-        ),
         entries: matched,
       ),
     ];
@@ -553,7 +547,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                             ],
                           ),
                           trailing: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 78),
+                            constraints: const BoxConstraints(maxWidth: 100),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[

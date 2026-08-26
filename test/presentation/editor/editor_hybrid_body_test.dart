@@ -125,9 +125,16 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(Checkbox));
+      // 不 settle，確認勾選動畫期間元件仍保留同一顆 Checkbox。
+      await tester.pump();
+      expect(find.byType(Checkbox), findsOneWidget);
       await tester.pumpAndSettle();
 
       expect(changedMarkdown, '前言\n- [x] 任務三');
+      expect(
+        tester.widget<Checkbox>(find.byType(Checkbox)).value,
+        isTrue,
+      );
     });
   });
 }

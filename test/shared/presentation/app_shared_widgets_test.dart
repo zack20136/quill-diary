@@ -273,6 +273,14 @@ void main() {
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
     expect(tester.getSize(dialogSurface()).width, 256);
+    expect(find.byType(FilledButton), findsWidgets);
+    final FilledButton deleteButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '刪除'),
+    );
+    expect(
+      deleteButton.style?.backgroundColor?.resolve(const <WidgetState>{}),
+      appTestTheme().colorScheme.error,
+    );
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(result, isFalse);

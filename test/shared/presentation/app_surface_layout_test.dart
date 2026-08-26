@@ -115,5 +115,101 @@ void main() {
     expect(find.byType(AppInsetPanel), findsOneWidget);
     expect(find.text('操作一'), findsOneWidget);
     expect(find.text('操作二'), findsOneWidget);
+
+    final double iconLeft = tester.getTopLeft(find.byIcon(Icons.tune)).dx;
+    final double descriptionLeft = tester.getTopLeft(find.text('說明')).dx;
+    expect(descriptionLeft, closeTo(iconLeft, 0.5));
+
+    final Finder stripe = find.byWidgetPredicate(
+      (Widget widget) =>
+          widget is Container &&
+          (widget.decoration is BoxDecoration) &&
+          (widget.decoration as BoxDecoration).borderRadius != null &&
+          widget.constraints?.minWidth == 4,
+    );
+    final double stripeHeight = tester.getSize(stripe).height;
+    final double titleTop = tester.getTopLeft(find.text('標題')).dy;
+    final double descriptionBottom = tester.getBottomLeft(find.text('說明')).dy;
+    expect(stripeHeight, greaterThanOrEqualTo(descriptionBottom - titleTop - 1));
+  });
+
+  testWidgets('有 trailing 關閉鈕時標題仍與藍條頂對齊', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      host(
+        AppSectionCard(
+          title: '日記 ‧ 筆記',
+          trailing: IconButton(
+            onPressed: () {},
+            style: IconButton.styleFrom(
+              minimumSize: const Size(44, 44),
+              maximumSize: const Size(44, 44),
+              padding: EdgeInsets.zero,
+            ),
+            icon: const Icon(Icons.close_rounded),
+          ),
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    final Finder stripe = find.byWidgetPredicate(
+      (Widget widget) =>
+          widget is Container &&
+          (widget.decoration is BoxDecoration) &&
+          (widget.decoration as BoxDecoration).borderRadius != null &&
+          widget.constraints?.minWidth == 4,
+    );
+    final double stripeTop = tester.getTopLeft(stripe).dy;
+    final double titleTop = tester.getTopLeft(find.text('日記 ‧ 筆記')).dy;
+    expect((titleTop - stripeTop).abs(), lessThan(6));
+  });
+
+  testWidgets('AppSectionCard 支援 elevated 與 expandChild', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        const SizedBox(
+          height: 240,
+          child: AppSectionCard(
+            title: '可展開',
+            style: AppSurfaceStyle.elevated,
+            expandChild: true,
+            child: ColoredBox(color: Colors.red, child: SizedBox.expand()),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(AppSectionHeader), findsOneWidget);
+    final AppSectionCard card = tester.widget<AppSectionCard>(
+      find.byType(AppSectionCard),
+    );
+    expect(card.expandChild, isTrue);
+    expect(card.style, AppSurfaceStyle.elevated);
+  });
+
+  testWidgets('AppSliverSectionCard 會渲染標題與內容 sliver', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        CustomScrollView(
+          slivers: <Widget>[
+            AppSliverSectionCard(
+              title: '日記區段',
+              stripeColor: Colors.teal,
+              slivers: <Widget>[
+                SliverToBoxAdapter(child: Text('內容列')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('日記區段'), findsOneWidget);
+    expect(find.text('內容列'), findsOneWidget);
+    expect(find.byType(AppSectionHeader), findsOneWidget);
   });
 }

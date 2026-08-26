@@ -24,16 +24,32 @@ const List<Color> kAccentColorPresets = <Color>[
   Color(0xFF748494),
 ];
 
-const double kAccentBackgroundAlpha = 0.18;
+const double kAccentBackgroundMixLight = 0.16;
+const double kAccentBackgroundMixDark = 0.42;
 const double kAccentBorderAlpha = 0.32;
 
-(Color, Color) accentColorPair(Color accent, Color surface) => (
-  Color.alphaBlend(
-    accent.withValues(alpha: kAccentBackgroundAlpha),
+/// 依表面明暗產生標籤／人物的背景與前景色。
+///
+/// 淺色維持淡底；深色提高混色比例，避免幾乎全黑的髒底與色盤亮色脫節。
+(Color, Color) accentColorPair(Color accent, Color surface) {
+  final bool isDark =
+      ThemeData.estimateBrightnessForColor(surface) == Brightness.dark;
+  final Color background = Color.lerp(
     surface,
-  ),
-  accent,
-);
+    accent,
+    isDark ? kAccentBackgroundMixDark : kAccentBackgroundMixLight,
+  )!;
+  return (background, accent);
+}
+
+/// 可選強調色在色盤上的顯示色（完整色值，非 chip 混色背景）。
+Color accentSwatchColor(Color accent) => accent.withValues(alpha: 1.0);
+
+/// 強調色實心色塊上的對比前景（勾選圖示等）。
+Color accentOnSwatchColor(Color accent) =>
+    ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
+    ? Colors.white
+    : const Color(0xDE000000);
 
 Color accentBorderColor(
   Color accent, {

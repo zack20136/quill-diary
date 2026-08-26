@@ -54,7 +54,7 @@ class PersonalizationPage extends ConsumerWidget {
           loading: () => const AppLoadingState(layout: AppLoadingStateLayout.page),
           error: (_, _) => AppStateView(
             icon: Icons.error_outline_rounded,
-            title: context.l10n.sessionBlockedFatalErrorTitle,
+            title: context.l10n.commonReadFailureTitle,
             message: context.l10n.personalizationLoadErrorMessage,
           ),
           data: (PersonalizationPreferences prefs) {

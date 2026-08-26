@@ -3,7 +3,6 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -25,39 +24,18 @@ class DiaryEntrySliverSection extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => DecoratedSliver(
-    decoration: BoxDecoration(
-      color: context.appColors.sectionCard,
-      borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
-          blurRadius: 2,
-          offset: const Offset(0, 1),
-        ),
-      ],
-    ),
-    sliver: SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      sliver: SliverMainAxisGroup(
-        slivers: <Widget>[
-          SliverToBoxAdapter(
-            child: AppSectionHeader(
-              title: title,
-              stripeColor: stripeColor,
-              trailing: trailing,
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 14)),
-          SliverList.separated(
-            itemCount: entries.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (BuildContext context, int index) =>
-                _DiaryEntryCard(entry: entries[index]),
-          ),
-        ],
+  Widget build(BuildContext context) => AppSliverSectionCard(
+    title: title,
+    stripeColor: stripeColor,
+    trailing: trailing,
+    slivers: <Widget>[
+      SliverList.separated(
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (BuildContext context, int index) =>
+            _DiaryEntryCard(entry: entries[index]),
       ),
-    ),
+    ],
   );
 }
 

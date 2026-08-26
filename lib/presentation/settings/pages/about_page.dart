@@ -83,39 +83,22 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return AppCard(
-      backgroundColor: cs.surface,
+    return AppSectionCard(
+      title: section.title,
+      description: section.subtitle,
+      style: AppSurfaceStyle.outlinedElevated,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              section.title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: List<Widget>.generate(section.items.length, (int index) {
+          final AboutPageItemSpec item = section.items[index];
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index == section.items.length - 1 ? 0 : 10,
             ),
-            const SizedBox(height: 8),
-            Text(
-              section.subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...List<Widget>.generate(section.items.length, (int index) {
-              final AboutPageItemSpec item = section.items[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: index == section.items.length - 1 ? 0 : 10,
-                ),
-                child: _ItemPanel(item: item),
-              );
-            }),
-          ],
+            child: _ItemPanel(item: item),
+          );
+        }),
       ),
     );
   }
@@ -133,46 +116,51 @@ class _ItemPanel extends StatelessWidget {
 
     return AppInsetPanel(
       backgroundColor: cs.surfaceContainerLow,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
       child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            DecoratedBox(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 color: Color.alphaBlend(
                   cs.primary.withValues(alpha: 0.12),
                   cs.surface,
                 ),
-                borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(item.icon, color: cs.primary, size: 20),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    item.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: Icon(item.icon, color: cs.primary, size: 18),
               ),
             ),
-          ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  item.title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.body,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

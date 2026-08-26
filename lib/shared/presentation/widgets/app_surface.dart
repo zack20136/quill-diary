@@ -95,45 +95,58 @@ class AppSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color accent = stripeColor ?? theme.colorScheme.primary;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final Widget titleRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
-        Container(
-          width: 4,
-          height: description == null ? 24 : 42,
-          decoration: BoxDecoration(
-            color: accent,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
-        const SizedBox(width: 12),
         if (icon != null) ...<Widget>[
           Icon(icon, color: accent, size: 22),
           const SizedBox(width: 10),
         ],
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(title, style: theme.textTheme.titleMedium),
-              if (description != null) ...<Widget>[
-                const SizedBox(height: 4),
-                Text(
-                  description!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          child: Text(title, style: theme.textTheme.titleMedium),
         ),
-        if (trailing != null) ...<Widget>[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
       ],
+    );
+
+    return IntrinsicHeight(
+      child: Row(
+        // trailing（如 44 關閉鈕）放在外層，避免把標題與藍條一起撐高後垂直錯位。
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Container(
+            width: 4,
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                titleRow,
+                if (description != null) ...<Widget>[
+                  const SizedBox(height: 4),
+                  // 說明從 icon 左緣開始，避免 icon 下方留白。
+                  Text(
+                    description!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null) ...<Widget>[
+            const SizedBox(width: 4),
+            // 關閉鈕維持頂對齊，不跟著拉高。
+            Align(alignment: Alignment.topCenter, child: trailing!),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -148,6 +161,8 @@ class AppSectionCard extends StatelessWidget {
     this.trailing,
     this.style = AppSurfaceStyle.outlined,
     this.padding = const EdgeInsets.all(18),
+    this.headerGap = 16,
+    this.expandChild = false,
     super.key,
   });
 
@@ -159,6 +174,8 @@ class AppSectionCard extends StatelessWidget {
   final Widget? trailing;
   final AppSurfaceStyle style;
   final EdgeInsetsGeometry padding;
+  final double headerGap;
+  final bool expandChild;
 
   @override
   Widget build(BuildContext context) => AppCard(
@@ -166,6 +183,7 @@ class AppSectionCard extends StatelessWidget {
     padding: padding,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: expandChild ? MainAxisSize.max : MainAxisSize.min,
       children: <Widget>[
         AppSectionHeader(
           title: title,
@@ -174,11 +192,65 @@ class AppSectionCard extends StatelessWidget {
           stripeColor: stripeColor,
           trailing: trailing,
         ),
-        const SizedBox(height: 16),
-        child,
+        SizedBox(height: headerGap),
+        if (expandChild) Expanded(child: child) else child,
       ],
     ),
   );
+}
+
+/// Sliver 版區段卡片：與 [AppSectionCard] 共用 stripe header 與 elevation 外觀。
+class AppSliverSectionCard extends StatelessWidget {
+  const AppSliverSectionCard({
+    required this.title,
+    required this.slivers,
+    this.stripeColor,
+    this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 14),
+    this.headerGap = 14,
+    super.key,
+  });
+
+  final String title;
+  final List<Widget> slivers;
+  final Color? stripeColor;
+  final Widget? trailing;
+  final EdgeInsetsGeometry padding;
+  final double headerGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return DecoratedSliver(
+      decoration: BoxDecoration(
+        color: context.appColors.sectionCard,
+        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.shadowColor.withValues(alpha: 0.08),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      sliver: SliverPadding(
+        padding: padding,
+        sliver: SliverMainAxisGroup(
+          slivers: <Widget>[
+            SliverToBoxAdapter(
+              child: AppSectionHeader(
+                title: title,
+                stripeColor: stripeColor,
+                trailing: trailing,
+              ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: headerGap)),
+            ...slivers,
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class AppActionGroup extends StatelessWidget {

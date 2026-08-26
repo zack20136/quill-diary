@@ -73,7 +73,13 @@ class AccentDialogShell extends StatelessWidget {
                     ),
                     IconButton(
                       tooltip: context.l10n.commonCloseTooltip,
-                      visualDensity: VisualDensity.compact,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(44, 44),
+                        maximumSize: const Size(44, 44),
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                        visualDensity: VisualDensity.standard,
+                        padding: EdgeInsets.zero,
+                      ),
                       onPressed: closeEnabled ? onClose : null,
                       icon: Icon(
                         Icons.close_rounded,

@@ -5,7 +5,7 @@ import 'package:quill_diary/application/editor/editor_person_mention_controller.
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'editor_mention_text_field.dart';
 
-class EditorCheckboxBlockRow extends StatelessWidget {
+class EditorCheckboxBlockRow extends StatefulWidget {
   const EditorCheckboxBlockRow({
     super.key,
     required this.block,
@@ -13,7 +13,7 @@ class EditorCheckboxBlockRow extends StatelessWidget {
     required this.bodyStyle,
     required this.editable,
     this.textController,
-    required this.onCheckedChanged,
+    this.onCheckedChanged,
     required this.onTextChanged,
     this.textFocusNode,
     this.mentionController,
@@ -27,7 +27,7 @@ class EditorCheckboxBlockRow extends StatelessWidget {
   final TextStyle bodyStyle;
   final bool editable;
   final TextEditingController? textController;
-  final ValueChanged<bool> onCheckedChanged;
+  final ValueChanged<bool>? onCheckedChanged;
   final ValueChanged<String> onTextChanged;
   final FocusNode? textFocusNode;
   final EditorPersonMentionController? mentionController;
@@ -37,26 +37,50 @@ class EditorCheckboxBlockRow extends StatelessWidget {
   final Widget? dragHandle;
 
   @override
+  State<EditorCheckboxBlockRow> createState() => _EditorCheckboxBlockRowState();
+}
+
+class _EditorCheckboxBlockRowState extends State<EditorCheckboxBlockRow> {
+  late bool _checked = widget.block.checked;
+
+  @override
+  void didUpdateWidget(covariant EditorCheckboxBlockRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.block.checked != _checked) {
+      _checked = widget.block.checked;
+    }
+  }
+
+  void _handleCheckedChanged(bool? value) {
+    final ValueChanged<bool>? onCheckedChanged = widget.onCheckedChanged;
+    if (onCheckedChanged == null || value == null || value == _checked) {
+      return;
+    }
+    // 先更新本地狀態，讓 Material Checkbox 動畫不被父層重建打斷。
+    setState(() => _checked = value);
+    onCheckedChanged(value);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final TextStyle labelStyle = bodyStyle.copyWith(
-      color: block.checked ? cs.onSurfaceVariant.withValues(alpha: 0.72) : null,
-      decoration: block.checked ? TextDecoration.lineThrough : null,
+    final TextStyle labelStyle = widget.bodyStyle.copyWith(
+      color: _checked ? cs.onSurfaceVariant.withValues(alpha: 0.72) : null,
+      decoration: _checked ? TextDecoration.lineThrough : null,
       decorationColor: cs.onSurfaceVariant.withValues(alpha: 0.55),
     );
 
+    // 視覺與第一行文字對齊；觸控仍靠 Checkbox 本身，不外擴成會把勾選框往下推的 44 盒。
     final Widget checkbox = SelectionContainer.disabled(
       child: SizedBox(
         width: 24,
         height: 24,
         child: Checkbox(
-          value: block.checked,
-          onChanged: (bool? value) {
-            if (value != null) {
-              onCheckedChanged(value);
-            }
-          },
+          value: _checked,
+          onChanged: widget.onCheckedChanged == null
+              ? null
+              : _handleCheckedChanged,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -71,18 +95,20 @@ class EditorCheckboxBlockRow extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       isDense: true,
     );
-    final TextEditingController? controller = textController;
-    final EditorPersonMentionController? mention = mentionController;
-    final Widget textField = !editable
-        ? (block.text.isEmpty
+    final TextEditingController? controller = widget.textController;
+    final EditorPersonMentionController? mention = widget.mentionController;
+    final Widget textField = !widget.editable
+        ? (widget.block.text.isEmpty
               ? const SizedBox.shrink()
-              : Text(block.text, style: labelStyle))
+              : Text(widget.block.text, style: labelStyle))
         : (mention == null || controller == null)
         ? TextField(
-            focusNode: textFocusNode,
+            focusNode: widget.textFocusNode,
             controller: controller,
-            onChanged: onTextChanged,
-            onSubmitted: onSubmitted == null ? null : (_) => onSubmitted!(),
+            onChanged: widget.onTextChanged,
+            onSubmitted: widget.onSubmitted == null
+                ? null
+                : (_) => widget.onSubmitted!(),
             textInputAction: TextInputAction.next,
             minLines: 1,
             maxLines: null,
@@ -90,12 +116,12 @@ class EditorCheckboxBlockRow extends StatelessWidget {
             decoration: fieldDecoration,
           )
         : EditorMentionTextField(
-            focusNode: textFocusNode,
+            focusNode: widget.textFocusNode,
             controller: controller,
             mentionController: mention,
-            onMentionKeyEvent: onMentionKeyEvent,
-            onChanged: onTextChanged,
-            onSubmitted: onSubmitted,
+            onMentionKeyEvent: widget.onMentionKeyEvent,
+            onChanged: widget.onTextChanged,
+            onSubmitted: widget.onSubmitted,
             textInputAction: TextInputAction.next,
             minLines: 1,
             maxLines: null,
@@ -104,14 +130,14 @@ class EditorCheckboxBlockRow extends StatelessWidget {
           );
 
     return Padding(
-      padding: EdgeInsets.only(bottom: typography.bodyParagraphSpacing),
+      padding: EdgeInsets.only(bottom: widget.typography.bodyParagraphSpacing),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Padding(padding: const EdgeInsets.only(top: 2), child: checkbox),
           const SizedBox(width: 4),
           Expanded(child: textField),
-          if (editable && dragHandle != null) dragHandle!,
+          if (widget.editable && widget.dragHandle != null) widget.dragHandle!,
         ],
       ),
     );

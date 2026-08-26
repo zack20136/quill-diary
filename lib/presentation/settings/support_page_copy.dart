@@ -32,7 +32,7 @@ SupportProductLoadNotice supportProductLoadNotice(
 }
 
 List<String> settingsSupportHeroChips(AppLocalizations l10n) => <String>[
-  l10n.settingsSupportHeroChipNoExtraFeatures,
-  l10n.settingsSupportHeroChipRepeatablePurchase,
-  l10n.settingsSupportHeroChipGooglePlayPayment,
+  l10n.settingsSupportHeroChipNoExtraFeatures, // 不解鎖額外功能
+  l10n.settingsSupportHeroChipGooglePlayPayment, // Google Play 付款
+  l10n.settingsSupportHeroChipRepeatablePurchase, // 可再次支持
 ];

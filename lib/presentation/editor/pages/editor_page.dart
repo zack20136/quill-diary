@@ -20,6 +20,7 @@ import 'package:quill_diary/infrastructure/preferences/editor_typography_prefere
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
@@ -30,6 +31,7 @@ import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
@@ -746,12 +748,17 @@ class _EditorPageState extends ConsumerState<EditorPage>
                 body: metadataAsync.when(
                   data: (Object? metadata) {
                     if (metadata == null) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            context.l10n.editorNeedsRecoveryKeyMessage,
-                          ),
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: AppStateView(
+                          icon: Icons.key_outlined,
+                          title: context
+                              .l10n
+                              .sessionBlockedRecoveryRequiredTitle,
+                          message: context.l10n.editorNeedsRecoveryKeyMessage,
+                          actionLabel: context.l10n.homeGoToSettings,
+                          onAction: () =>
+                              context.push(AppRouter.settingsRoute),
                         ),
                       );
                     }

@@ -31,10 +31,10 @@ void main() {
     expect(
       peopleTab.chips,
       <String>[
-        l10n.aboutTabPeopleChip0,
-        l10n.aboutTabPeopleChip1,
-        l10n.aboutTabPeopleChip2,
         l10n.aboutTabPeopleChip3,
+        l10n.aboutTabPeopleChip0,
+        l10n.aboutTabPeopleChip2,
+        l10n.aboutTabPeopleChip1,
       ],
     );
     expect(

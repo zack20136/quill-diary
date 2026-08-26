@@ -214,73 +214,77 @@ class HomeEntryCard extends StatelessWidget {
       color: cs.onSurfaceVariant,
     );
 
-    return Material(
-      color: selectionActive && selected
-          ? Color.alphaBlend(
-              cs.primaryContainer.withValues(alpha: 0.34),
-              cs.surface,
-            )
-          : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              HomeEntryCardHeader(
-                entry: entry,
-                titleStyle: titleStyle,
-                showPinned: isPinned,
-                trailing: HomeEntryCardRightDateTime(entry: entry),
-                leading: selectionActive
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Icon(
-                          selected
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: selected ? cs.primary : cs.onSurfaceVariant,
-                          size: 22,
-                        ),
-                      )
-                    : null,
-                leadingGap: selectionActive ? 12 : 0,
-              ),
-              HomeEntryListTagsWrap(
-                tags: entry.tags,
-                charCount: entry.charCount,
-                tagAccents: tagAccents,
-                showUnsavedDraft: showUnsavedDraft,
-                padding: EdgeInsets.only(left: selectionLeadingWidth, top: 5),
-              ),
-              if (showPreview) ...<Widget>[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: EdgeInsets.only(left: selectionLeadingWidth),
-                  child: HomeEntryPreviewBody(
-                    previewMarkdown: entry.previewMarkdown,
-                    fallbackText: entry.previewText,
-                    textStyle: previewStyle,
-                    maxLines: 3,
-                    lineSpacing: typography.bodyParagraphSpacing,
-                  ),
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selectionActive && selected
+            ? Color.alphaBlend(
+                cs.primaryContainer.withValues(alpha: 0.34),
+                cs.surface,
+              )
+            : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(PageStyle.radiusEntry),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                HomeEntryCardHeader(
+                  entry: entry,
+                  titleStyle: titleStyle,
+                  showPinned: isPinned,
+                  trailing: HomeEntryCardRightDateTime(entry: entry),
+                  leading: selectionActive
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Icon(
+                            selected
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: selected ? cs.primary : cs.onSurfaceVariant,
+                            size: 22,
+                          ),
+                        )
+                      : null,
+                  leadingGap: selectionActive ? 12 : 0,
                 ),
-              ],
-              if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.only(left: selectionLeadingWidth),
-                  child: HomeEntryPreviewImageStrip(
-                    paths: entry.previewImagePaths,
-                    thumbSize: 76,
-                    lazyLoad: true,
-                  ),
+                HomeEntryListTagsWrap(
+                  tags: entry.tags,
+                  charCount: entry.charCount,
+                  tagAccents: tagAccents,
+                  showUnsavedDraft: showUnsavedDraft,
+                  padding: EdgeInsets.only(left: selectionLeadingWidth, top: 5),
                 ),
+                if (showPreview) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: EdgeInsets.only(left: selectionLeadingWidth),
+                    child: HomeEntryPreviewBody(
+                      previewMarkdown: entry.previewMarkdown,
+                      fallbackText: entry.previewText,
+                      textStyle: previewStyle,
+                      maxLines: 3,
+                      lineSpacing: typography.bodyParagraphSpacing,
+                    ),
+                  ),
+                ],
+                if (entry.previewImagePaths.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.only(left: selectionLeadingWidth),
+                    child: HomeEntryPreviewImageStrip(
+                      paths: entry.previewImagePaths,
+                      thumbSize: 76,
+                      lazyLoad: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

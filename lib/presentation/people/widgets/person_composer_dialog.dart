@@ -527,7 +527,6 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
   }
 
   Widget _colorEditor(AppLocalizations l10n, ColorScheme cs) {
-    final AppColors appColors = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -564,10 +563,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               final Color color = kAccentColorPresets[presetIndex];
               final int argb = colorArgb32(color);
               final bool selected = _accentArgb == argb;
-              final (Color fill, Color foreground) = accentColorPair(
-                color,
-                appColors.sectionInset,
-              );
+              final Color onAccent = accentOnSwatchColor(color);
               final String label = l10n.peopleColorPreset(presetIndex + 1);
               return Tooltip(
                 message: label,
@@ -587,14 +583,16 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
                       height: 48,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: fill,
+                        color: accentSwatchColor(color),
                         border: Border.all(
-                          color: selected ? cs.primary : foreground,
+                          color: selected
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.18),
                           width: selected ? 3 : 1.5,
                         ),
                       ),
                       child: selected
-                          ? Icon(Icons.check_rounded, color: foreground)
+                          ? Icon(Icons.check_rounded, color: onAccent)
                           : null,
                     ),
                   ),

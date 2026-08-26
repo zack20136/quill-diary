@@ -139,14 +139,14 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         );
         children.add(
           EditorCheckboxBlockRow(
-            key: ValueKey<String>('preview-checkbox-$lineIndex-$marker'),
+            key: ValueKey<String>('preview-checkbox-$lineIndex'),
             block: block,
             typography: widget.typography,
             bodyStyle: bodyStyle,
             editable: false,
             onCheckedChanged: widget.interactiveCheckboxes
                 ? (bool checked) => _toggleCheckbox(lineIndex, checked)
-                : (_) {},
+                : null,
             onTextChanged: (_) {},
           ),
         );

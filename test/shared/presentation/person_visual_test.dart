@@ -16,10 +16,11 @@ void main() {
     );
     const Color accent = Color(0xFF5480B0);
     const Color surface = Color(0xFFF5F2ED);
-    final Color expectedBackground = Color.alphaBlend(
-      accent.withValues(alpha: 0.18),
+    final Color expectedBackground = Color.lerp(
       surface,
-    );
+      accent,
+      kAccentBackgroundMixLight,
+    )!;
 
     final (Color background, Color foreground) = personLabelColorPair(
       person,

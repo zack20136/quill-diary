@@ -95,7 +95,7 @@ class PersonDetailPage extends ConsumerWidget {
             const AppLoadingState(layout: AppLoadingStateLayout.page),
         error: (Object error, StackTrace _) => AppStateView(
           icon: Icons.error_outline_rounded,
-          title: context.l10n.sessionBlockedFatalErrorTitle,
+          title: context.l10n.commonReadFailureTitle,
           message: userFacingErrorMessage(error, l10n: context.l10n),
         ),
         data: (Person? person) {
@@ -103,8 +103,8 @@ class PersonDetailPage extends ConsumerWidget {
             return SafeArea(
               child: AppStateView(
                 icon: Icons.person_off_outlined,
-                title: context.l10n.peopleEmptyTitle,
-                message: context.l10n.peopleEmptyTitle,
+                title: context.l10n.peopleNotFoundTitle,
+                message: context.l10n.peopleNotFoundMessage,
               ),
             );
           }

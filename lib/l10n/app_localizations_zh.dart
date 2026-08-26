@@ -527,10 +527,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleEmptyBody => '建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。';
 
   @override
+  String get peopleNotFoundTitle => '找不到這位人物';
+
+  @override
+  String get peopleNotFoundMessage => '這位人物可能已被刪除，或無法從目前資料中讀取。';
+
+  @override
   String get peopleSearchHint => '搜尋姓名或別名';
 
   @override
+  String get peopleSearchNoResultsTitle => '沒有符合的人物';
+
+  @override
+  String get peopleSearchNoResultsMessage => '試試其他關鍵字，或調整關係篩選條件。';
+
+  @override
   String get peopleCreateAction => '新增人物';
+
+  @override
+  String get peopleSortTooltip => '排序方式';
 
   @override
   String get peopleSortLastMention => '最近提及';

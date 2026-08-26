@@ -545,10 +545,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'After you add people, diary mentions are analyzed by name and alias. In the editor, @ inserts the canonical name as plain text.';
 
   @override
+  String get peopleNotFoundTitle => 'Person not found';
+
+  @override
+  String get peopleNotFoundMessage =>
+      'This person may have been deleted, or could not be loaded from the current data.';
+
+  @override
   String get peopleSearchHint => 'Search name or alias';
 
   @override
+  String get peopleSearchNoResultsTitle => 'No matching people';
+
+  @override
+  String get peopleSearchNoResultsMessage =>
+      'Try different keywords, or adjust the relationship filters.';
+
+  @override
   String get peopleCreateAction => 'Add person';
+
+  @override
+  String get peopleSortTooltip => 'Sort by';
 
   @override
   String get peopleSortLastMention => 'Last mentioned';

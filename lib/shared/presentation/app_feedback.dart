@@ -69,27 +69,30 @@ class AppFeedbackBanner extends StatelessWidget {
     final AppFeedbackColors colors = resolveAppFeedbackColors(context, tone);
     final IconData resolvedIcon = icon ?? defaultAppFeedbackIcon(tone);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(resolvedIcon, color: colors.foreground, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.foreground,
+    return Semantics(
+      liveRegion: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(resolvedIcon, color: colors.foreground, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.foreground,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -317,28 +320,31 @@ class _AppFeedbackToastState extends State<_AppFeedbackToast>
             position: _slide,
             child: FadeTransition(
               opacity: _fade,
-              child: Material(
-                color: widget.backgroundColor,
-                elevation: 6,
-                shadowColor: Colors.black26,
-                borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        widget.icon,
-                        size: 20,
-                        color: widget.foregroundColor,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(widget.message, style: widget.textStyle),
-                      ),
-                    ],
+              child: Semantics(
+                liveRegion: true,
+                child: Material(
+                  color: widget.backgroundColor,
+                  elevation: 6,
+                  shadowColor: Colors.black26,
+                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          widget.icon,
+                          size: 20,
+                          color: widget.foregroundColor,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(widget.message, style: widget.textStyle),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

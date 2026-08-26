@@ -105,10 +105,11 @@ class _AppConfirmDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(confirmLabel),
         ),
-        AppConfirmStyle.destructive => TextButton(
+        AppConfirmStyle.destructive => FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
           ),
           child: Text(confirmLabel),
         ),

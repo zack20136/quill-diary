@@ -5,7 +5,6 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 import '../support_page_copy.dart';
@@ -33,41 +32,30 @@ class SupportProductsSection extends StatelessWidget {
       billing,
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-        border: Border.fromBorderSide(context.appColors.outlineBorder()),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
+    return AppCard(
+      style: AppSurfaceStyle.outlinedElevated,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 DecoratedBox(
                   decoration: BoxDecoration(
                     color: Color.alphaBlend(
-                      cs.secondary.withValues(alpha: 0.12),
+                      cs.secondary.withValues(alpha: 0.14),
                       cs.surfaceContainerLow,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    shape: BoxShape.circle,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(9),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
                     child: Icon(
                       Icons.volunteer_activism_rounded,
                       color: cs.secondary,
-                      size: 22,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -80,9 +68,10 @@ class SupportProductsSection extends StatelessWidget {
                         l10n.settingsSupportProductsSectionTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
+                          height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         l10n.settingsSupportProductsSectionBody,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -95,65 +84,36 @@ class SupportProductsSection extends StatelessWidget {
                 ),
               ],
             ),
-            if (statusBanner != null) ...<Widget>[
-              const SizedBox(height: 14),
-              statusBanner,
-            ],
-            const SizedBox(height: 16),
-            if (billing.showsInitialProductLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                  ),
+          if (statusBanner != null) ...<Widget>[
+            const SizedBox(height: 14),
+            statusBanner,
+          ],
+          const SizedBox(height: 16),
+          if (billing.showsInitialProductLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
-              )
-            else if (billing.productLoadError != null) ...<Widget>[
-              _SupportProductLoadNoticeCard(
-                notice: supportProductLoadNotice(
-                  l10n,
-                  billing.productLoadError,
-                ),
-                onRetry: onRetryLoad,
-                isRefreshing: billing.isRefreshingProducts,
-                isError:
-                    billing.productLoadError == 'query_failed' ||
-                    billing.productLoadError == 'init_failed',
               ),
-              if (billing.products.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 12),
-                for (
-                  int index = 0;
-                  index < billing.products.length;
-                  index++
-                ) ...<Widget>[
-                  if (index > 0) const SizedBox(height: 10),
-                  _SupportProductTile(
-                    product: billing.products[index],
-                    enabled: buttonsEnabled,
-                    onPressed: () => onBuy(billing.products[index].id),
-                  ),
-                ],
-              ],
-            ] else if (!billing.isAvailable)
-              _SupportInlineMessage(
-                icon: Icons.storefront_outlined,
-                message: l10n.settingsSupportBillingUnavailableMessage,
-                color: cs.onSurfaceVariant,
-              )
-            else ...<Widget>[
-              if (billing.notFoundProductIds.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _SupportInlineMessage(
-                    icon: Icons.info_outline_rounded,
-                    message: l10n.settingsSupportProductsPartialMessage,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
+            )
+          else if (billing.productLoadError != null) ...<Widget>[
+            _SupportProductLoadNoticeCard(
+              notice: supportProductLoadNotice(
+                l10n,
+                billing.productLoadError,
+              ),
+              onRetry: onRetryLoad,
+              isRefreshing: billing.isRefreshingProducts,
+              isError:
+                  billing.productLoadError == 'query_failed' ||
+                  billing.productLoadError == 'init_failed',
+            ),
+            if (billing.products.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
               for (
                 int index = 0;
                 index < billing.products.length;
@@ -167,8 +127,36 @@ class SupportProductsSection extends StatelessWidget {
                 ),
               ],
             ],
+          ] else if (!billing.isAvailable)
+            _SupportInlineMessage(
+              icon: Icons.storefront_outlined,
+              message: l10n.settingsSupportBillingUnavailableMessage,
+              color: cs.onSurfaceVariant,
+            )
+          else ...<Widget>[
+            if (billing.notFoundProductIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _SupportInlineMessage(
+                  icon: Icons.info_outline_rounded,
+                  message: l10n.settingsSupportProductsPartialMessage,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            for (
+              int index = 0;
+              index < billing.products.length;
+              index++
+            ) ...<Widget>[
+              if (index > 0) const SizedBox(height: 10),
+              _SupportProductTile(
+                product: billing.products[index],
+                enabled: buttonsEnabled,
+                onPressed: () => onBuy(billing.products[index].id),
+              ),
+            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -192,8 +180,8 @@ class SupportInfoCard extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
 
     return AppCard(
-      backgroundColor: cs.surface,
-      padding: const EdgeInsets.all(16),
+      style: AppSurfaceStyle.outlinedElevated,
+      padding: const EdgeInsets.all(18),
       child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[

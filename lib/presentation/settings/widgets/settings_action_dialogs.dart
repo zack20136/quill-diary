@@ -500,26 +500,14 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
 
   Future<void> _delete(MapEntry<String, List<VaultFinding>> group) async {
     final AppLocalizations l10n = context.l10n;
-    final bool confirmed =
-        await showAppDialog<bool>(
-          size: AppDialogSize.compact,
-          context: context,
-          builder: (BuildContext dialogContext) => AppDialogShell(
-            title: l10n.settingsAbnormalEntriesDeleteConfirmTitle,
-            content: Text(l10n.settingsAbnormalEntriesDeleteConfirmBody),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(l10n.commonActionCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(l10n.commonActionDelete),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final bool confirmed = await showAppConfirmDialog(
+      context: context,
+      title: l10n.settingsAbnormalEntriesDeleteConfirmTitle,
+      content: Text(l10n.settingsAbnormalEntriesDeleteConfirmBody),
+      cancelLabel: l10n.commonActionCancel,
+      confirmLabel: l10n.commonActionDelete,
+      confirmStyle: AppConfirmStyle.destructive,
+    );
     if (!confirmed || !mounted) return;
     setState(() => _busyKey = group.key);
     final bool success = await widget.onDelete(group.value);

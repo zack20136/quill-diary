@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'backup_pick_list_item.dart';
 
 typedef BackupDeleteConfirm = Future<bool> Function(String fileName);
+
 Future<BackupPickListItem?> showBackupPickDialog({
   required BuildContext context,
   required String title,
@@ -20,32 +22,21 @@ Future<BackupPickListItem?> showBackupPickDialog({
   final List<BackupPickListItem> visibleItems = List<BackupPickListItem>.from(
     items,
   );
-  return showDialog<BackupPickListItem>(
+  return showAppDialog<BackupPickListItem>(
     context: context,
     builder: (BuildContext dialogContext) {
       return StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) {
           final ColorScheme colorScheme = Theme.of(context).colorScheme;
           final TextTheme textTheme = Theme.of(context).textTheme;
-          final double dialogWidth = (MediaQuery.sizeOf(context).width - 32)
-              .clamp(320.0, 420.0);
 
-          return AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 24,
-            ),
-            title: Text(
-              title,
-              style: textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            content: SizedBox(
-              width: dialogWidth,
-              child: visibleItems.isEmpty
-                  ? Text(emptyMessage)
-                  : ListView.separated(
+          return AppDialogShell(
+            title: title,
+            content: visibleItems.isEmpty
+                ? Text(emptyMessage)
+                : SizedBox(
+                    width: double.infinity,
+                    child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: visibleItems.length,
                       separatorBuilder: (_, _) => const Divider(height: 1),
@@ -92,8 +83,8 @@ Future<BackupPickListItem?> showBackupPickDialog({
                                 if (item.onDelete != null) ...<Widget>[
                                   const SizedBox(width: 8),
                                   SizedBox(
-                                    width: 36,
-                                    height: 36,
+                                    width: 44,
+                                    height: 44,
                                     child: IconButton(
                                       tooltip: deleteTooltip,
                                       padding: EdgeInsets.zero,
@@ -101,7 +92,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
                                       icon: Icon(
                                         Icons.delete_outline_rounded,
                                         color: colorScheme.error,
-                                        size: 20,
+                                        size: 22,
                                       ),
                                       onPressed: actionsDisabled
                                           ? null
@@ -127,7 +118,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
                         );
                       },
                     ),
-            ),
+                  ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),

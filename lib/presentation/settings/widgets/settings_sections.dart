@@ -487,7 +487,7 @@ class SettingsFactChip extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
-          '$label嚗?value',
+          '$label：$value',
           style: theme.textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),

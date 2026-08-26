@@ -1032,17 +1032,47 @@ abstract class AppLocalizations {
   /// **'建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。'**
   String get peopleEmptyBody;
 
+  /// No description provided for @peopleNotFoundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到這位人物'**
+  String get peopleNotFoundTitle;
+
+  /// No description provided for @peopleNotFoundMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'這位人物可能已被刪除，或無法從目前資料中讀取。'**
+  String get peopleNotFoundMessage;
+
   /// No description provided for @peopleSearchHint.
   ///
   /// In zh, this message translates to:
   /// **'搜尋姓名或別名'**
   String get peopleSearchHint;
 
+  /// No description provided for @peopleSearchNoResultsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'沒有符合的人物'**
+  String get peopleSearchNoResultsTitle;
+
+  /// No description provided for @peopleSearchNoResultsMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'試試其他關鍵字，或調整關係篩選條件。'**
+  String get peopleSearchNoResultsMessage;
+
   /// No description provided for @peopleCreateAction.
   ///
   /// In zh, this message translates to:
   /// **'新增人物'**
   String get peopleCreateAction;
+
+  /// No description provided for @peopleSortTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'排序方式'**
+  String get peopleSortTooltip;
 
   /// No description provided for @peopleSortLastMention.
   ///

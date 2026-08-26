@@ -29,16 +29,10 @@ class CalendarDayCell extends StatelessWidget {
   final double rowHeight;
   final Map<String, int> tagAccents;
 
-  Color _entryTintBackground(
-    ColorScheme cs,
-    AppColors colors,
-    EntryIndexRecord entry,
-  ) {
-    final String tagLabel = firstNonemptyTag(entry.tags);
-    final (Color bg, _) = tagLabel.isEmpty
-        ? tagNeutralAccentPair(cs)
-        : tagResolvedAccentPair(tagLabel, cs, tagAccents, colors);
-    return Color.alphaBlend(bg.withValues(alpha: 0.22), cs.surface);
+  /// 有日記的日期格背景：使用主題 primary 淡色，避免標籤 accent 在暗色下混出髒色。
+  Color _hasEntriesCellBackground(ColorScheme cs) {
+    final double alpha = cs.brightness == Brightness.dark ? 0.14 : 0.08;
+    return Color.alphaBlend(cs.primary.withValues(alpha: alpha), cs.surface);
   }
 
   @override
@@ -54,7 +48,7 @@ class CalendarDayCell extends StatelessWidget {
 
     Color cellColor = cs.surface;
     if (visibleEntries.isNotEmpty) {
-      cellColor = _entryTintBackground(cs, colors, visibleEntries.first);
+      cellColor = _hasEntriesCellBackground(cs);
     }
     if (isSelected) {
       cellColor = Color.alphaBlend(

@@ -9,7 +9,6 @@ import '../../utils/user_facing_error.dart';
 import '../app_feedback.dart';
 import '../../../app/app_colors.dart';
 import '../accent_visual.dart';
-import '../tag_visual.dart';
 import 'accent_color_wheel_dialog.dart';
 import 'accent_dialog_shell.dart';
 import 'tag_chip.dart';
@@ -348,20 +347,10 @@ class _TagAccentComposerDialogState
                     const SizedBox(width: 12),
                 itemBuilder: (BuildContext context, int index) {
                   final Color c = kAccentColorPresets[index];
-                  final (Color chipBg, Color chipFg) = accentColorPair(
-                    c,
-                    appColors.sectionInset,
-                  );
                   final bool selected =
                       !_isCustom && colorArgb32(c) == colorArgb32(_accent);
-                  final BorderSide? unselectedSide = tagBorderSide(
-                    appColors,
-                    cs,
-                    chipBg,
-                    chipFg,
-                    width: 1.85,
-                  );
                   return GestureDetector(
+                    key: Key('tag-color-preset-$index'),
                     onTap: busy
                         ? null
                         : () => setState(() {
@@ -369,18 +358,19 @@ class _TagAccentComposerDialogState
                             _isCustom = false;
                           }),
                     child: AnimatedContainer(
+                      key: Key('tag-color-preset-swatch-$index'),
                       duration: const Duration(milliseconds: 160),
                       curve: Curves.easeOutCubic,
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: chipBg,
+                        color: accentSwatchColor(c),
                         border: Border.all(
                           color: selected
                               ? cs.primary.withValues(alpha: 0.9)
-                              : unselectedSide!.color,
-                          width: selected ? 3.25 : 1.85,
+                              : cs.onSurface.withValues(alpha: 0.18),
+                          width: selected ? 3.25 : 1.5,
                         ),
                       ),
                     ),
@@ -424,27 +414,18 @@ class _TagAccentComposerDialogState
                   ),
                 ),
                 Container(
+                  key: const Key('tag-custom-color-swatch'),
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: previewBg,
-                    border: () {
-                      if (customSelected) {
-                        return Border.all(
-                          color: cs.primary.withValues(alpha: 0.9),
-                          width: 2.5,
-                        );
-                      }
-                      final BorderSide? side = tagBorderSide(
-                        appColors,
-                        cs,
-                        previewBg,
-                        previewFg,
-                        width: 1.5,
-                      );
-                      return side == null ? null : Border.fromBorderSide(side);
-                    }(),
+                    color: accentSwatchColor(_accent),
+                    border: Border.all(
+                      color: customSelected
+                          ? cs.primary.withValues(alpha: 0.9)
+                          : cs.onSurface.withValues(alpha: 0.18),
+                      width: customSelected ? 2.5 : 1.5,
+                    ),
                   ),
                 ),
               ],

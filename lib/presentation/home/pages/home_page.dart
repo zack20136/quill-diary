@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:go_router/go_router.dart';
 
@@ -100,8 +101,13 @@ class _HomePageState extends ConsumerState<HomePage> {
           const Scaffold(body: AppLoadingState(layout: AppLoadingStateLayout.page)),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
-        body: Center(
-          child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: AppStateCard(
+            icon: Icons.error_outline_rounded,
+            title: context.l10n.commonReadFailureTitle,
+            message: userFacingErrorMessage(error, l10n: context.l10n),
+          ),
         ),
       ),
     );
@@ -160,6 +166,9 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
       ),
     };
 
+    final bool showTabLabels =
+        MediaQuery.sizeOf(context).width >= kHomeTabWideBreakpoint;
+
     return AppBar(
       automaticallyImplyLeading: false,
       elevation: 0,
@@ -185,16 +194,34 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                           index++
                         ) ...<Widget>[
                           if (index > 0) const SizedBox(width: 5),
-                          SizedBox(
+                          KeyedSubtree(
                             key: _tabKeys[HomeTab.values[index]],
-                            width: 50,
-                            child: HomeHeaderTabButton(
-                              label: tabVisual(HomeTab.values[index]).$1,
-                              icon: tabVisual(HomeTab.values[index]).$2,
-                              active: activeTab == HomeTab.values[index],
-                              onTap: () =>
-                                  _selectTab(ref, HomeTab.values[index]),
-                            ),
+                            child: showTabLabels
+                                ? HomeHeaderTabButton(
+                                    label: tabVisual(HomeTab.values[index]).$1,
+                                    icon: tabVisual(HomeTab.values[index]).$2,
+                                    active: activeTab == HomeTab.values[index],
+                                    showLabel: true,
+                                    onTap: () => _selectTab(
+                                      ref,
+                                      HomeTab.values[index],
+                                    ),
+                                  )
+                                : SizedBox(
+                                    width: 52,
+                                    child: HomeHeaderTabButton(
+                                      label:
+                                          tabVisual(HomeTab.values[index]).$1,
+                                      icon:
+                                          tabVisual(HomeTab.values[index]).$2,
+                                      active:
+                                          activeTab == HomeTab.values[index],
+                                      onTap: () => _selectTab(
+                                        ref,
+                                        HomeTab.values[index],
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ],
                       ],

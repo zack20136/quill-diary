@@ -18,7 +18,7 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
@@ -55,7 +55,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
   Widget build(BuildContext context) {
     if (!widget.sessionState.isUnlocked ||
         widget.sessionState.session == null) {
-      return Center(child: Text(context.l10n.homeUnlockingTitle));
+      return HomeBlockedEntriesPane(sessionState: widget.sessionState);
     }
 
     // 名冊優先；統計另載（過期會自動 rebuild）。重載時保留上一份，避免提及數閃 0。
@@ -89,7 +89,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                 const SizedBox(width: 8),
                 PopupMenuButton<PeopleListSort>(
                   initialValue: _sort,
-                  tooltip: context.l10n.peopleSortName,
+                  tooltip: context.l10n.peopleSortTooltip,
                   onSelected: (PeopleListSort value) {
                     setState(() => _sort = value);
                   },
@@ -114,7 +114,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                       ],
                   child: IgnorePointer(
                     child: HomeCircleIconButton(
-                      tooltip: context.l10n.peopleSortName,
+                      tooltip: context.l10n.peopleSortTooltip,
                       onPressed: () {},
                       icon: Icons.sort_rounded,
                       size: kHomeSearchRowControlHeight,
@@ -196,10 +196,11 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
           child: catalogAsync.when(
             skipLoadingOnReload: true,
             loading: () => const AppLoadingState(),
-            error: (Object error, StackTrace _) => Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: HomeLayout.bodyPadding.right),
-                child: Text(userFacingErrorMessage(error, l10n: context.l10n)),
+            error: (Object error, StackTrace _) => HomeScrollbarGutter(
+              child: AppStateCard(
+                icon: Icons.error_outline_rounded,
+                title: context.l10n.commonReadFailureTitle,
+                message: userFacingErrorMessage(error, l10n: context.l10n),
               ),
             ),
             data: (List<Person> catalog) {
@@ -216,32 +217,24 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
               if (items.isEmpty) {
                 final bool catalogEmpty = catalog.isEmpty;
                 return HomeScrollbarGutter(
-                  child: HomeSectionCard(
-                    title: catalogEmpty
-                        ? context.l10n.peopleEmptyTitle
-                        : context.l10n.peopleRelatedEntriesEmpty,
-                    stripeColor: cs.primary,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        HomePaneEmptyHint(
-                          text: catalogEmpty
-                              ? context.l10n.peopleEmptyBody
-                              : context.l10n.peopleSearchHint,
-                        ),
-                        if (catalogEmpty) ...<Widget>[
-                          const SizedBox(height: 14),
-                          AppActionButton(
-                            onPressed: () =>
-                                unawaited(showPersonComposerDialog(context)),
-                            icon: Icons.person_add_alt_1_rounded,
-                            label: context.l10n.peopleCreateAction,
-                            appearance: AppActionButtonAppearance.primary,
+                  child: catalogEmpty
+                      ? AppStateCard(
+                          icon: Icons.people_outline_rounded,
+                          title: context.l10n.peopleEmptyTitle,
+                          message: context.l10n.peopleEmptyBody,
+                          actionLabel: context.l10n.peopleCreateAction,
+                          actionIcon: Icons.person_add_alt_1_rounded,
+                          onAction: () => unawaited(
+                            showPersonComposerDialog(context),
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
+                        )
+                      : HomeSectionCard(
+                          title: context.l10n.peopleSearchNoResultsTitle,
+                          stripeColor: cs.primary,
+                          child: HomePaneEmptyHint(
+                            text: context.l10n.peopleSearchNoResultsMessage,
+                          ),
+                        ),
                 );
               }
               return AppScrollbar(

@@ -101,7 +101,6 @@ List<Widget> overviewDiarySectionSlivers({
   required String diaryEmptyText,
   required List<EntryIndexRecord>? diaryEntries,
   required bool diaryLoading,
-  Widget? titleTrail,
   Object? diaryError,
 }) {
   if (diaryLoading) {
@@ -111,7 +110,6 @@ List<Widget> overviewDiarySectionSlivers({
         child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
-          titleTrail: titleTrail,
           child: const AppLoadingState(),
         ),
       ),
@@ -125,7 +123,6 @@ List<Widget> overviewDiarySectionSlivers({
         child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
-          titleTrail: titleTrail,
           child: Text(userFacingErrorMessage(diaryError, l10n: context.l10n)),
         ),
       ),
@@ -141,7 +138,6 @@ List<Widget> overviewDiarySectionSlivers({
         child: HomeSectionCard(
           title: diarySectionTitle,
           stripeColor: cs.primary,
-          titleTrail: titleTrail,
           child: HomePaneEmptyHint(text: diaryEmptyText),
         ),
       ),
@@ -153,7 +149,6 @@ List<Widget> overviewDiarySectionSlivers({
     HomeDiarySliverSection(
       title: diarySectionTitle,
       stripeColor: cs.primary,
-      titleTrail: titleTrail,
       entries: entries,
     ),
     const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -242,12 +237,6 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
         final String diaryEmptyText = selectedTag == null
             ? context.l10n.homeScopeEmptyDiary
             : context.l10n.homeScopeEmptyDiaryForTag(selectedTag);
-        final Widget? diarySectionTitleTrail = selectedTag == null
-            ? null
-            : HomeDiarySectionCloseButton(
-                onPressed: () =>
-                    ref.read(overviewTagFilterProvider.notifier).set(null),
-              );
 
         return scopedEntriesAsync.when(
           data: (List<EntryIndexRecord> raw) {
@@ -497,7 +486,6 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                       diaryEmptyText: diaryEmptyText,
                       diaryEntries: diaryEntries,
                       diaryLoading: false,
-                      titleTrail: diarySectionTitleTrail,
                     ),
                   ],
                 ),
@@ -537,7 +525,6 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                     diaryEmptyText: diaryEmptyText,
                     diaryEntries: null,
                     diaryLoading: true,
-                    titleTrail: diarySectionTitleTrail,
                   ),
                 ],
               ),
@@ -577,7 +564,6 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                     diaryEntries: null,
                     diaryLoading: false,
                     diaryError: error,
-                    titleTrail: diarySectionTitleTrail,
                   ),
                 ],
               ),

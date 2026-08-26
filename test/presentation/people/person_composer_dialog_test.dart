@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
@@ -365,10 +364,7 @@ void main() {
     expect(tester.widget<ChoiceChip>(automatic).selected, isFalse);
 
     final ThemeData theme = appTestTheme();
-    final AppColors colors = theme.extension<AppColors>()!;
     final Color accent = kAccentColorPresets.first;
-    final (Color expectedBackground, Color expectedForeground) =
-        accentColorPair(accent, colors.sectionInset);
     final Finder selectedPreset = find.byKey(
       const Key('person-color-preset-0'),
     );
@@ -382,9 +378,9 @@ void main() {
     final Icon checkIcon = tester.widget<Icon>(
       find.descendant(of: selectedPreset, matching: find.byIcon(Icons.check_rounded)),
     );
-    expect(decoration.color, expectedBackground);
+    expect(decoration.color, accentSwatchColor(accent));
     expect(decoration.border?.top.color, theme.colorScheme.primary);
-    expect(checkIcon.color, expectedForeground);
+    expect(checkIcon.color, accentOnSwatchColor(accent));
 
     await tester.tap(automatic);
     await tester.pumpAndSettle();

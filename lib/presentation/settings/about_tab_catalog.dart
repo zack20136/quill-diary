@@ -56,11 +56,11 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabIntroHeroTitle,
     heroBody: l10n.aboutTabIntroHeroBody,
     chips: <String>[
-      l10n.aboutTabIntroChip0,
-      l10n.aboutTabIntroChip1,
-      l10n.aboutTabIntroChip2,
-      l10n.aboutTabIntroChip3,
-      l10n.aboutTabIntroChip4,
+      l10n.aboutTabIntroChip0, // 資料留在裝置
+      l10n.aboutTabIntroChip3, // 完整加密備份
+      l10n.aboutTabIntroChip2, // 全文搜尋
+      l10n.aboutTabIntroChip4, // 可攜式匯出
+      l10n.aboutTabIntroChip1, // Markdown / HTML
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -155,10 +155,10 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabUnlockSessionHeroTitle,
     heroBody: l10n.aboutTabUnlockSessionHeroBody,
     chips: <String>[
-      l10n.aboutTabUnlockSessionChip0,
-      l10n.aboutTabUnlockSessionChip1,
-      l10n.aboutTabUnlockSessionChip2,
-      l10n.aboutTabUnlockSessionChip3,
+      l10n.aboutTabUnlockSessionChip3, // 復原金鑰
+      l10n.aboutTabUnlockSessionChip0, // 生物辨識
+      l10n.aboutTabUnlockSessionChip1, // 螢幕鎖
+      l10n.aboutTabUnlockSessionChip2, // 自動鎖定
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -249,12 +249,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabEncryptionHeroTitle,
     heroBody: l10n.aboutTabEncryptionHeroBody,
     chips: <String>[
-      l10n.aboutTabEncryptionChip0,
-      l10n.aboutTabEncryptionChip1,
-      l10n.aboutTabEncryptionChip2,
-      l10n.aboutTabEncryptionChip3,
-      l10n.aboutTabEncryptionChip4,
-      l10n.aboutTabEncryptionChip5,
+      l10n.aboutTabEncryptionChip0, // 本機加密
+      l10n.aboutTabEncryptionChip2, // AES-256-GCM
+      l10n.aboutTabEncryptionChip3, // Argon2id
+      l10n.aboutTabEncryptionChip1, // LDJ2
+      l10n.aboutTabEncryptionChip4, // 可信裝置
+      l10n.aboutTabEncryptionChip5, // 裝置安全儲存
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -328,10 +328,10 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabSearchIndexHeroTitle,
     heroBody: l10n.aboutTabSearchIndexHeroBody,
     chips: <String>[
-      l10n.aboutTabSearchIndexChip0,
-      l10n.aboutTabSearchIndexChip1,
-      l10n.aboutTabSearchIndexChip2,
-      l10n.aboutTabSearchIndexChip3,
+      l10n.aboutTabSearchIndexChip0, // 標題/內文搜尋
+      l10n.aboutTabSearchIndexChip1, // 加密索引
+      l10n.aboutTabSearchIndexChip2, // 解鎖期間可用
+      l10n.aboutTabSearchIndexChip3, // 可重建
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -405,10 +405,10 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabEditorHeroTitle,
     heroBody: l10n.aboutTabEditorHeroBody,
     chips: <String>[
-      l10n.aboutTabEditorChip0,
-      l10n.aboutTabEditorChip1,
-      l10n.aboutTabEditorChip2,
-      l10n.aboutTabEditorChip3,
+      l10n.aboutTabEditorChip2, // 自動草稿
+      l10n.aboutTabEditorChip3, // 未儲存提醒
+      l10n.aboutTabEditorChip1, // 圖片附件
+      l10n.aboutTabEditorChip0, // 可匯出 Markdown
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -492,10 +492,10 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabPeopleHeroTitle,
     heroBody: l10n.aboutTabPeopleHeroBody,
     chips: <String>[
-      l10n.aboutTabPeopleChip0,
-      l10n.aboutTabPeopleChip1,
-      l10n.aboutTabPeopleChip2,
-      l10n.aboutTabPeopleChip3,
+      l10n.aboutTabPeopleChip3, // @ 快速插入
+      l10n.aboutTabPeopleChip0, // 姓名與別名
+      l10n.aboutTabPeopleChip2, // 提及統計
+      l10n.aboutTabPeopleChip1, // 關係與備註
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(
@@ -569,10 +569,10 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
     heroTitle: l10n.aboutTabBackupRestoreHeroTitle,
     heroBody: l10n.aboutTabBackupRestoreHeroBody,
     chips: <String>[
-      l10n.aboutTabBackupRestoreChip0,
-      l10n.aboutTabBackupRestoreChip1,
-      l10n.aboutTabBackupRestoreChip2,
-      l10n.aboutTabBackupRestoreChip3,
+      l10n.aboutTabBackupRestoreChip0, // 完整加密備份
+      l10n.aboutTabBackupRestoreChip1, // Google Drive
+      l10n.aboutTabBackupRestoreChip2, // Markdown
+      l10n.aboutTabBackupRestoreChip3, // HTML
     ],
     sections: <AboutPageSectionSpec>[
       AboutPageSectionSpec(

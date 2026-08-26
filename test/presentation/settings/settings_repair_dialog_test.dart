@@ -655,6 +655,13 @@ void main() {
       find.text(testL10n.settingsAbnormalEntriesDeleteConfirmTitle),
       findsOneWidget,
     );
+    final FilledButton deleteConfirm = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, testL10n.commonActionDelete),
+    );
+    expect(
+      deleteConfirm.style?.backgroundColor?.resolve(const <WidgetState>{}),
+      appTestTheme().colorScheme.error,
+    );
     await tester.tap(find.text(testL10n.commonActionDelete));
     await tester.pumpAndSettle();
     expect(deleted, isNotNull);
