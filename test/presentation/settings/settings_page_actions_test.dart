@@ -8,14 +8,12 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
-import '../../../helpers/app_test_theme.dart';
-import '../../../helpers/storage/fake_vault_transfer_service.dart';
-import '../../../helpers/presentation/settings/settings_test_scope.dart';
-import '../../../helpers/shared/test_l10n.dart';
+import '../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../helpers/presentation/settings/settings_test_scope.dart';
+import '../../helpers/shared/test_l10n.dart';
 
 class _FakeUrlLauncher extends UrlLauncherPlatform {
   bool launchResult = false;
@@ -79,14 +77,7 @@ void main() {
               status: AppLockStatus.unlocked,
               session: unlockedSession,
             ),
-        child: MaterialApp(
-          theme: appTestTheme(),
-          darkTheme: appTestTheme(brightness: Brightness.dark),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: const SettingsPage(),
-        ),
+        child: const SettingsPage(),
       ),
     );
     await tester.pumpAndSettle();

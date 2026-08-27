@@ -9,10 +9,9 @@ import 'package:quill_diary/domain/diary/diary_date_policy.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/calendar/calendar_pane.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   testWidgets('年月面板可捲到最後一年並將超出日期調整到月底', (WidgetTester tester) async {
@@ -55,12 +54,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(body: CalendarPane(sessionState: sessionState)),
+        child: widgetTestApp(
+          center: false,
+          child: CalendarPane(sessionState: sessionState),
         ),
       ),
     );

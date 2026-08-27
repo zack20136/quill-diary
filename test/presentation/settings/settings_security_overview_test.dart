@@ -3,10 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/settings/settings_health_level.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   setUp(() {
@@ -24,35 +23,30 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        darkTheme: appTestTheme(brightness: Brightness.dark),
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: Scaffold(
-          body: SettingsSecurityOverview(
-            hasRecoveryKey: true,
-            recoveryKeyHint: 'ABCD',
-            hasUnlockedSession: hasUnlockedSession,
-            hasTrustedDevice: true,
-            unlockModeLabel: testL10n.settingsUnlockModeFullNone,
-            indexMessage: indexMessage,
-            indexHealthLevel: indexHealthLevel,
-            backupStatus: backupStatus,
-            busy: false,
-            onCreateRecoveryKey: () {},
-            onRotateRecoveryKey: () {},
-            onInspectVault: () {},
-            lockPanel: null,
-          ),
+      widgetTestApp(
+        center: false,
+        overrides: const [],
+        child: SettingsSecurityOverview(
+          hasRecoveryKey: true,
+          recoveryKeyHint: 'ABCD',
+          hasUnlockedSession: hasUnlockedSession,
+          hasTrustedDevice: true,
+          unlockModeLabel: testL10n.settingsUnlockModeFullNone,
+          indexMessage: indexMessage,
+          indexHealthLevel: indexHealthLevel,
+          backupStatus: backupStatus,
+          busy: false,
+          onCreateRecoveryKey: () {},
+          onRotateRecoveryKey: () {},
+          onInspectVault: () {},
+          lockPanel: null,
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('索引卡片依傳入的 health level 顯示正常', (WidgetTester tester) async {
+  testWidgets('索引卡片在 health level 為 ok 時顯示就緒訊息', (WidgetTester tester) async {
     await pumpOverview(
       tester,
       indexHealthLevel: SettingsHealthLevel.ok,

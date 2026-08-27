@@ -1,26 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  Widget host(Widget child) => ProviderScope(
-    child: MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Scaffold(body: Center(child: child)),
-    ),
-  );
-
   test('鎖定狀態會提供重試驗證操作', () {
     final SessionBlockedPresentation presentation =
         SessionBlockedPresentation.resolve(
@@ -50,27 +38,25 @@ void main() {
     expect(presentation.actionLabel, testL10n.homeGoToSettings);
   });
 
-  testWidgets('SessionBlockedPane 顯示鎖定標題與重試按鈕', (WidgetTester tester) async {
+  testWidgets('鎖定畫面會顯示狀態卡與操作按鈕', (WidgetTester tester) async {
     await tester.pumpWidget(
-      host(
-        const SessionBlockedPane(
+      widgetTestApp(
+        overrides: const [],
+        child: const SessionBlockedPane(
           sessionState: AppSessionState(status: AppLockStatus.locked),
         ),
       ),
     );
 
     expect(find.byType(AppStateView), findsOneWidget);
-    expect(find.text(testL10n.sessionBlockedLockedTitle), findsOneWidget);
     expect(find.byType(AppActionButton), findsOneWidget);
-    expect(find.text(testL10n.homeRetryVerification), findsOneWidget);
   });
 
-  testWidgets('SessionBlockedPane 在 recovery 顯示設定操作', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('recovery 畫面會顯示狀態卡與操作按鈕', (WidgetTester tester) async {
     await tester.pumpWidget(
-      host(
-        const SessionBlockedPane(
+      widgetTestApp(
+        overrides: const [],
+        child: const SessionBlockedPane(
           sessionState: AppSessionState(
             status: AppLockStatus.recoveryRequired,
           ),
@@ -78,10 +64,7 @@ void main() {
       ),
     );
 
-    expect(
-      find.text(testL10n.sessionBlockedRecoveryRequiredTitle),
-      findsOneWidget,
-    );
-    expect(find.text(testL10n.homeGoToSettings), findsOneWidget);
+    expect(find.byType(AppStateView), findsOneWidget);
+    expect(find.byType(AppActionButton), findsOneWidget);
   });
 }

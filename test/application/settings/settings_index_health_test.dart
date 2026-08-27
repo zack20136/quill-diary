@@ -60,7 +60,7 @@ void main() {
     );
   });
 
-  test('已解鎖且無修復報告時索引健康為正常', () {
+  test('已解鎖且無修復報告時索引健康為 ok', () {
     expect(
       settingsIndexHealthLevel(
         l10n: testL10n,

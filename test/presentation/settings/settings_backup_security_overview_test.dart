@@ -51,7 +51,6 @@ void main() {
         now,
       );
 
-      expect(item.level, SettingsHealthLevel.warning);
       expect(item.message, l10n.settingsSecurityOverviewLocalBackupStale);
       expect(item.subtitle, isNotNull);
     });

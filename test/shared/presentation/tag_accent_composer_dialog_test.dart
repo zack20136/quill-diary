@@ -1,26 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host({
     required Brightness brightness,
     required Widget child,
-  }) => ProviderScope(
-    child: MaterialApp(
-      theme: appTestTheme(brightness: brightness),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Scaffold(body: child),
-    ),
+  }) => widgetTestApp(
+    brightness: brightness,
+    center: false,
+    overrides: const [],
+    child: child,
   );
 
   testWidgets('暗色模式下色盤與預覽使用相同 Accent，而非混色背景', (

@@ -1,11 +1,12 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 const Duration _toastAnimation = Duration(milliseconds: 250);
 const Duration _toastDisplay = Duration(seconds: 4);
@@ -24,29 +25,27 @@ void main() {
     late BuildContext dialogContext;
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        home: Builder(
+      widgetTestApp(
+        center: false,
+        child: Builder(
           builder: (BuildContext context) {
-            return Scaffold(
-              body: Center(
-                child: FilledButton(
-                  onPressed: () {
-                    unawaited(
-                      showDialog<void>(
-                        context: context,
-                        builder: (BuildContext ctx) {
-                          dialogContext = ctx;
-                          return const AlertDialog(
-                            title: Text('對話框'),
-                            content: SizedBox(width: 280, height: 360),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  child: const Text('開啟'),
-                ),
+            return Center(
+              child: FilledButton(
+                onPressed: () {
+                  unawaited(
+                    showDialog<void>(
+                      context: context,
+                      builder: (BuildContext ctx) {
+                        dialogContext = ctx;
+                        return const AlertDialog(
+                          title: Text('對話框'),
+                          content: SizedBox(width: 280, height: 360),
+                        );
+                      },
+                    ),
+                  );
+                },
+                child: const Text('開啟'),
               ),
             );
           },
@@ -71,12 +70,12 @@ void main() {
     late BuildContext hostContext;
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        home: Builder(
+      widgetTestApp(
+        center: false,
+        child: Builder(
           builder: (BuildContext context) {
             hostContext = context;
-            return const Scaffold(body: SizedBox.shrink());
+            return const SizedBox.shrink();
           },
         ),
       ),
@@ -101,15 +100,14 @@ void main() {
     late BuildContext hostContext;
 
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          theme: appTestTheme(),
-          home: Builder(
-            builder: (BuildContext context) {
-              hostContext = context;
-              return const Scaffold(body: SizedBox.shrink());
-            },
-          ),
+      widgetTestApp(
+        overrides: const [],
+        center: false,
+        child: Builder(
+          builder: (BuildContext context) {
+            hostContext = context;
+            return const SizedBox.shrink();
+          },
         ),
       ),
     );
@@ -124,5 +122,45 @@ void main() {
     await _pumpToastLifecycle(tester);
     expect(find.text('通知'), findsNothing);
     expect(container.read(appFeedbackVisibilityCountProvider), 0);
+  });
+
+  testWidgets('Banner 具有 liveRegion 語意', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      widgetTestApp(child: const AppFeedbackBanner(message: '已儲存')),
+    );
+
+    final SemanticsNode node = tester.getSemantics(
+      find.byType(AppFeedbackBanner),
+    );
+    expect(node.flagsCollection.isLiveRegion, isTrue);
+  });
+
+  testWidgets('Toast 具有 liveRegion 語意', (WidgetTester tester) async {
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        child: Builder(
+          builder: (BuildContext context) {
+            hostContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    showAppFeedbackToast(hostContext, '備份成功', tone: AppFeedbackTone.success);
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is Semantics && widget.properties.liveRegion == true,
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 250));
   });
 }

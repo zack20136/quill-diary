@@ -1,45 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 Widget _testApp() {
-  return ProviderScope(
-    child: MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: const Dialog(
-        insetPadding: EdgeInsets.all(12),
-        backgroundColor: Colors.transparent,
-        child: PersonComposerDialog(),
-      ),
+  return widgetTestApp(
+    wrapScaffold: false,
+    center: false,
+    overrides: const [],
+    child: const Dialog(
+      insetPadding: EdgeInsets.all(12),
+      backgroundColor: Colors.transparent,
+      child: PersonComposerDialog(),
     ),
   );
 }
 
 Widget _dialogLauncherApp() {
-  return ProviderScope(
-    child: MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Builder(
-        builder: (BuildContext context) => Scaffold(
-          body: Center(
-            child: FilledButton(
-              onPressed: () => showPersonComposerDialog(context),
-              child: const Text('開啟人物表單'),
-            ),
-          ),
-        ),
+  return widgetTestApp(
+    overrides: const [],
+    child: Builder(
+      builder: (BuildContext context) => FilledButton(
+        onPressed: () => showPersonComposerDialog(context),
+        child: const Text('開啟人物表單'),
       ),
     ),
   );

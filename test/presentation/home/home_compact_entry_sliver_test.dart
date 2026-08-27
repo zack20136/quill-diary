@@ -5,15 +5,14 @@ import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   testWidgets('有 previewImagePaths 時顯示預覽圖 strip', (
@@ -37,27 +36,22 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: CustomScrollView(
-              slivers: <Widget>[
-                HomeDiarySliverSection(
-                  title: '日記',
-                  entries: <EntryIndexRecord>[
-                    buildEntryIndexRecord(
-                      previewImagePaths: const <String>[
-                        '/tmp/cover_a.enc',
-                        '/tmp/cover_b.enc',
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        child: widgetTestApp(
+          center: false,
+          child: CustomScrollView(
+            slivers: <Widget>[
+              HomeDiarySliverSection(
+                title: '日記',
+                entries: <EntryIndexRecord>[
+                  buildEntryIndexRecord(
+                    previewImagePaths: const <String>[
+                      '/tmp/cover_a.enc',
+                      '/tmp/cover_b.enc',
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -89,20 +83,15 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: CustomScrollView(
-              slivers: <Widget>[
-                HomeDiarySliverSection(
-                  title: '日記',
-                  entries: <EntryIndexRecord>[buildEntryIndexRecord()],
-                ),
-              ],
-            ),
+        child: widgetTestApp(
+          center: false,
+          child: CustomScrollView(
+            slivers: <Widget>[
+              HomeDiarySliverSection(
+                title: '日記',
+                entries: <EntryIndexRecord>[buildEntryIndexRecord()],
+              ),
+            ],
           ),
         ),
       ),
@@ -140,17 +129,12 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: CustomScrollView(
-              slivers: <Widget>[
-                HomeDiarySliverSection(title: '日記', entries: entries),
-              ],
-            ),
+        child: widgetTestApp(
+          center: false,
+          child: CustomScrollView(
+            slivers: <Widget>[
+              HomeDiarySliverSection(title: '日記', entries: entries),
+            ],
           ),
         ),
       ),

@@ -28,6 +28,7 @@ import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 import '../../session/fake_session_vault_repository.dart';
 import '../../storage/fake_vault_transfer_service.dart';
 import '../../vault/test_vault_path_strategy.dart';
+import '../../shared/widget_test_app.dart';
 
 class _SettingsBackupServiceAdapter extends VaultBackupService {
   _SettingsBackupServiceAdapter(this._transferService)
@@ -194,9 +195,18 @@ Widget settingsTestScope({
   ),
   RecoveryMetadata? recoveryMetadata,
   DriveConnectionState? driveConnectionState,
+  bool wrapMaterialApp = true,
+  bool includeDarkTheme = true,
 }) {
   final FakeVaultTransferService resolvedTransferService =
       transferService ?? FakeVaultTransferService();
+  final Widget appChild = wrapMaterialApp
+      ? widgetTestApp(
+          center: false,
+          includeDarkTheme: includeDarkTheme,
+          child: child,
+        )
+      : child;
   return ProviderScope(
     overrides: [
       vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
@@ -224,7 +234,7 @@ Widget settingsTestScope({
           (Ref ref) async => driveConnectionState,
         ),
     ],
-    child: child,
+    child: appChild,
   );
 }
 

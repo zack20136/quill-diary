@@ -328,614 +328,634 @@ void main() {
       const Locale('zh', 'TW'),
     );
 
-    test('prepareDriveRestore 在 precheck 失敗時會清理暫存檔', () async {
-      final Directory tempDir = Directory.systemTemp.createTempSync(
-        'settings_flow_controller_test',
-      );
-      addTearDown(() {
-        if (tempDir.existsSync()) {
-          tempDir.deleteSync(recursive: true);
-        }
+    group('prepareDriveRestore', () {
+      test('precheck 失敗時會清理暫存檔', () async {
+        final Directory tempDir = Directory.systemTemp.createTempSync(
+          'settings_flow_controller_test',
+        );
+        addTearDown(() {
+          if (tempDir.existsSync()) {
+            tempDir.deleteSync(recursive: true);
+          }
+        });
+        final File tempBackup = File('${tempDir.path}/drive-backup.zip')
+          ..writeAsStringSync('backup');
+        final _FlowBackupService backupService = _FlowBackupService(
+          driveBackups: const <DriveBackupFile>[
+            DriveBackupFile(
+              id: 'drive_1',
+              name: 'drive-backup.zip',
+              createdAt: null,
+            ),
+          ],
+        );
+        final _FlowRestoreService restoreService = _FlowRestoreService(
+          downloadedFile: tempBackup,
+          precheckError: StateError('precheck failed'),
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultBackupServiceProvider.overrideWithValue(backupService),
+            vaultRestoreServiceProvider.overrideWithValue(restoreService),
+          ],
+        );
+        addTearDown(container.dispose);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        await expectLater(
+          () => controller.prepareDriveRestore(
+            pickBackup: (List<DriveBackupFile> backups) async => backups.first,
+          ),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(tempBackup.existsSync(), isFalse);
       });
-      final File tempBackup = File('${tempDir.path}/drive-backup.zip')
-        ..writeAsStringSync('backup');
-      final _FlowBackupService backupService = _FlowBackupService(
-        driveBackups: const <DriveBackupFile>[
-          DriveBackupFile(
+    });
+
+    group('deleteBackup', () {
+      test('刪除本機與雲端備份會轉呼叫 backup service', () async {
+        final _FlowBackupService backupService = _FlowBackupService();
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultBackupServiceProvider.overrideWithValue(backupService),
+          ],
+        );
+        addTearDown(container.dispose);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        await controller.deleteAppLocalBackup(
+          LocalBackupFile(
+            name: 'local.zip',
+            path: 'C:/backup/local.zip',
+            createdAt: DateTime(2026, 1, 1),
+            sizeBytes: 10,
+          ),
+        );
+        await controller.deleteDriveBackup(
+          const DriveBackupFile(
             id: 'drive_1',
-            name: 'drive-backup.zip',
+            name: 'drive.zip',
             createdAt: null,
           ),
-        ],
-      );
-      final _FlowRestoreService restoreService = _FlowRestoreService(
-        downloadedFile: tempBackup,
-        precheckError: StateError('precheck failed'),
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultBackupServiceProvider.overrideWithValue(backupService),
-          vaultRestoreServiceProvider.overrideWithValue(restoreService),
-        ],
-      );
-      addTearDown(container.dispose);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+        );
 
-      await expectLater(
-        () => controller.prepareDriveRestore(
-          pickBackup: (List<DriveBackupFile> backups) async => backups.first,
-        ),
-        throwsA(isA<StateError>()),
-      );
-
-      expect(tempBackup.existsSync(), isFalse);
-    });
-
-    test('delete backup 會轉呼叫 backup service', () async {
-      final _FlowBackupService backupService = _FlowBackupService();
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultBackupServiceProvider.overrideWithValue(backupService),
-        ],
-      );
-      addTearDown(container.dispose);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      await controller.deleteAppLocalBackup(
-        LocalBackupFile(
-          name: 'local.zip',
-          path: 'C:/backup/local.zip',
-          createdAt: DateTime(2026, 1, 1),
-          sizeBytes: 10,
-        ),
-      );
-      await controller.deleteDriveBackup(
-        const DriveBackupFile(
-          id: 'drive_1',
-          name: 'drive.zip',
-          createdAt: null,
-        ),
-      );
-
-      expect(backupService.deleteAppLocalBackupCalls, 1);
-      expect(backupService.deleteDriveBackupCalls, 1);
-    });
-
-    test('recordBackupPersistResult 會寫入 backup status store 並回傳成功訊息', () async {
-      final Directory tempDir = Directory.systemTemp.createTempSync(
-        'settings_flow_status_test',
-      );
-      addTearDown(() {
-        if (tempDir.existsSync()) {
-          tempDir.deleteSync(recursive: true);
-        }
+        expect(backupService.deleteAppLocalBackupCalls, 1);
+        expect(backupService.deleteDriveBackupCalls, 1);
       });
-      final BackupStatusStore statusStore = BackupStatusStore(
-        storageFile: File('${tempDir.path}/backup_status.json'),
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          backupStatusStoreProvider.overrideWithValue(statusStore),
-          backupStatusProvider.overrideWith((Ref ref) => statusStore.read()),
-        ],
-      );
-      addTearDown(container.dispose);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller
-          .recordBackupPersistResult(
-            l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
-            result: const BackupPersistResult(
-              status: BackupPersistStatus.success,
-              savedPath: 'C:/backup/local.zip',
-            ),
-            action: BackupStatusAction.localBackup,
-            onSuccess: (String path) => '已儲存到 $path',
-          );
-
-      final BackupStatusSnapshot snapshot = await container.read(
-        backupStatusProvider.future,
-      );
-      expect(feedback?.message, contains('local.zip'));
-      expect(snapshot.lastLocalBackupAt, isNotNull);
     });
 
-    test('recordBackupPersistResult inspect failed 會寫入 failure 紀錄', () async {
-      final Directory tempDir = Directory.systemTemp.createTempSync(
-        'settings_flow_failure_test',
-      );
-      addTearDown(() {
-        if (tempDir.existsSync()) {
-          tempDir.deleteSync(recursive: true);
-        }
+    group('recordBackupPersistResult', () {
+      test('會寫入狀態並回傳成功訊息', () async {
+        final Directory tempDir = Directory.systemTemp.createTempSync(
+          'settings_flow_status_test',
+        );
+        addTearDown(() {
+          if (tempDir.existsSync()) {
+            tempDir.deleteSync(recursive: true);
+          }
+        });
+        final BackupStatusStore statusStore = BackupStatusStore(
+          storageFile: File('${tempDir.path}/backup_status.json'),
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            backupStatusStoreProvider.overrideWithValue(statusStore),
+            backupStatusProvider.overrideWith((Ref ref) => statusStore.read()),
+          ],
+        );
+        addTearDown(container.dispose);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller
+            .recordBackupPersistResult(
+              l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
+              result: const BackupPersistResult(
+                status: BackupPersistStatus.success,
+                savedPath: 'C:/backup/local.zip',
+              ),
+              action: BackupStatusAction.localBackup,
+              onSuccess: (String path) => '已儲存到 $path',
+            );
+
+        final BackupStatusSnapshot snapshot = await container.read(
+          backupStatusProvider.future,
+        );
+        expect(feedback?.message, contains('local.zip'));
+        expect(snapshot.lastLocalBackupAt, isNotNull);
       });
-      final BackupStatusStore statusStore = BackupStatusStore(
-        storageFile: File('${tempDir.path}/backup_status.json'),
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          backupStatusStoreProvider.overrideWithValue(statusStore),
-          backupStatusProvider.overrideWith((Ref ref) => statusStore.read()),
-        ],
-      );
-      addTearDown(container.dispose);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
 
-      final SettingsFlowFeedback? feedback = await controller
-          .recordBackupPersistResult(
-            l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
-            result: const BackupPersistResult(
-              status: BackupPersistStatus.inspectFailed,
-              message: 'zip corrupt',
-            ),
-            action: BackupStatusAction.driveUpload,
-            onSuccess: (String path) => path,
-            inspectFailedMessage: (String message) => '檢查失敗: $message',
-          );
+      test('備份檢查失敗會寫入 failure 紀錄', () async {
+        final Directory tempDir = Directory.systemTemp.createTempSync(
+          'settings_flow_failure_test',
+        );
+        addTearDown(() {
+          if (tempDir.existsSync()) {
+            tempDir.deleteSync(recursive: true);
+          }
+        });
+        final BackupStatusStore statusStore = BackupStatusStore(
+          storageFile: File('${tempDir.path}/backup_status.json'),
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            backupStatusStoreProvider.overrideWithValue(statusStore),
+            backupStatusProvider.overrideWith((Ref ref) => statusStore.read()),
+          ],
+        );
+        addTearDown(container.dispose);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final BackupStatusSnapshot snapshot = await container.read(
-        backupStatusProvider.future,
-      );
-      expect(feedback?.tone, SettingsFlowFeedbackTone.error);
-      expect(snapshot.lastFailure?.action, BackupStatusAction.driveUpload);
-      expect(snapshot.lastFailure?.message, 'zip corrupt');
+        final SettingsFlowFeedback? feedback = await controller
+            .recordBackupPersistResult(
+              l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
+              result: const BackupPersistResult(
+                status: BackupPersistStatus.inspectFailed,
+                message: 'zip corrupt',
+              ),
+              action: BackupStatusAction.driveUpload,
+              onSuccess: (String path) => path,
+              inspectFailedMessage: (String message) => '檢查失敗: $message',
+            );
+
+        final BackupStatusSnapshot snapshot = await container.read(
+          backupStatusProvider.future,
+        );
+        expect(feedback?.tone, SettingsFlowFeedbackTone.error);
+        expect(snapshot.lastFailure?.action, BackupStatusAction.driveUpload);
+        expect(snapshot.lastFailure?.message, 'zip corrupt');
+      });
     });
 
-    test('importDocuments 匯入成功回傳 success', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          portableTransferServiceProvider.overrideWithValue(
-            _FlowPortableTransferService(
-              importResult: const PortableImportResult(
-                importedEntries: 2,
-                skippedFiles: 0,
+    group('importDocuments', () {
+      test('成功時回傳 success', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            portableTransferServiceProvider.overrideWithValue(
+              _FlowPortableTransferService(
+                importResult: const PortableImportResult(
+                  importedEntries: 2,
+                  skippedFiles: 0,
+                ),
               ),
             ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final SettingsFlowFeedback? feedback = await controller.importDocuments(
-        l10n,
-      );
+        final SettingsFlowFeedback? feedback = await controller.importDocuments(
+          l10n,
+        );
 
-      expect(feedback?.tone, SettingsFlowFeedbackTone.success);
-    });
+        expect(feedback?.tone, SettingsFlowFeedbackTone.success);
+      });
 
-    test('importDocuments 0 筆匯入維持 info', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          portableTransferServiceProvider.overrideWithValue(
-            _FlowPortableTransferService(
-              importResult: const PortableImportResult(
-                importedEntries: 0,
-                skippedFiles: 0,
+      test('匯入 0 筆時回傳 info', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            portableTransferServiceProvider.overrideWithValue(
+              _FlowPortableTransferService(
+                importResult: const PortableImportResult(
+                  importedEntries: 0,
+                  skippedFiles: 0,
+                ),
               ),
             ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final SettingsFlowFeedback? feedback = await controller.importDocuments(
-        l10n,
-      );
+        final SettingsFlowFeedback? feedback = await controller.importDocuments(
+          l10n,
+        );
 
-      expect(feedback?.tone, SettingsFlowFeedbackTone.info);
-    });
-
-    test('exportMarkdown 成功回傳 success', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          portableTransferServiceProvider.overrideWithValue(
-            _FlowPortableTransferService(exportPath: 'C:/exports/notes.zip'),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller.exportMarkdown(
-        l10n,
-      );
-
-      expect(feedback?.tone, SettingsFlowFeedbackTone.success);
-    });
-
-    test('createRecoveryKey 成功回傳 recovery key 與 success feedback', () async {
-      final _RecoverySessionVaultRepository repository =
-          _RecoverySessionVaultRepository(
-            setupRecoveryKeyResult: const RecoverySetupResult(
-              recoveryKey: 'setup-key',
-              session: _kSyncedUnlockedSession,
-            ),
-          );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          personalizationPreferencesProvider.overrideWith(
-            _FixedPersonalizationPreferencesController.new,
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container.read(personalizationPreferencesProvider.future);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsRecoveryKeyResult result = await controller
-          .createRecoveryKey(l10n);
-
-      expect(result.recoveryKey, 'setup-key');
-      expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
-      expect(result.feedback.message, l10n.sessionRecoverySetupSuccessMessage);
-      expect(
-        container.read(appSessionProvider).session,
-        same(_kSyncedUnlockedSession),
-      );
-    });
-
-    test('repairVault 回傳報告並轉送進度', () async {
-      final VaultRepairReport report = VaultRepairReport(
-        entryCount: 9,
-        relocatedEntries: 0,
-        removedDuplicateEntries: 0,
-        removedOrphanAssets: 0,
-        tagsAdded: 0,
-        relocatedAssets: 0,
-        issues: const <VaultRepairIssue>[],
-        duration: const Duration(seconds: 2),
-        finishedAt: DateTime(2026, 7, 10),
-      );
-      final _FlowRepairService repairService = _FlowRepairService(report);
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepairServiceProvider.overrideWithValue(repairService),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final List<VaultRepairPhase> phases = <VaultRepairPhase>[];
-      final VaultRepairReport result = await controller.repairVault(
-        onProgress: phases.add,
-      );
-
-      expect(result.entryCount, report.entryCount);
-      repairService.receivedProgress!(VaultRepairPhase.scanningEntries);
-      expect(phases, <VaultRepairPhase>[VaultRepairPhase.scanningEntries]);
-    });
-
-    test('備份驗證失敗時不會呼叫修復', () async {
-      final VaultRepairReport report = VaultRepairReport(
-        entryCount: 1,
-        relocatedEntries: 0,
-        removedDuplicateEntries: 0,
-        removedOrphanAssets: 0,
-        tagsAdded: 0,
-        relocatedAssets: 0,
-        duration: Duration.zero,
-        finishedAt: DateTime(2026, 7, 10),
-      );
-      final _FlowRepairService repairService = _FlowRepairService(report);
-      final _FlowBackupService backupService = _FlowBackupService(
-        beforeRepairResult: const BackupPersistResult(
-          status: BackupPersistStatus.inspectFailed,
-          message: 'bad zip',
-        ),
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepairServiceProvider.overrideWithValue(repairService),
-          vaultBackupServiceProvider.overrideWithValue(backupService),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      await expectLater(
-        controller.repairVaultAfterVerifiedBackup(),
-        throwsA(isA<VaultRepairBackupException>()),
-      );
-      expect(repairService.repairCalled, isFalse);
-    });
-
-    test('備份成功後才呼叫修復並附上備份檔名', () async {
-      final VaultRepairReport report = VaultRepairReport(
-        entryCount: 1,
-        relocatedEntries: 0,
-        removedDuplicateEntries: 0,
-        removedOrphanAssets: 0,
-        tagsAdded: 0,
-        relocatedAssets: 0,
-        duration: Duration.zero,
-        finishedAt: DateTime(2026, 7, 10),
-      );
-      final _FlowRepairService repairService = _FlowRepairService(report);
-      final Directory tempDir = await Directory.systemTemp.createTemp(
-        'quill-repair-backup-',
-      );
-      addTearDown(() async {
-        if (tempDir.existsSync()) {
-          await tempDir.delete(recursive: true);
-        }
+        expect(feedback?.tone, SettingsFlowFeedbackTone.info);
       });
-      final String backupPath = p.join(
-        tempDir.path,
-        'backup_before_repair_2026-07-10_12-00-00.zip',
-      );
-      await File(backupPath).writeAsBytes(<int>[1]);
-      final _FlowBackupService backupService = _FlowBackupService(
-        beforeRepairResult: BackupPersistResult(
-          status: BackupPersistStatus.success,
-          savedPath: backupPath,
-        ),
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepairServiceProvider.overrideWithValue(repairService),
-          vaultBackupServiceProvider.overrideWithValue(backupService),
-          backupStatusStoreProvider.overrideWithValue(
-            BackupStatusStore(
-              storageFile: File(p.join(tempDir.path, 'backup_status.json')),
+    });
+
+    group('exportMarkdown', () {
+      test('成功時回傳 success', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            portableTransferServiceProvider.overrideWithValue(
+              _FlowPortableTransferService(exportPath: 'C:/exports/notes.zip'),
             ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final List<VaultMaintenanceFlowPhase> phases =
-          <VaultMaintenanceFlowPhase>[];
-      final VaultRepairReport result = await controller
-          .repairVaultAfterVerifiedBackup(onProgress: phases.add);
+        final SettingsFlowFeedback? feedback = await controller.exportMarkdown(
+          l10n,
+        );
 
-      expect(repairService.repairCalled, isTrue);
-      expect(result.backupFileName, contains('backup_before_repair_'));
-      expect(phases.first, VaultMaintenanceFlowPhase.creatingBackup);
+        expect(feedback?.tone, SettingsFlowFeedbackTone.success);
+      });
     });
 
-    test('rotateRecoveryKey 成功回傳 recovery key 與 success feedback', () async {
-      final _RecoverySessionVaultRepository repository =
-          _RecoverySessionVaultRepository(
-            rotateRecoveryKeyResult: const RecoverySetupResult(
-              recoveryKey: 'rotated-key',
-              session: _kSyncedUnlockedSession,
-            ),
-          );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          personalizationPreferencesProvider.overrideWith(
-            _FixedPersonalizationPreferencesController.new,
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container.read(personalizationPreferencesProvider.future);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsRecoveryKeyResult result = await controller
-          .rotateRecoveryKey(l10n);
-
-      expect(result.recoveryKey, 'rotated-key');
-      expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
-      expect(result.feedback.message, l10n.sessionRecoveryKeyRotatedMessage);
-      expect(
-        container.read(appSessionProvider).session,
-        same(_kSyncedUnlockedSession),
-      );
-    });
-
-    test('unlockWithRecovery 成功後回傳 success feedback', () async {
-      final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
-        unlockWithRecoveryKeyResult: _kUnlockedSession,
-      );
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          vaultRepositoryProvider.overrideWithValue(repository),
-          personalizationPreferencesProvider.overrideWith(
-            _FixedPersonalizationPreferencesController.new,
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container.read(personalizationPreferencesProvider.future);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller
-          .unlockWithRecovery(l10n, 'recovery-key');
-      final AppSessionState sessionState = container.read(appSessionProvider);
-
-      expect(feedback?.tone, SettingsFlowFeedbackTone.success);
-      expect(feedback?.message, l10n.sessionRecoveryUnlockSuccessMessage);
-      expect(sessionState.status, AppLockStatus.unlocked);
-      expect(sessionState.message, l10n.sessionRecoveryUnlockSuccessMessage);
-    });
-
-    test('applyUnlockMode 缺少已解鎖 session 回傳 warning', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          appSessionProvider.overrideWith(_LockedAppSessionController.new),
-          effectiveAppSessionProvider.overrideWith(
-            (Ref ref) async => ref.watch(appSessionProvider),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
-        l10n,
-        AppUnlockMode.deviceLock,
-      );
-
-      expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
-      expect(feedback?.message, l10n.sessionUnlockModeChangeNeedsUnlockMessage);
-    });
-
-    test('applyUnlockMode 缺少裝置鎖回傳 warning', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(canUseDeviceCredentialResult: false),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
-        l10n,
-        AppUnlockMode.deviceLock,
-      );
-
-      expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
-      expect(feedback?.message, l10n.sessionUnlockModeNeedsDeviceLockMessage);
-    });
-
-    test('applyUnlockMode 缺少生物辨識回傳 warning', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(canUseBiometricResult: false),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
-
-      final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
-        l10n,
-        AppUnlockMode.biometric,
-      );
-
-      expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
-      expect(
-        feedback?.message,
-        l10n.sessionBiometricNotEnrolledSwitchModeMessage,
-      );
-    });
-
-    test('applyUnlockMode 驗證取消回傳 info', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.none),
-          ),
-          vaultRepositoryProvider.overrideWithValue(
+    group('createRecoveryKey', () {
+      test('成功時回傳金鑰與 success feedback', () async {
+        final _RecoverySessionVaultRepository repository =
             _RecoverySessionVaultRepository(
-              ensureKeystoreResult: const DeviceKeyUserCancelledException(),
+              setupRecoveryKeyResult: const RecoverySetupResult(
+                recoveryKey: 'setup-key',
+                session: _kSyncedUnlockedSession,
+              ),
+            );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepositoryProvider.overrideWithValue(repository),
+            personalizationPreferencesProvider.overrideWith(
+              _FixedPersonalizationPreferencesController.new,
             ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(personalizationPreferencesProvider.future);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
-        l10n,
-        AppUnlockMode.deviceLock,
-      );
+        final SettingsRecoveryKeyResult result = await controller
+            .createRecoveryKey(l10n);
 
-      expect(feedback?.tone, SettingsFlowFeedbackTone.info);
-      expect(feedback?.message, l10n.settingsUnlockModeChangeCancelled);
+        expect(result.recoveryKey, 'setup-key');
+        expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
+        expect(result.feedback.message, l10n.sessionRecoverySetupSuccessMessage);
+        expect(
+          container.read(appSessionProvider).session,
+          same(_kSyncedUnlockedSession),
+        );
+      });
     });
 
-    test('applyUnlockMode 驗證失敗回傳 error', () async {
-      final ProviderContainer container = ProviderContainer(
-        overrides: [
-          appLockServiceProvider.overrideWithValue(
-            FakeAppLockService(unlockMode: AppUnlockMode.none),
+    group('repairVault', () {
+      test('會回傳報告並轉送進度', () async {
+        final VaultRepairReport report = VaultRepairReport(
+          entryCount: 9,
+          relocatedEntries: 0,
+          removedDuplicateEntries: 0,
+          removedOrphanAssets: 0,
+          tagsAdded: 0,
+          relocatedAssets: 0,
+          issues: const <VaultRepairIssue>[],
+          duration: const Duration(seconds: 2),
+          finishedAt: DateTime(2026, 7, 10),
+        );
+        final _FlowRepairService repairService = _FlowRepairService(report);
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepairServiceProvider.overrideWithValue(repairService),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final List<VaultRepairPhase> phases = <VaultRepairPhase>[];
+        final VaultRepairReport result = await controller.repairVault(
+          onProgress: phases.add,
+        );
+
+        expect(result.entryCount, report.entryCount);
+        repairService.receivedProgress!(VaultRepairPhase.scanningEntries);
+        expect(phases, <VaultRepairPhase>[VaultRepairPhase.scanningEntries]);
+      });
+
+      test('備份驗證失敗時不會呼叫修復', () async {
+        final VaultRepairReport report = VaultRepairReport(
+          entryCount: 1,
+          relocatedEntries: 0,
+          removedDuplicateEntries: 0,
+          removedOrphanAssets: 0,
+          tagsAdded: 0,
+          relocatedAssets: 0,
+          duration: Duration.zero,
+          finishedAt: DateTime(2026, 7, 10),
+        );
+        final _FlowRepairService repairService = _FlowRepairService(report);
+        final _FlowBackupService backupService = _FlowBackupService(
+          beforeRepairResult: const BackupPersistResult(
+            status: BackupPersistStatus.inspectFailed,
+            message: 'bad zip',
           ),
-          vaultRepositoryProvider.overrideWithValue(
-            _RecoverySessionVaultRepository(
-              ensureKeystoreResult: DeviceKeyAuthFailedException('failed'),
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepairServiceProvider.overrideWithValue(repairService),
+            vaultBackupServiceProvider.overrideWithValue(backupService),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        await expectLater(
+          controller.repairVaultAfterVerifiedBackup(),
+          throwsA(isA<VaultRepairBackupException>()),
+        );
+        expect(repairService.repairCalled, isFalse);
+      });
+
+      test('備份成功後才呼叫修復並附上備份檔名', () async {
+        final VaultRepairReport report = VaultRepairReport(
+          entryCount: 1,
+          relocatedEntries: 0,
+          removedDuplicateEntries: 0,
+          removedOrphanAssets: 0,
+          tagsAdded: 0,
+          relocatedAssets: 0,
+          duration: Duration.zero,
+          finishedAt: DateTime(2026, 7, 10),
+        );
+        final _FlowRepairService repairService = _FlowRepairService(report);
+        final Directory tempDir = await Directory.systemTemp.createTemp(
+          'quill-repair-backup-',
+        );
+        addTearDown(() async {
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+        final String backupPath = p.join(
+          tempDir.path,
+          'backup_before_repair_2026-07-10_12-00-00.zip',
+        );
+        await File(backupPath).writeAsBytes(<int>[1]);
+        final _FlowBackupService backupService = _FlowBackupService(
+          beforeRepairResult: BackupPersistResult(
+            status: BackupPersistStatus.success,
+            savedPath: backupPath,
+          ),
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepairServiceProvider.overrideWithValue(repairService),
+            vaultBackupServiceProvider.overrideWithValue(backupService),
+            backupStatusStoreProvider.overrideWithValue(
+              BackupStatusStore(
+                storageFile: File(p.join(tempDir.path, 'backup_status.json')),
+              ),
             ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      container
-          .read(appSessionProvider.notifier)
-          .activateSession(_kUnlockedSession);
-      final SettingsFlowController controller = container.read(
-        settingsFlowControllerProvider,
-      );
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
 
-      final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
-        l10n,
-        AppUnlockMode.deviceLock,
-      );
+        final List<VaultMaintenanceFlowPhase> phases =
+            <VaultMaintenanceFlowPhase>[];
+        final VaultRepairReport result = await controller
+            .repairVaultAfterVerifiedBackup(onProgress: phases.add);
 
-      expect(feedback?.tone, SettingsFlowFeedbackTone.error);
-      expect(feedback?.message, l10n.settingsUnlockModeChangeAuthFailed);
+        expect(repairService.repairCalled, isTrue);
+        expect(result.backupFileName, contains('backup_before_repair_'));
+        expect(phases.first, VaultMaintenanceFlowPhase.creatingBackup);
+      });
+    });
+
+    group('rotateRecoveryKey', () {
+      test('成功時回傳金鑰與 success feedback', () async {
+        final _RecoverySessionVaultRepository repository =
+            _RecoverySessionVaultRepository(
+              rotateRecoveryKeyResult: const RecoverySetupResult(
+                recoveryKey: 'rotated-key',
+                session: _kSyncedUnlockedSession,
+              ),
+            );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepositoryProvider.overrideWithValue(repository),
+            personalizationPreferencesProvider.overrideWith(
+              _FixedPersonalizationPreferencesController.new,
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(personalizationPreferencesProvider.future);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsRecoveryKeyResult result = await controller
+            .rotateRecoveryKey(l10n);
+
+        expect(result.recoveryKey, 'rotated-key');
+        expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
+        expect(result.feedback.message, l10n.sessionRecoveryKeyRotatedMessage);
+        expect(
+          container.read(appSessionProvider).session,
+          same(_kSyncedUnlockedSession),
+        );
+      });
+    });
+
+    group('unlockWithRecovery', () {
+      test('成功後回傳 success feedback', () async {
+        final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
+          unlockWithRecoveryKeyResult: _kUnlockedSession,
+        );
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            vaultRepositoryProvider.overrideWithValue(repository),
+            personalizationPreferencesProvider.overrideWith(
+              _FixedPersonalizationPreferencesController.new,
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(personalizationPreferencesProvider.future);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller
+            .unlockWithRecovery(l10n, 'recovery-key');
+        final AppSessionState sessionState = container.read(appSessionProvider);
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.success);
+        expect(feedback?.message, l10n.sessionRecoveryUnlockSuccessMessage);
+        expect(sessionState.status, AppLockStatus.unlocked);
+        expect(sessionState.message, l10n.sessionRecoveryUnlockSuccessMessage);
+      });
+    });
+
+    group('applyUnlockMode', () {
+      test('缺少已解鎖 session 回傳 warning', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            appSessionProvider.overrideWith(_LockedAppSessionController.new),
+            effectiveAppSessionProvider.overrideWith(
+              (Ref ref) async => ref.watch(appSessionProvider),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
+          l10n,
+          AppUnlockMode.deviceLock,
+        );
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
+        expect(feedback?.message, l10n.sessionUnlockModeChangeNeedsUnlockMessage);
+      });
+
+      test('缺少裝置鎖回傳 warning', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            appLockServiceProvider.overrideWithValue(
+              FakeAppLockService(canUseDeviceCredentialResult: false),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
+          l10n,
+          AppUnlockMode.deviceLock,
+        );
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
+        expect(feedback?.message, l10n.sessionUnlockModeNeedsDeviceLockMessage);
+      });
+
+      test('缺少生物辨識回傳 warning', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            appLockServiceProvider.overrideWithValue(
+              FakeAppLockService(canUseBiometricResult: false),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
+          l10n,
+          AppUnlockMode.biometric,
+        );
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
+        expect(
+          feedback?.message,
+          l10n.sessionBiometricNotEnrolledSwitchModeMessage,
+        );
+      });
+
+      test('驗證取消回傳 info', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            appLockServiceProvider.overrideWithValue(
+              FakeAppLockService(unlockMode: AppUnlockMode.none),
+            ),
+            vaultRepositoryProvider.overrideWithValue(
+              _RecoverySessionVaultRepository(
+                ensureKeystoreResult: const DeviceKeyUserCancelledException(),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
+          l10n,
+          AppUnlockMode.deviceLock,
+        );
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.info);
+        expect(feedback?.message, l10n.settingsUnlockModeChangeCancelled);
+      });
+
+      test('驗證失敗回傳 error', () async {
+        final ProviderContainer container = ProviderContainer(
+          overrides: [
+            appLockServiceProvider.overrideWithValue(
+              FakeAppLockService(unlockMode: AppUnlockMode.none),
+            ),
+            vaultRepositoryProvider.overrideWithValue(
+              _RecoverySessionVaultRepository(
+                ensureKeystoreResult: DeviceKeyAuthFailedException('failed'),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        container
+            .read(appSessionProvider.notifier)
+            .activateSession(_kUnlockedSession);
+        final SettingsFlowController controller = container.read(
+          settingsFlowControllerProvider,
+        );
+
+        final SettingsFlowFeedback? feedback = await controller.applyUnlockMode(
+          l10n,
+          AppUnlockMode.deviceLock,
+        );
+
+        expect(feedback?.tone, SettingsFlowFeedbackTone.error);
+        expect(feedback?.message, l10n.settingsUnlockModeChangeAuthFailed);
+      });
     });
   });
 }

@@ -10,10 +10,9 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   testWidgets('人物資料首次進入分頁才載入且離開後保持訂閱', (WidgetTester tester) async {
@@ -63,12 +62,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(body: HomeTabStack(sessionState: sessionState)),
+        child: widgetTestApp(
+          center: false,
+          child: HomeTabStack(sessionState: sessionState),
         ),
       ),
     );
@@ -121,20 +117,15 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: HomeTabStack(
-              sessionState: AppSessionState(
-                status: AppLockStatus.unlocked,
-                session: UnlockedVaultSession(
-                  vaultId: 'vlt_people_progress',
-                  trustedDevice: true,
-                  recoveryWrapKey: const <int>[1, 2, 3],
-                ),
+        child: widgetTestApp(
+          center: false,
+          child: HomeTabStack(
+            sessionState: AppSessionState(
+              status: AppLockStatus.unlocked,
+              session: UnlockedVaultSession(
+                vaultId: 'vlt_people_progress',
+                trustedDevice: true,
+                recoveryWrapKey: const <int>[1, 2, 3],
               ),
             ),
           ),
@@ -197,12 +188,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(body: HomeTabStack(sessionState: sessionState)),
+        child: widgetTestApp(
+          center: false,
+          child: HomeTabStack(sessionState: sessionState),
         ),
       ),
     );

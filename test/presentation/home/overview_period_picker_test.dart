@@ -3,20 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/overview_pane.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 Widget _testApp(ProviderContainer container) {
   return UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: const Scaffold(body: MemoryFocusedPeriodBar()),
+    child: widgetTestApp(
+      center: false,
+      child: const MemoryFocusedPeriodBar(),
     ),
   );
 }

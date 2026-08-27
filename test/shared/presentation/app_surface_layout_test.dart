@@ -4,13 +4,14 @@ import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host(Widget child, {Brightness brightness = Brightness.light}) =>
-      MaterialApp(
-        theme: appTestTheme(brightness: brightness),
-        home: Scaffold(body: child),
+      widgetTestApp(
+        brightness: brightness,
+        center: false,
+        child: child,
       );
 
   for (final Brightness brightness in Brightness.values) {

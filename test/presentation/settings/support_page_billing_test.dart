@@ -5,13 +5,12 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
 import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
 import 'package:quill_diary/infrastructure/billing/google_billing_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/pages/support_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/fake_in_app_purchase_platform.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -31,13 +30,10 @@ void main() {
   }
 
   Widget buildApp() {
-    return MaterialApp(
-      theme: appTestTheme(),
-      darkTheme: appTestTheme(brightness: Brightness.dark),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: const SupportPage(),
+    return widgetTestApp(
+      includeDarkTheme: true,
+      center: false,
+      child: const SupportPage(),
     );
   }
 

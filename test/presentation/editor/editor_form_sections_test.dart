@@ -4,12 +4,12 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_form_sections.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_person_suggestion_panel.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget testApp({
@@ -17,25 +17,21 @@ void main() {
     required TextEditingController bodyController,
     Widget? footer,
   }) {
-    return MaterialApp(
-      theme: appTestTheme(brightness: brightness),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Scaffold(
-        body: Column(
-          children: <Widget>[
-            Expanded(
-              child: EditorBodySection(
-                previewMode: false,
-                bodyController: bodyController,
-                typography: EditorTypographyPreferences.defaults,
-                onBodyChanged: () {},
-              ),
+    return widgetTestApp(
+      brightness: brightness,
+      center: false,
+      child: Column(
+        children: <Widget>[
+          Expanded(
+            child: EditorBodySection(
+              previewMode: false,
+              bodyController: bodyController,
+              typography: EditorTypographyPreferences.defaults,
+              onBodyChanged: () {},
             ),
-            ?footer,
-          ],
-        ),
+          ),
+          ?footer,
+        ],
       ),
     );
   }

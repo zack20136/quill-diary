@@ -10,6 +10,7 @@ import 'package:quill_diary/shared/presentation/accent_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   test('英文日記篇數使用正確單複數', () {
@@ -22,21 +23,16 @@ void main() {
 
   testWidgets('日曆日期格提供日期、篇數、今天與選取狀態語意', (WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: Scaffold(
-          body: CalendarDayCell(
-            day: DateTime(2026, 8, 13),
-            entries: const <EntryIndexRecord>[],
-            isSelected: true,
-            isToday: true,
-            isOutside: false,
-            rowHeight: 60,
-            tagAccents: const <String, int>{},
-          ),
+      widgetTestApp(
+        center: false,
+        child: CalendarDayCell(
+          day: DateTime(2026, 8, 13),
+          entries: const <EntryIndexRecord>[],
+          isSelected: true,
+          isToday: true,
+          isOutside: false,
+          rowHeight: 60,
+          tagAccents: const <String, int>{},
         ),
       ),
     );
@@ -69,28 +65,24 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: darkTheme,
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: Scaffold(
-          body: CalendarDayCell(
-            day: DateTime(2026, 8, 5),
-            entries: <EntryIndexRecord>[
-              buildEntryIndexRecord(
-                title: '有日記',
-                tags: const <String>['心得'],
-              ),
-            ],
-            isSelected: false,
-            isToday: false,
-            isOutside: false,
-            rowHeight: 72,
-            tagAccents: <String, int>{
-              '心得': colorArgb32(kAccentColorPresets.first),
-            },
-          ),
+      widgetTestApp(
+        brightness: Brightness.dark,
+        center: false,
+        child: CalendarDayCell(
+          day: DateTime(2026, 8, 5),
+          entries: <EntryIndexRecord>[
+            buildEntryIndexRecord(
+              title: '有日記',
+              tags: const <String>['心得'],
+            ),
+          ],
+          isSelected: false,
+          isToday: false,
+          isOutside: false,
+          rowHeight: 72,
+          tagAccents: <String, int>{
+            '心得': colorArgb32(kAccentColorPresets.first),
+          },
         ),
       ),
     );

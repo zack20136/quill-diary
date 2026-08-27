@@ -38,7 +38,7 @@ void main() {
     });
   }
 
-  test('淺深 AppColors token 應不同', () {
+    test('淺深色 AppColors token 會使用不同值', () {
     final AppColors light = AppColors.from(kAppLightColorScheme);
     final AppColors dark = AppColors.from(kAppDarkColorScheme);
 

@@ -26,7 +26,7 @@ void main() {
     expect(await store.readIds(), isEmpty);
   });
 
-  test('寫入、批次更新、prune 與清空後刪檔都正常', () async {
+  test('寫入後可批次更新、prune，清空後會刪除檔案', () async {
     expect(await store.readIds(), isEmpty);
 
     await store.setPinnedMany(<String>[

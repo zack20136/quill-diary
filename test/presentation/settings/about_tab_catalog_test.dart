@@ -6,7 +6,7 @@ import 'package:quill_diary/presentation/settings/about_tab_catalog.dart';
 import '../../helpers/shared/test_l10n.dart';
 
 void main() {
-  test('分頁順序與各 tab 基本結構完整', () {
+  test('分頁順序固定且各 tab 皆有 hero、chips 與 sections', () {
     final AppLocalizations l10n = testL10n;
     final List<AboutPageTabSpec> tabs = buildAboutPageTabSpecs(
       l10n,
@@ -43,7 +43,7 @@ void main() {
     }
   });
 
-  test('人物管理介紹位於編輯器與備份之間並包含完整內容', () {
+  test('人物管理介紹位於編輯器與備份之間並含 hero、chips 與 sections', () {
     final AppLocalizations l10n = testL10n;
     final List<AboutPageTabSpec> tabs = buildAboutPageTabSpecs(
       l10n,

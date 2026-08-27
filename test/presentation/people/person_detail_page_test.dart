@@ -6,11 +6,11 @@ import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   final DateTime timestamp = DateTime.utc(2026, 8, 12);
@@ -30,7 +30,9 @@ void main() {
     Map<PersonId, PersonMentionStats> stats = const {},
     Brightness brightness = Brightness.light,
   }) {
-    return ProviderScope(
+    return widgetTestApp(
+      brightness: brightness,
+      center: false,
       overrides: [
         personDetailProvider(person.id).overrideWith((Ref ref) async => person),
         personRelatedEntriesProvider(
@@ -38,13 +40,7 @@ void main() {
         ).overrideWith((Ref ref) async => const <EntryIndexRecord>[]),
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async => stats),
       ],
-      child: MaterialApp(
-        theme: appTestTheme(brightness: brightness),
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: PersonDetailPage(personId: person.id),
-      ),
+      child: PersonDetailPage(personId: person.id),
     );
   }
 

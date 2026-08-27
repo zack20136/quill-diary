@@ -9,11 +9,10 @@ import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/presentation/settings/settings_test_scope.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 import '../../helpers/storage/fake_vault_transfer_service.dart';
 
 void main() {
@@ -33,25 +32,20 @@ void main() {
             (Ref ref) async => connectionState,
           ),
         ],
-        child: MaterialApp(
-          theme: appTestTheme(),
-          darkTheme: appTestTheme(brightness: Brightness.dark),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: DriveBackupSection(
-              access: access,
-              canManageDriveAccount: canManageDriveAccount,
-              isGoogleDriveConfigured: true,
-              busy: busy,
-              onLink: () {},
-              onSwitchAccount: () {},
-              onDisconnect: () {},
-              onUpload: () {},
-              onRestore: () {},
-              onCancelUpload: () {},
-            ),
+        child: widgetTestApp(
+          center: false,
+          includeDarkTheme: true,
+          child: DriveBackupSection(
+            access: access,
+            canManageDriveAccount: canManageDriveAccount,
+            isGoogleDriveConfigured: true,
+            busy: busy,
+            onLink: () {},
+            onSwitchAccount: () {},
+            onDisconnect: () {},
+            onUpload: () {},
+            onRestore: () {},
+            onCancelUpload: () {},
           ),
         ),
       ),
@@ -141,25 +135,20 @@ void main() {
             (Ref ref) async => throw StateError('drive connection failed'),
           ),
         ],
-        child: MaterialApp(
-          theme: appTestTheme(),
-          darkTheme: appTestTheme(brightness: Brightness.dark),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(
-            body: DriveBackupSection(
-              access: lockedAccess(hasRecoveryKey: false),
-              canManageDriveAccount: true,
-              isGoogleDriveConfigured: true,
-              busy: false,
-              onLink: () {},
-              onSwitchAccount: () {},
-              onDisconnect: () {},
-              onUpload: () {},
-              onRestore: () {},
-              onCancelUpload: () {},
-            ),
+        child: widgetTestApp(
+          center: false,
+          includeDarkTheme: true,
+          child: DriveBackupSection(
+            access: lockedAccess(hasRecoveryKey: false),
+            canManageDriveAccount: true,
+            isGoogleDriveConfigured: true,
+            busy: false,
+            onLink: () {},
+            onSwitchAccount: () {},
+            onDisconnect: () {},
+            onUpload: () {},
+            onRestore: () {},
+            onCancelUpload: () {},
           ),
         ),
       ),
@@ -201,14 +190,7 @@ void main() {
         transferService: FakeVaultTransferService(
           connectionState: const DriveConnectionState.disconnected(),
         ),
-        child: MaterialApp(
-          theme: appTestTheme(),
-          darkTheme: appTestTheme(brightness: Brightness.dark),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: const SettingsPage(),
-        ),
+        child: const SettingsPage(),
       ),
     );
     await tester.pumpAndSettle();

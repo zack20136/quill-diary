@@ -29,7 +29,7 @@ void main() {
     expect(appSupportedLocales, <Locale>[appZhLocale, appEnLocale]);
   });
 
-  testWidgets('QuillDiaryApp 可以正常建立 router 與首頁', (WidgetTester tester) async {
+  testWidgets('QuillDiaryApp 會建立 router 並顯示首頁', (WidgetTester tester) async {
     final ProviderContainer container = _buildSmokeTestContainer();
     addTearDown(container.dispose);
 

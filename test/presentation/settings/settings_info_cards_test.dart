@@ -1,23 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_info_cards.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 
-import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
+  testWidgets('事實 chip 使用繁中冒號分隔標籤與數值', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      widgetTestApp(
+        child: const SettingsFactChip(label: '提示', value: 'ABCD'),
+      ),
+    );
+
+    expect(find.text('提示：ABCD'), findsOneWidget);
+    expect(find.textContaining('嚗'), findsNothing);
+  });
+
   testWidgets('Hero 標題接在 icon 右側並垂直置中', (WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        home: const Scaffold(
-          body: Padding(
-            padding: EdgeInsets.all(16),
-            child: SettingsGradientHeroCard(
-              icon: Icons.edit_note_rounded,
-              title: '寫作、暫存與正式保存各走自己的路',
-              body: '說明文字',
-              chips: <String>['可匯出 Markdown', '自動草稿'],
-            ),
+      widgetTestApp(
+        center: false,
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: SettingsGradientHeroCard(
+            icon: Icons.edit_note_rounded,
+            title: '寫作、暫存與正式保存各走自己的路',
+            body: '說明文字',
+            chips: <String>['可匯出 Markdown', '自動草稿'],
           ),
         ),
       ),
@@ -43,23 +53,21 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        home: const Scaffold(
-          body: Padding(
-            padding: EdgeInsets.all(16),
-            child: SettingsGradientHeroCard(
-              icon: Icons.menu_book_rounded,
-              title: '標題',
-              body: '說明',
-              chips: <String>[
-                '資料留在裝置',
-                '完整加密備份',
-                '全文搜尋',
-                '可攜式匯出',
-                'Markdown / HTML',
-              ],
-            ),
+      widgetTestApp(
+        center: false,
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: SettingsGradientHeroCard(
+            icon: Icons.menu_book_rounded,
+            title: '標題',
+            body: '說明',
+            chips: <String>[
+              '資料留在裝置',
+              '完整加密備份',
+              '全文搜尋',
+              '可攜式匯出',
+              'Markdown / HTML',
+            ],
           ),
         ),
       ),
@@ -95,28 +103,26 @@ void main() {
     addTearDown(pageController.dispose);
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: appTestTheme(),
-        home: Scaffold(
-          body: ListView(
-            controller: pageController,
-            padding: const EdgeInsets.all(16),
-            children: const <Widget>[
-              SettingsGradientHeroCard(
-                icon: Icons.menu_book_rounded,
-                title: '標題',
-                body: '說明',
-                chips: <String>[
-                  '資料留在裝置',
-                  '完整加密備份',
-                  '全文搜尋',
-                  '可攜式匯出',
-                  'Markdown / HTML',
-                ],
-              ),
-              SizedBox(height: 1200),
-            ],
-          ),
+      widgetTestApp(
+        center: false,
+        child: ListView(
+          controller: pageController,
+          padding: const EdgeInsets.all(16),
+          children: const <Widget>[
+            SettingsGradientHeroCard(
+              icon: Icons.menu_book_rounded,
+              title: '標題',
+              body: '說明',
+              chips: <String>[
+                '資料留在裝置',
+                '完整加密備份',
+                '全文搜尋',
+                '可攜式匯出',
+                'Markdown / HTML',
+              ],
+            ),
+            SizedBox(height: 1200),
+          ],
         ),
       ),
     );

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host({
@@ -13,12 +12,9 @@ void main() {
     String? hint,
     double? progress,
   }) {
-    return MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Stack(
+    return widgetTestApp(
+      center: false,
+      child: Stack(
         children: <Widget>[
           SettingsBlockingProgressOverlay(
             message: message,

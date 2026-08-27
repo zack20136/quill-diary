@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
@@ -7,14 +8,13 @@ import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host(Widget child, {Brightness brightness = Brightness.light}) =>
-      MaterialApp(
-        theme: appTestTheme(brightness: brightness),
-        home: Scaffold(
-          body: SizedBox.expand(child: Center(child: child)),
-        ),
+      widgetTestApp(
+        brightness: brightness,
+        child: SizedBox.expand(child: child),
       );
 
   Finder dialogSurface() => find.byWidgetPredicate(
@@ -313,5 +313,22 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(800, 568));
     await tester.pump();
     expect(tester.getSize(dialogSurface()).width, 640);
+  });
+
+  testWidgets('AccentDialogShell 關閉按鈕觸控目標至少 44', (tester) async {
+    await tester.pumpWidget(
+      host(
+        AccentDialogShell(
+          icon: Icons.palette_outlined,
+          title: '標題',
+          onClose: () {},
+          child: const SizedBox(height: 40),
+        ),
+      ),
+    );
+
+    final Size size = tester.getSize(find.byType(IconButton));
+    expect(size.width, greaterThanOrEqualTo(44));
+    expect(size.height, greaterThanOrEqualTo(44));
   });
 }

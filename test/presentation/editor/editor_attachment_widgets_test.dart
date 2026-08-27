@@ -20,9 +20,9 @@ import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/presentation/editor/editor_test_scope.dart';
 import '../../helpers/presentation/editor/fake_editor_actions.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   late Directory tempDir;
@@ -267,19 +267,16 @@ void main() {
 
   testWidgets('預覽圖庫會依統一圖片順序顯示新圖與舊圖', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          theme: appTestTheme(),
-          home: Scaffold(
-            body: EditorPreviewGallery(
-              images: <EditorAttachmentItem>[
-                PendingEditorAttachmentItem(pendingAttachment),
-                SavedEditorAttachmentItem(savedAttachment),
-              ],
-              encryptedPathFuture: (_) async => '',
-              onOpenGallery: (_) {},
-            ),
-          ),
+      widgetTestApp(
+        overrides: const [],
+        center: false,
+        child: EditorPreviewGallery(
+          images: <EditorAttachmentItem>[
+            PendingEditorAttachmentItem(pendingAttachment),
+            SavedEditorAttachmentItem(savedAttachment),
+          ],
+          encryptedPathFuture: (_) async => '',
+          onOpenGallery: (_) {},
         ),
       ),
     );

@@ -32,127 +32,139 @@ void main() {
     );
   }
 
-  test('備份 vault 欄位取自 metadata', () {
-    final RestorePrecheck precheck = buildPrecheck();
-    expect(precheck.backupVaultId, 'vlt_backup');
-    expect(precheck.backupRecoveryHint, 'WXYZ');
-    expect(precheck.backupRecoverySaltBase64, backupMetadata.kdf.saltBase64);
-  });
+  group('RestorePrecheck', () {
+    test('備份 vault 欄位取自 metadata', () {
+      final RestorePrecheck precheck = buildPrecheck();
+      expect(precheck.backupVaultId, 'vlt_backup');
+      expect(precheck.backupRecoveryHint, 'WXYZ');
+      expect(precheck.backupRecoverySaltBase64, backupMetadata.kdf.saltBase64);
+    });
 
-  test('sameVaultId 需兩側 vaultId 皆存在且相等', () {
-    expect(buildPrecheck(localVaultId: 'vlt_backup').sameVaultId, isTrue);
-    expect(buildPrecheck(localVaultId: 'vlt_other').sameVaultId, isFalse);
-    expect(buildPrecheck(localVaultId: null).sameVaultId, isFalse);
-  });
+    group('sameVaultId', () {
+      test('兩側 vaultId 皆存在且相等時判定為同一 vault', () {
+        expect(buildPrecheck(localVaultId: 'vlt_backup').sameVaultId, isTrue);
+        expect(buildPrecheck(localVaultId: 'vlt_other').sameVaultId, isFalse);
+        expect(buildPrecheck(localVaultId: null).sameVaultId, isFalse);
+      });
+    });
 
-  test('sameRecoveryGeneration 會比對備份與本機 salt', () {
-    expect(buildPrecheck().sameRecoveryGeneration, isTrue);
-    expect(
-      buildPrecheck(
-        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      ).sameRecoveryGeneration,
-      isFalse,
-    );
-    final RestorePrecheck withoutLocalSalt = RestorePrecheck(
-      preview: BackupRecoveryPreview(metadata: backupMetadata),
-      localVaultId: 'vlt_backup',
-      localRecoverySaltBase64: null,
-      localHasTrustedDevice: true,
-      willOverwriteLocalVault: true,
-    );
-    expect(withoutLocalSalt.sameRecoveryGeneration, isFalse);
-  });
+    group('sameRecoveryGeneration', () {
+      test('會比對備份與本機 salt 判定是否同一代復原金鑰', () {
+        expect(buildPrecheck().sameRecoveryGeneration, isTrue);
+        expect(
+          buildPrecheck(
+            localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          ).sameRecoveryGeneration,
+          isFalse,
+        );
+        final RestorePrecheck withoutLocalSalt = RestorePrecheck(
+          preview: BackupRecoveryPreview(metadata: backupMetadata),
+          localVaultId: 'vlt_backup',
+          localRecoverySaltBase64: null,
+          localHasTrustedDevice: true,
+          willOverwriteLocalVault: true,
+        );
+        expect(withoutLocalSalt.sameRecoveryGeneration, isFalse);
+      });
 
-  test('recoveryKeyRotatedSinceBackup 僅在同 vault 且 salt 不同時為 true', () {
-    expect(
-      buildPrecheck(
-        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      ).recoveryKeyRotatedSinceBackup,
-      isTrue,
-    );
-    expect(buildPrecheck().recoveryKeyRotatedSinceBackup, isFalse);
-    expect(
-      buildPrecheck(
-        localVaultId: 'vlt_other',
-        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      ).recoveryKeyRotatedSinceBackup,
-      isFalse,
-    );
-  });
+      test('同 vault 且 salt 不同時判定金鑰已輪替', () {
+        expect(
+          buildPrecheck(
+            localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          ).recoveryKeyRotatedSinceBackup,
+          isTrue,
+        );
+        expect(buildPrecheck().recoveryKeyRotatedSinceBackup, isFalse);
+        expect(
+          buildPrecheck(
+            localVaultId: 'vlt_other',
+            localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          ).recoveryKeyRotatedSinceBackup,
+          isFalse,
+        );
+      });
+    });
 
-  test('expectsTrustedUnlockAfterRestore 需同 vault、trusted 且同代金鑰', () {
-    expect(buildPrecheck().expectsTrustedUnlockAfterRestore, isTrue);
-    expect(
-      buildPrecheck(
-        localHasTrustedDevice: false,
-      ).expectsTrustedUnlockAfterRestore,
-      isFalse,
-    );
-    expect(
-      buildPrecheck(
-        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      ).expectsTrustedUnlockAfterRestore,
-      isFalse,
-    );
-    expect(
-      buildPrecheck(localVaultId: 'vlt_other').expectsTrustedUnlockAfterRestore,
-      isFalse,
-    );
-  });
+    group('expectsTrustedUnlockAfterRestore', () {
+      test('同 vault、trusted 且同代金鑰時預期還原後可 trusted 解鎖', () {
+        expect(buildPrecheck().expectsTrustedUnlockAfterRestore, isTrue);
+        expect(
+          buildPrecheck(
+            localHasTrustedDevice: false,
+          ).expectsTrustedUnlockAfterRestore,
+          isFalse,
+        );
+        expect(
+          buildPrecheck(
+            localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          ).expectsTrustedUnlockAfterRestore,
+          isFalse,
+        );
+        expect(
+          buildPrecheck(localVaultId: 'vlt_other').expectsTrustedUnlockAfterRestore,
+          isFalse,
+        );
+      });
+    });
 
-  test('canResumeTrustedSession 需 expectsTrustedUnlock 且前一個 session 有效', () {
-    final UnlockedVaultSession priorSession = UnlockedVaultSession(
-      vaultId: backupMetadata.vaultId,
-      trustedDevice: true,
-      recoveryWrapKey: List<int>.filled(32, 1),
-    );
-    expect(buildPrecheck().canResumeTrustedSession(priorSession), isTrue);
-    expect(
-      buildPrecheck(
-        localHasTrustedDevice: false,
-      ).canResumeTrustedSession(priorSession),
-      isFalse,
-    );
-    expect(buildPrecheck().canResumeTrustedSession(null), isFalse);
-    expect(
-      buildPrecheck().canResumeTrustedSession(
-        UnlockedVaultSession(
+    group('canResumeTrustedSession', () {
+      test('預期 trusted 解鎖且前一個 session 有效時可恢復信任會話', () {
+        final UnlockedVaultSession priorSession = UnlockedVaultSession(
           vaultId: backupMetadata.vaultId,
           trustedDevice: true,
-        ),
-      ),
-      isFalse,
-    );
-    expect(
-      buildPrecheck().canResumeTrustedSession(
-        priorSession.copyWith(vaultId: 'vlt_other'),
-      ),
-      isFalse,
-    );
-  });
+          recoveryWrapKey: List<int>.filled(32, 1),
+        );
+        expect(buildPrecheck().canResumeTrustedSession(priorSession), isTrue);
+        expect(
+          buildPrecheck(
+            localHasTrustedDevice: false,
+          ).canResumeTrustedSession(priorSession),
+          isFalse,
+        );
+        expect(buildPrecheck().canResumeTrustedSession(null), isFalse);
+        expect(
+          buildPrecheck().canResumeTrustedSession(
+            UnlockedVaultSession(
+              vaultId: backupMetadata.vaultId,
+              trustedDevice: true,
+            ),
+          ),
+          isFalse,
+        );
+        expect(
+          buildPrecheck().canResumeTrustedSession(
+            priorSession.copyWith(vaultId: 'vlt_other'),
+          ),
+          isFalse,
+        );
+      });
+    });
 
-  test('expectsRecoveryKeyAfterRestore 在需手動輸入金鑰時為 true', () {
-    expect(
-      buildPrecheck(localVaultId: 'vlt_other').expectsRecoveryKeyAfterRestore,
-      isTrue,
-    );
-    expect(
-      buildPrecheck(
-        localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      ).expectsRecoveryKeyAfterRestore,
-      isTrue,
-    );
-    expect(buildPrecheck().expectsRecoveryKeyAfterRestore, isFalse);
-  });
+    group('expectsRecoveryKeyAfterRestore', () {
+      test('需手動輸入金鑰時預期還原後走復原金鑰流程', () {
+        expect(
+          buildPrecheck(localVaultId: 'vlt_other').expectsRecoveryKeyAfterRestore,
+          isTrue,
+        );
+        expect(
+          buildPrecheck(
+            localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          ).expectsRecoveryKeyAfterRestore,
+          isTrue,
+        );
+        expect(buildPrecheck().expectsRecoveryKeyAfterRestore, isFalse);
+      });
 
-  test('trusted 遺失且金鑰已輪替時仍需輸入舊金鑰', () {
-    final RestorePrecheck precheck = buildPrecheck(
-      localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
-      localHasTrustedDevice: false,
-    );
+      test('trusted 遺失且金鑰已輪替時仍需輸入舊金鑰', () {
+        final RestorePrecheck precheck = buildPrecheck(
+          localRecoverySaltBase64: base64Encode(List<int>.filled(16, 9)),
+          localHasTrustedDevice: false,
+        );
 
-    expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
-    expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
-    expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
+        expect(precheck.recoveryKeyRotatedSinceBackup, isTrue);
+        expect(precheck.expectsTrustedUnlockAfterRestore, isFalse);
+        expect(precheck.expectsRecoveryKeyAfterRestore, isTrue);
+      });
+    });
   });
 }

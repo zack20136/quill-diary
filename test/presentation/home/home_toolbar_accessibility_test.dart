@@ -1,25 +1,51 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/entry_index_fixtures.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host(Widget child, {Size size = const Size(390, 800)}) {
-    return MaterialApp(
-      theme: appTestTheme(),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: MediaQuery(
+    return widgetTestApp(
+      center: false,
+      child: MediaQuery(
         data: MediaQueryData(size: size),
-        child: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: child)),
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     );
   }
+
+  testWidgets('選取模式下日記卡片提供 button 與 selected 語意', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        HomeEntryCard(
+          entry: buildEntryIndexRecord(),
+          typography: EditorTypographyPreferences.defaults,
+          selectionActive: true,
+          selected: true,
+          tagAccents: const <String, int>{},
+          showUnsavedDraft: false,
+          onTap: () {},
+          onLongPress: () {},
+        ),
+      ),
+    );
+
+    final SemanticsNode node = tester.getSemantics(find.byType(HomeEntryCard));
+    expect(node.flagsCollection.isButton, isTrue);
+    expect(node.flagsCollection.isSelected, Tristate.isTrue);
+  });
 
   testWidgets('搜尋框具有語意標籤與 focused border', (WidgetTester tester) async {
     await tester.pumpWidget(

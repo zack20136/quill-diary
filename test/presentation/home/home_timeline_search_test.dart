@@ -9,11 +9,10 @@ import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   late AppSessionState sessionState;
@@ -36,12 +35,9 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
-          theme: appTestTheme(),
-          locale: appZhLocale,
-          supportedLocales: appSupportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          home: Scaffold(body: HomeTimelinePane(sessionState: sessionState)),
+        child: widgetTestApp(
+          center: false,
+          child: HomeTimelinePane(sessionState: sessionState),
         ),
       ),
     );

@@ -3,25 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/widgets/personalization_sections.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget testApp(Brightness brightness) {
-    return MaterialApp(
-      theme: appTestTheme(brightness: brightness),
-      locale: appZhLocale,
-      supportedLocales: appSupportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: PersonalizationTypographySectionBody(
-            typography: EditorTypographyPreferences.defaults,
-            controller: PersonalizationPreferencesController(),
-            onTypographyChanged: (_) {},
-          ),
+    return widgetTestApp(
+      brightness: brightness,
+      center: false,
+      child: SingleChildScrollView(
+        child: PersonalizationTypographySectionBody(
+          typography: EditorTypographyPreferences.defaults,
+          controller: PersonalizationPreferencesController(),
+          onTypographyChanged: (_) {},
         ),
       ),
     );
