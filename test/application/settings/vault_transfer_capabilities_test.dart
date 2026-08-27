@@ -5,7 +5,7 @@ import 'package:quill_diary/application/settings/vault_transfer_capabilities.dar
 import '../../helpers/shared/test_l10n.dart';
 
 void main() {
-  test('依 session、復原金鑰與鎖定狀態決定備份和還原權限', () {
+  test('依 session、復原金鑰與鎖定狀態決定備份、可攜式與還原權限', () {
     final List<
       ({
         String name,
@@ -13,6 +13,7 @@ void main() {
         bool hasRecoveryKey,
         AppLockStatus lockStatus,
         bool canBackup,
+        bool canPortableTransfer,
         bool canRestore,
       })
     > cases = <
@@ -22,6 +23,7 @@ void main() {
         bool hasRecoveryKey,
         AppLockStatus lockStatus,
         bool canBackup,
+        bool canPortableTransfer,
         bool canRestore,
       })
     >[
@@ -31,6 +33,7 @@ void main() {
         hasRecoveryKey: false,
         lockStatus: AppLockStatus.locked,
         canBackup: false,
+        canPortableTransfer: false,
         canRestore: true,
       ),
       (
@@ -39,6 +42,7 @@ void main() {
         hasRecoveryKey: true,
         lockStatus: AppLockStatus.locked,
         canBackup: false,
+        canPortableTransfer: false,
         canRestore: false,
       ),
       (
@@ -47,6 +51,7 @@ void main() {
         hasRecoveryKey: true,
         lockStatus: AppLockStatus.recoveryRequired,
         canBackup: false,
+        canPortableTransfer: false,
         canRestore: true,
       ),
       (
@@ -55,6 +60,7 @@ void main() {
         hasRecoveryKey: false,
         lockStatus: AppLockStatus.unlocked,
         canBackup: false,
+        canPortableTransfer: true,
         canRestore: true,
       ),
       (
@@ -63,6 +69,7 @@ void main() {
         hasRecoveryKey: true,
         lockStatus: AppLockStatus.unlocked,
         canBackup: true,
+        canPortableTransfer: true,
         canRestore: true,
       ),
     ];
@@ -77,6 +84,11 @@ void main() {
           );
 
       expect(capabilities.canBackup, caseData.canBackup, reason: caseData.name);
+      expect(
+        capabilities.canPortableTransfer,
+        caseData.canPortableTransfer,
+        reason: caseData.name,
+      );
       expect(
         capabilities.canRestore,
         caseData.canRestore,

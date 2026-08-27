@@ -7,6 +7,7 @@ import '../markdown/front_matter_codec.dart';
 import 'editor_draft_store.dart';
 import 'portable/portable_export_io.dart';
 import 'portable/portable_import_io.dart';
+import 'portable/portable_import_preview.dart';
 import 'portable/vault_backup_io.dart';
 import 'shared/portable_import_result.dart';
 import 'restore_precheck.dart';
@@ -15,10 +16,23 @@ import 'vault_path_strategy.dart';
 import 'vault_repository.dart';
 
 export 'shared/portable_import_result.dart';
-export 'portable/portable_export_io.dart' show HtmlExportEstimate;
+export 'portable/portable_export_io.dart'
+    show
+        HtmlExportEntrySummary,
+        HtmlExportEstimate,
+        HtmlExportOptions,
+        MarkdownExportEntrySummary,
+        MarkdownExportEstimate,
+        MarkdownExportOptions;
 export 'portable/vault_backup_io.dart' show BackupInspectResult;
 export 'portable/backup_archive_inspection.dart' show VaultBackupLayout;
 export 'portable/portable_import_io.dart' show EasyDiaryBackupImporterFactory;
+export 'portable/portable_import_preview.dart'
+    show
+        AnalyzedPortableImport,
+        PortableImportConfirmResult,
+        PortableImportPreview,
+        PortableImportPreviewEntry;
 
 /// 備份、還原、可攜式匯出與匯入 I/O 的門面。
 ///
@@ -67,28 +81,68 @@ class VaultArchiveIo {
   Future<Directory> exportMarkdown({
     required UnlockedVaultSession session,
     required Directory parentDirectory,
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
   }) => _export.exportMarkdown(
     session: session,
     parentDirectory: parentDirectory,
+    entryIds: entryIds,
+    options: options,
   );
 
   Future<File> writeMarkdownZip({
     required UnlockedVaultSession session,
     required File target,
-  }) => _export.writeMarkdownZip(session: session, target: target);
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
+  }) => _export.writeMarkdownZip(
+    session: session,
+    target: target,
+    entryIds: entryIds,
+    options: options,
+  );
 
   Future<HtmlExportEstimate> estimateSelectedHtmlExport({
     required Set<EntryId> entryIds,
   }) => _export.estimateSelectedHtmlExport(entryIds: entryIds);
 
+  Future<MarkdownExportEstimate> estimateMarkdownExport() =>
+      _export.estimateMarkdownExport();
+
   Future<File> writeSelectedHtmlExport({
     required UnlockedVaultSession session,
     required Set<EntryId> entryIds,
     required File target,
+    HtmlExportOptions options = const HtmlExportOptions(),
   }) => _export.writeSelectedHtmlExport(
     session: session,
     entryIds: entryIds,
     target: target,
+    options: options,
+  );
+
+  Future<AnalyzedPortableImport> analyzeDocuments({
+    required UnlockedVaultSession session,
+    required Directory rootDirectory,
+  }) => _import.analyzeDocuments(
+    session: session,
+    rootDirectory: rootDirectory,
+  );
+
+  Future<({AnalyzedPortableImport analyzed, Directory ownedTempRoot})>
+  analyzeDocumentsFromZip({
+    required UnlockedVaultSession session,
+    required File zipFile,
+  }) => _import.analyzeDocumentsFromZip(session: session, zipFile: zipFile);
+
+  Future<PortableImportResult> persistAnalyzedImport({
+    required UnlockedVaultSession session,
+    required AnalyzedPortableImport analyzed,
+    required Set<int> selectedPreviewIndices,
+  }) => _import.persistAnalyzedImport(
+    session: session,
+    analyzed: analyzed,
+    selectedPreviewIndices: selectedPreviewIndices,
   );
 
   Future<PortableImportResult> importDocuments({

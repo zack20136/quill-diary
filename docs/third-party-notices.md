@@ -36,7 +36,7 @@
 - Google APIs
 - In-App Purchase
 
-本頁不逐一轉載所有依賴套件的完整授權條文。Flutter 會把套件根目錄的 `LICENSE` 彙入預設 asset bundle，供 `LicenseRegistry` 使用；若需要發行版的外部清單，應依鎖定的實際套件版本檢查各套件授權，或選用並固定專案的授權稽核工具。Dart／Flutter 官方 CLI 並沒有 `flutter pub licenses` 這個指令。
+本頁不逐一轉載所有依賴套件的完整授權條文。Flutter 會把套件根目錄的 `LICENSE` 彙入預設 asset bundle，供 `LicenseRegistry` 使用；若需要發行版的外部清單，應依鎖定的實際套件版本檢查各套件授權，或選用並固定專案的授權稽核工具。Dart/Flutter 官方 CLI 並沒有 `flutter pub licenses` 這個指令。
 
 這表示：
 

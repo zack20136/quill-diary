@@ -101,6 +101,7 @@ void main() {
       expect(html, contains('line-height: 1.55;'));
       expect(html, contains('.entry-body p { margin: 0 0 0.65em; }'));
       expect(html, contains('type="checkbox"'));
+      expect(html, contains('2026-07-03 星期五 10:28'));
       expect(html, isNot(contains('<ul class="task-list">\n<li>•')));
     } finally {
       await tempRoot.delete(recursive: true);

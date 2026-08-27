@@ -24,17 +24,6 @@ String homeTagRemovedFromEntries(
   );
 }
 
-String homeHtmlExportSelectionSummary(
-  AppLocalizations l10n,
-  int entryCount,
-  int imageCount,
-) {
-  return l10n.homeHtmlExportSelectionSummary(
-    DisplayFormat.formatCountUnit(entryCount, l10n.commonUnitEntries),
-    DisplayFormat.formatCountUnit(imageCount, l10n.commonUnitImages),
-  );
-}
-
 String homeOverviewAttachmentCount(AppLocalizations l10n, int count) {
   return l10n.homeOverviewAttachmentCount(
     DisplayFormat.formatCountUnit(count, l10n.commonUnitAttachments),

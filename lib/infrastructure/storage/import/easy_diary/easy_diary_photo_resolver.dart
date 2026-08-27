@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'easy_diary_realm_entry.dart';
 import 'package:path/path.dart' as p;
@@ -80,6 +82,24 @@ String _resolveEasyDiaryImageMimeType({
   return 'application/octet-stream';
 }
 
+/// Flutter／Skia 能否解碼此圖片；檔頭合法但內容截斷、或 HEIC 等會回傳 false。
+Future<bool> canDecodeImageBytes(List<int> bytes) async {
+  if (bytes.isEmpty) {
+    return false;
+  }
+  try {
+    final ui.Codec codec = await ui.instantiateImageCodec(
+      Uint8List.fromList(bytes),
+    );
+    final ui.FrameInfo frame = await codec.getNextFrame();
+    frame.image.dispose();
+    codec.dispose();
+    return true;
+  } on Object {
+    return false;
+  }
+}
+
 final RegExp _uuidOnlyLinePattern = RegExp(
   r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
   caseSensitive: false,
@@ -149,7 +169,7 @@ Future<ResolvedEasyDiaryAttachments> resolveEasyDiaryPhotoAttachments({
       realmMimeType: photo.mimeType,
       fileNameHint: photoFile.path,
     );
-    if (!mimeType.startsWith('image/')) {
+    if (!mimeType.startsWith('image/') || !await canDecodeImageBytes(bytes)) {
       skippedAttachments++;
       continue;
     }

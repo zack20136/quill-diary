@@ -27,7 +27,10 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/portable_export_confirm.dart';
+import 'package:quill_diary/presentation/home/portable_import_confirm.dart';
 import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
 import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -62,6 +65,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController =
       TextEditingController();
   bool _busy = false;
+  bool _showBusyOverlay = true;
   String? _busyMessage;
   double? _busyProgress;
 
@@ -177,10 +181,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsSectionCard(
                     icon: Icons.swap_horiz_rounded,
                     title: l10n.settingsImportExportSectionTitle,
-                    description: transferAccess.canBackup
+                    description: transferAccess.canPortableTransfer
                         ? l10n.settingsImportExportSectionDescriptionEnabled
-                        : transferAccess.backupDisabledReason ??
-                              l10n.vaultTransferNeedsUnlockForBackup,
+                        : transferAccess.portableTransferDisabledReason ??
+                              l10n.vaultTransferNeedsUnlockForPortableTransfer,
                     child: AppActionGroup(
                       actions: <Widget>[
                         AppActionButton(
@@ -188,26 +192,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.file_download_outlined,
                           appearance: AppActionButtonAppearance.tonal,
                           fullWidth: true,
-                          onPressed: _busy || !transferAccess.canBackup
+                          onPressed: _busy || !transferAccess.canPortableTransfer
                               ? null
-                              : () => _runBusy(
-                                  _importDocuments,
-                                  message:
-                                      l10n.settingsImportExportImportProgress,
-                                ),
+                              : _importDocuments,
                         ),
                         AppActionButton(
                           label: l10n.settingsImportExportExportButton,
                           icon: Icons.file_upload_outlined,
                           appearance: AppActionButtonAppearance.primary,
                           fullWidth: true,
-                          onPressed: _busy || !transferAccess.canBackup
+                          onPressed: _busy || !transferAccess.canPortableTransfer
                               ? null
-                              : () => _runBusy(
-                                  _exportMarkdown,
-                                  message:
-                                      l10n.settingsImportExportExportProgress,
-                                ),
+                              : _exportMarkdown,
                         ),
                       ],
                     ),
@@ -245,7 +241,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
             ),
-            if (_busy)
+            if (_busy && _showBusyOverlay)
               SettingsBlockingProgressOverlay(
                 title: l10n.settingsProgressWorkingTitle,
                 message: _busyMessage ?? l10n.settingsProgressDefault,

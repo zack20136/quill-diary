@@ -19,6 +19,19 @@ import 'vault_restore_service.dart';
 import 'vault_transfer_models.dart';
 
 export 'vault_transfer_models.dart';
+export 'portable_transfer_service.dart' show ConfirmPortableImportPreview;
+export 'vault_archive_io.dart'
+    show
+        AnalyzedPortableImport,
+        HtmlExportEntrySummary,
+        HtmlExportEstimate,
+        HtmlExportOptions,
+        MarkdownExportEntrySummary,
+        MarkdownExportEstimate,
+        MarkdownExportOptions,
+        PortableImportConfirmResult,
+        PortableImportPreview,
+        PortableImportPreviewEntry;
 
 class VaultTransferService {
   VaultTransferService({
@@ -139,34 +152,49 @@ class VaultTransferService {
 
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
-    AppLocalizations l10n,
-  ) {
-    return _portableTransferService.exportMarkdownToDirectory(session, l10n);
+    AppLocalizations l10n, {
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
+  }) {
+    return _portableTransferService.exportMarkdownToDirectory(
+      session,
+      l10n,
+      entryIds: entryIds,
+      options: options,
+    );
   }
 
   Future<HtmlExportEstimate> estimateSelectedHtmlExport(Set<EntryId> entryIds) {
     return _portableTransferService.estimateSelectedHtmlExport(entryIds);
   }
 
+  Future<MarkdownExportEstimate> estimateMarkdownExport() {
+    return _portableTransferService.estimateMarkdownExport();
+  }
+
   Future<String?> exportHtmlToDirectory(
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
-    AppLocalizations l10n,
-  ) {
+    AppLocalizations l10n, {
+    HtmlExportOptions options = const HtmlExportOptions(),
+  }) {
     return _portableTransferService.exportHtmlToDirectory(
       session,
       entryIds,
       l10n,
+      options: options,
     );
   }
 
   Future<PortableImportResult?> importDocumentsWithPicker(
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
+    required ConfirmPortableImportPreview confirmPreview,
   }) {
     return _portableTransferService.importDocumentsWithPicker(
       session,
       l10n: l10n,
+      confirmPreview: confirmPreview,
     );
   }
 

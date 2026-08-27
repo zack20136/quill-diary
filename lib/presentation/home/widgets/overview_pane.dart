@@ -263,7 +263,17 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                 onPressed: exportEntryIds.isEmpty
                     ? null
                     : () => unawaited(
-                        exportEntriesAsHtml(context, ref, exportEntryIds),
+                        exportEntriesAsHtml(
+                          context,
+                          ref,
+                          exportEntryIds,
+                          scopeLabel: overviewMetricRangeCaption(
+                            context,
+                            scope,
+                            focusedMonth,
+                            focusedYear,
+                          ),
+                        ),
                       ),
                 style: const ButtonStyle(
                   fixedSize: WidgetStatePropertyAll<Size>(

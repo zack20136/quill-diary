@@ -34,6 +34,7 @@ import 'package:quill_diary/infrastructure/preferences/editor_typography_prefere
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/session/fake_app_lock_service.dart';
@@ -195,6 +196,7 @@ class _FlowPortableTransferService extends PortableTransferService {
   Future<PortableImportResult?> importDocumentsWithPicker(
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
+    required ConfirmPortableImportPreview confirmPreview,
   }) async {
     return importResult;
   }
@@ -202,8 +204,10 @@ class _FlowPortableTransferService extends PortableTransferService {
   @override
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
-    AppLocalizations l10n,
-  ) async {
+    AppLocalizations l10n, {
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
+  }) async {
     return exportPath;
   }
 }
@@ -519,6 +523,14 @@ void main() {
 
         final SettingsFlowFeedback? feedback = await controller.importDocuments(
           l10n,
+          confirmPreview: (PortableImportPreview preview) async {
+            return PortableImportConfirmResult(
+              confirmed: true,
+              selectedPreviewIndices: preview.entries
+                  .map((PortableImportPreviewEntry e) => e.previewIndex)
+                  .toSet(),
+            );
+          },
         );
 
         expect(feedback?.tone, SettingsFlowFeedbackTone.success);
@@ -547,6 +559,14 @@ void main() {
 
         final SettingsFlowFeedback? feedback = await controller.importDocuments(
           l10n,
+          confirmPreview: (PortableImportPreview preview) async {
+            return PortableImportConfirmResult(
+              confirmed: true,
+              selectedPreviewIndices: preview.entries
+                  .map((PortableImportPreviewEntry e) => e.previewIndex)
+                  .toSet(),
+            );
+          },
         );
 
         expect(feedback?.tone, SettingsFlowFeedbackTone.info);
@@ -572,6 +592,7 @@ void main() {
 
         final SettingsFlowFeedback? feedback = await controller.exportMarkdown(
           l10n,
+          entryIds: const <EntryId>{'entry-1'},
         );
 
         expect(feedback?.tone, SettingsFlowFeedbackTone.success);

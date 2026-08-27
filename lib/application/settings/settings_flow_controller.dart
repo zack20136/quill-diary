@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/application/restore/restore_backup_flow.dart';
 import 'package:quill_diary/application/restore/restore_prepared_context.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
@@ -16,6 +17,7 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
+import 'package:quill_diary/infrastructure/storage/portable_transfer_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
@@ -131,13 +133,20 @@ class SettingsFlowController {
 
   final Ref _ref;
 
-  Future<SettingsFlowFeedback?> importDocuments(AppLocalizations l10n) async {
+  Future<SettingsFlowFeedback?> importDocuments(
+    AppLocalizations l10n, {
+    required ConfirmPortableImportPreview confirmPreview,
+  }) async {
     final PortableImportResult? result = await _ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
               .read(portableTransferServiceProvider)
-              .importDocumentsWithPicker(session, l10n: l10n);
+              .importDocumentsWithPicker(
+                session,
+                l10n: l10n,
+                confirmPreview: confirmPreview,
+              );
         });
     if (result == null) {
       return null;
@@ -152,13 +161,26 @@ class SettingsFlowController {
     );
   }
 
-  Future<SettingsFlowFeedback?> exportMarkdown(AppLocalizations l10n) async {
+  Future<MarkdownExportEstimate> estimateMarkdownExport() {
+    return _ref.read(portableTransferServiceProvider).estimateMarkdownExport();
+  }
+
+  Future<SettingsFlowFeedback?> exportMarkdown(
+    AppLocalizations l10n, {
+    required Set<EntryId> entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
+  }) async {
     final String? exportPath = await _ref
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
               .read(portableTransferServiceProvider)
-              .exportMarkdownToDirectory(session, l10n);
+              .exportMarkdownToDirectory(
+                session,
+                l10n,
+                entryIds: entryIds,
+                options: options,
+              );
         });
     if (exportPath == null) {
       return null;

@@ -298,13 +298,71 @@ extension _SettingsPageCallbacks on _SettingsPageState {
   }
 
   Future<void> _importDocuments() async {
-    final AppLocalizations l10n = pageContext.l10n;
-    _showFeedback(await _settingsFlow.importDocuments(l10n));
+    final BuildContext context = pageContext;
+    final AppLocalizations l10n = context.l10n;
+    await _runBusy(() async {
+      _showFeedback(
+        await _settingsFlow.importDocuments(
+          l10n,
+          confirmPreview: (PortableImportPreview preview) async {
+            // 確認／選篇期間只擋操作、不蓋「請稍候」遮罩
+            if (isMounted) {
+              updatePageState(() {
+                _showBusyOverlay = false;
+              });
+            }
+            if (!context.mounted) {
+              return const PortableImportConfirmResult(
+                confirmed: false,
+                selectedPreviewIndices: <int>{},
+              );
+            }
+            final PortableImportConfirmResult result =
+                await confirmPortableImport(
+                  context: context,
+                  preview: preview,
+                );
+            if (isMounted && result.confirmed) {
+              updatePageState(() {
+                _showBusyOverlay = true;
+                _busyMessage = l10n.settingsImportExportImportProgress;
+              });
+            }
+            return result;
+          },
+        ),
+      );
+    }, message: l10n.settingsImportExportPrepareProgress);
   }
 
   Future<void> _exportMarkdown() async {
-    final AppLocalizations l10n = pageContext.l10n;
-    _showFeedback(await _settingsFlow.exportMarkdown(l10n));
+    final BuildContext context = pageContext;
+    final AppLocalizations l10n = context.l10n;
+    final MarkdownExportEstimate estimate = await _settingsFlow
+        .estimateMarkdownExport();
+    if (!context.mounted) {
+      return;
+    }
+    if (estimate.entryCount == 0) {
+      _showFeedback(
+        SettingsFlowFeedback(l10n.settingsImportExportExportNoEntriesMessage),
+      );
+      return;
+    }
+    final MarkdownExportConfirmResult confirmation =
+        await confirmMarkdownExport(context: context, estimate: estimate);
+    if (!confirmation.confirmed || !context.mounted) {
+      return;
+    }
+    await _runBusy(() async {
+      _showFeedback(
+        await _settingsFlow.exportMarkdown(
+          l10n,
+          entryIds: confirmation.selectedEntryIds,
+          options: confirmation.options,
+        ),
+      );
+    }, message: l10n.settingsImportExportExportProgress);
   }
 
   Future<void> _createRecoveryKey() async {
@@ -822,6 +880,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final AppLocalizations l10n = pageContext.l10n;
     updatePageState(() {
       _busy = true;
+      _showBusyOverlay = true;
       _busyMessage = message;
       _busyProgress = initialProgress;
     });
@@ -838,6 +897,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       if (isMounted) {
         updatePageState(() {
           _busy = false;
+          _showBusyOverlay = true;
           _busyMessage = null;
           _busyProgress = null;
         });
@@ -861,6 +921,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
 
     updatePageState(() {
       _busy = true;
+      _showBusyOverlay = true;
       _busyMessage = null;
       _busyProgress = null;
     });
@@ -877,6 +938,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       if (isMounted) {
         updatePageState(() {
           _busy = false;
+          _showBusyOverlay = true;
           _busyMessage = null;
           _busyProgress = null;
         });

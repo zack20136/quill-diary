@@ -16,7 +16,6 @@
   "commonClearSearchTooltip": "清除搜尋",
   "commonUnitEntries": "篇",
   "commonUnitTags": "筆",
-  "commonUnitImages": "張",
   "commonUnitAttachments": "個附件",
   "commonUnitDays": "天",
   "commonUnitCharacters": "字",
@@ -501,28 +500,107 @@
   "homeUnsavedDraftLabel": "未儲存",
   "homeHtmlExportLargeTitle": "HTML 檔案可能很大",
   "homeHtmlExportEmbeddedHint": "圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。",
-  "homeHtmlExportProceed": "仍要匯出",
-  "homeHtmlExportSelectionSummary": "選取 {entrySummary}日記，包含 {imageSummary}圖片。",
-  "@homeHtmlExportSelectionSummary": {
+  "portableExportConfirmTitle": "確認匯出",
+  "portableExportConfirmAction": "匯出",
+  "portableExportPlaintextWarning": "匯出後為明文檔案，日記內文與圖片不再受日記庫加密保護；取得檔案的人都能閱讀。",
+  "portableExportMarkdownFormatLabel": "格式：Markdown ZIP",
+  "portableExportHtmlFormatLabel": "格式：HTML",
+  "portableExportEntryCount": "篇數：{count}",
+  "@portableExportEntryCount": {
     "placeholders": {
-      "entrySummary": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportImageCount": "圖片：{count}",
+  "@portableExportImageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportAttachmentCount": "附件：{count}",
+  "@portableExportAttachmentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportDateRange": "日期範圍：{start} ～ {end}",
+  "@portableExportDateRange": {
+    "placeholders": {
+      "start": {
         "type": "String"
       },
-      "imageSummary": {
+      "end": {
         "type": "String"
       }
     }
   },
-  "homeHtmlExportImageSize": "圖片原始大小：約 {size}",
-  "@homeHtmlExportImageSize": {
+  "portableExportFileSize": "檔案大小：約 {size}",
+  "@portableExportFileSize": {
     "placeholders": {
       "size": {
         "type": "String"
       }
     }
   },
-  "homeHtmlExportEstimatedSize": "HTML 估算大小：約 {size}",
-  "@homeHtmlExportEstimatedSize": {
+  "portableExportScopeLabel": "範圍：{scope}",
+  "@portableExportScopeLabel": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "portableExportIncludeImagesLabel": "匯出圖片與附件",
+  "portableExportHidePersonNamesLabel": "隱藏人物名稱",
+  "portableExportHidePersonNamesHint": "把名冊裡的姓名與別名換成人物A、人物B 等代號。",
+  "portableExportSelectEntriesLabel": "選擇日記",
+  "portableExportSelectEntriesSummary": "已選 {selected}／{total} 篇",
+  "@portableExportSelectEntriesSummary": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportConfirmTitle": "確認匯入",
+  "portableImportConfirmAction": "開始匯入",
+  "portableImportLikelyDuplicateCount": "可能與庫內重複：{count} 篇",
+  "@portableImportLikelyDuplicateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportLikelyDuplicateMark": "可能重複",
+  "portableImportSkippedFilesCount": "無法解析：{count} 個檔案",
+  "@portableImportSkippedFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportSkippedAttachmentsCount": "略過附件：{count}",
+  "@portableImportSkippedAttachmentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportAddsAsNewHint": "仍會一律新增，不會自動去重。",
+  "homeHtmlExportImageSize": "圖片原始大小：約 {size}",
+  "@homeHtmlExportImageSize": {
     "placeholders": {
       "size": {
         "type": "String"
@@ -787,6 +865,7 @@
   },
   "vaultTransferNeedsUnlockForBackup": "請先解鎖日記庫，才能備份或匯出。",
   "vaultTransferNeedsRecoveryKeyForBackup": "請先建立復原金鑰，才能備份或匯出。",
+  "vaultTransferNeedsUnlockForPortableTransfer": "請先解鎖日記庫，才能匯入或匯出日記。",
   "vaultTransferNeedsUnlockForRestore": "請先解鎖日記庫，才能還原備份。",
   "vaultTransferLocalSectionDescriptionBackupLocked": "建立本機備份與匯出需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接匯入外部備份還原。",
   "vaultTransferDriveSectionDescriptionBackupLocked": "備份到 Google Drive 需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接從 Google Drive 還原。",
@@ -968,6 +1047,8 @@
   "settingsImportExportSectionTitle": "匯入與匯出",
   "settingsImportExportSectionDescriptionEnabled": "可從其他 App 或檔案匯入日記，也可把正式內容匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。",
   "settingsImportExportImportNoEntriesMessage": "找不到可匯入的日記，請確認檔案格式。",
+  "settingsImportExportExportNoEntriesMessage": "目前沒有可匯出的日記。",
+  "settingsImportExportPrepareProgress": "正在讀取與解析檔案…",
   "settingsImportExportImportAllSkippedMessage": "所選檔案皆無法匯入（格式不符、內容空白，或 Easy Diary 加密日記）。",
   "settingsImportExportFailureSelectedFilesUnreadable": "所選檔案無法讀取，請改用本機檔案或重新選取。",
   "settingsImportExportFailureZipNoEntries": "ZIP 內找不到可匯入的 Markdown、HTML 或 Easy Diary 完整備份。",

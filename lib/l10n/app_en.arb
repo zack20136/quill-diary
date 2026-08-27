@@ -16,7 +16,6 @@
   "commonClearSearchTooltip": "Clear Search",
   "commonUnitEntries": "entries",
   "commonUnitTags": "tags",
-  "commonUnitImages": "images",
   "commonUnitAttachments": "atts.",
   "commonUnitDays": "days",
   "commonUnitCharacters": "chars",
@@ -501,28 +500,107 @@
   "homeUnsavedDraftLabel": "Unsaved",
   "homeHtmlExportLargeTitle": "HTML File May Be Large",
   "homeHtmlExportEmbeddedHint": "Images are embedded into a single HTML file, which may be slower to open or harder to share.",
-  "homeHtmlExportProceed": "Export Anyway",
-  "homeHtmlExportSelectionSummary": "{entrySummary} selected, including {imageSummary}.",
-  "@homeHtmlExportSelectionSummary": {
+  "portableExportConfirmTitle": "Confirm Export",
+  "portableExportConfirmAction": "Export",
+  "portableExportPlaintextWarning": "Exported files are plaintext. Diary text and images are no longer protected by vault encryption; anyone with the files can read them.",
+  "portableExportMarkdownFormatLabel": "Format: Markdown ZIP",
+  "portableExportHtmlFormatLabel": "Format: HTML",
+  "portableExportEntryCount": "Entries: {count}",
+  "@portableExportEntryCount": {
     "placeholders": {
-      "entrySummary": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportImageCount": "Images: {count}",
+  "@portableExportImageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportAttachmentCount": "Attachments: {count}",
+  "@portableExportAttachmentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableExportDateRange": "Date range: {start} – {end}",
+  "@portableExportDateRange": {
+    "placeholders": {
+      "start": {
         "type": "String"
       },
-      "imageSummary": {
+      "end": {
         "type": "String"
       }
     }
   },
-  "homeHtmlExportImageSize": "Original image size: about {size}",
-  "@homeHtmlExportImageSize": {
+  "portableExportFileSize": "File size: about {size}",
+  "@portableExportFileSize": {
     "placeholders": {
       "size": {
         "type": "String"
       }
     }
   },
-  "homeHtmlExportEstimatedSize": "Estimated HTML size: about {size}",
-  "@homeHtmlExportEstimatedSize": {
+  "portableExportScopeLabel": "Scope: {scope}",
+  "@portableExportScopeLabel": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "portableExportIncludeImagesLabel": "Include images and attachments",
+  "portableExportHidePersonNamesLabel": "Hide person names",
+  "portableExportHidePersonNamesHint": "Replace names and aliases from your people list with Person A, Person B, and so on.",
+  "portableExportSelectEntriesLabel": "Select entries",
+  "portableExportSelectEntriesSummary": "{selected} of {total} selected",
+  "@portableExportSelectEntriesSummary": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportConfirmTitle": "Confirm import",
+  "portableImportConfirmAction": "Import",
+  "portableImportLikelyDuplicateCount": "Likely already in vault: {count}",
+  "@portableImportLikelyDuplicateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportLikelyDuplicateMark": "Possible duplicate",
+  "portableImportSkippedFilesCount": "Unreadable files: {count}",
+  "@portableImportSkippedFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportSkippedAttachmentsCount": "Skipped attachments: {count}",
+  "@portableImportSkippedAttachmentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "portableImportAddsAsNewHint": "Entries are always added as new; nothing is auto-deduplicated.",
+  "homeHtmlExportImageSize": "Original image size: about {size}",
+  "@homeHtmlExportImageSize": {
     "placeholders": {
       "size": {
         "type": "String"
@@ -787,6 +865,7 @@
   },
   "vaultTransferNeedsUnlockForBackup": "Unlock the diary vault before backing up or exporting.",
   "vaultTransferNeedsRecoveryKeyForBackup": "Create a recovery key before backing up or exporting.",
+  "vaultTransferNeedsUnlockForPortableTransfer": "Unlock the diary vault before importing or exporting diary files.",
   "vaultTransferNeedsUnlockForRestore": "Unlock the diary vault before restoring a backup.",
   "vaultTransferLocalSectionDescriptionBackupLocked": "Local backup/export requires an unlocked vault and a recovery key. If none exists or you forgot it, import an external backup to restore.",
   "vaultTransferDriveSectionDescriptionBackupLocked": "Google Drive backup requires an unlocked vault and a recovery key. If none exists or you forgot it, you can still restore from Google Drive.",
@@ -968,6 +1047,8 @@
   "settingsImportExportSectionTitle": "Import & Export",
   "settingsImportExportSectionDescriptionEnabled": "Import entries from other apps or files, or export saved content as files. Supports Markdown, HTML, and Easy Diary backups.",
   "settingsImportExportImportNoEntriesMessage": "No importable entries found. Check the file format.",
+  "settingsImportExportExportNoEntriesMessage": "There are no diary entries to export.",
+  "settingsImportExportPrepareProgress": "Reading and parsing files…",
   "settingsImportExportImportAllSkippedMessage": "None of the selected files could be imported (unsupported format, empty content, or encrypted Easy Diary entries).",
   "settingsImportExportFailureSelectedFilesUnreadable": "The selected files could not be read. Try choosing a local file again.",
   "settingsImportExportFailureZipNoEntries": "The ZIP contains no importable Markdown, HTML, or full Easy Diary backup.",

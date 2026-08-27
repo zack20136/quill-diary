@@ -57,9 +57,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonUnitTags => '筆';
 
   @override
-  String get commonUnitImages => '張';
-
-  @override
   String get commonUnitAttachments => '個附件';
 
   @override
@@ -956,24 +953,98 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeHtmlExportEmbeddedHint => '圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。';
 
   @override
-  String get homeHtmlExportProceed => '仍要匯出';
+  String get portableExportConfirmTitle => '確認匯出';
 
   @override
-  String homeHtmlExportSelectionSummary(
-    String entrySummary,
-    String imageSummary,
-  ) {
-    return '選取 $entrySummary日記，包含 $imageSummary圖片。';
+  String get portableExportConfirmAction => '匯出';
+
+  @override
+  String get portableExportPlaintextWarning =>
+      '匯出後為明文檔案，日記內文與圖片不再受日記庫加密保護；取得檔案的人都能閱讀。';
+
+  @override
+  String get portableExportMarkdownFormatLabel => '格式：Markdown ZIP';
+
+  @override
+  String get portableExportHtmlFormatLabel => '格式：HTML';
+
+  @override
+  String portableExportEntryCount(int count) {
+    return '篇數：$count';
   }
+
+  @override
+  String portableExportImageCount(int count) {
+    return '圖片：$count';
+  }
+
+  @override
+  String portableExportAttachmentCount(int count) {
+    return '附件：$count';
+  }
+
+  @override
+  String portableExportDateRange(String start, String end) {
+    return '日期範圍：$start ～ $end';
+  }
+
+  @override
+  String portableExportFileSize(String size) {
+    return '檔案大小：約 $size';
+  }
+
+  @override
+  String portableExportScopeLabel(String scope) {
+    return '範圍：$scope';
+  }
+
+  @override
+  String get portableExportIncludeImagesLabel => '匯出圖片與附件';
+
+  @override
+  String get portableExportHidePersonNamesLabel => '隱藏人物名稱';
+
+  @override
+  String get portableExportHidePersonNamesHint => '把名冊裡的姓名與別名換成人物A、人物B 等代號。';
+
+  @override
+  String get portableExportSelectEntriesLabel => '選擇日記';
+
+  @override
+  String portableExportSelectEntriesSummary(int selected, int total) {
+    return '已選 $selected／$total 篇';
+  }
+
+  @override
+  String get portableImportConfirmTitle => '確認匯入';
+
+  @override
+  String get portableImportConfirmAction => '開始匯入';
+
+  @override
+  String portableImportLikelyDuplicateCount(int count) {
+    return '可能與庫內重複：$count 篇';
+  }
+
+  @override
+  String get portableImportLikelyDuplicateMark => '可能重複';
+
+  @override
+  String portableImportSkippedFilesCount(int count) {
+    return '無法解析：$count 個檔案';
+  }
+
+  @override
+  String portableImportSkippedAttachmentsCount(int count) {
+    return '略過附件：$count';
+  }
+
+  @override
+  String get portableImportAddsAsNewHint => '仍會一律新增，不會自動去重。';
 
   @override
   String homeHtmlExportImageSize(String size) {
     return '圖片原始大小：約 $size';
-  }
-
-  @override
-  String homeHtmlExportEstimatedSize(String size) {
-    return 'HTML 估算大小：約 $size';
   }
 
   @override
@@ -1266,6 +1337,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vaultTransferNeedsRecoveryKeyForBackup => '請先建立復原金鑰，才能備份或匯出。';
+
+  @override
+  String get vaultTransferNeedsUnlockForPortableTransfer =>
+      '請先解鎖日記庫，才能匯入或匯出日記。';
 
   @override
   String get vaultTransferNeedsUnlockForRestore => '請先解鎖日記庫，才能還原備份。';
@@ -1661,6 +1736,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsImportExportImportNoEntriesMessage => '找不到可匯入的日記，請確認檔案格式。';
+
+  @override
+  String get settingsImportExportExportNoEntriesMessage => '目前沒有可匯出的日記。';
+
+  @override
+  String get settingsImportExportPrepareProgress => '正在讀取與解析檔案…';
 
   @override
   String get settingsImportExportImportAllSkippedMessage =>

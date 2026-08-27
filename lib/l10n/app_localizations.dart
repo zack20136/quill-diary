@@ -194,12 +194,6 @@ abstract class AppLocalizations {
   /// **'筆'**
   String get commonUnitTags;
 
-  /// No description provided for @commonUnitImages.
-  ///
-  /// In zh, this message translates to:
-  /// **'張'**
-  String get commonUnitImages;
-
   /// No description provided for @commonUnitAttachments.
   ///
   /// In zh, this message translates to:
@@ -1817,32 +1811,149 @@ abstract class AppLocalizations {
   /// **'圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。'**
   String get homeHtmlExportEmbeddedHint;
 
-  /// No description provided for @homeHtmlExportProceed.
+  /// No description provided for @portableExportConfirmTitle.
   ///
   /// In zh, this message translates to:
-  /// **'仍要匯出'**
-  String get homeHtmlExportProceed;
+  /// **'確認匯出'**
+  String get portableExportConfirmTitle;
 
-  /// No description provided for @homeHtmlExportSelectionSummary.
+  /// No description provided for @portableExportConfirmAction.
   ///
   /// In zh, this message translates to:
-  /// **'選取 {entrySummary}日記，包含 {imageSummary}圖片。'**
-  String homeHtmlExportSelectionSummary(
-    String entrySummary,
-    String imageSummary,
-  );
+  /// **'匯出'**
+  String get portableExportConfirmAction;
+
+  /// No description provided for @portableExportPlaintextWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'匯出後為明文檔案，日記內文與圖片不再受日記庫加密保護；取得檔案的人都能閱讀。'**
+  String get portableExportPlaintextWarning;
+
+  /// No description provided for @portableExportMarkdownFormatLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'格式：Markdown ZIP'**
+  String get portableExportMarkdownFormatLabel;
+
+  /// No description provided for @portableExportHtmlFormatLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'格式：HTML'**
+  String get portableExportHtmlFormatLabel;
+
+  /// No description provided for @portableExportEntryCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'篇數：{count}'**
+  String portableExportEntryCount(int count);
+
+  /// No description provided for @portableExportImageCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'圖片：{count}'**
+  String portableExportImageCount(int count);
+
+  /// No description provided for @portableExportAttachmentCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'附件：{count}'**
+  String portableExportAttachmentCount(int count);
+
+  /// No description provided for @portableExportDateRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期範圍：{start} ～ {end}'**
+  String portableExportDateRange(String start, String end);
+
+  /// No description provided for @portableExportFileSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'檔案大小：約 {size}'**
+  String portableExportFileSize(String size);
+
+  /// No description provided for @portableExportScopeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'範圍：{scope}'**
+  String portableExportScopeLabel(String scope);
+
+  /// No description provided for @portableExportIncludeImagesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'匯出圖片與附件'**
+  String get portableExportIncludeImagesLabel;
+
+  /// No description provided for @portableExportHidePersonNamesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'隱藏人物名稱'**
+  String get portableExportHidePersonNamesLabel;
+
+  /// No description provided for @portableExportHidePersonNamesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'把名冊裡的姓名與別名換成人物A、人物B 等代號。'**
+  String get portableExportHidePersonNamesHint;
+
+  /// No description provided for @portableExportSelectEntriesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇日記'**
+  String get portableExportSelectEntriesLabel;
+
+  /// No description provided for @portableExportSelectEntriesSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'已選 {selected}／{total} 篇'**
+  String portableExportSelectEntriesSummary(int selected, int total);
+
+  /// No description provided for @portableImportConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'確認匯入'**
+  String get portableImportConfirmTitle;
+
+  /// No description provided for @portableImportConfirmAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'開始匯入'**
+  String get portableImportConfirmAction;
+
+  /// No description provided for @portableImportLikelyDuplicateCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能與庫內重複：{count} 篇'**
+  String portableImportLikelyDuplicateCount(int count);
+
+  /// No description provided for @portableImportLikelyDuplicateMark.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能重複'**
+  String get portableImportLikelyDuplicateMark;
+
+  /// No description provided for @portableImportSkippedFilesCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法解析：{count} 個檔案'**
+  String portableImportSkippedFilesCount(int count);
+
+  /// No description provided for @portableImportSkippedAttachmentsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'略過附件：{count}'**
+  String portableImportSkippedAttachmentsCount(int count);
+
+  /// No description provided for @portableImportAddsAsNewHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍會一律新增，不會自動去重。'**
+  String get portableImportAddsAsNewHint;
 
   /// No description provided for @homeHtmlExportImageSize.
   ///
   /// In zh, this message translates to:
   /// **'圖片原始大小：約 {size}'**
   String homeHtmlExportImageSize(String size);
-
-  /// No description provided for @homeHtmlExportEstimatedSize.
-  ///
-  /// In zh, this message translates to:
-  /// **'HTML 估算大小：約 {size}'**
-  String homeHtmlExportEstimatedSize(String size);
 
   /// No description provided for @homeHtmlExportSuccess.
   ///
@@ -2323,6 +2434,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'請先建立復原金鑰，才能備份或匯出。'**
   String get vaultTransferNeedsRecoveryKeyForBackup;
+
+  /// No description provided for @vaultTransferNeedsUnlockForPortableTransfer.
+  ///
+  /// In zh, this message translates to:
+  /// **'請先解鎖日記庫，才能匯入或匯出日記。'**
+  String get vaultTransferNeedsUnlockForPortableTransfer;
 
   /// No description provided for @vaultTransferNeedsUnlockForRestore.
   ///
@@ -3030,6 +3147,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'找不到可匯入的日記，請確認檔案格式。'**
   String get settingsImportExportImportNoEntriesMessage;
+
+  /// No description provided for @settingsImportExportExportNoEntriesMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前沒有可匯出的日記。'**
+  String get settingsImportExportExportNoEntriesMessage;
+
+  /// No description provided for @settingsImportExportPrepareProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在讀取與解析檔案…'**
+  String get settingsImportExportPrepareProgress;
 
   /// No description provided for @settingsImportExportImportAllSkippedMessage.
   ///

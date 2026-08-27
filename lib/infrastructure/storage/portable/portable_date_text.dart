@@ -1,27 +1,43 @@
 import '../../../domain/diary/diary_entry.dart';
 import '../../../domain/shared/value_objects.dart';
 
-/// Quill Diary HTML 匯出用的條目日期字串（日記日期 + 建立時間）。
+const List<String> _zhTwWeekdayLong = <String>[
+  '星期一',
+  '星期二',
+  '星期三',
+  '星期四',
+  '星期五',
+  '星期六',
+  '星期日',
+];
+
+/// Quill Diary HTML 匯出用的條目日期字串（日記日期 + 星期 + 建立時間）。
+///
+/// 格式：`2026-10-31 星期六 10:14`。星期依 [DiaryEntry.date]，時間依 [DiaryEntry.createdAt] 本地時區。
 String formatQuillDiaryExportEntryDateTime(DiaryEntry entry) {
+  final DateTime day = entry.date.toDateTime();
   final DateTime local = entry.createdAt.toLocal();
   return '${entry.date.value} '
+      '${_zhTwWeekdayLong[day.weekday - 1]} '
       '${local.hour.toString().padLeft(2, '0')}:'
       '${local.minute.toString().padLeft(2, '0')}';
 }
 
-/// 從可攜式文字解析日期時間（支援 `2026-05-28 16:00` 等格式）。
+/// 從可攜式文字解析日期時間（`2026-10-31 星期六 10:14` 等）。
 DateTime? parsePortableDateTime(String text) {
-  final Match? ymdTime = RegExp(
-    r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?',
+  final Match? ymdWeekdayTime = RegExp(
+    r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})'
+    r'\s+星期[一二三四五六日]'
+    r'\s+(\d{1,2}):(\d{2})(?::(\d{2}))?',
   ).firstMatch(text);
-  if (ymdTime != null) {
+  if (ymdWeekdayTime != null) {
     return DateTime(
-      int.parse(ymdTime.group(1)!),
-      int.parse(ymdTime.group(2)!),
-      int.parse(ymdTime.group(3)!),
-      int.parse(ymdTime.group(4)!),
-      int.parse(ymdTime.group(5)!),
-      ymdTime.group(6) != null ? int.parse(ymdTime.group(6)!) : 0,
+      int.parse(ymdWeekdayTime.group(1)!),
+      int.parse(ymdWeekdayTime.group(2)!),
+      int.parse(ymdWeekdayTime.group(3)!),
+      int.parse(ymdWeekdayTime.group(4)!),
+      int.parse(ymdWeekdayTime.group(5)!),
+      ymdWeekdayTime.group(6) != null ? int.parse(ymdWeekdayTime.group(6)!) : 0,
     );
   }
 

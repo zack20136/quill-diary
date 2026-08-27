@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../../../domain/diary/diary_entry.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
+import '../../database/index_database.dart';
 import '../../markdown/front_matter_codec.dart';
 import '../import/easy_diary/easy_diary_backup_import.dart';
 import '../shared/archive_extract.dart';
@@ -17,6 +18,7 @@ import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'html_import_parser.dart';
 import 'portable_date_text.dart';
+import 'portable_import_preview.dart';
 import 'portable_io_types.dart';
 
 /// 供測試與平台專用 Easy Diary 匯入接線使用的工廠掛鉤。
@@ -43,8 +45,8 @@ class PortableImportIo {
   final FrontMatterCodec _frontMatterCodec;
   final EasyDiaryBackupImporterFactory _easyDiaryBackupImporterFactory;
 
-  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`。
-  Future<PortableImportResult> importDocuments({
+  /// 遞迴解析資料夾內的 `.md`、`.html`、`.htm`（不寫入）。
+  Future<AnalyzedPortableImport> analyzeDocuments({
     required UnlockedVaultSession session,
     required Directory rootDirectory,
   }) async {
@@ -53,56 +55,77 @@ class PortableImportIo {
     }
 
     final List<File> importFiles = await _discoverImportFiles(rootDirectory);
-    int importedEntries = 0;
-    int skippedFiles = 0;
-    int skippedAttachments = 0;
+    final List<ParsedImportEntry> parsedEntries = <ParsedImportEntry>[];
+    var skippedFiles = 0;
+    var skippedAttachments = 0;
 
     for (final File file in importFiles) {
       final String extension = p.extension(file.path).toLowerCase();
       if (extension == '.html' || extension == '.htm') {
-        final ImportFileTotals fileTotals = await _importQuillDiaryHtmlFile(
-          session: session,
-          file: file,
-          importRootDirectory: rootDirectory,
-        );
-        importedEntries += fileTotals.importedEntries;
-        skippedFiles += fileTotals.skippedFiles;
-        skippedAttachments += fileTotals.skippedAttachments;
+        final ({List<ParsedImportEntry> entries, int skippedFiles}) parsed =
+            await _analyzeQuillDiaryHtmlFile(
+              file: file,
+              importRootDirectory: rootDirectory,
+            );
+        if (parsed.entries.isEmpty) {
+          skippedFiles += parsed.skippedFiles;
+          continue;
+        }
+        parsedEntries.addAll(parsed.entries);
+        for (final ParsedImportEntry entry in parsed.entries) {
+          skippedAttachments += entry.skippedAttachments;
+        }
         continue;
       }
 
-      final List<ParsedImportEntry> parsedEntries =
+      final List<ParsedImportEntry> markdownEntries =
           await _parseMarkdownExportFile(
             file: file,
             importRootDirectory: rootDirectory,
           );
-      if (parsedEntries.isEmpty) {
+      if (markdownEntries.isEmpty) {
         skippedFiles++;
         continue;
       }
-
-      final ImportFileTotals totals = await _persistParsedEntries(
-        session: session,
-        parsedEntries: parsedEntries,
-      );
-      importedEntries += totals.importedEntries;
-      skippedFiles += totals.skippedFiles;
-      skippedAttachments += totals.skippedAttachments;
+      for (final ParsedImportEntry entry in markdownEntries) {
+        if (entry.isEmpty) {
+          skippedFiles++;
+          continue;
+        }
+        parsedEntries.add(entry);
+        skippedAttachments += entry.skippedAttachments;
+      }
     }
 
-    if (importedEntries > 0) {
-      await _repository.syncTagStylesBetweenVaultAndIndex();
-    }
-
-    return PortableImportResult(
-      importedEntries: importedEntries,
+    return _toAnalyzedImport(
+      session: session,
+      parsedEntries: parsedEntries,
       skippedFiles: skippedFiles,
       skippedAttachments: skippedAttachments,
     );
   }
 
-  /// 解壓 zip 後優先嘗試 Easy Diary 完整備份，否則走 Markdown / HTML 可攜式匯入。
-  Future<PortableImportResult> importDocumentsFromZip({
+  /// 遞迴匯入資料夾內的 `.md`、`.html`、`.htm`。
+  Future<PortableImportResult> importDocuments({
+    required UnlockedVaultSession session,
+    required Directory rootDirectory,
+  }) async {
+    final AnalyzedPortableImport analyzed = await analyzeDocuments(
+      session: session,
+      rootDirectory: rootDirectory,
+    );
+    return persistAnalyzedImport(
+      session: session,
+      analyzed: analyzed,
+      selectedPreviewIndices: analyzed.preview.entries
+          .map((PortableImportPreviewEntry e) => e.previewIndex)
+          .toSet(),
+    );
+  }
+
+  /// 解壓 zip 後解析（不寫入）；呼叫端負責之後清理 [ownedTempRoot]。
+  Future<({AnalyzedPortableImport analyzed, Directory ownedTempRoot})>
+  analyzeDocumentsFromZip({
     required UnlockedVaultSession session,
     required File zipFile,
   }) async {
@@ -120,38 +143,206 @@ class PortableImportIo {
 
       final EasyDiaryBackupImporter easyDiaryImporter =
           _easyDiaryBackupImporterFactory();
-      final PortableImportResult? easyDiaryResult = await easyDiaryImporter
-          .tryImportFromExtractedRoot(
+      final AnalyzedPortableImport? easyDiaryAnalyzed = await easyDiaryImporter
+          .tryAnalyzeFromExtractedRoot(
             session: session,
             repository: _repository,
             extractedRoot: tempRoot,
           );
-      if (easyDiaryResult != null) {
-        if (easyDiaryResult.importedEntries > 0) {
-          await _repository.syncTagStylesBetweenVaultAndIndex();
-        }
-        return easyDiaryResult;
+      if (easyDiaryAnalyzed != null) {
+        return (analyzed: easyDiaryAnalyzed, ownedTempRoot: tempRoot);
       }
 
-      final PortableImportResult portableResult = await importDocuments(
+      final AnalyzedPortableImport portableAnalyzed = await analyzeDocuments(
         session: session,
         rootDirectory: tempRoot,
       );
-      if (portableResult.importedEntries == 0 &&
-          portableResult.skippedFiles == 0 &&
-          portableResult.skippedAttachments == 0) {
-        return const PortableImportResult(
-          importedEntries: 0,
-          skippedFiles: 0,
-          failureCode: PortableImportFailureCode.zipNoEntries,
+      if (!portableAnalyzed.hasImportableEntries &&
+          portableAnalyzed.preview.skippedFiles == 0 &&
+          portableAnalyzed.preview.skippedAttachments == 0) {
+        return (
+          analyzed: AnalyzedPortableImport(
+            parsedEntries: const <ParsedImportEntry>[],
+            preview: const PortableImportPreview(
+              entries: <PortableImportPreviewEntry>[],
+              skippedFiles: 0,
+              skippedAttachments: 0,
+            ),
+            failureCode: PortableImportFailureCode.zipNoEntries,
+          ),
+          ownedTempRoot: tempRoot,
         );
       }
-      return portableResult;
-    } finally {
+      return (analyzed: portableAnalyzed, ownedTempRoot: tempRoot);
+    } catch (_) {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
+      rethrow;
     }
+  }
+
+  /// 解壓 zip 後優先嘗試 Easy Diary 完整備份，否則走 Markdown / HTML 可攜式匯入。
+  Future<PortableImportResult> importDocumentsFromZip({
+    required UnlockedVaultSession session,
+    required File zipFile,
+  }) async {
+    final ({AnalyzedPortableImport analyzed, Directory ownedTempRoot}) prepared =
+        await analyzeDocumentsFromZip(session: session, zipFile: zipFile);
+    try {
+      return await persistAnalyzedImport(
+        session: session,
+        analyzed: prepared.analyzed,
+        selectedPreviewIndices: prepared.analyzed.preview.entries
+            .map((PortableImportPreviewEntry e) => e.previewIndex)
+            .toSet(),
+      );
+    } finally {
+      if (prepared.ownedTempRoot.existsSync()) {
+        await prepared.ownedTempRoot.delete(recursive: true);
+      }
+    }
+  }
+
+  Future<PortableImportResult> persistAnalyzedImport({
+    required UnlockedVaultSession session,
+    required AnalyzedPortableImport analyzed,
+    required Set<int> selectedPreviewIndices,
+  }) async {
+    if (analyzed.failureCode != null && !analyzed.hasImportableEntries) {
+      return PortableImportResult(
+        importedEntries: 0,
+        skippedFiles: analyzed.preview.skippedFiles == 0
+            ? 1
+            : analyzed.preview.skippedFiles,
+        skippedAttachments: analyzed.preview.skippedAttachments,
+        failureCode: analyzed.failureCode,
+      );
+    }
+
+    final List<ParsedImportEntry> selected = <ParsedImportEntry>[];
+    for (final PortableImportPreviewEntry previewEntry
+        in analyzed.preview.entries) {
+      if (!selectedPreviewIndices.contains(previewEntry.previewIndex)) {
+        continue;
+      }
+      selected.add(analyzed.parsedEntries[previewEntry.previewIndex]);
+    }
+
+    final ImportFileTotals totals = await _persistParsedEntries(
+      session: session,
+      parsedEntries: selected,
+    );
+
+    if (totals.importedEntries > 0) {
+      await _repository.syncTagStylesBetweenVaultAndIndex();
+    }
+
+    return PortableImportResult(
+      importedEntries: totals.importedEntries,
+      skippedFiles: analyzed.preview.skippedFiles + totals.skippedFiles,
+      skippedAttachments: _selectedSkippedAttachments(
+        analyzed: analyzed,
+        selectedPreviewIndices: selectedPreviewIndices,
+      ),
+    );
+  }
+
+  int _selectedSkippedAttachments({
+    required AnalyzedPortableImport analyzed,
+    required Set<int> selectedPreviewIndices,
+  }) {
+    var total = 0;
+    for (final PortableImportPreviewEntry previewEntry
+        in analyzed.preview.entries) {
+      if (!selectedPreviewIndices.contains(previewEntry.previewIndex)) {
+        continue;
+      }
+      total += previewEntry.skippedAttachments;
+    }
+    return total;
+  }
+
+  Future<AnalyzedPortableImport> _toAnalyzedImport({
+    required UnlockedVaultSession session,
+    required List<ParsedImportEntry> parsedEntries,
+    required int skippedFiles,
+    required int skippedAttachments,
+    String? failureCode,
+  }) async {
+    final Set<String> existingKeys = await _existingDuplicateKeys(session);
+    final List<PortableImportPreviewEntry> previewEntries =
+        <PortableImportPreviewEntry>[];
+    for (var index = 0; index < parsedEntries.length; index++) {
+      final ParsedImportEntry parsed = parsedEntries[index];
+      final String displayTitle = portableImportDisplayTitle(parsed.entry);
+      previewEntries.add(
+        PortableImportPreviewEntry(
+          previewIndex: index,
+          date: parsed.entry.date,
+          title: parsed.entry.normalizedTitle,
+          displayTitle: displayTitle,
+          likelyDuplicate: existingKeys.contains(
+            portableImportDuplicateKey(parsed.entry),
+          ),
+          attachmentCount: parsed.attachments.length,
+          skippedAttachments: parsed.skippedAttachments,
+        ),
+      );
+    }
+
+    return AnalyzedPortableImport(
+      parsedEntries: parsedEntries,
+      preview: PortableImportPreview(
+        entries: previewEntries,
+        skippedFiles: skippedFiles,
+        skippedAttachments: skippedAttachments,
+      ),
+      failureCode: failureCode,
+    );
+  }
+
+  Future<Set<String>> _existingDuplicateKeys(
+    UnlockedVaultSession session,
+  ) async {
+    final List<EntryIndexRecord> records = await _repository.listEntries();
+    final Set<String> keys = <String>{};
+    for (final EntryIndexRecord record in records) {
+      final String titleKey;
+      final String? normalized = record.title?.trim();
+      if (normalized != null && normalized.isNotEmpty) {
+        titleKey = normalized;
+      } else {
+        final DiaryEntry? entry = await _repository.loadEntry(
+          session,
+          record.id,
+        );
+        titleKey = entry == null ? '' : portableImportDisplayTitle(entry);
+      }
+      keys.add('${record.date.value}\u0000$titleKey');
+    }
+    return keys;
+  }
+
+  Future<({List<ParsedImportEntry> entries, int skippedFiles})>
+  _analyzeQuillDiaryHtmlFile({
+    required File file,
+    required Directory importRootDirectory,
+  }) async {
+    final String html = await file.readAsString();
+    if (!isQuillDiaryExportHtml(html)) {
+      return (entries: const <ParsedImportEntry>[], skippedFiles: 1);
+    }
+    final List<ParsedImportEntry> parsedEntries =
+        await _parseQuillDiaryExportArticles(
+          file: file,
+          html: html,
+          importRootDirectory: importRootDirectory,
+        );
+    if (parsedEntries.isEmpty) {
+      return (entries: const <ParsedImportEntry>[], skippedFiles: 1);
+    }
+    return (entries: parsedEntries, skippedFiles: 0);
   }
 
   Future<ImportFileTotals> _persistParsedEntries({
@@ -220,54 +411,6 @@ class PortableImportIo {
           : <ParsedImportEntry>[parsedEntry];
     }
     return const <ParsedImportEntry>[];
-  }
-
-  Future<ImportFileTotals> _importQuillDiaryHtmlFile({
-    required UnlockedVaultSession session,
-    required File file,
-    required Directory importRootDirectory,
-  }) async {
-    final String html = await file.readAsString();
-    if (!isQuillDiaryExportHtml(html)) {
-      return const ImportFileTotals(
-        importedEntries: 0,
-        skippedFiles: 1,
-        skippedAttachments: 0,
-      );
-    }
-    return _importQuillDiaryExportFile(
-      session: session,
-      file: file,
-      html: html,
-      importRootDirectory: importRootDirectory,
-    );
-  }
-
-  Future<ImportFileTotals> _importQuillDiaryExportFile({
-    required UnlockedVaultSession session,
-    required File file,
-    required String html,
-    required Directory importRootDirectory,
-  }) async {
-    final List<ParsedImportEntry> parsedEntries =
-        await _parseQuillDiaryExportArticles(
-          file: file,
-          html: html,
-          importRootDirectory: importRootDirectory,
-        );
-
-    if (parsedEntries.isEmpty) {
-      return const ImportFileTotals(
-        importedEntries: 0,
-        skippedFiles: 1,
-        skippedAttachments: 0,
-      );
-    }
-
-    return _persistParsedEntries(
-      session: session,
-      parsedEntries: parsedEntries,
-    );
   }
 
   Future<ParsedImportEntry?> _parseMarkdownExportDocument({

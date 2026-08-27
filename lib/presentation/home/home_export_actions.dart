@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -8,16 +7,13 @@ import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'home_formatters.dart';
+import 'portable_export_confirm.dart';
 import 'widgets/home_selection_toolbar.dart';
-
-const int kHtmlExportImageWarningThresholdBytes = 50 * 1024 * 1024;
 
 Future<void> exportSelectedHomeEntriesAsHtml(
   BuildContext context,
@@ -35,25 +31,29 @@ Future<void> exportSelectedHomeEntriesAsHtml(
 Future<void> exportEntriesAsHtml(
   BuildContext context,
   WidgetRef ref,
-  Set<EntryId> selectedIds,
-) async {
+  Set<EntryId> selectedIds, {
+  String? scopeLabel,
+}) async {
   if (selectedIds.isEmpty) {
     return;
   }
 
-  final Set<EntryId> exportIds = Set<EntryId>.from(selectedIds);
   final transferService = ref.read(vaultTransferServiceProvider);
   try {
     final HtmlExportEstimate estimate = await transferService
-        .estimateSelectedHtmlExport(exportIds);
+        .estimateSelectedHtmlExport(selectedIds);
     if (!context.mounted) {
       return;
     }
-    if (estimate.exceedsImageBytes(kHtmlExportImageWarningThresholdBytes)) {
-      final bool confirmed = await confirmLargeHtmlExport(context, estimate);
-      if (!confirmed || !context.mounted) {
-        return;
-      }
+    final HtmlExportConfirmResult confirmation = await confirmHtmlExport(
+      context: context,
+      estimate: estimate,
+      scopeLabel: scopeLabel,
+    );
+    if (!confirmation.confirmed ||
+        !context.mounted ||
+        confirmation.selectedEntryIds.isEmpty) {
+      return;
     }
 
     final String? savedPath = await ref
@@ -61,8 +61,9 @@ Future<void> exportEntriesAsHtml(
         .runSensitiveTask((UnlockedVaultSession activeSession) {
           return transferService.exportHtmlToDirectory(
             activeSession,
-            exportIds,
+            confirmation.selectedEntryIds,
             context.l10n,
+            options: confirmation.options,
           );
         });
     if (savedPath == null || !context.mounted) {
@@ -74,15 +75,6 @@ Future<void> exportEntriesAsHtml(
         DisplayFormat.formatSavedFileNameForDisplay(savedPath),
       ),
       tone: AppFeedbackTone.success,
-    );
-  } on StateError catch (error) {
-    if (!context.mounted) {
-      return;
-    }
-    showAppFeedbackToast(
-      context,
-      userFacingErrorMessage(error, l10n: context.l10n),
-      tone: AppFeedbackTone.error,
     );
   } catch (error) {
     if (!context.mounted) {
@@ -102,46 +94,6 @@ String overviewExportLabel(BuildContext context, MemoryScope scope) {
     MemoryScope.year => context.l10n.homeExportRecapYear,
     MemoryScope.month => context.l10n.homeExportRecapMonth,
   };
-}
-
-Future<bool> confirmLargeHtmlExport(
-  BuildContext context,
-  HtmlExportEstimate estimate,
-) async {
-  return showAppConfirmDialog(
-    context: context,
-    title: context.l10n.homeHtmlExportLargeTitle,
-    cancelLabel: context.l10n.commonActionCancel,
-    confirmLabel: context.l10n.homeHtmlExportProceed,
-    content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                homeHtmlExportSelectionSummary(
-                  context.l10n,
-                  estimate.entryCount,
-                  estimate.imageCount,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.homeHtmlExportImageSize(
-                  DisplayFormat.formatBytesForDisplay(estimate.imageBytes),
-                ),
-              ),
-              Text(
-                context.l10n.homeHtmlExportEstimatedSize(
-                  DisplayFormat.formatBytesForDisplay(
-                    estimate.estimatedHtmlBytes,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(context.l10n.homeHtmlExportEmbeddedHint),
-            ],
-          ),
-  );
 }
 
 Future<void> deleteSelectedHomeEntries(

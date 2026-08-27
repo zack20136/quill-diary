@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -151,18 +153,11 @@ Future<void> _writeImportImages(Directory directory) async {
 }
 
 Future<void> _writeImage(File file) async {
+  // 1×1 透明 PNG（Easy Diary 匯入會驗證可解碼）
   await file.writeAsBytes(
-    Uint8List.fromList(<int>[
-      0x89,
-      0x50,
-      0x4E,
-      0x47,
-      0x0D,
-      0x0A,
-      0x1A,
-      0x0A,
-      0,
-    ]),
+    base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    ),
   );
 }
 

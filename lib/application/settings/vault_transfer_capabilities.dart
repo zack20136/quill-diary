@@ -4,14 +4,22 @@ import 'package:quill_diary/l10n/l10n.dart';
 class VaultTransferCapabilities {
   const VaultTransferCapabilities({
     required this.canBackup,
+    required this.canPortableTransfer,
     required this.canRestore,
     this.backupDisabledReason,
+    this.portableTransferDisabledReason,
     this.restoreDisabledReason,
   });
 
+  /// 完整備份／匯出本機或 Drive 備份（需解鎖 + Recovery Key）。
   final bool canBackup;
+
+  /// 可攜式匯入／Markdown／HTML 匯出（只需解鎖 session）。
+  final bool canPortableTransfer;
+
   final bool canRestore;
   final String? backupDisabledReason;
+  final String? portableTransferDisabledReason;
   final String? restoreDisabledReason;
 
   factory VaultTransferCapabilities.fromSessionContext({
@@ -21,6 +29,7 @@ class VaultTransferCapabilities {
     required AppLockStatus lockStatus,
   }) {
     final bool canBackup = hasUnlockedSession && hasRecoveryKey;
+    final bool canPortableTransfer = hasUnlockedSession;
     final bool canRestore = _canRestoreWithoutUnlock(
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
@@ -29,6 +38,7 @@ class VaultTransferCapabilities {
 
     return VaultTransferCapabilities(
       canBackup: canBackup,
+      canPortableTransfer: canPortableTransfer,
       canRestore: canRestore,
       backupDisabledReason: canBackup
           ? null
@@ -37,6 +47,9 @@ class VaultTransferCapabilities {
               hasRecoveryKey: hasRecoveryKey,
               l10n: l10n,
             ),
+      portableTransferDisabledReason: canPortableTransfer
+          ? null
+          : l10n.vaultTransferNeedsUnlockForPortableTransfer,
       restoreDisabledReason: canRestore
           ? null
           : l10n.vaultTransferNeedsUnlockForRestore,

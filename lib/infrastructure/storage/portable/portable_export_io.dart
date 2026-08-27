@@ -7,32 +7,185 @@ import 'package:path/path.dart' as p;
 
 import '../../../domain/attachment/asset_attachment.dart';
 import '../../../domain/diary/diary_entry.dart';
+import '../../../domain/people/person.dart';
 import '../../../domain/security/unlocked_vault_session.dart';
 import '../../../domain/shared/value_objects.dart';
 import '../../database/index_database.dart';
 import '../../markdown/front_matter_codec.dart';
 import '../../database/entry_index_sorting.dart';
+import '../shared/media_type_utils.dart';
 import '../shared/vault_file_ops.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
+import 'html_export_person_anonymizer.dart';
 import 'portable_date_text.dart';
 import 'portable_io_types.dart';
 
-/// 嵌入圖片資料前，對所選 HTML 匯出的尺寸估算。
-class HtmlExportEstimate {
-  const HtmlExportEstimate({
-    required this.entryCount,
-    required this.imageCount,
-    required this.imageBytes,
-    required this.estimatedHtmlBytes,
+/// HTML 可攜式匯出選項。
+class HtmlExportOptions {
+  const HtmlExportOptions({
+    this.includeImages = true,
+    this.hidePersonNames = false,
+    this.useEnglishPersonLabels = false,
   });
 
-  final int entryCount;
+  final bool includeImages;
+  final bool hidePersonNames;
+  final bool useEnglishPersonLabels;
+}
+
+/// Markdown ZIP 可攜式匯出選項。
+class MarkdownExportOptions {
+  const MarkdownExportOptions({
+    this.hidePersonNames = false,
+    this.useEnglishPersonLabels = false,
+  });
+
+  final bool hidePersonNames;
+  final bool useEnglishPersonLabels;
+}
+
+/// HTML 匯出候補清單中的單篇摘要（供確認 dialog 選取）。
+class HtmlExportEntrySummary {
+  const HtmlExportEntrySummary({
+    required this.id,
+    required this.date,
+    required this.title,
+    required this.imageCount,
+    required this.imageBytes,
+    required this.textBytes,
+  });
+
+  final EntryId id;
+  final DateOnly date;
+  final String? title;
   final int imageCount;
   final int imageBytes;
-  final int estimatedHtmlBytes;
+  final int textBytes;
+}
+
+/// 嵌入圖片資料前，對所選 HTML 匯出的尺寸估算。
+class HtmlExportEstimate {
+  const HtmlExportEstimate({required this.entries});
+
+  final List<HtmlExportEntrySummary> entries;
+
+  int get entryCount => entries.length;
+
+  int get imageCount =>
+      entries.fold<int>(0, (int sum, HtmlExportEntrySummary e) => sum + e.imageCount);
+
+  int get imageBytes =>
+      entries.fold<int>(0, (int sum, HtmlExportEntrySummary e) => sum + e.imageBytes);
+
+  /// 依是否內嵌圖片估算實際匯出檔大小。
+  int estimatedExportBytes({required bool includeImages}) {
+    final int textBytes = entries.fold<int>(
+      0,
+      (int sum, HtmlExportEntrySummary e) => sum + e.textBytes,
+    );
+    if (!includeImages) {
+      return textBytes;
+    }
+    return textBytes + ((imageBytes * 4 + 2) ~/ 3);
+  }
+
+  DateOnly? get firstDate {
+    DateOnly? first;
+    for (final HtmlExportEntrySummary entry in entries) {
+      if (first == null || entry.date.value.compareTo(first.value) < 0) {
+        first = entry.date;
+      }
+    }
+    return first;
+  }
+
+  DateOnly? get lastDate {
+    DateOnly? last;
+    for (final HtmlExportEntrySummary entry in entries) {
+      if (last == null || entry.date.value.compareTo(last.value) > 0) {
+        last = entry.date;
+      }
+    }
+    return last;
+  }
 
   bool exceedsImageBytes(int thresholdBytes) => imageBytes >= thresholdBytes;
+
+  /// 依選中 ID 產生子集合估算（順序維持原候補順序）。
+  HtmlExportEstimate forSelected(Set<EntryId> selectedIds) {
+    return HtmlExportEstimate(
+      entries: entries
+          .where((HtmlExportEntrySummary e) => selectedIds.contains(e.id))
+          .toList(growable: false),
+    );
+  }
+}
+
+/// Markdown ZIP 匯出前的輕量估算。
+class MarkdownExportEntrySummary {
+  const MarkdownExportEntrySummary({
+    required this.id,
+    required this.date,
+    required this.title,
+    required this.attachmentCount,
+    required this.attachmentBytes,
+    required this.textBytes,
+  });
+
+  final EntryId id;
+  final DateOnly date;
+  final String? title;
+  final int attachmentCount;
+  final int attachmentBytes;
+  final int textBytes;
+}
+
+class MarkdownExportEstimate {
+  const MarkdownExportEstimate({required this.entries});
+
+  final List<MarkdownExportEntrySummary> entries;
+
+  int get entryCount => entries.length;
+
+  int get attachmentCount => entries.fold<int>(
+    0,
+    (int sum, MarkdownExportEntrySummary e) => sum + e.attachmentCount,
+  );
+
+  int get estimatedBytes => entries.fold<int>(
+    0,
+    (int sum, MarkdownExportEntrySummary e) =>
+        sum + e.textBytes + e.attachmentBytes,
+  );
+
+  DateOnly? get firstDate {
+    DateOnly? first;
+    for (final MarkdownExportEntrySummary entry in entries) {
+      if (first == null || entry.date.value.compareTo(first.value) < 0) {
+        first = entry.date;
+      }
+    }
+    return first;
+  }
+
+  DateOnly? get lastDate {
+    DateOnly? last;
+    for (final MarkdownExportEntrySummary entry in entries) {
+      if (last == null || entry.date.value.compareTo(last.value) > 0) {
+        last = entry.date;
+      }
+    }
+    return last;
+  }
+
+  MarkdownExportEstimate forSelected(Set<EntryId> selectedIds) {
+    return MarkdownExportEstimate(
+      entries: entries
+          .where((MarkdownExportEntrySummary e) => selectedIds.contains(e.id))
+          .toList(growable: false),
+    );
+  }
 }
 
 /// 寫入使用者可攜的 Markdown、ZIP 與所選條目 HTML 匯出。
@@ -57,8 +210,29 @@ class PortableExportIo {
   Future<Directory> exportMarkdown({
     required UnlockedVaultSession session,
     required Directory parentDirectory,
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
   }) async {
-    final List<EntryIndexRecord> entries = await _repository.listEntries();
+    final List<EntryIndexRecord> allEntries = await _repository.listEntries();
+    final Set<EntryId>? selected = entryIds
+        ?.map((EntryId id) => id.trim())
+        .where((EntryId id) => id.isNotEmpty)
+        .toSet();
+    final List<EntryIndexRecord> entries = selected == null
+        ? allEntries
+        : allEntries
+              .where((EntryIndexRecord record) => selected.contains(record.id))
+              .toList(growable: false);
+
+    HtmlExportPersonAnonymizer? anonymizer;
+    if (options.hidePersonNames) {
+      final List<Person> people = await _repository.listPeople(session);
+      anonymizer = HtmlExportPersonAnonymizer(
+        people: people,
+        useEnglishLabels: options.useEnglishPersonLabels,
+      );
+    }
+
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final Directory exportRoot = parentDirectory;
     await exportRoot.create(recursive: true);
@@ -70,9 +244,23 @@ class PortableExportIo {
         _repository.loadEntry(session, record.id),
         _repository.loadAttachments(record.id),
       ]);
-      final DiaryEntry? entry = loaded[0] as DiaryEntry?;
+      DiaryEntry? entry = loaded[0] as DiaryEntry?;
       if (entry == null) {
         continue;
+      }
+
+      if (anonymizer != null) {
+        final String? rawTitle = entry.normalizedTitle;
+        entry = entry.copyWith(
+          title: rawTitle == null
+              ? null
+              : anonymizer.anonymizePlainText(rawTitle),
+          clearTitle: rawTitle == null,
+          tags: entry.tags
+              .map(anonymizer.anonymizePlainText)
+              .toList(growable: false),
+          markdownBody: anonymizer.anonymizeMarkdownBody(entry.markdownBody),
+        );
       }
 
       final List<AssetAttachment> attachments =
@@ -111,13 +299,20 @@ class PortableExportIo {
   Future<File> writeMarkdownZip({
     required UnlockedVaultSession session,
     required File target,
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
   }) async {
     final Directory tempRoot = await createWorkingDirectory(
       _pathStrategy,
       'portable_export',
     );
     try {
-      await exportMarkdown(session: session, parentDirectory: tempRoot);
+      await exportMarkdown(
+        session: session,
+        parentDirectory: tempRoot,
+        entryIds: entryIds,
+        options: options,
+      );
       await target.parent.create(recursive: true);
       final ZipFileEncoder encoder = ZipFileEncoder();
       encoder.create(target.path);
@@ -141,45 +336,93 @@ class PortableExportIo {
           loadEntries: false,
         );
 
-    int textBytes = 0;
-    int imageBytes = 0;
-    int imageCount = 0;
+    final List<HtmlExportEntrySummary> summaries = <HtmlExportEntrySummary>[];
     for (final HtmlExportDocument document in documents) {
       final DiaryEntry? entry = document.entry;
+      final EntryIndexRecord record = document.record;
+      final int textBytes;
+      final String? title;
       if (entry != null) {
-        textBytes += utf8
+        title = entry.normalizedTitle;
+        textBytes = utf8
             .encode(
               '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.markdownBody}',
             )
             .length;
       } else {
-        final EntryIndexRecord record = document.record;
-        textBytes += utf8
-            .encode(
-              '${record.title ?? ''}\n${record.tags.join(',')}\n${record.previewText}',
-            )
-            .length;
+        title = record.title;
+        textBytes =
+            utf8
+                .encode('${record.title ?? ''}\n${record.tags.join(',')}\n')
+                .length +
+            record.charCount;
       }
+
+      var entryImageCount = 0;
+      var entryImageBytes = 0;
       for (final AssetAttachment attachment in document.attachments) {
         if (_isImageAttachment(attachment)) {
-          imageCount++;
-          imageBytes += attachment.byteSize;
+          entryImageCount++;
+          entryImageBytes += attachment.byteSize;
         }
       }
+
+      summaries.add(
+        HtmlExportEntrySummary(
+          id: record.id,
+          date: record.date,
+          title: title,
+          imageCount: entryImageCount,
+          imageBytes: entryImageBytes,
+          textBytes: textBytes,
+        ),
+      );
     }
 
-    return HtmlExportEstimate(
-      entryCount: documents.length,
-      imageCount: imageCount,
-      imageBytes: imageBytes,
-      estimatedHtmlBytes: textBytes + ((imageBytes * 4 + 2) ~/ 3),
+    return HtmlExportEstimate(entries: summaries);
+  }
+
+  Future<MarkdownExportEstimate> estimateMarkdownExport() async {
+    final List<EntryIndexRecord> entries = await _repository.listEntries();
+    final List<List<AssetAttachment>> attachmentLists = await Future.wait(
+      entries.map(
+        (EntryIndexRecord record) => _repository.loadAttachments(record.id),
+      ),
     );
+
+    final List<MarkdownExportEntrySummary> summaries =
+        <MarkdownExportEntrySummary>[];
+    for (var index = 0; index < entries.length; index++) {
+      final EntryIndexRecord record = entries[index];
+      final List<AssetAttachment> attachments = attachmentLists[index];
+      var attachmentBytes = 0;
+      for (final AssetAttachment attachment in attachments) {
+        attachmentBytes += attachment.byteSize;
+      }
+      summaries.add(
+        MarkdownExportEntrySummary(
+          id: record.id,
+          date: record.date,
+          title: record.title,
+          attachmentCount: attachments.length,
+          attachmentBytes: attachmentBytes,
+          textBytes:
+              utf8
+                  .encode('${record.title ?? ''}\n${record.tags.join(',')}\n')
+                  .length +
+              record.charCount,
+        ),
+      );
+    }
+
+    return MarkdownExportEstimate(entries: summaries);
   }
 
   Future<File> writeSelectedHtmlExport({
     required UnlockedVaultSession session,
     required Set<EntryId> entryIds,
     required File target,
+    HtmlExportOptions options = const HtmlExportOptions(),
   }) async {
     final List<HtmlExportDocument> documents =
         await _requireSelectedHtmlExportDocuments(
@@ -191,6 +434,7 @@ class PortableExportIo {
     final String html = await _buildSelectedHtmlDocument(
       session: session,
       documents: documents,
+      options: options,
     );
     await target.parent.create(recursive: true);
     await target.writeAsString(html, flush: true);
@@ -316,32 +560,68 @@ class PortableExportIo {
   Future<String> _buildSelectedHtmlDocument({
     required UnlockedVaultSession session,
     required List<HtmlExportDocument> documents,
+    required HtmlExportOptions options,
   }) async {
+    HtmlExportPersonAnonymizer? anonymizer;
+    if (options.hidePersonNames) {
+      final List<Person> people = await _repository.listPeople(session);
+      anonymizer = HtmlExportPersonAnonymizer(
+        people: people,
+        useEnglishLabels: options.useEnglishPersonLabels,
+      );
+    }
+
+    var imageOrdinal = 1;
+    var fileOrdinal = 1;
     final StringBuffer body = StringBuffer();
     for (final HtmlExportDocument document in documents) {
       final DiaryEntry entry = document.entry!;
+      final String rawTitle = entry.normalizedTitle ?? '未命名日記';
+      final String title = anonymizer?.anonymizePlainText(rawTitle) ?? rawTitle;
+      final List<String> tags = entry.tags
+          .map(
+            (String tag) => anonymizer?.anonymizePlainText(tag) ?? tag,
+          )
+          .toList(growable: false);
+      final String markdownBody =
+          anonymizer?.anonymizeMarkdownBody(entry.markdownBody) ??
+          entry.markdownBody;
+
       body.writeln('<article class="entry">');
       body.writeln('<header class="entry-header">');
       body.writeln(
         '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
-      body.writeln('<h2>${_escapeHtml(entry.normalizedTitle ?? "未命名日記")}</h2>');
-      if (entry.tags.isNotEmpty) {
+      body.writeln('<h2>${_escapeHtml(title)}</h2>');
+      if (tags.isNotEmpty) {
         body.writeln('<ul class="tags">');
-        for (final String tag in entry.tags) {
+        for (final String tag in tags) {
           body.writeln('<li>${_escapeHtml(tag)}</li>');
         }
         body.writeln('</ul>');
       }
       body.writeln('</header>');
       body.writeln('<section class="entry-body">');
-      body.writeln(_markdownToExportHtml(entry.markdownBody));
+      body.writeln(_markdownToExportHtml(markdownBody));
       body.writeln('</section>');
       body.writeln(
         await _htmlAttachmentsSection(
           session: session,
           entry: entry,
           attachments: document.attachments,
+          includeImages: options.includeImages,
+          nextImageLabel: (AssetAttachment attachment) {
+            final String extension = extensionFromMimeType(attachment.mimeType);
+            final String label = 'image-$imageOrdinal.$extension';
+            imageOrdinal += 1;
+            return label;
+          },
+          nextFileLabel: (AssetAttachment attachment) {
+            final String extension = extensionFromMimeType(attachment.mimeType);
+            final String label = 'file-$fileOrdinal.$extension';
+            fileOrdinal += 1;
+            return label;
+          },
         ),
       );
       body.writeln('</article>');
@@ -505,16 +785,21 @@ class PortableExportIo {
     required UnlockedVaultSession session,
     required DiaryEntry entry,
     required List<AssetAttachment> attachments,
+    required bool includeImages,
+    required String Function(AssetAttachment attachment) nextImageLabel,
+    required String Function(AssetAttachment attachment) nextFileLabel,
   }) async {
-    if (attachments.isEmpty) {
+    // 關閉「匯出圖片與附件」時略過全部附件。
+    if (!includeImages || attachments.isEmpty) {
       return '';
     }
 
     final StringBuffer images = StringBuffer();
-    final List<AssetAttachment> nonEmbedded = <AssetAttachment>[];
+    final List<({AssetAttachment attachment, String label})> listed =
+        <({AssetAttachment attachment, String label})>[];
     for (final AssetAttachment attachment in attachments) {
       if (!_isImageAttachment(attachment)) {
-        nonEmbedded.add(attachment);
+        listed.add((attachment: attachment, label: nextFileLabel(attachment)));
         continue;
       }
 
@@ -529,11 +814,14 @@ class PortableExportIo {
         maxEncryptedFileBytes: 1 << 62,
       );
       if (bytes == null) {
-        nonEmbedded.add(attachment);
+        listed.add((
+          attachment: attachment,
+          label: nextImageLabel(attachment),
+        ));
         continue;
       }
 
-      final String label = _attachmentLabel(attachment);
+      final String label = nextImageLabel(attachment);
       images.writeln('<figure>');
       images.writeln(
         '<img src="data:${_escapeHtmlAttribute(attachment.mimeType)};base64,${base64Encode(bytes)}" alt="${_escapeHtmlAttribute(label)}">',
@@ -547,14 +835,13 @@ class PortableExportIo {
       html.write(images.toString());
       html.writeln('</section>');
     }
-    if (nonEmbedded.isNotEmpty) {
+    if (listed.isNotEmpty) {
       html.writeln('<section class="attachment-list">');
       html.writeln('<h3>未內嵌附件</h3>');
       html.writeln('<ul>');
-      for (final AssetAttachment attachment in nonEmbedded) {
-        final String label = _attachmentLabel(attachment);
+      for (final ({AssetAttachment attachment, String label}) item in listed) {
         html.writeln(
-          '<li>${_escapeHtml(label)} · ${_escapeHtml(attachment.mimeType)} · ${_formatBytes(attachment.byteSize)}</li>',
+          '<li>${_escapeHtml(item.label)} · ${_escapeHtml(item.attachment.mimeType)} · ${_formatBytes(item.attachment.byteSize)}</li>',
         );
       }
       html.writeln('</ul>');
@@ -568,13 +855,6 @@ class PortableExportIo {
 
   bool _isImageAttachment(AssetAttachment attachment) {
     return attachment.mimeType.toLowerCase().startsWith('image/');
-  }
-
-  String _attachmentLabel(AssetAttachment attachment) {
-    final String? originalFilename = attachment.originalFilename?.trim();
-    return originalFilename == null || originalFilename.isEmpty
-        ? attachment.safeFilename
-        : originalFilename;
   }
 
   String _escapeHtml(String input) {

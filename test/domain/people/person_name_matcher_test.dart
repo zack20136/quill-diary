@@ -99,5 +99,30 @@ void main() {
         <String>{'test', 'mixed'},
       );
     });
+
+    test('findSpans 回傳原文區間且最長優先', () {
+      final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
+        _person(id: 'short', name: '王'),
+        _person(id: 'long', name: '王小明'),
+      ]);
+      final List<PersonNameSpan> spans = matcher.findSpans('見到王小明與王');
+      expect(spans, hasLength(2));
+      expect(spans[0].personId, 'long');
+      expect(spans[0].start, '見到'.length);
+      expect(spans[0].end, '見到王小明'.length);
+      expect(spans[1].personId, 'short');
+    });
+
+    test('findSpans 與 match 同樣合併空白並映射原文區間', () {
+      final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
+        _person(id: 'js', name: 'John Smith'),
+      ]);
+      const String text = '見到 John  Smith 今天';
+      expect(matcher.match(text), <String>{'js'});
+      final List<PersonNameSpan> spans = matcher.findSpans(text);
+      expect(spans, hasLength(1));
+      expect(spans.single.personId, 'js');
+      expect(text.substring(spans.single.start, spans.single.end), 'John  Smith');
+    });
   });
 }

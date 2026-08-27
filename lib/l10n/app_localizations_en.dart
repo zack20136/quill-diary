@@ -57,9 +57,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnitTags => 'tags';
 
   @override
-  String get commonUnitImages => 'images';
-
-  @override
   String get commonUnitAttachments => 'atts.';
 
   @override
@@ -984,24 +981,101 @@ class AppLocalizationsEn extends AppLocalizations {
       'Images are embedded into a single HTML file, which may be slower to open or harder to share.';
 
   @override
-  String get homeHtmlExportProceed => 'Export Anyway';
+  String get portableExportConfirmTitle => 'Confirm Export';
 
   @override
-  String homeHtmlExportSelectionSummary(
-    String entrySummary,
-    String imageSummary,
-  ) {
-    return '$entrySummary selected, including $imageSummary.';
+  String get portableExportConfirmAction => 'Export';
+
+  @override
+  String get portableExportPlaintextWarning =>
+      'Exported files are plaintext. Diary text and images are no longer protected by vault encryption; anyone with the files can read them.';
+
+  @override
+  String get portableExportMarkdownFormatLabel => 'Format: Markdown ZIP';
+
+  @override
+  String get portableExportHtmlFormatLabel => 'Format: HTML';
+
+  @override
+  String portableExportEntryCount(int count) {
+    return 'Entries: $count';
   }
+
+  @override
+  String portableExportImageCount(int count) {
+    return 'Images: $count';
+  }
+
+  @override
+  String portableExportAttachmentCount(int count) {
+    return 'Attachments: $count';
+  }
+
+  @override
+  String portableExportDateRange(String start, String end) {
+    return 'Date range: $start – $end';
+  }
+
+  @override
+  String portableExportFileSize(String size) {
+    return 'File size: about $size';
+  }
+
+  @override
+  String portableExportScopeLabel(String scope) {
+    return 'Scope: $scope';
+  }
+
+  @override
+  String get portableExportIncludeImagesLabel =>
+      'Include images and attachments';
+
+  @override
+  String get portableExportHidePersonNamesLabel => 'Hide person names';
+
+  @override
+  String get portableExportHidePersonNamesHint =>
+      'Replace names and aliases from your people list with Person A, Person B, and so on.';
+
+  @override
+  String get portableExportSelectEntriesLabel => 'Select entries';
+
+  @override
+  String portableExportSelectEntriesSummary(int selected, int total) {
+    return '$selected of $total selected';
+  }
+
+  @override
+  String get portableImportConfirmTitle => 'Confirm import';
+
+  @override
+  String get portableImportConfirmAction => 'Import';
+
+  @override
+  String portableImportLikelyDuplicateCount(int count) {
+    return 'Likely already in vault: $count';
+  }
+
+  @override
+  String get portableImportLikelyDuplicateMark => 'Possible duplicate';
+
+  @override
+  String portableImportSkippedFilesCount(int count) {
+    return 'Unreadable files: $count';
+  }
+
+  @override
+  String portableImportSkippedAttachmentsCount(int count) {
+    return 'Skipped attachments: $count';
+  }
+
+  @override
+  String get portableImportAddsAsNewHint =>
+      'Entries are always added as new; nothing is auto-deduplicated.';
 
   @override
   String homeHtmlExportImageSize(String size) {
     return 'Original image size: about $size';
-  }
-
-  @override
-  String homeHtmlExportEstimatedSize(String size) {
-    return 'Estimated HTML size: about $size';
   }
 
   @override
@@ -1305,6 +1379,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vaultTransferNeedsRecoveryKeyForBackup =>
       'Create a recovery key before backing up or exporting.';
+
+  @override
+  String get vaultTransferNeedsUnlockForPortableTransfer =>
+      'Unlock the diary vault before importing or exporting diary files.';
 
   @override
   String get vaultTransferNeedsUnlockForRestore =>
@@ -1730,6 +1808,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsImportExportImportNoEntriesMessage =>
       'No importable entries found. Check the file format.';
+
+  @override
+  String get settingsImportExportExportNoEntriesMessage =>
+      'There are no diary entries to export.';
+
+  @override
+  String get settingsImportExportPrepareProgress =>
+      'Reading and parsing files…';
 
   @override
   String get settingsImportExportImportAllSkippedMessage =>

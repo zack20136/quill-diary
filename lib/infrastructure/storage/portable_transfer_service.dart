@@ -16,6 +16,9 @@ import 'shared/picked_file_materializer.dart';
 import 'vault_archive_io.dart';
 import 'vault_transfer_models.dart';
 
+typedef ConfirmPortableImportPreview =
+    Future<PortableImportConfirmResult?> Function(PortableImportPreview preview);
+
 class PortableTransferService {
   PortableTransferService({
     required VaultArchiveIo archiveIo,
@@ -43,8 +46,10 @@ class PortableTransferService {
 
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
-    AppLocalizations l10n,
-  ) async {
+    AppLocalizations l10n, {
+    Set<EntryId>? entryIds,
+    MarkdownExportOptions options = const MarkdownExportOptions(),
+  }) async {
     final String fileName = VaultBackupPolicy.markdownPortableFileName(
       DateTime.now(),
     );
@@ -53,7 +58,12 @@ class PortableTransferService {
       fileName: fileName,
       l10n: l10n,
       writeTarget: (File target) {
-        return _archiveIo.writeMarkdownZip(session: session, target: target);
+        return _archiveIo.writeMarkdownZip(
+          session: session,
+          target: target,
+          entryIds: entryIds,
+          options: options,
+        );
       },
     );
   }
@@ -62,11 +72,16 @@ class PortableTransferService {
     return _archiveIo.estimateSelectedHtmlExport(entryIds: entryIds);
   }
 
+  Future<MarkdownExportEstimate> estimateMarkdownExport() {
+    return _archiveIo.estimateMarkdownExport();
+  }
+
   Future<String?> exportHtmlToDirectory(
     UnlockedVaultSession session,
     Set<EntryId> entryIds,
-    AppLocalizations l10n,
-  ) async {
+    AppLocalizations l10n, {
+    HtmlExportOptions options = const HtmlExportOptions(),
+  }) async {
     final String fileName = VaultBackupPolicy.htmlPortableFileName(
       DateTime.now(),
     );
@@ -79,6 +94,7 @@ class PortableTransferService {
           session: session,
           entryIds: entryIds,
           target: target,
+          options: options,
         );
       },
     );
@@ -87,10 +103,12 @@ class PortableTransferService {
   Future<PortableImportResult?> importDocumentsWithPicker(
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
+    required ConfirmPortableImportPreview confirmPreview,
   }) async {
     final PortableImportResult? pickedResult = await _tryImportFromPickedFiles(
       session,
       l10n: l10n,
+      confirmPreview: confirmPreview,
     );
     if (pickedResult != null) {
       return pickedResult;
@@ -108,9 +126,14 @@ class PortableTransferService {
 
     await _externalDirectoryStore.rememberDirectory(sourceDirectory);
 
-    return _archiveIo.importDocuments(
+    final AnalyzedPortableImport analyzed = await _archiveIo.analyzeDocuments(
       session: session,
       rootDirectory: Directory(sourceDirectory),
+    );
+    return _confirmAndPersist(
+      session: session,
+      analyzed: analyzed,
+      confirmPreview: confirmPreview,
     );
   }
 
@@ -135,6 +158,7 @@ class PortableTransferService {
   Future<PortableImportResult?> _tryImportFromPickedFiles(
     UnlockedVaultSession session, {
     required AppLocalizations l10n,
+    required ConfirmPortableImportPreview confirmPreview,
   }) async {
     final FilePickerResult? picked =
         await (_pickPortableFiles ?? _pickPortableFilesFromSystem)(
@@ -149,7 +173,7 @@ class PortableTransferService {
         .where((PlatformFile file) => _extensionOf(file) == '.zip')
         .toList(growable: false);
     if (zipFiles.isNotEmpty) {
-      return _importZipFile(session, zipFiles.first);
+      return _importZipFile(session, zipFiles.first, confirmPreview);
     }
 
     final List<PlatformFile> documentFiles = picked.files
@@ -162,7 +186,7 @@ class PortableTransferService {
       return null;
     }
 
-    return _importPickedDocumentFiles(session, documentFiles);
+    return _importPickedDocumentFiles(session, documentFiles, confirmPreview);
   }
 
   Future<FilePickerResult?> _pickPortableFilesFromSystem({
@@ -179,6 +203,7 @@ class PortableTransferService {
   Future<PortableImportResult?> _importZipFile(
     UnlockedVaultSession session,
     PlatformFile zipFile,
+    ConfirmPortableImportPreview confirmPreview,
   ) async {
     final String baseName = zipFile.name.isNotEmpty
         ? zipFile.name
@@ -194,12 +219,23 @@ class PortableTransferService {
       return importResultForMaterializationFailure(error.failure);
     }
 
+    Directory? ownedTempRoot;
     try {
-      return await _archiveIo.importDocumentsFromZip(
+      final ({AnalyzedPortableImport analyzed, Directory ownedTempRoot})
+      prepared = await _archiveIo.analyzeDocumentsFromZip(
         session: session,
         zipFile: materialized.file,
       );
+      ownedTempRoot = prepared.ownedTempRoot;
+      return await _confirmAndPersist(
+        session: session,
+        analyzed: prepared.analyzed,
+        confirmPreview: confirmPreview,
+      );
     } finally {
+      if (ownedTempRoot != null && ownedTempRoot.existsSync()) {
+        await ownedTempRoot.delete(recursive: true);
+      }
       if (materialized.shouldDeleteAfterUse) {
         await _deleteIfExists(materialized.file);
       }
@@ -209,6 +245,7 @@ class PortableTransferService {
   Future<PortableImportResult?> _importPickedDocumentFiles(
     UnlockedVaultSession session,
     List<PlatformFile> documentFiles,
+    ConfirmPortableImportPreview confirmPreview,
   ) async {
     final Directory tempRoot = await _createTempDirectory('import_picked');
     try {
@@ -247,15 +284,58 @@ class PortableTransferService {
         );
       }
 
-      return await _archiveIo.importDocuments(
+      final AnalyzedPortableImport analyzed = await _archiveIo.analyzeDocuments(
         session: session,
         rootDirectory: tempRoot,
+      );
+      return await _confirmAndPersist(
+        session: session,
+        analyzed: analyzed,
+        confirmPreview: confirmPreview,
       );
     } finally {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
     }
+  }
+
+  Future<PortableImportResult?> _confirmAndPersist({
+    required UnlockedVaultSession session,
+    required AnalyzedPortableImport analyzed,
+    required ConfirmPortableImportPreview confirmPreview,
+  }) async {
+    if (analyzed.failureCode != null && !analyzed.hasImportableEntries) {
+      return PortableImportResult(
+        importedEntries: 0,
+        skippedFiles: analyzed.preview.skippedFiles == 0
+            ? 1
+            : analyzed.preview.skippedFiles,
+        skippedAttachments: analyzed.preview.skippedAttachments,
+        failureCode: analyzed.failureCode,
+      );
+    }
+
+    if (!analyzed.hasImportableEntries) {
+      return PortableImportResult(
+        importedEntries: 0,
+        skippedFiles: analyzed.preview.skippedFiles,
+        skippedAttachments: analyzed.preview.skippedAttachments,
+      );
+    }
+
+    final PortableImportConfirmResult? confirmation = await confirmPreview(
+      analyzed.preview,
+    );
+    if (confirmation == null || !confirmation.confirmed) {
+      return null;
+    }
+
+    return _archiveIo.persistAnalyzedImport(
+      session: session,
+      analyzed: analyzed,
+      selectedPreviewIndices: confirmation.selectedPreviewIndices,
+    );
   }
 
   Future<String?> _writeTempAndDeliver({
