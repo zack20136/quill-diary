@@ -4820,7 +4820,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPageTitle.
   ///
   /// In zh, this message translates to:
-  /// **'關於 Quill Diary'**
+  /// **'關於'**
   String get aboutPageTitle;
 
   /// No description provided for @aboutTabIntroLabel.

@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
@@ -56,14 +57,23 @@ void main() {
       setup.session,
       original.id,
     );
-    final attachments = await harness.repository.loadAttachments(original.id);
+    final List<AssetAttachment> attachments = await harness.repository
+        .loadAttachments(original.id);
+    final EntryIndexRecord listed =
+        (await harness.repository.listEntries()).single;
+    final List<String> expectedPreviewPaths = <String>[
+      for (final AssetAttachment attachment in attachments)
+        await assetPath(original.date, attachment),
+    ];
 
     expect(reordered.attachmentIds, <AssetId>['pending-image', 'saved-image']);
     expect(loaded?.attachmentIds, <AssetId>['pending-image', 'saved-image']);
-    expect(attachments.map((attachment) => attachment.id), <AssetId>[
+    expect(attachments.map((AssetAttachment attachment) => attachment.id), <AssetId>[
       'pending-image',
       'saved-image',
     ]);
+    // 列表預覽路徑須跟 attachmentIds／編輯器順序一致，不能依 created_at。
+    expect(listed.previewImagePaths, expectedPreviewPaths);
   });
 
   test('暫存附件 ID 撞到既有附件時不會刪除既有附件', () async {

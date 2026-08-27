@@ -82,7 +82,7 @@ Quill Diary 目前支援圖片與附件，但做法不是要求廣泛儲存權�
 
 - 同一個 `dataSync` FGS 存活期間，短暫離線可等待網路後重試。
 - 遠端完成驗證前若服務或程序異常終止，App 會清除未完成工作的私有暫存檔；下次開啟時提示失敗，不跨程序續傳。
-- 使用者主動停止時只清除該次工作，不建立 failure notice；若已進入 `STATUS_PENDING` 或 `PRUNE_PENDING`，程序終止後會保留狀態供 App 下次繼續收尾。
+- 使用者主動停止時先中止傳輸再清除該次工作，不建立 failure notice；若遠端已驗證完成（含驗證後、本機寫入前按下停止），會寫入並保留 `STATUS_PENDING` 或 `PRUNE_PENDING` 供 App 收尾；尚未通過遠端驗證但已有遠端檔時會盡力刪除殘檔。
 - 遠端內容完成驗證後，App 才記錄備份成功並清理舊的 Drive 備份。
 
 ## `allowBackup` 設定

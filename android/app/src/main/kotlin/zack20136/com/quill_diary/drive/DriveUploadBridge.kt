@@ -329,24 +329,31 @@ object DriveUploadBridge {
         ioExecutor.execute {
             try {
                 val job = jobStore.readActiveJob()
-                if (job != null) {
-                    if (job.isRemoteCommittedPhase()) {
-                        replyError(
-                            result,
-                            "cancel_not_allowed",
-                            "遠端備份已完成，無法取消。",
-                            jobStore.getStateEnvelope(),
-                        )
-                        return@execute
-                    }
-                    // 先原子刪除 job／session／staging，再 best-effort 停止 Service。
-                    jobStore.cancelAndCleanup(job.jobId)
+                if (job != null && job.isRemoteCommittedPhase()) {
+                    replyError(
+                        result,
+                        "cancel_not_allowed",
+                        "遠端備份已完成，無法取消。",
+                        jobStore.getStateEnvelope(),
+                    )
+                    return@execute
                 }
                 if (BackupUploadForegroundService.isRunning()) {
-                    BackupUploadForegroundService.stop(context)
+                    // 先讓 FGS 中止傳輸並落定，再清本機；勿在此先 cancelAndCleanup。
+                    BackupUploadForegroundService.requestStopAndAwait(context)
+                } else if (job != null) {
+                    cancelInactiveJob(context, jobStore, job)
                 }
                 emitStateEnvelope()
-                replySuccess(result, null)
+                val after = jobStore.readActiveJob()
+                replySuccess(
+                    result,
+                    if (after != null && after.isRemoteCommittedPhase()) {
+                        jobStore.getStateEnvelope()
+                    } else {
+                        null
+                    },
+                )
             } catch (error: Throwable) {
                 replyError(
                     result,
@@ -354,6 +361,27 @@ object DriveUploadBridge {
                     error.message ?: "cancelUpload failed.",
                 )
             }
+        }
+    }
+
+    /** Service 未在跑時的本機取消：清 job，並盡力刪可能殘留的遠端檔。 */
+    private fun cancelInactiveJob(
+        context: Context,
+        jobStore: DriveUploadJobStore,
+        job: DriveUploadJob,
+    ) {
+        val plan =
+            DriveCancelStopDecision.plan(
+                snapshotBeforeStop = job,
+                jobAfterSettle = null,
+            )
+        jobStore.cancelAndCleanup(job.jobId)
+        val remoteId = plan.remoteFileIdToDelete
+        if (!remoteId.isNullOrBlank()) {
+            DriveRemoteFileCleanup.bestEffortDelete(
+                DriveAccessTokenProvider(context.applicationContext),
+                remoteId,
+            )
         }
     }
 

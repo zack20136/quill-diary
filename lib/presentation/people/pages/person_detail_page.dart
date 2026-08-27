@@ -17,7 +17,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/diary/widgets/diary_entry_sliver_section.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -330,7 +330,7 @@ class PersonDetailPage extends ConsumerWidget {
                                     ),
                                   );
                                 }
-                                return DiaryEntrySliverSection(
+                                return HomeDiarySliverSection(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
                                   entries: entries,

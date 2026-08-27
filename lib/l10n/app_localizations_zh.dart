@@ -2734,7 +2734,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLegalContactAuthorTitle => '聯絡作者';
 
   @override
-  String get aboutPageTitle => '關於 Quill Diary';
+  String get aboutPageTitle => '關於';
 
   @override
   String get aboutTabIntroLabel => '簡介';

@@ -22,12 +22,15 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import zack20136.com.quill_diary.MainActivity
 import zack20136.com.quill_diary.R
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 /**
@@ -69,10 +72,7 @@ class BackupUploadForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                stopRequested.set(true)
-                terminationGeneration.incrementAndGet()
-                uploader?.cancelUser()
-                finishCancellation()
+                handleUserStop(startId)
                 return START_NOT_STICKY
             }
             ACTION_START -> {
@@ -278,6 +278,79 @@ class BackupUploadForegroundService : Service() {
         startUpload(jobId, startId = 0)
     }
 
+    /**
+     * 使用者停止：先中止 HTTP、等上傳執行緒落定，再依決策清本機／刪遠端殘檔。
+     * 不在主執行緒阻塞。
+     */
+    private fun handleUserStop(startId: Int) {
+        stopRequested.set(true)
+        terminationGeneration.incrementAndGet()
+        val snapshot = jobStore.readActiveJob()
+        pendingRetry?.cancel(false)
+        uploader?.cancelUser()
+        val futureToAwait = uploadFuture
+        scheduler.execute {
+            awaitUploadFutureSettled(futureToAwait)
+            try {
+                finishUserStop(snapshot = snapshot, startId = startId)
+            } finally {
+                completeStopAwaiter()
+            }
+        }
+    }
+
+    private fun awaitUploadFutureSettled(future: Future<*>?) {
+        if (future == null) {
+            return
+        }
+        try {
+            future.get(UPLOAD_STOP_AWAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (_: TimeoutException) {
+            future.cancel(true)
+            uploader?.abortTransport()
+        } catch (_: Exception) {
+            // 已結束或中斷。
+        }
+    }
+
+    private fun finishUserStop(
+        snapshot: DriveUploadJob?,
+        startId: Int?,
+    ) {
+        pendingRetry?.cancel(false)
+        val after = jobStore.readActiveJob()
+        applyUserStopPlan(
+            plan = DriveCancelStopDecision.plan(snapshot, after),
+            after = after,
+            snapshot = snapshot,
+        )
+        DriveUploadBridge.emitStateEnvelope(applicationContext)
+        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
+        stopSelfSafely(startId)
+    }
+
+    private fun applyUserStopPlan(
+        plan: DriveCancelStopDecision.Plan,
+        after: DriveUploadJob?,
+        snapshot: DriveUploadJob?,
+    ) {
+        when (plan.localAction) {
+            DriveCancelStopDecision.LocalAction.RetainCommitted -> {
+                after?.let(::notifyCommitted)
+            }
+            DriveCancelStopDecision.LocalAction.CleanupLocal -> {
+                val job = after ?: snapshot
+                if (job != null && !job.isRemoteCommittedPhase()) {
+                    jobStore.cancelAndCleanup(job.jobId)
+                }
+                val remoteId = plan.remoteFileIdToDelete
+                if (!remoteId.isNullOrBlank()) {
+                    DriveRemoteFileCleanup.bestEffortDelete(tokenProvider, remoteId)
+                }
+            }
+        }
+    }
+
     private fun finishCommitted(job: DriveUploadJob, startId: Int) {
         DriveUploadBridge.emitStateEnvelope(applicationContext)
         notifyCommitted(job)
@@ -302,14 +375,8 @@ class BackupUploadForegroundService : Service() {
     }
 
     private fun finishCancellation(startId: Int? = null) {
-        pendingRetry?.cancel(false)
-        val job = jobStore.readActiveJob()
-        if (job != null && !job.isRemoteCommittedPhase()) {
-            jobStore.cancelAndCleanup(job.jobId)
-        }
-        DriveUploadBridge.emitStateEnvelope(applicationContext)
-        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
-        stopSelfSafely(startId)
+        // uploader 主動回報 Cancelled（非通知列／Bridge 停止路徑）時沿用同一收尾。
+        finishUserStop(snapshot = jobStore.readActiveJob(), startId = startId)
     }
 
     private fun stopSelfSafely(startId: Int? = null) {
@@ -546,6 +613,7 @@ class BackupUploadForegroundService : Service() {
         private const val NETWORK_RETRY_DEBOUNCE_MS = 2_000L
         private const val PROGRESS_EMIT_MIN_INTERVAL_MS = 2_000L
         private const val PROGRESS_EMIT_MIN_DELTA = 0.05
+        private const val UPLOAD_STOP_AWAIT_TIMEOUT_MS = 15_000L
 
         @Volatile
         private var running: Boolean = false
@@ -556,6 +624,8 @@ class BackupUploadForegroundService : Service() {
          */
         @Volatile
         private var pendingStartJobId: String? = null
+
+        private val stopAwaiter = AtomicReference<CompletableFuture<Unit>?>(null)
 
         fun isRunning(): Boolean = running
 
@@ -612,6 +682,30 @@ class BackupUploadForegroundService : Service() {
                     action = ACTION_STOP
                 }
             context.startService(intent)
+        }
+
+        /**
+         * 送出停止並等待 Service 完成 abort／落定／cleanup。
+         * 逾時仍回傳（收尾可能仍在背景繼續）。
+         */
+        fun requestStopAndAwait(
+            context: Context,
+            timeoutMs: Long = UPLOAD_STOP_AWAIT_TIMEOUT_MS + 5_000L,
+        ) {
+            val future = CompletableFuture<Unit>()
+            stopAwaiter.set(future)
+            try {
+                stop(context)
+                runCatching {
+                    future.get(timeoutMs, TimeUnit.MILLISECONDS)
+                }
+            } finally {
+                stopAwaiter.compareAndSet(future, null)
+            }
+        }
+
+        private fun completeStopAwaiter() {
+            stopAwaiter.getAndSet(null)?.complete(Unit)
         }
     }
 }

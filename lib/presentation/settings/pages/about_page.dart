@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import '../about_tab_catalog.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import '../widgets/settings_info_cards.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/about_tab_catalog.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_info_cards.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class SettingsAboutPage extends ConsumerWidget {
@@ -27,15 +27,15 @@ class SettingsAboutPage extends ConsumerWidget {
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: tabs
-                .map((AboutPageTabSpec tab) => Tab(text: tab.label))
-                .toList(growable: false),
+            tabs: <Widget>[
+              for (final AboutPageTabSpec tab in tabs) Tab(text: tab.label),
+            ],
           ),
         ),
         body: TabBarView(
-          children: tabs
-              .map((AboutPageTabSpec tab) => _AboutTabBody(tab: tab))
-              .toList(growable: false),
+          children: <Widget>[
+            for (final AboutPageTabSpec tab in tabs) _AboutTabBody(tab: tab),
+          ],
         ),
       ),
     );
@@ -45,31 +45,33 @@ class SettingsAboutPage extends ConsumerWidget {
 class _AboutTabBody extends StatelessWidget {
   const _AboutTabBody({required this.tab});
 
+  static const EdgeInsets _pagePadding = EdgeInsets.fromLTRB(16, 12, 16, 24);
+  static const double _heroStartAlpha = 0.16;
+  static const double _sectionGap = 16;
+
   final AboutPageTabSpec tab;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: AppScrollablePageBody(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: _pagePadding,
         children: <Widget>[
           SettingsGradientHeroCard(
             icon: tab.heroIcon,
             title: tab.heroTitle,
             body: tab.heroBody,
             chips: tab.chips,
-            startAlpha: 0.16,
+            startAlpha: _heroStartAlpha,
           ),
-          const SizedBox(height: 16),
-          ...List<Widget>.generate(tab.sections.length, (int index) {
-            final AboutPageSectionSpec section = tab.sections[index];
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index == tab.sections.length - 1 ? 0 : 16,
-              ),
-              child: _SectionCard(section: section),
-            );
-          }),
+          const SizedBox(height: _sectionGap),
+          ..._childrenSeparatedByGap(
+            [
+              for (final AboutPageSectionSpec section in tab.sections)
+                _SectionCard(section: section),
+            ],
+            gap: _sectionGap,
+          ),
         ],
       ),
     );
@@ -79,6 +81,9 @@ class _AboutTabBody extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.section});
 
+  static const EdgeInsets _padding = EdgeInsets.fromLTRB(18, 18, 18, 16);
+  static const double _itemGap = 10;
+
   final AboutPageSectionSpec section;
 
   @override
@@ -87,18 +92,16 @@ class _SectionCard extends StatelessWidget {
       title: section.title,
       description: section.subtitle,
       style: AppSurfaceStyle.outlinedElevated,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: _padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: List<Widget>.generate(section.items.length, (int index) {
-          final AboutPageItemSpec item = section.items[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index == section.items.length - 1 ? 0 : 10,
-            ),
-            child: _ItemPanel(item: item),
-          );
-        }),
+        children: _childrenSeparatedByGap(
+          [
+            for (final AboutPageItemSpec item in section.items)
+              _ItemPanel(item: item),
+          ],
+          gap: _itemGap,
+        ),
       ),
     );
   }
@@ -106,6 +109,10 @@ class _SectionCard extends StatelessWidget {
 
 class _ItemPanel extends StatelessWidget {
   const _ItemPanel({required this.item});
+
+  static const EdgeInsets _padding = EdgeInsets.fromLTRB(12, 12, 14, 12);
+  static const double _iconTextGap = 12;
+  static const double _titleBodyGap = 4;
 
   final AboutPageItemSpec item;
 
@@ -116,28 +123,12 @@ class _ItemPanel extends StatelessWidget {
 
     return AppInsetPanel(
       backgroundColor: cs.surfaceContainerLow,
-      padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+      padding: _padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color.alphaBlend(
-                  cs.primary.withValues(alpha: 0.12),
-                  cs.surface,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: Icon(item.icon, color: cs.primary, size: 18),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
+          _ItemIconBadge(icon: item.icon, colorScheme: cs),
+          const SizedBox(width: _iconTextGap),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,7 +140,7 @@ class _ItemPanel extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: _titleBodyGap),
                 Text(
                   item.body,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -164,4 +155,51 @@ class _ItemPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ItemIconBadge extends StatelessWidget {
+  const _ItemIconBadge({required this.icon, required this.colorScheme});
+
+  static const double _size = 36;
+  static const double _glyphSize = 18;
+
+  final IconData icon;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 1),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            colorScheme.primary.withValues(alpha: 0.12),
+            colorScheme.surface,
+          ),
+          shape: BoxShape.circle,
+        ),
+        child: SizedBox(
+          width: _size,
+          height: _size,
+          child: Icon(icon, color: colorScheme.primary, size: _glyphSize),
+        ),
+      ),
+    );
+  }
+}
+
+/// 在子項之間插入固定垂直間距；最後一項不加尾巴空白。
+List<Widget> _childrenSeparatedByGap(
+  List<Widget> children, {
+  required double gap,
+}) {
+  if (children.length <= 1) {
+    return children;
+  }
+  return <Widget>[
+    for (int index = 0; index < children.length; index++) ...<Widget>[
+      children[index],
+      if (index < children.length - 1) SizedBox(height: gap),
+    ],
+  ];
 }

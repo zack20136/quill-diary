@@ -2,17 +2,117 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
 
 void main() {
+  testWidgets('有 previewImagePaths 時顯示預覽圖 strip', (
+    WidgetTester tester,
+  ) async {
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        tagAccentArgbMapProvider.overrideWith(
+          (Ref ref) async => const <String, int>{},
+        ),
+        editorDraftKeysProvider.overrideWith(
+          (Ref ref) async => const <String>{},
+        ),
+        entryCoverPreviewBytesProvider.overrideWith(
+          (Ref ref, String path) async => null,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: appTestTheme(),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: CustomScrollView(
+              slivers: <Widget>[
+                HomeDiarySliverSection(
+                  title: '日記',
+                  entries: <EntryIndexRecord>[
+                    buildEntryIndexRecord(
+                      previewImagePaths: const <String>[
+                        '/tmp/cover_a.enc',
+                        '/tmp/cover_b.enc',
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(EntryPreviewImageStrip), findsOneWidget);
+    expect(find.byType(EntryCoverThumbnail), findsNWidgets(2));
+  });
+
+  testWidgets('沒有 previewImagePaths 時不顯示預覽圖 strip', (
+    WidgetTester tester,
+  ) async {
+    final ProviderContainer container = ProviderContainer(
+      overrides: [
+        tagAccentArgbMapProvider.overrideWith(
+          (Ref ref) async => const <String, int>{},
+        ),
+        editorDraftKeysProvider.overrideWith(
+          (Ref ref) async => const <String>{},
+        ),
+        entryCoverPreviewBytesProvider.overrideWith(
+          (Ref ref, String path) async => null,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: appTestTheme(),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: Scaffold(
+            body: CustomScrollView(
+              slivers: <Widget>[
+                HomeDiarySliverSection(
+                  title: '日記',
+                  entries: <EntryIndexRecord>[buildEntryIndexRecord()],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(EntryPreviewImageStrip), findsNothing);
+    expect(find.byType(EntryCoverThumbnail), findsNothing);
+  });
+
   testWidgets('大量摘要日記只建立可見範圍並可捲動到最後一筆', (
     WidgetTester tester,
   ) async {

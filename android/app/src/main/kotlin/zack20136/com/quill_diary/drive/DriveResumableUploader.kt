@@ -712,6 +712,8 @@ class DriveResumableUploader(
         verified: DriveUploadJob,
         onUpdate: (DriveUploadJob) -> Unit,
     ): DriveUploadOutcome {
+        // 遠端內容已驗證通過：即使使用者剛按停止，仍必須寫入 STATUS_PENDING，
+        // 否則 finishUserStop 會把已完成的 Drive 檔當殘檔刪掉。
         val committed =
             persistOrAbort(
                 verified.copy(
@@ -719,6 +721,7 @@ class DriveResumableUploader(
                     confirmedOffset = verified.sizeBytes,
                 ),
                 onUpdate,
+                ignoreUserCancel = true,
             ) ?: return DriveUploadOutcome.Cancelled
         jobStore.clearSessionUri(committed.jobId)
         return DriveUploadOutcome.Committed(committed)
@@ -1206,8 +1209,9 @@ class DriveResumableUploader(
         job: DriveUploadJob,
         onUpdate: (DriveUploadJob) -> Unit,
         durability: DriveUploadJobStore.Durability = DriveUploadJobStore.Durability.Critical,
+        ignoreUserCancel: Boolean = false,
     ): DriveUploadJob? {
-        if (userCancel.get()) {
+        if (!ignoreUserCancel && userCancel.get()) {
             return null
         }
         val current = jobStore.readJob(job.jobId) ?: return null

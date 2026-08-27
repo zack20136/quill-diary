@@ -18,7 +18,7 @@ const String _kPreviewImagePathsSelect = '''
       FROM entry_attachments a
       WHERE a.entry_id = e.id
         AND a.mime_type LIKE 'image/%'
-      ORDER BY a.created_at ASC
+      ORDER BY a.rowid ASC
     ) AS sfp
   ) AS preview_image_paths_joined''';
 

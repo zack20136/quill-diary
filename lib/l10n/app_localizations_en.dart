@@ -2900,7 +2900,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLegalContactAuthorTitle => 'Contact Author';
 
   @override
-  String get aboutPageTitle => 'About Quill Diary';
+  String get aboutPageTitle => 'About';
 
   @override
   String get aboutTabIntroLabel => 'Intro';
