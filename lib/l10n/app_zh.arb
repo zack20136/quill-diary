@@ -1263,6 +1263,7 @@
     }
   },
   "driveUploadStatusFinalizing": "Google Drive 備份已上傳，正在完成收尾…",
+  "driveUploadStatusCancelCleanup": "正在清除未完成的 Google Drive 備份…",
   "driveUploadCancelButton": "取消上傳",
   "driveUploadCancelConfirmTitle": "取消 Google Drive 上傳？",
   "driveUploadCancelConfirmBody": "將停止目前的背景上傳。已建立的暫存備份會被清除。",

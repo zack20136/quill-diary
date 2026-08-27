@@ -1263,6 +1263,7 @@
     }
   },
   "driveUploadStatusFinalizing": "Google Drive backup uploaded; finishing up…",
+  "driveUploadStatusCancelCleanup": "Clearing unfinished Google Drive backup…",
   "driveUploadCancelButton": "Cancel upload",
   "driveUploadCancelConfirmTitle": "Cancel Google Drive upload?",
   "driveUploadCancelConfirmBody": "This stops the current background upload and deletes the temporary backup file.",

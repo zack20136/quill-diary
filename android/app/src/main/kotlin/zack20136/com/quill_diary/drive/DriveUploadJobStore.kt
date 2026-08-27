@@ -86,9 +86,26 @@ class DriveUploadJobStore private constructor(context: Context) {
             return existing
         }
 
+    /** 未遠端提交時寫入 CANCEL_CLEANUP_PENDING；已是此 phase 則原樣回傳。 */
+    fun markCancelCleanupPending(jobId: String): DriveUploadJob? =
+        synchronized(lock) {
+            val existing = readJobLocked(jobId) ?: return null
+            if (existing.isRemoteCommittedPhase()) {
+                return null
+            }
+            if (existing.isCancelCleanupPhase()) {
+                return existing
+            }
+            return persistLocked(
+                job = existing.copy(phase = DriveUploadPhase.CANCEL_CLEANUP_PENDING),
+                expectedGeneration = existing.generation,
+                mode = WriteMode.Cas,
+            )
+        }
+
     /**
      * 終止未提交工作並寫入 failure notice。
-     * 已進入 STATUS_PENDING／PRUNE_PENDING 時拒絕。
+     * 已進入 STATUS_PENDING／PRUNE_PENDING／CANCEL_CLEANUP_PENDING 時拒絕。
      */
     fun failAndCleanup(
         jobId: String,
@@ -97,7 +114,7 @@ class DriveUploadJobStore private constructor(context: Context) {
     ): DriveUploadJob? =
         synchronized(lock) {
             val existing = readJobLocked(jobId) ?: return null
-            if (existing.isRemoteCommittedPhase()) {
+            if (existing.isRemoteCommittedPhase() || existing.isCancelCleanupPhase()) {
                 return null
             }
             val failed =
@@ -235,12 +252,12 @@ class DriveUploadJobStore private constructor(context: Context) {
 
     /**
      * 冷啟動：若有未提交的殘留工作且 FGS 未在跑，視為程序中斷並清理。
-     * 已 STATUS_PENDING／PRUNE_PENDING 則保留給 App 收尾。
+     * 已 STATUS_PENDING／PRUNE_PENDING／CANCEL_CLEANUP_PENDING 則保留。
      */
     fun abandonUncommittedIfPresent(message: String): DriveUploadJob? =
         synchronized(lock) {
             val existing = readActiveJobLocked() ?: return null
-            if (existing.isRemoteCommittedPhase()) {
+            if (existing.isRemoteCommittedPhase() || existing.isCancelCleanupPhase()) {
                 return null
             }
             cleanupStagingLocked(existing)
@@ -304,6 +321,13 @@ class DriveUploadJobStore private constructor(context: Context) {
             }
             WriteMode.Cas -> {
                 if (expectedGeneration == null || existing?.generation != expectedGeneration) {
+                    return null
+                }
+                // 取消清理中只允許升為 STATUS_PENDING（遠端已驗證），禁止進度寫回覆蓋。
+                if (existing.isCancelCleanupPhase() &&
+                    job.phase != DriveUploadPhase.STATUS_PENDING &&
+                    job.phase != DriveUploadPhase.CANCEL_CLEANUP_PENDING
+                ) {
                     return null
                 }
             }

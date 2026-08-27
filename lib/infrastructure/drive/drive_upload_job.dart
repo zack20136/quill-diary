@@ -6,7 +6,8 @@ enum DriveUploadPhase {
   uploading,
   waitingForNetwork,
   statusPending,
-  prunePending;
+  prunePending,
+  cancelCleanupPending;
 
   static DriveUploadPhase? fromName(String? raw) {
     final String normalized = (raw ?? '').trim().toUpperCase();
@@ -16,6 +17,7 @@ enum DriveUploadPhase {
       'WAITING_FOR_NETWORK' => DriveUploadPhase.waitingForNetwork,
       'STATUS_PENDING' => DriveUploadPhase.statusPending,
       'PRUNE_PENDING' => DriveUploadPhase.prunePending,
+      'CANCEL_CLEANUP_PENDING' => DriveUploadPhase.cancelCleanupPending,
       // 舊版 PREPARING／CLEANUP_PENDING 相容讀取。
       'PREPARING' => DriveUploadPhase.staged,
       'CLEANUP_PENDING' => DriveUploadPhase.prunePending,
@@ -29,6 +31,7 @@ enum DriveUploadPhase {
     DriveUploadPhase.waitingForNetwork => 'WAITING_FOR_NETWORK',
     DriveUploadPhase.statusPending => 'STATUS_PENDING',
     DriveUploadPhase.prunePending => 'PRUNE_PENDING',
+    DriveUploadPhase.cancelCleanupPending => 'CANCEL_CLEANUP_PENDING',
   };
 }
 

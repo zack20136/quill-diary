@@ -311,6 +311,8 @@ class _DriveUploadStatusCard extends StatelessWidget {
     final bool finalizing =
         job.phase == DriveUploadPhase.statusPending ||
         job.phase == DriveUploadPhase.prunePending;
+    final bool cancelCleanup =
+        job.phase == DriveUploadPhase.cancelCleanupPending;
     final String message = switch (job.phase) {
       DriveUploadPhase.waitingForNetwork =>
         l10n.driveUploadStatusWaitingNetwork(job.fileName),
@@ -318,11 +320,13 @@ class _DriveUploadStatusCard extends StatelessWidget {
       DriveUploadPhase.statusPending ||
       DriveUploadPhase.prunePending =>
         l10n.driveUploadStatusFinalizing,
+      DriveUploadPhase.cancelCleanupPending =>
+        l10n.driveUploadStatusCancelCleanup,
       DriveUploadPhase.uploading =>
         l10n.driveUploadStatusUploading(job.fileName, percent),
     };
-    // 遠端已驗證後不可取消；其餘進行中可取消。
-    final bool showCancel = !finalizing;
+    // 遠端已驗證或取消清理中不可再取消。
+    final bool showCancel = !finalizing && !cancelCleanup;
     final bool showProgress =
         job.phase == DriveUploadPhase.uploading ||
         job.phase == DriveUploadPhase.staged;

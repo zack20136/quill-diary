@@ -2009,6 +2009,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get driveUploadStatusFinalizing => 'Google Drive 備份已上傳，正在完成收尾…';
 
   @override
+  String get driveUploadStatusCancelCleanup => '正在清除未完成的 Google Drive 備份…';
+
+  @override
   String get driveUploadCancelButton => '取消上傳';
 
   @override

@@ -92,6 +92,29 @@ void main() {
       expect(job.progressFraction, closeTo(0.5, 0.001));
     });
 
+    test('CANCEL_CLEANUP_PENDING 解析且不走完成收尾', () {
+      final DriveUploadJobSnapshot job = DriveUploadJobSnapshot.fromMap(
+        <Object?, Object?>{
+          'jobId': '11111111-1111-1111-1111-111111111111',
+          'phase': 'CANCEL_CLEANUP_PENDING',
+          'accountId': 'acc',
+          'accountEmail': 'a@b.c',
+          'stagingPath': '/tmp/a',
+          'fileName': 'a.qdbak',
+          'sizeBytes': 10,
+          'md5': 'abc',
+          'remoteFileId': 'file-1',
+          'confirmedOffset': 10,
+          'retryCount': 0,
+        },
+      );
+
+      expect(job.phase, DriveUploadPhase.cancelCleanupPending);
+      expect(job.blocksConflictingDriveActions, isTrue);
+      expect(job.needsStatusRecording, isFalse);
+      expect(job.needsCompletionHandling, isFalse);
+    });
+
     test('未知 phase 拋錯', () {
       expect(
         () => DriveUploadJobSnapshot.fromMap(<Object?, Object?>{

@@ -69,4 +69,29 @@ class DriveCancelStopDecisionTest {
         assertEquals(LocalAction.RetainCommitted, plan.localAction)
         assertNull(plan.remoteFileIdToDelete)
     }
+
+    @Test
+    fun worker尚未退出則AwaitWorker且不帶刪檔id() {
+        val uploading = job(DriveUploadPhase.CANCEL_CLEANUP_PENDING, remoteFileId = "file-4")
+        val plan =
+            DriveCancelStopDecision.plan(
+                snapshotBeforeStop = uploading,
+                jobAfterSettle = uploading,
+                workerSettled = false,
+            )
+        assertEquals(LocalAction.AwaitWorker, plan.localAction)
+        assertNull(plan.remoteFileIdToDelete)
+    }
+
+    @Test
+    fun worker尚未退出但已遠端提交仍保留() {
+        val plan =
+            DriveCancelStopDecision.plan(
+                snapshotBeforeStop = job(DriveUploadPhase.UPLOADING, remoteFileId = "file-5"),
+                jobAfterSettle = job(DriveUploadPhase.STATUS_PENDING, remoteFileId = "file-5"),
+                workerSettled = false,
+            )
+        assertEquals(LocalAction.RetainCommitted, plan.localAction)
+        assertNull(plan.remoteFileIdToDelete)
+    }
 }

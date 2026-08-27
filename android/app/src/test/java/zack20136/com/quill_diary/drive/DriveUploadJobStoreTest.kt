@@ -254,6 +254,56 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
+    fun markCancelCleanupPending_未提交可標記_已提交拒絕() {
+        val staging = stagingFile("cancel-pending.zip", byteArrayOf(1))
+        val created = store.createJobIfNoConflict(newJob(staging))!!
+        val pending = store.markCancelCleanupPending(created.jobId)
+        assertNotNull(pending)
+        assertEquals(DriveUploadPhase.CANCEL_CLEANUP_PENDING, pending!!.phase)
+        assertEquals(pending.jobId, store.markCancelCleanupPending(pending.jobId)!!.jobId)
+        store.cancelAndCleanup(pending.jobId)
+
+        val committedStaging = stagingFile("cancel-committed.zip", byteArrayOf(2))
+        val created2 = store.createJobIfNoConflict(newJob(committedStaging))!!
+        val committed =
+            store.updateJobCas(
+                created2.copy(phase = DriveUploadPhase.STATUS_PENDING, remoteFileId = "r"),
+                expectedGeneration = created2.generation,
+            )!!
+        assertNull(store.markCancelCleanupPending(committed.jobId))
+        assertEquals(DriveUploadPhase.STATUS_PENDING, store.readJob(committed.jobId)!!.phase)
+    }
+
+    @Test
+    fun abandon與failAndCleanup_保留_CANCEL_CLEANUP_PENDING() {
+        val staging = stagingFile("keep-cancel.zip", byteArrayOf(1))
+        val created = store.createJobIfNoConflict(newJob(staging))!!
+        store.markCancelCleanupPending(created.jobId)
+        assertNull(store.abandonUncommittedIfPresent("不應清理。"))
+        assertNull(store.failAndCleanup(created.jobId, "x", "y"))
+        assertEquals(
+            DriveUploadPhase.CANCEL_CLEANUP_PENDING,
+            store.readActiveJob()!!.phase,
+        )
+    }
+
+    @Test
+    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup_且CAS拒絕進度覆蓋() {
+        val staging = stagingFile("cas-cancel.zip", byteArrayOf(1))
+        val created = store.createJobIfNoConflict(newJob(staging))!!
+        val pending = store.markCancelCleanupPending(created.jobId)!!
+        assertNull(
+            store.updateJobCas(
+                pending.copy(phase = DriveUploadPhase.UPLOADING, confirmedOffset = 1),
+                expectedGeneration = pending.generation,
+            ),
+        )
+        val cancelled = store.cancelAndCleanup(pending.jobId)
+        assertNotNull(cancelled)
+        assertNull(store.readJob(pending.jobId))
+    }
+
+    @Test
     fun getStateEnvelope_回傳_job_與_failure() {
         val staging = stagingFile("env.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!

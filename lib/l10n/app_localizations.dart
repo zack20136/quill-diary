@@ -3572,6 +3572,12 @@ abstract class AppLocalizations {
   /// **'Google Drive 備份已上傳，正在完成收尾…'**
   String get driveUploadStatusFinalizing;
 
+  /// No description provided for @driveUploadStatusCancelCleanup.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在清除未完成的 Google Drive 備份…'**
+  String get driveUploadStatusCancelCleanup;
+
   /// No description provided for @driveUploadCancelButton.
   ///
   /// In zh, this message translates to:

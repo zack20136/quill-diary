@@ -14,6 +14,7 @@ enum class DriveUploadPhase {
     WAITING_FOR_NETWORK,
     STATUS_PENDING,
     PRUNE_PENDING,
+    CANCEL_CLEANUP_PENDING,
 }
 
 data class DriveUploadJob(
@@ -73,6 +74,9 @@ data class DriveUploadJob(
     fun isRemoteCommittedPhase(): Boolean =
         phase == DriveUploadPhase.STATUS_PENDING ||
             phase == DriveUploadPhase.PRUNE_PENDING
+
+    fun isCancelCleanupPhase(): Boolean =
+        phase == DriveUploadPhase.CANCEL_CLEANUP_PENDING
 
     companion object {
         const val SCHEMA_VERSION = 1

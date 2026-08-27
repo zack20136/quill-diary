@@ -2095,6 +2095,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Google Drive backup uploaded; finishing up…';
 
   @override
+  String get driveUploadStatusCancelCleanup =>
+      'Clearing unfinished Google Drive backup…';
+
+  @override
   String get driveUploadCancelButton => 'Cancel upload';
 
   @override

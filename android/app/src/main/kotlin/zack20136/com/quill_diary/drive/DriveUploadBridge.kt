@@ -135,10 +135,23 @@ object DriveUploadBridge {
     private fun readStateEnvelope(context: Context): Map<String, Any?> {
         val jobStore = DriveUploadJobStore.get(context)
         // 含 startForegroundService→onCreate 空窗；避免誤清剛建立的 STAGED job。
-        if (!BackupUploadForegroundService.isActiveOrStarting()) {
-            jobStore.abandonUncommittedIfPresent(
-                "上次 Google Drive 備份未完成，已取消。請重新備份。",
-            )
+        val serviceBusy =
+            BackupUploadForegroundService.isActiveOrStarting() ||
+                BackupUploadForegroundService.isUploadWorkerAlive()
+        if (!serviceBusy) {
+            val active = jobStore.readActiveJob()
+            if (active != null && active.isCancelCleanupPhase()) {
+                DriveRemoteFileCleanup.completeCancelCleanup(
+                    jobStore = jobStore,
+                    tokenProvider = DriveAccessTokenProvider(context.applicationContext),
+                    job = active,
+                    workerAlive = false,
+                )
+            } else {
+                jobStore.abandonUncommittedIfPresent(
+                    "上次 Google Drive 備份未完成，已取消。請重新備份。",
+                )
+            }
         }
         return jobStore.getStateEnvelope()
     }
@@ -338,6 +351,19 @@ object DriveUploadBridge {
                     )
                     return@execute
                 }
+                if (job != null && job.isCancelCleanupPhase()) {
+                    if (!BackupUploadForegroundService.isUploadWorkerAlive()) {
+                        DriveRemoteFileCleanup.completeCancelCleanup(
+                            jobStore = jobStore,
+                            tokenProvider = DriveAccessTokenProvider(context.applicationContext),
+                            job = job,
+                            workerAlive = false,
+                        )
+                    }
+                    emitStateEnvelope()
+                    replySuccess(result, null)
+                    return@execute
+                }
                 if (BackupUploadForegroundService.isRunning()) {
                     // 先讓 FGS 中止傳輸並落定，再清本機；勿在此先 cancelAndCleanup。
                     BackupUploadForegroundService.requestStopAndAwait(context)
@@ -364,25 +390,22 @@ object DriveUploadBridge {
         }
     }
 
-    /** Service 未在跑時的本機取消：清 job，並盡力刪可能殘留的遠端檔。 */
+    /** Service 未在跑時的本機取消：標記後查詢／刪遠端殘檔再清 job。 */
     private fun cancelInactiveJob(
         context: Context,
         jobStore: DriveUploadJobStore,
         job: DriveUploadJob,
     ) {
-        val plan =
-            DriveCancelStopDecision.plan(
-                snapshotBeforeStop = job,
-                jobAfterSettle = null,
-            )
-        jobStore.cancelAndCleanup(job.jobId)
-        val remoteId = plan.remoteFileIdToDelete
-        if (!remoteId.isNullOrBlank()) {
-            DriveRemoteFileCleanup.bestEffortDelete(
-                DriveAccessTokenProvider(context.applicationContext),
-                remoteId,
-            )
+        if (!job.isRemoteCommittedPhase()) {
+            jobStore.markCancelCleanupPending(job.jobId)
         }
+        val current = jobStore.readJob(job.jobId) ?: return
+        DriveRemoteFileCleanup.completeCancelCleanup(
+            jobStore = jobStore,
+            tokenProvider = DriveAccessTokenProvider(context.applicationContext),
+            job = current,
+            workerAlive = false,
+        )
     }
 
     private fun requestNotificationPermission(
