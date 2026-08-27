@@ -55,6 +55,10 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     gradle.taskGraph.whenReady {
         val releaseTaskRequested = allTasks.any { task ->
             task.path == ":app:assembleRelease" ||
@@ -83,6 +87,10 @@ flutter {
 
 dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.core:core-ktx:1.16.0")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("io.realm:realm-android-library:10.19.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

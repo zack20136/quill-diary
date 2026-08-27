@@ -12,6 +12,7 @@ import 'package:quill_diary/application/session/providers/session_providers.dart
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
@@ -237,6 +238,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onDisconnect: _disconnectGoogleDrive,
                     onUpload: () => _runWithBackupProgress(_uploadDriveBackup),
                     onRestore: _runRestoreFromGoogleDrive,
+                    onCancelUpload: _cancelDriveUpload,
                   ),
                   const SizedBox(height: 16),
                   _buildLegalSection(context, cs),

@@ -18,6 +18,9 @@ abstract final class AppIdentifiers {
       'quill_diary/media_store_export';
   static const String contentUriImportChannel =
       'quill_diary/content_uri_import';
+  static const String driveUploadChannel = 'quill_diary/drive_upload';
+  static const String driveUploadEventsChannel =
+      'quill_diary/drive_upload_events';
 
   static const String indexKeyDerivationInfo = 'quill_diary:index:v1';
 

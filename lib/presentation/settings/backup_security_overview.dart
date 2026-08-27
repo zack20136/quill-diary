@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/application/settings/settings_health_level.dart';
@@ -71,8 +72,22 @@ SecurityOverviewItem settingsLocalBackupSecurityOverview(
 SecurityOverviewItem settingsDriveBackupSecurityOverview(
   AppLocalizations l10n,
   BackupStatusSnapshot status,
-  DateTime now,
-) {
+  DateTime now, {
+  DriveUploadJobSnapshot? uploadJob,
+}) {
+  if (uploadJob != null && uploadJob.blocksConflictingDriveActions) {
+    final bool waitingNetwork =
+        uploadJob.phase == DriveUploadPhase.waitingForNetwork;
+    return SecurityOverviewItem(
+      icon: Icons.cloud_upload_outlined,
+      title: l10n.settingsSecurityOverviewDriveBackupTitle,
+      message: waitingNetwork
+          ? l10n.settingsSecurityOverviewDriveUploadPending
+          : l10n.settingsSecurityOverviewDriveUploadInProgress,
+      level: SettingsHealthLevel.warning,
+    );
+  }
+
   final DateTime? lastAt = status.lastDriveUploadAt;
   final String? account = status.lastDriveAccountLabel?.trim();
   final String? failureSubtitle = _backupFailureSubtitle(

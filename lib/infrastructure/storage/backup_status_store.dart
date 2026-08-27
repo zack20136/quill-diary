@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -66,6 +67,7 @@ final class BackupStatusSnapshot {
     this.lastExternalExportAt,
     this.lastDriveUploadAt,
     this.lastDriveAccountLabel,
+    this.lastDriveUploadJobId,
     this.lastFailure,
   });
 
@@ -73,6 +75,7 @@ final class BackupStatusSnapshot {
   final DateTime? lastExternalExportAt;
   final DateTime? lastDriveUploadAt;
   final String? lastDriveAccountLabel;
+  final String? lastDriveUploadJobId;
   final BackupFailureRecord? lastFailure;
 
   bool get hasAnySuccess =>
@@ -133,6 +136,8 @@ final class BackupStatusSnapshot {
         'last_drive_upload_at': lastDriveUploadAt!.toIso8601String(),
       if (lastDriveAccountLabel != null)
         'last_drive_account_label': lastDriveAccountLabel,
+      if (lastDriveUploadJobId != null)
+        'last_drive_upload_job_id': lastDriveUploadJobId,
       if (lastFailure != null) 'last_failure': lastFailure!.toJson(),
     };
   }
@@ -143,6 +148,7 @@ final class BackupStatusSnapshot {
       lastExternalExportAt: _parseDateTime(json['last_external_export_at']),
       lastDriveUploadAt: _parseDateTime(json['last_drive_upload_at']),
       lastDriveAccountLabel: json['last_drive_account_label']?.toString(),
+      lastDriveUploadJobId: json['last_drive_upload_job_id']?.toString(),
       lastFailure: json['last_failure'] is Map<String, Object?>
           ? BackupFailureRecord.fromJson(
               json['last_failure'] as Map<String, Object?>,
@@ -165,8 +171,122 @@ class BackupStatusStore {
 
   final File? _storageFileOverride;
   BackupStatusSnapshot? _cache;
+  Future<void> _mutationQueue = Future<void>.value();
 
-  Future<BackupStatusSnapshot> read() async {
+  Future<BackupStatusSnapshot> read() {
+    return _enqueue(() async {
+      return _readUnlocked();
+    });
+  }
+
+  Future<void> recordLocalBackupSuccess({DateTime? at}) {
+    return _enqueue(() async {
+      final BackupStatusSnapshot current = await _readUnlocked();
+      await _persistUnlocked(
+        BackupStatusSnapshot(
+          lastLocalBackupAt: at ?? DateTime.now(),
+          lastExternalExportAt: current.lastExternalExportAt,
+          lastDriveUploadAt: current.lastDriveUploadAt,
+          lastDriveAccountLabel: current.lastDriveAccountLabel,
+          lastDriveUploadJobId: current.lastDriveUploadJobId,
+          lastFailure: current.lastFailure,
+        ),
+      );
+    });
+  }
+
+  Future<void> recordExternalExportSuccess({DateTime? at}) {
+    return _enqueue(() async {
+      final BackupStatusSnapshot current = await _readUnlocked();
+      await _persistUnlocked(
+        BackupStatusSnapshot(
+          lastLocalBackupAt: current.lastLocalBackupAt,
+          lastExternalExportAt: at ?? DateTime.now(),
+          lastDriveUploadAt: current.lastDriveUploadAt,
+          lastDriveAccountLabel: current.lastDriveAccountLabel,
+          lastDriveUploadJobId: current.lastDriveUploadJobId,
+          lastFailure: current.lastFailure,
+        ),
+      );
+    });
+  }
+
+  Future<void> recordDriveUploadSuccess({
+    String? accountLabel,
+    DateTime? at,
+    String? jobId,
+  }) {
+    return _enqueue(() async {
+      final BackupStatusSnapshot current = await _readUnlocked();
+      final String? trimmedJobId = jobId?.trim();
+      if (trimmedJobId != null &&
+          trimmedJobId.isNotEmpty &&
+          current.lastDriveUploadJobId == trimmedJobId) {
+        return;
+      }
+      final String? trimmedAccount = accountLabel?.trim();
+      await _persistUnlocked(
+        BackupStatusSnapshot(
+          lastLocalBackupAt: current.lastLocalBackupAt,
+          lastExternalExportAt: current.lastExternalExportAt,
+          lastDriveUploadAt: at ?? DateTime.now(),
+          lastDriveAccountLabel:
+              trimmedAccount != null && trimmedAccount.isNotEmpty
+              ? trimmedAccount
+              : current.lastDriveAccountLabel,
+          lastDriveUploadJobId: trimmedJobId?.isNotEmpty == true
+              ? trimmedJobId
+              : current.lastDriveUploadJobId,
+          lastFailure: current.lastFailure,
+        ),
+      );
+    });
+  }
+
+  Future<void> recordFailure({
+    required BackupStatusAction action,
+    required String message,
+    DateTime? at,
+  }) {
+    return _enqueue(() async {
+      final BackupStatusSnapshot current = await _readUnlocked();
+      await _persistUnlocked(
+        BackupStatusSnapshot(
+          lastLocalBackupAt: current.lastLocalBackupAt,
+          lastExternalExportAt: current.lastExternalExportAt,
+          lastDriveUploadAt: current.lastDriveUploadAt,
+          lastDriveAccountLabel: current.lastDriveAccountLabel,
+          lastDriveUploadJobId: current.lastDriveUploadJobId,
+          lastFailure: BackupFailureRecord(
+            action: action,
+            message: message.trim(),
+            occurredAt: at ?? DateTime.now(),
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<T> _enqueue<T>(Future<T> Function() action) {
+    final Completer<T> completer = Completer<T>();
+    _mutationQueue = _mutationQueue
+        .catchError((Object _) {})
+        .then((_) async {
+          try {
+            final T value = await action();
+            if (!completer.isCompleted) {
+              completer.complete(value);
+            }
+          } catch (error, stack) {
+            if (!completer.isCompleted) {
+              completer.completeError(error, stack);
+            }
+          }
+        });
+    return completer.future;
+  }
+
+  Future<BackupStatusSnapshot> _readUnlocked() async {
     if (_cache != null) {
       return _cache!;
     }
@@ -178,86 +298,28 @@ class BackupStatusStore {
     final Object? decoded = jsonDecode(await file.readAsString());
     if (decoded is Map<String, Object?>) {
       _cache = BackupStatusSnapshot.fromJson(decoded);
+    } else if (decoded is Map) {
+      _cache = BackupStatusSnapshot.fromJson(
+        Map<String, Object?>.from(decoded),
+      );
     } else {
       _cache = const BackupStatusSnapshot();
     }
     return _cache!;
   }
 
-  Future<void> recordLocalBackupSuccess({DateTime? at}) async {
-    final BackupStatusSnapshot current = await read();
-    await _persist(
-      BackupStatusSnapshot(
-        lastLocalBackupAt: at ?? DateTime.now(),
-        lastExternalExportAt: current.lastExternalExportAt,
-        lastDriveUploadAt: current.lastDriveUploadAt,
-        lastDriveAccountLabel: current.lastDriveAccountLabel,
-        lastFailure: current.lastFailure,
-      ),
-    );
-  }
-
-  Future<void> recordExternalExportSuccess({DateTime? at}) async {
-    final BackupStatusSnapshot current = await read();
-    await _persist(
-      BackupStatusSnapshot(
-        lastLocalBackupAt: current.lastLocalBackupAt,
-        lastExternalExportAt: at ?? DateTime.now(),
-        lastDriveUploadAt: current.lastDriveUploadAt,
-        lastDriveAccountLabel: current.lastDriveAccountLabel,
-        lastFailure: current.lastFailure,
-      ),
-    );
-  }
-
-  Future<void> recordDriveUploadSuccess({
-    String? accountLabel,
-    DateTime? at,
-  }) async {
-    final BackupStatusSnapshot current = await read();
-    final String? trimmedAccount = accountLabel?.trim();
-    await _persist(
-      BackupStatusSnapshot(
-        lastLocalBackupAt: current.lastLocalBackupAt,
-        lastExternalExportAt: current.lastExternalExportAt,
-        lastDriveUploadAt: at ?? DateTime.now(),
-        lastDriveAccountLabel:
-            trimmedAccount != null && trimmedAccount.isNotEmpty
-            ? trimmedAccount
-            : null,
-        lastFailure: current.lastFailure,
-      ),
-    );
-  }
-
-  Future<void> recordFailure({
-    required BackupStatusAction action,
-    required String message,
-    DateTime? at,
-  }) async {
-    final BackupStatusSnapshot current = await read();
-    await _persist(
-      BackupStatusSnapshot(
-        lastLocalBackupAt: current.lastLocalBackupAt,
-        lastExternalExportAt: current.lastExternalExportAt,
-        lastDriveUploadAt: current.lastDriveUploadAt,
-        lastDriveAccountLabel: current.lastDriveAccountLabel,
-        lastFailure: BackupFailureRecord(
-          action: action,
-          message: message.trim(),
-          occurredAt: at ?? DateTime.now(),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _persist(BackupStatusSnapshot snapshot) async {
+  Future<void> _persistUnlocked(BackupStatusSnapshot snapshot) async {
     final File file = await _storageFile();
     await file.parent.create(recursive: true);
-    await file.writeAsString(
+    final File temp = File('${file.path}.tmp');
+    await temp.writeAsString(
       const JsonEncoder.withIndent('  ').convert(snapshot.toJson()),
       flush: true,
     );
+    if (file.existsSync()) {
+      await file.delete();
+    }
+    await temp.rename(file.path);
     _cache = snapshot;
   }
 

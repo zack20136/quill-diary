@@ -1,7 +1,9 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
@@ -497,7 +499,7 @@ class SettingsFactChip extends StatelessWidget {
   }
 }
 
-class SettingsSecurityOverview extends StatelessWidget {
+class SettingsSecurityOverview extends ConsumerWidget {
   const SettingsSecurityOverview({
     required this.hasRecoveryKey,
     required this.recoveryKeyHint,
@@ -532,13 +534,18 @@ class SettingsSecurityOverview extends StatelessWidget {
   final Widget? lockPanel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = context.l10n;
     final DateTime now = DateTime.now();
     final SecurityOverviewItem localBackupItem =
         settingsLocalBackupSecurityOverview(l10n, backupStatus, now);
     final SecurityOverviewItem driveBackupItem =
-        settingsDriveBackupSecurityOverview(l10n, backupStatus, now);
+        settingsDriveBackupSecurityOverview(
+          l10n,
+          backupStatus,
+          now,
+          uploadJob: ref.watch(driveUploadCoordinatorProvider).job,
+        );
     final List<SecurityOverviewItem> items = <SecurityOverviewItem>[
       SecurityOverviewItem(
         icon: Icons.key_outlined,

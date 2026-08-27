@@ -245,11 +245,15 @@ abstract class DriveBackupService {
     BackupTaskProgressListener? onProgress,
   });
 
-  Future<List<DriveBackupFile>> listBackups();
+  Future<List<DriveBackupFile>> listBackups({bool interactive = true});
 
   Future<void> deleteBackup(String fileId);
 
-  Future<List<DriveBackupFile>> pruneBackups({required int retainCount});
+  Future<List<DriveBackupFile>> pruneBackups({
+    required int retainCount,
+    String? keepFileId,
+    bool interactive = true,
+  });
 
   Future<File> downloadBackupById({
     required String fileId,
@@ -367,8 +371,15 @@ class GoogleDriveBackupService implements DriveBackupService {
         throw StateError('尚未完成 Google 帳號登入。');
       }
 
+      final GoogleDriveAuthorizationHandle? existingAuthorization =
+          await account.authorizationForScopes(_scopes);
+      if (existingAuthorization != null) {
+        return (account: account, authorization: existingAuthorization);
+      }
+      if (!interactive) {
+        throw StateError('需要重新授權 Google Drive。');
+      }
       final GoogleDriveAuthorizationHandle authorization =
-          await account.authorizationForScopes(_scopes) ??
           await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on GoogleSignInException catch (error) {
@@ -587,12 +598,14 @@ class GoogleDriveBackupService implements DriveBackupService {
     await _resetSignInSession();
   }
 
-  Future<drive.DriveApi> _createAuthorizedDriveApi() async {
+  Future<drive.DriveApi> _createAuthorizedDriveApi({
+    bool interactive = true,
+  }) async {
     final ({
       GoogleDriveSignedInAccount account,
       GoogleDriveAuthorizationHandle authorization,
     })
-    authorized = await _authorization(interactive: true);
+    authorized = await _authorization(interactive: interactive);
     return authorized.authorization.createDriveApi(_scopes);
   }
 
@@ -627,30 +640,41 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<List<DriveBackupFile>> listBackups() async {
-    final drive.DriveApi api = await _createAuthorizedDriveApi();
-    final drive.FileList list = await api.files.list(
-      spaces: 'appDataFolder',
-      q: "name contains '.zip' and trashed = false",
-      orderBy: 'createdTime desc',
-      $fields: 'files(id,name,createdTime,size)',
+  Future<List<DriveBackupFile>> listBackups({bool interactive = true}) async {
+    final drive.DriveApi api = await _createAuthorizedDriveApi(
+      interactive: interactive,
     );
-    return (list.files ?? const <drive.File>[])
-        .where(
-          (drive.File file) =>
-              file.id != null &&
-              file.name != null &&
-              isVisibleDriveBackupFileName(file.name),
-        )
-        .map(
-          (drive.File file) => DriveBackupFile(
-            id: file.id!,
-            name: file.name!,
-            createdAt: file.createdTime,
-            sizeBytes: _parseDriveFileSize(file.size),
-          ),
-        )
-        .toList();
+    final List<DriveBackupFile> backups = <DriveBackupFile>[];
+    String? pageToken;
+    do {
+      final drive.FileList list = await api.files.list(
+        spaces: 'appDataFolder',
+        q: "name contains '.zip' and trashed = false",
+        orderBy: 'createdTime desc',
+        pageSize: 100,
+        pageToken: pageToken,
+        $fields: 'nextPageToken,files(id,name,createdTime,size)',
+      );
+      backups.addAll(
+        (list.files ?? const <drive.File>[])
+            .where(
+              (drive.File file) =>
+                  file.id != null &&
+                  file.name != null &&
+                  isVisibleDriveBackupFileName(file.name),
+            )
+            .map(
+              (drive.File file) => DriveBackupFile(
+                id: file.id!,
+                name: file.name!,
+                createdAt: file.createdTime,
+                sizeBytes: _parseDriveFileSize(file.size),
+              ),
+            ),
+      );
+      pageToken = list.nextPageToken;
+    } while (pageToken != null && pageToken.isNotEmpty);
+    return backups;
   }
 
   @override
@@ -664,7 +688,11 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<List<DriveBackupFile>> pruneBackups({required int retainCount}) async {
+  Future<List<DriveBackupFile>> pruneBackups({
+    required int retainCount,
+    String? keepFileId,
+    bool interactive = true,
+  }) async {
     if (retainCount < 1) {
       throw ArgumentError.value(
         retainCount,
@@ -672,14 +700,38 @@ class GoogleDriveBackupService implements DriveBackupService {
         'retainCount must be positive.',
       );
     }
-    final List<DriveBackupFile> staleBackups = driveBackupsToPrune(
-      await listBackups(),
-      retainCount: retainCount,
+    final String? protectedId = keepFileId?.trim();
+    final List<DriveBackupFile> all = await listBackups(
+      interactive: interactive,
     );
-    for (final DriveBackupFile backup in staleBackups) {
-      await deleteBackup(backup.id);
+    final bool keepExists =
+        protectedId != null &&
+        protectedId.isNotEmpty &&
+        all.any((DriveBackupFile file) => file.id == protectedId);
+    final List<DriveBackupFile> candidates = keepExists
+        ? all
+              .where((DriveBackupFile file) => file.id != protectedId)
+              .toList()
+        : all;
+    final int othersRetain = keepExists ? retainCount - 1 : retainCount;
+    final List<DriveBackupFile> toDelete = othersRetain <= 0
+        ? sortDriveBackupsNewestFirst(candidates)
+        : driveBackupsToPrune(candidates, retainCount: othersRetain);
+    final List<String> failures = <String>[];
+    for (final DriveBackupFile backup in toDelete) {
+      try {
+        await deleteBackup(backup.id);
+      } on Object catch (error) {
+        failures.add('${backup.id}: $error');
+      }
     }
-    return staleBackups;
+    if (failures.isNotEmpty) {
+      throw StateError(
+        '部分 Google Drive 舊備份刪除失敗（${failures.length}/${toDelete.length}）：'
+        '${failures.take(3).join('; ')}',
+      );
+    }
+    return toDelete;
   }
 
   @override

@@ -1,5 +1,6 @@
 package zack20136.com.quill_diary
 
+import android.Manifest
 import android.app.KeyguardManager
 import android.content.Intent
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.provider.DocumentsContract
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -28,16 +30,26 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import zack20136.com.quill_diary.drive.BackupUploadForegroundService
+import zack20136.com.quill_diary.drive.DriveUploadBridge
 
 class MainActivity : FlutterFragmentActivity() {
     private var pendingGoogleDriveAuthResult: MethodChannel.Result? = null
     private var pendingDirectoryPickerResult: MethodChannel.Result? = null
     private var googleDriveSignInClient: GoogleSignInClient? = null
+    private var pendingOpenDriveBackup: Boolean = false
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            DriveUploadBridge.completeNotificationPermission(granted)
+        }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         EasyDiaryRealmChannel.register(flutterEngine, applicationContext)
         MediaStoreExportChannel.register(flutterEngine, applicationContext)
+        DriveUploadBridge.attachActivity(this)
+        DriveUploadBridge.register(flutterEngine, this)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -139,6 +151,40 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureOpenDriveBackupExtra(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        DriveUploadBridge.attachActivity(this)
+        captureOpenDriveBackupExtra(intent)
+    }
+
+    override fun onDestroy() {
+        DriveUploadBridge.detachActivity(this)
+        super.onDestroy()
+    }
+
+    /** 回傳 false 表示無法發起請求（例如 Activity 已結束）。 */
+    fun launchNotificationPermissionRequest(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            DriveUploadBridge.completeNotificationPermission(true)
+            return true
+        }
+        if (isFinishing || isDestroyed) {
+            return false
+        }
+        return try {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == GOOGLE_DRIVE_SIGN_IN_REQUEST_CODE) {
             handleGoogleDriveSignInResult(data)
@@ -149,6 +195,23 @@ class MainActivity : FlutterFragmentActivity() {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    fun consumeOpenDriveBackupRequest(): Boolean {
+        val pending = pendingOpenDriveBackup
+        pendingOpenDriveBackup = false
+        return pending
+    }
+
+    private fun captureOpenDriveBackupExtra(intent: Intent?) {
+        if (intent?.getBooleanExtra(
+                BackupUploadForegroundService.EXTRA_OPEN_DRIVE_BACKUP,
+                false,
+            ) == true
+        ) {
+            pendingOpenDriveBackup = true
+            intent.removeExtra(BackupUploadForegroundService.EXTRA_OPEN_DRIVE_BACKUP)
+        }
     }
 
     private fun pickWritableDirectoryTree(call: MethodCall, result: MethodChannel.Result) {

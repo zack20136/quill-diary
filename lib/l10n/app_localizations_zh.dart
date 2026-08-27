@@ -1649,7 +1649,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel) {
-    return 'App 放在背景超過 $timeoutLabel 會自動鎖定；如果只是短時間切換 App，通常不會。您可以在個人化頁調整成 1 / 3 / 5 / 10 分鐘。若正在建立備份、還原備份或執行匯入匯出，會先暫停自動鎖定；等您回來後，再依目前的解鎖方式重新驗證。';
+    return 'App 在背景超過 $timeoutLabel 後會自動鎖定；短暫切換通常不會。您可在「個人化」調整時間。備份、還原或匯入匯出進行中會暫停自動鎖定。';
   }
 
   @override
@@ -1797,7 +1797,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDriveBackupSectionDescriptionEnabled =>
-      '連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。（Google Drive 最多保留 5 份）';
+      '連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。上傳會在背景完成，可切換 App；請勿強制停止本 App。（Google Drive 最多保留 5 份）';
 
   @override
   String get settingsDriveBackupSectionDescriptionOAuthNotConfigured =>
@@ -1896,6 +1896,67 @@ class AppLocalizationsZh extends AppLocalizations {
   String settingsDriveBackupRestoreSuccess(String fileName) {
     return '已從 Google Drive 還原：$fileName';
   }
+
+  @override
+  String get settingsBackupPhasePreparingDriveUpload =>
+      '正在建立備份，完成前請保持 Quill Diary 顯示在畫面上…';
+
+  @override
+  String get driveUploadBackgroundStarted =>
+      '已在背景上傳到 Google Drive。可切換到其他 App 或鎖定螢幕；請勿在系統設定中強制停止 App。若上傳服務被系統終止，請重新開啟 App 後再備份。';
+
+  @override
+  String get driveUploadNotificationsDeniedHint =>
+      '未允許通知時，通知欄不會顯示進度與停止按鈕，請回 App 查看上傳狀態。';
+
+  @override
+  String driveUploadStatusUploading(String fileName, int percent) {
+    return '正在背景上傳：$fileName（$percent%）';
+  }
+
+  @override
+  String driveUploadStatusStaged(String fileName) {
+    return '正在準備背景上傳：$fileName';
+  }
+
+  @override
+  String driveUploadStatusWaitingNetwork(String fileName) {
+    return '等待網路後繼續上傳：$fileName';
+  }
+
+  @override
+  String get driveUploadStatusFinalizing => 'Google Drive 備份已上傳，正在完成收尾…';
+
+  @override
+  String get driveUploadCancelButton => '取消上傳';
+
+  @override
+  String get driveUploadCancelConfirmTitle => '取消 Google Drive 上傳？';
+
+  @override
+  String get driveUploadCancelConfirmBody => '將停止目前的背景上傳。已建立的暫存備份會被清除。';
+
+  @override
+  String get driveUploadBusyBlocksAccountActions =>
+      '上傳進行中，請先完成或取消後再變更 Google 帳戶。';
+
+  @override
+  String get driveUploadAbandonedFailureTitle => 'Google Drive 備份失敗';
+
+  @override
+  String get driveUploadAbandonedFailureBody =>
+      '上次 Google Drive 備份未完成，已取消。請重新備份。';
+
+  @override
+  String get driveUploadAbandonedFailureConfirm => '知道了';
+
+  @override
+  String get settingsSecurityOverviewDriveUploadInProgress =>
+      '正在上傳到 Google Drive';
+
+  @override
+  String get settingsSecurityOverviewDriveUploadPending =>
+      'Google Drive 上傳尚未完成';
 
   @override
   String get settingsRestoreDialogConfirmLocalTitle => '還原本機備份？';
@@ -2629,7 +2690,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionStartupNeedsBiometricMessage => '請先完成生物驗證。';
 
   @override
-  String get legalPrivacyEffectiveDateLabel => '生效日期：2026 年 6 月 6 日';
+  String get legalPrivacyEffectiveDateLabel => '生效日期：2026 年 8 月 27 日';
 
   @override
   String get legalChildrenPrivacyOneLiner =>
@@ -2673,7 +2734,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLegalContactAuthorTitle => '聯絡作者';
 
   @override
-  String get aboutPageTitle => '介紹';
+  String get aboutPageTitle => '關於 Quill Diary';
 
   @override
   String get aboutTabIntroLabel => '簡介';
@@ -2683,7 +2744,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary 是為個人記錄設計的本機加密日記 App。不用註冊即可安裝與進入 App，但真正要讀寫日記、建立完整備份或匯出內容前，仍須先建立並保存復原金鑰。除非您主動備份或匯出，資料預設留在裝置上。';
+      'Quill Diary 是為個人記錄設計的本機加密日記 App，不需註冊帳號。建立並妥善保存復原金鑰後，就能開始寫日記、備份與匯出；除非您主動操作，資料預設留在裝置上。';
 
   @override
   String get aboutTabIntroChip0 => '資料留在裝置';
@@ -2695,7 +2756,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroChip2 => '全文搜尋';
 
   @override
-  String get aboutTabIntroChip3 => '完整加密備份';
+  String get aboutTabIntroChip3 => '完整備份';
 
   @override
   String get aboutTabIntroChip4 => '可攜式匯出';
@@ -2704,22 +2765,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroSection0Title => '為什麼適合拿來寫日記';
 
   @override
-  String get aboutTabIntroSection0Subtitle =>
-      '它不是把雲端筆記換個名字，而是把私人資料保護和日常使用一起考慮。';
+  String get aboutTabIntroSection0Subtitle => '從資料保存方式到日常操作，都以個人記錄與隱私為核心。';
 
   @override
   String get aboutTabIntroSection0Item0Title => '本機加密保存';
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      '正式日記、附件、草稿與搜尋索引都留在裝置上，並受到加密或有效解鎖狀態保護。除非您主動備份到外部位置或匯出可讀文件，內容不會自動離開手機。';
+      '日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定與少部分輔助資料不另行加密，但仍存放在 App 私有空間。';
 
   @override
   String get aboutTabIntroSection0Item1Title => '不用註冊就能開始';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      '不需帳號即可安裝與進入 App；真正要讀寫日記、建立完整備份或匯出內容前，仍須先設定復原金鑰。';
+      '不需建立 Quill Diary 帳號。第一次使用時設定復原金鑰，即可開始讀寫日記；只有使用 Google Drive 時才需連結 Google 帳號。';
 
   @override
   String get aboutTabIntroSection0Item2Title => '少收集、少干擾';
@@ -2756,11 +2816,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '解鎖後可搜尋標題、標籤與內文，適合回頭找某段經歷、某個關鍵字，或快速整理某段時間的紀錄。';
 
   @override
-  String get aboutTabIntroSection1Item3Title => '把回顧整理成可分享的形式';
+  String get aboutTabIntroSection1Item3Title => '備份與匯出，各有用途';
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      '您可以建立完整備份保存整個加密日記庫，也能匯出 Markdown 或 HTML 做閱讀、整理或搬移。若要放到雲端，Google Drive 在這裡扮演的是加密備份目的地，不是即時同步。';
+      '完整備份用來還原整個日記庫；Markdown 或 HTML 則適合閱讀、整理與搬移內容。Google Drive 只是可選的完整備份存放位置，不是即時同步服務。';
 
   @override
   String get aboutTabIntroSection2Title => '資料掌控權在您手上';
@@ -2777,11 +2837,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '日常可用螢幕鎖或生物辨識快速回到 App；換機、還原或可信狀態失效時，復原金鑰才是重新取得存取權的關鍵。';
 
   @override
-  String get aboutTabIntroSection2Item1Title => '完整備份保存的是加密日記庫';
+  String get aboutTabIntroSection2Item1Title => '完整備份用來還原日記庫';
 
   @override
   String get aboutTabIntroSection2Item1Body =>
-      '完整備份保留的是整個加密日記庫，適合之後完整還原，不是直接打開就能閱讀的文件。';
+      '完整備份中的日記、附件與人物名冊維持加密，但 ZIP 外層與部分復原、標籤及釘選資料不另行加密。它適合完整還原，不是可直接閱讀的匯出文件。';
 
   @override
   String get aboutTabIntroSection2Item2Title => '匯出內容後要自行保護';
@@ -2797,24 +2857,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroSection3Subtitle => '您可以查看原始碼與授權條件，也能清楚知道品牌使用界線。';
 
   @override
-  String get aboutTabIntroSection3Item0Title => 'AGPL-3.0 開源';
+  String get aboutTabIntroSection3Item0Title => 'AGPL-3.0-or-later 開源';
 
   @override
   String get aboutTabIntroSection3Item0Body =>
-      '原始碼以 AGPL-3.0 發布，可公開檢視產品行為與實作方式。目前僅提供 Android 版。';
+      '原始碼以 AGPL-3.0-or-later 發布，可公開檢視產品行為與實作方式。目前僅支援 Android。';
 
   @override
   String get aboutTabIntroSection3Item1Title => 'Quill Diary 品牌';
 
   @override
-  String get aboutTabUnlockSessionLabel => '解鎖與狀態';
+  String get aboutTabUnlockSessionLabel => '解鎖與安全';
 
   @override
-  String get aboutTabUnlockSessionHeroTitle => '在方便解鎖和保護資料之間取得平衡';
+  String get aboutTabUnlockSessionHeroTitle => '方便使用，也不放鬆資料保護';
 
   @override
   String get aboutTabUnlockSessionHeroBody =>
-      'Quill Diary 不會要求您每次切出再回來都重新做最重的驗證，但也不會讓已解鎖狀態無限延長。這一頁說明不同解鎖方式、自動鎖定，以及什麼情況下會需要復原金鑰。';
+      '您可以選擇不額外驗證、裝置螢幕鎖或生物辨識。App 會依背景逾時與鎖定原因決定何時重新驗證；換機、還原或可信狀態失效時，則可能需要復原金鑰。';
 
   @override
   String get aboutTabUnlockSessionChip0 => '生物辨識';
@@ -2840,7 +2900,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection0Item0Body =>
-      '鎖定後不額外驗證，回到 App 會直接恢復先前狀態。適合尚未設定裝置螢幕鎖的情況，但保護力最低。';
+      '因背景逾時鎖定後，回到 App 不需系統驗證即可恢復存取；手動鎖定後仍須按「重新驗證」。此模式方便，但保護力最低。';
 
   @override
   String get aboutTabUnlockSessionSection0Item1Title => '裝置螢幕鎖';
@@ -2850,11 +2910,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '回到 App 時用 PIN、圖案或密碼重新驗證。適合想保留系統層保護，又不一定使用生物辨識的人。';
 
   @override
-  String get aboutTabUnlockSessionSection0Item2Title => '生物驗證';
+  String get aboutTabUnlockSessionSection0Item2Title => '生物辨識';
 
   @override
   String get aboutTabUnlockSessionSection0Item2Body =>
-      '優先使用指紋或臉部驗證，失敗或取消時可改走螢幕鎖。這通常是日常使用最方便的方式。';
+      '優先使用指紋或臉部驗證；依裝置與系統畫面，可能提供螢幕鎖作為後備方式。這通常是日常使用最方便的選擇。';
 
   @override
   String get aboutTabUnlockSessionSection0Item3Title => '共同前提';
@@ -2868,14 +2928,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Subtitle =>
-      '只有在有效解鎖期間內，正式日記、草稿與搜尋索引才會保持可用。';
+      '只有在有效解鎖期間，才能讀寫日記、草稿、附件與搜尋資料。';
 
   @override
-  String get aboutTabUnlockSessionSection1Item0Title => '解鎖中';
+  String get aboutTabUnlockSessionSection1Item0Title => '有效解鎖期間';
 
   @override
   String get aboutTabUnlockSessionSection1Item0Body =>
-      '完成解鎖後，可正常讀寫正式日記、編輯草稿、附加檔案並使用全文搜尋。尚未建立復原金鑰時，即使已進入主畫面，內容仍無法讀寫。';
+      '解鎖後即可讀寫日記、編輯草稿、加入附件及使用搜尋。尚未建立復原金鑰時，即使已進入主畫面，日記內容仍無法使用。';
 
   @override
   String get aboutTabUnlockSessionSection1Item1Title => '背景逾時';
@@ -2892,7 +2952,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection1Item3Body =>
-      '取消驗證時通常維持鎖定，可稍後重試；驗證失敗則需手動按重新驗證。不會一直反覆跳窗。';
+      '取消或未通過驗證時，App 會維持鎖定並停止自動重試；需要時可再按「重新驗證」。';
 
   @override
   String get aboutTabUnlockSessionSection1Item4Title => '手動鎖定時';
@@ -2906,7 +2966,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Subtitle =>
-      '可信裝置提供的是便利路徑，真正能跨裝置、跨狀態重新進入日記庫的依據仍然是復原金鑰。';
+      '螢幕鎖與生物辨識方便日常使用；換機、還原或可信狀態失效時，仍可能需要復原金鑰。';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Title => '換機或重設後';
@@ -2923,33 +2983,33 @@ class AppLocalizationsZh extends AppLocalizations {
       '可信狀態失效或與日記庫不符時，不能只靠本機快速進入，需改用復原金鑰。';
 
   @override
-  String get aboutTabUnlockSessionSection2Item2Title => '最終存取權';
+  String get aboutTabUnlockSessionSection2Item2Title => '請妥善保存';
 
   @override
   String get aboutTabUnlockSessionSection2Item2Body =>
-      '復原金鑰不是可有可無的備用功能，而是換機、還原與可信裝置失效時的必要憑證，請務必妥善保存。';
+      '復原金鑰是換機、還原或可信裝置失效時重新取得存取權的重要憑證。遺失後可能無法恢復日記庫，請另外保存在安全位置。';
 
   @override
-  String get aboutTabEncryptionLabel => '加密與解密';
+  String get aboutTabEncryptionLabel => '資料加密';
 
   @override
   String get aboutTabEncryptionHeroTitle => '資料預設以加密形式保存';
 
   @override
   String get aboutTabEncryptionHeroBody =>
-      'Quill Diary 會先保護內容，再把它寫進日記庫。正式日記、附件與其他敏感資料會使用 LDJ2 格式封裝，內容以 AES-256-GCM 加密，並透過可信裝置或復原金鑰的正確路徑才能打開。';
+      '正式日記、附件、人物名冊與草稿會以 LDJ2 格式和 AES-256-GCM 加密，搜尋索引也會另外加密。只有在有效解鎖期間，App 才能讀寫這些內容。';
 
   @override
   String get aboutTabEncryptionChip0 => '本機加密';
 
   @override
-  String get aboutTabEncryptionChip1 => 'LDJ2';
+  String get aboutTabEncryptionChip1 => '加密檔案';
 
   @override
-  String get aboutTabEncryptionChip2 => 'AES-256-GCM';
+  String get aboutTabEncryptionChip2 => '內容加密';
 
   @override
-  String get aboutTabEncryptionChip3 => 'Argon2id';
+  String get aboutTabEncryptionChip3 => '金鑰保護';
 
   @override
   String get aboutTabEncryptionChip4 => '可信裝置';
@@ -2962,28 +3022,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Subtitle =>
-      '重點不是堆術語，而是讓您知道正式資料在存放與讀取時，都有清楚而一致的保護流程。';
+      '內容寫入裝置前先加密，讀取時再透過目前有效的解鎖狀態開啟。';
 
   @override
-  String get aboutTabEncryptionSection0Item0Title => 'LDJ2 + AES-256-GCM 保護內容';
+  String get aboutTabEncryptionSection0Item0Title => '加密保存敏感內容';
 
   @override
   String get aboutTabEncryptionSection0Item0Body =>
-      '正式日記與附件會先用 LDJ2 格式封裝，再以 AES-256-GCM 加密正文。即使看到檔案本身，也不是直接就能讀懂的內容。';
+      '正式日記、附件、人物名冊與草稿會以 AES-256-GCM 加密。即使取得檔案，也無法直接閱讀內容。';
 
   @override
-  String get aboutTabEncryptionSection0Item1Title => '被竄改時應該直接失敗';
+  String get aboutTabEncryptionSection0Item1Title => '偵測異常就停止開啟';
 
   @override
   String get aboutTabEncryptionSection0Item1Body =>
-      '正式資料不只加密，也帶有完整性驗證。若內容或檔案 header 被動過手腳，解密應該直接失敗，而不是悄悄回傳可疑內容。';
+      '加密檔案也帶有完整性驗證。若內容或檔頭遭到修改，解密會失敗，不會把無法驗證的資料當成正常內容。';
 
   @override
-  String get aboutTabEncryptionSection0Item2Title => '每個檔案都有獨立金鑰';
+  String get aboutTabEncryptionSection0Item2Title => '不同檔案使用不同金鑰';
 
   @override
   String get aboutTabEncryptionSection0Item2Body =>
-      '每個加密檔案都會先產生自己的隨機 file key，再由日記庫層的保護機制包裝。這讓不同內容不會共用同一把檔案金鑰。';
+      '每個加密檔案都使用獨立產生的金鑰，避免所有內容共用同一把檔案金鑰。';
 
   @override
   String get aboutTabEncryptionSection1Title => '您可以怎麼打開自己的資料';
@@ -3004,20 +3064,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item1Body =>
-      '當您換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得進入整個日記庫的能力。復原金鑰會先經過 Argon2id 推導，再進入後續解密流程。';
+      '換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得日記庫存取權。';
 
   @override
   String get aboutTabEncryptionSection1Item2Title => '先確認日記庫，再解開各檔';
 
   @override
   String get aboutTabEncryptionSection1Item2Body =>
-      '流程會先確認目前的存取狀態能否正確進入日記庫，之後才解開各個檔案。這能避免用錯憑證時，把問題誤判成資料毀損。';
+      'App 會先確認您能正確進入日記庫，再開啟其中的檔案，避免把金鑰錯誤誤判成資料損壞。';
 
   @override
   String get aboutTabEncryptionSection2Title => '使用前要知道的邊界';
 
   @override
-  String get aboutTabEncryptionSection2Subtitle => '加密能保護日記庫本身，但不代表所有情境都自動安全。';
+  String get aboutTabEncryptionSection2Subtitle =>
+      '內容檔案會加密，但部分復原與輔助 metadata、可讀匯出及解鎖後的使用情境有不同風險。';
 
   @override
   String get aboutTabEncryptionSection2Item0Title => '匯出後不再是同一層保護';
@@ -3034,21 +3095,21 @@ class AppLocalizationsZh extends AppLocalizations {
       '復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，之後可能影響資料安全或可恢復性。';
 
   @override
-  String get aboutTabEncryptionSection2Item2Title => '它保護的是靜態資料';
+  String get aboutTabEncryptionSection2Item2Title => '解鎖後仍要保護裝置';
 
   @override
   String get aboutTabEncryptionSection2Item2Body =>
-      '這套設計主要保護的是存放在裝置上的加密資料；若裝置本身遭到入侵、已解鎖狀態被他人取得，風險就不只取決於檔案格式本身。';
+      '加密主要保護存放中的資料。若他人取得已解鎖的 App 或已入侵的裝置，仍可能讀取當下可用的內容。';
 
   @override
-  String get aboutTabSearchIndexLabel => '索引與搜尋';
+  String get aboutTabSearchIndexLabel => '搜尋';
 
   @override
   String get aboutTabSearchIndexHeroTitle => '解鎖後，您可以快速找回以前寫過的內容';
 
   @override
   String get aboutTabSearchIndexHeroBody =>
-      '搜尋不是每次都把所有日記重新讀一遍，而是透過一份加密索引來加快查找。這份索引只在解鎖期間打開，讓搜尋體驗和資料保護可以兼顧。';
+      'App 使用加密搜尋資料加快查找，不必每次逐篇讀取所有日記。搜尋只在日記庫解鎖期間可用。';
 
   @override
   String get aboutTabSearchIndexChip0 => '標題/內文搜尋';
@@ -3087,10 +3148,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection0Item2Body =>
-      '搜尋不是建立一份明文資料庫放在旁邊，而是使用另一份加密索引來支撐查找速度。';
+      '搜尋索引檔會加密保存，只有在日記庫解鎖後，App 才會開啟並查詢其中的搜尋資料。';
 
   @override
-  String get aboutTabSearchIndexSection1Title => '為什麼搜尋不會拖慢日常使用';
+  String get aboutTabSearchIndexSection1Title => '索引如何加快搜尋';
 
   @override
   String get aboutTabSearchIndexSection1Subtitle =>
@@ -3101,7 +3162,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Item0Body =>
-      '當您輸入關鍵字時，系統會查詢索引，而不是臨時解密整個日記庫後逐篇比對。';
+      '輸入關鍵字時，App 會查詢搜尋索引，不需逐篇解密整個日記庫。';
 
   @override
   String get aboutTabSearchIndexSection1Item1Title => '正式儲存後才更新';
@@ -3115,7 +3176,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection1Item2Body =>
-      '索引屬於衍生資料。如果格式更新、還原備份，或目前狀態不適合沿用，系統會刪除並重新生成。';
+      '搜尋索引是可重建的衍生資料。格式更新、還原備份或索引無法沿用時，App 會重新建立。';
 
   @override
   String get aboutTabSearchIndexSection2Title => '它和安全性的關係';
@@ -3141,20 +3202,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item2Body =>
-      '搜尋索引的工作是幫您更快找到內容，不是取代正式資料本體；真正的權威來源仍然是加密日記庫。';
+      '搜尋索引只用來快速找到內容；正式日記仍以加密日記庫中的資料為準。';
 
   @override
-  String get aboutTabEditorLabel => '日記編輯器';
+  String get aboutTabEditorLabel => '寫日記';
 
   @override
-  String get aboutTabEditorHeroTitle => '寫作、暫存與正式保存各走自己的路';
+  String get aboutTabEditorHeroTitle => '安心寫作，完成後再正式儲存';
 
   @override
   String get aboutTabEditorHeroBody =>
-      '編輯器不會把「還在寫」和「已正式保存」混在一起。它會先把變更寫成加密草稿，等您確認儲存後，再更新正式日記與搜尋索引，讓寫作過程比較安心，也更容易接續。';
+      '編輯中的變更會先保存為加密草稿。確認儲存後，內容才會寫入正式日記並更新搜尋資料，方便意外中斷後繼續編輯。';
 
   @override
-  String get aboutTabEditorChip0 => '可匯出 Markdown';
+  String get aboutTabEditorChip0 => 'Markdown 編輯';
 
   @override
   String get aboutTabEditorChip1 => '圖片附件';
@@ -3183,21 +3244,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item1Body =>
-      '您可以編輯日記內容，同時整理標題、日期與時間。正式儲存時至少要有標題或內文，避免留下空白紀錄；匯出則屬後續整理流程，不會取代正式儲存。';
+      '您可以編輯標題、日期、時間與內文。正式儲存時至少要有標題或內文，避免留下空白日記。';
 
   @override
   String get aboutTabEditorSection0Item2Title => '標籤';
 
   @override
   String get aboutTabEditorSection0Item2Body =>
-      '標籤可以獨立整理，讓每篇日記都維持一致的標記方式，也方便之後快速回頭查找。';
+      '可建立、選擇與整理標籤，並用顏色區分；之後能從標籤頁瀏覽，或直接搜尋標籤文字。';
 
   @override
   String get aboutTabEditorSection0Item3Title => '任務清單';
 
   @override
   String get aboutTabEditorSection0Item3Body =>
-      '若內容含有任務清單，編輯器會用混合區塊方式處理，讓勾選與繼續輸入都更順手，預覽也會直接顯示成可互動的項目。';
+      '可在文字中加入任務清單，直接勾選項目並繼續編輯；預覽時也能操作核取方塊。';
 
   @override
   String get aboutTabEditorSection0Item4Title => '圖片與一般附件';
@@ -3210,7 +3271,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorSection1Title => '草稿機制';
 
   @override
-  String get aboutTabEditorSection1Subtitle => '草稿不是額外的小功能，而是整個寫作體驗的重要保護層。';
+  String get aboutTabEditorSection1Subtitle => '自動草稿可降低意外中斷時遺失內容的風險。';
 
   @override
   String get aboutTabEditorSection1Item0Title => '變更會自動保存';
@@ -3261,14 +3322,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。';
 
   @override
-  String get aboutTabPeopleLabel => '人物管理';
+  String get aboutTabPeopleLabel => '人物';
 
   @override
-  String get aboutTabPeopleHeroTitle => '把日記裡重要的人整理成自己的名冊';
+  String get aboutTabPeopleHeroTitle => '整理日記裡的重要人物';
 
   @override
   String get aboutTabPeopleHeroBody =>
-      '為家人、朋友或生活中重要的人建立資料，App 會從已儲存的日記整理相關提及，讓您更容易回顧彼此的互動與故事。';
+      '為生活中的重要人物建立資料。App 會從已儲存的日記找出姓名與別名，方便回顧相關紀錄。';
 
   @override
   String get aboutTabPeopleChip0 => '姓名與別名';
@@ -3313,14 +3374,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabPeopleSection1Title => '從日記回顧彼此的故事';
 
   @override
-  String get aboutTabPeopleSection1Subtitle => '人物資料會和已儲存的日記連在一起，幫助您從不同角度回看互動。';
+  String get aboutTabPeopleSection1Subtitle =>
+      'App 會在您使用人物功能時，依姓名與別名更新可重建的提及分析，方便查看相關紀錄。';
 
   @override
   String get aboutTabPeopleSection1Item0Title => '辨識正式姓名與別名';
 
   @override
   String get aboutTabPeopleSection1Item0Body =>
-      'App 會在已儲存的日記中尋找人物的正式姓名與別名，整理出與這個人有關的紀錄。';
+      'App 會透過加密搜尋資料中的標題與內容，比對人物的正式姓名與別名，不需每次逐篇解密整個日記庫。';
 
   @override
   String get aboutTabPeopleSection1Item1Title => '查看提及與相關日記';
@@ -3347,7 +3409,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection2Item0Body =>
-      '人物提及只根據正式儲存的日記整理；仍在編輯中的草稿，要等正式儲存後才會反映在統計中。';
+      '人物提及只根據正式儲存的日記整理；草稿要等正式儲存後才會反映。提及分析不包含在完整備份中，還原後可重新建立。';
 
   @override
   String get aboutTabPeopleSection2Item1Title => '刪除人物不會刪除日記';
@@ -3371,10 +3433,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      '備份與匯出看起來都像「把資料帶出去」，但用途完全不同。完整備份用來保留整個加密日記庫，Markdown / HTML 匯出則是把正式內容變成可閱讀、可整理、可再匯入的形式。這兩條流程不能混用。';
+      '完整備份用來保存並還原整個日記庫；Markdown / HTML 匯出則把正式內容轉成可閱讀、可整理的文件。兩者格式與用途不同，不能互相取代。';
 
   @override
-  String get aboutTabBackupRestoreChip0 => '完整加密備份';
+  String get aboutTabBackupRestoreChip0 => '完整備份';
 
   @override
   String get aboutTabBackupRestoreChip1 => 'Google Drive';
@@ -3393,11 +3455,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '如果您想保留整個正式日記庫，之後能原樣還原，走的就是完整備份。';
 
   @override
-  String get aboutTabBackupRestoreSection0Item0Title => '保存整個加密日記庫';
+  String get aboutTabBackupRestoreSection0Item0Title => '保存完整日記庫';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Body =>
-      '`backup_*.zip` 封裝的是 `vault/` 內的正式資料，包括日記、附件、復原設定與標籤目錄；內容仍保持加密，不是明文文件。';
+      '完整備份包含日記、附件、人物名冊與復原設定。日記內容維持加密，但備份外層、復原 metadata，以及存在時的標籤目錄與釘選項目 ID 不另行加密。';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Title => '建立後會先檢查';
@@ -3426,14 +3488,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      '不論備份來源是 App 內清單還是外部 ZIP，還原流程都會用備份內容覆寫目前的 `vault/`。';
+      '不論備份來自 App 內清單、外部 ZIP 或 Google Drive，還原都會用備份內容取代目前的正式日記庫。';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title => '搜尋索引會重建';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Body =>
-      '還原後索引會重建。有時需重新驗證；同裝置且仍處於有效解鎖時，則可能免再驗證。';
+      '還原後會重新建立搜尋資料，並可能要求您重新驗證；同裝置且仍處於有效解鎖時，有時可直接繼續使用。';
 
   @override
   String get aboutTabBackupRestoreSection1Item2Title => '可能會要求復原金鑰';
@@ -3454,21 +3516,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection2Item0Body =>
-      '可從 ZIP、Markdown、HTML 或資料夾匯入內容。若是 ZIP，系統會先判斷是否為支援的備份格式，再決定後續處理方式。';
+      '「匯入日記」可處理 Markdown、HTML、資料夾，以及支援的可攜 ZIP 或 Easy Diary 備份；Quill Diary 的完整備份 ZIP 必須改走「匯入外部備份」還原，兩者不能混用。';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Title => '匯出';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Body =>
-      '您可以在設定頁匯出 `markdown_*.zip`，也能從主畫面選取日記或在總覽匯出 `html_*.html`，把正式內容整理成可閱讀格式。';
+      '您可以從設定匯出 Markdown，也能從主畫面或總覽匯出 HTML，方便閱讀、整理或移轉正式內容。';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Title => '它不是同步服務';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Body =>
-      'Google Drive 在這裡扮演的是可選的加密備份目的地，而不是跨裝置即時同步日記的服務。';
+      'Google Drive 是由您手動操作的完整備份存放位置，不是跨裝置即時同步。上傳交接完成後可在背景繼續；若在遠端驗證前中斷，需重新建立備份。';
 
   @override
   String get aboutTabBackupRestoreSection3Title => '使用前要知道的事';

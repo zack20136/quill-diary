@@ -358,26 +358,81 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     BackupTaskProgressListener reportProgress,
   ) async {
     final AppLocalizations l10n = pageContext.l10n;
-    String? driveAccountLabel;
-    try {
-      final DriveConnectionState connection = await pageRef.read(
-        settingsDriveConnectionProvider.future,
+    final DriveUploadCoordinator coordinator = pageRef.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    final BackupPersistResult result = await coordinator.startBackgroundUpload(
+      onProgress: (BackupTaskProgress progress) {
+        if (!isMounted) {
+          return;
+        }
+        // 準備階段專用文案；交接後 overlay 會關閉。
+        updatePageState(() {
+          _busyMessage = progress.phase == BackupTaskPhase.creatingBackup
+              ? settingsDriveUploadPrepareProgressLabel(l10n)
+              : settingsBackupTaskProgressLabel(l10n, progress);
+          _busyProgress = progress.fraction;
+        });
+        reportProgress(progress);
+      },
+    );
+    if (result.status == BackupPersistStatus.inspectFailed) {
+      await _recordBackupPersistResult(
+        result,
+        action: BackupStatusAction.driveUpload,
+        onSuccess: (String path) => l10n.settingsDriveBackupUploadSuccess(path),
+        inspectFailedMessage: (String message) =>
+            l10n.settingsDriveBackupBackupInspectFailed(message),
       );
-      driveAccountLabel = connection.accountLabel(l10n);
-    } on Object {
-      driveAccountLabel = null;
+      return;
     }
-    final BackupPersistResult result = await _settingsFlow.uploadDriveBackup(
-      onProgress: reportProgress,
+    if (result.status == BackupPersistStatus.cancelled) {
+      final String message = result.message.trim().isNotEmpty
+          ? result.message.trim()
+          : l10n.driveUploadAbandonedFailureBody;
+      _showFeedback(
+        SettingsFlowFeedback(message, tone: SettingsFlowFeedbackTone.error),
+      );
+      return;
+    }
+    if (result.status == BackupPersistStatus.success) {
+      final String message = result.message == 'notifications_denied'
+          ? '${l10n.driveUploadBackgroundStarted}\n${l10n.driveUploadNotificationsDeniedHint}'
+          : l10n.driveUploadBackgroundStarted;
+      _showFeedback(
+        SettingsFlowFeedback(
+          message,
+          tone: SettingsFlowFeedbackTone.success,
+        ),
+      );
+    }
+  }
+
+  Future<void> _cancelDriveUpload() async {
+    final AppLocalizations l10n = pageContext.l10n;
+    final bool? confirmed = await showDialog<bool>(
+      context: pageContext,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(l10n.driveUploadCancelConfirmTitle),
+          content: Text(l10n.driveUploadCancelConfirmBody),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.commonActionCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.driveUploadCancelButton),
+            ),
+          ],
+        );
+      },
     );
-    await _recordBackupPersistResult(
-      result,
-      action: BackupStatusAction.driveUpload,
-      onSuccess: (String path) => l10n.settingsDriveBackupUploadSuccess(path),
-      inspectFailedMessage: (String message) =>
-          l10n.settingsDriveBackupBackupInspectFailed(message),
-      driveAccountLabel: driveAccountLabel,
-    );
+    if (confirmed != true) {
+      return;
+    }
+    await pageRef.read(driveUploadCoordinatorProvider.notifier).cancelUpload();
   }
 
   Future<void> _runRestoreFromAppLocalBackup() async {
@@ -577,6 +632,15 @@ extension _SettingsPageCallbacks on _SettingsPageState {
 
   Future<void> _switchGoogleDrive() async {
     final AppLocalizations l10n = pageContext.l10n;
+    if (pageRef.read(driveUploadCoordinatorProvider.notifier).hasActiveJob) {
+      _showFeedback(
+        SettingsFlowFeedback(
+          l10n.driveUploadBusyBlocksAccountActions,
+          tone: SettingsFlowFeedbackTone.warning,
+        ),
+      );
+      return;
+    }
     _showFeedback(await _settingsFlow.switchGoogleDrive(l10n));
   }
 
@@ -585,6 +649,15 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       return;
     }
     final AppLocalizations l10n = pageContext.l10n;
+    if (pageRef.read(driveUploadCoordinatorProvider.notifier).hasActiveJob) {
+      _showFeedback(
+        SettingsFlowFeedback(
+          l10n.driveUploadBusyBlocksAccountActions,
+          tone: SettingsFlowFeedbackTone.warning,
+        ),
+      );
+      return;
+    }
     final bool confirmed = await showDisconnectDriveDialog(pageContext);
     if (!confirmed) {
       return;

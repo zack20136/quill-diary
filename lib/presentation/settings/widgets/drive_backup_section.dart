@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
-import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
 import 'drive_account_status.dart';
 import 'settings_sections.dart';
 
@@ -25,6 +27,7 @@ class DriveBackupSection extends ConsumerWidget {
     required this.onDisconnect,
     required this.onUpload,
     required this.onRestore,
+    required this.onCancelUpload,
     super.key,
   });
 
@@ -37,10 +40,15 @@ class DriveBackupSection extends ConsumerWidget {
   final VoidCallback onDisconnect;
   final VoidCallback onUpload;
   final VoidCallback onRestore;
+  final VoidCallback onCancelUpload;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = context.l10n;
+    final DriveUploadJobSnapshot? uploadJob = ref
+        .watch(driveUploadCoordinatorProvider)
+        .job;
+    final bool uploadBusy = uploadJob?.blocksConflictingDriveActions ?? false;
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
               ? settingsDriveBackupSectionDescriptionEnabled(l10n)
@@ -65,7 +73,7 @@ class DriveBackupSection extends ConsumerWidget {
                       _DriveConnectionErrorContent(
                         message: userFacingErrorMessage(error, l10n: l10n),
                         access: access,
-                        busy: busy,
+                        busy: busy || uploadBusy,
                         onRetry: () =>
                             ref.invalidate(settingsDriveConnectionProvider),
                       ),
@@ -75,11 +83,13 @@ class DriveBackupSection extends ConsumerWidget {
                         access: access,
                         canManageDriveAccount: canManageDriveAccount,
                         busy: busy,
+                        uploadJob: uploadJob,
                         onLink: onLink,
                         onSwitchAccount: onSwitchAccount,
                         onDisconnect: onDisconnect,
                         onUpload: onUpload,
                         onRestore: onRestore,
+                        onCancelUpload: onCancelUpload,
                       ),
                 ),
     );
@@ -158,28 +168,34 @@ class _DriveBackupContent extends StatelessWidget {
     required this.access,
     required this.canManageDriveAccount,
     required this.busy,
+    required this.uploadJob,
     required this.onLink,
     required this.onSwitchAccount,
     required this.onDisconnect,
     required this.onUpload,
     required this.onRestore,
+    required this.onCancelUpload,
   });
 
   final DriveConnectionState connectionState;
   final VaultTransferCapabilities access;
   final bool canManageDriveAccount;
   final bool busy;
+  final DriveUploadJobSnapshot? uploadJob;
   final VoidCallback onLink;
   final VoidCallback onSwitchAccount;
   final VoidCallback onDisconnect;
   final VoidCallback onUpload;
   final VoidCallback onRestore;
+  final VoidCallback onCancelUpload;
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final bool isConnected = connectionState.isConnected;
-    final bool canUseAccountActions = !busy && canManageDriveAccount;
+    final bool uploadBusy = uploadJob?.blocksConflictingDriveActions ?? false;
+    final bool canUseAccountActions =
+        !busy && !uploadBusy && canManageDriveAccount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,6 +204,14 @@ class _DriveBackupContent extends StatelessWidget {
           isConnected: isConnected,
           accountLabel: connectionState.accountLabel(l10n),
         ),
+        if (uploadJob != null) ...<Widget>[
+          const SizedBox(height: 10),
+          _DriveUploadStatusCard(
+            job: uploadJob!,
+            busy: busy,
+            onCancel: onCancelUpload,
+          ),
+        ],
         const SizedBox(height: 10),
         AppActionGroup(
           actions: <Widget>[
@@ -205,14 +229,18 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.cloud_upload_outlined,
                 appearance: AppActionButtonAppearance.primary,
                 fullWidth: true,
-                onPressed: busy || !access.canBackup ? null : onUpload,
+                onPressed: busy || uploadBusy || !access.canBackup
+                    ? null
+                    : onUpload,
               ),
               AppActionButton(
                 label: l10n.settingsDriveBackupRestoreButton,
                 icon: Icons.cloud_download_outlined,
                 appearance: AppActionButtonAppearance.tonal,
                 fullWidth: true,
-                onPressed: busy || !access.canRestore ? null : onRestore,
+                onPressed: busy || uploadBusy || !access.canRestore
+                    ? null
+                    : onRestore,
               ),
               AppActionButton(
                 label: l10n.settingsDriveBackupSwitchAccountButton,
@@ -231,6 +259,13 @@ class _DriveBackupContent extends StatelessWidget {
             ],
           ],
         ),
+        if (uploadBusy) ...<Widget>[
+          const SizedBox(height: 12),
+          AppFeedbackBanner(
+            icon: Icons.info_outline_rounded,
+            message: l10n.driveUploadBusyBlocksAccountActions,
+          ),
+        ],
         if (_lockedBannerMessage(l10n) != null) ...<Widget>[
           const SizedBox(height: 12),
           AppFeedbackBanner(
@@ -255,5 +290,66 @@ class _DriveBackupContent extends StatelessWidget {
       return access.restoreDisabledReason;
     }
     return null;
+  }
+}
+
+class _DriveUploadStatusCard extends StatelessWidget {
+  const _DriveUploadStatusCard({
+    required this.job,
+    required this.busy,
+    required this.onCancel,
+  });
+
+  final DriveUploadJobSnapshot job;
+  final bool busy;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final int percent = (job.progressFraction * 100).round().clamp(0, 100);
+    final bool finalizing =
+        job.phase == DriveUploadPhase.statusPending ||
+        job.phase == DriveUploadPhase.prunePending;
+    final String message = switch (job.phase) {
+      DriveUploadPhase.waitingForNetwork =>
+        l10n.driveUploadStatusWaitingNetwork(job.fileName),
+      DriveUploadPhase.staged => l10n.driveUploadStatusStaged(job.fileName),
+      DriveUploadPhase.statusPending ||
+      DriveUploadPhase.prunePending =>
+        l10n.driveUploadStatusFinalizing,
+      DriveUploadPhase.uploading =>
+        l10n.driveUploadStatusUploading(job.fileName, percent),
+    };
+    // 遠端已驗證後不可取消；其餘進行中可取消。
+    final bool showCancel = !finalizing;
+    final bool showProgress =
+        job.phase == DriveUploadPhase.uploading ||
+        job.phase == DriveUploadPhase.staged;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        AppFeedbackBanner(
+          icon: Icons.cloud_upload_outlined,
+          message: message,
+          tone: AppFeedbackTone.info,
+        ),
+        if (showProgress) ...<Widget>[
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: job.progressFraction.clamp(0.0, 1.0)),
+        ],
+        if (showCancel) ...<Widget>[
+          const SizedBox(height: 10),
+          AppActionButton(
+            label: l10n.driveUploadCancelButton,
+            icon: Icons.stop_rounded,
+            appearance: AppActionButtonAppearance.outlined,
+            fullWidth: true,
+            onPressed: busy ? null : onCancel,
+          ),
+        ],
+      ],
+    );
   }
 }

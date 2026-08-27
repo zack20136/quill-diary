@@ -138,6 +138,63 @@ class VaultBackupService {
     );
   }
 
+  /// 建立並檢查備份 zip，寫入持久 staging；不刪除檔案，供背景上傳接手。
+  Future<BackupPersistResult> prepareDriveUploadStaging({
+    required Future<String> Function(String fileName) resolveStagingPath,
+    BackupTaskProgressListener? onProgress,
+  }) async {
+    final String fileName = VaultBackupPolicy.backupFileName(DateTime.now());
+    final String stagingPath = await resolveStagingPath(fileName);
+    final File staging = File(stagingPath);
+    final File partial = File('$stagingPath.partial');
+    try {
+      await partial.parent.create(recursive: true);
+      if (partial.existsSync()) {
+        await partial.delete();
+      }
+      await _archiveIo.writeBackupZip(
+        partial,
+        onProgress: remapBackupTaskProgress(
+          onProgress,
+          start: 0,
+          end: backupPipelineZipEndFraction,
+        ),
+      );
+      final BackupInspectResult inspect = await inspectBackup(partial);
+      if (!inspect.ok) {
+        await _deleteIfExists(partial);
+        return BackupPersistResult(
+          status: BackupPersistStatus.inspectFailed,
+          message: inspect.message,
+        );
+      }
+      if (staging.existsSync()) {
+        await staging.delete();
+      }
+      await partial.rename(staging.path);
+      return BackupPersistResult(
+        status: BackupPersistStatus.success,
+        savedPath: staging.path,
+        message: fileName,
+      );
+    } on Object {
+      await _deleteIfExists(partial);
+      rethrow;
+    }
+  }
+
+  Future<void> pruneDriveBackups({
+    required int retainCount,
+    String? keepFileId,
+    bool interactive = true,
+  }) {
+    return _driveBackupService.pruneBackups(
+      retainCount: retainCount,
+      keepFileId: keepFileId,
+      interactive: interactive,
+    );
+  }
+
   Future<List<LocalBackupFile>> listAppLocalBackups() async {
     final List<LocalBackupFile> backups = await _loadAppLocalBackups();
     await _pruneExcessAppLocalBackupsFromSorted(backups);

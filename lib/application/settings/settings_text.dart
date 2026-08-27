@@ -62,6 +62,10 @@ String settingsBackupTaskProgressLabel(
   };
 }
 
+String settingsDriveUploadPrepareProgressLabel(AppLocalizations l10n) =>
+    l10n.settingsBackupPhasePreparingDriveUpload;
+
+
 extension AppUnlockModePresentation on AppUnlockMode {
   String shortLabel(AppLocalizations l10n) => switch (this) {
     AppUnlockMode.none => l10n.settingsUnlockMethodSegmentNone,

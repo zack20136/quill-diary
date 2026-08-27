@@ -1,15 +1,15 @@
 # Google Play 上架
 
-這份文件整理 Quill Diary 目前對 Google Play 上架真正有影響的實作資訊與手動作業點。內容以程式碼、Android 建置設定與公開文件為準，不保留無法從 repo 驗證的推測。
+這份文件整理 Quill Diary 目前影響 Google Play 上架的實作資訊與手動作業。內容以程式碼、Android 建置設定與公開文件為準，不保留無法從 repo 驗證的推測。
 
 ## 目前 App 基本事實
 
 從程式碼可確認：
 
 - 平台定位目前是 Android
-- Android `applicationId` / `namespace`：`zack20136.com.quill_diary`
+- Android `applicationId`/`namespace`：`zack20136.com.quill_diary`
 - `minSdk`：`30`
-- `targetSdk` 由 Flutter／Android 建置設定解析；以當次 release merged manifest 為準
+- `targetSdk` 由 Flutter/Android 建置設定解析；以當次 release merged manifest 為準
 - 版本以 [`pubspec.yaml`](../../../pubspec.yaml) 的 `version:` 為準；送審前確認 `versionCode` 已遞增
 - release 建置要求實體簽章設定，不允許用 debug signing 發 release
 
@@ -66,7 +66,7 @@
 - 本機加密日記
 - 生物辨識/復原金鑰解鎖流程
 - 全文搜尋與索引
-- 加密人物名冊與依姓名／別名產生的可重建分析索引
+- 加密人物名冊與依姓名/別名產生的可重建分析索引
 - 本機完整備份與還原
 - Google Drive 備份與還原
 - Google Play Billing 一次性支持
@@ -90,16 +90,16 @@
 
 若變更 GitHub Pages 路徑、repo 名稱或對外 URL，必須一起檢查上述檔案與 Play Console 連結。
 
-Play 的隱私政策要求 URL 可公開存取、非 PDF、不可由一般訪客編輯且不受地區限制；政策內容還要能識別 App／開發者、說明資料存取與分享方式、保護措施、保留與刪除方式及聯絡管道。不能只確認網址存在。
+Play 的隱私政策要求 URL 可公開存取、非 PDF、不可由一般訪客編輯且不受地區限制；政策內容還要能識別 App/開發者、說明資料存取與分享方式、保護措施、保留與刪除方式及聯絡管道。不能只確認網址存在。
 
 ## 會隨時間更新的 Play 外部門檻
 
 以下不是 repo 常數，送審當天仍應重查官方政策：
 
-- 自 2026 年 8 月 31 日起，手機／平板的新 App 與更新需 target Android 16（API 36）以上；既有 App 至少 target Android 15（API 35），才能繼續對較新 Android 裝置的新使用者顯示。官方另提供符合條件者申請延至 2026 年 11 月 1 日的機制。
+- 自 2026 年 8 月 31 日起，手機/平板的新 App 與更新需 target Android 16（API 36）以上；既有 App 至少 target Android 15（API 35），才能繼續對較新 Android 裝置的新使用者顯示。官方另提供符合條件者申請延至 2026 年 11 月 1 日的機制。
 - 自 2026 年 9 月 30 日起，Play 套件必須符合 Android 開發者驗證與套件名稱註冊要求。Google 會嘗試自動註冊符合條件的既有與新 App，但仍應到 Play Console 的 Android developer verification 頁確認 `zack20136.com.quill_diary` 狀態。
 
-target API 不合規可能阻擋更新送審，或限制既有 App 對較新裝置的新使用者可見；它不等同於所有使用者都看不到整個商店頁。若頁面消失，還要檢查發布軌道、國家／地區、裝置相容性、帳號與政策狀態。
+target API 不合規可能阻擋更新送審，或限制既有 App 對較新裝置的新使用者可見；它不等同於所有使用者都看不到整個商店頁。若頁面消失，還要檢查發布軌道、國家/地區、裝置相容性、帳號與政策狀態。
 
 ## 與 Google 服務有關的送審重點
 
@@ -112,9 +112,23 @@ target API 不合規可能阻擋更新送審，或限制既有 App 對較新裝�
 所以上架前要一併確認：
 
 - `Data safety` 是否仍符合目前權限與資料流
-- `App access` / 審查說明是否有交代 Google Drive 連線流程
+- `App access`/審查說明是否有交代 Google Drive 連線流程
 - Billing 商品是否已建立並啟用
 - OAuth 設定是否已補齊 Play App Signing SHA-1
+- Foreground service declaration（見下節）是否已填寫並附示範影片
+
+## Foreground service（dataSync）declaration
+
+target Android 14（API 34）以上並使用 `FOREGROUND_SERVICE_DATA_SYNC` 時，Play Console 需要 foreground service declaration。本 App 對應：
+
+- FGS type：`TYPE_DATA_SYNC`
+- Use case：`Network transfer: Backup and restore`
+- 功能描述：使用者手動建立備份 ZIP（內含加密 vault 與部分明文 metadata），並上傳至 Google Drive `appDataFolder`；不是排程或常駐背景同步
+- 為何不可任意延後：使用者剛建立的備份需儘快送達其 Drive，否則其他裝置/重裝後無法立刻還原
+- 中斷影響：同一 FGS 存活期間可在網路恢復後自動重試；遠端完成驗證前若服務或程序異常終止，則清除本機 staging 與 job，下次開啟 App 顯示一次失敗提示，使用者需重新備份。使用者主動停止時只清除該次工作，不建立失敗提示；已進入 `STATUS_PENDING` 或 `PRUNE_PENDING` 時則保留狀態供 App 下次收尾，不會重新上傳。在 Android 15+ 裝置上，target Android 15（API 35）以上 App 的 dataSync 共用額度用盡也會終止尚未提交完成的上傳
+- 示範影片建議內容：連結 Google Drive → 點上傳 → 顯示進度通知 → 切換到其他 App → 通知仍在更新 → 按停止或完成後返回 App
+
+官方也建議部分使用者主動網路傳輸改用 User-Initiated Data Transfer job。本版保留 dataSync FGS，declaration 需對齊「使用者主動觸發、即時顯示進度、可從通知列停止；遠端完成驗證前若程序異常終止，需重新備份」。
 
 ## 建議送審檢查清單
 
@@ -127,10 +141,12 @@ target API 不合規可能阻擋更新送審，或限制既有 App 對較新裝�
 7. 確認 Play Console 的開發者驗證與套件名稱註冊狀態
 8. 對照 [`Android-權限與資料揭露.md`](./Android-權限與資料揭露.md) 更新 `Data safety`
 9. 對照 [`Google-Drive-OAuth-設定.md`](./Google-Drive-OAuth-設定.md) 檢查 OAuth 與 Play App Signing SHA-1
-10. 對照 [`Google-Play-Billing.md`](./Google-Play-Billing.md) 檢查商品與說明
-11. 檢查商店頁文字不要宣稱未實作功能
+10. 確認 OAuth consent screen 使用目前公開隱私政策，且政策包含 Google API Limited Use 聲明
+11. 填寫 dataSync foreground service declaration，並附上能展示啟動、背景進度、停止與完成流程的示範影片
+12. 對照 [`Google-Play-Billing.md`](./Google-Play-Billing.md) 檢查商品與說明
+13. 檢查商店頁文字不要宣稱未實作功能
 
-當次送審 AAB 的 release merged manifest 是該產物版本與權限的最終核對來源；`build/` 中舊產物不能代表目前 `pubspec.yaml`。若 Play 商店頁面或版本不可見，仍需另外到 Play Console 檢查發布軌道、國家／地區、裝置相容性與政策狀態；這些外部狀態無法只從 repo 判定。
+當次送審 AAB 的 release merged manifest 是該產物版本與權限的最終核對來源；`build/` 中舊產物不能代表目前 `pubspec.yaml`。若 Play 商店頁面或版本不可見，仍需另外到 Play Console 檢查發布軌道、國家/地區、裝置相容性與政策狀態；這些外部狀態無法只從 repo 判定。
 
 ## 變更前必查
 
@@ -139,7 +155,7 @@ target API 不合規可能阻擋更新送審，或限制既有 App 對較新裝�
 - `applicationId`、版本號、`minSdk` 或 target API 變更
 - release signing 流程變更
 - 公開 URL 變更
-- Google Drive / OAuth 流程變更
+- Google Drive/OAuth 流程變更
 - Billing 型態改成訂閱、會員或權益制
 - 權限、資料流或隱私政策變更
 
