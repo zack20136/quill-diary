@@ -28,6 +28,7 @@ class DriveBackupSection extends ConsumerWidget {
     required this.onUpload,
     required this.onRestore,
     required this.onCancelUpload,
+    required this.onAbandonCancelCleanup,
     super.key,
   });
 
@@ -41,6 +42,7 @@ class DriveBackupSection extends ConsumerWidget {
   final VoidCallback onUpload;
   final VoidCallback onRestore;
   final VoidCallback onCancelUpload;
+  final VoidCallback onAbandonCancelCleanup;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,9 +75,13 @@ class DriveBackupSection extends ConsumerWidget {
                       _DriveConnectionErrorContent(
                         message: userFacingErrorMessage(error, l10n: l10n),
                         access: access,
-                        busy: busy || uploadBusy,
+                        pageBusy: busy,
+                        uploadJob: uploadJob,
+                        canManageDriveAccount: canManageDriveAccount,
                         onRetry: () =>
                             ref.invalidate(settingsDriveConnectionProvider),
+                        onLink: onLink,
+                        onAbandonCancelCleanup: onAbandonCancelCleanup,
                       ),
                   data: (DriveConnectionState connectionState) =>
                       _DriveBackupContent(
@@ -90,6 +96,7 @@ class DriveBackupSection extends ConsumerWidget {
                         onUpload: onUpload,
                         onRestore: onRestore,
                         onCancelUpload: onCancelUpload,
+                        onAbandonCancelCleanup: onAbandonCancelCleanup,
                       ),
                 ),
     );
@@ -100,18 +107,29 @@ class _DriveConnectionErrorContent extends StatelessWidget {
   const _DriveConnectionErrorContent({
     required this.message,
     required this.access,
-    required this.busy,
+    required this.pageBusy,
+    required this.uploadJob,
+    required this.canManageDriveAccount,
     required this.onRetry,
+    required this.onLink,
+    required this.onAbandonCancelCleanup,
   });
 
   final String message;
   final VaultTransferCapabilities access;
-  final bool busy;
+  final bool pageBusy;
+  final DriveUploadJobSnapshot? uploadJob;
+  final bool canManageDriveAccount;
   final VoidCallback onRetry;
+  final VoidCallback onLink;
+  final VoidCallback onAbandonCancelCleanup;
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final bool cleanupPending = uploadJob?.isCancelCleanupPending ?? false;
+    final bool canLinkDuringCleanup =
+        !pageBusy && canManageDriveAccount && cleanupPending;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,6 +139,15 @@ class _DriveConnectionErrorContent extends StatelessWidget {
           disconnectedLabel: l10n.settingsDriveBackupConnectionErrorLabel,
           disconnectedIcon: Icons.error_outline_rounded,
         ),
+        if (uploadJob != null) ...<Widget>[
+          const SizedBox(height: 10),
+          _DriveUploadStatusCard(
+            job: uploadJob!,
+            busy: pageBusy,
+            onCancel: () {},
+            onAbandonCancelCleanup: onAbandonCancelCleanup,
+          ),
+        ],
         const SizedBox(height: 10),
         AppFeedbackBanner(
           icon: Icons.error_outline_rounded,
@@ -128,13 +155,22 @@ class _DriveConnectionErrorContent extends StatelessWidget {
           tone: AppFeedbackTone.error,
         ),
         const SizedBox(height: 10),
-        AppActionButton(
-          label: l10n.settingsDriveBackupConnectionRetryButton,
-          icon: Icons.refresh_rounded,
-          appearance: AppActionButtonAppearance.outlined,
-          fullWidth: true,
-          onPressed: busy ? null : onRetry,
-        ),
+        if (cleanupPending)
+          AppActionButton(
+            label: l10n.settingsDriveBackupLinkButton,
+            icon: Icons.link_rounded,
+            appearance: AppActionButtonAppearance.primary,
+            fullWidth: true,
+            onPressed: canLinkDuringCleanup ? onLink : null,
+          )
+        else
+          AppActionButton(
+            label: l10n.settingsDriveBackupConnectionRetryButton,
+            icon: Icons.refresh_rounded,
+            appearance: AppActionButtonAppearance.outlined,
+            fullWidth: true,
+            onPressed: pageBusy ? null : onRetry,
+          ),
         if (_lockedBannerMessage(l10n) != null) ...<Widget>[
           const SizedBox(height: 12),
           AppFeedbackBanner(
@@ -175,6 +211,7 @@ class _DriveBackupContent extends StatelessWidget {
     required this.onUpload,
     required this.onRestore,
     required this.onCancelUpload,
+    required this.onAbandonCancelCleanup,
   });
 
   final DriveConnectionState connectionState;
@@ -188,14 +225,25 @@ class _DriveBackupContent extends StatelessWidget {
   final VoidCallback onUpload;
   final VoidCallback onRestore;
   final VoidCallback onCancelUpload;
+  final VoidCallback onAbandonCancelCleanup;
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final bool isConnected = connectionState.isConnected;
     final bool uploadBusy = uploadJob?.blocksConflictingDriveActions ?? false;
+    final bool cleanupPending = uploadJob?.isCancelCleanupPending ?? false;
+    final bool cleanupRecovery =
+        uploadJob?.needsCancelCleanupAccountRecovery ?? false;
+    // 取消清理中：未連線或授權錯誤時允許重連原帳號；其餘仍鎖住切換／中斷。
+    final bool accountActionsUnlocked =
+        !uploadBusy ||
+        cleanupRecovery ||
+        (cleanupPending && !isConnected);
     final bool canUseAccountActions =
-        !busy && !uploadBusy && canManageDriveAccount;
+        !busy && canManageDriveAccount && accountActionsUnlocked;
+    final bool showBusyBanner = uploadBusy && !cleanupPending;
+    final bool showCleanupBanner = cleanupPending;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,6 +258,7 @@ class _DriveBackupContent extends StatelessWidget {
             job: uploadJob!,
             busy: busy,
             onCancel: onCancelUpload,
+            onAbandonCancelCleanup: onAbandonCancelCleanup,
           ),
         ],
         const SizedBox(height: 10),
@@ -247,23 +296,37 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.swap_horiz_rounded,
                 appearance: AppActionButtonAppearance.outlined,
                 fullWidth: true,
-                onPressed: canUseAccountActions ? onSwitchAccount : null,
+                // 帳號不符時允許切回原帳；一般上傳／清理中仍鎖住。
+                onPressed: canUseAccountActions &&
+                        (!uploadBusy || cleanupRecovery)
+                    ? onSwitchAccount
+                    : null,
               ),
               AppActionButton(
                 label: l10n.settingsDriveBackupDisconnectButton,
                 icon: Icons.link_off_rounded,
                 appearance: AppActionButtonAppearance.destructive,
                 fullWidth: true,
-                onPressed: canUseAccountActions ? onDisconnect : null,
+                onPressed: canUseAccountActions &&
+                        (!uploadBusy || cleanupRecovery)
+                    ? onDisconnect
+                    : null,
               ),
             ],
           ],
         ),
-        if (uploadBusy) ...<Widget>[
+        if (showBusyBanner) ...<Widget>[
           const SizedBox(height: 12),
           AppFeedbackBanner(
             icon: Icons.info_outline_rounded,
             message: l10n.driveUploadBusyBlocksAccountActions,
+          ),
+        ],
+        if (showCleanupBanner) ...<Widget>[
+          const SizedBox(height: 12),
+          AppFeedbackBanner(
+            icon: Icons.info_outline_rounded,
+            message: l10n.driveUploadCancelCleanupBlocksAccountActions,
           ),
         ],
         if (_lockedBannerMessage(l10n) != null) ...<Widget>[
@@ -298,11 +361,13 @@ class _DriveUploadStatusCard extends StatelessWidget {
     required this.job,
     required this.busy,
     required this.onCancel,
+    required this.onAbandonCancelCleanup,
   });
 
   final DriveUploadJobSnapshot job;
   final bool busy;
   final VoidCallback onCancel;
+  final VoidCallback onAbandonCancelCleanup;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +378,9 @@ class _DriveUploadStatusCard extends StatelessWidget {
         job.phase == DriveUploadPhase.prunePending;
     final bool cancelCleanup =
         job.phase == DriveUploadPhase.cancelCleanupPending;
+    final String accountEmail = job.accountEmail.trim().isEmpty
+        ? 'Google'
+        : job.accountEmail.trim();
     final String message = switch (job.phase) {
       DriveUploadPhase.waitingForNetwork =>
         l10n.driveUploadStatusWaitingNetwork(job.fileName),
@@ -321,15 +389,26 @@ class _DriveUploadStatusCard extends StatelessWidget {
       DriveUploadPhase.prunePending =>
         l10n.driveUploadStatusFinalizing,
       DriveUploadPhase.cancelCleanupPending =>
-        l10n.driveUploadStatusCancelCleanup,
+        switch (job.lastErrorCode) {
+          'cleanup_needs_reauth' =>
+            l10n.driveUploadStatusCancelCleanupNeedsReauth(accountEmail),
+          'cleanup_account_mismatch' =>
+            l10n.driveUploadStatusCancelCleanupAccountMismatch(accountEmail),
+          _ => l10n.driveUploadStatusCancelCleanup,
+        },
       DriveUploadPhase.uploading =>
         l10n.driveUploadStatusUploading(job.fileName, percent),
     };
-    // 遠端已驗證或取消清理中不可再取消。
+    // 遠端已驗證不可再取消；取消清理改顯示放棄。
     final bool showCancel = !finalizing && !cancelCleanup;
+    final bool showAbandon = cancelCleanup;
     final bool showProgress =
         job.phase == DriveUploadPhase.uploading ||
         job.phase == DriveUploadPhase.staged;
+    final AppFeedbackTone tone =
+        cancelCleanup && job.needsCancelCleanupAccountRecovery
+        ? AppFeedbackTone.warning
+        : AppFeedbackTone.info;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -337,7 +416,7 @@ class _DriveUploadStatusCard extends StatelessWidget {
         AppFeedbackBanner(
           icon: Icons.cloud_upload_outlined,
           message: message,
-          tone: AppFeedbackTone.info,
+          tone: tone,
         ),
         if (showProgress) ...<Widget>[
           const SizedBox(height: 8),
@@ -351,6 +430,16 @@ class _DriveUploadStatusCard extends StatelessWidget {
             appearance: AppActionButtonAppearance.outlined,
             fullWidth: true,
             onPressed: busy ? null : onCancel,
+          ),
+        ],
+        if (showAbandon) ...<Widget>[
+          const SizedBox(height: 10),
+          AppActionButton(
+            label: l10n.driveUploadAbandonCancelCleanupButton,
+            icon: Icons.link_off_rounded,
+            appearance: AppActionButtonAppearance.outlined,
+            fullWidth: true,
+            onPressed: busy ? null : onAbandonCancelCleanup,
           ),
         ],
       ],

@@ -1280,10 +1280,26 @@
   },
   "driveUploadStatusFinalizing": "Google Drive backup uploaded; finishing up…",
   "driveUploadStatusCancelCleanup": "Clearing unfinished Google Drive backup…",
+  "driveUploadStatusCancelCleanupNeedsReauth": "Re-link the Google account ({accountEmail}) to finish clearing the unfinished backup.",
+  "@driveUploadStatusCancelCleanupNeedsReauth": {
+    "placeholders": {
+      "accountEmail": {"type": "String"}
+    }
+  },
+  "driveUploadStatusCancelCleanupAccountMismatch": "The signed-in Google account does not match the upload. Re-link {accountEmail} to finish cleanup, or abandon it.",
+  "@driveUploadStatusCancelCleanupAccountMismatch": {
+    "placeholders": {
+      "accountEmail": {"type": "String"}
+    }
+  },
   "driveUploadCancelButton": "Cancel upload",
   "driveUploadCancelConfirmTitle": "Cancel Google Drive upload?",
   "driveUploadCancelConfirmBody": "This stops the current background upload and deletes the temporary backup file.",
   "driveUploadBusyBlocksAccountActions": "An upload is in progress. Finish or cancel it before changing the Google account.",
+  "driveUploadCancelCleanupBlocksAccountActions": "Clearing an unfinished Google Drive backup. If authorization failed, re-link the original account or abandon cleanup.",
+  "driveUploadAbandonCancelCleanupButton": "Abandon cleanup",
+  "driveUploadAbandonCancelCleanupConfirmTitle": "Abandon unfinished backup cleanup?",
+  "driveUploadAbandonCancelCleanupConfirmBody": "This unlocks the app so you can back up again or change Google accounts. Leftover files may remain in Google Drive and will not count as a successful backup.",
   "driveUploadAbandonedFailureTitle": "Google Drive backup failed",
   "driveUploadAbandonedFailureBody": "The previous Google Drive backup did not finish and was cancelled. Please back up again.",
   "driveUploadAbandonedFailureConfirm": "OK",

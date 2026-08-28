@@ -435,6 +435,8 @@ class BackupUploadForegroundService : Service() {
                 notifyCommitted(outcome.job)
             DriveRemoteFileCleanup.CancelCleanupOutcome.ClearedLocal,
             DriveRemoteFileCleanup.CancelCleanupOutcome.RetryLater,
+            DriveRemoteFileCleanup.CancelCleanupOutcome.NeedsReauth,
+            DriveRemoteFileCleanup.CancelCleanupOutcome.AccountMismatch,
             -> Unit
         }
     }

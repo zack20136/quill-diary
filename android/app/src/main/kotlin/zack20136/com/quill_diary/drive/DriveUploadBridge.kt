@@ -194,6 +194,7 @@ object DriveUploadBridge {
             "prepareStagingPath" -> prepareStagingPath(jobStore, call, result)
             "startUpload" -> startUpload(context, jobStore, call, result)
             "cancelUpload" -> cancelUpload(context, jobStore, result)
+            "abandonCancelCleanup" -> abandonCancelCleanup(context, jobStore, call, result)
             "ackFailure" -> {
                 val jobId = call.argument<String>("jobId")?.trim().orEmpty()
                 ioExecutor.execute {
@@ -407,6 +408,63 @@ object DriveUploadBridge {
                     result,
                     "drive_upload_error",
                     error.message ?: "cancelUpload failed.",
+                )
+            }
+        }
+    }
+
+    private fun abandonCancelCleanup(
+        context: Context,
+        jobStore: DriveUploadJobStore,
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val jobId = call.argument<String>("jobId")?.trim().orEmpty()
+        if (jobId.isEmpty()) {
+            result.error("invalid_args", "jobId is required.", null)
+            return
+        }
+        ioExecutor.execute {
+            try {
+                val job = jobStore.readJob(jobId)
+                if (job == null) {
+                    emitStateEnvelope()
+                    replySuccess(result, jobStore.getStateEnvelope())
+                    return@execute
+                }
+                if (job.isRemoteCommittedPhase()) {
+                    replyError(
+                        result,
+                        "abandon_not_allowed",
+                        "遠端備份已完成，無法放棄清理。",
+                        jobStore.getStateEnvelope(),
+                    )
+                    return@execute
+                }
+                if (BackupUploadForegroundService.isUploadWorkerAlive()) {
+                    replyError(
+                        result,
+                        "abandon_not_allowed",
+                        "上傳仍在結束中，請稍後再試。",
+                        jobStore.getStateEnvelope(),
+                    )
+                    return@execute
+                }
+                if (BackupUploadForegroundService.isRunning()) {
+                    BackupUploadForegroundService.stop(context)
+                }
+                DriveRemoteFileCleanup.abandonCancelCleanup(
+                    jobStore = jobStore,
+                    tokenProvider = DriveAccessTokenProvider(context.applicationContext),
+                    job = job,
+                )
+                emitStateEnvelope()
+                replySuccess(result, jobStore.getStateEnvelope())
+            } catch (error: Throwable) {
+                replyError(
+                    result,
+                    "drive_upload_error",
+                    error.message ?: "abandonCancelCleanup failed.",
                 )
             }
         }

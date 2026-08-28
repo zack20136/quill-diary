@@ -3638,6 +3638,18 @@ abstract class AppLocalizations {
   /// **'正在清除未完成的 Google Drive 備份…'**
   String get driveUploadStatusCancelCleanup;
 
+  /// No description provided for @driveUploadStatusCancelCleanupNeedsReauth.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除未完成備份需要重新連結 Google 帳戶（{accountEmail}）。'**
+  String driveUploadStatusCancelCleanupNeedsReauth(String accountEmail);
+
+  /// No description provided for @driveUploadStatusCancelCleanupAccountMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前 Google 帳戶與上傳時不符。請連回 {accountEmail} 完成清理，或放棄清理。'**
+  String driveUploadStatusCancelCleanupAccountMismatch(String accountEmail);
+
   /// No description provided for @driveUploadCancelButton.
   ///
   /// In zh, this message translates to:
@@ -3661,6 +3673,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'上傳進行中，請先完成或取消後再變更 Google 帳戶。'**
   String get driveUploadBusyBlocksAccountActions;
+
+  /// No description provided for @driveUploadCancelCleanupBlocksAccountActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在清除未完成的 Google Drive 備份。若授權失效，請重新連結原帳號，或放棄清理。'**
+  String get driveUploadCancelCleanupBlocksAccountActions;
+
+  /// No description provided for @driveUploadAbandonCancelCleanupButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'放棄清理'**
+  String get driveUploadAbandonCancelCleanupButton;
+
+  /// No description provided for @driveUploadAbandonCancelCleanupConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'放棄清除未完成的備份？'**
+  String get driveUploadAbandonCancelCleanupConfirmTitle;
+
+  /// No description provided for @driveUploadAbandonCancelCleanupConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'將解除本機鎖定，之後可重新備份或變更 Google 帳戶。Google Drive 上可能留下未完成的殘檔，且不會當成成功備份。'**
+  String get driveUploadAbandonCancelCleanupConfirmBody;
 
   /// No description provided for @driveUploadAbandonedFailureTitle.
   ///

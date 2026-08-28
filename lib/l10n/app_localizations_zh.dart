@@ -2048,6 +2048,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get driveUploadStatusCancelCleanup => '正在清除未完成的 Google Drive 備份…';
 
   @override
+  String driveUploadStatusCancelCleanupNeedsReauth(String accountEmail) {
+    return '清除未完成備份需要重新連結 Google 帳戶（$accountEmail）。';
+  }
+
+  @override
+  String driveUploadStatusCancelCleanupAccountMismatch(String accountEmail) {
+    return '目前 Google 帳戶與上傳時不符。請連回 $accountEmail 完成清理，或放棄清理。';
+  }
+
+  @override
   String get driveUploadCancelButton => '取消上傳';
 
   @override
@@ -2059,6 +2069,20 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get driveUploadBusyBlocksAccountActions =>
       '上傳進行中，請先完成或取消後再變更 Google 帳戶。';
+
+  @override
+  String get driveUploadCancelCleanupBlocksAccountActions =>
+      '正在清除未完成的 Google Drive 備份。若授權失效，請重新連結原帳號，或放棄清理。';
+
+  @override
+  String get driveUploadAbandonCancelCleanupButton => '放棄清理';
+
+  @override
+  String get driveUploadAbandonCancelCleanupConfirmTitle => '放棄清除未完成的備份？';
+
+  @override
+  String get driveUploadAbandonCancelCleanupConfirmBody =>
+      '將解除本機鎖定，之後可重新備份或變更 Google 帳戶。Google Drive 上可能留下未完成的殘檔，且不會當成成功備份。';
 
   @override
   String get driveUploadAbandonedFailureTitle => 'Google Drive 備份失敗';

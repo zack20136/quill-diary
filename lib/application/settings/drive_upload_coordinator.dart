@@ -176,6 +176,16 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     await _applyState(await _platform.getState());
   }
 
+  Future<void> abandonCancelCleanup(String jobId) {
+    return _enqueue(() => _abandonCancelCleanupUnlocked(jobId));
+  }
+
+  Future<void> _abandonCancelCleanupUnlocked(String jobId) async {
+    final DriveUploadState next = await _platform.abandonCancelCleanup(jobId);
+    _completionKey = null;
+    await _applyState(next);
+  }
+
   Future<bool> notificationsAuthorized() {
     return _platform.notificationsAuthorized();
   }

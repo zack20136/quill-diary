@@ -26,6 +26,7 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
+import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/portable_import_result_presenter.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
@@ -674,6 +675,8 @@ class SettingsFlowController {
   Future<void> _refreshDriveConnection() async {
     _ref.invalidate(settingsDriveConnectionProvider);
     await _ref.read(settingsDriveConnectionProvider.future);
+    // 連回帳號後立刻重試 CANCEL_CLEANUP_PENDING 對帳。
+    await _ref.read(driveUploadCoordinatorProvider.notifier).refresh();
   }
 
   void _refreshCaches({String? editedEntryId}) {

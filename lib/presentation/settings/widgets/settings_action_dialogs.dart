@@ -735,6 +735,18 @@ Future<bool> showDisconnectDriveDialog(BuildContext context) async {
   );
 }
 
+Future<bool> showAbandonCancelCleanupDialog(BuildContext context) async {
+  final AppLocalizations l10n = context.l10n;
+  return showAppConfirmDialog(
+    context: context,
+    title: l10n.driveUploadAbandonCancelCleanupConfirmTitle,
+    content: Text(l10n.driveUploadAbandonCancelCleanupConfirmBody),
+    cancelLabel: l10n.commonActionCancel,
+    confirmLabel: l10n.driveUploadAbandonCancelCleanupButton,
+    confirmStyle: AppConfirmStyle.destructive,
+  );
+}
+
 Future<bool> showRotateRecoveryKeyDialog(BuildContext context) async {
   final AppLocalizations l10n = context.l10n;
   return showAppConfirmDialog(

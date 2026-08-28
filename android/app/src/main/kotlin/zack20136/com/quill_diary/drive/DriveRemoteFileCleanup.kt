@@ -14,12 +14,18 @@ object DriveRemoteFileCleanup {
     private const val FILES_API = "https://www.googleapis.com/drive/v3/files/"
     private val SAFE_FILE_ID = Regex("^[A-Za-z0-9_-]+$")
 
+    const val ERROR_CLEANUP_NEEDS_REAUTH = "cleanup_needs_reauth"
+    const val ERROR_CLEANUP_ACCOUNT_MISMATCH = "cleanup_account_mismatch"
+
     enum class DeleteOutcome {
         /** 2xx／404，或非法 id／空白 token（視為無可刪物件）。 */
         Cleared,
 
         /** 網路或暫時性失敗，應保留 job 稍後重試。 */
         RetryLater,
+
+        /** 401／非限流 403，應提示重連授權。 */
+        AuthFailed,
     }
 
     sealed class CancelCleanupOutcome {
@@ -28,6 +34,12 @@ object DriveRemoteFileCleanup {
         data object ClearedLocal : CancelCleanupOutcome()
 
         data object RetryLater : CancelCleanupOutcome()
+
+        /** 未登入或需使用者重新授權；保留 pending，UI 應允許重連原帳號。 */
+        data object NeedsReauth : CancelCleanupOutcome()
+
+        /** 目前簽入帳號與 job 不符；保留 pending，UI 應提示重連或放棄。 */
+        data object AccountMismatch : CancelCleanupOutcome()
     }
 
     fun bestEffortDelete(
@@ -67,6 +79,10 @@ object DriveRemoteFileCleanup {
                 )
             when {
                 response.code in 200..299 || response.code == 404 -> DeleteOutcome.Cleared
+                isAuthFailure(response.code, response.body) -> {
+                    Log.w(TAG, "delete remote file auth HTTP ${response.code}")
+                    DeleteOutcome.AuthFailed
+                }
                 else -> {
                     Log.w(TAG, "delete remote file HTTP ${response.code}")
                     DeleteOutcome.RetryLater
@@ -92,10 +108,16 @@ object DriveRemoteFileCleanup {
         val token =
             tokenProvider.getAccessToken().getOrElse { error ->
                 Log.w(TAG, "cancel cleanup: token unavailable", error)
-                return CancelCleanupOutcome.RetryLater
+                return classifyTokenFailure(jobStore, job, error)
             }
         if (tokenProvider.matchTokenToJob(job, token) != null) {
-            return CancelCleanupOutcome.RetryLater
+            persistCleanupError(
+                jobStore = jobStore,
+                job = job,
+                errorCode = ERROR_CLEANUP_ACCOUNT_MISMATCH,
+                message = "Google 帳戶已變更，請連回原帳號完成清理或放棄清理。",
+            )
+            return CancelCleanupOutcome.AccountMismatch
         }
         return completeCancelCleanup(
             jobStore = jobStore,
@@ -125,7 +147,13 @@ object DriveRemoteFileCleanup {
             return CancelCleanupOutcome.RetainedCommitted(working)
         }
         if (accessToken.isBlank()) {
-            return CancelCleanupOutcome.RetryLater
+            persistCleanupError(
+                jobStore = jobStore,
+                job = working,
+                errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
+                message = "access token blank",
+            )
+            return CancelCleanupOutcome.NeedsReauth
         }
 
         when (val lookup = lookupRemote(working, accessToken, httpClient)) {
@@ -135,6 +163,8 @@ object DriveRemoteFileCleanup {
                         lookup.job.copy(
                             phase = DriveUploadPhase.STATUS_PENDING,
                             confirmedOffset = lookup.job.sizeBytes,
+                            lastErrorCode = null,
+                            lastErrorMessage = null,
                         ),
                         expectedGeneration = working.generation,
                     )
@@ -149,6 +179,7 @@ object DriveRemoteFileCleanup {
                 return CancelCleanupOutcome.RetainedCommitted(committed)
             }
             is RemoteLookup.PresentUnverified -> {
+                var authFailed = false
                 var retry = false
                 for (remoteFileId in lookup.remoteFileIds) {
                     when (
@@ -158,9 +189,13 @@ object DriveRemoteFileCleanup {
                             httpClient = httpClient,
                         )
                     ) {
+                        DeleteOutcome.AuthFailed -> authFailed = true
                         DeleteOutcome.RetryLater -> retry = true
                         DeleteOutcome.Cleared -> Unit
                     }
+                }
+                if (authFailed) {
+                    return needsReauth(jobStore, working)
                 }
                 if (retry) {
                     return CancelCleanupOutcome.RetryLater
@@ -176,7 +211,151 @@ object DriveRemoteFileCleanup {
                 return CancelCleanupOutcome.ClearedLocal
             }
             RemoteLookup.RetryLater -> return CancelCleanupOutcome.RetryLater
+            RemoteLookup.NeedsReauth -> return needsReauth(jobStore, working)
         }
+    }
+
+    private fun needsReauth(
+        jobStore: DriveUploadJobStore,
+        job: DriveUploadJob,
+    ): CancelCleanupOutcome {
+        persistCleanupError(
+            jobStore = jobStore,
+            job = job,
+            errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
+            message = "Google Drive 授權已失效，請重新連結原帳號完成清理。",
+        )
+        return CancelCleanupOutcome.NeedsReauth
+    }
+
+    /**
+     * 使用者確認放棄清理：帳號相符時盡力刪已知殘檔，再一律清本機 job。
+     * 刪除失敗不阻擋解除鎖定。
+     */
+    fun abandonCancelCleanup(
+        jobStore: DriveUploadJobStore,
+        tokenProvider: DriveAccessTokenProvider,
+        job: DriveUploadJob,
+        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+    ) {
+        val current = jobStore.readJob(job.jobId) ?: return
+        if (current.isRemoteCommittedPhase()) {
+            return
+        }
+        if (!current.isCancelCleanupPhase()) {
+            jobStore.markCancelCleanupPending(current.jobId)
+        }
+        val working = jobStore.readJob(job.jobId) ?: return
+        if (working.isRemoteCommittedPhase()) {
+            return
+        }
+        val token = tokenProvider.getAccessToken().getOrNull()
+        val accessToken =
+            if (token != null && tokenProvider.matchTokenToJob(working, token) == null) {
+                token.accessToken
+            } else {
+                null
+            }
+        abandonCancelCleanup(
+            jobStore = jobStore,
+            job = working,
+            accessToken = accessToken,
+            httpClient = httpClient,
+        )
+    }
+
+    fun abandonCancelCleanup(
+        jobStore: DriveUploadJobStore,
+        job: DriveUploadJob,
+        accessToken: String?,
+        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+    ) {
+        val current = jobStore.readJob(job.jobId) ?: return
+        if (current.isRemoteCommittedPhase()) {
+            return
+        }
+        if (!current.isCancelCleanupPhase()) {
+            jobStore.markCancelCleanupPending(current.jobId)
+        }
+        val working = jobStore.readJob(job.jobId) ?: return
+        if (working.isRemoteCommittedPhase()) {
+            return
+        }
+        if (!accessToken.isNullOrBlank()) {
+            bestEffortDeleteKnownRemotes(working, accessToken, httpClient)
+        }
+        jobStore.cancelAndCleanup(working.jobId)
+    }
+
+    private fun bestEffortDeleteKnownRemotes(
+        job: DriveUploadJob,
+        accessToken: String,
+        httpClient: DriveResumableUploader.HttpClient,
+    ) {
+        val ids = linkedSetOf<String>()
+        if (job.remoteFileId.isNotBlank()) {
+            ids.add(job.remoteFileId.trim())
+        }
+        when (val listed = listByUploadJobId(job, accessToken, httpClient)) {
+            is RemoteLookup.PresentUnverified -> ids.addAll(listed.remoteFileIds)
+            is RemoteLookup.Verified -> {
+                val id = listed.job.remoteFileId.trim()
+                if (id.isNotEmpty()) {
+                    ids.add(id)
+                }
+            }
+            else -> Unit
+        }
+        for (id in ids) {
+            bestEffortDelete(remoteFileId = id, accessToken = accessToken, httpClient = httpClient)
+        }
+    }
+
+    private fun classifyTokenFailure(
+        jobStore: DriveUploadJobStore,
+        job: DriveUploadJob,
+        error: Throwable,
+    ): CancelCleanupOutcome {
+        val tokenError = (error as? DriveAccessTokenProvider.TokenException)?.error
+        return when (tokenError) {
+            is DriveAccessTokenProvider.TokenError.Transient ->
+                CancelCleanupOutcome.RetryLater
+            is DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
+            is DriveAccessTokenProvider.TokenError.NotSignedIn,
+            is DriveAccessTokenProvider.TokenError.Permanent,
+            null,
+            -> {
+                persistCleanupError(
+                    jobStore = jobStore,
+                    job = job,
+                    errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
+                    message = "Google Drive 授權已失效，請重新連結原帳號完成清理。",
+                )
+                CancelCleanupOutcome.NeedsReauth
+            }
+        }
+    }
+
+    private fun persistCleanupError(
+        jobStore: DriveUploadJobStore,
+        job: DriveUploadJob,
+        errorCode: String,
+        message: String,
+    ) {
+        val current = jobStore.readJob(job.jobId) ?: return
+        if (current.lastErrorCode == errorCode &&
+            (current.lastErrorMessage ?: "") == message
+        ) {
+            return
+        }
+        jobStore.updateJobCas(
+            current.copy(
+                lastErrorCode = errorCode,
+                lastErrorMessage = message.ifBlank { null },
+            ),
+            expectedGeneration = current.generation,
+            durability = DriveUploadJobStore.Durability.Critical,
+        )
     }
 
     private sealed class RemoteLookup {
@@ -187,6 +366,8 @@ object DriveRemoteFileCleanup {
         data object Absent : RemoteLookup()
 
         data object RetryLater : RemoteLookup()
+
+        data object NeedsReauth : RemoteLookup()
     }
 
     private fun lookupRemote(
@@ -232,8 +413,13 @@ object DriveRemoteFileCleanup {
             404 -> RemoteLookup.Absent
             in 500..599 -> RemoteLookup.RetryLater
             else -> {
-                Log.w(TAG, "get remote file HTTP ${response.code}")
-                RemoteLookup.RetryLater
+                if (isAuthFailure(response.code, response.body)) {
+                    Log.w(TAG, "get remote file auth HTTP ${response.code}")
+                    RemoteLookup.NeedsReauth
+                } else {
+                    Log.w(TAG, "get remote file HTTP ${response.code}")
+                    RemoteLookup.RetryLater
+                }
             }
         }
     }
@@ -265,6 +451,10 @@ object DriveRemoteFileCleanup {
             return RemoteLookup.RetryLater
         }
         if (response.code != 200) {
+            if (isAuthFailure(response.code, response.body)) {
+                Log.w(TAG, "list remote files auth HTTP ${response.code}")
+                return RemoteLookup.NeedsReauth
+            }
             Log.w(TAG, "list remote files HTTP ${response.code}")
             return RemoteLookup.RetryLater
         }
@@ -288,10 +478,19 @@ object DriveRemoteFileCleanup {
             verified.size == 1 && unverifiedIds.isEmpty() -> RemoteLookup.Verified(verified[0])
             verified.isNotEmpty() -> {
                 if (verified.size == 1) {
+                    var retry = false
                     for (id in unverifiedIds.distinct()) {
-                        bestEffortDelete(id, accessToken, httpClient)
+                        when (bestEffortDelete(id, accessToken, httpClient)) {
+                            DeleteOutcome.AuthFailed -> return RemoteLookup.NeedsReauth
+                            DeleteOutcome.RetryLater -> retry = true
+                            DeleteOutcome.Cleared -> Unit
+                        }
                     }
-                    RemoteLookup.Verified(verified[0])
+                    if (retry) {
+                        RemoteLookup.RetryLater
+                    } else {
+                        RemoteLookup.Verified(verified[0])
+                    }
                 } else {
                     RemoteLookup.RetryLater
                 }
@@ -324,4 +523,11 @@ object DriveRemoteFileCleanup {
 
     private fun isSafeFileId(fileId: String): Boolean =
         fileId.isNotEmpty() && SAFE_FILE_ID.matches(fileId)
+
+    private fun isAuthFailure(code: Int, body: String): Boolean {
+        if (code == 401) {
+            return true
+        }
+        return code == 403 && !DriveResumableUploader.isRateLimit(body)
+    }
 }

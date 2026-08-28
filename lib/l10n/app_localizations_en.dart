@@ -2136,6 +2136,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Clearing unfinished Google Drive backup…';
 
   @override
+  String driveUploadStatusCancelCleanupNeedsReauth(String accountEmail) {
+    return 'Re-link the Google account ($accountEmail) to finish clearing the unfinished backup.';
+  }
+
+  @override
+  String driveUploadStatusCancelCleanupAccountMismatch(String accountEmail) {
+    return 'The signed-in Google account does not match the upload. Re-link $accountEmail to finish cleanup, or abandon it.';
+  }
+
+  @override
   String get driveUploadCancelButton => 'Cancel upload';
 
   @override
@@ -2148,6 +2158,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get driveUploadBusyBlocksAccountActions =>
       'An upload is in progress. Finish or cancel it before changing the Google account.';
+
+  @override
+  String get driveUploadCancelCleanupBlocksAccountActions =>
+      'Clearing an unfinished Google Drive backup. If authorization failed, re-link the original account or abandon cleanup.';
+
+  @override
+  String get driveUploadAbandonCancelCleanupButton => 'Abandon cleanup';
+
+  @override
+  String get driveUploadAbandonCancelCleanupConfirmTitle =>
+      'Abandon unfinished backup cleanup?';
+
+  @override
+  String get driveUploadAbandonCancelCleanupConfirmBody =>
+      'This unlocks the app so you can back up again or change Google accounts. Leftover files may remain in Google Drive and will not count as a successful backup.';
 
   @override
   String get driveUploadAbandonedFailureTitle => 'Google Drive backup failed';

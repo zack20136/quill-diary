@@ -248,6 +248,154 @@ class DriveRemoteFileCleanupTest {
         assertNotNull(store.readJob(job.jobId))
     }
 
+    @Test
+    fun 取消清理_驗證通過但殘檔刪除失敗則RetryLater() {
+        val job = createCancelCleanupJob(remoteFileId = "", md5 = "ccddee", size = 3)
+        val verifiedBody =
+            """{"id":"done-id","size":"3","md5Checksum":"ccddee","appProperties":{"uploadJobId":"${job.jobId}"}}"""
+        val junkBody =
+            """{"id":"junk-id","size":"1","md5Checksum":"","appProperties":{"uploadJobId":"${job.jobId}"}}"""
+        val client =
+            ScriptedHttpClient { request ->
+                when {
+                    request.method == "GET" && request.url.contains("/files?") ->
+                        DriveResumableUploader.HttpResponse(
+                            200,
+                            emptyMap(),
+                            """{"files":[$verifiedBody,$junkBody]}""",
+                        )
+                    request.method == "DELETE" && request.url.endsWith("/files/junk-id") ->
+                        DriveResumableUploader.HttpResponse(503, emptyMap(), "")
+                    else ->
+                        throw IOException("unexpected ${request.method} ${request.url}")
+                }
+            }
+        val outcome =
+            DriveRemoteFileCleanup.completeCancelCleanup(
+                jobStore = store,
+                accessToken = "token",
+                job = job,
+                workerAlive = false,
+                httpClient = client,
+            )
+        assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.RetryLater, outcome)
+        assertNotNull(store.readJob(job.jobId))
+        assertEquals(DriveUploadPhase.CANCEL_CLEANUP_PENDING, store.readJob(job.jobId)!!.phase)
+    }
+
+    @Test
+    fun 取消清理_空白token則NeedsReauth並寫入錯誤碼() {
+        val job = createCancelCleanupJob(remoteFileId = "any-id")
+        val outcome =
+            DriveRemoteFileCleanup.completeCancelCleanup(
+                jobStore = store,
+                accessToken = "   ",
+                job = job,
+                workerAlive = false,
+            )
+        assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.NeedsReauth, outcome)
+        val pending = store.readJob(job.jobId)
+        assertNotNull(pending)
+        assertEquals(
+            DriveRemoteFileCleanup.ERROR_CLEANUP_NEEDS_REAUTH,
+            pending!!.lastErrorCode,
+        )
+    }
+
+    @Test
+    fun 取消清理_GET_401則NeedsReauth() {
+        val job = createCancelCleanupJob(remoteFileId = "auth-id")
+        val client =
+            ScriptedHttpClient { request ->
+                if (request.method == "GET" && request.url.contains("/files/auth-id")) {
+                    DriveResumableUploader.HttpResponse(401, emptyMap(), "")
+                } else {
+                    throw IOException("unexpected ${request.method} ${request.url}")
+                }
+            }
+        val outcome =
+            DriveRemoteFileCleanup.completeCancelCleanup(
+                jobStore = store,
+                accessToken = "token",
+                job = job,
+                workerAlive = false,
+                httpClient = client,
+            )
+        assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.NeedsReauth, outcome)
+        val pending = store.readJob(job.jobId)
+        assertNotNull(pending)
+        assertEquals(
+            DriveRemoteFileCleanup.ERROR_CLEANUP_NEEDS_REAUTH,
+            pending!!.lastErrorCode,
+        )
+    }
+
+    @Test
+    fun 取消清理_刪殘檔401則NeedsReauth且保留job() {
+        val job = createCancelCleanupJob(remoteFileId = "partial-id", md5 = "aabb")
+        val metadata =
+            """{"id":"partial-id","size":"2","md5Checksum":"","appProperties":{"uploadJobId":"${job.jobId}"}}"""
+        val client =
+            ScriptedHttpClient { request ->
+                if (request.method == "DELETE") {
+                    DriveResumableUploader.HttpResponse(401, emptyMap(), "")
+                } else {
+                    DriveResumableUploader.HttpResponse(200, emptyMap(), metadata)
+                }
+            }
+        val outcome =
+            DriveRemoteFileCleanup.completeCancelCleanup(
+                jobStore = store,
+                accessToken = "token",
+                job = job,
+                workerAlive = false,
+                httpClient = client,
+            )
+        assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.NeedsReauth, outcome)
+        assertNotNull(store.readJob(job.jobId))
+        assertEquals(
+            DriveRemoteFileCleanup.ERROR_CLEANUP_NEEDS_REAUTH,
+            store.readJob(job.jobId)!!.lastErrorCode,
+        )
+    }
+
+    @Test
+    fun 放棄清理_無token仍清本機job() {
+        val job = createCancelCleanupJob(remoteFileId = "leftover-id")
+        DriveRemoteFileCleanup.abandonCancelCleanup(
+            jobStore = store,
+            job = job,
+            accessToken = null,
+        )
+        assertNull(store.readJob(job.jobId))
+        assertNull(store.readFailureNotice())
+    }
+
+    @Test
+    fun 放棄清理_有token會DELETE殘檔後清本機() {
+        val job = createCancelCleanupJob(remoteFileId = "leftover-id")
+        val deletes = AtomicInteger(0)
+        val client =
+            ScriptedHttpClient { request ->
+                if (request.method == "DELETE") {
+                    deletes.incrementAndGet()
+                    DriveResumableUploader.HttpResponse(204, emptyMap(), "")
+                } else if (request.method == "GET" && request.url.contains("/files?")) {
+                    DriveResumableUploader.HttpResponse(200, emptyMap(), """{"files":[]}""")
+                } else {
+                    throw IOException("unexpected ${request.method} ${request.url}")
+                }
+            }
+        DriveRemoteFileCleanup.abandonCancelCleanup(
+            jobStore = store,
+            job = job,
+            accessToken = "token",
+            httpClient = client,
+        )
+        assertEquals(1, deletes.get())
+        assertNull(store.readJob(job.jobId))
+    }
+
     private fun createCancelCleanupJob(
         remoteFileId: String,
         md5: String = "deadbeef",

@@ -110,9 +110,32 @@ void main() {
       );
 
       expect(job.phase, DriveUploadPhase.cancelCleanupPending);
+      expect(job.isCancelCleanupPending, isTrue);
+      expect(job.needsCancelCleanupAccountRecovery, isFalse);
       expect(job.blocksConflictingDriveActions, isTrue);
       expect(job.needsStatusRecording, isFalse);
       expect(job.needsCompletionHandling, isFalse);
+    });
+
+    test('CANCEL_CLEANUP_PENDING 授權錯誤需要帳號復原', () {
+      final DriveUploadJobSnapshot job = DriveUploadJobSnapshot.fromMap(
+        <Object?, Object?>{
+          'jobId': '11111111-1111-1111-1111-111111111111',
+          'phase': 'CANCEL_CLEANUP_PENDING',
+          'accountId': 'acc',
+          'accountEmail': 'a@b.c',
+          'stagingPath': '/tmp/a',
+          'fileName': 'a.qdbak',
+          'sizeBytes': 10,
+          'md5': 'abc',
+          'remoteFileId': 'file-1',
+          'confirmedOffset': 10,
+          'retryCount': 0,
+          'lastErrorCode': 'cleanup_needs_reauth',
+        },
+      );
+
+      expect(job.needsCancelCleanupAccountRecovery, isTrue);
     });
 
     test('未知 phase 拋錯', () {

@@ -122,6 +122,18 @@ final class DriveUploadJobSnapshot {
 
   bool get blocksConflictingDriveActions => isActive;
 
+  bool get isCancelCleanupPending =>
+      phase == DriveUploadPhase.cancelCleanupPending;
+
+  /// 取消清理因授權失效或帳號不符而卡住，允許重連原帳號或放棄。
+  bool get needsCancelCleanupAccountRecovery {
+    if (!isCancelCleanupPending) {
+      return false;
+    }
+    final String? code = lastErrorCode;
+    return code == 'cleanup_needs_reauth' || code == 'cleanup_account_mismatch';
+  }
+
   bool get needsStatusRecording => phase == DriveUploadPhase.statusPending;
 
   /// 遠端已驗證，等待本機成功紀錄與 prune。

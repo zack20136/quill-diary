@@ -80,7 +80,21 @@ SecurityOverviewItem settingsDriveBackupSecurityOverview(
       DriveUploadPhase.waitingForNetwork =>
         l10n.settingsSecurityOverviewDriveUploadPending,
       DriveUploadPhase.cancelCleanupPending =>
-        l10n.driveUploadStatusCancelCleanup,
+        switch (uploadJob.lastErrorCode) {
+          'cleanup_needs_reauth' =>
+            l10n.driveUploadStatusCancelCleanupNeedsReauth(
+              uploadJob.accountEmail.trim().isEmpty
+                  ? 'Google'
+                  : uploadJob.accountEmail.trim(),
+            ),
+          'cleanup_account_mismatch' =>
+            l10n.driveUploadStatusCancelCleanupAccountMismatch(
+              uploadJob.accountEmail.trim().isEmpty
+                  ? 'Google'
+                  : uploadJob.accountEmail.trim(),
+            ),
+          _ => l10n.driveUploadStatusCancelCleanup,
+        },
       DriveUploadPhase.statusPending ||
       DriveUploadPhase.prunePending =>
         l10n.driveUploadStatusFinalizing,

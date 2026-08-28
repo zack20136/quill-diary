@@ -142,6 +142,14 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   }
 
   @override
+  Future<DriveUploadState> abandonCancelCleanup(String jobId) async {
+    if (active?.jobId == jobId) {
+      active = null;
+    }
+    return envelope;
+  }
+
+  @override
   Future<void> ackFailure(String jobId) async {
     ackCalls++;
     if (failure?.jobId == jobId) {
@@ -329,6 +337,25 @@ void main() {
     await coordinator.acknowledgeFailure('job-abandoned');
     expect(platform.ackCalls, 1);
     expect(coordinator.failure, isNull);
+  });
+
+  test('abandonCancelCleanup 會清除 CANCEL_CLEANUP_PENDING', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-cleanup',
+      phase: DriveUploadPhase.cancelCleanupPending,
+    );
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(coordinator.job?.phase, DriveUploadPhase.cancelCleanupPending);
+
+    await coordinator.abandonCancelCleanup('job-cleanup');
+    expect(coordinator.job, isNull);
   });
 
   test('FGS 啟動失敗會回傳取消並只經 failure notice 記一次', () async {

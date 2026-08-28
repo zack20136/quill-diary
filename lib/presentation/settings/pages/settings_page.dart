@@ -19,6 +19,7 @@ import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
@@ -247,6 +248,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onUpload: () => _runWithBackupProgress(_uploadDriveBackup),
                     onRestore: _runRestoreFromGoogleDrive,
                     onCancelUpload: _cancelDriveUpload,
+                    onAbandonCancelCleanup: _abandonCancelCleanup,
                   ),
                   const SizedBox(height: 16),
                   _buildLegalSection(context, cs),

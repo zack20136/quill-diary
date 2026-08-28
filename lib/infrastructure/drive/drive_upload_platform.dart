@@ -79,6 +79,17 @@ class DriveUploadPlatform {
     await _methods.invokeMethod<Object?>('cancelUpload');
   }
 
+  Future<DriveUploadState> abandonCancelCleanup(String jobId) async {
+    if (!isSupported) {
+      return const DriveUploadState();
+    }
+    final Object? raw = await _methods.invokeMethod<Object?>(
+      'abandonCancelCleanup',
+      <String, Object?>{'jobId': jobId},
+    );
+    return _decodeState(raw);
+  }
+
   Future<void> ackFailure(String jobId) async {
     if (!isSupported) {
       return;

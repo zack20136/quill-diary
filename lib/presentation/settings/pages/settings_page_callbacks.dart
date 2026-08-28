@@ -493,6 +493,36 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     await pageRef.read(driveUploadCoordinatorProvider.notifier).cancelUpload();
   }
 
+  Future<void> _abandonCancelCleanup() async {
+    final AppLocalizations l10n = pageContext.l10n;
+    final DriveUploadJobSnapshot? job = pageRef
+        .read(driveUploadCoordinatorProvider)
+        .job;
+    if (job == null || !job.isCancelCleanupPending) {
+      return;
+    }
+    final bool confirmed = await showAbandonCancelCleanupDialog(pageContext);
+    if (!confirmed || !isMounted) {
+      return;
+    }
+    try {
+      await pageRef
+          .read(driveUploadCoordinatorProvider.notifier)
+          .abandonCancelCleanup(job.jobId);
+    } catch (error) {
+      if (!isMounted) {
+        return;
+      }
+      _showFeedback(
+        SettingsFlowFeedback(
+          userFacingErrorMessage(error, l10n: l10n),
+          tone: SettingsFlowFeedbackTone.error,
+        ),
+      );
+      await pageRef.read(driveUploadCoordinatorProvider.notifier).refresh();
+    }
+  }
+
   Future<void> _runRestoreFromAppLocalBackup() async {
     final AppLocalizations l10n = pageContext.l10n;
     try {
@@ -690,10 +720,17 @@ extension _SettingsPageCallbacks on _SettingsPageState {
 
   Future<void> _switchGoogleDrive() async {
     final AppLocalizations l10n = pageContext.l10n;
-    if (pageRef.read(driveUploadCoordinatorProvider.notifier).hasActiveJob) {
+    final DriveUploadJobSnapshot? job = pageRef
+        .read(driveUploadCoordinatorProvider)
+        .job;
+    if (job != null &&
+        job.blocksConflictingDriveActions &&
+        !job.needsCancelCleanupAccountRecovery) {
       _showFeedback(
         SettingsFlowFeedback(
-          l10n.driveUploadBusyBlocksAccountActions,
+          job?.isCancelCleanupPending == true
+              ? l10n.driveUploadCancelCleanupBlocksAccountActions
+              : l10n.driveUploadBusyBlocksAccountActions,
           tone: SettingsFlowFeedbackTone.warning,
         ),
       );
@@ -707,10 +744,17 @@ extension _SettingsPageCallbacks on _SettingsPageState {
       return;
     }
     final AppLocalizations l10n = pageContext.l10n;
-    if (pageRef.read(driveUploadCoordinatorProvider.notifier).hasActiveJob) {
+    final DriveUploadJobSnapshot? job = pageRef
+        .read(driveUploadCoordinatorProvider)
+        .job;
+    if (job != null &&
+        job.blocksConflictingDriveActions &&
+        !job.needsCancelCleanupAccountRecovery) {
       _showFeedback(
         SettingsFlowFeedback(
-          l10n.driveUploadBusyBlocksAccountActions,
+          job.isCancelCleanupPending
+              ? l10n.driveUploadCancelCleanupBlocksAccountActions
+              : l10n.driveUploadBusyBlocksAccountActions,
           tone: SettingsFlowFeedbackTone.warning,
         ),
       );

@@ -1280,10 +1280,26 @@
   },
   "driveUploadStatusFinalizing": "Google Drive 備份已上傳，正在完成收尾…",
   "driveUploadStatusCancelCleanup": "正在清除未完成的 Google Drive 備份…",
+  "driveUploadStatusCancelCleanupNeedsReauth": "清除未完成備份需要重新連結 Google 帳戶（{accountEmail}）。",
+  "@driveUploadStatusCancelCleanupNeedsReauth": {
+    "placeholders": {
+      "accountEmail": {"type": "String"}
+    }
+  },
+  "driveUploadStatusCancelCleanupAccountMismatch": "目前 Google 帳戶與上傳時不符。請連回 {accountEmail} 完成清理，或放棄清理。",
+  "@driveUploadStatusCancelCleanupAccountMismatch": {
+    "placeholders": {
+      "accountEmail": {"type": "String"}
+    }
+  },
   "driveUploadCancelButton": "取消上傳",
   "driveUploadCancelConfirmTitle": "取消 Google Drive 上傳？",
   "driveUploadCancelConfirmBody": "將停止目前的背景上傳。已建立的暫存備份會被清除。",
   "driveUploadBusyBlocksAccountActions": "上傳進行中，請先完成或取消後再變更 Google 帳戶。",
+  "driveUploadCancelCleanupBlocksAccountActions": "正在清除未完成的 Google Drive 備份。若授權失效，請重新連結原帳號，或放棄清理。",
+  "driveUploadAbandonCancelCleanupButton": "放棄清理",
+  "driveUploadAbandonCancelCleanupConfirmTitle": "放棄清除未完成的備份？",
+  "driveUploadAbandonCancelCleanupConfirmBody": "將解除本機鎖定，之後可重新備份或變更 Google 帳戶。Google Drive 上可能留下未完成的殘檔，且不會當成成功備份。",
   "driveUploadAbandonedFailureTitle": "Google Drive 備份失敗",
   "driveUploadAbandonedFailureBody": "上次 Google Drive 備份未完成，已取消。請重新備份。",
   "driveUploadAbandonedFailureConfirm": "知道了",
