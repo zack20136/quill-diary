@@ -4,7 +4,8 @@ package zack20136.com.quill_diary.drive
  * 使用者停止上傳後的本機收尾決策（純邏輯，便於單元測試）。
  *
  * [jobAfterSettle]：傳輸執行緒落定後的 job。
- * [workerSettled]：上傳 Future 是否已結束（含逾時後仍卡住＝false）。
+ * [workerSettled]：上傳 worker 是否已退出（以 `uploadWorkerAlive` 為準；
+ * `Future.cancel` 後 `isDone` 不代表執行緒已結束）。
  */
 object DriveCancelStopDecision {
     enum class LocalAction {

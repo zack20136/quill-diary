@@ -250,27 +250,6 @@ class DriveUploadJobStore private constructor(context: Context) {
         }
     }
 
-    /**
-     * 冷啟動：若有未提交的殘留工作且 FGS 未在跑，視為程序中斷並清理。
-     * 已 STATUS_PENDING／PRUNE_PENDING／CANCEL_CLEANUP_PENDING 則保留。
-     */
-    fun abandonUncommittedIfPresent(message: String): DriveUploadJob? =
-        synchronized(lock) {
-            val existing = readActiveJobLocked() ?: return null
-            if (existing.isRemoteCommittedPhase() || existing.isCancelCleanupPhase()) {
-                return null
-            }
-            cleanupStagingLocked(existing)
-            writeFailureNoticeLocked(
-                DriveUploadFailureNotice(
-                    jobId = existing.jobId,
-                    message = message,
-                ),
-            )
-            deleteJobLocked(existing.jobId)
-            return existing
-        }
-
     private fun readActiveJobLocked(): DriveUploadJob? {
         val jobs =
             listJobBaseFiles().mapNotNull { file ->

@@ -63,11 +63,9 @@ class _SupportPageState extends ConsumerState<SupportPage> {
               title: l10n.settingsSupportHeroTitle,
               body: l10n.settingsSupportHeroBody,
               chips: settingsSupportHeroChips(l10n),
-              accentColor: cs.secondary,
-              startAlpha: 0.20,
-              endAlpha: 0.12,
+              startAlpha: 0.16,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             SupportProductsSection(
               billing: billing,
               onBuy: (String productId) {

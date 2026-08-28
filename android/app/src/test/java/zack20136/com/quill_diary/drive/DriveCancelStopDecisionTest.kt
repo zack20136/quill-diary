@@ -61,7 +61,7 @@ class DriveCancelStopDecisionTest {
     }
 
     @Test
-    fun worker尚未退出則AwaitWorker() {
+    fun worker尚未退出則AwaitWorker_不以Future_isDone為準() {
         assertEquals(
             LocalAction.AwaitWorker,
             DriveCancelStopDecision.plan(

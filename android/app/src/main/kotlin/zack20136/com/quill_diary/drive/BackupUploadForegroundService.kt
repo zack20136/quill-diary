@@ -20,6 +20,7 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import zack20136.com.quill_diary.MainActivity
 import zack20136.com.quill_diary.R
 import java.util.concurrent.CompletableFuture
@@ -89,24 +90,10 @@ class BackupUploadForegroundService : Service() {
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
-        val fence = terminationGeneration.incrementAndGet()
+        beginCancelCleanupInterrupt()
+        pendingRetry?.cancel(false)
         uploader?.abortTransport()
-        val job = jobStore.readActiveJob()
-        if (job != null &&
-            !job.isRemoteCommittedPhase() &&
-            !job.isCancelCleanupPhase()
-        ) {
-            val failed =
-                jobStore.failAndCleanup(
-                    job.jobId,
-                    errorCode = "fgs_timeout",
-                    message = "系統暫停背景上傳，Google Drive 備份已取消。",
-                )
-            if (failed != null && terminationGeneration.get() == fence) {
-                DriveUploadBridge.emitStateEnvelope(applicationContext)
-                notifyFailed(failed)
-            }
-        }
+        publishAfterInterrupt(reconcileIfWorkerIdle = true)
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf(startId)
@@ -115,31 +102,57 @@ class BackupUploadForegroundService : Service() {
     override fun onDestroy() {
         running = false
         pendingStartJobId = null
+        beginCancelCleanupInterrupt()
         unregisterNetworkCallback()
         pendingRetry?.cancel(false)
         uploader?.abortTransport()
         uploadFuture?.cancel(true)
-        val job = jobStore.readActiveJob()
-        if (job != null &&
-            !job.isRemoteCommittedPhase() &&
-            !job.isCancelCleanupPhase()
-        ) {
-            jobStore.failAndCleanup(
-                job.jobId,
-                errorCode = "service_destroyed",
-                message = "上次 Google Drive 備份未完成，已取消。請重新備份。",
-            )
-            DriveUploadBridge.emitStateEnvelope(applicationContext)
-        }
-        uploadWorkerAlive = false
         releaseWakeLock()
         executor.shutdownNow()
         scheduler.shutdownNow()
+        val terminated =
+            runCatching {
+                executor.awaitTermination(EXECUTOR_SHUTDOWN_AWAIT_MS, TimeUnit.MILLISECONDS)
+            }.getOrDefault(false)
+        if (terminated) {
+            // 執行緒池已結束：清旗標並立刻對帳（與 onTimeout 重複排程亦安全）。
+            uploadWorkerAlive = false
+            publishAfterInterrupt(reconcileIfWorkerIdle = true)
+        } else {
+            // 執行緒可能仍卡住：保留 uploadWorkerAlive，避免 getState 對尚在跑的 HTTP 誤刪。
+            DriveUploadBridge.emitStateEnvelope(applicationContext)
+        }
         super.onDestroy()
     }
 
+    /** 先擋重入與補標記，再中止傳輸；不在此 failAndCleanup。 */
+    private fun beginCancelCleanupInterrupt() {
+        stopRequested.set(true)
+        terminationGeneration.incrementAndGet()
+        persistCancelCleanupIfUncommitted()
+    }
+
+    private fun persistCancelCleanupIfUncommitted(job: DriveUploadJob? = jobStore.readActiveJob()) {
+        if (job != null && !job.isRemoteCommittedPhase()) {
+            jobStore.markCancelCleanupPending(job.jobId)
+        }
+    }
+
+    /** worker 已不在則排程對帳；仍活著只推 pending，留給 finally。 */
+    private fun publishAfterInterrupt(reconcileIfWorkerIdle: Boolean) {
+        if (reconcileIfWorkerIdle && !isUploadWorkerAlive()) {
+            DriveUploadBridge.scheduleCancelCleanupReconcile(applicationContext)
+        } else {
+            DriveUploadBridge.emitStateEnvelope(applicationContext)
+        }
+    }
+
+    private fun isGenerationInterrupted(fence: Long): Boolean =
+        terminationGeneration.get() != fence || stopRequested.get()
+
     private fun startUpload(jobId: String, startId: Int) {
-        if (stopRequested.get() || uploadFuture?.isDone == false) {
+        // Future.cancel 後 isDone 仍可能為 true；以 worker finally 旗標為準。
+        if (stopRequested.get() || isUploadWorkerAlive()) {
             return
         }
         val fenceAtStart = terminationGeneration.get()
@@ -156,15 +169,9 @@ class BackupUploadForegroundService : Service() {
             return
         }
         if (job.isCancelCleanupPhase()) {
-            uploadWorkerAlive = true
-            uploadFuture =
-                executor.submit {
-                    try {
-                        finishCancelCleanupFromWorker(job.jobId, startId)
-                    } finally {
-                        uploadWorkerAlive = false
-                    }
-                }
+            submitUploadWorker {
+                finishCancelCleanupFromWorker(job.jobId, startId)
+            }
             return
         }
 
@@ -186,54 +193,62 @@ class BackupUploadForegroundService : Service() {
         acquireWakeLock()
         registerNetworkCallback()
 
+        submitUploadWorker {
+            runUploadWorker(jobId, fenceAtStart, startId)
+        }
+    }
+
+    private fun submitUploadWorker(block: () -> Unit) {
         uploadWorkerAlive = true
         uploadFuture =
             executor.submit {
-                val localFence = fenceAtStart
                 try {
-                    if (stopRequested.get() || terminationGeneration.get() != localFence) {
-                        return@submit
-                    }
-                    val activeUploader = DriveResumableUploader(jobStore, tokenProvider)
-                    uploader = activeUploader
-                    val currentJob = jobStore.readJob(jobId) ?: return@submit
-                    val outcome =
-                        activeUploader.run(currentJob) { updated ->
-                            if (terminationGeneration.get() != localFence || stopRequested.get()) {
-                                return@run
-                            }
-                            maybeEmitProgress(updated)
-                        }
-                    if (terminationGeneration.get() != localFence || stopRequested.get()) {
-                        return@submit
-                    }
-                    mainHandler.post { handleOutcome(outcome, localFence, startId) }
-                } catch (error: Throwable) {
-                    if (terminationGeneration.get() != localFence || stopRequested.get()) {
-                        return@submit
-                    }
-                    mainHandler.post {
-                        finishFailure(
-                            jobId,
-                            startId = startId,
-                            errorCode = "unexpected",
-                            message = error.message ?: "上傳發生未預期錯誤。",
-                        )
-                    }
+                    block()
                 } finally {
-                    uploader = null
-                    releaseWakeLock()
-                    try {
-                        finishCancelCleanupFromWorker(jobId, startId)
-                    } finally {
-                        uploadWorkerAlive = false
-                    }
+                    uploadWorkerAlive = false
                 }
             }
     }
 
+    private fun runUploadWorker(jobId: String, localFence: Long, startId: Int) {
+        try {
+            if (isGenerationInterrupted(localFence)) {
+                return
+            }
+            val activeUploader = DriveResumableUploader(jobStore, tokenProvider)
+            uploader = activeUploader
+            val currentJob = jobStore.readJob(jobId) ?: return
+            val outcome =
+                activeUploader.run(currentJob) { updated ->
+                    if (!isGenerationInterrupted(localFence)) {
+                        maybeEmitProgress(updated)
+                    }
+                }
+            if (isGenerationInterrupted(localFence)) {
+                return
+            }
+            mainHandler.post { handleOutcome(outcome, localFence, startId) }
+        } catch (error: Throwable) {
+            if (isGenerationInterrupted(localFence)) {
+                return
+            }
+            mainHandler.post {
+                finishFailure(
+                    jobId,
+                    startId = startId,
+                    errorCode = "unexpected",
+                    message = error.message ?: "上傳發生未預期錯誤。",
+                )
+            }
+        } finally {
+            uploader = null
+            releaseWakeLock()
+            finishCancelCleanupFromWorker(jobId, startId)
+        }
+    }
+
     private fun handleOutcome(outcome: DriveUploadOutcome, fence: Long, startId: Int) {
-        if (terminationGeneration.get() != fence || stopRequested.get()) {
+        if (isGenerationInterrupted(fence)) {
             return
         }
         when (outcome) {
@@ -278,7 +293,7 @@ class BackupUploadForegroundService : Service() {
     }
 
     private fun maybeRetry(jobId: String) {
-        if (stopRequested.get() || uploadFuture?.isDone == false) {
+        if (stopRequested.get() || isUploadWorkerAlive()) {
             return
         }
         val job = jobStore.readJob(jobId) ?: return
@@ -309,23 +324,15 @@ class BackupUploadForegroundService : Service() {
      * 不在主執行緒阻塞。
      */
     private fun handleUserStop(startId: Int) {
-        stopRequested.set(true)
-        terminationGeneration.incrementAndGet()
+        beginCancelCleanupInterrupt()
         val snapshot = jobStore.readActiveJob()
-        if (snapshot != null && !snapshot.isRemoteCommittedPhase()) {
-            jobStore.markCancelCleanupPending(snapshot.jobId)
-        }
         pendingRetry?.cancel(false)
         uploader?.cancelUser()
         val futureToAwait = uploadFuture
         scheduler.execute {
             awaitUploadFutureSettled(futureToAwait)
             try {
-                finishUserStop(
-                    snapshot = snapshot,
-                    startId = startId,
-                    workerSettled = futureToAwait == null || futureToAwait.isDone,
-                )
+                finishUserStop(snapshot = snapshot, startId = startId)
             } finally {
                 completeStopAwaiter()
             }
@@ -349,14 +356,14 @@ class BackupUploadForegroundService : Service() {
     private fun finishUserStop(
         snapshot: DriveUploadJob?,
         startId: Int?,
-        workerSettled: Boolean,
     ) {
         pendingRetry?.cancel(false)
         val after = jobStore.readActiveJob()
         when (
             DriveCancelStopDecision.plan(
                 jobAfterSettle = after,
-                workerSettled = workerSettled,
+                // Future.cancel 後 isDone 仍可能為 true；以 worker finally 旗標為準。
+                workerSettled = !isUploadWorkerAlive(),
             )
         ) {
             DriveCancelStopDecision.LocalAction.RetainCommitted -> {
@@ -367,18 +374,14 @@ class BackupUploadForegroundService : Service() {
             DriveCancelStopDecision.LocalAction.CleanupLocal -> {
                 val job = after ?: snapshot
                 if (job != null) {
-                    applyCancelCleanupOutcome(
-                        DriveRemoteFileCleanup.completeCancelCleanup(
-                            jobStore = jobStore,
-                            tokenProvider = tokenProvider,
-                            job = job,
-                            workerAlive = false,
-                        ),
+                    finishCleanupUiAndStop(
+                        runCancelCleanup(job),
+                        startId,
                     )
+                } else {
+                    DriveUploadBridge.emitStateEnvelope(applicationContext)
+                    stopSelfSafely(startId)
                 }
-                DriveUploadBridge.emitStateEnvelope(applicationContext)
-                getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
-                stopSelfSafely(startId)
             }
             DriveCancelStopDecision.LocalAction.AwaitWorker -> {
                 val pending = jobStore.readActiveJob() ?: after ?: snapshot
@@ -394,30 +397,36 @@ class BackupUploadForegroundService : Service() {
     private fun finishCancelCleanupFromWorker(jobId: String, startId: Int) {
         val job = jobStore.readJob(jobId) ?: return
         if (!job.isCancelCleanupPhase()) {
-            if (stopRequested.get() && !job.isRemoteCommittedPhase()) {
-                // 停止已發出但尚未寫入 pending（競態）：補標記後清理。
-                jobStore.markCancelCleanupPending(job.jobId)
-            } else {
+            if (!stopRequested.get() || job.isRemoteCommittedPhase()) {
                 return
             }
+            // 停止已發出但尚未寫入 pending（競態）：補標記後清理。
+            persistCancelCleanupIfUncommitted(job)
         }
         val current = jobStore.readJob(jobId) ?: return
         if (!current.isCancelCleanupPhase()) {
             return
         }
-        val outcome =
-            DriveRemoteFileCleanup.completeCancelCleanup(
-                jobStore = jobStore,
-                tokenProvider = tokenProvider,
-                job = current,
-                workerAlive = false,
-            )
-        mainHandler.post {
-            applyCancelCleanupOutcome(outcome)
-            DriveUploadBridge.emitStateEnvelope(applicationContext)
-            getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
-            stopSelfSafely(startId)
-        }
+        val outcome = runCancelCleanup(current)
+        mainHandler.post { finishCleanupUiAndStop(outcome, startId) }
+    }
+
+    private fun runCancelCleanup(job: DriveUploadJob): DriveRemoteFileCleanup.CancelCleanupOutcome =
+        DriveRemoteFileCleanup.completeCancelCleanup(
+            jobStore = jobStore,
+            tokenProvider = tokenProvider,
+            job = job,
+            workerAlive = false,
+        )
+
+    private fun finishCleanupUiAndStop(
+        outcome: DriveRemoteFileCleanup.CancelCleanupOutcome,
+        startId: Int?,
+    ) {
+        applyCancelCleanupOutcome(outcome)
+        DriveUploadBridge.emitStateEnvelope(applicationContext)
+        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
+        stopSelfSafely(startId)
     }
 
     private fun applyCancelCleanupOutcome(outcome: DriveRemoteFileCleanup.CancelCleanupOutcome) {
@@ -456,14 +465,8 @@ class BackupUploadForegroundService : Service() {
     private fun finishCancellation(startId: Int? = null) {
         // uploader 主動回報 Cancelled（非通知列／Bridge 停止路徑）時沿用同一收尾。
         val snapshot = jobStore.readActiveJob()
-        if (snapshot != null && !snapshot.isRemoteCommittedPhase()) {
-            jobStore.markCancelCleanupPending(snapshot.jobId)
-        }
-        finishUserStop(
-            snapshot = snapshot,
-            startId = startId,
-            workerSettled = true,
-        )
+        persistCancelCleanupIfUncommitted(snapshot)
+        finishUserStop(snapshot = snapshot, startId = startId)
     }
 
     private fun stopSelfSafely(startId: Int? = null) {
@@ -536,7 +539,7 @@ class BackupUploadForegroundService : Service() {
     private fun onValidatedNetwork() {
         val job = jobStore.readActiveJob() ?: return
         if (job.phase == DriveUploadPhase.WAITING_FOR_NETWORK &&
-            uploadFuture?.isDone != false &&
+            !isUploadWorkerAlive() &&
             !stopRequested.get()
         ) {
             mainHandler.post { maybeRetry(job.jobId) }
@@ -705,13 +708,14 @@ class BackupUploadForegroundService : Service() {
         private const val PROGRESS_EMIT_MIN_INTERVAL_MS = 2_000L
         private const val PROGRESS_EMIT_MIN_DELTA = 0.05
         private const val UPLOAD_STOP_AWAIT_TIMEOUT_MS = 15_000L
+        private const val EXECUTOR_SHUTDOWN_AWAIT_MS = 1_000L
 
         @Volatile
         private var running: Boolean = false
 
         /**
          * startForegroundService 已成功、但 onCreate 尚未執行時的保護。
-         * 避免 getState／EventChannel 在空窗誤判為程序中斷而 abandon。
+         * 避免 getState／EventChannel 在空窗誤清剛建立的工作。
          */
         @Volatile
         private var pendingStartJobId: String? = null
@@ -740,7 +744,7 @@ class BackupUploadForegroundService : Service() {
             // 必須在 startForegroundService 之前設置，堵住回傳後到 onCreate 的空窗。
             pendingStartJobId = jobId
             return try {
-                androidx.core.content.ContextCompat.startForegroundService(appContext, intent)
+                ContextCompat.startForegroundService(appContext, intent)
                 true
             } catch (error: Throwable) {
                 pendingStartJobId = null

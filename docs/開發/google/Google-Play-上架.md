@@ -125,10 +125,10 @@ target Android 14（API 34）以上並使用 `FOREGROUND_SERVICE_DATA_SYNC` 時�
 - Use case：`Network transfer: Backup and restore`
 - 功能描述：使用者手動建立備份 ZIP（內含加密 vault 與部分明文 metadata），並上傳至 Google Drive `appDataFolder`；不是排程或常駐背景同步
 - 為何不可任意延後：使用者剛建立的備份需儘快送達其 Drive，否則其他裝置/重裝後無法立刻還原
-- 中斷影響：同一 FGS 存活期間可在網路恢復後自動重試；遠端完成驗證前若服務或程序異常終止，則清除本機 staging 與 job，下次開啟 App 顯示一次失敗提示，使用者需重新備份。使用者主動停止時先進入 `CANCEL_CLEANUP_PENDING`，不建立失敗提示；worker 退出後（或下次啟動）再查詢／刪除未完成的遠端殘檔。已進入 `STATUS_PENDING` 或 `PRUNE_PENDING` 時則保留狀態供 App 下次收尾，不會重新上傳。在 Android 15+ 裝置上，target Android 15（API 35）以上 App 的 dataSync 共用額度用盡也會終止尚未提交完成的上傳
+- 中斷影響：同一 FGS 存活期間可在網路恢復後自動重試。遠端完成驗證前若使用者停止、dataSync 額度逾時、服務或程序異常終止，先進入 `CANCEL_CLEANUP_PENDING` 對帳（已完成則記錄成功，否則清殘檔），不建立失敗提示；對帳完成前不能開始新的上傳。已進入 `STATUS_PENDING` 或 `PRUNE_PENDING` 則保留供 App 收尾。授權失效、重試耗盡或無法啟動前景服務仍提示失敗並需重新備份。Android 15+（target API 35+）的 dataSync 共用額度用盡也會終止尚未遠端驗證完成的上傳。細節見 [../功能/備份與還原.md](../功能/備份與還原.md)
 - 示範影片建議內容：連結 Google Drive → 點上傳 → 顯示進度通知 → 切換到其他 App → 通知仍在更新 → 按停止或完成後返回 App
 
-官方也建議部分使用者主動網路傳輸改用 User-Initiated Data Transfer job。本版保留 dataSync FGS，declaration 需對齊「使用者主動觸發、即時顯示進度、可從通知列停止；遠端完成驗證前若程序異常終止，需重新備份」。
+官方也建議部分使用者主動網路傳輸改用 User-Initiated Data Transfer job。本版保留 dataSync FGS，declaration 需對齊「使用者主動觸發、即時顯示進度、可從通知列停止；遠端完成驗證前若程序中斷，會對帳後保留成功或清除殘檔，不跨程序續傳」。
 
 ## 建議送審檢查清單
 

@@ -228,29 +228,16 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun abandonUncommittedIfPresent_清理未提交工作() {
-        val staging = stagingFile("abandon.zip", byteArrayOf(9))
+    fun failAndCleanup_保留_CANCEL_CLEANUP_PENDING() {
+        val staging = stagingFile("keep-cancel.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
-        val abandoned =
-            store.abandonUncommittedIfPresent("程序中斷，已取消。")
-        assertNotNull(abandoned)
-        assertEquals(created.jobId, abandoned!!.jobId)
-        assertNull(store.readActiveJob())
-        assertFalse(File(created.stagingPath).exists())
-        assertNotNull(store.readFailureNotice())
-    }
-
-    @Test
-    fun abandonUncommittedIfPresent_保留_STATUS_PENDING() {
-        val staging = stagingFile("keep.zip", byteArrayOf(1))
-        val created = store.createJobIfNoConflict(newJob(staging))!!
-        store.updateJobCas(
-            created.copy(phase = DriveUploadPhase.STATUS_PENDING, remoteFileId = "r"),
-            expectedGeneration = created.generation,
+        store.markCancelCleanupPending(created.jobId)
+        assertNull(store.failAndCleanup(created.jobId, "x", "y"))
+        assertEquals(
+            DriveUploadPhase.CANCEL_CLEANUP_PENDING,
+            store.readActiveJob()!!.phase,
         )
-        assertNull(store.abandonUncommittedIfPresent("不應清理。"))
-        assertNotNull(store.readActiveJob())
-        assertTrue(File(created.stagingPath).exists())
+        assertNull(store.readFailureNotice())
     }
 
     @Test
@@ -272,19 +259,6 @@ class DriveUploadJobStoreTest {
             )!!
         assertNull(store.markCancelCleanupPending(committed.jobId))
         assertEquals(DriveUploadPhase.STATUS_PENDING, store.readJob(committed.jobId)!!.phase)
-    }
-
-    @Test
-    fun abandon與failAndCleanup_保留_CANCEL_CLEANUP_PENDING() {
-        val staging = stagingFile("keep-cancel.zip", byteArrayOf(1))
-        val created = store.createJobIfNoConflict(newJob(staging))!!
-        store.markCancelCleanupPending(created.jobId)
-        assertNull(store.abandonUncommittedIfPresent("不應清理。"))
-        assertNull(store.failAndCleanup(created.jobId, "x", "y"))
-        assertEquals(
-            DriveUploadPhase.CANCEL_CLEANUP_PENDING,
-            store.readActiveJob()!!.phase,
-        )
     }
 
     @Test

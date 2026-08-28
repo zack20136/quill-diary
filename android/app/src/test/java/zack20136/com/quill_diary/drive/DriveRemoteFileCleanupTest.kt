@@ -2,6 +2,7 @@ package zack20136.com.quill_diary.drive
 
 import android.content.Context
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -106,6 +107,49 @@ class DriveRemoteFileCleanupTest {
             )
         assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.ClearedLocal, outcome)
         assertNull(store.readJob(job.jobId))
+        assertNull(store.readFailureNotice())
+    }
+
+    @Test
+    fun 未提交leftover對帳404則清本機且不寫failure_notice() {
+        val staging = File(store.stagingRoot(), "${UUID.randomUUID()}.zip")
+        staging.writeBytes(ByteArray(2) { 1 })
+        val leftover =
+            store.createJobIfNoConflict(
+                DriveUploadJob(
+                    jobId = UUID.randomUUID().toString(),
+                    phase = DriveUploadPhase.UPLOADING,
+                    accountId = "acc",
+                    accountEmail = "a@b.c",
+                    stagingPath = staging.canonicalPath,
+                    fileName = staging.name,
+                    sizeBytes = 2L,
+                    md5 = "deadbeef",
+                    remoteFileId = "stale-id",
+                ),
+            )!!
+        val client =
+            ScriptedHttpClient { request ->
+                if (request.method == "GET" && request.url.contains("/files/stale-id")) {
+                    DriveResumableUploader.HttpResponse(404, emptyMap(), "")
+                } else if (request.method == "GET" && request.url.contains("/files?")) {
+                    DriveResumableUploader.HttpResponse(200, emptyMap(), """{"files":[]}""")
+                } else {
+                    throw IOException("unexpected ${request.method} ${request.url}")
+                }
+            }
+        val outcome =
+            DriveRemoteFileCleanup.completeCancelCleanup(
+                jobStore = store,
+                accessToken = "token",
+                job = leftover,
+                workerAlive = false,
+                httpClient = client,
+            )
+        assertEquals(DriveRemoteFileCleanup.CancelCleanupOutcome.ClearedLocal, outcome)
+        assertNull(store.readJob(leftover.jobId))
+        assertNull(store.readFailureNotice())
+        assertFalse(staging.exists())
     }
 
     @Test
