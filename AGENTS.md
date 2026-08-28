@@ -5,10 +5,9 @@
 ## 怎麼讀這份文件
 
 1. 先看 `所有代理都要遵守`。
-2. 再看你自己的專屬段落：`Cursor 專屬` 或 `Codex 專屬`。
-3. 若兩邊有衝突，以專屬段落優先。
-4. 動到文件時，一併遵守 `文件維護`。
-5. 動到測試時，一併遵守 [`test/test-handbook.md`](test/test-handbook.md)。
+2. `Cursor` 可直接使用 `flutter ...`；`Codex` 必須遵守下方 `Codex 專屬` 的安全入口。若兩邊有衝突，以專屬段落優先。
+3. 動到文件時，一併遵守 `文件維護`。
+4. 動到測試時，一併遵守 [`test/test-handbook.md`](test/test-handbook.md)。
 
 ## 所有代理都要遵守
 
@@ -20,7 +19,10 @@
 - 避免過度抽象：不要為一兩行程式抽 helper、不要堆多餘介面層；先讀周邊慣例再動手，改動應像同一作者寫的。
 - 變更範圍仍應對準任務：沒被要求時不要順手大改無關檔案；但若重構是完成任務的最簡路徑，可以直接做。
 - 狀態同步、模式切換、通知上層這類路徑，優先收成單一入口（例如集中 `_sync…` / `_apply…`），避免某些分支漏更新旗標或重複觸發副作用。
-- 實驗失敗後留下的死碼、未使用的 helper、只被測試覆蓋的過時抽象，應直接刪除，不要為了「以後可能用到」而保留。
+- 能刪就刪：實驗失敗後的死碼、未使用的 helper、重複 widget、過時分支、只被測試覆蓋的過時抽象，清理優先於堆疊 workaround；不要為了「以後可能用到」而保留。
+- 重構後確保引用與測試同步更新；不要留下半套 rename 或 broken import。
+- 行為變更後，同步更新對應的 unit / widget 測試；分層與避免重複案例見 [`test/test-handbook.md`](test/test-handbook.md)。
+- 註解只解釋非 obvious 的業務規則；程式本身應能自我說明，不要把顯而易見的行為重述一遍。
 
 ### 繁體中文
 
@@ -28,24 +30,18 @@
 - 以 UTF-8 原文保留繁體中文；禁止把中文「修正」成 escape、HTML entity 或 `\uXXXX`，除非該檔案已有且必須保持一致。
 - 不要把正常繁體字串當成 encoding 錯誤去替換、轉碼或刪除；若看到疑似亂碼，先確認是否只是顯示問題。
 - 新增或修改 UI 字串時，放入對應的 ARB key，維持單一文案來源。
-- **程式碼註解**與**測試名稱**也以繁體中文為主；只解釋非 obvious 的業務規則，不要把顯而易見的程式行為重述一遍。
+- **程式碼註解**與**測試名稱**也以繁體中文為主。
 - 與使用者溝通時，若無特別要求，使用繁體中文回覆。
-
-### 實務取向
-
-- 能刪就刪：死碼、重複 widget、過時分支，清理優先於堆疊 workaround。
-- 重構後確保引用與測試同步更新；不要留下半套 rename 或 broken import。
-- 行為變更後，同步更新對應的 unit / widget 測試；若底層測試已覆蓋規則，上層 widget 測試只保留整合差異，避免重複案例。
-- 註解只解釋非 obvious 的業務邏輯；程式本身應能自我說明。
 
 ### 文件維護
 
-- `README.md` 只負責 repo 首頁、開發入口與高層定位，不承載細部規格。
+- `README.md` 只負責 repo 首頁、開發入口與高層定位，保持短而準；不承載細部流程、錯誤排查、OAuth 步驟、上架 checklist 或權限逐條說明——這些放到 `docs/開發/`。
 - `docs/` 根目錄是公開頁面來源；`docs/privacy-policy.md` 與 `docs/third-party-notices.md` 屬對外穩定 URL，不要任意改檔名或移出根目錄。
 - 開發文件集中在 `docs/開發/`，可依主題重整結構，但要同步更新所有交叉連結與程式碼中的文件路徑字串。
 - repo 內文件提到專案檔案、程式碼或其他文件時，一律優先使用相對路徑；不要寫死機器上的絕對路徑。
 - 公開法律頁只放對外資訊，不混入開發筆記、內部操作流程或待辦事項。
-- 文件若描述程式行為、路徑、常數、URL、權限或上架設定，必須以 `lib/`、`android/` 與 `AppIdentifiers` 等實際實作為準。
+- 文件若描述程式行為、路徑、常數、URL、權限或上架設定，必須以 `lib/`、`android/` 與 `AppIdentifiers` 等實際實作為準；若文件與程式碼暫時不一致，優先修正文件。
+- `README.md` 若提到支援平台、公開 URL、Google Drive、Billing 或隱私邊界，必須與 `lib/l10n/*.arb`、`docs/privacy-policy.md`、`lib/app/app_identifiers.dart` 與對應實作一致。
 - 變更公開 URL、Google OAuth、Billing、Play 上架或權限揭露相關內容時，請一併檢查：
   - `README.md`
   - `docs/index.md`
@@ -53,18 +49,6 @@
   - `lib/app/app_identifiers.dart`
   - `lib/infrastructure/drive/google_drive_oauth_errors.dart`
   - `android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt`
-- 若文件與程式碼暫時不一致，優先修正文件，不要在文件中保留過時敘述。
-
-### README 維護
-
-- `README.md` 要保持短而準，重點放在專案定位、目前產品邊界、開發入口與重要公開文件。
-- `README.md` 不承載細部流程、錯誤排查、OAuth 步驟、上架 checklist 或權限逐條說明；這些內容應放到 `docs/開發/`。
-- `README.md` 若提到支援平台、公開 URL、Google Drive、Billing 或隱私邊界，必須與 `lib/l10n/*.arb`、`docs/privacy-policy.md`、`lib/app/app_identifiers.dart` 與對應實作一致。
-
-## Cursor 專屬
-
-- 只需遵守 `所有代理都要遵守`。
-- 不另外套用 `Codex 專屬` 的 Flutter 指令限制。
 
 ## Codex 專屬
 
@@ -73,11 +57,9 @@
 
 ### Flutter 指令
 
-原因：
+原因：在這個 Windows / Codex 受管環境中，`flutter.bat` 容易殘留 `cmd.exe`、`dart.exe` 與 Flutter SDK cache lock 檔，造成後續指令卡住。
 
-- 在這個 Windows / Codex 受管環境中，`flutter.bat` 容易殘留 `cmd.exe`、`dart.exe` 與 Flutter SDK cache lock 檔，造成後續指令卡住。
-
-一律改用以下安全入口執行 Flutter：
+一律改用以下安全入口：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 <flutter-args>
@@ -87,10 +69,8 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 <flutter-args>
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 --version
-powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 doctor -v
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/application/editor/
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 pub get
-powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 run -d chrome
 ```
 
 補充：
