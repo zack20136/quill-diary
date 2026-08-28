@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/people_store.dart';
@@ -29,11 +30,12 @@ void main() {
       id: 'per_complete',
       name: '王小明',
       aliases: const <String>['小明', '明哥'],
-      relationships: PersonRelationship.values.toSet(),
+      relationships: BuiltinRelationshipIds.asSet,
       relationshipDescription: '大學同學與專案合作夥伴',
       notes: '測試備註',
       friendliness: FriendlinessLevel(4),
       accentArgb: 0xFF5480B0,
+      mentionName: '明哥',
       birthday: PersonBirthday(month: 8, day: 10),
       acquaintanceYear: 2024,
       createdAt: now,
@@ -43,7 +45,10 @@ void main() {
     await store.write(
       setup.session,
       metadata: metadata,
-      people: <Person>[source],
+      catalog: PeopleCatalog(
+        relationshipTypes: defaultBuiltinRelationshipTypes(),
+        people: <Person>[source],
+      ),
     );
 
     final Map<String, Object?> payload = await _readCatalogPayload(
@@ -54,6 +59,7 @@ void main() {
     final Map<String, Object?> personJson =
         (payload['people']! as List<Object?>).single! as Map<String, Object?>;
     expect(payload['version'], 1);
+    expect(payload['relationshipTypes'], isA<List<Object?>>());
     expect(personJson['relationships'], contains('collaborator'));
     expect(personJson['relationships'], isNot(contains('acquaintance')));
     expect(personJson['birthday'], <String, Object?>{'month': 8, 'day': 10});
@@ -62,8 +68,10 @@ void main() {
       await harness.pathStrategy.peopleCatalogPath(),
     );
     final Uint8List bytesBeforeRead = await catalogFile.readAsBytes();
-    final Person restored = (await store.read(setup.session)).single;
+    final PeopleCatalog restoredCatalog = await store.read(setup.session);
+    final Person restored = restoredCatalog.people.single;
     expect(await catalogFile.readAsBytes(), bytesBeforeRead);
+    expect(restoredCatalog.relationshipTypes, hasLength(7));
     expect(restored.id, source.id);
     expect(restored.name, source.name);
     expect(restored.aliases, source.aliases);
@@ -72,10 +80,108 @@ void main() {
     expect(restored.notes, source.notes);
     expect(restored.friendliness, source.friendliness);
     expect(restored.accentArgb, source.accentArgb);
+    expect(restored.mentionName, source.mentionName);
+    expect(restored.diaryMentionLabel, '明哥');
     expect(restored.birthday, source.birthday);
     expect(restored.acquaintanceYear, source.acquaintanceYear);
     expect(restored.createdAt, source.createdAt);
     expect(restored.updatedAt, source.updatedAt);
+  });
+
+  test('舊三鍵名冊缺少 relationshipTypes 時種子內建類型', () async {
+    final VaultTestHarness harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final RecoveryMetadata metadata = (await harness.repository
+        .readRecoveryMetadata())!;
+    final LocalCryptoService crypto = LocalCryptoService();
+    final DateTime now = DateTime.utc(2026, 8, 10);
+    await _writeCatalogPayload(
+      harness: harness,
+      setup: setup,
+      metadata: metadata,
+      crypto: crypto,
+      payload: <String, Object?>{
+        'version': 1,
+        'updatedAt': now.toIso8601String(),
+        'people': <Object?>[_validPersonJson(now)],
+      },
+    );
+
+    final PeopleCatalog catalog = await PeopleStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: crypto,
+    ).read(setup.session);
+    expect(catalog.relationshipTypes, hasLength(7));
+    expect(catalog.people.single.relationships, <String>{'friend'});
+  });
+
+  test('寫入後 relationshipTypes 順序可重排並保留', () async {
+    final VaultTestHarness harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final RecoveryMetadata metadata = (await harness.repository
+        .readRecoveryMetadata())!;
+    final LocalCryptoService crypto = LocalCryptoService();
+    final PeopleStore store = PeopleStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: crypto,
+    );
+    final List<RelationshipType> builtins = defaultBuiltinRelationshipTypes();
+    final List<RelationshipType> reversed = builtins.reversed.toList(
+      growable: false,
+    );
+    await store.write(
+      setup.session,
+      metadata: metadata,
+      catalog: PeopleCatalog(
+        relationshipTypes: reversed,
+        people: const <Person>[],
+      ),
+    );
+
+    final PeopleCatalog catalog = await store.read(setup.session);
+    expect(
+      catalog.relationshipTypes.map((RelationshipType t) => t.id).toList(),
+      reversed.map((RelationshipType t) => t.id).toList(),
+    );
+  });
+
+  test('人物引用不存在的關係類型時整份拒絕', () async {
+    final VaultTestHarness harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final RecoveryMetadata metadata = (await harness.repository
+        .readRecoveryMetadata())!;
+    final LocalCryptoService crypto = LocalCryptoService();
+    final DateTime now = DateTime.utc(2026, 8, 10);
+    final Map<String, Object?> person = _validPersonJson(now)
+      ..['relationships'] = <String>['zzzzzzzz'];
+    await _writeCatalogPayload(
+      harness: harness,
+      setup: setup,
+      metadata: metadata,
+      crypto: crypto,
+      payload: <String, Object?>{
+        'version': 1,
+        'updatedAt': now.toIso8601String(),
+        'relationshipTypes': defaultBuiltinRelationshipTypes()
+            .map((RelationshipType t) => t.toJson())
+            .toList(growable: false),
+        'people': <Object?>[person],
+      },
+    );
+
+    await expectLater(
+      PeopleStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: crypto,
+      ).read(setup.session),
+      throwsFormatException,
+    );
   });
 
   const Object missingVersion = Object();
@@ -211,7 +317,7 @@ void main() {
       (await PeopleStore(
         pathStrategy: harness.pathStrategy,
         cryptoService: crypto,
-      ).read(setup.session)).single.acquaintanceYear,
+      ).read(setup.session)).people.single.acquaintanceYear,
       9999,
     );
   });

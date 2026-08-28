@@ -48,16 +48,16 @@ ActivePersonMentionQuery? findActivePersonMentionQuery({
   return null;
 }
 
-/// 以正式姓名取代 `@查詢`，不自動加空白。
+/// 以指定名稱取代 `@查詢`，不自動加空白。
 ({String text, int cursor}) replacePersonMentionWithName({
   required String text,
   required ActivePersonMentionQuery mention,
-  required String canonicalName,
+  required String mentionLabel,
 }) {
   final String next = text.replaceRange(
     mention.atIndex,
     mention.endIndex,
-    canonicalName,
+    mentionLabel,
   );
-  return (text: next, cursor: mention.atIndex + canonicalName.length);
+  return (text: next, cursor: mention.atIndex + mentionLabel.length);
 }

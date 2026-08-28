@@ -110,7 +110,7 @@ class AppSectionHeader extends StatelessWidget {
 
     return IntrinsicHeight(
       child: Row(
-        // trailing（如 44 關閉鈕）放在外層，避免把標題與藍條一起撐高後垂直錯位。
+        // trailing 放在外層，避免把標題與藍條一起撐高後垂直錯位。
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Container(
@@ -122,28 +122,35 @@ class AppSectionHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                titleRow,
-                if (description != null) ...<Widget>[
-                  const SizedBox(height: 4),
-                  // 說明從 icon 左緣開始，避免 icon 下方留白。
-                  Text(
-                    description!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.4,
+            child: Align(
+              // 無說明時與 trailing 垂直置中；有說明時維持頂對齊。
+              alignment: description == null
+                  ? Alignment.centerLeft
+                  : Alignment.topLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  titleRow,
+                  if (description != null) ...<Widget>[
+                    const SizedBox(height: 4),
+                    // 說明從 icon 左緣開始，避免 icon 下方留白。
+                    Text(
+                      description!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (trailing != null) ...<Widget>[
             const SizedBox(width: 4),
-            // 關閉鈕維持頂對齊，不跟著拉高。
-            Align(alignment: Alignment.topCenter, child: trailing!),
+            // 動作與標題垂直置中，避免 TextButton 等比標題矮時貼頂。
+            Align(alignment: Alignment.center, child: trailing!),
           ],
         ],
       ),

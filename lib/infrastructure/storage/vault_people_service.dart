@@ -1,4 +1,5 @@
 import '../../domain/people/person.dart';
+import '../../domain/people/relationship_type.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
 import '../database/index_database.dart';
@@ -13,8 +14,15 @@ class VaultPeopleService {
   Stream<PeopleAnalyticsProgress> get peopleAnalyticsProgress =>
       _repository.peopleAnalyticsProgress;
 
+  Future<PeopleCatalog> readPeopleCatalog(UnlockedVaultSession session) =>
+      _repository.readPeopleCatalog(session);
+
   Future<List<Person>> listPeople(UnlockedVaultSession session) =>
       _repository.listPeople(session);
+
+  Future<List<RelationshipType>> listRelationshipTypes(
+    UnlockedVaultSession session,
+  ) => _repository.listRelationshipTypes(session);
 
   Future<Person> createPerson(
     UnlockedVaultSession session,
@@ -42,6 +50,38 @@ class VaultPeopleService {
 
   Future<void> deletePerson(UnlockedVaultSession session, PersonId id) =>
       _repository.deletePerson(session, id);
+
+  Future<RelationshipType> addRelationshipType(
+    UnlockedVaultSession session, {
+    required String label,
+    required bool preferZh,
+  }) => _repository.addRelationshipType(
+    session,
+    label: label,
+    preferZh: preferZh,
+  );
+
+  Future<RelationshipType> renameRelationshipType(
+    UnlockedVaultSession session, {
+    required String id,
+    required String label,
+    required bool preferZh,
+  }) => _repository.renameRelationshipType(
+    session,
+    id: id,
+    label: label,
+    preferZh: preferZh,
+  );
+
+  Future<int> deleteRelationshipType(
+    UnlockedVaultSession session,
+    String id,
+  ) => _repository.deleteRelationshipType(session, id);
+
+  Future<void> reorderRelationshipTypes(
+    UnlockedVaultSession session,
+    List<String> orderedIds,
+  ) => _repository.reorderRelationshipTypes(session, orderedIds);
 
   Future<Map<PersonId, PersonMentionStats>> allPersonMentionStats(
     UnlockedVaultSession session, {

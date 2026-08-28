@@ -1023,7 +1023,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleEmptyBody.
   ///
   /// In zh, this message translates to:
-  /// **'建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。'**
+  /// **'建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入該人物指定的名稱（預設為姓名，也可改選別名）。'**
   String get peopleEmptyBody;
 
   /// No description provided for @peopleNotFoundTitle.
@@ -1062,6 +1062,84 @@ abstract class AppLocalizations {
   /// **'新增人物'**
   String get peopleCreateAction;
 
+  /// No description provided for @peopleManageRelationshipsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理關係'**
+  String get peopleManageRelationshipsTooltip;
+
+  /// No description provided for @peopleManageRelationshipsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理關係'**
+  String get peopleManageRelationshipsTitle;
+
+  /// No description provided for @peopleManageRelationshipsGuide.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖曳左側把手可排序；點名稱可重新命名。新增時會同時寫入目前語言與另一語言的相同文字。'**
+  String get peopleManageRelationshipsGuide;
+
+  /// No description provided for @peopleReorderRelationshipTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖曳排序'**
+  String get peopleReorderRelationshipTooltip;
+
+  /// No description provided for @peopleManageRelationshipsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未有任何關係類型'**
+  String get peopleManageRelationshipsEmpty;
+
+  /// No description provided for @peopleAddRelationshipHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：導師'**
+  String get peopleAddRelationshipHint;
+
+  /// No description provided for @peopleAddRelationshipAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增'**
+  String get peopleAddRelationshipAction;
+
+  /// No description provided for @peopleRenameRelationshipAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新命名'**
+  String get peopleRenameRelationshipAction;
+
+  /// No description provided for @peopleDeleteRelationshipAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除'**
+  String get peopleDeleteRelationshipAction;
+
+  /// No description provided for @peopleRelationshipNameEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'關係名稱不可為空白'**
+  String get peopleRelationshipNameEmpty;
+
+  /// No description provided for @peopleRelationshipNameDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'這個關係名稱已經存在'**
+  String get peopleRelationshipNameDuplicate;
+
+  /// No description provided for @peopleDeleteRelationshipConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除關係？'**
+  String get peopleDeleteRelationshipConfirmTitle;
+
+  /// No description provided for @peopleDeleteRelationshipConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'有 {count} 位人物使用此關係，刪除後會一併從這些人物移除。'**
+  String peopleDeleteRelationshipConfirmBody(int count);
+
   /// No description provided for @peopleSortTooltip.
   ///
   /// In zh, this message translates to:
@@ -1091,48 +1169,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'姓名'**
   String get peopleSortName;
-
-  /// No description provided for @peopleRelationFamily.
-  ///
-  /// In zh, this message translates to:
-  /// **'家人'**
-  String get peopleRelationFamily;
-
-  /// No description provided for @peopleRelationPartner.
-  ///
-  /// In zh, this message translates to:
-  /// **'伴侶'**
-  String get peopleRelationPartner;
-
-  /// No description provided for @peopleRelationFriend.
-  ///
-  /// In zh, this message translates to:
-  /// **'朋友'**
-  String get peopleRelationFriend;
-
-  /// No description provided for @peopleRelationClassmate.
-  ///
-  /// In zh, this message translates to:
-  /// **'同學'**
-  String get peopleRelationClassmate;
-
-  /// No description provided for @peopleRelationColleague.
-  ///
-  /// In zh, this message translates to:
-  /// **'同事'**
-  String get peopleRelationColleague;
-
-  /// No description provided for @peopleRelationCollaborator.
-  ///
-  /// In zh, this message translates to:
-  /// **'合作夥伴'**
-  String get peopleRelationCollaborator;
-
-  /// No description provided for @peopleRelationOther.
-  ///
-  /// In zh, this message translates to:
-  /// **'其他'**
-  String get peopleRelationOther;
 
   /// No description provided for @peopleFieldName.
   ///
@@ -1205,6 +1241,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'移除別名「{alias}」'**
   String peopleRemoveAliasAction(String alias);
+
+  /// No description provided for @peopleFieldMentionName.
+  ///
+  /// In zh, this message translates to:
+  /// **'@ 使用名稱'**
+  String get peopleFieldMentionName;
+
+  /// No description provided for @peopleFieldMentionNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇 @ 插入日記時使用的名稱或別名'**
+  String get peopleFieldMentionNameHint;
+
+  /// No description provided for @peopleMentionNameUsesNameFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'名稱'**
+  String get peopleMentionNameUsesNameFallback;
+
+  /// No description provided for @peopleExportRecapScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'與 {name} 相關的日記'**
+  String peopleExportRecapScope(String name);
 
   /// No description provided for @peopleFieldRelationships.
   ///
@@ -6137,7 +6197,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabPeopleSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'在日記編輯器輸入 @，可選擇人物並插入正式姓名。插入後仍是一般文字，不會把日記變成特殊格式。'**
+  /// **'在日記編輯器輸入 @，可選擇人物並插入該人物指定的名稱（預設為姓名，也可改選別名）。插入後仍是一般文字，不會把日記變成特殊格式。'**
   String get aboutTabPeopleSection1Item2Body;
 
   /// No description provided for @aboutTabPeopleSection2Title.

@@ -4,12 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/entry_index_fixtures.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -20,7 +22,7 @@ void main() {
     friendliness: FriendlinessLevel(4),
     acquaintanceYear: 2020,
     birthday: PersonBirthday(month: 8, day: 12),
-    relationships: const <PersonRelationship>{PersonRelationship.classmate},
+    relationships: const <String>{BuiltinRelationshipIds.classmate},
     accentArgb: 0xFF54A890,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -29,15 +31,22 @@ void main() {
   Widget testApp({
     Map<PersonId, PersonMentionStats> stats = const {},
     Brightness brightness = Brightness.light,
+    List<EntryIndexRecord> relatedEntries = const <EntryIndexRecord>[],
   }) {
     return widgetTestApp(
       brightness: brightness,
       center: false,
       overrides: [
+        peopleCatalogProvider.overrideWith(
+          (Ref ref) async => PeopleCatalog(
+            relationshipTypes: defaultBuiltinRelationshipTypes(),
+            people: <Person>[person],
+          ),
+        ),
         personDetailProvider(person.id).overrideWith((Ref ref) async => person),
         personRelatedEntriesProvider(
           person.id,
-        ).overrideWith((Ref ref) async => const <EntryIndexRecord>[]),
+        ).overrideWith((Ref ref) async => relatedEntries),
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async => stats),
       ],
       child: PersonDetailPage(personId: person.id),
@@ -206,4 +215,42 @@ void main() {
       expect(label.style?.color, expectedForeground);
     });
   }
+
+  testWidgets('無相關日記時匯出回顧停用', (WidgetTester tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    final Finder exportButton = find.byKey(
+      const ValueKey<String>('person-export-recap'),
+    );
+    expect(exportButton, findsOneWidget);
+    expect(tester.widget<TextButton>(exportButton).onPressed, isNull);
+  });
+
+  testWidgets('有相關日記時顯示可用的匯出回顧', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      testApp(relatedEntries: <EntryIndexRecord>[buildEntryIndexRecord()]),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder exportButton = find.byKey(
+      const ValueKey<String>('person-export-recap'),
+    );
+    expect(exportButton, findsOneWidget);
+    expect(find.text('匯出回顧'), findsOneWidget);
+    expect(tester.widget<TextButton>(exportButton).onPressed, isNotNull);
+  });
+
+  testWidgets('匯出回顧與相關日記標題垂直置中對齊', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      testApp(relatedEntries: <EntryIndexRecord>[buildEntryIndexRecord()]),
+    );
+    await tester.pumpAndSettle();
+
+    final double titleCenterY = tester.getCenter(find.text('相關日記')).dy;
+    final double exportCenterY = tester
+        .getCenter(find.byKey(const ValueKey<String>('person-export-recap')))
+        .dy;
+    expect((titleCenterY - exportCenterY).abs(), lessThan(2));
+  });
 }

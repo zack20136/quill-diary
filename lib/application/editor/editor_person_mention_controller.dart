@@ -83,8 +83,8 @@ final class EditorPersonMentionController extends ChangeNotifier {
     _clearMention();
   }
 
-  /// 以正式姓名取代 `@查詢`；成功時回傳 `true`。
-  bool applyCanonicalName(String canonicalName) {
+  /// 以指定名稱取代 `@查詢`；成功時回傳 `true`。
+  bool applyMentionLabel(String mentionLabel) {
     final TextEditingController? controller = _activeController;
     final ActivePersonMentionQuery? mention = _mention;
     if (controller == null || mention == null) {
@@ -93,7 +93,7 @@ final class EditorPersonMentionController extends ChangeNotifier {
     final ({String text, int cursor}) result = replacePersonMentionWithName(
       text: controller.text,
       mention: mention,
-      canonicalName: canonicalName,
+      mentionLabel: mentionLabel,
     );
     _suppressSync = true;
     controller.value = TextEditingValue(
@@ -122,9 +122,9 @@ final class EditorPersonMentionController extends ChangeNotifier {
     );
   }
 
-  bool applyCanonicalNameToTarget(
+  bool applyMentionLabelToTarget(
     PersonMentionReplacementTarget target,
-    String canonicalName,
+    String mentionLabel,
   ) {
     final String text = target.controller.text;
     if (target.mention.atIndex < 0 ||
@@ -136,7 +136,7 @@ final class EditorPersonMentionController extends ChangeNotifier {
     final ({String text, int cursor}) result = replacePersonMentionWithName(
       text: text,
       mention: target.mention,
-      canonicalName: canonicalName,
+      mentionLabel: mentionLabel,
     );
     target.controller.value = TextEditingValue(
       text: result.text,

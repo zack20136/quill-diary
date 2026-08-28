@@ -13,10 +13,12 @@ import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_export_actions.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -73,6 +75,53 @@ class PersonDetailPage extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _exportRelatedRecap(
+    BuildContext context,
+    WidgetRef ref,
+    Person person,
+    List<EntryIndexRecord> entries,
+  ) async {
+    if (entries.isEmpty) {
+      return;
+    }
+    final Set<EntryId> entryIds = entries
+        .map((EntryIndexRecord entry) => entry.id)
+        .toSet();
+    await exportEntriesAsHtml(
+      context,
+      ref,
+      entryIds,
+      scopeLabel: context.l10n.peopleExportRecapScope(person.name),
+    );
+  }
+
+  Widget _relatedExportTrailing({
+    required BuildContext context,
+    required WidgetRef ref,
+    required Person person,
+    required List<EntryIndexRecord> entries,
+    required bool enabled,
+  }) {
+    return Tooltip(
+      message: context.l10n.homeExportRecapLabel,
+      child: TextButton.icon(
+        key: const ValueKey<String>('person-export-recap'),
+        onPressed: enabled
+            ? () => unawaited(
+                _exportRelatedRecap(context, ref, person, entries),
+              )
+            : null,
+        icon: const Icon(Icons.ios_share_rounded, size: 18),
+        label: Text(context.l10n.homeExportRecapLabel),
+        style: TextButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+      ),
+    );
   }
 
   @override
@@ -292,6 +341,13 @@ class PersonDetailPage extends ConsumerWidget {
                                 child: AppSectionCard(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
+                                  trailing: _relatedExportTrailing(
+                                    context: context,
+                                    ref: ref,
+                                    person: person,
+                                    entries: const <EntryIndexRecord>[],
+                                    enabled: false,
+                                  ),
                                   child: const AppLoadingState(),
                                 ),
                               ),
@@ -302,6 +358,13 @@ class PersonDetailPage extends ConsumerWidget {
                                           .l10n
                                           .peopleRelatedEntriesTitle,
                                       stripeColor: cs.primary,
+                                      trailing: _relatedExportTrailing(
+                                        context: context,
+                                        ref: ref,
+                                        person: person,
+                                        entries: const <EntryIndexRecord>[],
+                                        enabled: false,
+                                      ),
                                       child: Text(
                                         userFacingErrorMessage(
                                           error,
@@ -318,6 +381,13 @@ class PersonDetailPage extends ConsumerWidget {
                                           .l10n
                                           .peopleRelatedEntriesTitle,
                                       stripeColor: cs.primary,
+                                      trailing: _relatedExportTrailing(
+                                        context: context,
+                                        ref: ref,
+                                        person: person,
+                                        entries: entries,
+                                        enabled: false,
+                                      ),
                                       child: Text(
                                         context.l10n.peopleRelatedEntriesEmpty,
                                         style: Theme.of(context)
@@ -333,6 +403,13 @@ class PersonDetailPage extends ConsumerWidget {
                                 return HomeDiarySliverSection(
                                   title: context.l10n.peopleRelatedEntriesTitle,
                                   stripeColor: cs.primary,
+                                  trailing: _relatedExportTrailing(
+                                    context: context,
+                                    ref: ref,
+                                    person: person,
+                                    entries: entries,
+                                    enabled: true,
+                                  ),
                                   entries: entries,
                                 );
                               },
@@ -422,20 +499,28 @@ class _PersonDetailSectionCard extends StatelessWidget {
 }
 
 /// 對齊日記 preview 的白底內容卡。
-class _PersonProfileBodyCard extends StatelessWidget {
+class _PersonProfileBodyCard extends ConsumerWidget {
   const _PersonProfileBodyCard({required this.person});
 
   final Person person;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppLocalizations l10n = context.l10n;
+    final String languageCode = Localizations.localeOf(context).languageCode;
+    final List<RelationshipType> relationshipTypes =
+        ref.watch(peopleRelationshipTypesProvider).asData?.value ??
+        const <RelationshipType>[];
     final (Color, Color) personColors = personLabelColorPair(
       person,
       context.appColors.sectionInset,
     );
+    final List<RelationshipType> selectedTypes = <RelationshipType>[
+      for (final RelationshipType type in relationshipTypes)
+        if (person.relationships.contains(type.id)) type,
+    ];
 
     return _PersonDetailSectionCard(
       key: const ValueKey<String>('person-profile-details-card'),
@@ -493,7 +578,7 @@ class _PersonProfileBodyCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (person.relationships.isEmpty)
+          if (selectedTypes.isEmpty)
             Text(
               l10n.peopleNoValue,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -505,16 +590,12 @@ class _PersonProfileBodyCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: <Widget>[
-                for (final PersonRelationship relationship
-                    in PersonRelationship.values)
-                  if (person.relationships.contains(relationship))
-                    _PersonRelationChip(
-                      key: ValueKey<String>(
-                        'person-relation-chip-${relationship.name}',
-                      ),
-                      label: personRelationshipLabel(l10n, relationship),
-                      colors: personColors,
-                    ),
+                for (final RelationshipType type in selectedTypes)
+                  _PersonRelationChip(
+                    key: ValueKey<String>('person-relation-chip-${type.id}'),
+                    label: relationshipTypeLabel(type, languageCode),
+                    colors: personColors,
+                  ),
               ],
             ),
           const SizedBox(height: 16),

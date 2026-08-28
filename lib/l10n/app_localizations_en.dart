@@ -539,7 +539,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get peopleEmptyBody =>
-      'After you add people, diary mentions are analyzed by name and alias. In the editor, @ inserts the canonical name as plain text.';
+      'After you add people, diary mentions are analyzed by name and alias. In the editor, @ inserts that person\'s chosen diary name (the main name by default, or an alias you pick).';
 
   @override
   String get peopleNotFoundTitle => 'Person not found';
@@ -562,6 +562,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get peopleCreateAction => 'Add person';
 
   @override
+  String get peopleManageRelationshipsTooltip => 'Manage relationships';
+
+  @override
+  String get peopleManageRelationshipsTitle => 'Manage relationships';
+
+  @override
+  String get peopleManageRelationshipsGuide =>
+      'Drag the handle to reorder. Tap a name to rename. New names are saved for the current language and copied to the other language.';
+
+  @override
+  String get peopleReorderRelationshipTooltip => 'Drag to reorder';
+
+  @override
+  String get peopleManageRelationshipsEmpty => 'No relationship types yet';
+
+  @override
+  String get peopleAddRelationshipHint => 'e.g. Mentor';
+
+  @override
+  String get peopleAddRelationshipAction => 'Add';
+
+  @override
+  String get peopleRenameRelationshipAction => 'Rename';
+
+  @override
+  String get peopleDeleteRelationshipAction => 'Delete';
+
+  @override
+  String get peopleRelationshipNameEmpty => 'Relationship name cannot be empty';
+
+  @override
+  String get peopleRelationshipNameDuplicate =>
+      'This relationship name already exists';
+
+  @override
+  String get peopleDeleteRelationshipConfirmTitle => 'Delete relationship?';
+
+  @override
+  String peopleDeleteRelationshipConfirmBody(int count) {
+    return '$count people use this relationship. Deleting it will remove it from those people.';
+  }
+
+  @override
   String get peopleSortTooltip => 'Sort by';
 
   @override
@@ -575,27 +618,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get peopleSortName => 'Name';
-
-  @override
-  String get peopleRelationFamily => 'Family';
-
-  @override
-  String get peopleRelationPartner => 'Partner';
-
-  @override
-  String get peopleRelationFriend => 'Friend';
-
-  @override
-  String get peopleRelationClassmate => 'Classmate';
-
-  @override
-  String get peopleRelationColleague => 'Colleague';
-
-  @override
-  String get peopleRelationCollaborator => 'Collaborator';
-
-  @override
-  String get peopleRelationOther => 'Other';
 
   @override
   String get peopleFieldName => 'Name';
@@ -635,6 +657,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String peopleRemoveAliasAction(String alias) {
     return 'Remove alias “$alias”';
+  }
+
+  @override
+  String get peopleFieldMentionName => '@ name to use';
+
+  @override
+  String get peopleFieldMentionNameHint =>
+      'Choose which name or alias @ inserts into diary entries';
+
+  @override
+  String get peopleMentionNameUsesNameFallback => 'Name';
+
+  @override
+  String peopleExportRecapScope(String name) {
+    return 'Entries related to $name';
   }
 
   @override
@@ -3703,7 +3740,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection1Item2Body =>
-      'Type @ in the entry editor to choose a person and insert their main name. It remains ordinary text and does not turn the entry into a special format.';
+      'Type @ in the entry editor to choose a person and insert their chosen diary name (the main name by default, or an alias you pick). It remains ordinary text and does not turn the entry into a special format.';
 
   @override
   String get aboutTabPeopleSection2Title => 'Good to Know';

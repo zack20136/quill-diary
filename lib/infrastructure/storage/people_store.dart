@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../../domain/people/person.dart';
+import '../../domain/people/relationship_type.dart';
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
@@ -24,11 +25,11 @@ class PeopleStore {
   final VaultPathStrategy _pathStrategy;
   final CryptoService _cryptoService;
 
-  Future<List<Person>> read(UnlockedVaultSession session) async {
+  Future<PeopleCatalog> read(UnlockedVaultSession session) async {
     final File file = File(await _pathStrategy.peopleCatalogPath());
     await recoverFileReplacement(file);
     if (!file.existsSync()) {
-      return const <Person>[];
+      return PeopleCatalog.empty();
     }
 
     final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
@@ -48,9 +49,14 @@ class PeopleStore {
     if (decoded is! Map) {
       throw const FormatException('人物名冊格式不正確。');
     }
-    const Set<String> expectedKeys = <String>{'version', 'updatedAt', 'people'};
-    if (decoded.length != expectedKeys.length ||
-        !expectedKeys.every(decoded.containsKey)) {
+    const Set<String> requiredKeys = <String>{'version', 'updatedAt', 'people'};
+    const Set<String> optionalKeys = <String>{'relationshipTypes'};
+    if (!requiredKeys.every(decoded.containsKey) ||
+        decoded.keys.any(
+          (Object? key) =>
+              key is! String ||
+              (!requiredKeys.contains(key) && !optionalKeys.contains(key)),
+        )) {
       throw const FormatException('人物名冊欄位不正確。');
     }
     final Object? version = decoded['version'];
@@ -65,6 +71,24 @@ class PeopleStore {
     if (peopleRaw is! List) {
       throw const FormatException('人物名冊缺少 people 陣列。');
     }
+
+    final List<RelationshipType> relationshipTypes;
+    final Object? typesRaw = decoded['relationshipTypes'];
+    if (typesRaw == null) {
+      relationshipTypes = defaultBuiltinRelationshipTypes();
+    } else if (typesRaw is! List) {
+      throw const FormatException('人物名冊關係類型格式不正確。');
+    } else {
+      relationshipTypes = <RelationshipType>[];
+      for (final Object? item in typesRaw) {
+        final RelationshipType? type = RelationshipType.fromJson(item);
+        if (type == null) {
+          throw const FormatException('人物名冊含有損壞的關係類型。');
+        }
+        relationshipTypes.add(type);
+      }
+    }
+
     final List<Person> people = <Person>[];
     for (final Object? item in peopleRaw) {
       if (item is Map &&
@@ -78,16 +102,20 @@ class PeopleStore {
       }
       people.add(person);
     }
-    _validateCatalogPeople(people);
-    return people;
+    final PeopleCatalog catalog = PeopleCatalog(
+      relationshipTypes: relationshipTypes,
+      people: people,
+    );
+    _validateCatalog(catalog);
+    return catalog;
   }
 
   Future<void> write(
     UnlockedVaultSession session, {
     required RecoveryMetadata metadata,
-    required List<Person> people,
+    required PeopleCatalog catalog,
   }) async {
-    _validateCatalogPeople(people);
+    _validateCatalog(catalog);
     final List<int> recoveryWrapKey =
         session.recoveryWrapKey ??
         (throw StateError('目前 session 缺少 recovery wrap key。'));
@@ -95,7 +123,17 @@ class PeopleStore {
     final Map<String, Object?> payload = <String, Object?>{
       'version': catalogVersion,
       'updatedAt': now.toIso8601String(),
-      'people': people.map((Person p) => p.toJson()).toList(growable: false),
+      'relationshipTypes': catalog.relationshipTypes
+          .map((RelationshipType type) => type.toJson())
+          .toList(growable: false),
+      'people': catalog.people
+          .map(
+            (Person person) => _personToJsonOrdered(
+              person,
+              catalog.orderedRelationshipIds(person.relationships),
+            ),
+          )
+          .toList(growable: false),
     };
     final Uint8List plainBytes = Uint8List.fromList(
       utf8.encode(jsonEncode(payload)),
@@ -114,6 +152,33 @@ class PeopleStore {
     final File file = File(await _pathStrategy.peopleCatalogPath());
     await replaceFileBytesRecoverably(file, encrypted.toFileBytes());
   }
+}
+
+void _validateCatalog(PeopleCatalog catalog) {
+  final String? typesError = validateRelationshipTypes(
+    catalog.relationshipTypes,
+  );
+  if (typesError != null) {
+    throw FormatException(typesError);
+  }
+  final Set<String> typeIds = catalog.relationshipTypeIds;
+  for (final Person person in catalog.people) {
+    for (final String relationshipId in person.relationships) {
+      if (!typeIds.contains(relationshipId)) {
+        throw const FormatException('人物名冊含有未知的關係類型。');
+      }
+    }
+  }
+  _validateCatalogPeople(catalog.people);
+}
+
+Map<String, Object?> _personToJsonOrdered(
+  Person person,
+  List<String> orderedRelationships,
+) {
+  final Map<String, Object?> json = person.toJson();
+  json['relationships'] = orderedRelationships;
+  return json;
 }
 
 void _validateCatalogPeople(List<Person> people) {

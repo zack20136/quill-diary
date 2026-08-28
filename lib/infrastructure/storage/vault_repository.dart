@@ -13,6 +13,7 @@ import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/people/person.dart';
 import '../../domain/people/person_name_matcher.dart';
+import '../../domain/people/relationship_type.dart';
 import '../../domain/recovery/kdf_descriptor.dart';
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
@@ -499,7 +500,7 @@ class VaultRepository {
   RecoveryMetadata? _cachedRecoveryMetadata;
 
   /// 解鎖後首次讀取名冊才填入；避免解鎖熱路徑解密。
-  List<Person>? _peopleCatalogCache;
+  PeopleCatalog? _peopleCatalogCache;
   VaultId? _peopleCatalogVaultId;
   Future<void>? _peopleAnalyticsRebuildInFlight;
   _PeopleAnalyticsJob? _peopleAnalyticsJob;
@@ -4921,18 +4922,30 @@ class VaultRepository {
     await syncTagStylesBetweenVaultAndIndex();
   }
 
-  Future<List<Person>> listPeople(UnlockedVaultSession session) async {
-    final List<Person>? cached = _peopleCatalogCache;
+  Future<PeopleCatalog> readPeopleCatalog(UnlockedVaultSession session) async {
+    final PeopleCatalog? cached = _peopleCatalogCache;
     if (cached != null && _peopleCatalogVaultId == session.vaultId) {
-      return List<Person>.unmodifiable(cached);
+      return cached;
     }
-    final List<Person> people = await PeopleStore(
+    final PeopleCatalog catalog = await PeopleStore(
       pathStrategy: _pathStrategy,
       cryptoService: _cryptoService,
     ).read(session);
-    _peopleCatalogCache = people;
+    _peopleCatalogCache = catalog;
     _peopleCatalogVaultId = session.vaultId;
-    return List<Person>.unmodifiable(people);
+    return catalog;
+  }
+
+  Future<List<Person>> listPeople(UnlockedVaultSession session) async {
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    return List<Person>.unmodifiable(catalog.people);
+  }
+
+  Future<List<RelationshipType>> listRelationshipTypes(
+    UnlockedVaultSession session,
+  ) async {
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    return List<RelationshipType>.unmodifiable(catalog.relationshipTypes);
   }
 
   Future<Person> createPerson(
@@ -4964,7 +4977,8 @@ class VaultRepository {
     bool addOldNameAsAlias = false,
   }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    final List<Person> existing = List<Person>.from(await listPeople(session));
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    final List<Person> existing = List<Person>.from(catalog.people);
     final int existingIndex = existing.indexWhere(
       (Person item) => item.id == personId,
     );
@@ -5006,6 +5020,13 @@ class VaultRepository {
       throw ArgumentError('認識年份無效');
     }
 
+    final Set<String> typeIds = catalog.relationshipTypeIds;
+    for (final String relationshipId in draft.relationships) {
+      if (!typeIds.contains(relationshipId)) {
+        throw ArgumentError('未知的關係類型');
+      }
+    }
+
     final List<PersonNameIssue> issues = collectPersonNameIssues(
       name: name,
       aliases: aliases,
@@ -5019,6 +5040,12 @@ class VaultRepository {
       throw validation;
     }
 
+    final String? mentionName = normalizePersonMentionName(
+      mentionName: draft.mentionName,
+      name: name,
+      aliases: aliases,
+    );
+
     final DateTime now = DateTime.now();
     final Person normalized = Person(
       id: previous?.id ?? generatePersonId(),
@@ -5029,6 +5056,7 @@ class VaultRepository {
       notes: draft.notes.trim(),
       friendliness: draft.friendliness,
       accentArgb: draft.accentArgb,
+      mentionName: mentionName,
       birthday: draft.birthday,
       acquaintanceYear: draft.acquaintanceYear,
       createdAt: previous?.createdAt ?? now,
@@ -5041,25 +5069,184 @@ class VaultRepository {
       existing.add(normalized);
     }
 
-    await PeopleStore(
-      pathStrategy: _pathStrategy,
-      cryptoService: _cryptoService,
-    ).write(session, metadata: metadata, people: existing);
-    _peopleCatalogCache = existing;
-    _peopleCatalogVaultId = session.vaultId;
+    final PeopleCatalog next = catalog.copyWith(people: existing);
+    await _persistPeopleCatalog(session, metadata: metadata, catalog: next);
     return normalized;
   }
 
   Future<void> deletePerson(UnlockedVaultSession session, PersonId id) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    final List<Person> existing = List<Person>.from(await listPeople(session));
-    existing.removeWhere((Person person) => person.id == id);
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    final List<Person> existing = List<Person>.from(catalog.people)
+      ..removeWhere((Person person) => person.id == id);
+    await _persistPeopleCatalog(
+      session,
+      metadata: metadata,
+      catalog: catalog.copyWith(people: existing),
+    );
+  }
+
+  /// 新增自訂關係類型；[label] 寫入當前語系，另一語拷貝同一字串。
+  Future<RelationshipType> addRelationshipType(
+    UnlockedVaultSession session, {
+    required String label,
+    required bool preferZh,
+  }) async {
+    final String trimmed = label.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('關係名稱不可為空白');
+    }
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    final List<RelationshipType> types = List<RelationshipType>.from(
+      catalog.relationshipTypes,
+    );
+    _ensureUniqueLabel(types: types, label: trimmed, preferZh: preferZh);
+    final String id = generateRelationshipTypeId(
+      existingIds: <String>{for (final RelationshipType t in types) t.id},
+    );
+    final RelationshipType created = RelationshipType(
+      id: id,
+      labelZh: trimmed,
+      labelEn: trimmed,
+    );
+    types.add(created);
+    await _persistPeopleCatalog(
+      session,
+      metadata: metadata,
+      catalog: catalog.copyWith(relationshipTypes: types),
+    );
+    return created;
+  }
+
+  /// 只改當前語系對應的 label；另一語不變。
+  Future<RelationshipType> renameRelationshipType(
+    UnlockedVaultSession session, {
+    required String id,
+    required String label,
+    required bool preferZh,
+  }) async {
+    final String trimmed = label.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError('關係名稱不可為空白');
+    }
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    final List<RelationshipType> types = List<RelationshipType>.from(
+      catalog.relationshipTypes,
+    );
+    final int index = types.indexWhere((RelationshipType t) => t.id == id);
+    if (index < 0) {
+      throw StateError('找不到要重新命名的關係類型');
+    }
+    _ensureUniqueLabel(
+      types: types,
+      label: trimmed,
+      preferZh: preferZh,
+      excludingId: id,
+    );
+    final RelationshipType previous = types[index];
+    final RelationshipType updated = preferZh
+        ? previous.copyWith(labelZh: trimmed)
+        : previous.copyWith(labelEn: trimmed);
+    types[index] = updated;
+    await _persistPeopleCatalog(
+      session,
+      metadata: metadata,
+      catalog: catalog.copyWith(relationshipTypes: types),
+    );
+    return updated;
+  }
+
+  /// 刪除類型，並從所有人物 relationships 清掉該 id。回傳受影響人數。
+  Future<int> deleteRelationshipType(
+    UnlockedVaultSession session,
+    String id,
+  ) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    if (catalog.typeById(id) == null) {
+      throw StateError('找不到要刪除的關係類型');
+    }
+    final List<RelationshipType> types = catalog.relationshipTypes
+        .where((RelationshipType type) => type.id != id)
+        .toList(growable: false);
+    int affected = 0;
+    final List<Person> people = <Person>[];
+    for (final Person person in catalog.people) {
+      if (!person.relationships.contains(id)) {
+        people.add(person);
+        continue;
+      }
+      affected++;
+      people.add(
+        person.withRelationships(
+          person.relationships.difference(<String>{id}),
+        ),
+      );
+    }
+    await _persistPeopleCatalog(
+      session,
+      metadata: metadata,
+      catalog: PeopleCatalog(relationshipTypes: types, people: people),
+    );
+    return affected;
+  }
+
+  /// 依 [orderedIds] 重排關係類型；必須剛好涵蓋現行全部 id。
+  Future<void> reorderRelationshipTypes(
+    UnlockedVaultSession session,
+    List<String> orderedIds,
+  ) async {
+    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
+    final PeopleCatalog catalog = await readPeopleCatalog(session);
+    final Map<String, RelationshipType> byId = <String, RelationshipType>{
+      for (final RelationshipType type in catalog.relationshipTypes)
+        type.id: type,
+    };
+    if (orderedIds.length != byId.length ||
+        orderedIds.toSet().length != orderedIds.length ||
+        !orderedIds.every(byId.containsKey)) {
+      throw ArgumentError('關係類型排序無效');
+    }
+    final List<RelationshipType> types = <RelationshipType>[
+      for (final String id in orderedIds) byId[id]!,
+    ];
+    await _persistPeopleCatalog(
+      session,
+      metadata: metadata,
+      catalog: catalog.copyWith(relationshipTypes: types),
+    );
+  }
+
+  Future<void> _persistPeopleCatalog(
+    UnlockedVaultSession session, {
+    required RecoveryMetadata metadata,
+    required PeopleCatalog catalog,
+  }) async {
     await PeopleStore(
       pathStrategy: _pathStrategy,
       cryptoService: _cryptoService,
-    ).write(session, metadata: metadata, people: existing);
-    _peopleCatalogCache = existing;
+    ).write(session, metadata: metadata, catalog: catalog);
+    _peopleCatalogCache = catalog;
     _peopleCatalogVaultId = session.vaultId;
+  }
+
+  void _ensureUniqueLabel({
+    required List<RelationshipType> types,
+    required String label,
+    required bool preferZh,
+    String? excludingId,
+  }) {
+    for (final RelationshipType type in types) {
+      if (excludingId != null && type.id == excludingId) {
+        continue;
+      }
+      final String existing = preferZh ? type.labelZh : type.labelEn;
+      if (existing.trim() == label) {
+        throw ArgumentError('關係名稱已存在');
+      }
+    }
   }
 
   /// 統計過期或尚未建立時自動全量重建；並行呼叫會共用同一個 in-flight Future。

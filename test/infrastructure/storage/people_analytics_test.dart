@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -462,9 +463,7 @@ void main() {
       person.id,
       PersonDraft(
         name: person.name,
-        relationships: const <PersonRelationship>{
-          PersonRelationship.collaborator,
-        },
+        relationships: const <String>{BuiltinRelationshipIds.collaborator},
         accentArgb: 0xFF5480B0,
       ),
     );

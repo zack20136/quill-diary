@@ -226,13 +226,10 @@ class _PersonSuggestionChip extends StatelessWidget {
       suggestion.person,
       appColors.sectionInset,
     );
-    final String label = suggestion.matchedAlias == null
-        ? suggestion.person.name
-        : '${suggestion.person.name} · ${suggestion.matchedAlias}';
 
     return FilterChip(
       label: Text(
-        label,
+        suggestion.person.diaryMentionLabel,
         style: labelStyle?.copyWith(color: chipFg, fontWeight: FontWeight.w700),
       ),
       selected: selected,

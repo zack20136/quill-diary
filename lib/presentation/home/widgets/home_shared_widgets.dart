@@ -106,18 +106,21 @@ class HomeDiarySliverSection extends StatelessWidget {
     required this.title,
     required this.entries,
     this.stripeColor,
+    this.trailing,
     super.key,
   });
 
   final String title;
   final List<EntryIndexRecord> entries;
   final Color? stripeColor;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return AppSliverSectionCard(
       title: title,
       stripeColor: stripeColor,
+      trailing: trailing,
       slivers: <Widget>[
         HomeCompactEntrySliverList(entries: entries),
       ],

@@ -92,6 +92,7 @@ void main() {
 
     expect(bodyColor, colors.previewPanel);
     expect(suggestionColor, bodyColor);
+    expect(chip.showCheckmark, isFalse);
     expect(chip.backgroundColor, chipBackground);
     expect(chip.selectedColor, chipBackground);
     expect((chip.label as Text).style?.color, chipForeground);

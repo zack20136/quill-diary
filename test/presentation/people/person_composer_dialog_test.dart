@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
@@ -126,27 +129,30 @@ void main() {
     expect(find.byType(InputChip), findsNothing);
   });
 
-  testWidgets('七個關係選項固定單列並可選取合作夥伴', (WidgetTester tester) async {
+  testWidgets('關係選項顯示種子類型並可選取合作夥伴', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 568);
+    tester.view.physicalSize = const Size(1200, 800);
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(_testApp());
-    await tester.pumpAndSettle();
-    final Finder relationshipList = find.byKey(
-      const Key('person-relationships-list'),
+    await tester.pumpWidget(
+      widgetTestApp(
+        wrapScaffold: false,
+        center: false,
+        overrides: [
+          peopleCatalogProvider.overrideWith(
+            (Ref ref) async => PeopleCatalog.empty(),
+          ),
+        ],
+        child: const Dialog(
+          insetPadding: EdgeInsets.all(12),
+          backgroundColor: Colors.transparent,
+          child: PersonComposerDialog(),
+        ),
+      ),
     );
-    expect(relationshipList, findsOneWidget);
-    final ListView list = tester.widget<ListView>(relationshipList);
-    expect(
-      (list.childrenDelegate as SliverChildBuilderDelegate).estimatedChildCount,
-      13,
-    );
-    expect(find.text('家人'), findsOneWidget);
-    expect(find.text('認識的人'), findsNothing);
-    await tester.drag(relationshipList, const Offset(-500, 0));
     await tester.pumpAndSettle();
 
+    expect(find.text('家人'), findsOneWidget);
     expect(find.text('合作夥伴'), findsOneWidget);
     expect(find.text('其他'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilterChip, '合作夥伴'));
@@ -259,7 +265,7 @@ void main() {
       tester.getSize(find.byType(AccentDialogShell)).width,
       876,
     );
-    expect(find.byType(Divider), findsNWidgets(2));
+    expect(find.byType(Divider), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 
@@ -372,6 +378,55 @@ void main() {
     await tester.tap(automatic);
     await tester.pumpAndSettle();
     expect(tester.widget<ChoiceChip>(automatic).selected, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('@ 使用名稱以 ChoiceChip 選名稱與別名且刪別名會回退', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_testApp());
+    await tester.pumpAndSettle();
+
+    final Finder nameField = find.widgetWithText(TextField, '姓名');
+    await tester.enterText(nameField, '王小明');
+    await tester.pump();
+
+    final Finder aliasField = find.widgetWithText(TextField, '新增別名');
+    await tester.enterText(aliasField, '阿明');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('@ 使用名稱'), findsOneWidget);
+    expect(find.byKey(const Key('person-mention-name-list')), findsOneWidget);
+    final Finder nameChip = find.byKey(
+      const Key('person-mention-name-canonical'),
+    );
+    final Finder aliasChip = find.byKey(
+      const Key('person-mention-name-alias-阿明'),
+    );
+    expect(tester.widget<ChoiceChip>(nameChip).selected, isTrue);
+    expect(tester.widget<ChoiceChip>(aliasChip).selected, isFalse);
+
+    await tester.tap(aliasChip);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(nameChip).selected, isFalse);
+    expect(tester.widget<ChoiceChip>(aliasChip).selected, isTrue);
+
+    await tester.tap(find.byTooltip('移除別名「阿明」'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('person-mention-name-alias-阿明')), findsNothing);
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('person-mention-name-canonical')),
+          )
+          .selected,
+      isTrue,
+    );
     expect(tester.takeException(), isNull);
   });
 }

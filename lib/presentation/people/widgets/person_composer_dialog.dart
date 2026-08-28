@@ -8,6 +8,7 @@ import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -83,9 +84,10 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
   final TextEditingController _notesCtrl = TextEditingController();
 
   final List<String> _aliases = <String>[];
-  final Set<PersonRelationship> _relationships = <PersonRelationship>{};
+  final Set<String> _relationships = <String>{};
   FriendlinessLevel _friendliness = FriendlinessLevel.normal;
   int? _accentArgb;
+  String? _mentionName;
   PersonBirthday? _birthday;
   int? _acquaintanceYear;
   Person? _loaded;
@@ -128,6 +130,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       ..addAll(person.relationships);
     _friendliness = person.friendliness;
     _accentArgb = person.accentArgb;
+    _mentionName = person.mentionName;
     _birthday = person.birthday;
     _acquaintanceYear = person.acquaintanceYear;
   }
@@ -167,6 +170,23 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       selection: TextSelection.collapsed(offset: duplicates.join('，').length),
     );
   }
+
+  void _removeAliasAt(int index) {
+    setState(() {
+      final String removed = _aliases.removeAt(index);
+      if (_mentionName != null &&
+          normalizePersonName(_mentionName!) == normalizePersonName(removed)) {
+        _mentionName = null;
+      }
+    });
+  }
+
+  /// 目前選中的 `@` 名稱；別名已刪則回退為名稱（`null`）。
+  String? get _effectiveMentionName => normalizePersonMentionName(
+    mentionName: _mentionName,
+    name: _nameCtrl.text.trim(),
+    aliases: _aliases,
+  );
 
   Future<void> _pickBirthday() async {
     final DateTime now = DateTime.now();
@@ -240,6 +260,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         _notesCtrl.text != baseline.notes ||
         _friendliness != baseline.friendliness ||
         _accentArgb != baseline.accentArgb ||
+        _effectiveMentionName != baseline.mentionName ||
         _birthday != baseline.birthday ||
         _acquaintanceYear != baseline.acquaintanceYear;
   }
@@ -303,11 +324,12 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     final PersonDraft draft = PersonDraft(
       name: name,
       aliases: List<String>.from(_aliases),
-      relationships: Set<PersonRelationship>.from(_relationships),
+      relationships: Set<String>.from(_relationships),
       relationshipDescription: _relationshipDescCtrl.text,
       notes: _notesCtrl.text,
       friendliness: _friendliness,
       accentArgb: _accentArgb,
+      mentionName: _effectiveMentionName,
       birthday: _birthday,
       acquaintanceYear: _acquaintanceYear,
     );
@@ -454,9 +476,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
                 deleteButtonTooltipMessage: l10n.peopleRemoveAliasAction(
                   _aliases[index],
                 ),
-                onDeleted: _saving
-                    ? null
-                    : () => setState(() => _aliases.removeAt(index)),
+                onDeleted: _saving ? null : () => _removeAliasAt(index),
               ),
             ),
           ),
@@ -465,32 +485,120 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     );
   }
 
-  Widget _relationshipsEditor(AppLocalizations l10n) {
+  Widget _mentionNamePicker(AppLocalizations l10n) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final String nameText = _nameCtrl.text.trim();
+    final String nameOptionLabel = nameText.isEmpty
+        ? l10n.peopleMentionNameUsesNameFallback
+        : nameText;
+    final String? selected = _effectiveMentionName;
+    final TextStyle? chipStyle = Theme.of(
+      context,
+    ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600);
+    return Column(
+      key: const Key('person-mention-name-picker'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _sectionDivider(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Text(
+            l10n.peopleFieldMentionName,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: cs.primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            key: const Key('person-mention-name-list'),
+            scrollDirection: Axis.horizontal,
+            itemCount: 1 + _aliases.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (BuildContext context, int index) {
+              if (index == 0) {
+                return ChoiceChip(
+                  key: const Key('person-mention-name-canonical'),
+                  label: Text(nameOptionLabel, style: chipStyle),
+                  selected: selected == null,
+                  onSelected: _saving
+                      ? null
+                      : (bool value) {
+                          if (value) {
+                            setState(() => _mentionName = null);
+                          }
+                        },
+                );
+              }
+              final String alias = _aliases[index - 1];
+              return ChoiceChip(
+                key: Key('person-mention-name-alias-$alias'),
+                label: Text(alias, style: chipStyle),
+                selected: selected != null &&
+                    normalizePersonName(selected) ==
+                        normalizePersonName(alias),
+                onSelected: _saving
+                    ? null
+                    : (bool value) {
+                        if (value) {
+                          setState(() => _mentionName = alias);
+                        }
+                      },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _pruneStaleRelationshipDraft(List<RelationshipType> types) {
+    final Set<String> typeIds = <String>{
+      for (final RelationshipType type in types) type.id,
+    };
+    if (!_relationships.any((String id) => !typeIds.contains(id))) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _relationships.removeWhere((String id) => !typeIds.contains(id));
+      });
+    });
+  }
+
+  Widget _relationshipsEditor(List<RelationshipType> types) {
+    final String languageCode = Localizations.localeOf(context).languageCode;
     return SizedBox(
       height: 48,
       child: ListView.separated(
         key: const Key('person-relationships-list'),
         scrollDirection: Axis.horizontal,
-        itemCount: PersonRelationship.values.length,
+        itemCount: types.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (BuildContext context, int index) {
-          final PersonRelationship rel = PersonRelationship.values[index];
+          final RelationshipType type = types[index];
           return FilterChip(
             label: Text(
-              personRelationshipLabel(l10n, rel),
+              relationshipTypeLabel(type, languageCode),
               style: Theme.of(
                 context,
               ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            selected: _relationships.contains(rel),
+            selected: _relationships.contains(type.id),
             onSelected: _saving
                 ? null
                 : (bool value) {
                     setState(() {
                       if (value) {
-                        _relationships.add(rel);
+                        _relationships.add(type.id);
                       } else {
-                        _relationships.remove(rel);
+                        _relationships.remove(type.id);
                       }
                     });
                   },
@@ -768,6 +876,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     ColorScheme cs, {
     required String birthdayText,
     required String acquaintanceText,
+    required List<RelationshipType> relationshipTypes,
   }) {
     return CustomScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -788,16 +897,18 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
                     decoration: _fieldDecoration(
                       labelText: l10n.peopleFieldName,
                     ),
+                    onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 12),
                   _aliasesEditor(l10n),
+                  _mentionNamePicker(l10n),
                 ],
               ),
               _sectionDivider(),
               _formSection(
                 title: l10n.peopleSectionRelationship,
                 children: <Widget>[
-                  _relationshipsEditor(l10n),
+                  _relationshipsEditor(relationshipTypes),
                   const SizedBox(height: 14),
                   TextField(
                     controller: _relationshipDescCtrl,
@@ -939,6 +1050,10 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
 
     final AppLocalizations l10n = context.l10n;
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final List<RelationshipType> relationshipTypes =
+        ref.watch(peopleRelationshipTypesProvider).asData?.value ??
+        defaultBuiltinRelationshipTypes();
+    _pruneStaleRelationshipDraft(relationshipTypes);
     final String birthdayText = _birthday == null
         ? ''
         : DisplayFormat.formatBirthday(
@@ -958,6 +1073,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       cs,
       birthdayText: birthdayText,
       acquaintanceText: acquaintanceText,
+      relationshipTypes: relationshipTypes,
     );
     final Widget shell = LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {

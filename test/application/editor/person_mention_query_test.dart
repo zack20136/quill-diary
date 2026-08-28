@@ -77,7 +77,7 @@ void main() {
   });
 
   group('replacePersonMentionWithName', () {
-    test('以正式姓名取代 @查詢且不留 @', () {
+    test('以指定名稱取代 @查詢且不留 @', () {
       const String input = '見到 @阿明 了';
       final ActivePersonMentionQuery mention = findActivePersonMentionQuery(
         text: input,
@@ -86,10 +86,25 @@ void main() {
       final result = replacePersonMentionWithName(
         text: input,
         mention: mention,
-        canonicalName: '陳小明',
+        mentionLabel: '陳小明',
       );
       expect(result.text, '見到 陳小明 了');
       expect(result.cursor, 6);
+    });
+
+    test('可插入別名文字', () {
+      const String input = '@小';
+      final ActivePersonMentionQuery mention = findActivePersonMentionQuery(
+        text: input,
+        cursor: input.length,
+      )!;
+      final result = replacePersonMentionWithName(
+        text: input,
+        mention: mention,
+        mentionLabel: '阿明',
+      );
+      expect(result.text, '阿明');
+      expect(result.cursor, 2);
     });
   });
 }

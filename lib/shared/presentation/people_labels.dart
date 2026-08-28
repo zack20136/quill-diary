@@ -1,21 +1,11 @@
-import '../../domain/people/person.dart';
+import '../../domain/people/relationship_type.dart';
 import '../../l10n/l10n.dart';
 
-/// 依語系取得人物關係的顯示文字。
-String personRelationshipLabel(
-  AppLocalizations l10n,
-  PersonRelationship relationship,
-) {
-  return switch (relationship) {
-    PersonRelationship.family => l10n.peopleRelationFamily,
-    PersonRelationship.partner => l10n.peopleRelationPartner,
-    PersonRelationship.friend => l10n.peopleRelationFriend,
-    PersonRelationship.classmate => l10n.peopleRelationClassmate,
-    PersonRelationship.colleague => l10n.peopleRelationColleague,
-    PersonRelationship.collaborator => l10n.peopleRelationCollaborator,
-    PersonRelationship.other => l10n.peopleRelationOther,
-  };
-}
+/// 依目前語系取得關係類型顯示名。
+String relationshipTypeLabel(
+  RelationshipType type,
+  String languageCode,
+) => type.labelForLanguageCode(languageCode);
 
 /// 依語系取得熟悉程度的顯示文字。
 String personFriendlinessLabel(AppLocalizations l10n, int level) =>

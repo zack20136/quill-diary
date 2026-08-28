@@ -5,23 +5,41 @@ import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-/// 讀取已快取的名冊；人物 CRUD 會 invalidate，不應因提及統計 revision 重跑。
-final peopleCatalogProvider = FutureProvider.autoDispose<List<Person>>((
+/// 讀取已快取的名冊（含關係類型）；人物／類型 CRUD 會 invalidate。
+final peopleCatalogProvider = FutureProvider.autoDispose<PeopleCatalog>((
   Ref ref,
 ) async {
   final AppSessionState state = await ref.watch(
     effectiveAppSessionProvider.future,
   );
   if (!state.isUnlocked || state.session == null) {
-    return const <Person>[];
+    return PeopleCatalog.empty();
   }
-  return ref.watch(vaultPeopleServiceProvider).listPeople(state.session!);
+  return ref.watch(vaultPeopleServiceProvider).readPeopleCatalog(state.session!);
 });
+
+/// 名冊中的人物列表（與 [peopleCatalogProvider] 同源）。
+final peopleListProvider = Provider.autoDispose<AsyncValue<List<Person>>>((
+  Ref ref,
+) {
+  return ref.watch(peopleCatalogProvider).whenData(
+    (PeopleCatalog catalog) => catalog.people,
+  );
+});
+
+/// 現行關係類型表（與 [peopleCatalogProvider] 同源）。
+final peopleRelationshipTypesProvider =
+    Provider.autoDispose<AsyncValue<List<RelationshipType>>>((Ref ref) {
+      return ref.watch(peopleCatalogProvider).whenData(
+        (PeopleCatalog catalog) => catalog.relationshipTypes,
+      );
+    });
 
 enum PeopleListSort { lastMention, totalMentions, recentMentions, name }
 
@@ -75,7 +93,7 @@ List<PersonListItem> buildPeopleListItems({
 List<PersonListItem> filterPeopleListItems({
   required List<PersonListItem> items,
   required String query,
-  required Set<PersonRelationship> relationships,
+  required Set<String> relationships,
   required PeopleListSort sort,
 }) {
   final String q = normalizePersonName(query);
@@ -155,10 +173,10 @@ List<PersonListItem> filterPeopleListItems({
 
 final personDetailProvider = FutureProvider.autoDispose
     .family<Person?, PersonId>((Ref ref, PersonId id) async {
-      final List<Person> catalog = await ref.watch(
+      final PeopleCatalog catalog = await ref.watch(
         peopleCatalogProvider.future,
       );
-      for (final Person person in catalog) {
+      for (final Person person in catalog.people) {
         if (person.id == id) {
           return person;
         }
@@ -209,14 +227,14 @@ final overviewPeopleTop5Provider = FutureProvider.autoDispose
         return const <OverviewPersonRankItem>[];
       }
 
-      final List<Person> catalog = await ref.watch(
+      final PeopleCatalog catalog = await ref.watch(
         peopleCatalogProvider.future,
       );
-      if (catalog.isEmpty) {
+      if (catalog.people.isEmpty) {
         return const <OverviewPersonRankItem>[];
       }
       final Map<PersonId, Person> byId = <PersonId, Person>{
-        for (final Person p in catalog) p.id: p,
+        for (final Person p in catalog.people) p.id: p,
       };
 
       String? yearPrefix;

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -86,7 +87,7 @@ void main() {
       PersonDraft(
         name: '林小雨',
         aliases: const <String>['小雨'],
-        relationships: const <PersonRelationship>{PersonRelationship.friend},
+        relationships: const <String>{BuiltinRelationshipIds.friend},
         relationshipDescription: '大學同學',
         notes: '喜歡登山',
         friendliness: FriendlinessLevel(4),
@@ -117,8 +118,8 @@ void main() {
     expect(restored.single.id, backedUpPerson.id);
     expect(restored.single.name, '林小雨');
     expect(restored.single.aliases, const <String>['小雨']);
-    expect(restored.single.relationships, const <PersonRelationship>{
-      PersonRelationship.friend,
+    expect(restored.single.relationships, const <String>{
+      BuiltinRelationshipIds.friend,
     });
     expect(restored.single.relationshipDescription, '大學同學');
     expect(restored.single.notes, '喜歡登山');

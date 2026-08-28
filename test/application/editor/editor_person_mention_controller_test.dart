@@ -40,7 +40,7 @@ void main() {
     expect(controller.isActive, isFalse);
   });
 
-  test('建立人物後只會插入普通正式姓名文字', () {
+  test('建立人物後會插入指定的日記名稱文字', () {
     final TextEditingController text = TextEditingController(text: '今天遇到 @小');
     text.selection = TextSelection.collapsed(offset: text.text.length);
     final EditorPersonMentionController controller =
@@ -48,8 +48,8 @@ void main() {
     addTearDown(controller.dispose);
     addTearDown(text.dispose);
 
-    expect(controller.applyCanonicalName('王小明'), isTrue);
-    expect(text.text, '今天遇到 王小明');
+    expect(controller.applyMentionLabel('阿明'), isTrue);
+    expect(text.text, '今天遇到 阿明');
     expect(text.text, isNot(contains('@')));
   });
 }

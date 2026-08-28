@@ -1,28 +1,5 @@
 import '../shared/value_objects.dart';
 
-/// 可複選的人物關係類型。
-enum PersonRelationship {
-  family,
-  partner,
-  friend,
-  classmate,
-  colleague,
-  collaborator,
-  other;
-
-  static PersonRelationship? tryParse(String? raw) {
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-    for (final PersonRelationship value in PersonRelationship.values) {
-      if (value.name == raw) {
-        return value;
-      }
-    }
-    return null;
-  }
-}
-
 /// 熟悉程度 1–5；JSON 欄位固定為 `friendliness`。
 final class FriendlinessLevel {
   const FriendlinessLevel._(this.value);
@@ -131,17 +108,18 @@ final class Person {
     required this.id,
     required this.name,
     List<String> aliases = const <String>[],
-    Set<PersonRelationship> relationships = const <PersonRelationship>{},
+    Set<String> relationships = const <String>{},
     this.relationshipDescription = '',
     this.notes = '',
     this.friendliness = FriendlinessLevel.normal,
     this.accentArgb,
+    this.mentionName,
     this.birthday,
     this.acquaintanceYear,
     required this.createdAt,
     required this.updatedAt,
   }) : aliases = List<String>.unmodifiable(aliases),
-       relationships = Set<PersonRelationship>.unmodifiable(relationships) {
+       relationships = Set<String>.unmodifiable(relationships) {
     normalizedName = normalizePersonName(name);
     aliasSearchValues = List<PersonAliasSearchValue>.unmodifiable(
       this.aliases
@@ -168,11 +146,18 @@ final class Person {
   final PersonId id;
   final String name;
   final List<String> aliases;
-  final Set<PersonRelationship> relationships;
+
+  /// 關係類型 id（內建或自訂）；是否存在於類型表由 PeopleCatalog 校驗。
+  final Set<String> relationships;
   final String relationshipDescription;
   final String notes;
   final FriendlinessLevel friendliness;
   final int? accentArgb;
+
+  /// 日記 `@` 插入用的別名；`null` 表示使用 [name]。
+  ///
+  /// 有值時必須對應 [aliases] 其中一項（正規化比對）。
+  final String? mentionName;
   final PersonBirthday? birthday;
   final int? acquaintanceYear;
   final DateTime createdAt;
@@ -186,18 +171,42 @@ final class Person {
   late final Set<String> allNormalizedNames;
   late final List<String> sortedNormalizedNames;
 
+  /// 編輯器 `@` 實際插入的文字；別名失效時回退為 [name]。
+  String get diaryMentionLabel {
+    final String? selected = resolvePersonMentionAlias(
+      mentionName: mentionName,
+      aliases: aliases,
+    );
+    return selected ?? name;
+  }
+
+  /// 僅替換 [relationships]；其餘欄位不變。
+  Person withRelationships(Set<String> relationships) => Person(
+    id: id,
+    name: name,
+    aliases: aliases,
+    relationships: relationships,
+    relationshipDescription: relationshipDescription,
+    notes: notes,
+    friendliness: friendliness,
+    accentArgb: accentArgb,
+    mentionName: mentionName,
+    birthday: birthday,
+    acquaintanceYear: acquaintanceYear,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
+
   Map<String, Object?> toJson() => <String, Object?>{
     'id': id,
     'name': name,
     'aliases': aliases,
-    'relationships': PersonRelationship.values
-        .where(relationships.contains)
-        .map((PersonRelationship relationship) => relationship.name)
-        .toList(growable: false),
+    'relationships': (relationships.toList(growable: false)..sort()),
     'relationshipDescription': relationshipDescription,
     'notes': notes,
     'friendliness': friendliness.value,
     if (accentArgb != null) 'accentArgb': accentArgb,
+    if (mentionName != null) 'mentionName': mentionName,
     'birthday': birthday?.toJson(),
     'acquaintanceYear': acquaintanceYear,
     'createdAt': createdAt.toIso8601String(),
@@ -222,10 +231,11 @@ final class Person {
       'createdAt',
       'updatedAt',
     };
+    const Set<String> optionalKeys = <String>{'accentArgb', 'mentionName'};
     if (!requiredKeys.every(map.containsKey) ||
         map.keys.any(
           (Object? key) => key is! String ||
-              (!requiredKeys.contains(key) && key != 'accentArgb'),
+              (!requiredKeys.contains(key) && !optionalKeys.contains(key)),
         )) {
       return null;
     }
@@ -261,16 +271,12 @@ final class Person {
       aliases.add(item);
     }
 
-    final Set<PersonRelationship> relationships = <PersonRelationship>{};
+    final Set<String> relationships = <String>{};
     for (final Object? item in map['relationships']! as List) {
-      if (item is! String) {
+      if (item is! String || item.isEmpty) {
         return null;
       }
-      final PersonRelationship? parsed = PersonRelationship.tryParse(item);
-      if (parsed == null) {
-        return null;
-      }
-      if (!relationships.add(parsed)) {
+      if (!relationships.add(item)) {
         return null;
       }
     }
@@ -302,6 +308,21 @@ final class Person {
     if (birthdayRaw != null && birthday == null) {
       return null;
     }
+    final Object? mentionNameRaw = map['mentionName'];
+    final String? mentionName;
+    if (mentionNameRaw == null) {
+      mentionName = null;
+    } else if (mentionNameRaw is! String) {
+      return null;
+    } else {
+      mentionName = resolvePersonMentionAlias(
+        mentionName: mentionNameRaw,
+        aliases: aliases,
+      );
+      if (mentionName == null) {
+        return null;
+      }
+    }
 
     return Person(
       id: idRaw,
@@ -312,12 +333,49 @@ final class Person {
       relationships: relationships,
       friendliness: friendliness,
       accentArgb: accentArgbRaw as int?,
+      mentionName: mentionName,
       birthday: birthday,
       acquaintanceYear: acquaintanceYear,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
   }
+}
+
+/// 若 [mentionName] 對應某個別名，回傳該別名原文；否則回傳 `null`。
+String? resolvePersonMentionAlias({
+  required String? mentionName,
+  required Iterable<String> aliases,
+}) {
+  if (mentionName == null) {
+    return null;
+  }
+  final String normalized = normalizePersonName(mentionName);
+  if (normalized.isEmpty) {
+    return null;
+  }
+  for (final String alias in aliases) {
+    if (normalizePersonName(alias) == normalized) {
+      return alias;
+    }
+  }
+  return null;
+}
+
+/// 寫入前正規化：選名稱則為 `null`；選別名則對齊別名原文；別名已刪則回退 `null`。
+String? normalizePersonMentionName({
+  required String? mentionName,
+  required String name,
+  required Iterable<String> aliases,
+}) {
+  if (mentionName == null) {
+    return null;
+  }
+  final String normalized = normalizePersonName(mentionName);
+  if (normalized.isEmpty || normalized == normalizePersonName(name)) {
+    return null;
+  }
+  return resolvePersonMentionAlias(mentionName: mentionName, aliases: aliases);
 }
 
 final class PersonAliasSearchValue {
@@ -332,15 +390,16 @@ final class PersonDraft {
   PersonDraft({
     required this.name,
     List<String> aliases = const <String>[],
-    Set<PersonRelationship> relationships = const <PersonRelationship>{},
+    Set<String> relationships = const <String>{},
     this.relationshipDescription = '',
     this.notes = '',
     this.friendliness = FriendlinessLevel.normal,
     this.accentArgb,
+    this.mentionName,
     this.birthday,
     this.acquaintanceYear,
   }) : aliases = List<String>.unmodifiable(aliases),
-       relationships = Set<PersonRelationship>.unmodifiable(relationships);
+       relationships = Set<String>.unmodifiable(relationships);
 
   factory PersonDraft.fromPerson(Person person) => PersonDraft(
     name: person.name,
@@ -350,17 +409,19 @@ final class PersonDraft {
     notes: person.notes,
     friendliness: person.friendliness,
     accentArgb: person.accentArgb,
+    mentionName: person.mentionName,
     birthday: person.birthday,
     acquaintanceYear: person.acquaintanceYear,
   );
 
   final String name;
   final List<String> aliases;
-  final Set<PersonRelationship> relationships;
+  final Set<String> relationships;
   final String relationshipDescription;
   final String notes;
   final FriendlinessLevel friendliness;
   final int? accentArgb;
+  final String? mentionName;
   final PersonBirthday? birthday;
   final int? acquaintanceYear;
 }

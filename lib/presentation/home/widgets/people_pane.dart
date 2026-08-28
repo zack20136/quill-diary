@@ -8,11 +8,13 @@ import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
+import 'package:quill_diary/presentation/people/widgets/relationship_types_manage_dialog.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -41,7 +43,7 @@ class PeoplePane extends ConsumerStatefulWidget {
 class _PeoplePaneState extends ConsumerState<PeoplePane> {
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
-  final Set<PersonRelationship> _relationships = <PersonRelationship>{};
+  final Set<String> _relationships = <String>{};
   PeopleListSort _sort = PeopleListSort.lastMention;
 
   @override
@@ -49,6 +51,23 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
     _searchCtrl.dispose();
     _listScrollController.dispose();
     super.dispose();
+  }
+
+  void _pruneStaleRelationshipFilters(Iterable<RelationshipType> types) {
+    final Set<String> typeIds = <String>{
+      for (final RelationshipType type in types) type.id,
+    };
+    if (!_relationships.any((String id) => !typeIds.contains(id))) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _relationships.removeWhere((String id) => !typeIds.contains(id));
+      });
+    });
   }
 
   @override
@@ -59,9 +78,13 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
     }
 
     // 名冊優先；統計另載（過期會自動 rebuild）。重載時保留上一份，避免提及數閃 0。
-    final AsyncValue<List<Person>> catalogAsync = ref.watch(
+    final AsyncValue<PeopleCatalog> catalogAsync = ref.watch(
       peopleCatalogProvider,
     );
+    final List<RelationshipType> relationshipTypes =
+        catalogAsync.asData?.value.relationshipTypes ??
+        const <RelationshipType>[];
+    _pruneStaleRelationshipFilters(relationshipTypes);
     final AsyncValue<Map<PersonId, PersonMentionStats>> statsAsync = ref.watch(
       peopleMentionStatsMapProvider,
     );
@@ -69,6 +92,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
         ? statsAsync.requireValue
         : const <PersonId, PersonMentionStats>{};
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final String languageCode = Localizations.localeOf(context).languageCode;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -125,6 +149,16 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                 ),
                 const SizedBox(width: 6),
                 HomeCircleIconButton(
+                  tooltip: context.l10n.peopleManageRelationshipsTooltip,
+                  onPressed: () =>
+                      unawaited(showRelationshipTypesManageDialog(context)),
+                  icon: kPeopleRelationshipsIcon,
+                  size: kHomeSearchRowControlHeight,
+                  backgroundColor: cs.secondaryContainer,
+                  foregroundColor: cs.onSecondaryContainer,
+                ),
+                const SizedBox(width: 6),
+                HomeCircleIconButton(
                   tooltip: context.l10n.peopleCreateAction,
                   onPressed: () => unawaited(showPersonComposerDialog(context)),
                   icon: Icons.person_add_alt_1_rounded,
@@ -143,19 +177,19 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(right: HomeLayout.bodyPadding.right),
             children: <Widget>[
-              for (final PersonRelationship rel in PersonRelationship.values)
+              for (final RelationshipType type in relationshipTypes)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: FilterChip(
-                    label: Text(personRelationshipLabel(context.l10n, rel)),
-                    selected: _relationships.contains(rel),
+                    label: Text(relationshipTypeLabel(type, languageCode)),
+                    selected: _relationships.contains(type.id),
                     showCheckmark: false,
                     onSelected: (bool selected) {
                       setState(() {
                         if (selected) {
-                          _relationships.add(rel);
+                          _relationships.add(type.id);
                         } else {
-                          _relationships.remove(rel);
+                          _relationships.remove(type.id);
                         }
                       });
                     },
@@ -203,10 +237,11 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                 message: userFacingErrorMessage(error, l10n: context.l10n),
               ),
             ),
-            data: (List<Person> catalog) {
+            data: (PeopleCatalog catalog) {
+              final List<Person> people = catalog.people;
               final List<PersonListItem> items = filterPeopleListItems(
                 items: buildPeopleListItems(
-                  catalog: catalog,
+                  catalog: people,
                   statsMap: statsMap,
                   statsReady: statsAsync.hasValue,
                 ),
@@ -215,7 +250,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                 sort: _sort,
               );
               if (items.isEmpty) {
-                final bool catalogEmpty = catalog.isEmpty;
+                final bool catalogEmpty = people.isEmpty;
                 return HomeScrollbarGutter(
                   child: catalogEmpty
                       ? AppStateCard(
@@ -270,6 +305,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                         padding: const EdgeInsets.only(bottom: 7),
                         child: _PersonListTile(
                           item: item,
+                          relationshipTypes: catalog.relationshipTypes,
                           onTap: () => unawaited(
                             context.push(
                               AppRouter.personDetailLocation(item.person.id),
@@ -326,9 +362,14 @@ class _PeopleAnalysisProgress extends ConsumerWidget {
 }
 
 class _PersonListTile extends StatelessWidget {
-  const _PersonListTile({required this.item, required this.onTap});
+  const _PersonListTile({
+    required this.item,
+    required this.relationshipTypes,
+    required this.onTap,
+  });
 
   final PersonListItem item;
+  final List<RelationshipType> relationshipTypes;
   final VoidCallback onTap;
 
   @override
@@ -338,21 +379,32 @@ class _PersonListTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final Color accent = personAccentColor(person);
-    final String lastMention = stats?.lastMentionDate == null
-        ? context.l10n.peopleLastMentionNever
-        : context.l10n.peopleLastMention(
-            DisplayFormat.formatRelativeDayDistance(
-              context.l10n,
-              stats!.lastMentionDate!,
-            ),
-          );
-    final String relations = PersonRelationship.values
-        .where(person.relationships.contains)
+    final TextStyle? metaStyle = theme.textTheme.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant,
+    );
+    final String languageCode = Localizations.localeOf(context).languageCode;
+    final String relations = relationshipTypes
+        .where(
+          (RelationshipType type) => person.relationships.contains(type.id),
+        )
         .map(
-          (PersonRelationship relationship) =>
-              personRelationshipLabel(context.l10n, relationship),
+          (RelationshipType type) =>
+              relationshipTypeLabel(type, languageCode),
         )
         .join(' · ');
+    final String? subtitle = stats == null
+        ? null
+        : <String>[
+            context.l10n.peopleMentionCount(stats.mentionCount),
+            stats.lastMentionDate == null
+                ? context.l10n.peopleLastMentionNever
+                : context.l10n.peopleLastMention(
+                    DisplayFormat.formatRelativeDayDistance(
+                      context.l10n,
+                      stats.lastMentionDate!,
+                    ),
+                  ),
+          ].join('、');
 
     return Material(
       color: context.appColors.sectionInset,
@@ -388,15 +440,35 @@ class _PersonListTile extends StatelessWidget {
         title: Row(
           children: <Widget>[
             Expanded(
-              child: Text(
-                person.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      person.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (relations.isNotEmpty) ...<Widget>[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        relations,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: metaStyle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               personFriendlinessLabel(context.l10n, person.friendliness.value),
               style: theme.textTheme.labelSmall?.copyWith(
@@ -406,21 +478,13 @@ class _PersonListTile extends StatelessWidget {
             ),
           ],
         ),
-        subtitle: stats == null && relations.isEmpty
+        subtitle: subtitle == null
             ? null
             : Text(
-                stats == null
-                    ? relations
-                    : <String>[
-                        if (relations.isNotEmpty) relations,
-                        context.l10n.peopleMentionCount(stats.mentionCount),
-                        lastMention,
-                      ].join(' · '),
-                maxLines: 2,
+                subtitle,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: metaStyle,
               ),
         onTap: onTap,
       ),

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 void main() {
@@ -12,16 +13,14 @@ void main() {
         Person(
           id: 'collaborator',
           name: '合作對象',
-          relationships: const <PersonRelationship>{
-            PersonRelationship.collaborator,
-          },
+          relationships: const <String>{BuiltinRelationshipIds.collaborator},
           createdAt: now,
           updatedAt: now,
         ),
         Person(
           id: 'friend',
           name: '朋友',
-          relationships: const <PersonRelationship>{PersonRelationship.friend},
+          relationships: const <String>{BuiltinRelationshipIds.friend},
           createdAt: now,
           updatedAt: now,
         ),
@@ -33,9 +32,7 @@ void main() {
     final List<PersonListItem> filtered = filterPeopleListItems(
       items: items,
       query: '',
-      relationships: const <PersonRelationship>{
-        PersonRelationship.collaborator,
-      },
+      relationships: const <String>{BuiltinRelationshipIds.collaborator},
       sort: PeopleListSort.name,
     );
 
@@ -49,11 +46,13 @@ void main() {
     final ProviderContainer container = ProviderContainer(
       observers: <ProviderObserver>[observer],
       overrides: [
-        peopleCatalogProvider.overrideWith((Ref ref) async => const <Person>[]),
+        peopleCatalogProvider.overrideWith(
+          (Ref ref) async => PeopleCatalog.empty(),
+        ),
       ],
     );
     addTearDown(container.dispose);
-    final ProviderSubscription<AsyncValue<List<Person>>> subscription =
+    final ProviderSubscription<AsyncValue<PeopleCatalog>> subscription =
         container.listen(peopleCatalogProvider, (_, _) {});
     await container.read(peopleCatalogProvider.future);
 

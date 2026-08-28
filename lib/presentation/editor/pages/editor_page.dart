@@ -48,6 +48,7 @@ import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
 import '../widgets/editor_attachment_strip.dart';
 import '../widgets/editor_form_sections.dart';
@@ -212,7 +213,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     return filterEditorPersonSuggestions(
       catalog:
           catalog ??
-          ref.read(peopleCatalogProvider).asData?.value ??
+          ref.read(peopleCatalogProvider).asData?.value.people ??
           const <Person>[],
       query: _personMentionController.query,
       mentionCountById: _mentionCountByIdHint(),
@@ -237,7 +238,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   void _applyPersonMention(EditorPersonSuggestion suggestion) {
-    _personMentionController.applyCanonicalName(suggestion.person.name);
+    _personMentionController.applyMentionLabel(
+      suggestion.person.diaryMentionLabel,
+    );
     _onDraftChanged();
   }
 
@@ -254,9 +257,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
     if (!mounted || person == null) {
       return;
     }
-    if (_personMentionController.applyCanonicalNameToTarget(
+    if (_personMentionController.applyMentionLabelToTarget(
       target,
-      person.name,
+      person.diaryMentionLabel,
     )) {
       _onDraftChanged();
     }
@@ -997,12 +1000,12 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                       return const SizedBox.shrink();
                                     }
                                     // 僅在 @ 作用中才讀名冊，避免編輯器一打開就解密。
-                                    final AsyncValue<List<Person>>
+                                    final AsyncValue<PeopleCatalog>
                                     catalogAsync = ref.watch(
                                       peopleCatalogProvider,
                                     );
                                     final List<Person> catalog =
-                                        catalogAsync.asData?.value ??
+                                        catalogAsync.asData?.value.people ??
                                         const <Person>[];
                                     final List<EditorPersonSuggestion>
                                     suggestions = _activePersonSuggestions(

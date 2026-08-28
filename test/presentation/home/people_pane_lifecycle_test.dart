@@ -6,6 +6,7 @@ import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
@@ -35,7 +36,7 @@ void main() {
         ),
         peopleCatalogProvider.overrideWith((Ref ref) async {
           catalogReads += 1;
-          return const <Person>[];
+          return PeopleCatalog.empty();
         }),
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async {
           statsReads += 1;
@@ -95,7 +96,7 @@ void main() {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         peopleCatalogProvider.overrideWith(
-          (Ref ref) async => const <Person>[],
+          (Ref ref) async => PeopleCatalog.empty(),
         ),
         peopleMentionStatsMapProvider.overrideWith(
           (Ref ref) async => const <PersonId, PersonMentionStats>{},

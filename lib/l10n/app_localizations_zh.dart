@@ -521,7 +521,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleEmptyTitle => '尚未建立人物';
 
   @override
-  String get peopleEmptyBody => '建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入正式姓名。';
+  String get peopleEmptyBody =>
+      '建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入該人物指定的名稱（預設為姓名，也可改選別名）。';
 
   @override
   String get peopleNotFoundTitle => '找不到這位人物';
@@ -542,6 +543,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleCreateAction => '新增人物';
 
   @override
+  String get peopleManageRelationshipsTooltip => '管理關係';
+
+  @override
+  String get peopleManageRelationshipsTitle => '管理關係';
+
+  @override
+  String get peopleManageRelationshipsGuide =>
+      '拖曳左側把手可排序；點名稱可重新命名。新增時會同時寫入目前語言與另一語言的相同文字。';
+
+  @override
+  String get peopleReorderRelationshipTooltip => '拖曳排序';
+
+  @override
+  String get peopleManageRelationshipsEmpty => '尚未有任何關係類型';
+
+  @override
+  String get peopleAddRelationshipHint => '例如：導師';
+
+  @override
+  String get peopleAddRelationshipAction => '新增';
+
+  @override
+  String get peopleRenameRelationshipAction => '重新命名';
+
+  @override
+  String get peopleDeleteRelationshipAction => '刪除';
+
+  @override
+  String get peopleRelationshipNameEmpty => '關係名稱不可為空白';
+
+  @override
+  String get peopleRelationshipNameDuplicate => '這個關係名稱已經存在';
+
+  @override
+  String get peopleDeleteRelationshipConfirmTitle => '刪除關係？';
+
+  @override
+  String peopleDeleteRelationshipConfirmBody(int count) {
+    return '有 $count 位人物使用此關係，刪除後會一併從這些人物移除。';
+  }
+
+  @override
   String get peopleSortTooltip => '排序方式';
 
   @override
@@ -555,27 +598,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get peopleSortName => '姓名';
-
-  @override
-  String get peopleRelationFamily => '家人';
-
-  @override
-  String get peopleRelationPartner => '伴侶';
-
-  @override
-  String get peopleRelationFriend => '朋友';
-
-  @override
-  String get peopleRelationClassmate => '同學';
-
-  @override
-  String get peopleRelationColleague => '同事';
-
-  @override
-  String get peopleRelationCollaborator => '合作夥伴';
-
-  @override
-  String get peopleRelationOther => '其他';
 
   @override
   String get peopleFieldName => '姓名';
@@ -615,6 +637,20 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String peopleRemoveAliasAction(String alias) {
     return '移除別名「$alias」';
+  }
+
+  @override
+  String get peopleFieldMentionName => '@ 使用名稱';
+
+  @override
+  String get peopleFieldMentionNameHint => '選擇 @ 插入日記時使用的名稱或別名';
+
+  @override
+  String get peopleMentionNameUsesNameFallback => '名稱';
+
+  @override
+  String peopleExportRecapScope(String name) {
+    return '與 $name 相關的日記';
   }
 
   @override
@@ -3480,7 +3516,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection1Item2Body =>
-      '在日記編輯器輸入 @，可選擇人物並插入正式姓名。插入後仍是一般文字，不會把日記變成特殊格式。';
+      '在日記編輯器輸入 @，可選擇人物並插入該人物指定的名稱（預設為姓名，也可改選別名）。插入後仍是一般文字，不會把日記變成特殊格式。';
 
   @override
   String get aboutTabPeopleSection2Title => '使用前要知道的事';
