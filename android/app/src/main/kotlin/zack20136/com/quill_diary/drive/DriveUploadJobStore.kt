@@ -323,10 +323,9 @@ class DriveUploadJobStore private constructor(context: Context) {
                 if (expectedGeneration == null || existing?.generation != expectedGeneration) {
                     return null
                 }
-                // 取消清理中只允許升為 STATUS_PENDING（遠端已驗證），禁止進度寫回覆蓋。
+                // 取消清理中只允許升 STATUS_PENDING（遠端已驗證）。
                 if (existing.isCancelCleanupPhase() &&
-                    job.phase != DriveUploadPhase.STATUS_PENDING &&
-                    job.phase != DriveUploadPhase.CANCEL_CLEANUP_PENDING
+                    job.phase != DriveUploadPhase.STATUS_PENDING
                 ) {
                     return null
                 }

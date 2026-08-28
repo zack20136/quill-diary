@@ -81,6 +81,8 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   int finalizeCalls = 0;
   int markStatusCalls = 0;
   int ackCalls = 0;
+  /// 模擬 markStatusRecorded CAS 暫時失敗。
+  bool rejectMarkStatus = false;
 
   DriveUploadState get envelope =>
       DriveUploadState(job: active, failure: failure);
@@ -150,6 +152,9 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   @override
   Future<DriveUploadJobSnapshot?> markStatusRecorded(String jobId) async {
     markStatusCalls++;
+    if (rejectMarkStatus) {
+      return null;
+    }
     final DriveUploadJobSnapshot? current = active;
     if (current == null || current.jobId != jobId) {
       return null;
@@ -326,7 +331,8 @@ void main() {
     expect(coordinator.failure, isNull);
   });
 
-  test('FGS 啟動失敗會回傳取消並清除工作', () async {
+  test('FGS 啟動失敗會回傳取消並只經 failure notice 記一次', () async {
+    const String fgsMessage = '無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。';
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
     final DriveUploadCoordinator coordinator = container.read(
@@ -334,19 +340,59 @@ void main() {
     );
     await coordinator.refresh();
 
+    // 模擬原生 failAndCleanup 後留下的 failure notice（唯一寫入 BackupStatusStore 的來源）。
+    platform.active = null;
+    platform.failure = const DriveUploadFailureNotice(
+      jobId: 'job-fgs',
+      message: fgsMessage,
+    );
     platform.startError = PlatformException(
       code: 'fgs_start_not_allowed',
-      message: '無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。',
+      message: fgsMessage,
     );
 
     final BackupPersistResult result = await coordinator
         .startBackgroundUpload();
     expect(result.status, BackupPersistStatus.cancelled);
+    expect(result.message, fgsMessage);
     expect(coordinator.job, isNull);
+    expect(coordinator.failure?.jobId, 'job-fgs');
     final BackupStatusSnapshot status = await container
         .read(backupStatusStoreProvider)
         .read();
     expect(status.lastFailure?.action, BackupStatusAction.driveUpload);
+    expect(status.lastFailure?.message, fgsMessage);
+  });
+
+  test('markStatusRecorded 暫時失敗後 refresh 仍可完成收尾', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-retry-mark',
+      phase: DriveUploadPhase.statusPending,
+      generation: 2,
+    );
+    platform.rejectMarkStatus = true;
+    platform.markStatusCalls = 0;
+    platform.finalizeCalls = 0;
+    backupService.pruneCalls = 0;
+
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(platform.markStatusCalls, 1);
+    expect(platform.finalizeCalls, 0);
+    expect(platform.active?.phase, DriveUploadPhase.statusPending);
+
+    platform.rejectMarkStatus = false;
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(platform.markStatusCalls, 2);
+    expect(backupService.pruneCalls, 1);
+    expect(platform.finalizeCalls, 1);
+    expect(coordinator.job, isNull);
   });
 
   test('prune 失敗不清 finalize，修正後可重試完成', () async {

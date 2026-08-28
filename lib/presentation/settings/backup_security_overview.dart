@@ -76,14 +76,22 @@ SecurityOverviewItem settingsDriveBackupSecurityOverview(
   DriveUploadJobSnapshot? uploadJob,
 }) {
   if (uploadJob != null && uploadJob.blocksConflictingDriveActions) {
-    final bool waitingNetwork =
-        uploadJob.phase == DriveUploadPhase.waitingForNetwork;
+    final String message = switch (uploadJob.phase) {
+      DriveUploadPhase.waitingForNetwork =>
+        l10n.settingsSecurityOverviewDriveUploadPending,
+      DriveUploadPhase.cancelCleanupPending =>
+        l10n.driveUploadStatusCancelCleanup,
+      DriveUploadPhase.statusPending ||
+      DriveUploadPhase.prunePending =>
+        l10n.driveUploadStatusFinalizing,
+      DriveUploadPhase.staged ||
+      DriveUploadPhase.uploading =>
+        l10n.settingsSecurityOverviewDriveUploadInProgress,
+    };
     return SecurityOverviewItem(
       icon: Icons.cloud_upload_outlined,
       title: l10n.settingsSecurityOverviewDriveBackupTitle,
-      message: waitingNetwork
-          ? l10n.settingsSecurityOverviewDriveUploadPending
-          : l10n.settingsSecurityOverviewDriveUploadInProgress,
+      message: message,
       level: SettingsHealthLevel.warning,
     );
   }

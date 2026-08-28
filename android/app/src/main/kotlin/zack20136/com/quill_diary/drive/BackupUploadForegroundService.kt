@@ -353,13 +353,12 @@ class BackupUploadForegroundService : Service() {
     ) {
         pendingRetry?.cancel(false)
         val after = jobStore.readActiveJob()
-        val plan =
+        when (
             DriveCancelStopDecision.plan(
-                snapshotBeforeStop = snapshot,
                 jobAfterSettle = after,
                 workerSettled = workerSettled,
             )
-        when (plan.localAction) {
+        ) {
             DriveCancelStopDecision.LocalAction.RetainCommitted -> {
                 after?.let(::notifyCommitted)
                 DriveUploadBridge.emitStateEnvelope(applicationContext)

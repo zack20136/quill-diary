@@ -134,20 +134,13 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       );
     } on PlatformException catch (error) {
       if (error.code == 'fgs_start_not_allowed') {
-        // 原生已 failAndCleanup；staging 已清，不可再刪。
+        // 原生已 failAndCleanup（staging 已清）；failure 只經 getState → _applyState 寫入一次。
         nativeAccepted = true;
         await _applyState(await _platform.getState());
         final String message =
             error.message?.trim().isNotEmpty == true
             ? error.message!.trim()
             : '無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。';
-        await ref
-            .read(backupStatusStoreProvider)
-            .recordFailure(
-              action: BackupStatusAction.driveUpload,
-              message: message,
-            );
-        ref.invalidate(backupStatusProvider);
         return BackupPersistResult(
           status: BackupPersistStatus.cancelled,
           message: message,
@@ -250,7 +243,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
   }
 
   Future<void> _completeCommittedJob(DriveUploadJobSnapshot job) async {
-    final String key = '${job.jobId}:${job.generation}:${job.phase.storageName}';
+    final String key = _completionKeyFor(job);
     if (_completionKey == key) {
       return;
     }
@@ -264,8 +257,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       state = latestState;
       return;
     }
-    _completionKey =
-        '${latest.jobId}:${latest.generation}:${latest.phase.storageName}';
+    _completionKey = _completionKeyFor(latest);
     DriveUploadJobSnapshot current = latest;
 
     try {
@@ -291,13 +283,13 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         final DriveUploadJobSnapshot? marked = await _platform
             .markStatusRecorded(current.jobId);
         if (marked == null) {
-          await _applyState(await _platform.getState());
+          // 清 key 讓下次 refresh 可重試；勿 _applyState，否則持續 null 會遞迴收尾。
+          _completionKey = null;
           return;
         }
         current = marked;
         state = DriveUploadState(job: current, failure: state.failure);
-        _completionKey =
-            '${current.jobId}:${current.generation}:${current.phase.storageName}';
+        _completionKey = _completionKeyFor(current);
       }
 
       if (current.phase == DriveUploadPhase.prunePending) {
@@ -313,7 +305,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
           _completionKey = null;
           state = DriveUploadState(failure: state.failure);
         } on Object {
-          // silent prune 失敗時保留工作，下次 refresh／回前景可重試。
+          // silent：保留 PRUNE_PENDING，下次 refresh／回前景／進入設定可重試。
           _completionKey = null;
           return;
         }
@@ -322,6 +314,10 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       _completionKey = null;
       rethrow;
     }
+  }
+
+  String _completionKeyFor(DriveUploadJobSnapshot job) {
+    return '${job.jobId}:${job.generation}:${job.phase.storageName}';
   }
 
   DriveUploadJobSnapshot? _jobFromPlatformDetails(Object? details) {

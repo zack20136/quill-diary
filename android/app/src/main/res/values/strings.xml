@@ -7,7 +7,7 @@
     <string name="drive_upload_notification_title">Google Drive 備份</string>
     <string name="drive_upload_notification_progress">正在上傳 %1$s（%2$d%%）</string>
     <string name="drive_upload_notification_waiting_network">等待網路後繼續上傳</string>
-    <string name="drive_upload_notification_cancel_cleanup">正在清除未完成的備份…</string>
+    <string name="drive_upload_notification_cancel_cleanup">正在清除未完成的 Google Drive 備份…</string>
     <string name="drive_upload_notification_completed">Google Drive 備份已完成：%1$s</string>
     <string name="drive_upload_notification_failed">上傳失敗，請開啟 App 查看</string>
     <string name="drive_upload_notification_stop">停止上傳</string>

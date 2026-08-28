@@ -100,27 +100,28 @@ object DriveUploadBridge {
         )
     }
 
-  fun emitStateEnvelope(context: Context? = null) {
-    val appContext = context?.applicationContext ?: appContextRef?.get() ?: return
-    val envelope = DriveUploadJobStore.get(appContext).getStateEnvelope()
-    val deliver = {
-      val failed = ArrayList<EventChannel.EventSink>()
-      for (sink in listeners) {
-        val ok = runCatching { sink.success(envelope) }.isSuccess
-        if (!ok) {
-          failed.add(sink)
+    fun emitStateEnvelope(context: Context? = null) {
+        val appContext = context?.applicationContext ?: appContextRef?.get() ?: return
+        // 必須在 deliver 當下再讀：post 前快照會讓舊 UPLOADING 蓋過後到的 STATUS_PENDING。
+        val deliver = {
+            val envelope = DriveUploadJobStore.get(appContext).getStateEnvelope()
+            val failed = ArrayList<EventChannel.EventSink>()
+            for (sink in listeners) {
+                val ok = runCatching { sink.success(envelope) }.isSuccess
+                if (!ok) {
+                    failed.add(sink)
+                }
+            }
+            if (failed.isNotEmpty()) {
+                listeners.removeAll(failed.toSet())
+            }
         }
-      }
-      if (failed.isNotEmpty()) {
-        listeners.removeAll(failed.toSet())
-      }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            deliver()
+        } else {
+            mainHandler.post(deliver)
+        }
     }
-    if (Looper.myLooper() == Looper.getMainLooper()) {
-      deliver()
-    } else {
-      mainHandler.post(deliver)
-    }
-  }
 
   fun completeNotificationPermission(granted: Boolean) {
         val pending = pendingNotificationResult.getAndSet(null) ?: return
@@ -359,6 +360,10 @@ object DriveUploadBridge {
                             job = job,
                             workerAlive = false,
                         )
+                    }
+                    // AwaitWorker 時 FGS 可能仍在，補 stop 以免殘留前景服務。
+                    if (BackupUploadForegroundService.isRunning()) {
+                        BackupUploadForegroundService.stop(context)
                     }
                     emitStateEnvelope()
                     replySuccess(result, null)

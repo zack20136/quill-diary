@@ -1,9 +1,8 @@
 package zack20136.com.quill_diary.drive
 
 /**
- * 使用者停止上傳後的本機／遠端收尾決策（純邏輯，便於單元測試）。
+ * 使用者停止上傳後的本機收尾決策（純邏輯，便於單元測試）。
  *
- * [snapshotBeforeStop]：呼叫停止當下的 job 快照。
  * [jobAfterSettle]：傳輸執行緒落定後的 job。
  * [workerSettled]：上傳 Future 是否已結束（含逾時後仍卡住＝false）。
  */
@@ -19,31 +18,16 @@ object DriveCancelStopDecision {
         AwaitWorker,
     }
 
-    data class Plan(
-        val localAction: LocalAction,
-        /** CleanupLocal 時可帶入已知 remoteFileId；查無檔時仍可依 jobId list。 */
-        val remoteFileIdToDelete: String?,
-    )
-
     fun plan(
-        snapshotBeforeStop: DriveUploadJob?,
         jobAfterSettle: DriveUploadJob?,
         workerSettled: Boolean = true,
-    ): Plan {
+    ): LocalAction {
         if (jobAfterSettle != null && jobAfterSettle.isRemoteCommittedPhase()) {
-            return Plan(LocalAction.RetainCommitted, remoteFileIdToDelete = null)
+            return LocalAction.RetainCommitted
         }
         if (!workerSettled) {
-            return Plan(LocalAction.AwaitWorker, remoteFileIdToDelete = null)
+            return LocalAction.AwaitWorker
         }
-        return Plan(
-            localAction = LocalAction.CleanupLocal,
-            remoteFileIdToDelete = firstNonBlankRemoteId(jobAfterSettle, snapshotBeforeStop),
-        )
+        return LocalAction.CleanupLocal
     }
-
-    private fun firstNonBlankRemoteId(vararg jobs: DriveUploadJob?): String? =
-        jobs.asSequence()
-            .mapNotNull { job -> job?.remoteFileId?.takeIf { it.isNotBlank() } }
-            .firstOrNull()
 }

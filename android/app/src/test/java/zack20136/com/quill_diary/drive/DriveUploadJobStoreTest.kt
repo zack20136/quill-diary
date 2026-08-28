@@ -288,7 +288,18 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup_且CAS拒絕進度覆蓋() {
+    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup() {
+        val staging = stagingFile("cancel-ok.zip", byteArrayOf(1))
+        val created = store.createJobIfNoConflict(newJob(staging))!!
+        val pending = store.markCancelCleanupPending(created.jobId)!!
+        val cancelled = store.cancelAndCleanup(pending.jobId)
+        assertNotNull(cancelled)
+        assertNull(store.readJob(pending.jobId))
+        assertFalse(File(pending.stagingPath).exists())
+    }
+
+    @Test
+    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup_且CAS只允許升STATUS_PENDING() {
         val staging = stagingFile("cas-cancel.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val pending = store.markCancelCleanupPending(created.jobId)!!
@@ -298,9 +309,23 @@ class DriveUploadJobStoreTest {
                 expectedGeneration = pending.generation,
             ),
         )
-        val cancelled = store.cancelAndCleanup(pending.jobId)
-        assertNotNull(cancelled)
-        assertNull(store.readJob(pending.jobId))
+        assertNull(
+            store.updateJobCas(
+                pending.copy(confirmedOffset = 1),
+                expectedGeneration = pending.generation,
+            ),
+        )
+        val committed =
+            store.updateJobCas(
+                pending.copy(
+                    phase = DriveUploadPhase.STATUS_PENDING,
+                    remoteFileId = "r",
+                    confirmedOffset = pending.sizeBytes,
+                ),
+                expectedGeneration = pending.generation,
+            )
+        assertNotNull(committed)
+        assertEquals(DriveUploadPhase.STATUS_PENDING, committed!!.phase)
     }
 
     @Test

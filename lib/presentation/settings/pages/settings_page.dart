@@ -78,6 +78,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   WidgetRef get pageRef => ref;
 
+  @override
+  void initState() {
+    super.initState();
+    // 進設定即可重試成功收尾／停止清理，不單靠 App resumed。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(ref.read(driveUploadCoordinatorProvider.notifier).refresh());
+    });
+  }
+
   void updatePageState(VoidCallback callback) {
     setState(callback);
   }

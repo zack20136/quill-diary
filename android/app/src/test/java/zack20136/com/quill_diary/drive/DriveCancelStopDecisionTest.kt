@@ -1,7 +1,6 @@
 package zack20136.com.quill_diary.drive
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 import zack20136.com.quill_diary.drive.DriveCancelStopDecision.LocalAction
 
@@ -22,76 +21,64 @@ class DriveCancelStopDecisionTest {
         )
 
     @Test
-    fun 落定後已遠端提交則保留且不刪檔() {
-        val plan =
+    fun 落定後已遠端提交則RetainCommitted() {
+        assertEquals(
+            LocalAction.RetainCommitted,
             DriveCancelStopDecision.plan(
-                snapshotBeforeStop = job(DriveUploadPhase.UPLOADING, remoteFileId = "file-1"),
                 jobAfterSettle = job(DriveUploadPhase.STATUS_PENDING, remoteFileId = "file-1"),
-            )
-        assertEquals(LocalAction.RetainCommitted, plan.localAction)
-        assertNull(plan.remoteFileIdToDelete)
-    }
-
-    @Test
-    fun 落定後仍上傳中則清本機並刪快照遠端檔() {
-        val uploading = job(DriveUploadPhase.UPLOADING, remoteFileId = "file-2")
-        val plan = DriveCancelStopDecision.plan(uploading, uploading)
-        assertEquals(LocalAction.CleanupLocal, plan.localAction)
-        assertEquals("file-2", plan.remoteFileIdToDelete)
-    }
-
-    @Test
-    fun 落定後job已消失則依快照刪遠端殘檔() {
-        val plan =
-            DriveCancelStopDecision.plan(
-                snapshotBeforeStop = job(DriveUploadPhase.UPLOADING, remoteFileId = "orphan"),
-                jobAfterSettle = null,
-            )
-        assertEquals(LocalAction.CleanupLocal, plan.localAction)
-        assertEquals("orphan", plan.remoteFileIdToDelete)
-    }
-
-    @Test
-    fun 無遠端檔id時只清本機() {
-        val staged = job(DriveUploadPhase.STAGED)
-        val plan = DriveCancelStopDecision.plan(staged, staged)
-        assertEquals(LocalAction.CleanupLocal, plan.localAction)
-        assertNull(plan.remoteFileIdToDelete)
+            ),
+        )
     }
 
     @Test
     fun PRUNE_PENDING也視為已完成() {
-        val plan =
+        assertEquals(
+            LocalAction.RetainCommitted,
             DriveCancelStopDecision.plan(
-                snapshotBeforeStop = null,
                 jobAfterSettle = job(DriveUploadPhase.PRUNE_PENDING, remoteFileId = "file-3"),
-            )
-        assertEquals(LocalAction.RetainCommitted, plan.localAction)
-        assertNull(plan.remoteFileIdToDelete)
+            ),
+        )
     }
 
     @Test
-    fun worker尚未退出則AwaitWorker且不帶刪檔id() {
-        val uploading = job(DriveUploadPhase.CANCEL_CLEANUP_PENDING, remoteFileId = "file-4")
-        val plan =
+    fun 落定後未遠端提交則CleanupLocal() {
+        assertEquals(
+            LocalAction.CleanupLocal,
             DriveCancelStopDecision.plan(
-                snapshotBeforeStop = uploading,
-                jobAfterSettle = uploading,
+                jobAfterSettle = job(DriveUploadPhase.UPLOADING, remoteFileId = "file-2"),
+            ),
+        )
+        assertEquals(
+            LocalAction.CleanupLocal,
+            DriveCancelStopDecision.plan(jobAfterSettle = null),
+        )
+        assertEquals(
+            LocalAction.CleanupLocal,
+            DriveCancelStopDecision.plan(
+                jobAfterSettle = job(DriveUploadPhase.CANCEL_CLEANUP_PENDING),
+            ),
+        )
+    }
+
+    @Test
+    fun worker尚未退出則AwaitWorker() {
+        assertEquals(
+            LocalAction.AwaitWorker,
+            DriveCancelStopDecision.plan(
+                jobAfterSettle = job(DriveUploadPhase.CANCEL_CLEANUP_PENDING),
                 workerSettled = false,
-            )
-        assertEquals(LocalAction.AwaitWorker, plan.localAction)
-        assertNull(plan.remoteFileIdToDelete)
+            ),
+        )
     }
 
     @Test
-    fun worker尚未退出但已遠端提交仍保留() {
-        val plan =
+    fun worker尚未退出但已遠端提交仍RetainCommitted() {
+        assertEquals(
+            LocalAction.RetainCommitted,
             DriveCancelStopDecision.plan(
-                snapshotBeforeStop = job(DriveUploadPhase.UPLOADING, remoteFileId = "file-5"),
                 jobAfterSettle = job(DriveUploadPhase.STATUS_PENDING, remoteFileId = "file-5"),
                 workerSettled = false,
-            )
-        assertEquals(LocalAction.RetainCommitted, plan.localAction)
-        assertNull(plan.remoteFileIdToDelete)
+            ),
+        )
     }
 }
