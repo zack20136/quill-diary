@@ -92,6 +92,18 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       throw StateError('已有進行中的 Google Drive 上傳。');
     }
 
+    // 補清先前收尾時 silent prune 失敗留下的多餘舊檔；失敗不擋本次上傳。
+    try {
+      await ref
+          .read(vaultBackupServiceProvider)
+          .pruneDriveBackups(
+            retainCount: VaultBackupPolicy.retainCount,
+            interactive: false,
+          );
+    } on Object {
+      // best-effort
+    }
+
     final bool notificationsOk = await _platform
         .requestNotificationPermission();
     final BackupPersistResult prepared = await ref
@@ -213,8 +225,9 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     }
   }
 
-  void _onStateEvent(DriveUploadState next) {
-    unawaited(_enqueue(() => _applyState(next)));
+  /// EventChannel 只喚醒：一律 getState，避免過期 payload 覆寫已收尾狀態。
+  void _onStateEvent(DriveUploadState _) {
+    unawaited(_enqueue(_refreshUnlocked));
   }
 
   Future<void> _applyState(DriveUploadState next) async {
@@ -271,29 +284,30 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     DriveUploadJobSnapshot current = latest;
 
     try {
+      // STATUS／PRUNE 冷啟動都冪等寫成功紀錄，避免 store 與 native 脫節漏記。
+      String? accountLabel = current.accountEmail;
+      try {
+        final connection = await ref
+            .read(vaultBackupServiceProvider)
+            .getGoogleDriveConnectionState();
+        accountLabel = connection.email ?? current.accountEmail;
+      } on Object {
+        accountLabel = current.accountEmail;
+      }
+      await ref
+          .read(backupStatusStoreProvider)
+          .recordDriveUploadSuccess(
+            accountLabel: accountLabel,
+            jobId: current.jobId,
+          );
+      ref.invalidate(backupStatusProvider);
+
       if (current.phase == DriveUploadPhase.statusPending) {
-        String? accountLabel = current.accountEmail;
-        try {
-          final connection = await ref
-              .read(vaultBackupServiceProvider)
-              .getGoogleDriveConnectionState();
-          accountLabel = connection.email ?? current.accountEmail;
-        } on Object {
-          accountLabel = current.accountEmail;
-        }
-
-        await ref
-            .read(backupStatusStoreProvider)
-            .recordDriveUploadSuccess(
-              accountLabel: accountLabel,
-              jobId: current.jobId,
-            );
-        ref.invalidate(backupStatusProvider);
-
         final DriveUploadJobSnapshot? marked = await _platform
             .markStatusRecorded(current.jobId);
-        if (marked == null) {
-          // 清 key 讓下次 refresh 可重試；勿 _applyState，否則持續 null 會遞迴收尾。
+        // 必須確認已進 PRUNE_PENDING；失敗回 null 時可 refresh 重試。
+        if (marked == null ||
+            marked.phase != DriveUploadPhase.prunePending) {
           _completionKey = null;
           return;
         }
@@ -303,6 +317,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       }
 
       if (current.phase == DriveUploadPhase.prunePending) {
+        // 自動收尾僅靜默授權；prune 失敗仍 finalize（遠端備份已成功）。
         try {
           await ref
               .read(vaultBackupServiceProvider)
@@ -311,14 +326,13 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
                 keepFileId: current.remoteFileId,
                 interactive: false,
               );
-          await _platform.finalizeCommitted(current.jobId);
-          _completionKey = null;
-          state = DriveUploadState(failure: state.failure);
         } on Object {
-          // silent：保留 PRUNE_PENDING，下次 refresh／回前景／進入設定可重試。
-          _completionKey = null;
-          return;
+          // 多餘舊檔留給下次新上傳前的 best-effort prune。
         }
+        await _platform.finalizeCommitted(current.jobId);
+        _completionKey = null;
+        // 以 getState 對帳；不可 _applyState（仍 needsCompletion 會遞迴收尾）。
+        state = await _platform.getState();
       }
     } on Object {
       _completionKey = null;

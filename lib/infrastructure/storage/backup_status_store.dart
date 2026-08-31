@@ -219,9 +219,12 @@ class BackupStatusStore {
     return _enqueue(() async {
       final BackupStatusSnapshot current = await _readUnlocked();
       final String? trimmedJobId = jobId?.trim();
-      if (trimmedJobId != null &&
+      final bool sameJob =
+          trimmedJobId != null &&
           trimmedJobId.isNotEmpty &&
-          current.lastDriveUploadJobId == trimmedJobId) {
+          current.lastDriveUploadJobId == trimmedJobId;
+      // 同 jobId 已記過：僅在仍有失敗紀錄時清掉後返回。
+      if (sameJob && current.lastFailure == null) {
         return;
       }
       final String? trimmedAccount = accountLabel?.trim();
@@ -229,7 +232,9 @@ class BackupStatusStore {
         BackupStatusSnapshot(
           lastLocalBackupAt: current.lastLocalBackupAt,
           lastExternalExportAt: current.lastExternalExportAt,
-          lastDriveUploadAt: at ?? DateTime.now(),
+          lastDriveUploadAt: sameJob
+              ? current.lastDriveUploadAt
+              : (at ?? DateTime.now()),
           lastDriveAccountLabel:
               trimmedAccount != null && trimmedAccount.isNotEmpty
               ? trimmedAccount
@@ -237,7 +242,7 @@ class BackupStatusStore {
           lastDriveUploadJobId: trimmedJobId?.isNotEmpty == true
               ? trimmedJobId
               : current.lastDriveUploadJobId,
-          lastFailure: current.lastFailure,
+          lastFailure: null,
         ),
       );
     });

@@ -115,29 +115,6 @@ class VaultBackupService {
     );
   }
 
-  Future<BackupPersistResult> uploadBackupToDrive({
-    BackupTaskProgressListener? onProgress,
-  }) {
-    return _runInspectedBackupPipeline(
-      onProgress: onProgress,
-      deliver:
-          (
-            File stagingZip,
-            String fileName,
-            BackupTaskProgressListener? deliverProgress,
-          ) async {
-            await _driveBackupService.uploadBackup(
-              stagingZip,
-              onProgress: deliverProgress,
-            );
-            await _driveBackupService.pruneBackups(
-              retainCount: backupRetainCount,
-            );
-            return fileName;
-          },
-    );
-  }
-
   /// 建立並檢查備份 zip，寫入持久 staging；不刪除檔案，供背景上傳接手。
   Future<BackupPersistResult> prepareDriveUploadStaging({
     required Future<String> Function(String fileName) resolveStagingPath,

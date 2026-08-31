@@ -936,7 +936,6 @@
   },
   "settingsBackupPhaseCreating": "Creating backup…",
   "settingsBackupPhaseCopying": "Writing backup…",
-  "settingsBackupPhaseUploadingDrive": "Uploading to Google Drive…",
   "settingsBackupPhaseDownloadingDrive": "Downloading from Google Drive…",
   "settingsBackupPhaseRestoring": "Restoring backup. Please keep the app open…",
   "settingsBackupStartingAfterRestore": "Starting the restored diary vault…",

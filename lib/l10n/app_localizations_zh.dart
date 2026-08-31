@@ -1510,9 +1510,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackupPhaseCopying => '正在寫入備份…';
 
   @override
-  String get settingsBackupPhaseUploadingDrive => '正在上傳到 Google Drive…';
-
-  @override
   String get settingsBackupPhaseDownloadingDrive => '正在從 Google Drive 下載…';
 
   @override

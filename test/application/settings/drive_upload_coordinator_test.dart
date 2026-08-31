@@ -81,8 +81,10 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   int finalizeCalls = 0;
   int markStatusCalls = 0;
   int ackCalls = 0;
-  /// 模擬 markStatusRecorded CAS 暫時失敗。
+  /// 模擬 markStatusRecorded CAS 失敗（回 null）。
   bool rejectMarkStatus = false;
+  /// 模擬 finalizeCommitted 失敗（job 仍留在 store）。
+  bool rejectFinalize = false;
 
   DriveUploadState get envelope =>
       DriveUploadState(job: active, failure: failure);
@@ -160,11 +162,12 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   @override
   Future<DriveUploadJobSnapshot?> markStatusRecorded(String jobId) async {
     markStatusCalls++;
-    if (rejectMarkStatus) {
-      return null;
-    }
     final DriveUploadJobSnapshot? current = active;
     if (current == null || current.jobId != jobId) {
+      return null;
+    }
+    // 模擬原生 CAS 失敗回 null。
+    if (rejectMarkStatus) {
       return null;
     }
     active = _job(
@@ -180,7 +183,12 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   @override
   Future<void> finalizeCommitted(String jobId) async {
     finalizeCalls++;
-    active = null;
+    if (rejectFinalize) {
+      return;
+    }
+    if (active?.jobId == jobId) {
+      active = null;
+    }
   }
 
   @override
@@ -188,6 +196,8 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
 
   @override
   Future<bool> requestNotificationPermission() async => true;
+
+  void emitState(DriveUploadState state) => _events.add(state);
 
   void dispose() {
     unawaited(_events.close());
@@ -297,6 +307,12 @@ void main() {
     );
   }
 
+  /// EventChannel 為非同步投遞；先讓監聽入隊，再 refresh 以排空協調器佇列。
+  Future<void> settleAfterEmit(DriveUploadCoordinator coordinator) async {
+    await Future<void>.delayed(Duration.zero);
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+  }
+
   test('build 時 refresh 不會因巢狀 enqueue 卡住', () async {
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
@@ -391,7 +407,7 @@ void main() {
     expect(status.lastFailure?.message, fgsMessage);
   });
 
-  test('markStatusRecorded 暫時失敗後 refresh 仍可完成收尾', () async {
+  test('markStatusRecorded 未進 PRUNE_PENDING 時不清成死鎖，refresh 可重試', () async {
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
     final DriveUploadCoordinator coordinator = container.read(
@@ -413,6 +429,7 @@ void main() {
     expect(platform.markStatusCalls, 1);
     expect(platform.finalizeCalls, 0);
     expect(platform.active?.phase, DriveUploadPhase.statusPending);
+    expect(coordinator.job?.phase, DriveUploadPhase.statusPending);
 
     platform.rejectMarkStatus = false;
     await coordinator.refresh().timeout(const Duration(seconds: 2));
@@ -422,7 +439,67 @@ void main() {
     expect(coordinator.job, isNull);
   });
 
-  test('prune 失敗不清 finalize，修正後可重試完成', () async {
+  test('finalize 失敗後 getState 仍有 job，不假裝清空', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-finalize-fail',
+      phase: DriveUploadPhase.prunePending,
+      generation: 4,
+    );
+    platform.rejectFinalize = true;
+    platform.finalizeCalls = 0;
+    backupService.pruneCalls = 0;
+
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(backupService.pruneCalls, 1);
+    expect(platform.finalizeCalls, 1);
+    expect(platform.active?.phase, DriveUploadPhase.prunePending);
+    expect(coordinator.job?.phase, DriveUploadPhase.prunePending);
+    expect(coordinator.job?.jobId, 'job-finalize-fail');
+
+    // 下次 refresh 可再試；仍不遞迴堆疊（本輪只多一次 finalize）。
+    platform.rejectFinalize = false;
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(platform.finalizeCalls, 2);
+    expect(coordinator.job, isNull);
+  });
+
+  test('冷啟動 PRUNE_PENDING 會寫成功紀錄並 finalize', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-cold-prune',
+      phase: DriveUploadPhase.prunePending,
+      generation: 5,
+    );
+    platform.markStatusCalls = 0;
+    platform.finalizeCalls = 0;
+    backupService.pruneCalls = 0;
+
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(platform.markStatusCalls, 0);
+    expect(backupService.pruneCalls, 1);
+    expect(platform.finalizeCalls, 1);
+    expect(coordinator.job, isNull);
+    final BackupStatusSnapshot status = await container
+        .read(backupStatusStoreProvider)
+        .read();
+    expect(status.lastDriveUploadJobId, 'job-cold-prune');
+    expect(status.lastDriveUploadAt, isNotNull);
+  });
+
+  test('prune 失敗仍 finalize 並清除 job', () async {
     backupService.pruneError = StateError('prune failed');
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
@@ -443,14 +520,8 @@ void main() {
     await coordinator.refresh().timeout(const Duration(seconds: 2));
     expect(platform.markStatusCalls, 1);
     expect(backupService.pruneCalls, 1);
-    expect(platform.finalizeCalls, 0);
-    expect(platform.active?.phase, DriveUploadPhase.prunePending);
-
-    backupService.pruneError = null;
-    await coordinator.refresh().timeout(const Duration(seconds: 2));
-    expect(backupService.pruneCalls, 2);
-    expect(platform.markStatusCalls, 1);
     expect(platform.finalizeCalls, 1);
+    expect(platform.active, isNull);
     expect(coordinator.job, isNull);
   });
 
@@ -475,6 +546,69 @@ void main() {
     expect(platform.markStatusCalls, 1);
     expect(backupService.pruneCalls, 1);
     expect(platform.finalizeCalls, 1);
+    expect(coordinator.job, isNull);
+  });
+
+  test('新背景上傳開始前會 best-effort silent prune', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+    backupService.pruneCalls = 0;
+
+    final BackupPersistResult result = await coordinator
+        .startBackgroundUpload();
+    expect(result.status, BackupPersistStatus.success);
+    expect(backupService.pruneCalls, 1);
+    expect(coordinator.job?.phase, DriveUploadPhase.uploading);
+  });
+
+  test('新上傳前 prune 失敗仍可開始上傳', () async {
+    backupService.pruneError = StateError('pre-upload prune failed');
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+    backupService.pruneCalls = 0;
+
+    final BackupPersistResult result = await coordinator
+        .startBackgroundUpload();
+    expect(result.status, BackupPersistStatus.success);
+    expect(backupService.pruneCalls, 1);
+    expect(coordinator.job?.phase, DriveUploadPhase.uploading);
+  });
+
+  test('收尾清空後過期的 EventChannel 快照不得回寫 job', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-stale-event',
+      phase: DriveUploadPhase.statusPending,
+      generation: 2,
+    );
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(coordinator.job, isNull);
+    expect(platform.active, isNull);
+
+    platform.emitState(
+      DriveUploadState(
+        job: _job(
+          jobId: 'job-stale-event',
+          phase: DriveUploadPhase.uploading,
+          generation: 1,
+        ),
+      ),
+    );
+    await settleAfterEmit(coordinator);
     expect(coordinator.job, isNull);
   });
 

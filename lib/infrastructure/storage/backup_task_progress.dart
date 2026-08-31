@@ -2,7 +2,6 @@
 enum BackupTaskPhase {
   creatingBackup,
   copyingBackup,
-  uploadingDrive,
   downloadingDrive,
   restoringBackup,
   startingAfterRestore,

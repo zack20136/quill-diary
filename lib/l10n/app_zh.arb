@@ -936,7 +936,6 @@
   },
   "settingsBackupPhaseCreating": "正在建立備份…",
   "settingsBackupPhaseCopying": "正在寫入備份…",
-  "settingsBackupPhaseUploadingDrive": "正在上傳到 Google Drive…",
   "settingsBackupPhaseDownloadingDrive": "正在從 Google Drive 下載…",
   "settingsBackupPhaseRestoring": "正在還原備份，請勿關閉應用程式…",
   "settingsBackupStartingAfterRestore": "正在啟動還原後的日記庫…",

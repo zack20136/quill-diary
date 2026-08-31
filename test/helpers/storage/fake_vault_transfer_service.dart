@@ -72,7 +72,6 @@ class FakeVaultTransferService extends VaultTransferService {
   int saveBackupToAppLocalCalls = 0;
   int listAppLocalBackupsCalls = 0;
   int saveBackupToExternalDirectoryCalls = 0;
-  int uploadBackupToDriveCalls = 0;
   int listDriveBackupsCalls = 0;
   int downloadDriveBackupToTempFileCalls = 0;
   int pickLocalBackupFileCalls = 0;
@@ -98,14 +97,6 @@ class FakeVaultTransferService extends VaultTransferService {
     BackupTaskProgressListener? onProgress,
   }) {
     saveBackupToExternalDirectoryCalls++;
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<BackupPersistResult> uploadBackupToDrive({
-    BackupTaskProgressListener? onProgress,
-  }) {
-    uploadBackupToDriveCalls++;
     throw UnimplementedError();
   }
 
@@ -203,7 +194,8 @@ class _UnusedDriveBackupService implements DriveBackupService {
   Future<List<DriveBackupFile>> listBackups({bool interactive = true}) => throw UnimplementedError();
 
   @override
-  Future<void> deleteBackup(String fileId) => throw UnimplementedError();
+  Future<void> deleteBackup(String fileId, {bool interactive = true}) =>
+      throw UnimplementedError();
 
   @override
   Future<List<DriveBackupFile>> pruneBackups({required int retainCount, String? keepFileId, bool interactive = true}) =>
@@ -214,10 +206,4 @@ class _UnusedDriveBackupService implements DriveBackupService {
 
   @override
   Future<void> disconnect() => throw UnimplementedError();
-
-  @override
-  Future<String> uploadBackup(
-    File backupFile, {
-    BackupTaskProgressListener? onProgress,
-  }) => throw UnimplementedError();
 }

@@ -240,14 +240,9 @@ abstract class DriveBackupService {
 
   Future<void> disconnect();
 
-  Future<String> uploadBackup(
-    File backupFile, {
-    BackupTaskProgressListener? onProgress,
-  });
-
   Future<List<DriveBackupFile>> listBackups({bool interactive = true});
 
-  Future<void> deleteBackup(String fileId);
+  Future<void> deleteBackup(String fileId, {bool interactive = true});
 
   Future<List<DriveBackupFile>> pruneBackups({
     required int retainCount,
@@ -610,36 +605,6 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<String> uploadBackup(
-    File backupFile, {
-    BackupTaskProgressListener? onProgress,
-  }) async {
-    final drive.DriveApi api = await _createAuthorizedDriveApi();
-    final drive.File metadata = drive.File(
-      name: p.basename(backupFile.path),
-      parents: const <String>['appDataFolder'],
-    );
-    final int totalBytes = await backupFile.length();
-    onProgress?.call(
-      const BackupTaskProgress(phase: BackupTaskPhase.uploadingDrive),
-    );
-    final Stream<List<int>> monitoredStream = reportByteStreamProgress(
-      backupFile.openRead(),
-      totalBytes: totalBytes,
-      phase: BackupTaskPhase.uploadingDrive,
-      onProgress: onProgress,
-    );
-    final drive.File created = await api.files.create(
-      metadata,
-      uploadMedia: drive.Media(monitoredStream, totalBytes),
-    );
-    if (created.id == null || created.id!.isEmpty) {
-      throw StateError('Google Drive 上傳完成後沒有回傳有效檔案 ID。');
-    }
-    return created.id!;
-  }
-
-  @override
   Future<List<DriveBackupFile>> listBackups({bool interactive = true}) async {
     final drive.DriveApi api = await _createAuthorizedDriveApi(
       interactive: interactive,
@@ -678,12 +643,14 @@ class GoogleDriveBackupService implements DriveBackupService {
   }
 
   @override
-  Future<void> deleteBackup(String fileId) async {
+  Future<void> deleteBackup(String fileId, {bool interactive = true}) async {
     final String trimmedFileId = fileId.trim();
     if (trimmedFileId.isEmpty) {
       throw StateError('Google Drive 備份檔案 ID 不可為空。');
     }
-    final drive.DriveApi api = await _createAuthorizedDriveApi();
+    final drive.DriveApi api = await _createAuthorizedDriveApi(
+      interactive: interactive,
+    );
     await api.files.delete(trimmedFileId);
   }
 
@@ -720,7 +687,7 @@ class GoogleDriveBackupService implements DriveBackupService {
     final List<String> failures = <String>[];
     for (final DriveBackupFile backup in toDelete) {
       try {
-        await deleteBackup(backup.id);
+        await deleteBackup(backup.id, interactive: interactive);
       } on Object catch (error) {
         failures.add('${backup.id}: $error');
       }

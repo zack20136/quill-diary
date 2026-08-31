@@ -53,7 +53,6 @@ String settingsBackupTaskProgressLabel(
   return switch (progress.phase) {
     BackupTaskPhase.creatingBackup => l10n.settingsBackupPhaseCreating,
     BackupTaskPhase.copyingBackup => l10n.settingsBackupPhaseCopying,
-    BackupTaskPhase.uploadingDrive => l10n.settingsBackupPhaseUploadingDrive,
     BackupTaskPhase.downloadingDrive =>
       l10n.settingsBackupPhaseDownloadingDrive,
     BackupTaskPhase.restoringBackup => l10n.settingsBackupPhaseRestoring,

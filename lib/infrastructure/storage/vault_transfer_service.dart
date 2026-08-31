@@ -122,12 +122,6 @@ class VaultTransferService {
     );
   }
 
-  Future<BackupPersistResult> uploadBackupToDrive({
-    BackupTaskProgressListener? onProgress,
-  }) {
-    return _backupService.uploadBackupToDrive(onProgress: onProgress);
-  }
-
   Future<List<LocalBackupFile>> listAppLocalBackups() {
     return _backupService.listAppLocalBackups();
   }

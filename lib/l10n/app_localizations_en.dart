@@ -1560,9 +1560,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBackupPhaseCopying => 'Writing backup…';
 
   @override
-  String get settingsBackupPhaseUploadingDrive => 'Uploading to Google Drive…';
-
-  @override
   String get settingsBackupPhaseDownloadingDrive =>
       'Downloading from Google Drive…';
 

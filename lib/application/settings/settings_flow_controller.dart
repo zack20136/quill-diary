@@ -234,14 +234,6 @@ class SettingsFlowController {
         .saveBackupToExternalDirectory(l10n: l10n, onProgress: onProgress);
   }
 
-  Future<BackupPersistResult> uploadDriveBackup({
-    BackupTaskProgressListener? onProgress,
-  }) {
-    return _ref
-        .read(vaultBackupServiceProvider)
-        .uploadBackupToDrive(onProgress: onProgress);
-  }
-
   Future<PreparedRestoreRequest?> prepareAppLocalRestore({
     required Future<LocalBackupFile?> Function(List<LocalBackupFile> backups)
     pickBackup,

@@ -2741,12 +2741,6 @@ abstract class AppLocalizations {
   /// **'正在寫入備份…'**
   String get settingsBackupPhaseCopying;
 
-  /// No description provided for @settingsBackupPhaseUploadingDrive.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在上傳到 Google Drive…'**
-  String get settingsBackupPhaseUploadingDrive;
-
   /// No description provided for @settingsBackupPhaseDownloadingDrive.
   ///
   /// In zh, this message translates to:

@@ -11,7 +11,8 @@ class UnusedDriveBackupService implements DriveBackupService {
   Future<DriveConnectionState> connect() => throw UnimplementedError();
 
   @override
-  Future<void> deleteBackup(String fileId) => throw UnimplementedError();
+  Future<void> deleteBackup(String fileId, {bool interactive = true}) =>
+      throw UnimplementedError();
 
   @override
   Future<File> downloadBackupById({
@@ -42,10 +43,4 @@ class UnusedDriveBackupService implements DriveBackupService {
 
   @override
   Future<void> disconnect() => throw UnimplementedError();
-
-  @override
-  Future<String> uploadBackup(
-    File backupFile, {
-    BackupTaskProgressListener? onProgress,
-  }) => throw UnimplementedError();
 }

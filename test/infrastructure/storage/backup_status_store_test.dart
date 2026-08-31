@@ -88,4 +88,42 @@ void main() {
     expect(snapshot.lastDriveUploadAt, isNotNull);
     expect(snapshot.lastDriveAccountLabel, isNull);
   });
+
+  test('Drive 上傳成功會清除先前的失敗紀錄', () async {
+    await store.recordFailure(
+      action: BackupStatusAction.driveUpload,
+      message: '上次失敗',
+      at: DateTime(2026, 1, 1),
+    );
+    await store.recordDriveUploadSuccess(
+      accountLabel: 'user@example.com',
+      jobId: 'job-ok',
+      at: DateTime(2026, 1, 2),
+    );
+    final BackupStatusSnapshot snapshot = await store.read();
+    expect(snapshot.lastDriveUploadJobId, 'job-ok');
+    expect(snapshot.lastFailure, isNull);
+  });
+
+  test('同 jobId 重入仍會清除殘留的失敗紀錄', () async {
+    await store.recordDriveUploadSuccess(
+      accountLabel: 'user@example.com',
+      jobId: 'job-same',
+      at: DateTime(2026, 1, 1),
+    );
+    await store.recordFailure(
+      action: BackupStatusAction.driveUpload,
+      message: '之後又失敗',
+      at: DateTime(2026, 1, 2),
+    );
+    await store.recordDriveUploadSuccess(
+      accountLabel: 'user@example.com',
+      jobId: 'job-same',
+      at: DateTime(2026, 1, 3),
+    );
+    final BackupStatusSnapshot snapshot = await store.read();
+    expect(snapshot.lastDriveUploadJobId, 'job-same');
+    expect(snapshot.lastDriveUploadAt, DateTime(2026, 1, 1));
+    expect(snapshot.lastFailure, isNull);
+  });
 }

@@ -206,9 +206,10 @@ object DriveUploadBridge {
             "markStatusRecorded" -> {
                 val jobId = call.argument<String>("jobId")?.trim().orEmpty()
                 ioExecutor.execute {
-                    jobStore.markStatusRecorded(jobId)
+                    // 成功回 job map；CAS 失敗回 null（勿回 envelope，避免 Flutter 誤當成功）。
+                    val marked = jobStore.markStatusRecorded(jobId)
                     emitStateEnvelope()
-                    replySuccess(result, jobStore.getStateEnvelope())
+                    replySuccess(result, marked?.toMap())
                 }
             }
             "finalizeCommitted" -> {

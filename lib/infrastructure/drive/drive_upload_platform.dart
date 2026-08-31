@@ -100,6 +100,7 @@ class DriveUploadPlatform {
     );
   }
 
+  /// 原生成功回 job map（或舊版 envelope）；CAS 失敗回 `null`。
   Future<DriveUploadJobSnapshot?> markStatusRecorded(String jobId) async {
     if (!isSupported) {
       return null;
@@ -108,6 +109,9 @@ class DriveUploadPlatform {
       'markStatusRecorded',
       <String, Object?>{'jobId': jobId},
     );
+    if (raw == null) {
+      return null;
+    }
     return _decodeState(raw).job;
   }
 
