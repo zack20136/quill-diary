@@ -6,20 +6,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 /// 協調 App 端備份準備與原生背景上傳生命週期。
 class DriveUploadCoordinator extends Notifier<DriveUploadState> {
   late final DriveUploadPlatform _platform;
   StreamSubscription<DriveUploadState>? _stateSubscription;
   Future<void> _queue = Future<void>.value();
+  Future<void>? _automaticPrune;
   String? _completionKey;
+  bool _appIsForeground = true;
 
   DriveUploadJobSnapshot? get job => state.job;
 
@@ -44,25 +50,32 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
 
   Future<T> _enqueue<T>(Future<T> Function() action) {
     final Completer<T> completer = Completer<T>();
-    _queue = _queue
-        .catchError((Object _) {})
-        .then((_) async {
-          try {
-            final T value = await action();
-            if (!completer.isCompleted) {
-              completer.complete(value);
-            }
-          } catch (error, stack) {
-            if (!completer.isCompleted) {
-              completer.completeError(error, stack);
-            }
-          }
-        });
+    _queue = _queue.catchError((Object _) {}).then((_) async {
+      try {
+        final T value = await action();
+        if (!completer.isCompleted) {
+          completer.complete(value);
+        }
+      } catch (error, stack) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stack);
+        }
+      }
+    });
     return completer.future;
   }
 
   Future<void> refresh() {
     return _enqueue(_refreshUnlocked);
+  }
+
+  /// 同步 App 是否可互動；背景事件只更新 persisted job，不啟動 Google 收尾。
+  void setAppForeground(bool isForeground) {
+    _appIsForeground = isForeground;
+  }
+
+  Future<void> syncLocale(AppLanguage language) {
+    return _enqueue(() => _platform.setLocale(language.storageValue));
   }
 
   Future<void> _refreshUnlocked() async {
@@ -85,24 +98,26 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     BackupTaskProgressListener? onProgress,
   }) async {
     if (!_platform.isSupported) {
-      throw UnsupportedError('Google Drive 背景上傳僅支援 Android。');
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.backgroundUploadUnsupported,
+      );
     }
+    final AppLanguage language = ref
+        .read(personalizationPreferencesProvider)
+        .maybeWhen(
+          data: (PersonalizationPreferences value) => value.locale,
+          orElse: () => AppLanguage.zh,
+        );
+    await _platform.setLocale(language.storageValue);
     await _refreshUnlocked();
     if (hasActiveJob) {
-      throw StateError('已有進行中的 Google Drive 上傳。');
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.uploadAlreadyActive,
+      );
     }
 
-    // 補清先前收尾時 silent prune 失敗留下的多餘舊檔；失敗不擋本次上傳。
-    try {
-      await ref
-          .read(vaultBackupServiceProvider)
-          .pruneDriveBackups(
-            retainCount: VaultBackupPolicy.retainCount,
-            interactive: false,
-          );
-    } on Object {
-      // best-effort
-    }
+    // 補清先前收尾時留下的多餘舊檔；失敗或逾時不擋本次上傳。
+    await _runAutomaticPrune();
 
     final bool notificationsOk = await _platform
         .requestNotificationPermission();
@@ -149,10 +164,9 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         // 原生已 failAndCleanup（staging 已清）；failure 只經 getState → _applyState 寫入一次。
         nativeAccepted = true;
         await _applyState(await _platform.getState());
-        final String message =
-            error.message?.trim().isNotEmpty == true
-            ? error.message!.trim()
-            : '無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。';
+        final String message = const GoogleDriveException(
+          GoogleDriveErrorCode.backgroundStartNotAllowed,
+        ).localizedMessage(_currentL10n());
         return BackupPersistResult(
           status: BackupPersistStatus.cancelled,
           message: message,
@@ -247,7 +261,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       _completionKey = null;
       return;
     }
-    if (job.needsCompletionHandling) {
+    if (_appIsForeground && job.needsCompletionHandling) {
       await _completeCommittedJob(job);
     }
   }
@@ -255,7 +269,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
   Future<void> _recordFailureStatus(DriveUploadFailureNotice failure) async {
     final String message = failure.message.trim().isNotEmpty
         ? failure.message.trim()
-        : '上次 Google Drive 備份未完成，已取消。請重新備份。';
+        : _currentL10n().driveUploadAbandonedFailureBody;
     await ref
         .read(backupStatusStoreProvider)
         .recordFailure(
@@ -263,6 +277,16 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
           message: message,
         );
     ref.invalidate(backupStatusProvider);
+  }
+
+  AppLocalizations _currentL10n() {
+    final AppLanguage language = ref
+        .read(personalizationPreferencesProvider)
+        .maybeWhen(
+          data: (PersonalizationPreferences value) => value.locale,
+          orElse: () => AppLanguage.zh,
+        );
+    return lookupAppLocalizations(language.materialLocale);
   }
 
   Future<void> _completeCommittedJob(DriveUploadJobSnapshot job) async {
@@ -306,8 +330,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         final DriveUploadJobSnapshot? marked = await _platform
             .markStatusRecorded(current.jobId);
         // 必須確認已進 PRUNE_PENDING；失敗回 null 時可 refresh 重試。
-        if (marked == null ||
-            marked.phase != DriveUploadPhase.prunePending) {
+        if (marked == null || marked.phase != DriveUploadPhase.prunePending) {
           _completionKey = null;
           return;
         }
@@ -317,18 +340,8 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       }
 
       if (current.phase == DriveUploadPhase.prunePending) {
-        // 自動收尾僅靜默授權；prune 失敗仍 finalize（遠端備份已成功）。
-        try {
-          await ref
-              .read(vaultBackupServiceProvider)
-              .pruneDriveBackups(
-                retainCount: VaultBackupPolicy.retainCount,
-                keepFileId: current.remoteFileId,
-                interactive: false,
-              );
-        } on Object {
-          // 多餘舊檔留給下次新上傳前的 best-effort prune。
-        }
+        // 遠端備份已成功；prune 失敗或逾時仍 finalize。
+        await _runAutomaticPrune(keepFileId: current.remoteFileId);
         await _platform.finalizeCommitted(current.jobId);
         _completionKey = null;
         // 以 getState 對帳；不可 _applyState（仍 needsCompletion 會遞迴收尾）。
@@ -342,6 +355,34 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
 
   String _completionKeyFor(DriveUploadJobSnapshot job) {
     return '${job.jobId}:${job.generation}:${job.phase.storageName}';
+  }
+
+  /// 自動 prune 為 single-flight；逾時只停止等待，底層完成前不重複啟動。
+  Future<void> _runAutomaticPrune({String? keepFileId}) async {
+    if (_automaticPrune != null) {
+      return;
+    }
+    try {
+      final Future<void> operation = ref
+          .read(vaultBackupServiceProvider)
+          .pruneDriveBackups(
+            retainCount: VaultBackupPolicy.retainCount,
+            keepFileId: keepFileId,
+            interactive: false,
+          );
+      late final Future<void> tracked;
+      tracked = operation.catchError((Object _) {}).whenComplete(() {
+        if (identical(_automaticPrune, tracked)) {
+          _automaticPrune = null;
+        }
+      });
+      _automaticPrune = tracked;
+      await tracked.timeout(
+        ref.read(driveUploadCompletionPruneTimeoutProvider),
+      );
+    } on Object {
+      // best-effort；多餘舊檔留給下一次可執行的自動 prune。
+    }
   }
 
   DriveUploadJobSnapshot? _jobFromPlatformDetails(Object? details) {
@@ -369,6 +410,10 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
 final driveUploadPlatformProvider = Provider<DriveUploadPlatform>((Ref ref) {
   return DriveUploadPlatform();
 });
+
+final driveUploadCompletionPruneTimeoutProvider = Provider<Duration>(
+  (Ref ref) => const Duration(seconds: 10),
+);
 
 final driveUploadCoordinatorProvider =
     NotifierProvider<DriveUploadCoordinator, DriveUploadState>(

@@ -129,7 +129,7 @@ class DriveUploadJobStoreTest {
             store.failAndCleanup(
                 created.jobId,
                 "abandoned",
-                "上次 Google Drive 備份未完成，已取消。",
+                "上次備份未完成，請重新備份。",
             )
         assertNotNull(failed)
         assertNull(store.readJob(created.jobId))
@@ -137,7 +137,7 @@ class DriveUploadJobStoreTest {
         val notice = store.readFailureNotice()
         assertNotNull(notice)
         assertEquals(created.jobId, notice!!.jobId)
-        assertEquals("上次 Google Drive 備份未完成，已取消。", notice.message)
+        assertEquals("上次備份未完成，請重新備份。", notice.message)
         // 讀取不清除
         assertNotNull(store.readFailureNotice())
     }
@@ -300,6 +300,30 @@ class DriveUploadJobStoreTest {
             )
         assertNotNull(committed)
         assertEquals(DriveUploadPhase.STATUS_PENDING, committed!!.phase)
+    }
+
+    @Test
+    fun Progress_持久化會連續保留最新伺服器確認進度() {
+        val staging = stagingFile("progress.zip", ByteArray(100))
+        val created = store.createJobIfNoConflict(newJob(staging, size = 100))!!
+        val first =
+            store.updateJobCas(
+                created.copy(phase = DriveUploadPhase.UPLOADING, confirmedOffset = 25),
+                expectedGeneration = created.generation,
+                durability = DriveUploadJobStore.Durability.Progress,
+            )!!
+        val second =
+            store.updateJobCas(
+                first.copy(confirmedOffset = 50),
+                expectedGeneration = first.generation,
+                durability = DriveUploadJobStore.Durability.Progress,
+            )!!
+
+        val persisted = store.readJob(created.jobId)!!
+        assertEquals(created.jobId, persisted.jobId)
+        assertEquals(DriveUploadPhase.UPLOADING, persisted.phase)
+        assertEquals(50L, persisted.confirmedOffset)
+        assertEquals(second.generation, persisted.generation)
     }
 
     @Test

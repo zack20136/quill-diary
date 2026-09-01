@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drive_upload_notification_channel_name">Google Drive backup</string>
+    <string name="drive_upload_notification_channel_description">Shows Google Drive backup status</string>
+    <string name="drive_upload_notification_title">Google Drive backup</string>
+    <string name="drive_upload_notification_progress">Uploading: %1$s (%2$d%%)</string>
+    <string name="drive_upload_notification_waiting_network">Waiting for network</string>
+    <string name="drive_upload_notification_cancel_cleanup">Clearing unfinished backup…</string>
+    <string name="drive_upload_notification_completed">Google Drive backup complete: %1$s</string>
+    <string name="drive_upload_notification_failed">Backup failed. Open the app for details.</string>
+    <string name="drive_upload_notification_stop">Stop upload</string>
+    <string name="drive_upload_error_unexpected">An unexpected upload error occurred.</string>
+    <string name="drive_upload_error_max_attempts">Too many retries. The backup was stopped.</string>
+    <string name="drive_upload_error_completion_mismatch">The upload result does not match the backup.</string>
+    <string name="drive_upload_error_invalid_range">The server returned invalid upload progress.</string>
+    <string name="drive_upload_error_session_expired">The upload session expired. Back up again.</string>
+    <string name="drive_upload_error_forbidden">Google Drive permission is missing. Re-link your account and back up again.</string>
+    <string name="drive_upload_error_http">Upload failed (HTTP %1$d).</string>
+    <string name="drive_upload_error_incomplete">The upload did not finish. Try again.</string>
+    <string name="drive_upload_error_staging_invalid">The temporary backup is missing or has changed. Back up again.</string>
+    <string name="drive_upload_error_generate_id">Could not create the Google Drive backup file.</string>
+    <string name="drive_upload_error_missing_session">Could not create a Google Drive upload session.</string>
+    <string name="drive_upload_error_conflict">A Google Drive file conflict occurred. Back up again.</string>
+    <string name="drive_upload_error_authorization">Google Drive authorization expired. Re-link your account and back up again.</string>
+    <string name="drive_upload_error_start_failed">Could not start the Google Drive upload.</string>
+    <string name="drive_upload_error_fgs_start_not_allowed">Could not start uploading in the background. Keep the app on screen and try again.</string>
+    <string name="drive_upload_error_invalid_args">Required upload information is missing.</string>
+    <string name="drive_upload_error_staging_path_invalid">The temporary backup path is invalid.</string>
+    <string name="drive_upload_error_needs_authorization">Link a Google account first.</string>
+    <string name="drive_upload_error_job_in_progress">A Google Drive upload is already in progress.</string>
+    <string name="drive_upload_error_cancel_not_allowed">The remote backup is complete and cannot be cancelled.</string>
+    <string name="drive_upload_error_abandon_not_allowed">The remote backup is complete and cleanup cannot be abandoned.</string>
+    <string name="drive_upload_error_upload_finishing">The upload is still finishing. Try again shortly.</string>
+    <string name="drive_upload_error_permission_in_progress">A notification permission request is already in progress.</string>
+    <string name="drive_upload_failure_default">The previous backup did not finish. Back up again.</string>
+    <string name="drive_auth_in_progress">A Google Drive connection is already in progress.</string>
+    <string name="drive_auth_account_missing">Google sign-in completed, but no account information was returned.</string>
+    <string name="drive_auth_scope_missing">Google Drive access was not granted. Please reconnect.</string>
+    <string name="drive_auth_configuration_error">Google sign-in is not configured for this app build. Check the app signing and OAuth settings.</string>
+    <string name="drive_auth_network_error">Google services are unavailable. Check your connection and try again.</string>
+    <string name="drive_auth_reauth_error">Google account verification did not finish. Reconnect and try again.</string>
+    <string name="drive_auth_unavailable">Google sign-in is unavailable on this device. Check Google Play services and try again.</string>
+    <string name="drive_auth_cancelled">Google sign-in was canceled. The account is not connected.</string>
+    <string name="drive_auth_failed">Google sign-in failed. Please try again later.</string>
+</resources>

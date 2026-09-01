@@ -2,7 +2,6 @@ package zack20136.com.quill_diary.drive
 
 import android.accounts.Account
 import android.content.Context
-import android.content.Intent
 import com.google.android.gms.auth.GoogleAuthException
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.UserRecoverableAuthException
@@ -18,13 +17,13 @@ class DriveAccessTokenProvider(private val context: Context) {
     )
 
     sealed class TokenError {
-        data class NeedsUserInteraction(val recoveryIntent: Intent?) : TokenError()
+        data object NeedsUserInteraction : TokenError()
 
-        data class NotSignedIn(val message: String) : TokenError()
+        data object NotSignedIn : TokenError()
 
-        data class Transient(val message: String) : TokenError()
+        data object Transient : TokenError()
 
-        data class Permanent(val message: String) : TokenError()
+        data object Permanent : TokenError()
     }
 
     fun currentAccountSnapshot(): Pair<String, String>? {
@@ -50,7 +49,7 @@ class DriveAccessTokenProvider(private val context: Context) {
         }
         val snapshot = currentAccountSnapshot()
         if (snapshot == null) {
-            return TokenError.NeedsUserInteraction(null)
+            return TokenError.NeedsUserInteraction
         }
         val (accountId, accountEmail) = snapshot
         return matchIds(job, accountId, accountEmail)
@@ -67,12 +66,12 @@ class DriveAccessTokenProvider(private val context: Context) {
         // 有 accountId 時以 ID 為準；僅在缺少 ID 時退回比較 email。
         if (job.accountId.isNotBlank()) {
             if (accountId != job.accountId) {
-                return TokenError.Permanent("Google 帳戶已變更，請在 App 內重新開始備份。")
+                return TokenError.Permanent
             }
             return null
         }
         if (!accountEmail.equals(job.accountEmail, ignoreCase = true)) {
-            return TokenError.Permanent("Google 帳戶已變更，請在 App 內重新開始備份。")
+            return TokenError.Permanent
         }
         return null
     }
@@ -83,13 +82,13 @@ class DriveAccessTokenProvider(private val context: Context) {
             !GoogleSignIn.hasPermissions(signedIn, Scope(DRIVE_APPDATA_SCOPE))
         ) {
             return Result.failure(
-                TokenException(TokenError.NeedsUserInteraction(null)),
+                TokenException(TokenError.NeedsUserInteraction),
             )
         }
         val email = signedIn.email?.trim().orEmpty()
         if (email.isEmpty() || signedIn.account == null) {
             return Result.failure(
-                TokenException(TokenError.NotSignedIn("尚未完成 Google 帳號登入。")),
+                TokenException(TokenError.NotSignedIn),
             )
         }
         val accountId = signedIn.id?.trim().orEmpty()
@@ -116,20 +115,20 @@ class DriveAccessTokenProvider(private val context: Context) {
                     accountEmail = email,
                 ),
             )
-        } catch (error: UserRecoverableAuthException) {
+        } catch (_: UserRecoverableAuthException) {
             Result.failure(
-                TokenException(TokenError.NeedsUserInteraction(error.intent)),
+                TokenException(TokenError.NeedsUserInteraction),
             )
-        } catch (error: GoogleAuthException) {
+        } catch (_: GoogleAuthException) {
             Result.failure(
                 TokenException(
-                    TokenError.Permanent(error.message ?: "Google 授權失敗。"),
+                    TokenError.Permanent,
                 ),
             )
-        } catch (error: IOException) {
+        } catch (_: IOException) {
             Result.failure(
                 TokenException(
-                    TokenError.Transient(error.message ?: "暫時無法取得授權。"),
+                    TokenError.Transient,
                 ),
             )
         }

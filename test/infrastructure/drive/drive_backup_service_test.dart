@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
@@ -34,22 +35,46 @@ void main() {
     test('拒絕路徑穿越與看似絕對路徑的檔名', () {
       expect(
         () => sanitizeDriveBackupFileName('../backup.zip'),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<GoogleDriveException>().having(
+            (GoogleDriveException error) => error.code,
+            'code',
+            GoogleDriveErrorCode.invalidBackupName,
+          ),
+        ),
       );
       expect(
         () => sanitizeDriveBackupFileName(r'C:\temp\backup.zip'),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<GoogleDriveException>().having(
+            (GoogleDriveException error) => error.code,
+            'code',
+            GoogleDriveErrorCode.invalidBackupName,
+          ),
+        ),
       );
       expect(
         () => sanitizeDriveBackupFileName('/tmp/backup.zip'),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<GoogleDriveException>().having(
+            (GoogleDriveException error) => error.code,
+            'code',
+            GoogleDriveErrorCode.invalidBackupName,
+          ),
+        ),
       );
     });
 
     test('拒絕非 zip 副檔名', () {
       expect(
         () => sanitizeDriveBackupFileName('backup_2026-05-26.txt'),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<GoogleDriveException>().having(
+            (GoogleDriveException error) => error.code,
+            'code',
+            GoogleDriveErrorCode.invalidBackupFormat,
+          ),
+        ),
       );
     });
   });

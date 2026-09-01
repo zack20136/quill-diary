@@ -168,6 +168,18 @@ class DriveResumableUploaderTest {
     }
 
     @Test
+    fun 進度百分比無條件捨去且只有完整上傳顯示_100() {
+        assertEquals(0, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 0).progressPercent())
+        assertEquals(29, sampleJob(sizeBytes = 100).copy(confirmedOffset = 29).progressPercent())
+        assertEquals(12, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 129).progressPercent())
+        assertEquals(99, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 999).progressPercent())
+        assertEquals(100, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 1000).progressPercent())
+        assertEquals(100, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 1200).progressPercent())
+        assertEquals(0, sampleJob(sizeBytes = 1000).copy(confirmedOffset = -1).progressPercent())
+        assertEquals(0, sampleJob(sizeBytes = 0).copy(confirmedOffset = 1).progressPercent())
+    }
+
+    @Test
     fun fromMap_把_JSONObject_NULL_當成_null() {
         val job =
             DriveUploadJob.fromMap(
@@ -189,6 +201,13 @@ class DriveResumableUploaderTest {
         assertNull(job!!.lastErrorCode)
         assertNull(job.lastErrorMessage)
         assertNull(job.nextRetryAtEpochMs)
+    }
+
+    @Test
+    fun toMap_不輸出舊版原始錯誤訊息() {
+        val job = sampleJob().copy(lastErrorMessage = "HTTP 503: /private/backup.zip")
+
+        assertNull(job.toMap()["lastErrorMessage"])
     }
 
     @Test

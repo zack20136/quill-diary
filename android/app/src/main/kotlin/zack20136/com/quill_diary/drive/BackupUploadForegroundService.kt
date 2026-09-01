@@ -32,7 +32,6 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.abs
 
 /**
  * dataSync 前景服務：持有 resumable uploader，不依賴 FlutterEngine。
@@ -50,10 +49,6 @@ class BackupUploadForegroundService : Service() {
     private val terminationGeneration = AtomicLong(0L)
     private var pendingRetry: Future<*>? = null
     private val retryLock = Any()
-
-    private var lastProgressEmitAtMs = 0L
-    private var lastEmittedProgressFraction = -1.0
-    private var lastEmittedPhase: DriveUploadPhase? = null
 
     private lateinit var jobStore: DriveUploadJobStore
     private lateinit var tokenProvider: DriveAccessTokenProvider
@@ -74,6 +69,11 @@ class BackupUploadForegroundService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 handleUserStop(startId)
+                return START_NOT_STICKY
+            }
+            ACTION_REFRESH_LOCALIZATION -> {
+                ensureNotificationChannel()
+                jobStore.readActiveJob()?.let(::updateProgressNotification)
                 return START_NOT_STICKY
             }
             ACTION_START -> {
@@ -175,8 +175,6 @@ class BackupUploadForegroundService : Service() {
             return
         }
 
-        resetProgressThrottle()
-
         val notification = buildProgressNotification(job)
         try {
             ServiceCompat.startForeground(
@@ -221,7 +219,7 @@ class BackupUploadForegroundService : Service() {
             val outcome =
                 activeUploader.run(currentJob) { updated ->
                     if (!isGenerationInterrupted(localFence)) {
-                        maybeEmitProgress(updated)
+                        publishProgress(updated)
                     }
                 }
             if (isGenerationInterrupted(localFence)) {
@@ -237,7 +235,7 @@ class BackupUploadForegroundService : Service() {
                     jobId,
                     startId = startId,
                     errorCode = "unexpected",
-                    message = error.message ?: "上傳發生未預期錯誤。",
+                    message = localizedFailureMessage("unexpected"),
                 )
             }
         } finally {
@@ -263,7 +261,7 @@ class BackupUploadForegroundService : Service() {
                     jobId = jobStore.readActiveJob()?.jobId ?: "",
                     startId = startId,
                     errorCode = outcome.code,
-                    message = outcome.message,
+                    message = localizedFailureMessage(outcome.code),
                 )
             DriveUploadOutcome.Cancelled -> finishCancellation(startId)
         }
@@ -305,7 +303,7 @@ class BackupUploadForegroundService : Service() {
                 jobId = job.jobId,
                 startId = null,
                 errorCode = "max_attempts",
-                message = "上傳重試次數過多，Google Drive 備份已取消。",
+                message = localizedFailureMessage("max_attempts"),
             )
             return
         }
@@ -555,27 +553,7 @@ class BackupUploadForegroundService : Service() {
         networkCallback = null
     }
 
-    private fun resetProgressThrottle() {
-        lastProgressEmitAtMs = 0L
-        lastEmittedProgressFraction = -1.0
-        lastEmittedPhase = null
-    }
-
-    private fun maybeEmitProgress(job: DriveUploadJob) {
-        val now = System.currentTimeMillis()
-        val phaseChanged = job.phase != lastEmittedPhase
-        if (job.phase == DriveUploadPhase.UPLOADING && !phaseChanged) {
-            val progressDelta = abs(job.progressFraction() - lastEmittedProgressFraction)
-            val elapsed = now - lastProgressEmitAtMs
-            if (elapsed < PROGRESS_EMIT_MIN_INTERVAL_MS &&
-                progressDelta < PROGRESS_EMIT_MIN_DELTA
-            ) {
-                return
-            }
-        }
-        lastProgressEmitAtMs = now
-        lastEmittedProgressFraction = job.progressFraction()
-        lastEmittedPhase = job.phase
+    private fun publishProgress(job: DriveUploadJob) {
         DriveUploadBridge.emitStateEnvelope(applicationContext)
         mainHandler.post { updateProgressNotification(job) }
     }
@@ -588,30 +566,35 @@ class BackupUploadForegroundService : Service() {
         val channel =
             NotificationChannel(
                 CHANNEL_ID,
-                getString(R.string.drive_upload_notification_channel_name),
+                localizedString(R.string.drive_upload_notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = getString(R.string.drive_upload_notification_channel_description)
+                description =
+                    localizedString(R.string.drive_upload_notification_channel_description)
                 setShowBadge(false)
             }
         manager.createNotificationChannel(channel)
     }
 
     private fun buildProgressNotification(job: DriveUploadJob): Notification {
-        val percent = (job.progressFraction() * 100).toInt().coerceIn(0, 100)
+        val percent = job.progressPercent()
         val content =
             when (job.phase) {
                 DriveUploadPhase.WAITING_FOR_NETWORK ->
-                    getString(R.string.drive_upload_notification_waiting_network)
+                    localizedString(R.string.drive_upload_notification_waiting_network)
                 DriveUploadPhase.CANCEL_CLEANUP_PENDING ->
-                    getString(R.string.drive_upload_notification_cancel_cleanup)
+                    localizedString(R.string.drive_upload_notification_cancel_cleanup)
                 else ->
-                    getString(R.string.drive_upload_notification_progress, job.fileName, percent)
+                    localizedString(
+                        R.string.drive_upload_notification_progress,
+                        job.fileName,
+                        percent,
+                    )
             }
         val builder =
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_upload)
-                .setContentTitle(getString(R.string.drive_upload_notification_title))
+                .setContentTitle(localizedString(R.string.drive_upload_notification_title))
                 .setContentText(content)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
@@ -620,7 +603,7 @@ class BackupUploadForegroundService : Service() {
         if (job.phase != DriveUploadPhase.CANCEL_CLEANUP_PENDING) {
             builder.addAction(
                 0,
-                getString(R.string.drive_upload_notification_stop),
+                localizedString(R.string.drive_upload_notification_stop),
                 stopPendingIntent(),
             )
         }
@@ -642,9 +625,12 @@ class BackupUploadForegroundService : Service() {
         val notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_upload_done)
-                .setContentTitle(getString(R.string.drive_upload_notification_title))
+                .setContentTitle(localizedString(R.string.drive_upload_notification_title))
                 .setContentText(
-                    getString(R.string.drive_upload_notification_completed, job.fileName),
+                    localizedString(
+                        R.string.drive_upload_notification_completed,
+                        job.fileName,
+                    ),
                 )
                 .setOnlyAlertOnce(true)
                 .setAutoCancel(true)
@@ -660,8 +646,8 @@ class BackupUploadForegroundService : Service() {
         val notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_notify_error)
-                .setContentTitle(getString(R.string.drive_upload_notification_title))
-                .setContentText(getString(R.string.drive_upload_notification_failed))
+                .setContentTitle(localizedString(R.string.drive_upload_notification_title))
+                .setContentText(localizedString(R.string.drive_upload_notification_failed))
                 .setOnlyAlertOnce(true)
                 .setAutoCancel(true)
                 .setContentIntent(openAppPendingIntent())
@@ -698,17 +684,45 @@ class BackupUploadForegroundService : Service() {
         )
     }
 
+    private fun localizedString(resourceId: Int, vararg arguments: Any): String =
+        DriveUploadLocalization.string(this, resourceId, *arguments)
+
+    private fun localizedFailureMessage(errorCode: String): String {
+        val httpStatus = errorCode.removePrefix("http_").toIntOrNull()
+        if (httpStatus != null) {
+            return localizedString(R.string.drive_upload_error_http, httpStatus)
+        }
+        val resourceId =
+            when (errorCode) {
+                "max_attempts" -> R.string.drive_upload_error_max_attempts
+                "completion_mismatch" -> R.string.drive_upload_error_completion_mismatch
+                "invalid_range" -> R.string.drive_upload_error_invalid_range
+                "session_expired" -> R.string.drive_upload_error_session_expired
+                "forbidden" -> R.string.drive_upload_error_forbidden
+                "incomplete" -> R.string.drive_upload_error_incomplete
+                "staging_invalid" -> R.string.drive_upload_error_staging_invalid
+                "generate_id" -> R.string.drive_upload_error_generate_id
+                "missing_session" -> R.string.drive_upload_error_missing_session
+                "conflict" -> R.string.drive_upload_error_conflict
+                "authorization" -> R.string.drive_upload_error_authorization
+                "start_failed" -> R.string.drive_upload_error_start_failed
+                "fgs_start_not_allowed" -> R.string.drive_upload_error_fgs_start_not_allowed
+                else -> R.string.drive_upload_error_unexpected
+            }
+        return localizedString(resourceId)
+    }
+
     companion object {
         const val ACTION_START = "zack20136.com.quill_diary.drive.START"
         const val ACTION_STOP = "zack20136.com.quill_diary.drive.STOP"
+        const val ACTION_REFRESH_LOCALIZATION =
+            "zack20136.com.quill_diary.drive.REFRESH_LOCALIZATION"
         const val EXTRA_JOB_ID = "jobId"
         const val EXTRA_OPEN_DRIVE_BACKUP = "openDriveBackup"
         private const val CHANNEL_ID = DriveUploadBridge.NOTIFICATION_CHANNEL_ID
         private const val NOTIFICATION_ID = 44021
         private const val COMPLETION_NOTIFICATION_ID = 44022
         private const val NETWORK_RETRY_DEBOUNCE_MS = 2_000L
-        private const val PROGRESS_EMIT_MIN_INTERVAL_MS = 2_000L
-        private const val PROGRESS_EMIT_MIN_DELTA = 0.05
         private const val UPLOAD_STOP_AWAIT_TIMEOUT_MS = 15_000L
         private const val EXECUTOR_SHUTDOWN_AWAIT_MS = 1_000L
 
@@ -765,9 +779,15 @@ class BackupUploadForegroundService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     error is ForegroundServiceStartNotAllowedException
                 ) {
-                    "無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。"
+                    DriveUploadLocalization.string(
+                        context,
+                        R.string.drive_upload_error_fgs_start_not_allowed,
+                    )
                 } else {
-                    error.message ?: "無法啟動背景上傳服務。"
+                    DriveUploadLocalization.string(
+                        context,
+                        R.string.drive_upload_error_start_failed,
+                    )
                 }
             val failed =
                 DriveUploadJobStore.get(context).failAndCleanup(
@@ -783,6 +803,17 @@ class BackupUploadForegroundService : Service() {
             val intent =
                 Intent(context, BackupUploadForegroundService::class.java).apply {
                     action = ACTION_STOP
+                }
+            context.startService(intent)
+        }
+
+        fun refreshLocalization(context: Context) {
+            if (!running) {
+                return
+            }
+            val intent =
+                Intent(context, BackupUploadForegroundService::class.java).apply {
+                    action = ACTION_REFRESH_LOCALIZATION
                 }
             context.startService(intent)
         }

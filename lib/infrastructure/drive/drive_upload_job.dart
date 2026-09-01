@@ -120,6 +120,15 @@ final class DriveUploadJobSnapshot {
 
   bool get isActive => true;
 
+  /// 與 Android 通知一致採無條件捨去，未完成時不提早顯示 100%。
+  int get progressPercent {
+    if (sizeBytes <= 0) {
+      return 0;
+    }
+    final int boundedOffset = confirmedOffset.clamp(0, sizeBytes);
+    return (boundedOffset * 100) ~/ sizeBytes;
+  }
+
   bool get blocksConflictingDriveActions => isActive;
 
   bool get isCancelCleanupPending =>

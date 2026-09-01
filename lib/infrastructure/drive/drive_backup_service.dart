@@ -12,6 +12,7 @@ import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/presentation/display_format.dart';
 import '../storage/backup_task_progress.dart';
+import 'google_drive_error.dart';
 import 'google_drive_oauth_errors.dart';
 
 /// 設定與備份流程顯示的目前 Google Drive 連線快照。
@@ -188,11 +189,11 @@ String sanitizeDriveBackupFileName(String fileName) {
       hasUnsafeCharacters ||
       basename.endsWith('.') ||
       basename.endsWith(' ')) {
-    throw StateError('Google Drive 備份檔名無效，請重新建立備份。');
+    throw const GoogleDriveException(GoogleDriveErrorCode.invalidBackupName);
   }
   if (p.extension(basename).toLowerCase() !=
       '.${VaultBackupPolicy.fileExtension}') {
-    throw StateError('Google Drive 備份檔必須是 zip 格式。');
+    throw const GoogleDriveException(GoogleDriveErrorCode.invalidBackupFormat);
   }
   return basename;
 }
@@ -204,7 +205,7 @@ bool isVisibleDriveBackupFileName(String? fileName) {
   try {
     sanitizeDriveBackupFileName(fileName);
     return true;
-  } on StateError {
+  } on GoogleDriveException {
     return false;
   }
 }
@@ -274,8 +275,6 @@ class GoogleDriveBackupService implements DriveBackupService {
   static const MethodChannel _androidDriveAuthChannel = MethodChannel(
     AppIdentifiers.oauthChannel,
   );
-  static const String _oauthSetupDocPath =
-      GoogleDriveOAuthFingerprints.oauthSetupDocPath;
   static const List<String> _scopes = <String>[
     drive.DriveApi.driveAppdataScope,
   ];
@@ -291,19 +290,15 @@ class GoogleDriveBackupService implements DriveBackupService {
     final String serverClientId = (await OAuthConfig.resolveServerClientId())
         .trim();
     if (Platform.isAndroid && serverClientId.isEmpty) {
-      throw StateError(
-        'Android 尚未完成 Google Drive OAuth 設定。\n'
-        '請先確認 `android/app/src/main/res/values/oauth_config.xml` 內的 '
-        '`oauth_request_id_token`，或以 `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` 提供 Web Client ID。\n'
-        '詳細設定請參考 $_oauthSetupDocPath。',
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.oauthAndroidNotConfigured,
       );
     }
 
     if (Platform.isIOS) {
       if (OAuthConfig.googleIosClientId.trim().isEmpty) {
-        throw StateError(
-          'iOS 尚未完成 Google Drive OAuth 設定。\n'
-          '請先提供 `GOOGLE_IOS_CLIENT_ID` 與 `GOOGLE_IOS_REVERSED_CLIENT_ID`。',
+        throw const GoogleDriveException(
+          GoogleDriveErrorCode.oauthIosNotConfigured,
         );
       }
       await _signInClient.initialize();
@@ -363,7 +358,7 @@ class GoogleDriveBackupService implements DriveBackupService {
         account = await _signInClient.authenticate(scopeHint: _scopes);
       }
       if (account == null) {
-        throw StateError('尚未完成 Google 帳號登入。');
+        throw const GoogleDriveException(GoogleDriveErrorCode.signInRequired);
       }
 
       final GoogleDriveAuthorizationHandle? existingAuthorization =
@@ -372,10 +367,12 @@ class GoogleDriveBackupService implements DriveBackupService {
         return (account: account, authorization: existingAuthorization);
       }
       if (!interactive) {
-        throw StateError('需要重新授權 Google Drive。');
+        throw const GoogleDriveException(
+          GoogleDriveErrorCode.authorizationRequired,
+        );
       }
-      final GoogleDriveAuthorizationHandle authorization =
-          await account.authorizeScopes(_scopes);
+      final GoogleDriveAuthorizationHandle authorization = await account
+          .authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on GoogleSignInException catch (error) {
       final ({
@@ -388,12 +385,7 @@ class GoogleDriveBackupService implements DriveBackupService {
       if (recovered != null) {
         return recovered;
       }
-      throw StateError(
-        userMessageForGoogleSignIn(
-          error,
-          oauthSetupDocPath: _oauthSetupDocPath,
-        ),
-      );
+      throw googleDriveExceptionForSignIn(error);
     }
   }
 
@@ -430,9 +422,10 @@ class GoogleDriveBackupService implements DriveBackupService {
           await account.authorizeScopes(_scopes);
       return (account: account, authorization: authorization);
     } on PlatformException catch (error) {
-      final String? message = error.message?.trim();
-      if (message != null && message.isNotEmpty) {
-        throw StateError(message);
+      final GoogleDriveException? mapped =
+          googleDriveExceptionForNativeAuthCode(error.code);
+      if (mapped != null) {
+        throw mapped;
       }
       return null;
     } on GoogleSignInException {
@@ -646,7 +639,7 @@ class GoogleDriveBackupService implements DriveBackupService {
   Future<void> deleteBackup(String fileId, {bool interactive = true}) async {
     final String trimmedFileId = fileId.trim();
     if (trimmedFileId.isEmpty) {
-      throw StateError('Google Drive 備份檔案 ID 不可為空。');
+      throw const GoogleDriveException(GoogleDriveErrorCode.invalidFileId);
     }
     final drive.DriveApi api = await _createAuthorizedDriveApi(
       interactive: interactive,
@@ -676,9 +669,7 @@ class GoogleDriveBackupService implements DriveBackupService {
         protectedId.isNotEmpty &&
         all.any((DriveBackupFile file) => file.id == protectedId);
     final List<DriveBackupFile> candidates = keepExists
-        ? all
-              .where((DriveBackupFile file) => file.id != protectedId)
-              .toList()
+        ? all.where((DriveBackupFile file) => file.id != protectedId).toList()
         : all;
     final int othersRetain = keepExists ? retainCount - 1 : retainCount;
     final List<DriveBackupFile> toDelete = othersRetain <= 0
@@ -693,9 +684,10 @@ class GoogleDriveBackupService implements DriveBackupService {
       }
     }
     if (failures.isNotEmpty) {
-      throw StateError(
-        '部分 Google Drive 舊備份刪除失敗（${failures.length}/${toDelete.length}）：'
-        '${failures.take(3).join('; ')}',
+      throw GoogleDriveException(
+        GoogleDriveErrorCode.pruneFailed,
+        failedCount: failures.length,
+        totalCount: toDelete.length,
       );
     }
     return toDelete;
@@ -758,7 +750,9 @@ class GoogleDriveBackupService implements DriveBackupService {
     final String root = p.normalize(directory.absolute.path);
     final String target = p.normalize(file.absolute.path);
     if (target != root && !p.isWithin(root, target)) {
-      throw StateError('Google Drive 備份下載路徑無效。');
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.invalidDownloadPath,
+      );
     }
   }
 }

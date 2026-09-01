@@ -7,7 +7,6 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
@@ -412,8 +411,8 @@ void main() {
         repository: harness.repository,
         frontMatterCodec: const FrontMatterCodec(),
       );
-      final MarkdownExportEstimate estimate =
-          await exportIo.estimateMarkdownExport();
+      final MarkdownExportEstimate estimate = await exportIo
+          .estimateMarkdownExport();
       expect(estimate.entryCount, 2);
 
       await exportIo.exportMarkdown(

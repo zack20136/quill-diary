@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
@@ -30,10 +29,7 @@ void main() {
           l10n: testL10n,
         );
 
-    expect(
-      presentation.title,
-      testL10n.sessionBlockedRecoveryRequiredTitle,
-    );
+    expect(presentation.title, testL10n.sessionBlockedRecoveryRequiredTitle);
     expect(presentation.actionKind, SessionBlockedActionKind.openSettings);
     expect(presentation.actionLabel, testL10n.homeGoToSettings);
   });
@@ -57,9 +53,7 @@ void main() {
       widgetTestApp(
         overrides: const [],
         child: const SessionBlockedPane(
-          sessionState: AppSessionState(
-            status: AppLockStatus.recoveryRequired,
-          ),
+          sessionState: AppSessionState(status: AppLockStatus.recoveryRequired),
         ),
       ),
     );

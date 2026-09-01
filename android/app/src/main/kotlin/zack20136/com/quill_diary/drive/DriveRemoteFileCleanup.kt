@@ -115,7 +115,6 @@ object DriveRemoteFileCleanup {
                 jobStore = jobStore,
                 job = job,
                 errorCode = ERROR_CLEANUP_ACCOUNT_MISMATCH,
-                message = "Google 帳戶已變更，請連回原帳號完成清理或放棄清理。",
             )
             return CancelCleanupOutcome.AccountMismatch
         }
@@ -151,7 +150,6 @@ object DriveRemoteFileCleanup {
                 jobStore = jobStore,
                 job = working,
                 errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
-                message = "access token blank",
             )
             return CancelCleanupOutcome.NeedsReauth
         }
@@ -223,7 +221,6 @@ object DriveRemoteFileCleanup {
             jobStore = jobStore,
             job = job,
             errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
-            message = "Google Drive 授權已失效，請重新連結原帳號完成清理。",
         )
         return CancelCleanupOutcome.NeedsReauth
     }
@@ -318,18 +315,17 @@ object DriveRemoteFileCleanup {
     ): CancelCleanupOutcome {
         val tokenError = (error as? DriveAccessTokenProvider.TokenException)?.error
         return when (tokenError) {
-            is DriveAccessTokenProvider.TokenError.Transient ->
+            DriveAccessTokenProvider.TokenError.Transient ->
                 CancelCleanupOutcome.RetryLater
-            is DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
-            is DriveAccessTokenProvider.TokenError.NotSignedIn,
-            is DriveAccessTokenProvider.TokenError.Permanent,
+            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
+            DriveAccessTokenProvider.TokenError.NotSignedIn,
+            DriveAccessTokenProvider.TokenError.Permanent,
             null,
             -> {
                 persistCleanupError(
                     jobStore = jobStore,
                     job = job,
                     errorCode = ERROR_CLEANUP_NEEDS_REAUTH,
-                    message = "Google Drive 授權已失效，請重新連結原帳號完成清理。",
                 )
                 CancelCleanupOutcome.NeedsReauth
             }
@@ -340,18 +336,15 @@ object DriveRemoteFileCleanup {
         jobStore: DriveUploadJobStore,
         job: DriveUploadJob,
         errorCode: String,
-        message: String,
     ) {
         val current = jobStore.readJob(job.jobId) ?: return
-        if (current.lastErrorCode == errorCode &&
-            (current.lastErrorMessage ?: "") == message
-        ) {
+        if (current.lastErrorCode == errorCode && current.lastErrorMessage == null) {
             return
         }
         jobStore.updateJobCas(
             current.copy(
                 lastErrorCode = errorCode,
-                lastErrorMessage = message.ifBlank { null },
+                lastErrorMessage = null,
             ),
             expectedGeneration = current.generation,
             durability = DriveUploadJobStore.Durability.Critical,

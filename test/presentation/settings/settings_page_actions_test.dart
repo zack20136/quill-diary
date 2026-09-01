@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -98,10 +97,7 @@ void main() {
       find.text(testL10n.settingsLegalSourceCodeTitle),
     );
     expect(find.text(testL10n.settingsLegalSectionTitle), findsOneWidget);
-    expect(
-      find.text(testL10n.settingsLegalSourceCodeTitle),
-      findsOneWidget,
-    );
+    expect(find.text(testL10n.settingsLegalSourceCodeTitle), findsOneWidget);
     await tester.tap(find.text(testL10n.settingsLegalSourceCodeTitle));
     await tester.pumpAndSettle();
 

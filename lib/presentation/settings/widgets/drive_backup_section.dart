@@ -50,7 +50,6 @@ class DriveBackupSection extends ConsumerWidget {
     final DriveUploadJobSnapshot? uploadJob = ref
         .watch(driveUploadCoordinatorProvider)
         .job;
-    final bool uploadBusy = uploadJob?.blocksConflictingDriveActions ?? false;
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
               ? settingsDriveBackupSectionDescriptionEnabled(l10n)
@@ -372,7 +371,7 @@ class _DriveUploadStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final int percent = (job.progressFraction * 100).round().clamp(0, 100);
+    final int percent = job.progressPercent;
     final bool finalizing =
         job.phase == DriveUploadPhase.statusPending ||
         job.phase == DriveUploadPhase.prunePending;

@@ -56,8 +56,16 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_refreshDriveUpload(openSettingsIfRequested: true));
+    final notifier = ref.read(driveUploadCoordinatorProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        notifier.setAppForeground(true);
+        unawaited(_refreshDriveUpload(openSettingsIfRequested: true));
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        notifier.setAppForeground(false);
     }
   }
 
@@ -158,6 +166,18 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
     ) {
       _maybeShowFailureDialog(next.failure);
     });
+    ref.listen<AsyncValue<PersonalizationPreferences>>(
+      personalizationPreferencesProvider,
+      (_, AsyncValue<PersonalizationPreferences> next) {
+        next.whenData((PersonalizationPreferences value) {
+          unawaited(
+            ref
+                .read(driveUploadCoordinatorProvider.notifier)
+                .syncLocale(value.locale),
+          );
+        });
+      },
+    );
 
     ref.watch(sponsorBillingLifecycleProvider);
     final Locale locale = ref

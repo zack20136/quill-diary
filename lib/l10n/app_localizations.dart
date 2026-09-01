@@ -254,6 +254,138 @@ abstract class AppLocalizations {
   /// **'本機路徑'**
   String get userFacingErrorLocalPathLabel;
 
+  /// No description provided for @driveErrorInvalidBackupName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 備份檔名無效，請重新建立備份。'**
+  String get driveErrorInvalidBackupName;
+
+  /// No description provided for @driveErrorInvalidBackupFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 備份檔必須是 ZIP 格式。'**
+  String get driveErrorInvalidBackupFormat;
+
+  /// No description provided for @driveErrorOAuthAndroidNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 尚未完成 Google Drive 登入設定。請檢查 OAuth client 與 App 簽章。'**
+  String get driveErrorOAuthAndroidNotConfigured;
+
+  /// No description provided for @driveErrorOAuthIosNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'iOS 尚未完成 Google Drive 登入設定。'**
+  String get driveErrorOAuthIosNotConfigured;
+
+  /// No description provided for @driveErrorSignInRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未完成 Google 帳戶登入。'**
+  String get driveErrorSignInRequired;
+
+  /// No description provided for @driveErrorAuthorizationRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要重新授權 Google Drive。'**
+  String get driveErrorAuthorizationRequired;
+
+  /// No description provided for @driveErrorOAuthAdminPolicy.
+  ///
+  /// In zh, this message translates to:
+  /// **'此 Google 帳戶受組織政策限制，無法授權 Google Drive。請改用其他帳戶或洽詢管理員。'**
+  String get driveErrorOAuthAdminPolicy;
+
+  /// No description provided for @driveErrorOAuthConfiguration.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google 登入設定與目前安裝版本不符，請檢查 OAuth client 與 App 簽章。'**
+  String get driveErrorOAuthConfiguration;
+
+  /// No description provided for @driveErrorOAuthCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消 Google 登入，帳戶尚未連結。'**
+  String get driveErrorOAuthCancelled;
+
+  /// No description provided for @driveErrorOAuthNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前無法連上 Google 服務，請檢查網路後再試。'**
+  String get driveErrorOAuthNetwork;
+
+  /// No description provided for @driveErrorOAuthInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google 登入流程已中斷，請稍後再試。'**
+  String get driveErrorOAuthInterrupted;
+
+  /// No description provided for @driveErrorOAuthUiUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'此裝置目前無法顯示 Google 登入畫面，請確認 Google Play 服務後再試。'**
+  String get driveErrorOAuthUiUnavailable;
+
+  /// No description provided for @driveErrorOAuthUserMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前帳戶與授權帳戶不符，請切換至同一個 Google 帳戶。'**
+  String get driveErrorOAuthUserMismatch;
+
+  /// No description provided for @driveErrorOAuthUnexpected.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google 登入失敗，請稍後再試。'**
+  String get driveErrorOAuthUnexpected;
+
+  /// No description provided for @driveErrorInvalidFileId.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 備份檔案 ID 無效。'**
+  String get driveErrorInvalidFileId;
+
+  /// No description provided for @driveErrorPruneFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分舊備份刪除失敗（{failedCount}/{totalCount}）。'**
+  String driveErrorPruneFailed(int failedCount, int totalCount);
+
+  /// No description provided for @driveErrorInvalidDownloadPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 備份下載路徑無效。'**
+  String get driveErrorInvalidDownloadPath;
+
+  /// No description provided for @driveErrorPrepareUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法準備 Google Drive 上傳暫存路徑。'**
+  String get driveErrorPrepareUploadFailed;
+
+  /// No description provided for @driveErrorStartUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法建立 Google Drive 背景上傳工作。'**
+  String get driveErrorStartUploadFailed;
+
+  /// No description provided for @driveErrorBackgroundStartNotAllowed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。'**
+  String get driveErrorBackgroundStartNotAllowed;
+
+  /// No description provided for @driveErrorUploadAlreadyActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有進行中的 Google Drive 上傳。'**
+  String get driveErrorUploadAlreadyActive;
+
+  /// No description provided for @driveErrorBackgroundUploadUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'Google Drive 背景上傳僅支援 Android。'**
+  String get driveErrorBackgroundUploadUnsupported;
+
   /// No description provided for @commonGoogleAccountLabel.
   ///
   /// In zh, this message translates to:
@@ -663,7 +795,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionBlockedFatalErrorSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'請檢查設定或重新啟動應用程式'**
+  /// **'請檢查設定或重新啟動 App。'**
   String get sessionBlockedFatalErrorSubtitle;
 
   /// No description provided for @sessionUnsupportedRuntimeMessage.
@@ -1766,7 +1898,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeEmptyDiaryMessage.
   ///
   /// In zh, this message translates to:
-  /// **'建立第一篇日記後，就會在這裡看到您的首頁列表。'**
+  /// **'建立第一篇日記後，就會在這裡看到您的日記。'**
   String get homeEmptyDiaryMessage;
 
   /// No description provided for @homeNoAnalysisTitle.
@@ -2750,7 +2882,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupPhaseRestoring.
   ///
   /// In zh, this message translates to:
-  /// **'正在還原備份，請勿關閉應用程式…'**
+  /// **'正在還原備份，請勿關閉 App…'**
   String get settingsBackupPhaseRestoring;
 
   /// No description provided for @settingsBackupStartingAfterRestore.
@@ -3181,7 +3313,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSessionTimeoutAboutBackgroundTimeoutBody.
   ///
   /// In zh, this message translates to:
-  /// **'App 在背景超過 {timeoutLabel} 後會自動鎖定；短暫切換通常不會。您可在「個人化」調整時間。備份、還原或匯入匯出進行中會暫停自動鎖定。'**
+  /// **'App 在背景超過 {timeoutLabel} 後會自動鎖定；短暫切換通常不受影響。您可在「個人化」調整時間。備份、還原或匯入匯出期間會暫停自動鎖定。'**
   String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel);
 
   /// No description provided for @settingsImportExportSectionTitle.
@@ -3587,61 +3719,61 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupPhasePreparingDriveUpload.
   ///
   /// In zh, this message translates to:
-  /// **'正在建立備份，完成前請保持 Quill Diary 顯示在畫面上…'**
+  /// **'正在建立備份，請保持 Quill Diary 開啟…'**
   String get settingsBackupPhasePreparingDriveUpload;
 
   /// No description provided for @driveUploadBackgroundStarted.
   ///
   /// In zh, this message translates to:
-  /// **'已在背景上傳到 Google Drive。可切換到其他 App 或鎖定螢幕；請勿在系統設定中強制停止 App。若上傳服務被系統終止，請重新開啟 App 後再備份。'**
+  /// **'已開始背景上傳。您可以切換 App 或鎖定螢幕，但請勿強制停止 Quill Diary。若上傳中斷，請開啟 App 重新備份。'**
   String get driveUploadBackgroundStarted;
 
   /// No description provided for @driveUploadNotificationsDeniedHint.
   ///
   /// In zh, this message translates to:
-  /// **'未允許通知時，通知欄不會顯示進度與停止按鈕，請回 App 查看上傳狀態。'**
+  /// **'通知權限未開啟，請在 App 內查看進度或停止上傳。'**
   String get driveUploadNotificationsDeniedHint;
 
   /// No description provided for @driveUploadStatusUploading.
   ///
   /// In zh, this message translates to:
-  /// **'正在背景上傳：{fileName}（{percent}%）'**
+  /// **'上傳中：{fileName}（{percent}%）'**
   String driveUploadStatusUploading(String fileName, int percent);
 
   /// No description provided for @driveUploadStatusStaged.
   ///
   /// In zh, this message translates to:
-  /// **'正在準備背景上傳：{fileName}'**
+  /// **'準備上傳：{fileName}'**
   String driveUploadStatusStaged(String fileName);
 
   /// No description provided for @driveUploadStatusWaitingNetwork.
   ///
   /// In zh, this message translates to:
-  /// **'等待網路後繼續上傳：{fileName}'**
+  /// **'等待網路：{fileName}'**
   String driveUploadStatusWaitingNetwork(String fileName);
 
   /// No description provided for @driveUploadStatusFinalizing.
   ///
   /// In zh, this message translates to:
-  /// **'Google Drive 備份已上傳，正在完成收尾…'**
+  /// **'備份已上傳，正在完成處理…'**
   String get driveUploadStatusFinalizing;
 
   /// No description provided for @driveUploadStatusCancelCleanup.
   ///
   /// In zh, this message translates to:
-  /// **'正在清除未完成的 Google Drive 備份…'**
+  /// **'正在清除未完成的備份…'**
   String get driveUploadStatusCancelCleanup;
 
   /// No description provided for @driveUploadStatusCancelCleanupNeedsReauth.
   ///
   /// In zh, this message translates to:
-  /// **'清除未完成備份需要重新連結 Google 帳戶（{accountEmail}）。'**
+  /// **'請重新連結 {accountEmail} 以完成清理。'**
   String driveUploadStatusCancelCleanupNeedsReauth(String accountEmail);
 
   /// No description provided for @driveUploadStatusCancelCleanupAccountMismatch.
   ///
   /// In zh, this message translates to:
-  /// **'目前 Google 帳戶與上傳時不符。請連回 {accountEmail} 完成清理，或放棄清理。'**
+  /// **'帳戶不符。請連結 {accountEmail}，或放棄清理。'**
   String driveUploadStatusCancelCleanupAccountMismatch(String accountEmail);
 
   /// No description provided for @driveUploadCancelButton.
@@ -3659,19 +3791,19 @@ abstract class AppLocalizations {
   /// No description provided for @driveUploadCancelConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'將停止目前的背景上傳。已建立的暫存備份會被清除。'**
+  /// **'將停止上傳並刪除暫存檔。'**
   String get driveUploadCancelConfirmBody;
 
   /// No description provided for @driveUploadBusyBlocksAccountActions.
   ///
   /// In zh, this message translates to:
-  /// **'上傳進行中，請先完成或取消後再變更 Google 帳戶。'**
+  /// **'請先完成或取消上傳，再變更 Google 帳戶。'**
   String get driveUploadBusyBlocksAccountActions;
 
   /// No description provided for @driveUploadCancelCleanupBlocksAccountActions.
   ///
   /// In zh, this message translates to:
-  /// **'正在清除未完成的 Google Drive 備份。若授權失效，請重新連結原帳號，或放棄清理。'**
+  /// **'請先完成或放棄清理，再變更 Google 帳戶。'**
   String get driveUploadCancelCleanupBlocksAccountActions;
 
   /// No description provided for @driveUploadAbandonCancelCleanupButton.
@@ -3683,13 +3815,13 @@ abstract class AppLocalizations {
   /// No description provided for @driveUploadAbandonCancelCleanupConfirmTitle.
   ///
   /// In zh, this message translates to:
-  /// **'放棄清除未完成的備份？'**
+  /// **'放棄清理？'**
   String get driveUploadAbandonCancelCleanupConfirmTitle;
 
   /// No description provided for @driveUploadAbandonCancelCleanupConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'將解除本機鎖定，之後可重新備份或變更 Google 帳戶。Google Drive 上可能留下未完成的殘檔，且不會當成成功備份。'**
+  /// **'Google Drive 可能保留未完成的檔案，但不會列為成功備份。'**
   String get driveUploadAbandonCancelCleanupConfirmBody;
 
   /// No description provided for @driveUploadAbandonedFailureTitle.
@@ -3701,7 +3833,7 @@ abstract class AppLocalizations {
   /// No description provided for @driveUploadAbandonedFailureBody.
   ///
   /// In zh, this message translates to:
-  /// **'上次 Google Drive 備份未完成，已取消。請重新備份。'**
+  /// **'上次備份未完成，請重新備份。'**
   String get driveUploadAbandonedFailureBody;
 
   /// No description provided for @driveUploadAbandonedFailureConfirm.
@@ -3719,7 +3851,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewDriveUploadPending.
   ///
   /// In zh, this message translates to:
-  /// **'Google Drive 上傳尚未完成'**
+  /// **'等待網路'**
   String get settingsSecurityOverviewDriveUploadPending;
 
   /// No description provided for @settingsRestoreDialogConfirmLocalTitle.
@@ -4631,7 +4763,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'如果 Quill Diary 對您有幫助，您可以透過 Google Play 提供一次性支持。這不會解鎖額外功能，也不影響日記內容的存取與使用。'**
+  /// **'如果 Quill Diary 對您有幫助，可透過 Google Play 提供一次性支持。這不會解鎖額外功能，也不影響日記內容的存取與使用。'**
   String get settingsSupportHeroBody;
 
   /// No description provided for @settingsSupportHeroChipNoExtraFeatures.
@@ -4661,7 +4793,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportComplianceCardBody.
   ///
   /// In zh, this message translates to:
-  /// **'支持付款由 Google Play 處理，屬一次性支持，非訂閱或會員方案。本應用程式不保存支持紀錄，也不讀取日記內容。'**
+  /// **'支持付款由 Google Play 處理，屬一次性支持，不是訂閱或會員方案。本 App 不保存支持紀錄，也不讀取日記內容。'**
   String get settingsSupportComplianceCardBody;
 
   /// No description provided for @settingsSupportProductsSectionTitle.
@@ -4727,7 +4859,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsNotReadyBody.
   ///
   /// In zh, this message translates to:
-  /// **'請確認網路連線正常；若問題持續，請更新本應用程式後再試。'**
+  /// **'請確認網路連線正常；若問題持續，請更新 App 後再試。'**
   String get settingsSupportProductsNotReadyBody;
 
   /// No description provided for @settingsSupportProductsInitFailedTitle.
@@ -4805,7 +4937,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionAppLockedMessage.
   ///
   /// In zh, this message translates to:
-  /// **'應用程式已鎖定。'**
+  /// **'App 已鎖定。'**
   String get sessionAppLockedMessage;
 
   /// No description provided for @sessionTrustedUnlockInProgressMessage.
@@ -5063,7 +5195,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App，不需註冊帳號。建立並妥善保存復原金鑰後，就能開始寫日記、備份與匯出；除非您主動操作，資料預設留在裝置上。'**
+  /// **'Quill Diary 是為個人記錄設計的本機加密日記 App，不需註冊帳號。建立並妥善保存復原金鑰後，就能開始寫日記、備份與匯出；除非您主動操作，資料會留在裝置上。'**
   String get aboutTabIntroHeroBody;
 
   /// No description provided for @aboutTabIntroChip0.
@@ -5141,7 +5273,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。您可以把它當成以隱私為前提的私人寫作空間。'**
+  /// **'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。您可把它當成以隱私為前提的私人寫作空間。'**
   String get aboutTabIntroSection0Item2Body;
 
   /// No description provided for @aboutTabIntroSection1Title.
@@ -5177,7 +5309,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'主畫面提供列表、日曆、標籤、人物與總覽五種入口。您可以依時間瀏覽、按日期回看，或從標籤、人物和統計整理自己的生活軌跡。'**
+  /// **'主畫面提供列表、日曆、標籤、人物與總覽五種入口。您可依時間瀏覽、按日期回看，或從標籤、人物和統計整理自己的生活軌跡。'**
   String get aboutTabIntroSection1Item1Body;
 
   /// No description provided for @aboutTabIntroSection1Item2Title.
@@ -5213,7 +5345,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection2Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'備份、匯出與解鎖方式各自扮演不同角色，目的是讓您能保留資料，也能理解風險邊界。'**
+  /// **'備份、匯出與解鎖方式各自扮演不同角色，讓您能保留資料，也能理解風險邊界。'**
   String get aboutTabIntroSection2Subtitle;
 
   /// No description provided for @aboutTabIntroSection2Item0Title.
@@ -5261,7 +5393,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection3Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'您可以查看原始碼與授權條件，也能清楚知道品牌使用界線。'**
+  /// **'您可查看原始碼與授權條件，也能清楚了解品牌使用界線。'**
   String get aboutTabIntroSection3Subtitle;
 
   /// No description provided for @aboutTabIntroSection3Item0Title.
@@ -5297,7 +5429,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'您可以選擇不額外驗證、裝置螢幕鎖或生物辨識。App 會依背景逾時與鎖定原因決定何時重新驗證；換機、還原或可信狀態失效時，則可能需要復原金鑰。'**
+  /// **'您可選擇不額外驗證、裝置螢幕鎖或生物辨識。App 會依背景逾時與鎖定原因決定何時重新驗證；換機、還原或可信狀態失效時，可能需要復原金鑰。'**
   String get aboutTabUnlockSessionHeroBody;
 
   /// No description provided for @aboutTabUnlockSessionChip0.
@@ -5333,7 +5465,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'您可以依裝置習慣與想要的保護程度，在設定頁切換不同解鎖方式。'**
+  /// **'您可依裝置習慣與想要的保護程度，在設定頁切換不同解鎖方式。'**
   String get aboutTabUnlockSessionSection0Subtitle;
 
   /// No description provided for @aboutTabUnlockSessionSection0Item0Title.
@@ -5423,7 +5555,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'短暫切出去再回來，通常不會立刻要求重驗；背景超過設定時間後才回來，則依您選擇的模式決定是否重新驗證。鎖定只會暫停存取，不會刪除日記。'**
+  /// **'短暫切換後再回來，通常不會立刻要求重驗；背景超過設定時間後，會依您選擇的模式決定是否重新驗證。鎖定只會暫停存取，不會刪除日記。'**
   String get aboutTabUnlockSessionSection1Item2Body;
 
   /// No description provided for @aboutTabUnlockSessionSection1Item3Title.
@@ -5471,7 +5603,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabUnlockSessionSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'當您換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時就需要復原金鑰。'**
+  /// **'當您換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時需要復原金鑰。'**
   String get aboutTabUnlockSessionSection2Item0Body;
 
   /// No description provided for @aboutTabUnlockSessionSection2Item1Title.
@@ -5645,7 +5777,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'App 會先確認您能正確進入日記庫，再開啟其中的檔案，避免把金鑰錯誤誤判成資料損壞。'**
+  /// **'App 會先確認您能正確進入日記庫，再開啟其中的檔案，避免把金鑰錯誤誤判為資料損壞。'**
   String get aboutTabEncryptionSection1Item2Body;
 
   /// No description provided for @aboutTabEncryptionSection2Title.
@@ -5669,7 +5801,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection2Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'只要您把內容匯出成 Markdown 或 HTML，可讀文件之後的存放與分享風險，就不再由 App 內的加密機制接手。'**
+  /// **'只要您把內容匯出成 Markdown 或 HTML，之後的存放與分享風險便不再由 App 內的加密機制保護。'**
   String get aboutTabEncryptionSection2Item0Body;
 
   /// No description provided for @aboutTabEncryptionSection2Item1Title.
@@ -5681,7 +5813,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，之後可能影響資料安全或可恢復性。'**
+  /// **'復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，可能影響資料安全或可恢復性。'**
   String get aboutTabEncryptionSection2Item1Body;
 
   /// No description provided for @aboutTabEncryptionSection2Item2Title.
@@ -5705,7 +5837,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexHeroTitle.
   ///
   /// In zh, this message translates to:
-  /// **'解鎖後，您可以快速找回以前寫過的內容'**
+  /// **'解鎖後，您可快速找回以前寫過的內容'**
   String get aboutTabSearchIndexHeroTitle;
 
   /// No description provided for @aboutTabSearchIndexHeroBody.
@@ -5759,7 +5891,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabSearchIndexSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以直接查找標題、內文與標籤中的關鍵字，不需要一篇篇翻找過去寫過什麼。'**
+  /// **'您可直接查找標題、內文與標籤中的關鍵字，不必一篇篇翻找過去寫過什麼。'**
   String get aboutTabSearchIndexSection0Item0Body;
 
   /// No description provided for @aboutTabSearchIndexSection0Item1Title.
@@ -5957,7 +6089,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection0Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以編輯標題、日期、時間與內文。正式儲存時至少要有標題或內文，避免留下空白日記。'**
+  /// **'您可編輯標題、日期、時間與內文。正式儲存時至少要有標題或內文，避免留下空白日記。'**
   String get aboutTabEditorSection0Item1Body;
 
   /// No description provided for @aboutTabEditorSection0Item2Title.
@@ -6029,7 +6161,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'重新打開同一篇日記或未完成的新建內容時，如果本地仍保留草稿，App 會先詢問您要不要接著上次進度寫。'**
+  /// **'重新開啟同一篇日記或未完成的新建內容時，如果本機仍保留草稿，App 會先詢問您是否要接著上次進度寫。'**
   String get aboutTabEditorSection1Item1Body;
 
   /// No description provided for @aboutTabEditorSection1Item2Title.
@@ -6041,7 +6173,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection1Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'當內容成功正式寫入日記庫，草稿就會被清掉；如果您取消編輯且沒有留下新變更，也不會一直堆積舊草稿。'**
+  /// **'當內容成功寫入日記庫，草稿就會被清掉；如果您取消編輯且沒有留下新變更，也不會一直堆積舊草稿。'**
   String get aboutTabEditorSection1Item2Body;
 
   /// No description provided for @aboutTabEditorSection2Title.
@@ -6089,7 +6221,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEditorSection2Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果某篇日記仍留有本地草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。'**
+  /// **'如果某篇日記仍留有本機草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。'**
   String get aboutTabEditorSection2Item2Body;
 
   /// No description provided for @aboutTabPeopleLabel.
@@ -6191,7 +6323,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabPeopleSection1Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'App 會在您使用人物功能時，依姓名與別名更新可重建的提及分析，方便查看相關紀錄。'**
+  /// **'您使用人物功能時，App 會依姓名與別名更新可重建的提及分析，方便查看相關紀錄。'**
   String get aboutTabPeopleSection1Subtitle;
 
   /// No description provided for @aboutTabPeopleSection1Item0Title.
@@ -6329,7 +6461,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection0Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'如果您想保留整個正式日記庫，之後能原樣還原，走的就是完整備份。'**
+  /// **'如果您想保留整個正式日記庫，之後能原樣還原，請使用完整備份。'**
   String get aboutTabBackupRestoreSection0Subtitle;
 
   /// No description provided for @aboutTabBackupRestoreSection0Item0Title.
@@ -6401,7 +6533,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection1Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'還原後會重新建立搜尋資料，並可能要求您重新驗證；同裝置且仍處於有效解鎖時，有時可直接繼續使用。'**
+  /// **'還原後會重新建立搜尋資料，並可能要求您重新驗證；同一裝置且仍處於有效解鎖時，有時可直接繼續使用。'**
   String get aboutTabBackupRestoreSection1Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection1Item2Title.
@@ -6449,7 +6581,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'您可以從設定匯出 Markdown，也能從主畫面或總覽匯出 HTML，方便閱讀、整理或移轉正式內容。'**
+  /// **'您可從設定匯出 Markdown，也能從主畫面或總覽匯出 HTML，方便閱讀、整理或移轉正式內容。'**
   String get aboutTabBackupRestoreSection2Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection2Item2Title.
@@ -6461,7 +6593,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection2Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'Google Drive 是由您手動操作的完整備份存放位置，不是跨裝置即時同步。上傳交接完成後可在背景繼續；若在遠端驗證前中斷，需重新建立備份。'**
+  /// **'Google Drive 是由您手動使用的完整備份存放位置，不是跨裝置即時同步。上傳交接完成後可在背景繼續；若在遠端驗證前中斷，請重新建立備份。'**
   String get aboutTabBackupRestoreSection2Item2Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Title.
@@ -6497,7 +6629,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item1Body.
   ///
   /// In zh, this message translates to:
-  /// **'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式要由您自己決定。'**
+  /// **'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式由您自己決定。'**
   String get aboutTabBackupRestoreSection3Item1Body;
 
   /// No description provided for @aboutTabBackupRestoreSection3Item2Title.
@@ -6509,7 +6641,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection3Item2Body.
   ///
   /// In zh, this message translates to:
-  /// **'如果您要的是之後完整恢復整個日記庫，請使用完整備份；如果您要的是把內容帶出去看或整理，才使用 Markdown / HTML 匯出。'**
+  /// **'如果您要完整恢復整個日記庫，請使用完整備份；如果只是想把內容帶出去閱讀或整理，請使用 Markdown / HTML 匯出。'**
   String get aboutTabBackupRestoreSection3Item2Body;
 }
 

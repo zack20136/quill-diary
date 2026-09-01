@@ -33,6 +33,34 @@
   },
   "userFacingErrorDefaultMessage": "The operation failed. Please try again later.",
   "userFacingErrorLocalPathLabel": "local path",
+  "driveErrorInvalidBackupName": "The Google Drive backup file name is invalid. Create the backup again.",
+  "driveErrorInvalidBackupFormat": "Google Drive backups must use the ZIP format.",
+  "driveErrorOAuthAndroidNotConfigured": "Google Drive sign-in is not configured for Android. Check the OAuth client and app signing certificate.",
+  "driveErrorOAuthIosNotConfigured": "Google Drive sign-in is not configured for iOS.",
+  "driveErrorSignInRequired": "Sign in to a Google account first.",
+  "driveErrorAuthorizationRequired": "Google Drive authorization is required again.",
+  "driveErrorOAuthAdminPolicy": "This Google account is restricted by an organization policy and cannot authorize Google Drive. Use another account or contact your administrator.",
+  "driveErrorOAuthConfiguration": "Google sign-in is not configured for this app build. Check the OAuth client and app signing certificate.",
+  "driveErrorOAuthCancelled": "Google sign-in was canceled. The account is not connected.",
+  "driveErrorOAuthNetwork": "Google services are unavailable. Check your connection and try again.",
+  "driveErrorOAuthInterrupted": "Google sign-in was interrupted. Please try again later.",
+  "driveErrorOAuthUiUnavailable": "Google sign-in cannot be shown on this device. Check Google Play services and try again.",
+  "driveErrorOAuthUserMismatch": "The current account does not match the authorized account. Switch to the same Google account.",
+  "driveErrorOAuthUnexpected": "Google sign-in failed. Please try again later.",
+  "driveErrorInvalidFileId": "The Google Drive backup file ID is invalid.",
+  "driveErrorPruneFailed": "Some old backups could not be deleted ({failedCount}/{totalCount}).",
+  "@driveErrorPruneFailed": {
+    "placeholders": {
+      "failedCount": {"type": "int"},
+      "totalCount": {"type": "int"}
+    }
+  },
+  "driveErrorInvalidDownloadPath": "The Google Drive backup download path is invalid.",
+  "driveErrorPrepareUploadFailed": "Could not prepare the Google Drive upload staging path.",
+  "driveErrorStartUploadFailed": "Could not create the Google Drive background upload.",
+  "driveErrorBackgroundStartNotAllowed": "Could not start uploading in the background. Keep the app on screen and try again.",
+  "driveErrorUploadAlreadyActive": "A Google Drive upload is already in progress.",
+  "driveErrorBackgroundUploadUnsupported": "Google Drive background uploads are supported only on Android.",
   "commonGoogleAccountLabel": "{name} · {email}",
   "@commonGoogleAccountLabel": {
     "placeholders": {
@@ -1255,37 +1283,37 @@
       }
     }
   },
-  "settingsBackupPhasePreparingDriveUpload": "Preparing backup… Keep Quill Diary on screen until this step finishes.",
-  "driveUploadBackgroundStarted": "Uploading to Google Drive in the background. You can switch apps or lock the screen; do not force-stop the app in system settings. If the upload service is stopped by the system, open the app and start a new backup.",
-  "driveUploadNotificationsDeniedHint": "Without notification permission, progress and the stop action will not appear in the notification shade. Check upload status in the app.",
-  "driveUploadStatusUploading": "Uploading in background: {fileName} ({percent}%)",
+  "settingsBackupPhasePreparingDriveUpload": "Creating backup… Keep Quill Diary open.",
+  "driveUploadBackgroundStarted": "Background upload started. You can switch apps or lock the screen, but do not force-stop Quill Diary. If the upload stops, open the app and back up again.",
+  "driveUploadNotificationsDeniedHint": "Notifications are off. Check progress or stop the upload in the app.",
+  "driveUploadStatusUploading": "Uploading: {fileName} ({percent}%)",
   "@driveUploadStatusUploading": {
     "placeholders": {
       "fileName": {"type": "String"},
       "percent": {"type": "int"}
     }
   },
-  "driveUploadStatusStaged": "Preparing background upload: {fileName}",
+  "driveUploadStatusStaged": "Preparing upload: {fileName}",
   "@driveUploadStatusStaged": {
     "placeholders": {
       "fileName": {"type": "String"}
     }
   },
-  "driveUploadStatusWaitingNetwork": "Waiting for network to continue upload: {fileName}",
+  "driveUploadStatusWaitingNetwork": "Waiting for network: {fileName}",
   "@driveUploadStatusWaitingNetwork": {
     "placeholders": {
       "fileName": {"type": "String"}
     }
   },
-  "driveUploadStatusFinalizing": "Google Drive backup uploaded; finishing up…",
-  "driveUploadStatusCancelCleanup": "Clearing unfinished Google Drive backup…",
-  "driveUploadStatusCancelCleanupNeedsReauth": "Re-link the Google account ({accountEmail}) to finish clearing the unfinished backup.",
+  "driveUploadStatusFinalizing": "Backup uploaded. Finishing…",
+  "driveUploadStatusCancelCleanup": "Clearing unfinished backup…",
+  "driveUploadStatusCancelCleanupNeedsReauth": "Re-link {accountEmail} to finish cleanup.",
   "@driveUploadStatusCancelCleanupNeedsReauth": {
     "placeholders": {
       "accountEmail": {"type": "String"}
     }
   },
-  "driveUploadStatusCancelCleanupAccountMismatch": "The signed-in Google account does not match the upload. Re-link {accountEmail} to finish cleanup, or abandon it.",
+  "driveUploadStatusCancelCleanupAccountMismatch": "Account mismatch. Link {accountEmail}, or abandon cleanup.",
   "@driveUploadStatusCancelCleanupAccountMismatch": {
     "placeholders": {
       "accountEmail": {"type": "String"}
@@ -1293,17 +1321,17 @@
   },
   "driveUploadCancelButton": "Cancel upload",
   "driveUploadCancelConfirmTitle": "Cancel Google Drive upload?",
-  "driveUploadCancelConfirmBody": "This stops the current background upload and deletes the temporary backup file.",
-  "driveUploadBusyBlocksAccountActions": "An upload is in progress. Finish or cancel it before changing the Google account.",
-  "driveUploadCancelCleanupBlocksAccountActions": "Clearing an unfinished Google Drive backup. If authorization failed, re-link the original account or abandon cleanup.",
+  "driveUploadCancelConfirmBody": "This stops the upload and deletes the temporary file.",
+  "driveUploadBusyBlocksAccountActions": "Finish or cancel the upload before changing Google accounts.",
+  "driveUploadCancelCleanupBlocksAccountActions": "Finish or abandon cleanup before changing Google accounts.",
   "driveUploadAbandonCancelCleanupButton": "Abandon cleanup",
-  "driveUploadAbandonCancelCleanupConfirmTitle": "Abandon unfinished backup cleanup?",
-  "driveUploadAbandonCancelCleanupConfirmBody": "This unlocks the app so you can back up again or change Google accounts. Leftover files may remain in Google Drive and will not count as a successful backup.",
+  "driveUploadAbandonCancelCleanupConfirmTitle": "Abandon cleanup?",
+  "driveUploadAbandonCancelCleanupConfirmBody": "Google Drive may keep an unfinished file, but it will not count as a successful backup.",
   "driveUploadAbandonedFailureTitle": "Google Drive backup failed",
-  "driveUploadAbandonedFailureBody": "The previous Google Drive backup did not finish and was cancelled. Please back up again.",
+  "driveUploadAbandonedFailureBody": "The previous backup did not finish. Back up again.",
   "driveUploadAbandonedFailureConfirm": "OK",
   "settingsSecurityOverviewDriveUploadInProgress": "Uploading to Google Drive",
-  "settingsSecurityOverviewDriveUploadPending": "Google Drive upload not finished",
+  "settingsSecurityOverviewDriveUploadPending": "Waiting for network",
   "settingsRestoreDialogConfirmLocalTitle": "Restore Local Backup?",
   "settingsRestoreDialogConfirmDriveTitle": "Restore from Google Drive?",
   "settingsRestoreConfirmOverwriteHeadline": "Existing data will be replaced. Follow the prompts to unlock after restore.",

@@ -14,6 +14,7 @@ import 'package:quill_diary/infrastructure/database/index_database_manager.dart'
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
+import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
@@ -81,8 +82,11 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
   int finalizeCalls = 0;
   int markStatusCalls = 0;
   int ackCalls = 0;
+  final List<String> localeChanges = <String>[];
+
   /// 模擬 markStatusRecorded CAS 失敗（回 null）。
   bool rejectMarkStatus = false;
+
   /// 模擬 finalizeCommitted 失敗（job 仍留在 store）。
   bool rejectFinalize = false;
 
@@ -97,6 +101,11 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
 
   @override
   Future<DriveUploadState> getState() async => envelope;
+
+  @override
+  Future<void> setLocale(String languageCode) async {
+    localeChanges.add(languageCode);
+  }
 
   @override
   Future<String> prepareStagingPath({required String fileName}) async {
@@ -227,6 +236,7 @@ class _FakeVaultBackupService extends VaultBackupService {
   Object? pruneError;
   int pruneCalls = 0;
   File? lastStaging;
+  Future<void>? pruneFuture;
 
   @override
   Future<BackupPersistResult> prepareDriveUploadStaging({
@@ -252,6 +262,10 @@ class _FakeVaultBackupService extends VaultBackupService {
     bool interactive = true,
   }) async {
     pruneCalls++;
+    final Future<void>? pending = pruneFuture;
+    if (pending != null) {
+      await pending;
+    }
     final Object? error = pruneError;
     if (error != null) {
       throw error;
@@ -294,7 +308,9 @@ void main() {
     }
   });
 
-  ProviderContainer buildContainer() {
+  ProviderContainer buildContainer({
+    Duration pruneTimeout = const Duration(seconds: 10),
+  }) {
     return ProviderContainer(
       overrides: [
         appSessionProvider.overrideWith(_PassthroughSession.new),
@@ -302,6 +318,9 @@ void main() {
         vaultBackupServiceProvider.overrideWithValue(backupService),
         backupStatusStoreProvider.overrideWithValue(
           BackupStatusStore(storageFile: statusFile),
+        ),
+        driveUploadCompletionPruneTimeoutProvider.overrideWithValue(
+          pruneTimeout,
         ),
       ],
     );
@@ -340,7 +359,7 @@ void main() {
 
     platform.failure = const DriveUploadFailureNotice(
       jobId: 'job-abandoned',
-      message: '上次 Google Drive 備份未完成，已取消。請重新備份。',
+      message: '上次備份未完成，請重新備份。',
     );
     await coordinator.refresh().timeout(const Duration(seconds: 2));
     expect(coordinator.job, isNull);
@@ -549,6 +568,97 @@ void main() {
     expect(coordinator.job, isNull);
   });
 
+  test('背景收到 STATUS_PENDING 只更新狀態，回前景後才完成收尾', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    coordinator.setAppForeground(false);
+    platform.active = _job(
+      jobId: 'job-background-finish',
+      phase: DriveUploadPhase.statusPending,
+      generation: 2,
+    );
+    platform.markStatusCalls = 0;
+    platform.finalizeCalls = 0;
+    backupService.pruneCalls = 0;
+
+    platform.emitState(platform.envelope);
+    await settleAfterEmit(coordinator);
+    expect(coordinator.job?.phase, DriveUploadPhase.statusPending);
+    expect(platform.markStatusCalls, 0);
+    expect(backupService.pruneCalls, 0);
+    expect(platform.finalizeCalls, 0);
+
+    coordinator.setAppForeground(true);
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(platform.markStatusCalls, 1);
+    expect(backupService.pruneCalls, 1);
+    expect(platform.finalizeCalls, 1);
+    expect(coordinator.job, isNull);
+  });
+
+  test('prune 未回傳會逾時 finalize，後續 refresh 不會卡住', () async {
+    final Completer<void> hangingPrune = Completer<void>();
+    backupService.pruneFuture = hangingPrune.future;
+    final ProviderContainer container = buildContainer(
+      pruneTimeout: const Duration(milliseconds: 20),
+    );
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    platform.active = _job(
+      jobId: 'job-prune-timeout',
+      phase: DriveUploadPhase.prunePending,
+      generation: 3,
+    );
+    platform.finalizeCalls = 0;
+    backupService.pruneCalls = 0;
+
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(backupService.pruneCalls, 1);
+    expect(platform.finalizeCalls, 1);
+    expect(coordinator.job, isNull);
+
+    await coordinator.refresh().timeout(const Duration(seconds: 2));
+    expect(coordinator.job, isNull);
+
+    final BackupPersistResult started = await coordinator
+        .startBackgroundUpload()
+        .timeout(const Duration(seconds: 2));
+    expect(started.status, BackupPersistStatus.success);
+    expect(backupService.pruneCalls, 1);
+    hangingPrune.complete();
+  });
+
+  test('新上傳前 prune 未回傳會逾時並繼續建立上傳工作', () async {
+    final Completer<void> hangingPrune = Completer<void>();
+    backupService.pruneFuture = hangingPrune.future;
+    final ProviderContainer container = buildContainer(
+      pruneTimeout: const Duration(milliseconds: 20),
+    );
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+    backupService.pruneCalls = 0;
+
+    final BackupPersistResult result = await coordinator
+        .startBackgroundUpload()
+        .timeout(const Duration(seconds: 2));
+    expect(result.status, BackupPersistStatus.success);
+    expect(backupService.pruneCalls, 1);
+    expect(coordinator.job?.phase, DriveUploadPhase.uploading);
+    hangingPrune.complete();
+  });
+
   test('新背景上傳開始前會 best-effort silent prune', () async {
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
@@ -563,6 +673,31 @@ void main() {
     expect(result.status, BackupPersistStatus.success);
     expect(backupService.pruneCalls, 1);
     expect(coordinator.job?.phase, DriveUploadPhase.uploading);
+  });
+
+  test('同步語言會交給原生背景上傳服務', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+
+    await coordinator.syncLocale(AppLanguage.en);
+
+    expect(platform.localeChanges, <String>['en']);
+  });
+
+  test('開始背景上傳前會同步預設繁中語言', () async {
+    final ProviderContainer container = buildContainer();
+    addTearDown(container.dispose);
+    final DriveUploadCoordinator coordinator = container.read(
+      driveUploadCoordinatorProvider.notifier,
+    );
+    await coordinator.refresh();
+
+    await coordinator.startBackgroundUpload();
+
+    expect(platform.localeChanges, contains('zh'));
   });
 
   test('新上傳前 prune 失敗仍可開始上傳', () async {

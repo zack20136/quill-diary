@@ -185,7 +185,6 @@ class DriveResumableUploader(
         if (job.retryCount >= MAX_ATTEMPTS) {
             return DriveUploadOutcome.Failed(
                 code = "max_attempts",
-                message = "上傳重試次數過多，Google Drive 備份已取消。",
             )
         }
 
@@ -216,7 +215,7 @@ class DriveResumableUploader(
             val error =
                 (initialTokenResult.exceptionOrNull() as? DriveAccessTokenProvider.TokenException)
                     ?.error
-                    ?: DriveAccessTokenProvider.TokenError.Transient("無法取得授權。")
+                    ?: DriveAccessTokenProvider.TokenError.Transient
             return handleTokenError(job, error, onUpdate)
         }
         val initialToken = initialTokenResult.getOrThrow()
@@ -227,8 +226,6 @@ class DriveResumableUploader(
         var accessToken = initialToken.accessToken
         var tokenRefreshedForChunk = false
         var sessionRecreates = 0
-        var chunksSincePersist = 0
-        var lastProgressPersistAtMs = System.currentTimeMillis()
 
         job =
             persistOrAbort(
@@ -320,7 +317,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = "等待網路連線後繼續上傳。",
+                            lastErrorMessage = null,
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -336,7 +333,6 @@ class DriveResumableUploader(
                     if (completed == null) {
                         return DriveUploadOutcome.Failed(
                             code = "completion_mismatch",
-                            message = "上傳完成回應與預期檔案不符。",
                         )
                     }
                     return commitPending(completed, onUpdate)
@@ -346,7 +342,6 @@ class DriveResumableUploader(
                     if (nextOffset == null) {
                         return DriveUploadOutcome.Failed(
                             code = "invalid_range",
-                            message = "伺服器回傳的上傳進度無效。",
                         )
                     }
                     tokenRefreshedForChunk = false
@@ -355,30 +350,20 @@ class DriveResumableUploader(
                             confirmedOffset = nextOffset,
                             phase = DriveUploadPhase.UPLOADING,
                         )
-                    chunksSincePersist += 1
-                    val now = System.currentTimeMillis()
-                    val shouldPersist =
-                        chunksSincePersist >= PROGRESS_PERSIST_EVERY_CHUNKS ||
-                            (now - lastProgressPersistAtMs >= PROGRESS_PERSIST_INTERVAL_MS)
-                    if (shouldPersist) {
-                        job =
-                            persistOrAbort(
-                                progressed,
-                                onUpdate,
-                                durability = DriveUploadJobStore.Durability.Progress,
-                            ) ?: return DriveUploadOutcome.Cancelled
-                        chunksSincePersist = 0
-                        lastProgressPersistAtMs = now
-                    } else {
-                        job = progressed
-                        onUpdate(job)
-                    }
+                    // 通知與 EventChannel 都從 persisted job 取值；每個伺服器已確認
+                    // chunk 立即落盤，避免設定頁長時間落後記憶體中的通知進度。
+                    job =
+                        persistOrAbort(
+                            progressed,
+                            onUpdate,
+                            durability = DriveUploadJobStore.Durability.Progress,
+                        ) ?: return DriveUploadOutcome.Cancelled
                 }
                 401 -> {
                     if (tokenRefreshedForChunk) {
                         return handleTokenError(
                             job,
-                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null),
+                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
                             onUpdate,
                         )
                     }
@@ -394,7 +379,6 @@ class DriveResumableUploader(
                     if (sessionRecreates >= 1) {
                         return DriveUploadOutcome.Failed(
                             code = "session_expired",
-                            message = "上傳工作階段失效，Google Drive 備份已取消。",
                         )
                     }
                     jobStore.clearSessionUri(job.jobId)
@@ -428,8 +412,6 @@ class DriveResumableUploader(
                                     sessionUri = probed.sessionUri
                                     accessToken = probed.accessToken
                                     sessionRecreates = probed.sessionRecreates
-                                    chunksSincePersist = 0
-                                    lastProgressPersistAtMs = System.currentTimeMillis()
                                 }
                                 is ProbeResult.Outcome -> return probed.outcome
                             }
@@ -443,7 +425,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = "上傳暫時失敗，稍後會自動重試。",
+                                lastErrorMessage = null,
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -458,7 +440,7 @@ class DriveResumableUploader(
                                 job.copy(
                                     retryCount = job.retryCount + 1,
                                     lastErrorCode = "rate_limited",
-                                    lastErrorMessage = "上傳請求過於頻繁，稍後重試。",
+                                    lastErrorMessage = null,
                                     nextRetryAtEpochMs =
                                         System.currentTimeMillis() +
                                             backoffMs(job.retryCount + 1, response),
@@ -468,13 +450,11 @@ class DriveResumableUploader(
                     }
                     return DriveUploadOutcome.Failed(
                         code = "forbidden",
-                        message = "Google Drive 權限不足，請重新連結後再備份。",
                     )
                 }
                 else -> {
                     return DriveUploadOutcome.Failed(
                         code = "http_${response.code}",
-                        message = "上傳失敗（HTTP ${response.code}）。",
                     )
                 }
             }
@@ -485,7 +465,6 @@ class DriveResumableUploader(
             else ->
                 DriveUploadOutcome.Failed(
                     code = "incomplete",
-                    message = "上傳未完成，請重試。",
                 )
         }
     }
@@ -547,7 +526,6 @@ class DriveResumableUploader(
             return StagingResult.Failed(
                 DriveUploadOutcome.Failed(
                     code = "staging_invalid",
-                    message = "本機暫存備份已遺失或內容不一致，請重新建立備份。",
                 ),
             )
         }
@@ -575,7 +553,7 @@ class DriveResumableUploader(
                 val error =
                     (tokenResult.exceptionOrNull() as? DriveAccessTokenProvider.TokenException)
                         ?.error
-                        ?: DriveAccessTokenProvider.TokenError.Transient("無法取得授權。")
+                        ?: DriveAccessTokenProvider.TokenError.Transient
                 return AllocateIdResult.Outcome(handleTokenError(job, error, onUpdate))
             }
             val token = tokenResult.getOrThrow()
@@ -604,7 +582,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "generate_id",
-                                lastErrorMessage = "暫時無法配置遠端檔案 ID。",
+                                lastErrorMessage = null,
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, null),
@@ -621,7 +599,6 @@ class DriveResumableUploader(
                         return AllocateIdResult.Outcome(
                             DriveUploadOutcome.Failed(
                                 code = "generate_id",
-                                message = "Google Drive 未回傳檔案 ID。",
                             ),
                         )
                     }
@@ -635,7 +612,7 @@ class DriveResumableUploader(
                         return AllocateIdResult.Outcome(
                             handleTokenError(
                                 job,
-                                DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null),
+                                DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
                                 onUpdate,
                             ),
                         )
@@ -649,7 +626,7 @@ class DriveResumableUploader(
                                 job.copy(
                                     retryCount = job.retryCount + 1,
                                     lastErrorCode = "rate_limited",
-                                    lastErrorMessage = "上傳請求過於頻繁，稍後重試。",
+                                    lastErrorMessage = null,
                                     nextRetryAtEpochMs =
                                         System.currentTimeMillis() +
                                             backoffMs(job.retryCount + 1, response),
@@ -661,7 +638,7 @@ class DriveResumableUploader(
                     return AllocateIdResult.Outcome(
                         handleTokenError(
                             job,
-                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null),
+                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
                             onUpdate,
                         ),
                     )
@@ -672,7 +649,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = "暫時無法配置遠端檔案 ID。",
+                                lastErrorMessage = null,
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -685,7 +662,6 @@ class DriveResumableUploader(
                     return AllocateIdResult.Outcome(
                         DriveUploadOutcome.Failed(
                             code = "http_${response.code}",
-                            message = "無法配置遠端檔案 ID（HTTP ${response.code}）。",
                         ),
                     )
                 }
@@ -695,7 +671,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = "暫時無法配置遠端檔案 ID。",
+                                lastErrorMessage = null,
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -778,7 +754,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = "等待網路連線後繼續上傳。",
+                            lastErrorMessage = null,
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -795,7 +771,6 @@ class DriveResumableUploader(
                     return CreateSessionResult.Outcome(
                         DriveUploadOutcome.Failed(
                             code = "missing_session",
-                            message = "無法建立 Google Drive 上傳工作階段。",
                         ),
                     )
                 }
@@ -810,7 +785,7 @@ class DriveResumableUploader(
                     return CreateSessionResult.Outcome(
                         handleTokenError(
                             job,
-                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null),
+                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
                             onUpdate,
                         ),
                     )
@@ -836,7 +811,6 @@ class DriveResumableUploader(
                         return CreateSessionResult.Outcome(
                             DriveUploadOutcome.Failed(
                                 code = "conflict",
-                                message = "Google Drive 檔案衝突，請重新建立備份。",
                             ),
                         )
                     }
@@ -859,7 +833,6 @@ class DriveResumableUploader(
                 return CreateSessionResult.Outcome(
                     DriveUploadOutcome.Failed(
                         code = "http_${response.code}",
-                        message = "無法建立上傳工作階段（HTTP ${response.code}）。",
                     ),
                 )
             }
@@ -897,7 +870,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = "等待網路連線後繼續上傳。",
+                            lastErrorMessage = null,
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -914,7 +887,6 @@ class DriveResumableUploader(
                     ProbeResult.Outcome(
                         DriveUploadOutcome.Failed(
                             code = "completion_mismatch",
-                            message = "上傳完成回應與預期檔案不符。",
                         ),
                     )
                 } else {
@@ -930,7 +902,6 @@ class DriveResumableUploader(
                     ProbeResult.Outcome(
                         DriveUploadOutcome.Failed(
                             code = "invalid_range",
-                            message = "伺服器回傳的上傳進度無效。",
                         ),
                     )
                 } else {
@@ -950,7 +921,7 @@ class DriveResumableUploader(
                     return ProbeResult.Outcome(
                         handleTokenError(
                             job,
-                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null),
+                            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
                             onUpdate,
                         ),
                     )
@@ -973,7 +944,6 @@ class DriveResumableUploader(
                     return ProbeResult.Outcome(
                         DriveUploadOutcome.Failed(
                             code = "session_expired",
-                            message = "上傳工作階段失效，Google Drive 備份已取消。",
                         ),
                     )
                 }
@@ -1010,7 +980,6 @@ class DriveResumableUploader(
                 ProbeResult.Outcome(
                     DriveUploadOutcome.Failed(
                         code = "http_${response.code}",
-                        message = "無法查詢上傳進度（HTTP ${response.code}）。",
                     ),
                 )
             }
@@ -1089,7 +1058,6 @@ class DriveResumableUploader(
             else ->
                 DriveUploadOutcome.Failed(
                     code = "conflict",
-                    message = "Google Drive 檔案衝突，請重新建立備份。",
                 )
         }
     }
@@ -1144,7 +1112,7 @@ class DriveResumableUploader(
                 job.copy(
                     phase = DriveUploadPhase.WAITING_FOR_NETWORK,
                     lastErrorCode = job.lastErrorCode ?: "network",
-                    lastErrorMessage = job.lastErrorMessage ?: "等待網路連線後繼續上傳。",
+                    lastErrorMessage = null,
                 ),
                 onUpdate,
             ) ?: return DriveUploadOutcome.Cancelled
@@ -1157,25 +1125,23 @@ class DriveResumableUploader(
         onUpdate: (DriveUploadJob) -> Unit,
     ): DriveUploadOutcome {
         return when (error) {
-            is DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
-            is DriveAccessTokenProvider.TokenError.NotSignedIn,
+            DriveAccessTokenProvider.TokenError.NeedsUserInteraction,
+            DriveAccessTokenProvider.TokenError.NotSignedIn,
             -> {
                 DriveUploadOutcome.Failed(
                     code = "authorization",
-                    message = "Google Drive 授權已失效，請重新連結後再備份。",
                 )
             }
-            is DriveAccessTokenProvider.TokenError.Permanent -> {
+            DriveAccessTokenProvider.TokenError.Permanent -> {
                 DriveUploadOutcome.Failed(
                     code = "authorization",
-                    message = error.message,
                 )
             }
-            is DriveAccessTokenProvider.TokenError.Transient ->
+            DriveAccessTokenProvider.TokenError.Transient ->
                 waitingForNetwork(
                     job.copy(
                         lastErrorCode = "token_transient",
-                        lastErrorMessage = error.message,
+                        lastErrorMessage = null,
                         retryCount = job.retryCount + 1,
                         nextRetryAtEpochMs =
                             System.currentTimeMillis() + backoffMs(job.retryCount + 1, null),
@@ -1194,7 +1160,7 @@ class DriveResumableUploader(
             val error =
                 (refreshed.exceptionOrNull() as? DriveAccessTokenProvider.TokenException)
                     ?.error
-                    ?: DriveAccessTokenProvider.TokenError.NeedsUserInteraction(null)
+                    ?: DriveAccessTokenProvider.TokenError.NeedsUserInteraction
             return TokenRefreshResult.Failed(handleTokenError(job, error, onUpdate))
         }
         val token = refreshed.getOrThrow()
@@ -1231,9 +1197,6 @@ class DriveResumableUploader(
 
         private const val MAX_RESPONSE_BODY_BYTES = 512 * 1024
         private const val STREAM_BUFFER_SIZE = 64 * 1024
-        private const val PROGRESS_PERSIST_EVERY_CHUNKS = 4
-        private const val PROGRESS_PERSIST_INTERVAL_MS = 30_000L
-
         private val ALLOWED_UPLOAD_HOSTS =
             setOf(
                 "www.googleapis.com",

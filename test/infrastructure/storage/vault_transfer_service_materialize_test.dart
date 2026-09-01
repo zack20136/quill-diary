@@ -366,7 +366,18 @@ void main() {
           (await harness.repository.setupRecoveryKey()).session;
 
       await expectLater(
-        service.importDocumentsWithPicker(session, l10n: testL10n),
+        service.importDocumentsWithPicker(
+          session,
+          l10n: testL10n,
+          confirmPreview: (PortableImportPreview preview) async {
+            return PortableImportConfirmResult(
+              confirmed: true,
+              selectedPreviewIndices: preview.entries
+                  .map((PortableImportPreviewEntry entry) => entry.previewIndex)
+                  .toSet(),
+            );
+          },
+        ),
         throwsA(isA<StateError>()),
       );
 
@@ -390,7 +401,8 @@ class _ThrowingZipImportArchiveIo extends VaultArchiveIo {
       );
 
   @override
-  Future<PortableImportResult> importDocumentsFromZip({
+  Future<({AnalyzedPortableImport analyzed, Directory ownedTempRoot})>
+  analyzeDocumentsFromZip({
     required UnlockedVaultSession session,
     required File zipFile,
   }) async {

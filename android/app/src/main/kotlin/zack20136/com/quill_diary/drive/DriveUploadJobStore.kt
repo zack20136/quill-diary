@@ -13,6 +13,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import zack20136.com.quill_diary.R
 
 /**
  * 原子持久化上傳工作；session URI 以 Android Keystore 加密後另存。
@@ -126,7 +127,13 @@ class DriveUploadJobStore private constructor(context: Context) {
             writeFailureNoticeLocked(
                 DriveUploadFailureNotice(
                     jobId = failed.jobId,
-                    message = message.ifBlank { "上次 Google Drive 備份未完成，已取消。請重新備份。" },
+                    message =
+                        message.ifBlank {
+                            DriveUploadLocalization.string(
+                                appContext,
+                                R.string.drive_upload_failure_default,
+                            )
+                        },
                 ),
             )
             deleteJobLocked(failed.jobId)
@@ -395,7 +402,19 @@ class DriveUploadJobStore private constructor(context: Context) {
                 val value = json.opt(key)
                 map[key] = if (value == JSONObject.NULL) null else value
             }
-            DriveUploadFailureNotice.fromMap(map)
+            DriveUploadFailureNotice.fromMap(map)?.let { notice ->
+                if (notice.message.isBlank()) {
+                    notice.copy(
+                        message =
+                            DriveUploadLocalization.string(
+                                appContext,
+                                R.string.drive_upload_failure_default,
+                            ),
+                    )
+                } else {
+                    notice
+                }
+            }
         }.getOrNull()
     }
 

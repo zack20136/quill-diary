@@ -8,11 +8,7 @@ import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
   Widget host(Widget child, {Brightness brightness = Brightness.light}) =>
-      widgetTestApp(
-        brightness: brightness,
-        center: false,
-        child: child,
-      );
+      widgetTestApp(brightness: brightness, center: false, child: child);
 
   for (final Brightness brightness in Brightness.values) {
     testWidgets('三種 surface style 在 ${brightness.name} 主題可正確組合', (
@@ -71,9 +67,7 @@ void main() {
     });
   }
 
-  testWidgets('scrollable page body 套用標準留白並可捲動', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('scrollable page body 套用標準留白並可捲動', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -106,9 +100,7 @@ void main() {
           title: '標題',
           description: '說明',
           icon: Icons.tune,
-          child: AppActionGroup(
-            actions: <Widget>[Text('操作一'), Text('操作二')],
-          ),
+          child: AppActionGroup(actions: <Widget>[Text('操作一'), Text('操作二')]),
         ),
       ),
     );
@@ -131,10 +123,13 @@ void main() {
     final double stripeHeight = tester.getSize(stripe).height;
     final double titleTop = tester.getTopLeft(find.text('標題')).dy;
     final double descriptionBottom = tester.getBottomLeft(find.text('說明')).dy;
-    expect(stripeHeight, greaterThanOrEqualTo(descriptionBottom - titleTop - 1));
+    expect(
+      stripeHeight,
+      greaterThanOrEqualTo(descriptionBottom - titleTop - 1),
+    );
   });
 
-  testWidgets('有 trailing 關閉鈕時標題仍與藍條頂對齊', (WidgetTester tester) async {
+  testWidgets('沒有說明且有 trailing 時標題與藍條垂直置中', (WidgetTester tester) async {
     await tester.pumpWidget(
       host(
         AppSectionCard(
@@ -160,9 +155,9 @@ void main() {
           (widget.decoration as BoxDecoration).borderRadius != null &&
           widget.constraints?.minWidth == 4,
     );
-    final double stripeTop = tester.getTopLeft(stripe).dy;
-    final double titleTop = tester.getTopLeft(find.text('日記 ‧ 筆記')).dy;
-    expect((titleTop - stripeTop).abs(), lessThan(6));
+    final double stripeCenter = tester.getCenter(stripe).dy;
+    final double titleCenter = tester.getCenter(find.text('日記 ‧ 筆記')).dy;
+    expect(titleCenter, closeTo(stripeCenter, 0.5));
   });
 
   testWidgets('AppSectionCard 支援 elevated 與 expandChild', (
@@ -200,9 +195,7 @@ void main() {
             AppSliverSectionCard(
               title: '日記區段',
               stripeColor: Colors.teal,
-              slivers: <Widget>[
-                SliverToBoxAdapter(child: Text('內容列')),
-              ],
+              slivers: <Widget>[SliverToBoxAdapter(child: Text('內容列'))],
             ),
           ],
         ),

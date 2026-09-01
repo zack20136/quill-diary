@@ -138,6 +138,34 @@ void main() {
       expect(job.needsCancelCleanupAccountRecovery, isTrue);
     });
 
+    test('進度百分比無條件捨去且只有完整上傳顯示 100', () {
+      DriveUploadJobSnapshot snapshot(
+        int confirmedOffset, {
+        int sizeBytes = 1000,
+      }) {
+        return DriveUploadJobSnapshot.fromMap(<Object?, Object?>{
+          'jobId': '11111111-1111-1111-1111-111111111111',
+          'phase': 'UPLOADING',
+          'accountId': 'acc',
+          'accountEmail': 'a@b.c',
+          'stagingPath': '/tmp/a',
+          'fileName': 'a.zip',
+          'sizeBytes': sizeBytes,
+          'md5': 'abc',
+          'confirmedOffset': confirmedOffset,
+        });
+      }
+
+      expect(snapshot(0).progressPercent, 0);
+      expect(snapshot(29, sizeBytes: 100).progressPercent, 29);
+      expect(snapshot(129).progressPercent, 12);
+      expect(snapshot(999).progressPercent, 99);
+      expect(snapshot(1000).progressPercent, 100);
+      expect(snapshot(1200).progressPercent, 100);
+      expect(snapshot(-1).progressPercent, 0);
+      expect(snapshot(1, sizeBytes: 0).progressPercent, 0);
+    });
+
     test('未知 phase 拋錯', () {
       expect(
         () => DriveUploadJobSnapshot.fromMap(<Object?, Object?>{

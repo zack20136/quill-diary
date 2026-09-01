@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'package:quill_diary/app/app_identifiers.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 
 /// 與 Android 原生 Drive 背景上傳服務通訊。
 class DriveUploadPlatform {
@@ -21,6 +22,16 @@ class DriveUploadPlatform {
   final EventChannel _events;
 
   bool get isSupported => Platform.isAndroid;
+
+  /// 保存 App 語系，供 Flutter process 不在時的背景通知使用。
+  Future<void> setLocale(String languageCode) async {
+    if (!isSupported) {
+      return;
+    }
+    await _methods.invokeMethod<Object?>('setLocale', <String, Object?>{
+      'languageCode': languageCode,
+    });
+  }
 
   Stream<DriveUploadState> watchState() {
     if (!isSupported) {
@@ -45,7 +56,9 @@ class DriveUploadPlatform {
     );
     final String path = '$raw'.trim();
     if (path.isEmpty) {
-      throw StateError('無法準備 Google Drive 上傳暫存路徑。');
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.prepareUploadFailed,
+      );
     }
     return path;
   }
@@ -67,7 +80,7 @@ class DriveUploadPlatform {
     final DriveUploadState decoded = _decodeState(raw);
     final DriveUploadJobSnapshot? job = decoded.job;
     if (job == null) {
-      throw StateError('無法建立 Google Drive 背景上傳工作。');
+      throw const GoogleDriveException(GoogleDriveErrorCode.startUploadFailed);
     }
     return job;
   }
@@ -94,10 +107,9 @@ class DriveUploadPlatform {
     if (!isSupported) {
       return;
     }
-    await _methods.invokeMethod<Object?>(
-      'ackFailure',
-      <String, Object?>{'jobId': jobId},
-    );
+    await _methods.invokeMethod<Object?>('ackFailure', <String, Object?>{
+      'jobId': jobId,
+    });
   }
 
   /// 原生成功回 job map（或舊版 envelope）；CAS 失敗回 `null`。
@@ -119,10 +131,9 @@ class DriveUploadPlatform {
     if (!isSupported) {
       return;
     }
-    await _methods.invokeMethod<Object?>(
-      'finalizeCommitted',
-      <String, Object?>{'jobId': jobId},
-    );
+    await _methods.invokeMethod<Object?>('finalizeCommitted', <String, Object?>{
+      'jobId': jobId,
+    });
   }
 
   Future<bool> notificationsAuthorized() async {
@@ -157,7 +168,9 @@ class DriveUploadPlatform {
 
   void _ensureAndroid() {
     if (!isSupported) {
-      throw UnsupportedError('Google Drive 背景上傳僅支援 Android。');
+      throw const GoogleDriveException(
+        GoogleDriveErrorCode.backgroundUploadUnsupported,
+      );
     }
   }
 

@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
@@ -20,12 +21,14 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 import zack20136.com.quill_diary.MainActivity
+import zack20136.com.quill_diary.R
 
 /**
  * Dart ↔ 原生背景上傳橋接。
  * 重 I/O 走單一背景執行緒；通知權限維持主執行緒。
  */
 object DriveUploadBridge {
+    private const val TAG = "DriveUploadBridge"
     const val METHOD_CHANNEL = "quill_diary/drive_upload"
     const val EVENT_CHANNEL = "quill_diary/drive_upload_events"
     const val NOTIFICATION_CHANNEL_ID = "quill_diary_drive_upload"
@@ -63,9 +66,10 @@ object DriveUploadBridge {
             try {
                 handleMethod(appContext, call, result)
             } catch (error: Throwable) {
+                Log.e(TAG, "Drive upload method failed: ${call.method}", error)
                 result.error(
                     "drive_upload_error",
-                    error.message ?: "Drive upload bridge failed.",
+                    localizedString(appContext, R.string.drive_upload_error_unexpected),
                     null,
                 )
             }
@@ -186,12 +190,21 @@ object DriveUploadBridge {
     ) {
         val jobStore = DriveUploadJobStore.get(context)
         when (call.method) {
+            "setLocale" -> {
+                val languageCode =
+                    DriveUploadLocalization.setLanguageCode(
+                        context,
+                        call.argument<String>("languageCode"),
+                    )
+                BackupUploadForegroundService.refreshLocalization(context)
+                result.success(languageCode)
+            }
             "getState" -> {
                 ioExecutor.execute {
                     replySuccess(result, readStateEnvelope(context))
                 }
             }
-            "prepareStagingPath" -> prepareStagingPath(jobStore, call, result)
+            "prepareStagingPath" -> prepareStagingPath(context, jobStore, call, result)
             "startUpload" -> startUpload(context, jobStore, call, result)
             "cancelUpload" -> cancelUpload(context, jobStore, result)
             "abandonCancelCleanup" -> abandonCancelCleanup(context, jobStore, call, result)
@@ -235,6 +248,7 @@ object DriveUploadBridge {
     }
 
     private fun prepareStagingPath(
+        context: Context,
         jobStore: DriveUploadJobStore,
         call: MethodCall,
         result: MethodChannel.Result,
@@ -242,7 +256,11 @@ object DriveUploadBridge {
         val rawName = call.argument<String>("fileName")?.trim().orEmpty()
         val fileName = DriveUploadJobStore.sanitizeFileName(rawName)
         if (fileName == null) {
-            result.error("invalid_args", "fileName is required.", null)
+            result.error(
+                "invalid_args",
+                localizedString(context, R.string.drive_upload_error_invalid_args),
+                null,
+            )
             return
         }
         ioExecutor.execute {
@@ -252,15 +270,23 @@ object DriveUploadBridge {
                 val staging = File(root, "${System.currentTimeMillis()}_$fileName")
                 val canonical = staging.canonicalFile
                 if (!jobStore.isInsideStagingRoot(canonical.path)) {
-                    replyError(result, "staging_invalid", "暫存備份路徑不合法。")
+                    replyError(
+                        result,
+                        "staging_invalid",
+                        localizedString(
+                            context,
+                            R.string.drive_upload_error_staging_path_invalid,
+                        ),
+                    )
                     return@execute
                 }
                 replySuccess(result, canonical.absolutePath)
             } catch (error: Throwable) {
+                Log.e(TAG, "Preparing the Drive staging path failed.", error)
                 replyError(
                     result,
                     "drive_upload_error",
-                    error.message ?: "prepareStagingPath failed.",
+                    localizedString(context, R.string.drive_upload_error_unexpected),
                 )
             }
         }
@@ -281,7 +307,11 @@ object DriveUploadBridge {
                 else -> raw?.toString()?.toLongOrNull() ?: -1L
             }
         if (stagingPath.isEmpty() || fileName == null || sizeBytes < 0) {
-            result.error("invalid_args", "缺少上傳必要參數。", null)
+            result.error(
+                "invalid_args",
+                localizedString(context, R.string.drive_upload_error_invalid_args),
+                null,
+            )
             return
         }
         ioExecutor.execute {
@@ -289,18 +319,36 @@ object DriveUploadBridge {
             try {
                 val staging = File(stagingPath)
                 if (!staging.isFile || staging.length() != sizeBytes) {
-                    replyError(result, "staging_invalid", "暫存備份檔無效。")
+                    replyError(
+                        result,
+                        "staging_invalid",
+                        localizedString(context, R.string.drive_upload_error_staging_invalid),
+                    )
                     return@execute
                 }
                 val canonical = staging.canonicalFile
                 if (!jobStore.isInsideStagingRoot(canonical.path)) {
-                    replyError(result, "staging_invalid", "暫存備份路徑不合法。")
+                    replyError(
+                        result,
+                        "staging_invalid",
+                        localizedString(
+                            context,
+                            R.string.drive_upload_error_staging_path_invalid,
+                        ),
+                    )
                     return@execute
                 }
                 val account =
                     DriveAccessTokenProvider(context).currentAccountSnapshot()
                         ?: run {
-                            replyError(result, "needs_authorization", "請先連結 Google 帳戶。")
+                            replyError(
+                                result,
+                                "needs_authorization",
+                                localizedString(
+                                    context,
+                                    R.string.drive_upload_error_needs_authorization,
+                                ),
+                            )
                             return@execute
                         }
                 val md5 = DriveUploadJobStore.md5Hex(canonical)
@@ -318,7 +366,14 @@ object DriveUploadBridge {
                 val saved =
                     jobStore.createJobIfNoConflict(job)
                         ?: run {
-                            replyError(result, "job_in_progress", "已有進行中的 Google Drive 上傳。")
+                            replyError(
+                                result,
+                                "job_in_progress",
+                                localizedString(
+                                    context,
+                                    R.string.drive_upload_error_job_in_progress,
+                                ),
+                            )
                             return@execute
                         }
                 createdJobId = saved.jobId
@@ -332,7 +387,10 @@ object DriveUploadBridge {
                         result,
                         "fgs_start_not_allowed",
                         envelope["failure"]?.let { (it as Map<*, *>)["message"]?.toString() }
-                            ?: "無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。",
+                            ?: localizedString(
+                                context,
+                                R.string.drive_upload_error_fgs_start_not_allowed,
+                            ),
                         envelope,
                     )
                     return@execute
@@ -340,19 +398,21 @@ object DriveUploadBridge {
                 emitStateEnvelope()
                 replySuccess(result, jobStore.getStateEnvelope())
             } catch (error: Throwable) {
+                Log.e(TAG, "Starting the Drive upload failed.", error)
                 val jobId = createdJobId
                 if (jobId != null) {
                     jobStore.failAndCleanup(
                         jobId,
                         errorCode = "start_failed",
-                        message = error.message ?: "無法啟動 Google Drive 上傳。",
+                        message =
+                            localizedString(context, R.string.drive_upload_error_start_failed),
                     )
                     emitStateEnvelope()
                 }
                 replyError(
                     result,
                     "drive_upload_error",
-                    error.message ?: "startUpload failed.",
+                    localizedString(context, R.string.drive_upload_error_start_failed),
                     if (jobId != null) jobStore.getStateEnvelope() else null,
                 )
             }
@@ -371,7 +431,7 @@ object DriveUploadBridge {
                     replyError(
                         result,
                         "cancel_not_allowed",
-                        "遠端備份已完成，無法取消。",
+                        localizedString(context, R.string.drive_upload_error_cancel_not_allowed),
                         jobStore.getStateEnvelope(),
                     )
                     return@execute
@@ -405,10 +465,11 @@ object DriveUploadBridge {
                     },
                 )
             } catch (error: Throwable) {
+                Log.e(TAG, "Cancelling the Drive upload failed.", error)
                 replyError(
                     result,
                     "drive_upload_error",
-                    error.message ?: "cancelUpload failed.",
+                    localizedString(context, R.string.drive_upload_error_unexpected),
                 )
             }
         }
@@ -422,7 +483,11 @@ object DriveUploadBridge {
     ) {
         val jobId = call.argument<String>("jobId")?.trim().orEmpty()
         if (jobId.isEmpty()) {
-            result.error("invalid_args", "jobId is required.", null)
+            result.error(
+                "invalid_args",
+                localizedString(context, R.string.drive_upload_error_invalid_args),
+                null,
+            )
             return
         }
         ioExecutor.execute {
@@ -437,7 +502,7 @@ object DriveUploadBridge {
                     replyError(
                         result,
                         "abandon_not_allowed",
-                        "遠端備份已完成，無法放棄清理。",
+                        localizedString(context, R.string.drive_upload_error_abandon_not_allowed),
                         jobStore.getStateEnvelope(),
                     )
                     return@execute
@@ -446,7 +511,7 @@ object DriveUploadBridge {
                     replyError(
                         result,
                         "abandon_not_allowed",
-                        "上傳仍在結束中，請稍後再試。",
+                        localizedString(context, R.string.drive_upload_error_upload_finishing),
                         jobStore.getStateEnvelope(),
                     )
                     return@execute
@@ -462,10 +527,11 @@ object DriveUploadBridge {
                 emitStateEnvelope()
                 replySuccess(result, jobStore.getStateEnvelope())
             } catch (error: Throwable) {
+                Log.e(TAG, "Abandoning Drive cleanup failed.", error)
                 replyError(
                     result,
                     "drive_upload_error",
-                    error.message ?: "abandonCancelCleanup failed.",
+                    localizedString(context, R.string.drive_upload_error_unexpected),
                 )
             }
         }
@@ -511,7 +577,11 @@ object DriveUploadBridge {
             return
         }
         if (pendingNotificationResult.get() != null) {
-            result.error("permission_in_progress", "通知權限請求進行中。", null)
+            result.error(
+                "permission_in_progress",
+                localizedString(context, R.string.drive_upload_error_permission_in_progress),
+                null,
+            )
             return
         }
         pendingNotificationResult.set(result)
@@ -554,4 +624,7 @@ object DriveUploadBridge {
     ) {
         mainHandler.post { result.error(code, message, details) }
     }
+
+    private fun localizedString(context: Context, resourceId: Int, vararg arguments: Any): String =
+        DriveUploadLocalization.string(context, resourceId, *arguments)
 }

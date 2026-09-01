@@ -53,7 +53,8 @@ data class DriveUploadJob(
             "retryCount" to retryCount,
             "nextRetryAtEpochMs" to nextRetryAtEpochMs,
             "lastErrorCode" to lastErrorCode,
-            "lastErrorMessage" to lastErrorMessage,
+            // 舊版工作可能帶有原始例外文字；不得再透過持久狀態／EventChannel 洩漏。
+            "lastErrorMessage" to null,
             "generation" to generation,
             "updatedAtEpochMs" to updatedAtEpochMs,
             "createdAtEpochMs" to createdAtEpochMs,
@@ -65,6 +66,15 @@ data class DriveUploadJob(
             return 0.0
         }
         return (confirmedOffset.toDouble() / sizeBytes.toDouble()).coerceIn(0.0, 1.0)
+    }
+
+    /** 與設定頁一致採無條件捨去，未完成時不提早顯示 100%。 */
+    fun progressPercent(): Int {
+        if (sizeBytes <= 0L) {
+            return 0
+        }
+        val boundedOffset = confirmedOffset.coerceIn(0L, sizeBytes)
+        return ((boundedOffset * 100L) / sizeBytes).toInt()
     }
 
     fun isActive(): Boolean = true
@@ -193,9 +203,7 @@ data class DriveUploadFailureNotice(
             }
             val message =
                 string("message").ifEmpty {
-                    string("errorMessage").ifEmpty {
-                        "上次 Google Drive 備份未完成，已取消。請重新備份。"
-                    }
+                    string("errorMessage")
                 }
             return DriveUploadFailureNotice(jobId = jobId, message = message)
         }
@@ -207,10 +215,7 @@ sealed class DriveUploadOutcome {
 
     data class Committed(val job: DriveUploadJob) : DriveUploadOutcome()
 
-    data class Failed(
-        val code: String,
-        val message: String,
-    ) : DriveUploadOutcome()
+    data class Failed(val code: String) : DriveUploadOutcome()
 
     data object Cancelled : DriveUploadOutcome()
 }

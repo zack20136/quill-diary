@@ -318,10 +318,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
               );
             }
             final PortableImportConfirmResult result =
-                await confirmPortableImport(
-                  context: context,
-                  preview: preview,
-                );
+                await confirmPortableImport(context: context, preview: preview);
             if (isMounted && result.confirmed) {
               updatePageState(() {
                 _showBusyOverlay = true;
@@ -458,10 +455,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           ? '${l10n.driveUploadBackgroundStarted}\n${l10n.driveUploadNotificationsDeniedHint}'
           : l10n.driveUploadBackgroundStarted;
       _showFeedback(
-        SettingsFlowFeedback(
-          message,
-          tone: SettingsFlowFeedbackTone.success,
-        ),
+        SettingsFlowFeedback(message, tone: SettingsFlowFeedbackTone.success),
       );
     }
   }
@@ -551,28 +545,29 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     );
     if (!confirmed || !context.mounted) return;
     VaultInspectReport? completed;
-    await _runBusy(() async {
-      completed = await _settingsFlow.inspectVault(
-        onProgress: (VaultRepairPhase phase) {
-          if (!isMounted) return;
-          updatePageState(() {
-            _busyProgress = vaultInspectProgressFraction(phase);
-            _busyMessage = switch (phase) {
-              VaultRepairPhase.scanningEntries =>
-                l10n.settingsInspectVaultProgressScanningEntries,
-              VaultRepairPhase.checkingAttachments =>
-                l10n.settingsInspectVaultProgressCheckingAttachments,
-              VaultRepairPhase.rebuildingIndex =>
-                l10n.settingsInspectVaultProgressRebuildingIndex,
-              VaultRepairPhase.rebuildingPeopleAnalytics =>
-                l10n.settingsInspectVaultProgressRebuildingPeople,
-              VaultRepairPhase.cleaning =>
-                l10n.settingsInspectVaultProgressRebuildingIndex,
-            };
-          });
-        },
-      );
-    },
+    await _runBusy(
+      () async {
+        completed = await _settingsFlow.inspectVault(
+          onProgress: (VaultRepairPhase phase) {
+            if (!isMounted) return;
+            updatePageState(() {
+              _busyProgress = vaultInspectProgressFraction(phase);
+              _busyMessage = switch (phase) {
+                VaultRepairPhase.scanningEntries =>
+                  l10n.settingsInspectVaultProgressScanningEntries,
+                VaultRepairPhase.checkingAttachments =>
+                  l10n.settingsInspectVaultProgressCheckingAttachments,
+                VaultRepairPhase.rebuildingIndex =>
+                  l10n.settingsInspectVaultProgressRebuildingIndex,
+                VaultRepairPhase.rebuildingPeopleAnalytics =>
+                  l10n.settingsInspectVaultProgressRebuildingPeople,
+                VaultRepairPhase.cleaning =>
+                  l10n.settingsInspectVaultProgressRebuildingIndex,
+              };
+            });
+          },
+        );
+      },
       message: l10n.settingsInspectVaultProgressScanningEntries,
       initialProgress: vaultInspectProgressFraction(
         VaultRepairPhase.scanningEntries,
@@ -593,30 +588,31 @@ extension _SettingsPageCallbacks on _SettingsPageState {
     final AppLocalizations l10n = context.l10n;
     VaultRepairReport? completed;
     try {
-      await _runBusy(() async {
-        completed = await _settingsFlow.repairVaultAfterVerifiedBackup(
-          onProgress: (VaultMaintenanceFlowPhase phase) {
-            if (!isMounted) return;
-            updatePageState(() {
-              _busyProgress = vaultMaintenanceProgressFraction(phase);
-              _busyMessage = switch (phase) {
-                VaultMaintenanceFlowPhase.creatingBackup =>
-                  l10n.settingsRepairVaultProgressCreatingBackup,
-                VaultMaintenanceFlowPhase.repairingEntries ||
-                VaultMaintenanceFlowPhase.inspectingEntries =>
-                  l10n.settingsRepairVaultProgressRepairingEntries,
-                VaultMaintenanceFlowPhase.repairingAttachments ||
-                VaultMaintenanceFlowPhase.inspectingAttachments =>
-                  l10n.settingsRepairVaultProgressRepairingAttachments,
-                VaultMaintenanceFlowPhase.updatingSearch ||
-                VaultMaintenanceFlowPhase.rebuildingIndex ||
-                VaultMaintenanceFlowPhase.rebuildingPeople =>
-                  l10n.settingsRepairVaultProgressUpdatingSearch,
-              };
-            });
-          },
-        );
-      },
+      await _runBusy(
+        () async {
+          completed = await _settingsFlow.repairVaultAfterVerifiedBackup(
+            onProgress: (VaultMaintenanceFlowPhase phase) {
+              if (!isMounted) return;
+              updatePageState(() {
+                _busyProgress = vaultMaintenanceProgressFraction(phase);
+                _busyMessage = switch (phase) {
+                  VaultMaintenanceFlowPhase.creatingBackup =>
+                    l10n.settingsRepairVaultProgressCreatingBackup,
+                  VaultMaintenanceFlowPhase.repairingEntries ||
+                  VaultMaintenanceFlowPhase.inspectingEntries =>
+                    l10n.settingsRepairVaultProgressRepairingEntries,
+                  VaultMaintenanceFlowPhase.repairingAttachments ||
+                  VaultMaintenanceFlowPhase.inspectingAttachments =>
+                    l10n.settingsRepairVaultProgressRepairingAttachments,
+                  VaultMaintenanceFlowPhase.updatingSearch ||
+                  VaultMaintenanceFlowPhase.rebuildingIndex ||
+                  VaultMaintenanceFlowPhase.rebuildingPeople =>
+                    l10n.settingsRepairVaultProgressUpdatingSearch,
+                };
+              });
+            },
+          );
+        },
         message: l10n.settingsRepairVaultProgressCreatingBackup,
         initialProgress: vaultMaintenanceProgressFraction(
           VaultMaintenanceFlowPhase.creatingBackup,
@@ -728,7 +724,7 @@ extension _SettingsPageCallbacks on _SettingsPageState {
         !job.needsCancelCleanupAccountRecovery) {
       _showFeedback(
         SettingsFlowFeedback(
-          job?.isCancelCleanupPending == true
+          job.isCancelCleanupPending
               ? l10n.driveUploadCancelCleanupBlocksAccountActions
               : l10n.driveUploadBusyBlocksAccountActions,
           tone: SettingsFlowFeedbackTone.warning,

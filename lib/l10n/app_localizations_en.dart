@@ -96,6 +96,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String get userFacingErrorLocalPathLabel => 'local path';
 
   @override
+  String get driveErrorInvalidBackupName =>
+      'The Google Drive backup file name is invalid. Create the backup again.';
+
+  @override
+  String get driveErrorInvalidBackupFormat =>
+      'Google Drive backups must use the ZIP format.';
+
+  @override
+  String get driveErrorOAuthAndroidNotConfigured =>
+      'Google Drive sign-in is not configured for Android. Check the OAuth client and app signing certificate.';
+
+  @override
+  String get driveErrorOAuthIosNotConfigured =>
+      'Google Drive sign-in is not configured for iOS.';
+
+  @override
+  String get driveErrorSignInRequired => 'Sign in to a Google account first.';
+
+  @override
+  String get driveErrorAuthorizationRequired =>
+      'Google Drive authorization is required again.';
+
+  @override
+  String get driveErrorOAuthAdminPolicy =>
+      'This Google account is restricted by an organization policy and cannot authorize Google Drive. Use another account or contact your administrator.';
+
+  @override
+  String get driveErrorOAuthConfiguration =>
+      'Google sign-in is not configured for this app build. Check the OAuth client and app signing certificate.';
+
+  @override
+  String get driveErrorOAuthCancelled =>
+      'Google sign-in was canceled. The account is not connected.';
+
+  @override
+  String get driveErrorOAuthNetwork =>
+      'Google services are unavailable. Check your connection and try again.';
+
+  @override
+  String get driveErrorOAuthInterrupted =>
+      'Google sign-in was interrupted. Please try again later.';
+
+  @override
+  String get driveErrorOAuthUiUnavailable =>
+      'Google sign-in cannot be shown on this device. Check Google Play services and try again.';
+
+  @override
+  String get driveErrorOAuthUserMismatch =>
+      'The current account does not match the authorized account. Switch to the same Google account.';
+
+  @override
+  String get driveErrorOAuthUnexpected =>
+      'Google sign-in failed. Please try again later.';
+
+  @override
+  String get driveErrorInvalidFileId =>
+      'The Google Drive backup file ID is invalid.';
+
+  @override
+  String driveErrorPruneFailed(int failedCount, int totalCount) {
+    return 'Some old backups could not be deleted ($failedCount/$totalCount).';
+  }
+
+  @override
+  String get driveErrorInvalidDownloadPath =>
+      'The Google Drive backup download path is invalid.';
+
+  @override
+  String get driveErrorPrepareUploadFailed =>
+      'Could not prepare the Google Drive upload staging path.';
+
+  @override
+  String get driveErrorStartUploadFailed =>
+      'Could not create the Google Drive background upload.';
+
+  @override
+  String get driveErrorBackgroundStartNotAllowed =>
+      'Could not start uploading in the background. Keep the app on screen and try again.';
+
+  @override
+  String get driveErrorUploadAlreadyActive =>
+      'A Google Drive upload is already in progress.';
+
+  @override
+  String get driveErrorBackgroundUploadUnsupported =>
+      'Google Drive background uploads are supported only on Android.';
+
+  @override
   String commonGoogleAccountLabel(String name, String email) {
     return '$name · $email';
   }
@@ -2099,47 +2187,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBackupPhasePreparingDriveUpload =>
-      'Preparing backup… Keep Quill Diary on screen until this step finishes.';
+      'Creating backup… Keep Quill Diary open.';
 
   @override
   String get driveUploadBackgroundStarted =>
-      'Uploading to Google Drive in the background. You can switch apps or lock the screen; do not force-stop the app in system settings. If the upload service is stopped by the system, open the app and start a new backup.';
+      'Background upload started. You can switch apps or lock the screen, but do not force-stop Quill Diary. If the upload stops, open the app and back up again.';
 
   @override
   String get driveUploadNotificationsDeniedHint =>
-      'Without notification permission, progress and the stop action will not appear in the notification shade. Check upload status in the app.';
+      'Notifications are off. Check progress or stop the upload in the app.';
 
   @override
   String driveUploadStatusUploading(String fileName, int percent) {
-    return 'Uploading in background: $fileName ($percent%)';
+    return 'Uploading: $fileName ($percent%)';
   }
 
   @override
   String driveUploadStatusStaged(String fileName) {
-    return 'Preparing background upload: $fileName';
+    return 'Preparing upload: $fileName';
   }
 
   @override
   String driveUploadStatusWaitingNetwork(String fileName) {
-    return 'Waiting for network to continue upload: $fileName';
+    return 'Waiting for network: $fileName';
   }
 
   @override
-  String get driveUploadStatusFinalizing =>
-      'Google Drive backup uploaded; finishing up…';
+  String get driveUploadStatusFinalizing => 'Backup uploaded. Finishing…';
 
   @override
-  String get driveUploadStatusCancelCleanup =>
-      'Clearing unfinished Google Drive backup…';
+  String get driveUploadStatusCancelCleanup => 'Clearing unfinished backup…';
 
   @override
   String driveUploadStatusCancelCleanupNeedsReauth(String accountEmail) {
-    return 'Re-link the Google account ($accountEmail) to finish clearing the unfinished backup.';
+    return 'Re-link $accountEmail to finish cleanup.';
   }
 
   @override
   String driveUploadStatusCancelCleanupAccountMismatch(String accountEmail) {
-    return 'The signed-in Google account does not match the upload. Re-link $accountEmail to finish cleanup, or abandon it.';
+    return 'Account mismatch. Link $accountEmail, or abandon cleanup.';
   }
 
   @override
@@ -2150,33 +2236,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driveUploadCancelConfirmBody =>
-      'This stops the current background upload and deletes the temporary backup file.';
+      'This stops the upload and deletes the temporary file.';
 
   @override
   String get driveUploadBusyBlocksAccountActions =>
-      'An upload is in progress. Finish or cancel it before changing the Google account.';
+      'Finish or cancel the upload before changing Google accounts.';
 
   @override
   String get driveUploadCancelCleanupBlocksAccountActions =>
-      'Clearing an unfinished Google Drive backup. If authorization failed, re-link the original account or abandon cleanup.';
+      'Finish or abandon cleanup before changing Google accounts.';
 
   @override
   String get driveUploadAbandonCancelCleanupButton => 'Abandon cleanup';
 
   @override
-  String get driveUploadAbandonCancelCleanupConfirmTitle =>
-      'Abandon unfinished backup cleanup?';
+  String get driveUploadAbandonCancelCleanupConfirmTitle => 'Abandon cleanup?';
 
   @override
   String get driveUploadAbandonCancelCleanupConfirmBody =>
-      'This unlocks the app so you can back up again or change Google accounts. Leftover files may remain in Google Drive and will not count as a successful backup.';
+      'Google Drive may keep an unfinished file, but it will not count as a successful backup.';
 
   @override
   String get driveUploadAbandonedFailureTitle => 'Google Drive backup failed';
 
   @override
   String get driveUploadAbandonedFailureBody =>
-      'The previous Google Drive backup did not finish and was cancelled. Please back up again.';
+      'The previous backup did not finish. Back up again.';
 
   @override
   String get driveUploadAbandonedFailureConfirm => 'OK';
@@ -2187,7 +2272,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewDriveUploadPending =>
-      'Google Drive upload not finished';
+      'Waiting for network';
 
   @override
   String get settingsRestoreDialogConfirmLocalTitle => 'Restore Local Backup?';

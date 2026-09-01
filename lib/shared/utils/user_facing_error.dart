@@ -1,19 +1,19 @@
 import '../../l10n/l10n.dart';
+import 'package:flutter/foundation.dart';
+
+abstract interface class LocalizedUserFacingError {
+  String localizedMessage(AppLocalizations l10n);
+}
 
 String userFacingErrorMessage(
   Object error, {
   required AppLocalizations l10n,
   String? fallback,
 }) {
-  if (error is StateError) {
-    final String message = error.message.trim();
-    if (message.isNotEmpty) {
-      return stripLocalPathsFromMessage(message, l10n: l10n);
-    }
+  if (error is LocalizedUserFacingError) {
+    return error.localizedMessage(l10n);
   }
-  if (error is FormatException && error.message.isNotEmpty) {
-    return stripLocalPathsFromMessage(error.message, l10n: l10n);
-  }
+  debugPrint('Unclassified user-facing error: $error');
   return fallback ?? l10n.userFacingErrorDefaultMessage;
 }
 

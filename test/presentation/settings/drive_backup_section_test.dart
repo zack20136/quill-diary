@@ -172,7 +172,7 @@ void main() {
       ).onPressed,
       isNotNull,
     );
-    expect(find.text('drive connection failed'), findsOneWidget);
+    expect(find.text(testL10n.userFacingErrorDefaultMessage), findsOneWidget);
   });
 
   testWidgets('鎖定且已有復原金鑰時會停用輪替復原金鑰', (WidgetTester tester) async {

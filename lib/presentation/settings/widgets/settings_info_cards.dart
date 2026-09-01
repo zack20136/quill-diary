@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -297,7 +298,9 @@ class _HeroChipScrollerState extends State<_HeroChipScroller> {
 
   void _scrollFromIndicatorLocalDx(double localDx) {
     final double? trackWidth = _indicatorTrackWidth;
-    if (trackWidth == null || trackWidth <= 0 || !widget.controller.hasClients) {
+    if (trackWidth == null ||
+        trackWidth <= 0 ||
+        !widget.controller.hasClients) {
       return;
     }
     final ScrollPosition position = widget.controller.position;
@@ -335,10 +338,12 @@ class _HeroChipScrollerState extends State<_HeroChipScroller> {
                 final ScrollPosition position = widget.controller.position;
                 final double target = (position.pixels - velocityDx * 0.12)
                     .clamp(0.0, position.maxScrollExtent);
-                widget.controller.animateTo(
-                  target,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
+                unawaited(
+                  widget.controller.animateTo(
+                    target,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                  ),
                 );
               },
             ),
