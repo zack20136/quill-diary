@@ -118,14 +118,14 @@ class EntryIndexRecord {
 class PersonMentionStats {
   const PersonMentionStats({
     required this.personId,
-    required this.mentionCount,
-    required this.recentMentionCount,
+    required this.mentionedEntryCount,
+    required this.recentMentionedEntryCount,
     this.lastMentionDate,
   });
 
   final PersonId personId;
-  final int mentionCount;
-  final int recentMentionCount;
+  final int mentionedEntryCount;
+  final int recentMentionedEntryCount;
   final DateOnly? lastMentionDate;
 }
 
@@ -133,12 +133,12 @@ class PersonMentionStats {
 class PersonScopedMentionRank {
   const PersonScopedMentionRank({
     required this.personId,
-    required this.mentionCount,
+    required this.mentionedEntryCount,
     required this.lastMentionDate,
   });
 
   final PersonId personId;
-  final int mentionCount;
+  final int mentionedEntryCount;
   final DateOnly lastMentionDate;
 }
 
@@ -988,8 +988,8 @@ class IndexDatabase extends GeneratedDatabase {
       for (final QueryRow row in rows)
         row.read<String>('person_id'): PersonMentionStats(
           personId: row.read<String>('person_id'),
-          mentionCount: row.read<int>('mention_count'),
-          recentMentionCount:
+          mentionedEntryCount: row.read<int>('mention_count'),
+          recentMentionedEntryCount:
               row.readNullable<int>('recent_mention_count') ?? 0,
           lastMentionDate: DateOnly.tryParse(
             row.readNullable<String>('last_mention_date') ?? '',
@@ -1061,7 +1061,7 @@ class IndexDatabase extends GeneratedDatabase {
       ranks.add(
         PersonScopedMentionRank(
           personId: row.read<String>('person_id'),
-          mentionCount: row.read<int>('mention_count'),
+          mentionedEntryCount: row.read<int>('mention_count'),
           lastMentionDate: last,
         ),
       );

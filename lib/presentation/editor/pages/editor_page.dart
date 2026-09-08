@@ -189,7 +189,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     super.dispose();
   }
 
-  Map<PersonId, int>? _mentionCountByIdHint() {
+  Map<PersonId, int>? _mentionedEntryCountByIdHint() {
     // 勿用 read 啟動尚未建立的 FutureProvider，以免首次 @ 觸發全庫重建。
     if (!ref.exists(peopleMentionStatsMapProvider)) {
       return null;
@@ -203,7 +203,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     return <PersonId, int>{
       for (final MapEntry<PersonId, PersonMentionStats> e in stats.entries)
-        e.key: e.value.mentionCount,
+        e.key: e.value.mentionedEntryCount,
     };
   }
 
@@ -216,7 +216,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           ref.read(peopleCatalogProvider).asData?.value.people ??
           const <Person>[],
       query: _personMentionController.query,
-      mentionCountById: _mentionCountByIdHint(),
+      mentionedEntryCountById: _mentionedEntryCountByIdHint(),
     );
   }
 

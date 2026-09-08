@@ -44,7 +44,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   final Set<String> _relationships = <String>{};
-  PeopleListSort _sort = PeopleListSort.lastMention;
+  PeopleListSort _sort = PeopleListSort.lastMentionDate;
 
   @override
   void dispose() {
@@ -120,16 +120,18 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                   itemBuilder: (BuildContext context) =>
                       <PopupMenuEntry<PeopleListSort>>[
                         PopupMenuItem(
-                          value: PeopleListSort.lastMention,
-                          child: Text(context.l10n.peopleSortLastMention),
+                          value: PeopleListSort.lastMentionDate,
+                          child: Text(context.l10n.peopleSortLastMentionDate),
                         ),
                         PopupMenuItem(
-                          value: PeopleListSort.totalMentions,
-                          child: Text(context.l10n.peopleSortTotalMentions),
+                          value: PeopleListSort.mentionedEntryCount,
+                          child: Text(context.l10n.peopleSortMentionedEntries),
                         ),
                         PopupMenuItem(
-                          value: PeopleListSort.recentMentions,
-                          child: Text(context.l10n.peopleSortRecentMentions),
+                          value: PeopleListSort.recentMentionedEntryCount,
+                          child: Text(
+                            context.l10n.peopleSortRecentMentionedEntries,
+                          ),
                         ),
                         PopupMenuItem(
                           value: PeopleListSort.name,
@@ -395,10 +397,12 @@ class _PersonListTile extends StatelessWidget {
     final String? subtitle = stats == null
         ? null
         : <String>[
-            context.l10n.peopleMentionCount(stats.mentionCount),
+            context.l10n.peopleMentionedEntryCount(
+              stats.mentionedEntryCount,
+            ),
             stats.lastMentionDate == null
                 ? context.l10n.peopleLastMentionNever
-                : context.l10n.peopleLastMention(
+                : context.l10n.peopleLastMentionDate(
                     DisplayFormat.formatRelativeDayDistance(
                       context.l10n,
                       stats.lastMentionDate!,

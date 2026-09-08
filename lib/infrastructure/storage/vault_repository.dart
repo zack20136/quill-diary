@@ -4905,17 +4905,16 @@ class VaultRepository {
     return session.copyWith(deviceSlotId: deviceInfo.slotId);
   }
 
-  /// 解鎖後 attach 搜尋索引：開啟連線、必要時重置損壞 schema、同步標籤樣式。
+  /// 解鎖後 attach 搜尋索引：開啟連線、必要時重建不相容 schema、同步標籤樣式。
   ///
-  /// 不會全量 [rebuildIndex]；vault 變更後的重建由還原、金鑰替換或手動修復觸發。
+  /// schema 正常時不會全量 [rebuildIndex]；只有不相容時才從正式 vault 重建。
   /// 人物：只確保 analytics 表存在，不解密名冊、不背景全量 rebuild。
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
     if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
-      await _requireOpenIndex().ensurePeopleAnalyticsTable();
-      await syncTagStylesBetweenVaultAndIndex();
+      await rebuildIndex(session);
       return;
     }
     await _requireOpenIndex().ensurePeopleAnalyticsTable();

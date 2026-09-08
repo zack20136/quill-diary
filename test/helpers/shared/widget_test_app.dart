@@ -8,6 +8,7 @@ import '../app_test_theme.dart';
 Widget widgetTestApp({
   required Widget child,
   Brightness brightness = Brightness.light,
+  Locale locale = appZhLocale,
   bool includeDarkTheme = false,
   Size? viewport,
   List? overrides,
@@ -33,7 +34,7 @@ Widget widgetTestApp({
     darkTheme: includeDarkTheme
         ? appTestTheme(brightness: Brightness.dark)
         : null,
-    locale: appZhLocale,
+    locale: locale,
     supportedLocales: appSupportedLocales,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     home: home,

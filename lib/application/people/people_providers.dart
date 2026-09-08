@@ -41,7 +41,12 @@ final peopleRelationshipTypesProvider =
       );
     });
 
-enum PeopleListSort { lastMention, totalMentions, recentMentions, name }
+enum PeopleListSort {
+  lastMentionDate,
+  mentionedEntryCount,
+  recentMentionedEntryCount,
+  name,
+}
 
 final class PersonListItem {
   const PersonListItem({required this.person, required this.stats});
@@ -82,8 +87,8 @@ List<PersonListItem> buildPeopleListItems({
             (statsReady
                 ? PersonMentionStats(
                     personId: person.id,
-                    mentionCount: 0,
-                    recentMentionCount: 0,
+                    mentionedEntryCount: 0,
+                    recentMentionedEntryCount: 0,
                   )
                 : null),
       ),
@@ -131,7 +136,7 @@ List<PersonListItem> filterPeopleListItems({
 
   filtered.sort((PersonListItem a, PersonListItem b) {
     switch (sort) {
-      case PeopleListSort.lastMention:
+      case PeopleListSort.lastMentionDate:
         final int byDate = compareNullableDate(
           a.stats?.lastMentionDate,
           b.stats?.lastMentionDate,
@@ -142,9 +147,9 @@ List<PersonListItem> filterPeopleListItems({
         return a.person.name.toLowerCase().compareTo(
           b.person.name.toLowerCase(),
         );
-      case PeopleListSort.totalMentions:
-        final int byCount = (b.stats?.mentionCount ?? 0).compareTo(
-          a.stats?.mentionCount ?? 0,
+      case PeopleListSort.mentionedEntryCount:
+        final int byCount = (b.stats?.mentionedEntryCount ?? 0).compareTo(
+          a.stats?.mentionedEntryCount ?? 0,
         );
         if (byCount != 0) {
           return byCount;
@@ -152,9 +157,9 @@ List<PersonListItem> filterPeopleListItems({
         return a.person.name.toLowerCase().compareTo(
           b.person.name.toLowerCase(),
         );
-      case PeopleListSort.recentMentions:
-        final int byRecent = (b.stats?.recentMentionCount ?? 0).compareTo(
-          a.stats?.recentMentionCount ?? 0,
+      case PeopleListSort.recentMentionedEntryCount:
+        final int byRecent = (b.stats?.recentMentionedEntryCount ?? 0).compareTo(
+          a.stats?.recentMentionedEntryCount ?? 0,
         );
         if (byRecent != 0) {
           return byRecent;
@@ -202,12 +207,12 @@ final personRelatedEntriesProvider = FutureProvider.autoDispose
 final class OverviewPersonRankItem {
   const OverviewPersonRankItem({
     required this.person,
-    required this.mentionCount,
+    required this.mentionedEntryCount,
     required this.lastMentionDate,
   });
 
   final Person person;
-  final int mentionCount;
+  final int mentionedEntryCount;
   final DateOnly lastMentionDate;
 }
 
@@ -267,13 +272,15 @@ final overviewPeopleTop5Provider = FutureProvider.autoDispose
         items.add(
           OverviewPersonRankItem(
             person: person,
-            mentionCount: rank.mentionCount,
+            mentionedEntryCount: rank.mentionedEntryCount,
             lastMentionDate: rank.lastMentionDate,
           ),
         );
       }
       items.sort((OverviewPersonRankItem a, OverviewPersonRankItem b) {
-        final int byCount = b.mentionCount.compareTo(a.mentionCount);
+        final int byCount = b.mentionedEntryCount.compareTo(
+          a.mentionedEntryCount,
+        );
         if (byCount != 0) {
           return byCount;
         }
@@ -304,12 +311,12 @@ final class EditorPersonSuggestion {
 
 /// 同步過濾已載入 catalog；勿用 FutureProvider.family 綁 keystroke。
 ///
-/// [mentionCountById] 有值時，優先依提及次數排序（多者在前）。
+/// [mentionedEntryCountById] 有值時，優先依提及日記篇數排序（多者在前）。
 List<EditorPersonSuggestion> filterEditorPersonSuggestions({
   required List<Person> catalog,
   required String query,
   int limit = 6,
-  Map<PersonId, int>? mentionCountById,
+  Map<PersonId, int>? mentionedEntryCountById,
 }) {
   if (catalog.isEmpty) {
     return const <EditorPersonSuggestion>[];
@@ -339,9 +346,9 @@ List<EditorPersonSuggestion> filterEditorPersonSuggestions({
     }
   }
   hits.sort((EditorPersonSuggestion a, EditorPersonSuggestion b) {
-    if (mentionCountById != null) {
-      final int byCount = (mentionCountById[b.person.id] ?? 0).compareTo(
-        mentionCountById[a.person.id] ?? 0,
+    if (mentionedEntryCountById != null) {
+      final int byCount = (mentionedEntryCountById[b.person.id] ?? 0).compareTo(
+        mentionedEntryCountById[a.person.id] ?? 0,
       );
       if (byCount != 0) {
         return byCount;

@@ -164,7 +164,7 @@ class PersonDetailPage extends ConsumerWidget {
               _PersonFactChip(
                 key: const ValueKey<String>('person-last-mention-fact'),
                 icon: Icons.history_rounded,
-                label: context.l10n.peopleLastMentionLabel,
+                label: context.l10n.peopleLastMentionDateLabel,
                 value: stats.lastMentionDate == null
                     ? context.l10n.peopleLastMentionNever
                     : DisplayFormat.formatRelativeDayDistance(
@@ -174,16 +174,16 @@ class PersonDetailPage extends ConsumerWidget {
               ),
               _PersonFactChip(
                 icon: Icons.date_range_outlined,
-                label: context.l10n.peopleRecentMentionsLabel,
+                label: context.l10n.peopleRecentMentionedEntriesLabel,
                 value: context.l10n.peopleMentionEntriesValue(
-                  stats.recentMentionCount,
+                  stats.recentMentionedEntryCount,
                 ),
               ),
               _PersonFactChip(
                 icon: Icons.menu_book_outlined,
-                label: context.l10n.peopleTotalMentionsLabel,
+                label: context.l10n.peopleTotalMentionedEntriesLabel,
                 value: context.l10n.peopleMentionEntriesValue(
-                  stats.mentionCount,
+                  stats.mentionedEntryCount,
                 ),
               ),
             ],

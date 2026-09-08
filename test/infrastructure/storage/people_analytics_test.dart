@@ -36,7 +36,7 @@ void main() {
     final Map<String, PersonMentionStats> stats = await harness.repository
         .allPersonMentionStats(setup.session);
 
-    expect(stats[person.id]?.mentionCount, 1);
+    expect(stats[person.id]?.mentionedEntryCount, 1);
   });
 
   test('修改單篇日記後由內容 hash 增量更新分析', () async {
@@ -71,7 +71,7 @@ void main() {
     final Map<String, PersonMentionStats> stats = await harness.repository
         .allPersonMentionStats(setup.session);
 
-    expect(stats[person.id]?.mentionCount, 1);
+    expect(stats[person.id]?.mentionedEntryCount, 1);
   });
 
   test('人物名冊異動不會改寫日記檔', () async {
@@ -166,7 +166,7 @@ void main() {
     expect(
       (await harness.repository.allPersonMentionStats(
         setup.session,
-      ))[person.id]?.mentionCount,
+      ))[person.id]?.mentionedEntryCount,
       1,
     );
   });
@@ -183,7 +183,7 @@ void main() {
     expect(
       (await harness.repository.allPersonMentionStats(
         setup.session,
-      ))[person.id]?.mentionCount,
+      ))[person.id]?.mentionedEntryCount,
       1,
     );
 
@@ -286,10 +286,10 @@ void main() {
     final List<EntryIndexRecord> related = await harness.repository
         .relatedEntriesForPerson(setup.session, first.id);
 
-    expect(stats[first.id]?.mentionCount, 3);
-    expect(stats[first.id]?.recentMentionCount, 2);
+    expect(stats[first.id]?.mentionedEntryCount, 3);
+    expect(stats[first.id]?.recentMentionedEntryCount, 2);
     expect(stats[first.id]?.lastMentionDate?.value, '2026-08-01');
-    expect(stats[second.id]?.mentionCount, 1);
+    expect(stats[second.id]?.mentionedEntryCount, 1);
     expect(
       august.map((PersonScopedMentionRank rank) => rank.personId),
       <String>[first.id, second.id],
@@ -324,7 +324,7 @@ void main() {
           monthPrefix: '2026-08',
         );
 
-    expect(stats[person.id]?.mentionCount, 1);
+    expect(stats[person.id]?.mentionedEntryCount, 1);
     expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
       matchedId,
     ]);
@@ -490,7 +490,7 @@ void main() {
     final PeopleAnalyticsDebugMetrics metrics =
         harness.repository.peopleAnalyticsDebugMetrics;
 
-    expect(stats[person.id]?.mentionCount, 9);
+    expect(stats[person.id]?.mentionedEntryCount, 9);
     expect(metrics.scannedDocuments, 9);
     expect(metrics.batchWrites, 1);
     expect(metrics.workerStarts, 1);
@@ -512,7 +512,8 @@ void main() {
     ]);
 
     expect(
-      (results[0] as Map<String, PersonMentionStats>)[person.id]?.mentionCount,
+      (results[0] as Map<String, PersonMentionStats>)[person.id]
+          ?.mentionedEntryCount,
       9,
     );
     expect(harness.repository.peopleAnalyticsDebugMetrics.workerStarts, 1);
@@ -533,7 +534,7 @@ void main() {
     final PeopleAnalyticsDebugMetrics metrics =
         harness.repository.peopleAnalyticsDebugMetrics;
 
-    expect(stats[person.id]?.mentionCount, 1);
+    expect(stats[person.id]?.mentionedEntryCount, 1);
     expect(metrics.scannedDocuments, 1);
     expect(metrics.batchWrites, 1);
     expect(metrics.workerStarts, 1);
@@ -558,7 +559,7 @@ void main() {
 
     final Map<String, PersonMentionStats> resumed = await harness.repository
         .allPersonMentionStats(setup.session);
-    expect(resumed[person.id]?.mentionCount, 1);
+    expect(resumed[person.id]?.mentionedEntryCount, 1);
   });
 
   test('超過兩批資料仍只啟動一個 worker 且每批一個 transaction', () async {
@@ -603,7 +604,7 @@ void main() {
     final PeopleAnalyticsDebugMetrics metrics =
         harness.repository.peopleAnalyticsDebugMetrics;
 
-    expect(stats[person.id]?.mentionCount, 513);
+    expect(stats[person.id]?.mentionedEntryCount, 513);
     expect(metrics.scannedDocuments, 513);
     expect(metrics.batchWrites, 3);
     expect(metrics.workerStarts, 1);

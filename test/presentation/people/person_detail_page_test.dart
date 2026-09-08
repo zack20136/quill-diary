@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
@@ -31,10 +32,12 @@ void main() {
   Widget testApp({
     Map<PersonId, PersonMentionStats> stats = const {},
     Brightness brightness = Brightness.light,
+    Locale locale = appZhLocale,
     List<EntryIndexRecord> relatedEntries = const <EntryIndexRecord>[],
   }) {
     return widgetTestApp(
       brightness: brightness,
+      locale: locale,
       center: false,
       overrides: [
         peopleCatalogProvider.overrideWith(
@@ -101,25 +104,36 @@ void main() {
     );
   });
 
-  testWidgets('提及摘要將上次提及顯示在近三十天之前', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      testApp(
-        stats: <PersonId, PersonMentionStats>{
-          person.id: PersonMentionStats(
-            personId: person.id,
-            mentionCount: 3,
-            recentMentionCount: 2,
-            lastMentionDate: const DateOnly('2026-08-10'),
-          ),
-        },
+  testWidgets('提及摘要以日記篇數與最近提及日期呈現中英文', (WidgetTester tester) async {
+    final stats = <PersonId, PersonMentionStats>{
+      person.id: PersonMentionStats(
+        personId: person.id,
+        mentionedEntryCount: 3,
+        recentMentionedEntryCount: 2,
+        lastMentionDate: const DateOnly('2026-08-10'),
       ),
+    };
+    await tester.pumpWidget(
+      testApp(stats: stats),
     );
     await tester.pumpAndSettle();
 
     expect(
-      tester.getCenter(find.text('上次提及')).dx,
+      tester.getCenter(find.text('最近提及')).dx,
       lessThan(tester.getCenter(find.text('近 30 天')).dx),
     );
+    expect(find.text('提及篇數'), findsOneWidget);
+    expect(find.text('3 篇'), findsOneWidget);
+
+    await tester.pumpWidget(
+      testApp(stats: stats, locale: const Locale('en')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Latest'), findsOneWidget);
+    expect(find.text('30 days'), findsOneWidget);
+    expect(find.text('Entries'), findsOneWidget);
+    expect(find.text('3 entries'), findsOneWidget);
   });
 
   testWidgets('深色模式下提及概況與人物資料沿用相關日記背景色', (WidgetTester tester) async {
@@ -129,8 +143,8 @@ void main() {
         stats: <PersonId, PersonMentionStats>{
           person.id: PersonMentionStats(
             personId: person.id,
-            mentionCount: 1,
-            recentMentionCount: 1,
+            mentionedEntryCount: 1,
+            recentMentionedEntryCount: 1,
           ),
         },
       ),
@@ -160,8 +174,8 @@ void main() {
         stats: <PersonId, PersonMentionStats>{
           person.id: PersonMentionStats(
             personId: person.id,
-            mentionCount: 1,
-            recentMentionCount: 1,
+            mentionedEntryCount: 1,
+            recentMentionedEntryCount: 1,
           ),
         },
       ),

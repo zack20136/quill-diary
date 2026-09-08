@@ -415,7 +415,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         );
                                         return FilterChip(
                                           label: Text(
-                                            '${item.person.name} ${item.mentionCount}',
+                                            '${item.person.name} ${item.mentionedEntryCount}',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelMedium

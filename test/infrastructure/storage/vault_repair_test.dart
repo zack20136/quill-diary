@@ -1849,7 +1849,7 @@ missing asset
     expect(
       (await harness.repository.allPersonMentionStats(
         setup.session,
-      ))[person.id]?.mentionCount,
+      ))[person.id]?.mentionedEntryCount,
       1,
     );
     expect(harness.repository.peopleAnalyticsDebugMetrics.scannedDocuments, 0);
@@ -1904,7 +1904,7 @@ missing asset
     expect(
       (await harness.repository.allPersonMentionStats(
         setup.session,
-      ))[person.id]?.mentionCount,
+      ))[person.id]?.mentionedEntryCount,
       9,
     );
   });

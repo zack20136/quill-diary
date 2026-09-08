@@ -696,13 +696,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get peopleSortTooltip => 'Sort by';
 
   @override
-  String get peopleSortLastMention => 'Last mentioned';
+  String get peopleSortLastMentionDate => 'Most recent mention';
 
   @override
-  String get peopleSortTotalMentions => 'Mentions';
+  String get peopleSortMentionedEntries => 'Mentioned entries';
 
   @override
-  String get peopleSortRecentMentions => 'Last 30 days';
+  String get peopleSortRecentMentionedEntries =>
+      'Mentioned in the past 30 days';
 
   @override
   String get peopleSortName => 'Name';
@@ -910,17 +911,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get peopleRenameKeepAliasAction => 'Keep';
 
   @override
-  String peopleMentionCount(int count) {
-    return '$count mentions';
+  String peopleMentionedEntryCount(int count) {
+    return 'Mentioned in $count entries';
   }
 
   @override
-  String peopleRecentMentionCount(int count) {
-    return '$count in last 30 days';
-  }
-
-  @override
-  String peopleLastMention(String date) {
+  String peopleLastMentionDate(String date) {
     return 'Last mentioned $date';
   }
 
@@ -928,13 +924,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get peopleLastMentionNever => 'Not mentioned yet';
 
   @override
-  String get peopleTotalMentionsLabel => 'Total mentions';
+  String get peopleTotalMentionedEntriesLabel => 'Entries';
 
   @override
-  String get peopleRecentMentionsLabel => 'Last 30 days';
+  String get peopleRecentMentionedEntriesLabel => '30 days';
 
   @override
-  String get peopleLastMentionLabel => 'Last mentioned';
+  String get peopleLastMentionDateLabel => 'Latest';
 
   @override
   String peopleMentionEntriesValue(int count) {
@@ -3141,26 +3137,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroTitle =>
-      'Keep Your Private Diary in Your Own Hands';
+      'Understand How Your Data Is Stored, Used, and Taken With You';
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary is a local, encrypted app for personal journaling with no account required. Create and safely store a recovery key to start writing, backing up, and exporting. Your data stays on your device unless you choose otherwise.';
+      'Quill Diary is a local, encrypted journal that does not require its own account. From writing and search to backup and export, you decide when data stays on your device and when an external copy is created.';
 
   @override
   String get aboutTabIntroChip0 => 'Data Stays on Device';
 
   @override
-  String get aboutTabIntroChip1 => 'Markdown / HTML';
+  String get aboutTabIntroChip1 => 'Full Backup';
 
   @override
   String get aboutTabIntroChip2 => 'Full-Text Search';
 
   @override
-  String get aboutTabIntroChip3 => 'Full Backup';
+  String get aboutTabIntroChip3 => 'Portable Export';
 
   @override
-  String get aboutTabIntroChip4 => 'Portable Export';
+  String get aboutTabIntroChip4 => 'Markdown / HTML';
 
   @override
   String get aboutTabIntroSection0Title => 'Why It Works Well for Journaling';
@@ -3227,7 +3223,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      'Full backups restore the whole vault. Markdown and HTML are for reading, organizing, or moving content. Google Drive is an optional full-backup location, not real-time sync.';
+      'Full backups restore the whole saved vault. Markdown and HTML are better for reading and organizing content outside the app. The two formats serve different purposes.';
+
+  @override
+  String get aboutTabIntroSection1Item4Title => 'Make the App Fit You';
+
+  @override
+  String get aboutTabIntroSection1Item4Body =>
+      'In Personalization, you can adjust the interface language, light or dark theme, auto-lock timing, image quality, and diary typography. Image quality affects only images you add afterward.';
 
   @override
   String get aboutTabIntroSection2Title => 'You Stay in Control of Your Data';
@@ -3242,7 +3245,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item0Body =>
-      'Use screen lock or biometrics for everyday access. When you change devices, restore, or lose trusted status, the recovery key is the key to regaining access.';
+      'Screen lock and biometrics make everyday access convenient. A recovery key unlocks the original vault or its full backup, but the key itself does not contain your entries.';
 
   @override
   String get aboutTabIntroSection2Item1Title =>
@@ -3250,7 +3253,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item1Body =>
-      'Entries, attachments, and people stay encrypted in a full backup, but the ZIP container and some recovery, tag, and pinned-item metadata are not separately encrypted. It is for full restore, not direct reading.';
+      'A full backup preserves saved entries, attachments, people, and other vault data for a complete restore. It is not a directly readable export document.';
 
   @override
   String get aboutTabIntroSection2Item2Title =>
@@ -3283,23 +3286,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionHeroTitle =>
-      'Convenient Access without Relaxing Protection';
+      'Everyday Unlock and Emergency Recovery Serve Different Purposes';
 
   @override
   String get aboutTabUnlockSessionHeroBody =>
-      'Choose no extra verification, device screen lock, or biometrics. Background timeout and the reason for locking determine when you verify again. Device changes, restores, or lost trusted status may require the recovery key.';
+      'Screen lock and biometrics handle everyday re-verification. A recovery key restores a backup or regains access after device trust is lost. Changing phones still requires a full backup; your device PIN and biometrics cannot replace the recovery key.';
 
   @override
-  String get aboutTabUnlockSessionChip0 => 'Biometrics';
+  String get aboutTabUnlockSessionChip0 => 'Recovery Key';
 
   @override
-  String get aboutTabUnlockSessionChip1 => 'Screen Lock';
+  String get aboutTabUnlockSessionChip1 => 'Biometrics';
 
   @override
-  String get aboutTabUnlockSessionChip2 => 'Auto-Lock';
+  String get aboutTabUnlockSessionChip2 => 'Screen Lock';
 
   @override
-  String get aboutTabUnlockSessionChip3 => 'Recovery Key';
+  String get aboutTabUnlockSessionChip3 => 'Auto-Lock';
 
   @override
   String get aboutTabUnlockSessionSection0Title => 'Choosing an Unlock Method';
@@ -3384,53 +3387,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Subtitle =>
-      'Screen lock and biometrics simplify daily access. Device changes, restores, or lost trusted status may still require the recovery key.';
+      'Device verification makes everyday unlocking convenient. Changing phones or reinstalling requires a full backup and its matching recovery key.';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Title =>
-      'After Device Change or Reset';
+      'Everyday Unlocking Cannot Replace Backup and Recovery';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Body =>
-      'When you change phones, clear app data, or restore on another device, trusted device status usually does not carry over. The recovery key is required then.';
+      'After changing phones or clearing app data, obtain a full backup first, then restore it with the recovery key saved when that backup was created. The old PIN, pattern, password, or biometrics cannot replace the backup or recovery key.';
 
   @override
-  String get aboutTabUnlockSessionSection2Item1Title =>
-      'Trusted Status Expires';
+  String get aboutTabUnlockSessionSection2Item1Title => 'Store It Safely';
 
   @override
   String get aboutTabUnlockSessionSection2Item1Body =>
-      'If trusted status expires or no longer matches the vault, local quick access is not enough. Use the recovery key instead.';
-
-  @override
-  String get aboutTabUnlockSessionSection2Item2Title => 'Store It Safely';
-
-  @override
-  String get aboutTabUnlockSessionSection2Item2Body =>
-      'The recovery key is an important way to regain access after changing devices, restoring, or losing trusted status. If it is lost, the vault may be unrecoverable, so keep a separate copy in a safe place.';
+      'A recovery key can restore access to its matching vault or full backup, but it does not contain your entries. Losing it may make recovery impossible, so keep a separate copy in a safe place.';
 
   @override
   String get aboutTabEncryptionLabel => 'Data Encryption';
 
   @override
   String get aboutTabEncryptionHeroTitle =>
-      'Data Is Stored Encrypted by Default';
+      'Protect Journal Content Before It Is Stored';
 
   @override
   String get aboutTabEncryptionHeroBody =>
-      'Entries, attachments, people, and drafts use the LDJ2 format with AES-256-GCM encryption, while the search index is encrypted separately. The app can read or write this content only during a valid unlocked session.';
+      'Saved entries, attachments, people, drafts, and search data are stored encrypted and can be read or written only during a valid unlocked session. Plaintext exports and an unlocked device still need your protection.';
 
   @override
   String get aboutTabEncryptionChip0 => 'Local Encryption';
 
   @override
-  String get aboutTabEncryptionChip1 => 'Encrypted Files';
+  String get aboutTabEncryptionChip1 => 'Content Encryption';
 
   @override
-  String get aboutTabEncryptionChip2 => 'Content Encryption';
+  String get aboutTabEncryptionChip2 => 'Key Protection';
 
   @override
-  String get aboutTabEncryptionChip3 => 'Key Protection';
+  String get aboutTabEncryptionChip3 => 'Encrypted Files';
 
   @override
   String get aboutTabEncryptionChip4 => 'Trusted Device';
@@ -3452,7 +3447,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Item0Body =>
-      'Saved entries, attachments, people, and drafts use AES-256-GCM encryption. Even with the files, their contents cannot be read directly.';
+      'Saved entries, attachments, people, and drafts use the LDJ2 container format with AES-256-GCM content encryption. Even with the files, their contents cannot be read directly.';
 
   @override
   String get aboutTabEncryptionSection0Item1Title =>
@@ -3489,7 +3484,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item1Body =>
-      'When you change devices, restore a backup, or lose local trusted status, the recovery key can restore access to the vault.';
+      'When restoring a full backup or recovering after device trust is lost, the recovery key can restore access. Argon2id first derives the wrapping key used to protect the vault. The recovery key itself does not contain your entries.';
 
   @override
   String get aboutTabEncryptionSection1Item2Title =>
@@ -3535,11 +3530,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexHeroTitle =>
-      'Find Past Entries Quickly After Unlock';
+      'Find Memories Across Titles, Tags, and Entry Text';
 
   @override
   String get aboutTabSearchIndexHeroBody =>
-      'The app uses encrypted search data for faster lookup instead of reading every entry each time. Search is available only while the vault is unlocked.';
+      'After unlock, search saved entries to find a keyword, past experience, or period of time. If a recent edit is missing from results, first make sure the entry was formally saved.';
 
   @override
   String get aboutTabSearchIndexChip0 => 'Title/Body Search';
@@ -3570,18 +3565,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection0Item1Title =>
-      'Results Come from Saved Entries';
-
-  @override
-  String get aboutTabSearchIndexSection0Item1Body =>
-      'Search shows content already saved to the vault, not drafts still in the editor.';
-
-  @override
-  String get aboutTabSearchIndexSection0Item2Title =>
       'The Index Itself Is Protected';
 
   @override
-  String get aboutTabSearchIndexSection0Item2Body =>
+  String get aboutTabSearchIndexSection0Item1Body =>
       'The search index file is encrypted at rest. The app opens and queries its search data only after the vault is unlocked.';
 
   @override
@@ -3631,11 +3618,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexSection2Item1Title =>
-      'Drafts Are Not Searchable';
+      'If Recent Edits Are Missing';
 
   @override
   String get aboutTabSearchIndexSection2Item1Body =>
-      'Drafts in progress do not appear in search results, avoiding unfinished content being treated as final records.';
+      'Search shows only entries formally saved to the vault. If a recent addition or edit is missing, first confirm that you finished saving that entry.';
 
   @override
   String get aboutTabSearchIndexSection2Item2Title =>
@@ -3649,23 +3636,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabEditorLabel => 'Writing';
 
   @override
-  String get aboutTabEditorHeroTitle => 'Write Safely, Then Save When Ready';
+  String get aboutTabEditorHeroTitle =>
+      'Capture the Moment, Then Choose When to Save It';
 
   @override
   String get aboutTabEditorHeroBody =>
-      'Edits are first kept as encrypted drafts. After you confirm save, the app writes the saved entry and updates search data, making it easier to continue after an interruption.';
+      'Edits are first kept as encrypted drafts, with a reminder when they are not formally saved. When ready, save them to the vault and organize the entry with tags, checklists, images, and attachments.';
 
   @override
-  String get aboutTabEditorChip0 => 'Markdown Editing';
+  String get aboutTabEditorChip0 => 'Auto Drafts';
 
   @override
-  String get aboutTabEditorChip1 => 'Image Attachments';
+  String get aboutTabEditorChip1 => 'Unsaved Reminders';
 
   @override
-  String get aboutTabEditorChip2 => 'Auto Drafts';
+  String get aboutTabEditorChip2 => 'Image Attachments';
 
   @override
-  String get aboutTabEditorChip3 => 'Unsaved Reminders';
+  String get aboutTabEditorChip3 => 'Markdown Editing';
 
   @override
   String get aboutTabEditorSection0Title => 'Everyday Writing Features';
@@ -3709,7 +3697,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item4Body =>
-      'Add multiple images or general files and reorder images. Entries can preserve more than text by keeping context and materials from the moment.';
+      'Add multiple images or general files and reorder images. The Image Quality option in Personalization affects only images added afterward; it does not reprocess existing attachments.';
 
   @override
   String get aboutTabEditorSection1Title => 'Draft System';
@@ -3744,53 +3732,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection2Subtitle =>
-      'Content being edited and saved content have clear boundaries so they are not mixed up.';
+      'In-progress edits stay separate from saved content, and the app shows when a local draft still needs attention.';
 
   @override
-  String get aboutTabEditorSection2Item0Title =>
-      'Drafts Are Excluded from Search';
+  String get aboutTabEditorSection2Item0Title => 'Unsaved Indicator';
 
   @override
   String get aboutTabEditorSection2Item0Body =>
-      'Search only covers content saved to the vault. Drafts do not appear in results, so unfinished content is not mistaken for final records.';
-
-  @override
-  String get aboutTabEditorSection2Item1Title =>
-      'Drafts Are Excluded from Full Backup';
-
-  @override
-  String get aboutTabEditorSection2Item1Body =>
-      'Full backups include only the main vault, not local drafts that have not been formally saved. Import and export flows do not treat those drafts as final data either.';
-
-  @override
-  String get aboutTabEditorSection2Item2Title => 'Unsaved Indicator';
-
-  @override
-  String get aboutTabEditorSection2Item2Body =>
       'If an entry still has a local draft, list and view modes show an unsaved marker reminding you that the content has not been saved yet.';
 
   @override
-  String get aboutTabPeopleLabel => 'People';
+  String get aboutTabPeopleLabel => 'People Directory';
 
   @override
   String get aboutTabPeopleHeroTitle =>
-      'Organize the Important People in Your Diary';
+      'Connect Related Memories Through Names and Aliases';
 
   @override
   String get aboutTabPeopleHeroBody =>
-      'Create profiles for important people in your life. The app finds their names and aliases in saved entries so you can revisit related records.';
+      'Save names, aliases, relationships, and notes, then insert a person\'s name quickly while writing. The app organizes mentions and related saved entries without rewriting your original text.';
 
   @override
-  String get aboutTabPeopleChip0 => 'Names & Aliases';
+  String get aboutTabPeopleChip0 => 'Quick @ Insert';
 
   @override
-  String get aboutTabPeopleChip1 => 'Relationships & Notes';
+  String get aboutTabPeopleChip1 => 'Names & Aliases';
 
   @override
   String get aboutTabPeopleChip2 => 'Mention Insights';
 
   @override
-  String get aboutTabPeopleChip3 => 'Quick @ Insert';
+  String get aboutTabPeopleChip3 => 'Relationships & Notes';
 
   @override
   String get aboutTabPeopleSection0Title => 'Create and Organize People';
@@ -3840,7 +3812,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection1Item1Body =>
-      'A person\'s page shows total mentions, mentions in the past 30 days, the latest mention, and related entries. The people list can also be sorted using these details.';
+      'A person\'s page shows the number of entries mentioning them, entries from the past 30 days, the most recent mention date, and related entries. The people list can also be sorted using these details. Multiple mentions in one entry still count as one entry.';
 
   @override
   String get aboutTabPeopleSection1Item2Title => 'Insert a Name Quickly with @';
@@ -3869,25 +3841,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection2Item1Body =>
-      'Deleting a person removes their profile and related insights, while the original entry text and content remain unchanged.';
+      'Deleting a person removes only their profile and related insights. It does not delete or rewrite any entry; the names and text you originally wrote remain.';
 
   @override
   String get aboutTabPeopleSection2Item2Title => 'Clearer Names Match Better';
 
   @override
   String get aboutTabPeopleSection2Item2Body =>
-      'Very short or overlapping names and aliases can cause incorrect matches. More specific names help keep mention insights accurate.';
+      'Very short, identical, or overlapping names and aliases can cause incorrect matches. Names that clearly distinguish people make mention insights and related entries more accurate.';
 
   @override
   String get aboutTabBackupRestoreLabel => 'Backup & Restore';
 
   @override
   String get aboutTabBackupRestoreHeroTitle =>
-      'Keep the Whole Vault or Export Readable Content';
+      'Change Phones, Restore the Vault, or Exchange Selected Entries';
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      'Full backup preserves and restores the whole vault. Markdown and HTML exports turn saved content into readable, organizable documents. Their formats and purposes differ, so neither replaces the other.';
+      'A full backup preserves the entire saved vault. Markdown and HTML exports let you select content for reading, exchange, or external use. Backup, export, and sync serve different purposes and do not replace one another.';
 
   @override
   String get aboutTabBackupRestoreChip0 => 'Full Backup';
@@ -3902,124 +3874,181 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabBackupRestoreChip3 => 'HTML';
 
   @override
-  String get aboutTabBackupRestoreSection0Title => 'When to Use Full Backup';
+  String get aboutTabBackupRestoreSection0Title =>
+      'Changing Phones or Reinstalling the App';
 
   @override
   String get aboutTabBackupRestoreSection0Subtitle =>
-      'If you want to preserve the entire main vault and restore it later as-is, use full backup.';
+      'Prepare the original recovery key and a fresh backup on the old phone. Erase the old device only after verifying the restore on the new one.';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Title =>
-      'Preserve the Complete Vault';
+      'Prepare the Old Phone First';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Body =>
-      'A full backup includes entries, attachments, people, and recovery settings. Entry content stays encrypted, but the backup container, recovery metadata, and any tag catalog or pinned-item IDs are not separately encrypted.';
+      'Formally save any drafts you need, confirm that the original recovery key is available, then create a fresh full backup and wait for the success message. Keep the old phone and backup until the restore is verified.';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Title =>
-      'Verified After Creation';
+      'Transfer With an External ZIP';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Body =>
+      'On the old phone, choose Export Backup to Folder and safely move the backup_*.zip file to the new phone. Then choose Import External Backup in Settings on the new phone. Do not use Import Entries for this file.';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item2Title =>
+      'Transfer With Google Drive';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item2Body =>
+      'On the old phone, link your Google Account and finish Back Up to Google Drive. After initial setup on the new phone, link the same account and choose Restore From Google Drive. Drive backup is manual and does not live-sync the two phones.';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item3Title =>
+      'Verify Before Erasing the Old Phone';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item3Body =>
+      'If asked for a key, enter the recovery key saved when the old backup was created, not a key newly generated on the new phone. Verify entries, attachments, people, tags, and pinned items before resetting or erasing the old phone.';
+
+  @override
+  String get aboutTabBackupRestoreSection1Title => 'When to Use Full Backup';
+
+  @override
+  String get aboutTabBackupRestoreSection1Subtitle =>
+      'If you want to preserve the entire main vault and restore it later as-is, use full backup.';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item0Title =>
+      'Preserve the Complete Vault';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item0Body =>
+      'A full backup includes entries, attachments, people, and recovery settings. Entry content stays encrypted, but the backup container, recovery metadata, and any tag catalog or pinned-item IDs are not separately encrypted.';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item1Title =>
+      'Verified After Creation';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item1Body =>
       'Full backups are structurally verified before delivery to local storage, external folders, or Google Drive.';
 
   @override
-  String get aboutTabBackupRestoreSection0Item2Title => 'Retention Count';
+  String get aboutTabBackupRestoreSection1Item2Title => 'Retention Count';
 
   @override
-  String aboutTabBackupRestoreSection0Item2Body(int retainCount) {
+  String aboutTabBackupRestoreSection1Item2Body(int retainCount) {
     return 'Local backups and Google Drive keep the latest $retainCount copies. Exports to external folders are not automatically rotated or deleted.';
   }
 
   @override
-  String get aboutTabBackupRestoreSection1Title =>
+  String get aboutTabBackupRestoreSection2Title =>
       'What Happens During Restore';
 
   @override
-  String get aboutTabBackupRestoreSection1Subtitle =>
+  String get aboutTabBackupRestoreSection2Subtitle =>
       'Restore does not patch missing entries. It replaces the current main vault with the backup copy.';
 
   @override
-  String get aboutTabBackupRestoreSection1Item0Title =>
+  String get aboutTabBackupRestoreSection2Item0Title =>
       'The Main Vault Is Overwritten';
 
   @override
-  String get aboutTabBackupRestoreSection1Item0Body =>
+  String get aboutTabBackupRestoreSection2Item0Body =>
       'Whether the backup comes from the in-app list, an external ZIP, or Google Drive, restore replaces the current saved vault with the backup contents.';
 
   @override
-  String get aboutTabBackupRestoreSection1Item1Title =>
+  String get aboutTabBackupRestoreSection2Item1Title =>
       'The Search Index Is Rebuilt';
 
   @override
-  String get aboutTabBackupRestoreSection1Item1Body =>
+  String get aboutTabBackupRestoreSection2Item1Body =>
       'Search data is rebuilt after restore, and you may need to verify again. On the same device with a valid unlocked session, you may sometimes continue directly.';
 
   @override
-  String get aboutTabBackupRestoreSection1Item2Title =>
+  String get aboutTabBackupRestoreSection2Item2Title =>
       'Recovery Key May Be Required';
 
   @override
-  String get aboutTabBackupRestoreSection1Item2Body =>
+  String get aboutTabBackupRestoreSection2Item2Body =>
       'If trusted status on this device cannot directly match that backup, the flow asks for the recovery key saved when the backup was created.';
 
   @override
-  String get aboutTabBackupRestoreSection2Title => 'When Import and Export Fit';
-
-  @override
-  String get aboutTabBackupRestoreSection2Subtitle =>
-      'This flow handles content exchange and reading, not fully restoring the entire vault.';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item0Title => 'Import';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item0Body =>
-      'Import Entries handles Markdown, HTML, folders, supported portable ZIP files, and Easy Diary backups. Quill Diary full-backup ZIP files must use Import External Backup instead; the two flows are not interchangeable.';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item1Title => 'Export';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item1Body =>
-      'Export Markdown from Settings, or export HTML from the home screen or Overview, for reading, organizing, or moving saved content.';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item2Title => 'Not a Sync Service';
-
-  @override
-  String get aboutTabBackupRestoreSection2Item2Body =>
-      'Google Drive is a manually operated full-backup location, not cross-device real-time sync. Upload can continue in the background after handoff; if interrupted before remote verification, create the backup again.';
-
-  @override
-  String get aboutTabBackupRestoreSection3Title => 'Things to Know Before Use';
+  String get aboutTabBackupRestoreSection3Title => 'Import and Export';
 
   @override
   String get aboutTabBackupRestoreSection3Subtitle =>
-      'Backup and export both matter, but they protect different things with different responsibility boundaries.';
+      'Portable documents let you take out, read, or add selected entries without restoring the entire vault.';
 
   @override
-  String get aboutTabBackupRestoreSection3Item0Title =>
-      'Full Backup Excludes Drafts';
+  String get aboutTabBackupRestoreSection3Item0Title => 'Import Entries';
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      'Full backup does not include local drafts still being edited. Restoring a backup also clears all drafts and pending attachments on this device.';
+      'Import Entries handles Markdown, HTML, folders, supported portable ZIP files, and Easy Diary backups. Quill Diary full-backup ZIP files must use Import External Backup instead; the two flows are not interchangeable.';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Title =>
-      'Protect Readable Exports Yourself';
+      'Export Readable Documents';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Body =>
-      'Markdown and HTML exports are for reading, organizing, and moving content, but they are no longer in-app encrypted formats. You decide how to store them afterward.';
+      'Both Markdown and HTML let you select specific entries. A Markdown ZIP preserves separate files and attachments for easier re-import, while HTML arranges the content in a single file for direct reading.';
 
   @override
-  String get aboutTabBackupRestoreSection3Item2Title =>
-      'Do Not Mix the Two Flows';
+  String get aboutTabBackupRestoreSection4Title => 'Exchange and External Use';
 
   @override
-  String get aboutTabBackupRestoreSection3Item2Body =>
-      'Use full backup if you want to restore the entire vault later. Use Markdown or HTML export if you want to read or organize content outside the app.';
+  String get aboutTabBackupRestoreSection4Subtitle =>
+      'Take out only the entries you need, then review their content and protection before giving them to a friend or an external tool.';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item0Title =>
+      'Exchange Selected Entries';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item0Body =>
+      'Select specific entries when exporting Markdown or HTML, then give the file to a friend. They can preview it with Import Entries and choose what to add. Import creates new entries that may duplicate existing content; it does not enable shared editing or sync.';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item1Title =>
+      'Reduce Identifying Information First';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item1Body =>
+      'Markdown and HTML can replace names and aliases from your People list with labels by enabling Hide Person Names. HTML can also exclude images and attachments. These options only reduce some identification risks.';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item2Title =>
+      'Review Before Using External Tools';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item2Body =>
+      'Hide Person Names only replaces names and aliases registered in your People list. Unlisted names and other clues in titles, tags, dates, places, or event details may still identify someone. Exported files are plaintext, so review them yourself first. After delivery, use, retention, and deletion follow the policies of your chosen tool.';
+
+  @override
+  String get aboutTabBackupRestoreSection5Title => 'Things to Know Before Use';
+
+  @override
+  String get aboutTabBackupRestoreSection5Subtitle =>
+      'Backup, export, and exchange all create copies, but their protection and ongoing relationships differ.';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item0Title =>
+      'Drafts and Personalization Are Not Backed Up';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item0Body =>
+      'Full backup excludes unsaved drafts and device preferences such as language, theme, auto-lock, image quality, and diary typography. Restoring also clears drafts and pending attachments currently on the device.';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item1Title =>
+      'Neither Backup nor Exchange Is Sync';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item1Body =>
+      'Google Drive is a manually operated full-backup location, not live sync. Exchanged or imported entries are also independent copies, so later changes on either side do not update the other automatically.';
 }

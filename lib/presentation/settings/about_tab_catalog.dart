@@ -54,12 +54,12 @@ List<AboutPageTabSpec> buildAboutPageTabSpecs(
   Duration sessionTimeout,
 ) => <AboutPageTabSpec>[
   _introTab(l10n),
-  _unlockSessionTab(l10n, sessionTimeout),
   _encryptionTab(l10n),
-  _searchIndexTab(l10n),
+  _unlockSessionTab(l10n, sessionTimeout),
+  _backupRestoreTab(l10n),
   _editorTab(l10n),
   _peopleTab(l10n),
-  _backupRestoreTab(l10n),
+  _searchIndexTab(l10n),
 ];
 
 AboutPageItemSpec _item(IconData icon, String title, String body) =>
@@ -94,10 +94,10 @@ AboutPageTabSpec _introTab(AppLocalizations l10n) => _tab(
   heroBody: l10n.aboutTabIntroHeroBody,
   chips: <String>[
     l10n.aboutTabIntroChip0, // 資料留在裝置
-    l10n.aboutTabIntroChip3, // 完整加密備份
+    l10n.aboutTabIntroChip1, // 完整備份
     l10n.aboutTabIntroChip2, // 全文搜尋
-    l10n.aboutTabIntroChip4, // 可攜式匯出
-    l10n.aboutTabIntroChip1, // Markdown / HTML
+    l10n.aboutTabIntroChip3, // 可攜式匯出
+    l10n.aboutTabIntroChip4, // Markdown / HTML
   ],
   sections: <AboutPageSectionSpec>[
     _section(
@@ -144,6 +144,11 @@ AboutPageTabSpec _introTab(AppLocalizations l10n) => _tab(
           Icons.outbox_outlined,
           l10n.aboutTabIntroSection1Item3Title,
           l10n.aboutTabIntroSection1Item3Body,
+        ),
+        _item(
+          Icons.tune_rounded,
+          l10n.aboutTabIntroSection1Item4Title,
+          l10n.aboutTabIntroSection1Item4Body,
         ),
       ],
     ),
@@ -196,10 +201,10 @@ AboutPageTabSpec _unlockSessionTab(
   heroTitle: l10n.aboutTabUnlockSessionHeroTitle,
   heroBody: l10n.aboutTabUnlockSessionHeroBody,
   chips: <String>[
-    l10n.aboutTabUnlockSessionChip3, // 復原金鑰
-    l10n.aboutTabUnlockSessionChip0, // 生物辨識
-    l10n.aboutTabUnlockSessionChip1, // 螢幕鎖
-    l10n.aboutTabUnlockSessionChip2, // 自動鎖定
+    l10n.aboutTabUnlockSessionChip0, // 復原金鑰
+    l10n.aboutTabUnlockSessionChip1, // 生物辨識
+    l10n.aboutTabUnlockSessionChip2, // 螢幕鎖
+    l10n.aboutTabUnlockSessionChip3, // 自動鎖定
   ],
   sections: <AboutPageSectionSpec>[
     _section(
@@ -271,14 +276,9 @@ AboutPageTabSpec _unlockSessionTab(
           l10n.aboutTabUnlockSessionSection2Item0Body,
         ),
         _item(
-          Icons.link_off_rounded,
+          Icons.key_outlined,
           l10n.aboutTabUnlockSessionSection2Item1Title,
           l10n.aboutTabUnlockSessionSection2Item1Body,
-        ),
-        _item(
-          Icons.key_outlined,
-          l10n.aboutTabUnlockSessionSection2Item2Title,
-          l10n.aboutTabUnlockSessionSection2Item2Body,
         ),
       ],
     ),
@@ -292,9 +292,9 @@ AboutPageTabSpec _encryptionTab(AppLocalizations l10n) => _tab(
   heroBody: l10n.aboutTabEncryptionHeroBody,
   chips: <String>[
     l10n.aboutTabEncryptionChip0, // 本機加密
-    l10n.aboutTabEncryptionChip2, // AES-256-GCM
-    l10n.aboutTabEncryptionChip3, // Argon2id
-    l10n.aboutTabEncryptionChip1, // LDJ2
+    l10n.aboutTabEncryptionChip1, // 內容加密
+    l10n.aboutTabEncryptionChip2, // 金鑰保護
+    l10n.aboutTabEncryptionChip3, // 加密檔案
     l10n.aboutTabEncryptionChip4, // 可信裝置
     l10n.aboutTabEncryptionChip5, // 裝置安全儲存
   ],
@@ -387,14 +387,9 @@ AboutPageTabSpec _searchIndexTab(AppLocalizations l10n) => _tab(
           l10n.aboutTabSearchIndexSection0Item0Body,
         ),
         _item(
-          Icons.article_outlined,
+          Icons.lock_outline_rounded,
           l10n.aboutTabSearchIndexSection0Item1Title,
           l10n.aboutTabSearchIndexSection0Item1Body,
-        ),
-        _item(
-          Icons.lock_outline_rounded,
-          l10n.aboutTabSearchIndexSection0Item2Title,
-          l10n.aboutTabSearchIndexSection0Item2Body,
         ),
       ],
     ),
@@ -449,10 +444,10 @@ AboutPageTabSpec _editorTab(AppLocalizations l10n) => _tab(
   heroTitle: l10n.aboutTabEditorHeroTitle,
   heroBody: l10n.aboutTabEditorHeroBody,
   chips: <String>[
-    l10n.aboutTabEditorChip2, // 自動草稿
-    l10n.aboutTabEditorChip3, // 未儲存提醒
-    l10n.aboutTabEditorChip1, // 圖片附件
-    l10n.aboutTabEditorChip0, // 可匯出 Markdown
+    l10n.aboutTabEditorChip0, // 自動草稿
+    l10n.aboutTabEditorChip1, // 未儲存提醒
+    l10n.aboutTabEditorChip2, // 圖片附件
+    l10n.aboutTabEditorChip3, // Markdown 編輯
   ],
   sections: <AboutPageSectionSpec>[
     _section(
@@ -512,19 +507,9 @@ AboutPageTabSpec _editorTab(AppLocalizations l10n) => _tab(
       subtitle: l10n.aboutTabEditorSection2Subtitle,
       items: <AboutPageItemSpec>[
         _item(
-          Icons.search_off_outlined,
+          Icons.pending_actions_outlined,
           l10n.aboutTabEditorSection2Item0Title,
           l10n.aboutTabEditorSection2Item0Body,
-        ),
-        _item(
-          Icons.archive_outlined,
-          l10n.aboutTabEditorSection2Item1Title,
-          l10n.aboutTabEditorSection2Item1Body,
-        ),
-        _item(
-          Icons.pending_actions_outlined,
-          l10n.aboutTabEditorSection2Item2Title,
-          l10n.aboutTabEditorSection2Item2Body,
         ),
       ],
     ),
@@ -537,10 +522,10 @@ AboutPageTabSpec _peopleTab(AppLocalizations l10n) => _tab(
   heroTitle: l10n.aboutTabPeopleHeroTitle,
   heroBody: l10n.aboutTabPeopleHeroBody,
   chips: <String>[
-    l10n.aboutTabPeopleChip3, // @ 快速插入
-    l10n.aboutTabPeopleChip0, // 姓名與別名
+    l10n.aboutTabPeopleChip0, // @ 快速插入
+    l10n.aboutTabPeopleChip1, // 姓名與別名
     l10n.aboutTabPeopleChip2, // 提及統計
-    l10n.aboutTabPeopleChip1, // 關係與備註
+    l10n.aboutTabPeopleChip3, // 關係與備註
   ],
   sections: <AboutPageSectionSpec>[
     _section(
@@ -626,21 +611,24 @@ AboutPageTabSpec _backupRestoreTab(AppLocalizations l10n) => _tab(
       subtitle: l10n.aboutTabBackupRestoreSection0Subtitle,
       items: <AboutPageItemSpec>[
         _item(
-          Icons.archive_outlined,
+          Icons.phone_android_rounded,
           l10n.aboutTabBackupRestoreSection0Item0Title,
           l10n.aboutTabBackupRestoreSection0Item0Body,
         ),
         _item(
-          Icons.fact_check_outlined,
+          Icons.folder_copy_outlined,
           l10n.aboutTabBackupRestoreSection0Item1Title,
           l10n.aboutTabBackupRestoreSection0Item1Body,
         ),
         _item(
-          Icons.history_rounded,
+          Icons.cloud_sync_outlined,
           l10n.aboutTabBackupRestoreSection0Item2Title,
-          l10n.aboutTabBackupRestoreSection0Item2Body(
-            VaultBackupPolicy.retainCount,
-          ),
+          l10n.aboutTabBackupRestoreSection0Item2Body,
+        ),
+        _item(
+          Icons.verified_outlined,
+          l10n.aboutTabBackupRestoreSection0Item3Title,
+          l10n.aboutTabBackupRestoreSection0Item3Body,
         ),
       ],
     ),
@@ -649,19 +637,21 @@ AboutPageTabSpec _backupRestoreTab(AppLocalizations l10n) => _tab(
       subtitle: l10n.aboutTabBackupRestoreSection1Subtitle,
       items: <AboutPageItemSpec>[
         _item(
-          Icons.swap_horiz_rounded,
+          Icons.archive_outlined,
           l10n.aboutTabBackupRestoreSection1Item0Title,
           l10n.aboutTabBackupRestoreSection1Item0Body,
         ),
         _item(
-          Icons.refresh_rounded,
+          Icons.fact_check_outlined,
           l10n.aboutTabBackupRestoreSection1Item1Title,
           l10n.aboutTabBackupRestoreSection1Item1Body,
         ),
         _item(
-          Icons.key_outlined,
+          Icons.history_rounded,
           l10n.aboutTabBackupRestoreSection1Item2Title,
-          l10n.aboutTabBackupRestoreSection1Item2Body,
+          l10n.aboutTabBackupRestoreSection1Item2Body(
+            VaultBackupPolicy.retainCount,
+          ),
         ),
       ],
     ),
@@ -670,17 +660,17 @@ AboutPageTabSpec _backupRestoreTab(AppLocalizations l10n) => _tab(
       subtitle: l10n.aboutTabBackupRestoreSection2Subtitle,
       items: <AboutPageItemSpec>[
         _item(
-          Icons.file_download_outlined,
+          Icons.swap_horiz_rounded,
           l10n.aboutTabBackupRestoreSection2Item0Title,
           l10n.aboutTabBackupRestoreSection2Item0Body,
         ),
         _item(
-          Icons.file_upload_outlined,
+          Icons.refresh_rounded,
           l10n.aboutTabBackupRestoreSection2Item1Title,
           l10n.aboutTabBackupRestoreSection2Item1Body,
         ),
         _item(
-          Icons.cloud_off_rounded,
+          Icons.key_outlined,
           l10n.aboutTabBackupRestoreSection2Item2Title,
           l10n.aboutTabBackupRestoreSection2Item2Body,
         ),
@@ -691,19 +681,51 @@ AboutPageTabSpec _backupRestoreTab(AppLocalizations l10n) => _tab(
       subtitle: l10n.aboutTabBackupRestoreSection3Subtitle,
       items: <AboutPageItemSpec>[
         _item(
-          Icons.drafts_outlined,
+          Icons.file_download_outlined,
           l10n.aboutTabBackupRestoreSection3Item0Title,
           l10n.aboutTabBackupRestoreSection3Item0Body,
         ),
         _item(
-          Icons.description_outlined,
+          Icons.file_upload_outlined,
           l10n.aboutTabBackupRestoreSection3Item1Title,
           l10n.aboutTabBackupRestoreSection3Item1Body,
         ),
+      ],
+    ),
+    _section(
+      title: l10n.aboutTabBackupRestoreSection4Title,
+      subtitle: l10n.aboutTabBackupRestoreSection4Subtitle,
+      items: <AboutPageItemSpec>[
         _item(
-          Icons.alt_route_rounded,
-          l10n.aboutTabBackupRestoreSection3Item2Title,
-          l10n.aboutTabBackupRestoreSection3Item2Body,
+          Icons.swap_horiz_rounded,
+          l10n.aboutTabBackupRestoreSection4Item0Title,
+          l10n.aboutTabBackupRestoreSection4Item0Body,
+        ),
+        _item(
+          Icons.privacy_tip_outlined,
+          l10n.aboutTabBackupRestoreSection4Item1Title,
+          l10n.aboutTabBackupRestoreSection4Item1Body,
+        ),
+        _item(
+          Icons.fact_check_outlined,
+          l10n.aboutTabBackupRestoreSection4Item2Title,
+          l10n.aboutTabBackupRestoreSection4Item2Body,
+        ),
+      ],
+    ),
+    _section(
+      title: l10n.aboutTabBackupRestoreSection5Title,
+      subtitle: l10n.aboutTabBackupRestoreSection5Subtitle,
+      items: <AboutPageItemSpec>[
+        _item(
+          Icons.drafts_outlined,
+          l10n.aboutTabBackupRestoreSection5Item0Title,
+          l10n.aboutTabBackupRestoreSection5Item0Body,
+        ),
+        _item(
+          Icons.cloud_off_rounded,
+          l10n.aboutTabBackupRestoreSection5Item1Title,
+          l10n.aboutTabBackupRestoreSection5Item1Body,
         ),
       ],
     ),

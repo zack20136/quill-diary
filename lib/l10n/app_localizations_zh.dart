@@ -662,13 +662,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleSortTooltip => '排序方式';
 
   @override
-  String get peopleSortLastMention => '最近提及';
+  String get peopleSortLastMentionDate => '最近提及日期';
 
   @override
-  String get peopleSortTotalMentions => '提及篇數';
+  String get peopleSortMentionedEntries => '提及日記篇數';
 
   @override
-  String get peopleSortRecentMentions => '近 30 天';
+  String get peopleSortRecentMentionedEntries => '近 30 天提及篇數';
 
   @override
   String get peopleSortName => '姓名';
@@ -871,31 +871,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get peopleRenameKeepAliasAction => '保留';
 
   @override
-  String peopleMentionCount(int count) {
-    return '提及 $count 篇';
+  String peopleMentionedEntryCount(int count) {
+    return '提及 $count 篇日記';
   }
 
   @override
-  String peopleRecentMentionCount(int count) {
-    return '近 30 天 $count 篇';
-  }
-
-  @override
-  String peopleLastMention(String date) {
-    return '上次提及 $date';
+  String peopleLastMentionDate(String date) {
+    return '最近提及 $date';
   }
 
   @override
   String get peopleLastMentionNever => '尚未提及';
 
   @override
-  String get peopleTotalMentionsLabel => '總提及';
+  String get peopleTotalMentionedEntriesLabel => '提及篇數';
 
   @override
-  String get peopleRecentMentionsLabel => '近 30 天';
+  String get peopleRecentMentionedEntriesLabel => '近 30 天';
 
   @override
-  String get peopleLastMentionLabel => '上次提及';
+  String get peopleLastMentionDateLabel => '最近提及';
 
   @override
   String peopleMentionEntriesValue(int count) {
@@ -2951,26 +2946,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabIntroLabel => '簡介';
 
   @override
-  String get aboutTabIntroHeroTitle => '把私人日記留在自己手上';
+  String get aboutTabIntroHeroTitle => '先了解資料如何保存、使用與帶走';
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary 是為個人記錄設計的本機加密日記 App，不需註冊帳號。建立並妥善保存復原金鑰後，就能開始寫日記、備份與匯出；除非您主動操作，資料會留在裝置上。';
+      'Quill Diary 是不需建立專屬帳號的本機加密日記 App。從寫作、搜尋到備份與匯出，由您決定資料何時留在裝置、何時產生外部副本。';
 
   @override
   String get aboutTabIntroChip0 => '資料留在裝置';
 
   @override
-  String get aboutTabIntroChip1 => 'Markdown / HTML';
+  String get aboutTabIntroChip1 => '完整備份';
 
   @override
   String get aboutTabIntroChip2 => '全文搜尋';
 
   @override
-  String get aboutTabIntroChip3 => '完整備份';
+  String get aboutTabIntroChip3 => '可攜式匯出';
 
   @override
-  String get aboutTabIntroChip4 => '可攜式匯出';
+  String get aboutTabIntroChip4 => 'Markdown / HTML';
 
   @override
   String get aboutTabIntroSection0Title => '為什麼適合拿來寫日記';
@@ -3031,7 +3026,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      '完整備份用來還原整個日記庫；Markdown 或 HTML 則適合閱讀、整理與搬移內容。Google Drive 只是可選的完整備份存放位置，不是即時同步服務。';
+      '完整備份用來恢復整個正式日記庫；Markdown 或 HTML 則適合在 App 外閱讀與整理。兩種格式用途不同。';
+
+  @override
+  String get aboutTabIntroSection1Item4Title => '依習慣調整 App';
+
+  @override
+  String get aboutTabIntroSection1Item4Body =>
+      '您可在「個人化」調整介面語言、亮暗主題、自動鎖定時間、圖片品質與日記排版。圖片品質只影響之後新加入的圖片。';
 
   @override
   String get aboutTabIntroSection2Title => '資料掌控權在您手上';
@@ -3045,14 +3047,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection2Item0Body =>
-      '日常可用螢幕鎖或生物辨識快速回到 App；換機、還原或可信狀態失效時，復原金鑰才是重新取得存取權的關鍵。';
+      '裝置螢幕鎖與生物辨識方便日常使用；復原金鑰可解鎖原日記庫或其完整備份，但金鑰本身不包含日記資料。';
 
   @override
   String get aboutTabIntroSection2Item1Title => '完整備份用來還原日記庫';
 
   @override
   String get aboutTabIntroSection2Item1Body =>
-      '完整備份中的日記、附件與人物名冊維持加密，但 ZIP 外層與部分復原、標籤及釘選資料不另行加密。它適合完整還原，不是可直接閱讀的匯出文件。';
+      '完整備份保留正式日記、附件、人物與其他日記庫資料，供日後完整還原；它不是可直接閱讀的匯出文件。';
 
   @override
   String get aboutTabIntroSection2Item2Title => '匯出內容後要自行保護';
@@ -3081,23 +3083,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabUnlockSessionLabel => '解鎖與安全';
 
   @override
-  String get aboutTabUnlockSessionHeroTitle => '方便使用，也不放鬆資料保護';
+  String get aboutTabUnlockSessionHeroTitle => '日常解鎖與緊急復原，各有用途';
 
   @override
   String get aboutTabUnlockSessionHeroBody =>
-      '您可選擇不額外驗證、裝置螢幕鎖或生物辨識。App 會依背景逾時與鎖定原因決定何時重新驗證；換機、還原或可信狀態失效時，可能需要復原金鑰。';
+      '螢幕鎖與生物辨識用於日常重新驗證；復原金鑰用於還原備份或在裝置信任失效後重新取得存取權。換機仍需完整備份，裝置 PIN 與生物辨識不能取代復原金鑰。';
 
   @override
-  String get aboutTabUnlockSessionChip0 => '生物辨識';
+  String get aboutTabUnlockSessionChip0 => '復原金鑰';
 
   @override
-  String get aboutTabUnlockSessionChip1 => '螢幕鎖';
+  String get aboutTabUnlockSessionChip1 => '生物辨識';
 
   @override
-  String get aboutTabUnlockSessionChip2 => '自動鎖定';
+  String get aboutTabUnlockSessionChip2 => '螢幕鎖';
 
   @override
-  String get aboutTabUnlockSessionChip3 => '復原金鑰';
+  String get aboutTabUnlockSessionChip3 => '自動鎖定';
 
   @override
   String get aboutTabUnlockSessionSection0Title => '解鎖方式怎麼選';
@@ -3177,50 +3179,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabUnlockSessionSection2Subtitle =>
-      '螢幕鎖與生物辨識方便日常使用；換機、還原或可信狀態失效時，仍可能需要復原金鑰。';
+      '裝置驗證方便日常解鎖；換機或重裝時，則需要完整備份及其對應的復原金鑰。';
 
   @override
-  String get aboutTabUnlockSessionSection2Item0Title => '換機或重設後';
+  String get aboutTabUnlockSessionSection2Item0Title => '日常解鎖不能取代備份與復原金鑰';
 
   @override
   String get aboutTabUnlockSessionSection2Item0Body =>
-      '當您換手機、清除 App 資料，或要在另一台裝置上恢復日記庫時，可信裝置狀態通常不會跟著過去，這時需要復原金鑰。';
+      '換手機或清除 App 資料後，必須先取得完整備份，再用建立該備份時保存的復原金鑰還原。原本的 PIN、圖案、密碼或生物辨識不能取代備份或復原金鑰。';
 
   @override
-  String get aboutTabUnlockSessionSection2Item1Title => '可信狀態失效';
+  String get aboutTabUnlockSessionSection2Item1Title => '請妥善保存';
 
   @override
   String get aboutTabUnlockSessionSection2Item1Body =>
-      '可信狀態失效或與日記庫不符時，不能只靠本機快速進入，需改用復原金鑰。';
-
-  @override
-  String get aboutTabUnlockSessionSection2Item2Title => '請妥善保存';
-
-  @override
-  String get aboutTabUnlockSessionSection2Item2Body =>
-      '復原金鑰是換機、還原或可信裝置失效時重新取得存取權的重要憑證。遺失後可能無法恢復日記庫，請另外保存在安全位置。';
+      '復原金鑰可重新取得對應日記庫或完整備份的存取權，但不包含日記資料。遺失後可能無法還原，請另外保存在安全位置。';
 
   @override
   String get aboutTabEncryptionLabel => '資料加密';
 
   @override
-  String get aboutTabEncryptionHeroTitle => '資料預設以加密形式保存';
+  String get aboutTabEncryptionHeroTitle => '寫入裝置前，先保護日記內容';
 
   @override
   String get aboutTabEncryptionHeroBody =>
-      '正式日記、附件、人物名冊與草稿會以 LDJ2 格式和 AES-256-GCM 加密，搜尋索引也會另外加密。只有在有效解鎖期間，App 才能讀寫這些內容。';
+      '正式日記、附件、人物名冊、草稿與搜尋資料會加密保存，只有在有效解鎖期間才能讀寫。明文匯出與已解鎖的裝置仍需由您保護。';
 
   @override
   String get aboutTabEncryptionChip0 => '本機加密';
 
   @override
-  String get aboutTabEncryptionChip1 => '加密檔案';
+  String get aboutTabEncryptionChip1 => '內容加密';
 
   @override
-  String get aboutTabEncryptionChip2 => '內容加密';
+  String get aboutTabEncryptionChip2 => '金鑰保護';
 
   @override
-  String get aboutTabEncryptionChip3 => '金鑰保護';
+  String get aboutTabEncryptionChip3 => '加密檔案';
 
   @override
   String get aboutTabEncryptionChip4 => '可信裝置';
@@ -3240,7 +3235,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Item0Body =>
-      '正式日記、附件、人物名冊與草稿會以 AES-256-GCM 加密。即使取得檔案，也無法直接閱讀內容。';
+      '正式日記、附件、人物名冊與草稿使用 LDJ2 格式封裝，檔案內容以 AES-256-GCM 加密；即使取得檔案，也無法直接閱讀內容。';
 
   @override
   String get aboutTabEncryptionSection0Item1Title => '偵測異常就停止開啟';
@@ -3275,7 +3270,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item1Body =>
-      '換機、還原備份或本機可信狀態失效時，可以用復原金鑰重新取得日記庫存取權。';
+      '還原完整備份或裝置信任失效時，可用復原金鑰重新取得存取權；金鑰會先透過 Argon2id 衍生保護日記庫所需的包裝金鑰。復原金鑰本身不包含日記資料。';
 
   @override
   String get aboutTabEncryptionSection1Item2Title => '先確認日記庫，再解開各檔';
@@ -3316,11 +3311,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabSearchIndexLabel => '搜尋';
 
   @override
-  String get aboutTabSearchIndexHeroTitle => '解鎖後，您可快速找回以前寫過的內容';
+  String get aboutTabSearchIndexHeroTitle => '從標題、標籤與內文找回記憶';
 
   @override
   String get aboutTabSearchIndexHeroBody =>
-      'App 使用加密搜尋資料加快查找，不必每次逐篇讀取所有日記。搜尋只在日記庫解鎖期間可用。';
+      '解鎖後可搜尋正式儲存的日記，快速找到關鍵字、某段經歷或一段時間的紀錄。找不到剛編輯的內容時，請先確認是否已正式儲存。';
 
   @override
   String get aboutTabSearchIndexChip0 => '標題/內文搜尋';
@@ -3348,17 +3343,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '您可直接查找標題、內文與標籤中的關鍵字，不必一篇篇翻找過去寫過什麼。';
 
   @override
-  String get aboutTabSearchIndexSection0Item1Title => '結果來自正式已儲存內容';
+  String get aboutTabSearchIndexSection0Item1Title => '索引本身也受保護';
 
   @override
   String get aboutTabSearchIndexSection0Item1Body =>
-      '搜尋看到的是已正式寫入日記庫的內容，而不是暫時停在編輯器中的草稿。';
-
-  @override
-  String get aboutTabSearchIndexSection0Item2Title => '索引本身也受保護';
-
-  @override
-  String get aboutTabSearchIndexSection0Item2Body =>
       '搜尋索引檔會加密保存，只有在日記庫解鎖後，App 才會開啟並查詢其中的搜尋資料。';
 
   @override
@@ -3402,11 +3390,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabSearchIndexSection2Item0Body => '索引只在解鎖期間建立、更新與使用；鎖定後會關閉。';
 
   @override
-  String get aboutTabSearchIndexSection2Item1Title => '草稿不進搜尋';
+  String get aboutTabSearchIndexSection2Item1Title => '找不到剛編輯的內容時';
 
   @override
   String get aboutTabSearchIndexSection2Item1Body =>
-      '編輯中的草稿不會出現在搜尋結果裡，避免把未完成內容誤當成正式紀錄。';
+      '搜尋只會顯示正式儲存的日記。如果找不到剛寫下或修改的內容，請先確認該篇日記已完成正式儲存。';
 
   @override
   String get aboutTabSearchIndexSection2Item2Title => '正式資料仍以日記庫為準';
@@ -3419,23 +3407,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorLabel => '寫日記';
 
   @override
-  String get aboutTabEditorHeroTitle => '安心寫作，完成後再正式儲存';
+  String get aboutTabEditorHeroTitle => '放心記下當下，再決定何時正式保存';
 
   @override
   String get aboutTabEditorHeroBody =>
-      '編輯中的變更會先保存為加密草稿。確認儲存後，內容才會寫入正式日記並更新搜尋資料，方便意外中斷後繼續編輯。';
+      '編輯內容會先保存為加密草稿，畫面也會提示尚未正式保存；確認後才寫入日記庫。您也能使用標籤、任務清單、圖片與附件整理內容。';
 
   @override
-  String get aboutTabEditorChip0 => 'Markdown 編輯';
+  String get aboutTabEditorChip0 => '自動草稿';
 
   @override
-  String get aboutTabEditorChip1 => '圖片附件';
+  String get aboutTabEditorChip1 => '未儲存提醒';
 
   @override
-  String get aboutTabEditorChip2 => '自動草稿';
+  String get aboutTabEditorChip2 => '圖片附件';
 
   @override
-  String get aboutTabEditorChip3 => '未儲存提醒';
+  String get aboutTabEditorChip3 => 'Markdown 編輯';
 
   @override
   String get aboutTabEditorSection0Title => '日常寫作功能';
@@ -3476,7 +3464,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item4Body =>
-      '可加入多張圖片或一般檔案，並調整圖片順序。這讓日記不只是一段文字，也能保留當下的素材與脈絡。';
+      '可加入多張圖片或一般檔案，並調整圖片順序。「個人化」中的圖片品質只影響之後新加入的圖片，不會重新處理既有附件。';
 
   @override
   String get aboutTabEditorSection1Title => '草稿機制';
@@ -3509,50 +3497,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorSection2Title => '和其他資料的關係';
 
   @override
-  String get aboutTabEditorSection2Subtitle => '編輯中的內容與正式保存的內容有清楚界線，避免把兩者混為一談。';
+  String get aboutTabEditorSection2Subtitle =>
+      '未完成的編輯會和正式保存內容分開，畫面也會提醒您目前仍有草稿。';
 
   @override
-  String get aboutTabEditorSection2Item0Title => '草稿不進搜尋結果';
+  String get aboutTabEditorSection2Item0Title => '未儲存提示';
 
   @override
   String get aboutTabEditorSection2Item0Body =>
-      '搜尋只看正式寫入日記庫的內容，草稿不會出現在結果中，避免未完成內容被誤認為正式紀錄。';
-
-  @override
-  String get aboutTabEditorSection2Item1Title => '草稿不進完整備份';
-
-  @override
-  String get aboutTabEditorSection2Item1Body =>
-      '完整備份只含正式日記庫，不含尚未正式儲存的本地草稿；匯入匯出流程也不會把這些草稿當成正式資料。';
-
-  @override
-  String get aboutTabEditorSection2Item2Title => '未儲存提示';
-
-  @override
-  String get aboutTabEditorSection2Item2Body =>
       '如果某篇日記仍留有本機草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。';
 
   @override
-  String get aboutTabPeopleLabel => '人物';
+  String get aboutTabPeopleLabel => '人物名冊';
 
   @override
-  String get aboutTabPeopleHeroTitle => '整理日記裡的重要人物';
+  String get aboutTabPeopleHeroTitle => '用姓名與別名串起人物相關回憶';
 
   @override
   String get aboutTabPeopleHeroBody =>
-      '為生活中的重要人物建立資料。App 會從已儲存的日記找出姓名與別名，方便回顧相關紀錄。';
+      '保存人物的姓名、別名、關係與備註，並快速插入日記。App 會從正式儲存的內容整理提及與相關日記，不會改寫原始文字。';
 
   @override
-  String get aboutTabPeopleChip0 => '姓名與別名';
+  String get aboutTabPeopleChip0 => '@ 快速插入';
 
   @override
-  String get aboutTabPeopleChip1 => '關係與備註';
+  String get aboutTabPeopleChip1 => '姓名與別名';
 
   @override
   String get aboutTabPeopleChip2 => '提及統計';
 
   @override
-  String get aboutTabPeopleChip3 => '@ 快速插入';
+  String get aboutTabPeopleChip3 => '關係與備註';
 
   @override
   String get aboutTabPeopleSection0Title => '建立與整理人物資料';
@@ -3600,7 +3575,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection1Item1Body =>
-      '人物頁會顯示提及總數、近 30 天提及、最近提及時間與相關日記；人物清單也能依這些資訊排序。';
+      '人物頁會顯示提及日記篇數、近 30 天提及篇數、最近提及日期與相關日記；人物清單也能依這些資訊排序。同一人物在同一篇日記中出現多次，仍只計為一篇。';
 
   @override
   String get aboutTabPeopleSection1Item2Title => '用 @ 快速帶入姓名';
@@ -3627,24 +3602,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabPeopleSection2Item1Body =>
-      '刪除人物只會移除人物名冊與相關統計，原本的日記文字和內容都會保留。';
+      '刪除人物只會移除人物名冊與相關統計，不會刪除或改寫任何日記；日記中原本輸入的姓名與文字都會保留。';
 
   @override
   String get aboutTabPeopleSection2Item2Title => '名稱越明確越容易辨識';
 
   @override
   String get aboutTabPeopleSection2Item2Body =>
-      '過短或彼此重疊的姓名與別名可能造成誤判。使用較明確的稱呼，能讓人物提及整理得更準確。';
+      '過短、相同或彼此重疊的姓名與別名可能造成誤判。使用能清楚區分人物的名稱，能讓提及統計與相關日記更準確。';
 
   @override
   String get aboutTabBackupRestoreLabel => '備份與還原';
 
   @override
-  String get aboutTabBackupRestoreHeroTitle => '保留整個日記庫，或帶出可閱讀內容';
+  String get aboutTabBackupRestoreHeroTitle => '換機、完整還原，也能交換指定日記';
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      '完整備份用來保存並還原整個日記庫；Markdown / HTML 匯出則把正式內容轉成可閱讀、可整理的文件。兩者格式與用途不同，不能互相取代。';
+      '完整備份用來保留整個正式日記庫；Markdown／HTML 匯出可選擇內容，供閱讀、交換或外部整理。備份、匯出與同步的用途不同，不能互相取代。';
 
   @override
   String get aboutTabBackupRestoreChip0 => '完整備份';
@@ -3659,115 +3634,164 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabBackupRestoreChip3 => 'HTML';
 
   @override
-  String get aboutTabBackupRestoreSection0Title => '完整備份適合什麼情境';
+  String get aboutTabBackupRestoreSection0Title => '換手機或重裝 App';
 
   @override
   String get aboutTabBackupRestoreSection0Subtitle =>
-      '如果您想保留整個正式日記庫，之後能原樣還原，請使用完整備份。';
+      '先在舊手機備妥金鑰與最新備份，確認新手機還原完成後，再清除舊裝置。';
 
   @override
-  String get aboutTabBackupRestoreSection0Item0Title => '保存完整日記庫';
+  String get aboutTabBackupRestoreSection0Item0Title => '舊手機先完成準備';
 
   @override
   String get aboutTabBackupRestoreSection0Item0Body =>
-      '完整備份包含日記、附件、人物名冊與復原設定。日記內容維持加密，但備份外層、復原 metadata，以及存在時的標籤目錄與釘選項目 ID 不另行加密。';
+      '先把需要保留的草稿正式儲存，確認原復原金鑰仍可取得，再建立一份最新完整備份並等待成功訊息。還原完成前請保留舊手機與備份。';
 
   @override
-  String get aboutTabBackupRestoreSection0Item1Title => '建立後會先檢查';
+  String get aboutTabBackupRestoreSection0Item1Title => '使用外部 ZIP 轉移';
 
   @override
   String get aboutTabBackupRestoreSection0Item1Body =>
-      '完整備份會先經過結構檢查，確認內容可用後，才交付到本機、外部資料夾或 Google Drive。';
+      '在舊手機選擇「匯出備份到資料夾」，把 backup_*.zip 安全帶到新手機；再從新手機的設定選擇「匯入外部備份」。請勿改用「匯入日記」。';
 
   @override
-  String get aboutTabBackupRestoreSection0Item2Title => '保留份數';
+  String get aboutTabBackupRestoreSection0Item2Title => '使用 Google Drive 轉移';
 
   @override
-  String aboutTabBackupRestoreSection0Item2Body(int retainCount) {
+  String get aboutTabBackupRestoreSection0Item2Body =>
+      '在舊手機連結 Google 帳戶並完成「備份到 Google Drive」。新手機完成初始設定後，連結同一帳戶，再選擇「從 Google Drive 還原」。Drive 是手動備份，不會即時同步兩台手機。';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item3Title => '確認完成後再清除舊手機';
+
+  @override
+  String get aboutTabBackupRestoreSection0Item3Body =>
+      '若流程要求金鑰，請輸入建立舊備份時保存的復原金鑰，不是新手機剛產生的金鑰。確認日記、附件、人物、標籤與釘選內容無誤後，才重設或清除舊手機。';
+
+  @override
+  String get aboutTabBackupRestoreSection1Title => '完整備份適合什麼情境';
+
+  @override
+  String get aboutTabBackupRestoreSection1Subtitle =>
+      '如果您想保留整個正式日記庫，之後能原樣還原，請使用完整備份。';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item0Title => '保存完整日記庫';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item0Body =>
+      '完整備份包含日記、附件、人物名冊與復原設定。日記內容維持加密，但備份外層、復原 metadata，以及存在時的標籤目錄與釘選項目 ID 不另行加密。';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item1Title => '建立後會先檢查';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item1Body =>
+      '完整備份會先經過結構檢查，確認基本結構符合完整備份格式後，才交付到本機、外部資料夾或 Google Drive。';
+
+  @override
+  String get aboutTabBackupRestoreSection1Item2Title => '保留份數';
+
+  @override
+  String aboutTabBackupRestoreSection1Item2Body(int retainCount) {
     return '本機備份與 Google Drive 都保留最新 $retainCount 份；若您匯出到外部資料夾，則不會自動輪替或刪除舊檔。';
   }
 
   @override
-  String get aboutTabBackupRestoreSection1Title => '還原時會發生什麼';
-
-  @override
-  String get aboutTabBackupRestoreSection1Subtitle =>
-      '還原不是補回少掉的幾篇內容，而是把目前正式日記庫換成備份中的那一份。';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item0Title => '正式日記庫會被覆寫';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item0Body =>
-      '不論備份來自 App 內清單、外部 ZIP 或 Google Drive，還原都會用備份內容取代目前的正式日記庫。';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item1Title => '搜尋索引會重建';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item1Body =>
-      '還原後會重新建立搜尋資料，並可能要求您重新驗證；同一裝置且仍處於有效解鎖時，有時可直接繼續使用。';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item2Title => '可能會要求復原金鑰';
-
-  @override
-  String get aboutTabBackupRestoreSection1Item2Body =>
-      '如果目前裝置上的可信狀態不能直接對應到那份備份，流程就會要求輸入建立該備份時保存的復原金鑰。';
-
-  @override
-  String get aboutTabBackupRestoreSection2Title => '匯入與匯出適合什麼用途';
+  String get aboutTabBackupRestoreSection2Title => '還原時會發生什麼';
 
   @override
   String get aboutTabBackupRestoreSection2Subtitle =>
-      '這條流程處理的是內容交換與閱讀，不是拿來完整還原整個日記庫。';
+      '還原不是補回少掉的幾篇內容，而是把目前正式日記庫換成備份中的那一份。';
 
   @override
-  String get aboutTabBackupRestoreSection2Item0Title => '匯入';
+  String get aboutTabBackupRestoreSection2Item0Title => '正式日記庫會被覆寫';
 
   @override
   String get aboutTabBackupRestoreSection2Item0Body =>
-      '「匯入日記」可處理 Markdown、HTML、資料夾，以及支援的可攜 ZIP 或 Easy Diary 備份；Quill Diary 的完整備份 ZIP 必須改走「匯入外部備份」還原，兩者不能混用。';
+      '不論備份來自 App 內清單、外部 ZIP 或 Google Drive，還原都會用備份內容取代目前的正式日記庫。';
 
   @override
-  String get aboutTabBackupRestoreSection2Item1Title => '匯出';
+  String get aboutTabBackupRestoreSection2Item1Title => '搜尋索引會重建';
 
   @override
   String get aboutTabBackupRestoreSection2Item1Body =>
-      '您可從設定匯出 Markdown，也能從主畫面或總覽匯出 HTML，方便閱讀、整理或移轉正式內容。';
+      '還原後會重新建立搜尋資料，並可能要求您重新驗證；同一裝置且仍處於有效解鎖時，有時可直接繼續使用。';
 
   @override
-  String get aboutTabBackupRestoreSection2Item2Title => '它不是同步服務';
+  String get aboutTabBackupRestoreSection2Item2Title => '可能會要求復原金鑰';
 
   @override
   String get aboutTabBackupRestoreSection2Item2Body =>
-      'Google Drive 是由您手動使用的完整備份存放位置，不是跨裝置即時同步。上傳交接完成後可在背景繼續；若在遠端驗證前中斷，請重新建立備份。';
+      '如果目前裝置上的可信狀態不能直接對應到那份備份，流程就會要求輸入建立該備份時保存的復原金鑰。';
 
   @override
-  String get aboutTabBackupRestoreSection3Title => '使用前要知道的事';
+  String get aboutTabBackupRestoreSection3Title => '匯入與匯出';
 
   @override
   String get aboutTabBackupRestoreSection3Subtitle =>
-      '備份與匯出都很重要，但它們保護的對象與責任邊界並不相同。';
+      '可攜式文件適合帶出、閱讀或加入指定日記，不會完整還原整個日記庫。';
 
   @override
-  String get aboutTabBackupRestoreSection3Item0Title => '完整備份不包含草稿';
+  String get aboutTabBackupRestoreSection3Item0Title => '匯入日記';
 
   @override
   String get aboutTabBackupRestoreSection3Item0Body =>
-      '完整備份不含尚在編輯中、尚未正式儲存的本地草稿；執行還原時也會清除裝置上所有草稿與待上傳附件暫存。';
+      '「匯入日記」可處理 Markdown、HTML、資料夾，以及支援的可攜 ZIP 或 Easy Diary 備份；Quill Diary 的完整備份 ZIP 必須改走「匯入外部備份」還原，兩者不能混用。';
 
   @override
-  String get aboutTabBackupRestoreSection3Item1Title => '可讀匯出要自己保管';
+  String get aboutTabBackupRestoreSection3Item1Title => '匯出可閱讀文件';
 
   @override
   String get aboutTabBackupRestoreSection3Item1Body =>
-      'Markdown 與 HTML 匯出是為了閱讀、整理與轉移內容，但它們不再是 App 內的加密格式，後續保存方式由您自己決定。';
+      'Markdown 與 HTML 都能選擇指定日記。Markdown ZIP 保留方便再次匯入的散檔與附件結構；HTML 則將內容整理成適合直接閱讀的單一檔案。';
 
   @override
-  String get aboutTabBackupRestoreSection3Item2Title => '別把兩條流程混用';
+  String get aboutTabBackupRestoreSection4Title => '交換與外部整理';
 
   @override
-  String get aboutTabBackupRestoreSection3Item2Body =>
-      '如果您要完整恢復整個日記庫，請使用完整備份；如果只是想把內容帶出去閱讀或整理，請使用 Markdown / HTML 匯出。';
+  String get aboutTabBackupRestoreSection4Subtitle =>
+      '只帶出需要的日記，並在交給朋友或外部工具前確認內容與保護方式。';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item0Title => '交換指定日記';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item0Body =>
+      '匯出 Markdown 或 HTML 時可選擇指定日記，再將檔案交給朋友。對方可用「匯入日記」預覽並選擇要加入的內容；匯入會建立新日記，可能和原有內容重複，不會共同編輯或同步。';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item1Title => '先降低可辨識資訊';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item1Body =>
+      'Markdown 與 HTML 都能開啟「隱藏人物名稱」，將人物名冊中的姓名與別名換成代號；HTML 另可關閉圖片與附件。這些選項只能降低部分辨識風險。';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item2Title => '交給外部工具前先檢查';
+
+  @override
+  String get aboutTabBackupRestoreSection4Item2Body =>
+      '「隱藏人物名稱」只會把人物名冊中已登錄的姓名與別名換成代號；未登錄姓名，以及標題、標籤、日期、地點與事件內容中的其他線索仍可能辨識個人。匯出檔是明文，請先人工檢查；交付後的使用、保存與刪除方式受您所選工具的政策約束。';
+
+  @override
+  String get aboutTabBackupRestoreSection5Title => '使用前要知道的事';
+
+  @override
+  String get aboutTabBackupRestoreSection5Subtitle =>
+      '備份、匯出與交換都會產生副本，但保護範圍與後續關係並不相同。';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item0Title => '草稿與個人化設定不在備份內';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item0Body =>
+      '完整備份不含尚未正式儲存的草稿，也不含語言、主題、自動鎖定、圖片品質與日記排版等裝置偏好；還原時會清除目前裝置上的草稿與待處理附件。';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item1Title => '備份、交換都不是同步';
+
+  @override
+  String get aboutTabBackupRestoreSection5Item1Body =>
+      'Google Drive 是手動使用的完整備份位置，不是即時同步。交換或匯入的日記也是彼此獨立的副本，任何一方之後的修改都不會自動更新到另一方。';
 }
