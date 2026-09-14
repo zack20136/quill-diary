@@ -11,6 +11,7 @@ import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import '../home_export_actions.dart';
+import '../home_layout.dart';
 import '../home_pin_actions.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
@@ -241,7 +242,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   )
                 : SizedBox(
                     key: const ValueKey<String>('home-search-field'),
-                    height: kHomeSearchRowControlHeight,
+                    height: HomeLayout.searchRowControlHeight,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[

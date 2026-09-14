@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -56,7 +57,9 @@ part 'settings_page_callbacks.dart';
 part 'settings_page_components.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({this.initialFocus, super.key});
+
+  final SettingsFocusTarget? initialFocus;
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
@@ -65,10 +68,16 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController =
       TextEditingController();
+  final GlobalKey _recoveryKeySectionKey = GlobalKey();
+  final GlobalKey _localBackupSectionKey = GlobalKey();
+  final FocusNode _recoveryKeyFocusNode = FocusNode();
+  final FocusNode _localBackupFocusNode = FocusNode();
+  final ScrollController _pageScrollController = ScrollController();
   bool _busy = false;
   bool _showBusyOverlay = true;
   String? _busyMessage;
   double? _busyProgress;
+  bool _initialFocusScheduled = false;
 
   SettingsFlowController get _settingsFlow =>
       ref.read(settingsFlowControllerProvider);
@@ -91,6 +100,99 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
+  void _scheduleInitialFocusIfReady({required bool layoutReady}) {
+    final SettingsFocusTarget? focus = widget.initialFocus;
+    if (focus == null || _initialFocusScheduled || !layoutReady) {
+      return;
+    }
+    _initialFocusScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_focusSection(focus));
+    });
+  }
+
+  Future<void> _focusSection(
+    SettingsFocusTarget focus, {
+    int attempt = 0,
+  }) async {
+    final GlobalKey key = switch (focus) {
+      SettingsFocusTarget.recoveryKey => _recoveryKeySectionKey,
+      SettingsFocusTarget.externalRestore => _localBackupSectionKey,
+    };
+    final FocusNode focusNode = switch (focus) {
+      SettingsFocusTarget.recoveryKey => _recoveryKeyFocusNode,
+      SettingsFocusTarget.externalRestore => _localBackupFocusNode,
+    };
+    final BuildContext? target = key.currentContext;
+    if (target == null && attempt < 5 && mounted) {
+      if (_pageScrollController.hasClients) {
+        _pageScrollController.jumpTo(
+          _pageScrollController.position.maxScrollExtent,
+        );
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_focusSection(focus, attempt: attempt + 1));
+      });
+      return;
+    }
+    if (target == null || !mounted) {
+      return;
+    }
+    if (focus == SettingsFocusTarget.externalRestore) {
+      final bool aligned = _jumpSectionToViewportTop(target);
+      // 第一次進頁 maxScrollExtent 常還沒含下方 Drive，多對幾幀才穩。
+      if (attempt < 8 && (!aligned || attempt < 3) && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(_focusSection(focus, attempt: attempt + 1));
+        });
+        return;
+      }
+      focusNode.requestFocus();
+      return;
+    }
+    await Scrollable.ensureVisible(
+      target,
+      alignment: 0.08,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+    if (!mounted) {
+      return;
+    }
+    focusNode.requestFocus();
+  }
+
+  /// 把區塊頂端對齊 ListView 可視區頂端。
+  bool _jumpSectionToViewportTop(BuildContext target) {
+    if (!_pageScrollController.hasClients) {
+      return false;
+    }
+    final RenderObject? renderObject = target.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return false;
+    }
+    final RenderAbstractViewport? viewport = RenderAbstractViewport.maybeOf(
+      renderObject,
+    );
+    if (viewport == null) {
+      return false;
+    }
+    final ScrollPosition position = _pageScrollController.position;
+    final double rawOffset = viewport
+        .getOffsetToReveal(renderObject, 0.0)
+        .offset;
+    final double offset = rawOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((position.pixels - offset).abs() >= 1) {
+      _pageScrollController.jumpTo(offset);
+    }
+    return rawOffset <= position.maxScrollExtent + 1;
+  }
+
   void updatePageState(VoidCallback callback) {
     setState(callback);
   }
@@ -98,6 +200,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void dispose() {
     _recoveryKeyInputController.dispose();
+    _recoveryKeyFocusNode.dispose();
+    _localBackupFocusNode.dispose();
+    _pageScrollController.dispose();
     super.dispose();
   }
 
@@ -133,14 +238,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         );
     final VaultTransferCapabilities transferAccess =
         pageAccess.vaultTransferCapabilities;
+    _scheduleInitialFocusIfReady(
+      layoutReady:
+          !sessionAsync.isLoading &&
+          !recoveryMetadataAsync.isLoading &&
+          !trustedDeviceAccessAsync.isLoading &&
+          !unlockModeAsync.isLoading &&
+          !repairSummaryAsync.isLoading &&
+          !inspectSummaryAsync.isLoading,
+    );
     final bool isGoogleDriveConfigured =
         !Platform.isIOS || OAuthConfig.isIosGoogleDriveConfigured;
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.settingsPageTitle),
-      ),
+      appBar: AppBar(title: Text(l10n.settingsPageTitle)),
       body: SafeArea(
         child: Stack(
           children: <Widget>[
@@ -150,18 +262,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 return false;
               },
               child: AppScrollablePageBody(
+                controller: _pageScrollController,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: <Widget>[
                   const _SettingsTopNavSection(),
                   const SizedBox(height: 16),
-                  _buildSecurityStatusSection(
-                    sessionAsync: sessionAsync,
-                    recoveryMetadata: recoveryMetadata,
-                    pageAccess: pageAccess,
-                    trustedDeviceAccessAsync: trustedDeviceAccessAsync,
-                    unlockModeAsync: unlockModeAsync,
-                    repairSummaryAsync: repairSummaryAsync,
-                    inspectSummaryAsync: inspectSummaryAsync,
+                  Focus(
+                    focusNode: _recoveryKeyFocusNode,
+                    child: KeyedSubtree(
+                      key: _recoveryKeySectionKey,
+                      child: _buildSecurityStatusSection(
+                        sessionAsync: sessionAsync,
+                        recoveryMetadata: recoveryMetadata,
+                        pageAccess: pageAccess,
+                        trustedDeviceAccessAsync: trustedDeviceAccessAsync,
+                        unlockModeAsync: unlockModeAsync,
+                        repairSummaryAsync: repairSummaryAsync,
+                        inspectSummaryAsync: inspectSummaryAsync,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
@@ -205,7 +324,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.file_download_outlined,
                           appearance: AppActionButtonAppearance.tonal,
                           fullWidth: true,
-                          onPressed: _busy || !transferAccess.canPortableTransfer
+                          onPressed:
+                              _busy || !transferAccess.canPortableTransfer
                               ? null
                               : _importDocuments,
                         ),
@@ -214,7 +334,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.file_upload_outlined,
                           appearance: AppActionButtonAppearance.primary,
                           fullWidth: true,
-                          onPressed: _busy || !transferAccess.canPortableTransfer
+                          onPressed:
+                              _busy || !transferAccess.canPortableTransfer
                               ? null
                               : _exportMarkdown,
                         ),
@@ -222,13 +343,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  LocalBackupSection(
-                    access: transferAccess,
-                    busy: _busy,
-                    onCreate: () => _runWithBackupProgress(_createLocalBackup),
-                    onRestore: _runRestoreFromAppLocalBackup,
-                    onExport: () => _runWithBackupProgress(_exportLocalBackup),
-                    onImport: _runRestoreFromLocalBackup,
+                  Focus(
+                    focusNode: _localBackupFocusNode,
+                    child: LocalBackupSection(
+                      key: _localBackupSectionKey,
+                      access: transferAccess,
+                      busy: _busy,
+                      onCreate: () =>
+                          _runWithBackupProgress(_createLocalBackup),
+                      onRestore: _runRestoreFromAppLocalBackup,
+                      onExport: () =>
+                          _runWithBackupProgress(_exportLocalBackup),
+                      onImport: _runRestoreFromLocalBackup,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   DriveBackupSection(

@@ -11,6 +11,8 @@ abstract final class HomeLayout {
   );
   static const double sectionGap = 12;
   static const double tagListSectionHeight = 350;
+  static const double searchRowControlHeight = 46;
+  static const double tabWideBreakpoint = 600;
 
   static const EdgeInsets tagListSectionCardPadding = EdgeInsets.fromLTRB(
     bodyHorizontal,

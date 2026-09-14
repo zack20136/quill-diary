@@ -3,11 +3,10 @@ import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
+import '../home_layout.dart';
 import 'home_pin_glyph.dart';
 
-const double kHomeSearchRowControlHeight = 46;
 const double kHomeToolbarActionCircleSize = 44;
-const double kHomeTabWideBreakpoint = 600;
 
 class HomeSearchTextField extends StatelessWidget {
   const HomeSearchTextField({
@@ -30,11 +29,15 @@ class HomeSearchTextField extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final OutlineInputBorder capsuleBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
+      borderRadius: BorderRadius.circular(
+        HomeLayout.searchRowControlHeight / 2,
+      ),
       borderSide: BorderSide(color: context.appColors.outlineMuted),
     );
     final OutlineInputBorder focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
+      borderRadius: BorderRadius.circular(
+        HomeLayout.searchRowControlHeight / 2,
+      ),
       borderSide: BorderSide(color: cs.primary, width: 1.5),
     );
 
@@ -60,12 +63,12 @@ class HomeSearchTextField extends StatelessWidget {
           prefixIconConstraints: const BoxConstraints(
             minWidth: 40,
             maxWidth: 40,
-            minHeight: kHomeSearchRowControlHeight,
-            maxHeight: kHomeSearchRowControlHeight,
+            minHeight: HomeLayout.searchRowControlHeight,
+            maxHeight: HomeLayout.searchRowControlHeight,
           ),
           constraints: const BoxConstraints(
-            minHeight: kHomeSearchRowControlHeight,
-            maxHeight: kHomeSearchRowControlHeight,
+            minHeight: HomeLayout.searchRowControlHeight,
+            maxHeight: HomeLayout.searchRowControlHeight,
           ),
           filled: true,
           fillColor: context.appColors.sectionCard,
@@ -131,12 +134,14 @@ class HomeSelectionToolbar extends StatelessWidget {
     final Color fillColor = context.appColors.sectionCard;
 
     return SizedBox(
-      height: kHomeSearchRowControlHeight,
+      height: HomeLayout.searchRowControlHeight,
       child: DecoratedBox(
         key: const Key('home-selection-status-capsule'),
         decoration: BoxDecoration(
           color: fillColor,
-          borderRadius: BorderRadius.circular(kHomeSearchRowControlHeight / 2),
+          borderRadius: BorderRadius.circular(
+            HomeLayout.searchRowControlHeight / 2,
+          ),
           border: Border.all(color: context.appColors.outlineMuted),
         ),
         child: Row(
@@ -155,9 +160,7 @@ class HomeSelectionToolbar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: selectedCount > 0
-                      ? cs.onSurface
-                      : cs.onSurfaceVariant,
+                  color: selectedCount > 0 ? cs.onSurface : cs.onSurfaceVariant,
                 ),
               ),
             ),
@@ -354,7 +357,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
       tooltip: context.l10n.homeSelectionSelectDiary,
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
-      size: kHomeSearchRowControlHeight,
+      size: HomeLayout.searchRowControlHeight,
       backgroundColor: cs.primaryContainer,
       foregroundColor: cs.onPrimaryContainer,
       disabledBackgroundColor: cs.surfaceContainerHighest,

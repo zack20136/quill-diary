@@ -99,7 +99,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
       children: <Widget>[
         HomeScrollbarGutter(
           child: SizedBox(
-            height: kHomeSearchRowControlHeight,
+            height: HomeLayout.searchRowControlHeight,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -143,7 +143,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                       tooltip: context.l10n.peopleSortTooltip,
                       onPressed: () {},
                       icon: Icons.sort_rounded,
-                      size: kHomeSearchRowControlHeight,
+                      size: HomeLayout.searchRowControlHeight,
                       backgroundColor: cs.secondaryContainer,
                       foregroundColor: cs.onSecondaryContainer,
                     ),
@@ -155,7 +155,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                   onPressed: () =>
                       unawaited(showRelationshipTypesManageDialog(context)),
                   icon: kPeopleRelationshipsIcon,
-                  size: kHomeSearchRowControlHeight,
+                  size: HomeLayout.searchRowControlHeight,
                   backgroundColor: cs.secondaryContainer,
                   foregroundColor: cs.onSecondaryContainer,
                 ),
@@ -164,7 +164,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                   tooltip: context.l10n.peopleCreateAction,
                   onPressed: () => unawaited(showPersonComposerDialog(context)),
                   icon: Icons.person_add_alt_1_rounded,
-                  size: kHomeSearchRowControlHeight,
+                  size: HomeLayout.searchRowControlHeight,
                   backgroundColor: cs.primaryContainer,
                   foregroundColor: cs.onPrimaryContainer,
                 ),
@@ -261,9 +261,8 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                           message: context.l10n.peopleEmptyBody,
                           actionLabel: context.l10n.peopleCreateAction,
                           actionIcon: Icons.person_add_alt_1_rounded,
-                          onAction: () => unawaited(
-                            showPersonComposerDialog(context),
-                          ),
+                          onAction: () =>
+                              unawaited(showPersonComposerDialog(context)),
                         )
                       : HomeSectionCard(
                           title: context.l10n.peopleSearchNoResultsTitle,
@@ -390,16 +389,13 @@ class _PersonListTile extends StatelessWidget {
           (RelationshipType type) => person.relationships.contains(type.id),
         )
         .map(
-          (RelationshipType type) =>
-              relationshipTypeLabel(type, languageCode),
+          (RelationshipType type) => relationshipTypeLabel(type, languageCode),
         )
         .join(' · ');
     final String? subtitle = stats == null
         ? null
         : <String>[
-            context.l10n.peopleMentionedEntryCount(
-              stats.mentionedEntryCount,
-            ),
+            context.l10n.peopleMentionedEntryCount(stats.mentionedEntryCount),
             stats.lastMentionDate == null
                 ? context.l10n.peopleLastMentionNever
                 : context.l10n.peopleLastMentionDate(

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
@@ -40,6 +41,17 @@ class PersonalizationPreferencesController
   Future<void> setLocale(AppLanguage value) async {
     final PersonalizationPreferences current = await future;
     await _persist(current.copyWith(locale: value));
+  }
+
+  /// 首次啟動且尚未寫入語系時，依裝置語系持久化，不改動既有使用者。
+  Future<void> seedDeviceLocaleIfUnset(Locale deviceLocale) async {
+    final AppLanguage? stored = await ref
+        .read(userPreferencesProvider)
+        .storedAppLocaleOrNull;
+    if (stored != null) {
+      return;
+    }
+    await setLocale(AppLanguage.fromDeviceLocale(deviceLocale));
   }
 
   Future<void> setTypography(EditorTypographyPreferences value) async {

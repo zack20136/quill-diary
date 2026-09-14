@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
@@ -24,9 +25,7 @@ void main() {
     );
   }
 
-  testWidgets('選取模式下日記卡片提供 button 與 selected 語意', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('選取模式下日記卡片提供 button 與 selected 語意', (WidgetTester tester) async {
     await tester.pumpWidget(
       host(
         HomeEntryCard(
@@ -65,10 +64,7 @@ void main() {
         field.decoration?.focusedBorder as OutlineInputBorder?;
     expect(focused, isNotNull);
     expect(focused!.borderSide.width, 1.5);
-    expect(
-      focused.borderSide.color,
-      appTestTheme().colorScheme.primary,
-    );
+    expect(focused.borderSide.color, appTestTheme().colorScheme.primary);
   });
 
   testWidgets('圓形操作按鈕觸控目標至少 44', (WidgetTester tester) async {
@@ -98,7 +94,7 @@ void main() {
     await tester.pumpWidget(
       host(
         SizedBox(
-          height: kHomeSearchRowControlHeight,
+          height: HomeLayout.searchRowControlHeight,
           child: HomeHeaderTabButton(
             label: testL10n.homeNavHome,
             icon: Icons.home_rounded,
@@ -120,7 +116,7 @@ void main() {
       host(
         SizedBox(
           width: 52,
-          height: kHomeSearchRowControlHeight,
+          height: HomeLayout.searchRowControlHeight,
           child: HomeHeaderTabButton(
             label: testL10n.homeNavHome,
             icon: Icons.home_rounded,
@@ -162,7 +158,10 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const Key('home-selection-status-capsule')), findsOneWidget);
+    expect(
+      find.byKey(const Key('home-selection-status-capsule')),
+      findsOneWidget,
+    );
     expect(find.text(testL10n.homeSelectionSelectedCount(1)), findsOneWidget);
     expect(find.byType(HomeCircleIconButton), findsNothing);
 

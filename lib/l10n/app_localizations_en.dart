@@ -4054,4 +4054,123 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutTabBackupRestoreSection5Item1Body =>
       'Google Drive is a manually operated full-backup location, not live sync. Exchanged or imported entries are also independent copies, so later changes on either side do not update the other automatically.';
+
+  @override
+  String get onboardingIntroLanguageZhShort => '中';
+
+  @override
+  String get onboardingIntroLanguageEnShort => 'EN';
+
+  @override
+  String get onboardingIntroLanguageToggleTooltip => 'Change language';
+
+  @override
+  String get onboardingIntroNext => 'Next';
+
+  @override
+  String get onboardingIntroBack => 'Back';
+
+  @override
+  String get onboardingIntroGetStarted => 'Get started';
+
+  @override
+  String get onboardingIntroPage1Title => 'A private place to write';
+
+  @override
+  String get onboardingIntroPage1Item0 =>
+      'Your diary is encrypted on this device, so you can keep writing offline.';
+
+  @override
+  String get onboardingIntroPage1Item1 =>
+      'No Quill Diary account, no ads, and no behavioral tracking.';
+
+  @override
+  String get onboardingIntroPage1Item2 =>
+      'Protect your diary with a PIN, fingerprint, or face unlock, and have the app lock automatically.';
+
+  @override
+  String get onboardingIntroPage2Title => 'Write your way';
+
+  @override
+  String get onboardingIntroPage2Item0 =>
+      'Write naturally, use Markdown when you want formatting, and switch to preview anytime.';
+
+  @override
+  String get onboardingIntroPage2Item1 =>
+      'Add checklists and tick them off directly in preview.';
+
+  @override
+  String get onboardingIntroPage2Item2 =>
+      'Attach photos and files; they are encrypted with the rest of your diary.';
+
+  @override
+  String get onboardingIntroPage3Title =>
+      'Connect memories with tags and people';
+
+  @override
+  String get onboardingIntroPage3Item0 =>
+      'Create color-coded tags to categorize entries, then use the Tags page to quickly find related records.';
+
+  @override
+  String get onboardingIntroPage3Item1 =>
+      'Keep names, aliases, relationships, birthdays, and notes in People; type @ while writing to mention someone quickly.';
+
+  @override
+  String get onboardingIntroPage3Item2 =>
+      'Quill Diary uses names and aliases to gather related entries and show mention counts and the most recent mention.';
+
+  @override
+  String get onboardingIntroPage3Item3 =>
+      'Use the timeline, calendar, search, and Overview to revisit your life from different angles.';
+
+  @override
+  String get onboardingIntroPage4Title => 'Your recovery key is your spare key';
+
+  @override
+  String get onboardingIntroPage4Item0 =>
+      'A unique recovery key is created when you start a new diary.';
+
+  @override
+  String get onboardingIntroPage4Item1 =>
+      'Keep a copy away from this device. You will need it after reinstalling the app, moving devices, or restoring a backup.';
+
+  @override
+  String get onboardingIntroPage4Item2 =>
+      'Quill Diary does not keep a copy for you. If it is lost, neither the app nor the developer can recover your diary.';
+
+  @override
+  String get onboardingIntroPage5Title => 'Your data stays in your hands';
+
+  @override
+  String get onboardingIntroPage5Item0 =>
+      'Create a full backup with your diary entries kept encrypted, and save it as a file or in Google Drive.';
+
+  @override
+  String get onboardingIntroPage5Item1 =>
+      'Backups are created when you choose—they do not sync automatically. Restore one to move to another device.';
+
+  @override
+  String get onboardingIntroPage5Item2 =>
+      'You can also import Markdown, HTML, and supported backups from other diary apps.';
+
+  @override
+  String get onboardingIntroPage5Item3 =>
+      'Export Markdown or HTML when you want readable files elsewhere. Exports are not encrypted, so store them carefully.';
+
+  @override
+  String get firstLaunchHomeTitle => 'Get started with Quill Diary';
+
+  @override
+  String get firstLaunchCreateVaultTitle => 'Create a new diary vault';
+
+  @override
+  String get firstLaunchCreateVaultMessage =>
+      'After creating it, keep the recovery key somewhere safe. You will need it to move or restore this vault.';
+
+  @override
+  String get firstLaunchTransferTitle => 'Transfer existing data';
+
+  @override
+  String get firstLaunchTransferMessage =>
+      'Use this to move Quill Diary data from another device.';
 }

@@ -45,6 +45,7 @@ class AppDialogShell extends StatelessWidget {
     required this.title,
     required this.content,
     this.icon,
+    this.titleTrailing,
     this.actions = const <Widget>[],
     super.key,
   });
@@ -52,6 +53,7 @@ class AppDialogShell extends StatelessWidget {
   final String title;
   final Widget content;
   final Widget? icon;
+  final Widget? titleTrailing;
   final List<Widget> actions;
 
   @override
@@ -62,6 +64,10 @@ class AppDialogShell extends StatelessWidget {
       children: <Widget>[
         if (icon != null) ...<Widget>[icon!, const SizedBox(width: 12)],
         Expanded(child: Text(title)),
+        if (titleTrailing != null) ...<Widget>[
+          const SizedBox(width: 8),
+          titleTrailing!,
+        ],
       ],
     ),
     content: content,

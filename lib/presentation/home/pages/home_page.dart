@@ -10,12 +10,16 @@ import 'package:go_router/go_router.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import '../home_layout.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
+import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
+import 'package:quill_diary/application/session/providers/session_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
+import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
+import '../home_layout.dart';
 import '../widgets/home_circle_action_button.dart';
-import '../widgets/home_selection_toolbar.dart';
 import '../widgets/home_shared_widgets.dart';
 import '../widgets/home_tab_stack.dart';
 
@@ -27,6 +31,62 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  bool _introFlowInFlight = false;
+  bool _introFlowDone = false;
+
+  Future<void> _maybeStartFirstLaunch(AppSessionState sessionState) async {
+    if (_introFlowInFlight || _introFlowDone) {
+      return;
+    }
+    if (!isAwaitingVaultSetup(sessionState)) {
+      return;
+    }
+    _introFlowInFlight = true;
+
+    try {
+      await ref
+          .read(personalizationPreferencesProvider.notifier)
+          .seedDeviceLocaleIfUnset(
+            WidgetsBinding.instance.platformDispatcher.locale,
+          );
+      if (!mounted) {
+        return;
+      }
+
+      final AppSessionState latest = await ref.read(
+        effectiveAppSessionProvider.future,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (!isAwaitingVaultSetup(latest)) {
+        setState(() => _introFlowDone = true);
+        return;
+      }
+
+      final int version = await ref.read(onboardingIntroVersionProvider.future);
+      if (!mounted) {
+        return;
+      }
+      if (!shouldShowOnboardingIntro(
+        sessionState: latest,
+        storedVersion: version,
+      )) {
+        setState(() => _introFlowDone = true);
+        return;
+      }
+
+      await showOnboardingIntroDialog(context);
+      if (mounted) {
+        setState(() => _introFlowDone = true);
+      }
+    } catch (_) {
+      // 保留閘門；待後續狀態更新重建時重試。
+    } finally {
+      _introFlowInFlight = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
@@ -35,13 +95,20 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return sessionAsync.when(
       data: (AppSessionState sessionState) {
+        final bool isFirstLaunch = isAwaitingVaultSetup(sessionState);
+        if (isFirstLaunch && !_introFlowInFlight && !_introFlowDone) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            unawaited(_maybeStartFirstLaunch(sessionState));
+          });
+        }
         final bool canCreate =
             sessionState.isUnlocked && sessionState.session != null;
         final HomeEntrySelectionState selection = ref.watch(
           homeEntrySelectionProvider,
         );
         final HomeTab activeTab = ref.watch(homeTabProvider);
-        final bool showFab = activeTab == HomeTab.home && !selection.isActive;
+        final bool showFab =
+            !isFirstLaunch && activeTab == HomeTab.home && !selection.isActive;
         final bool snackBarLifted =
             ref.watch(appFeedbackVisibilityCountProvider) > 0;
         final double addButtonBottom =
@@ -56,49 +123,63 @@ class _HomePageState extends ConsumerState<HomePage> {
             }
           },
           child: Scaffold(
-            appBar: const PreferredSize(
-              preferredSize: Size.fromHeight(76),
-              child: HomeHeader(),
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(76),
+              child: HomeHeader(
+                showTabs: !isFirstLaunch,
+                settingsEnabled: !isFirstLaunch || _introFlowDone,
+              ),
             ),
-            body: Stack(
-              children: <Widget>[
-                SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      HomeLayout.bodyHorizontal,
-                      HomeLayout.bodyPadding.top,
-                      0,
-                      HomeLayout.bodyPadding.bottom,
-                    ),
-                    child: HomeTabStack(sessionState: sessionState),
-                  ),
-                ),
-                if (showFab)
-                  AnimatedPositioned(
-                    duration: HomeLayout.bottomChromeAnimationDuration,
-                    curve: HomeLayout.bottomChromeAnimationCurve,
-                    right: HomeLayout.circleActionHorizontalInset,
-                    bottom: addButtonBottom,
-                    child: SafeArea(
-                      top: false,
-                      child: HomeCircleActionButton(
-                        tooltip: context.l10n.homeTooltipNewEntry,
-                        icon: Icons.add_rounded,
-                        onPressed: canCreate
-                            ? () =>
-                                  unawaited(context.push(AppRouter.editorRoute))
-                            : null,
+            body: isFirstLaunch
+                ? SafeArea(
+                    top: false,
+                    child: _introFlowDone
+                        ? const FirstLaunchHomePane()
+                        : const AppLoadingState(
+                            layout: AppLoadingStateLayout.page,
+                          ),
+                  )
+                : Stack(
+                    children: <Widget>[
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            HomeLayout.bodyHorizontal,
+                            HomeLayout.bodyPadding.top,
+                            0,
+                            HomeLayout.bodyPadding.bottom,
+                          ),
+                          child: HomeTabStack(sessionState: sessionState),
+                        ),
                       ),
-                    ),
+                      if (showFab)
+                        AnimatedPositioned(
+                          duration: HomeLayout.bottomChromeAnimationDuration,
+                          curve: HomeLayout.bottomChromeAnimationCurve,
+                          right: HomeLayout.circleActionHorizontalInset,
+                          bottom: addButtonBottom,
+                          child: SafeArea(
+                            top: false,
+                            child: HomeCircleActionButton(
+                              tooltip: context.l10n.homeTooltipNewEntry,
+                              icon: Icons.add_rounded,
+                              onPressed: canCreate
+                                  ? () => unawaited(
+                                      context.push(AppRouter.editorRoute),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
         );
       },
-      loading: () =>
-          const Scaffold(body: AppLoadingState(layout: AppLoadingStateLayout.page)),
+      loading: () => const Scaffold(
+        body: AppLoadingState(layout: AppLoadingStateLayout.page),
+      ),
       error: (Object error, StackTrace _) => Scaffold(
         appBar: AppBar(),
         body: Padding(
@@ -115,7 +196,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 class HomeHeader extends ConsumerStatefulWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({
+    this.showTabs = true,
+    this.settingsEnabled = true,
+    super.key,
+  });
+
+  final bool showTabs;
+  final bool settingsEnabled;
 
   @override
   ConsumerState<HomeHeader> createState() => _HomeHeaderState();
@@ -134,8 +222,9 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final bool showTabs = widget.showTabs;
     final HomeTab activeTab = ref.watch(homeTabProvider);
-    if (_lastActiveTab != activeTab) {
+    if (showTabs && _lastActiveTab != activeTab) {
       _lastActiveTab = activeTab;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final BuildContext? tabContext = _tabKeys[activeTab]?.currentContext;
@@ -167,7 +256,7 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
     };
 
     final bool showTabLabels =
-        MediaQuery.sizeOf(context).width >= kHomeTabWideBreakpoint;
+        MediaQuery.sizeOf(context).width >= HomeLayout.tabWideBreakpoint;
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -181,60 +270,69 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Row(
             children: <Widget>[
-              Expanded(
-                child: SizedBox(
-                  height: kHomeSearchRowControlHeight,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: <Widget>[
-                        for (
-                          int index = 0;
-                          index < HomeTab.values.length;
-                          index++
-                        ) ...<Widget>[
-                          if (index > 0) const SizedBox(width: 5),
-                          KeyedSubtree(
-                            key: _tabKeys[HomeTab.values[index]],
-                            child: showTabLabels
-                                ? HomeHeaderTabButton(
-                                    label: tabVisual(HomeTab.values[index]).$1,
-                                    icon: tabVisual(HomeTab.values[index]).$2,
-                                    active: activeTab == HomeTab.values[index],
-                                    showLabel: true,
-                                    onTap: () => _selectTab(
-                                      ref,
-                                      HomeTab.values[index],
-                                    ),
-                                  )
-                                : SizedBox(
-                                    width: 52,
-                                    child: HomeHeaderTabButton(
-                                      label:
-                                          tabVisual(HomeTab.values[index]).$1,
-                                      icon:
-                                          tabVisual(HomeTab.values[index]).$2,
+              if (showTabs)
+                Expanded(
+                  child: SizedBox(
+                    height: HomeLayout.searchRowControlHeight,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: <Widget>[
+                          for (
+                            int index = 0;
+                            index < HomeTab.values.length;
+                            index++
+                          ) ...<Widget>[
+                            if (index > 0) const SizedBox(width: 5),
+                            KeyedSubtree(
+                              key: _tabKeys[HomeTab.values[index]],
+                              child: showTabLabels
+                                  ? HomeHeaderTabButton(
+                                      label: tabVisual(
+                                        HomeTab.values[index],
+                                      ).$1,
+                                      icon: tabVisual(HomeTab.values[index]).$2,
                                       active:
                                           activeTab == HomeTab.values[index],
+                                      showLabel: true,
                                       onTap: () => _selectTab(
                                         ref,
                                         HomeTab.values[index],
                                       ),
+                                    )
+                                  : SizedBox(
+                                      width: 52,
+                                      child: HomeHeaderTabButton(
+                                        label: tabVisual(
+                                          HomeTab.values[index],
+                                        ).$1,
+                                        icon: tabVisual(
+                                          HomeTab.values[index],
+                                        ).$2,
+                                        active:
+                                            activeTab == HomeTab.values[index],
+                                        onTap: () => _selectTab(
+                                          ref,
+                                          HomeTab.values[index],
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                          ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                )
+              else
+                const Spacer(),
               const SizedBox(width: 12),
               HomeHeaderIconButton(
                 tooltip: context.l10n.homeTooltipSettings,
                 icon: Icons.tune_rounded,
-                onPressed: () =>
-                    unawaited(context.push(AppRouter.settingsRoute)),
+                onPressed: widget.settingsEnabled
+                    ? () => unawaited(context.push(AppRouter.settingsRoute))
+                    : null,
               ),
             ],
           ),

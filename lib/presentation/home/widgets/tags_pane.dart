@@ -376,7 +376,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       children: <Widget>[
         HomeScrollbarGutter(
           child: SizedBox(
-            height: kHomeSearchRowControlHeight,
+            height: HomeLayout.searchRowControlHeight,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -391,7 +391,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   tooltip: context.l10n.homeTooltipAddTag,
                   onPressed: () => _presentComposer(accentMap: accentMap),
                   icon: Icons.add_rounded,
-                  size: kHomeSearchRowControlHeight,
+                  size: HomeLayout.searchRowControlHeight,
                   backgroundColor: cs.primaryContainer,
                   foregroundColor: cs.onPrimaryContainer,
                 ),

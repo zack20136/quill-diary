@@ -6691,6 +6691,204 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Google Drive 是手動使用的完整備份位置，不是即時同步。交換或匯入的日記也是彼此獨立的副本，任何一方之後的修改都不會自動更新到另一方。'**
   String get aboutTabBackupRestoreSection5Item1Body;
+
+  /// No description provided for @onboardingIntroLanguageZhShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'中'**
+  String get onboardingIntroLanguageZhShort;
+
+  /// No description provided for @onboardingIntroLanguageEnShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'EN'**
+  String get onboardingIntroLanguageEnShort;
+
+  /// No description provided for @onboardingIntroLanguageToggleTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'切換語言'**
+  String get onboardingIntroLanguageToggleTooltip;
+
+  /// No description provided for @onboardingIntroNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一頁'**
+  String get onboardingIntroNext;
+
+  /// No description provided for @onboardingIntroBack.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一頁'**
+  String get onboardingIntroBack;
+
+  /// No description provided for @onboardingIntroGetStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'開始使用'**
+  String get onboardingIntroGetStarted;
+
+  /// No description provided for @onboardingIntroPage1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'安心寫下只屬於你的事'**
+  String get onboardingIntroPage1Title;
+
+  /// No description provided for @onboardingIntroPage1Item0.
+  ///
+  /// In zh, this message translates to:
+  /// **'日記會加密保存在這台裝置，沒有網路也能繼續寫。'**
+  String get onboardingIntroPage1Item0;
+
+  /// No description provided for @onboardingIntroPage1Item1.
+  ///
+  /// In zh, this message translates to:
+  /// **'不必建立 Quill Diary 帳號，也沒有廣告或行為追蹤。'**
+  String get onboardingIntroPage1Item1;
+
+  /// No description provided for @onboardingIntroPage1Item2.
+  ///
+  /// In zh, this message translates to:
+  /// **'可使用密碼、指紋或臉部辨識保護日記，並依設定自動鎖定。'**
+  String get onboardingIntroPage1Item2;
+
+  /// No description provided for @onboardingIntroPage2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'用你喜歡的方式記錄'**
+  String get onboardingIntroPage2Title;
+
+  /// No description provided for @onboardingIntroPage2Item0.
+  ///
+  /// In zh, this message translates to:
+  /// **'直接寫下文字，也可用 Markdown 排版並隨時切換預覽。'**
+  String get onboardingIntroPage2Item0;
+
+  /// No description provided for @onboardingIntroPage2Item1.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入待辦清單，還能直接在預覽中勾選完成。'**
+  String get onboardingIntroPage2Item1;
+
+  /// No description provided for @onboardingIntroPage2Item2.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片與檔案也能附在日記裡，並和內容一起加密保存。'**
+  String get onboardingIntroPage2Item2;
+
+  /// No description provided for @onboardingIntroPage3Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'用標籤與人物串起回憶'**
+  String get onboardingIntroPage3Title;
+
+  /// No description provided for @onboardingIntroPage3Item0.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立有顏色的標籤替日記分類，再從標籤頁快速找出同類紀錄。'**
+  String get onboardingIntroPage3Item0;
+
+  /// No description provided for @onboardingIntroPage3Item1.
+  ///
+  /// In zh, this message translates to:
+  /// **'在人物名冊保存姓名、別名、關係、生日與備註；寫日記時輸入 @ 就能快速提及。'**
+  String get onboardingIntroPage3Item1;
+
+  /// No description provided for @onboardingIntroPage3Item2.
+  ///
+  /// In zh, this message translates to:
+  /// **'Quill Diary 會依姓名與別名整理相關日記，顯示提及篇數與最近提及時間。'**
+  String get onboardingIntroPage3Item2;
+
+  /// No description provided for @onboardingIntroPage3Item3.
+  ///
+  /// In zh, this message translates to:
+  /// **'搭配時間軸、日曆、搜尋與總覽，從不同角度回看生活。'**
+  String get onboardingIntroPage3Item3;
+
+  /// No description provided for @onboardingIntroPage4Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'復原金鑰就是你的備用鑰匙'**
+  String get onboardingIntroPage4Title;
+
+  /// No description provided for @onboardingIntroPage4Item0.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立新日記庫時，會產生一組專屬的復原金鑰。'**
+  String get onboardingIntroPage4Item0;
+
+  /// No description provided for @onboardingIntroPage4Item1.
+  ///
+  /// In zh, this message translates to:
+  /// **'請將金鑰另外保存；換裝置、重新安裝或還原備份時都會用到。'**
+  String get onboardingIntroPage4Item1;
+
+  /// No description provided for @onboardingIntroPage4Item2.
+  ///
+  /// In zh, this message translates to:
+  /// **'Quill Diary 不會替你保管金鑰；一旦遺失，App 與開發者都無法找回日記。'**
+  String get onboardingIntroPage4Item2;
+
+  /// No description provided for @onboardingIntroPage5Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'資料始終由你掌握'**
+  String get onboardingIntroPage5Title;
+
+  /// No description provided for @onboardingIntroPage5Item0.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立完整備份；其中的日記內容維持加密，可保存成外部檔案或存到 Google Drive。'**
+  String get onboardingIntroPage5Item0;
+
+  /// No description provided for @onboardingIntroPage5Item1.
+  ///
+  /// In zh, this message translates to:
+  /// **'備份由你決定何時建立，不會自動同步；換裝置時可一次還原。'**
+  String get onboardingIntroPage5Item1;
+
+  /// No description provided for @onboardingIntroPage5Item2.
+  ///
+  /// In zh, this message translates to:
+  /// **'也能匯入 Markdown、HTML，以及支援的其他日記 App 備份。'**
+  String get onboardingIntroPage5Item2;
+
+  /// No description provided for @onboardingIntroPage5Item3.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要在其他工具閱讀時，可匯出 Markdown 或 HTML；匯出檔不會加密，請妥善保存。'**
+  String get onboardingIntroPage5Item3;
+
+  /// No description provided for @firstLaunchHomeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'開始使用 Quill Diary'**
+  String get firstLaunchHomeTitle;
+
+  /// No description provided for @firstLaunchCreateVaultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立新的日記庫'**
+  String get firstLaunchCreateVaultTitle;
+
+  /// No description provided for @firstLaunchCreateVaultMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立後請務必妥善保存復原金鑰，之後換機或還原都需要它。'**
+  String get firstLaunchCreateVaultMessage;
+
+  /// No description provided for @firstLaunchTransferTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'轉移既有資料'**
+  String get firstLaunchTransferTitle;
+
+  /// No description provided for @firstLaunchTransferMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'適用於從其他裝置移轉 Quill Diary 資料。'**
+  String get firstLaunchTransferMessage;
 }
 
 class _AppLocalizationsDelegate

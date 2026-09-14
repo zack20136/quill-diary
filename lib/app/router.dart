@@ -8,6 +8,24 @@ import '../presentation/settings/pages/personalization_page.dart';
 import '../presentation/settings/pages/settings_page.dart';
 import '../presentation/settings/pages/support_page.dart';
 
+/// 設定頁初始定位目標；不自動執行建立金鑰、選檔或登入。
+enum SettingsFocusTarget {
+  recoveryKey,
+  externalRestore;
+
+  static const String queryKey = 'focus';
+
+  String get queryValue => name;
+
+  static SettingsFocusTarget? tryParse(String? raw) {
+    return switch (raw?.trim()) {
+      'recoveryKey' => SettingsFocusTarget.recoveryKey,
+      'externalRestore' => SettingsFocusTarget.externalRestore,
+      _ => null,
+    };
+  }
+}
+
 /// 集中定義全站路由與頁面入口。
 class AppRouter {
   static const String homeRoute = '/';
@@ -23,6 +41,13 @@ class AppRouter {
 
   static String editorEditLocation(String entryId) => '/editor/$entryId?edit=1';
   static String editorSalvageLocation(String token) => '/editor?salvage=$token';
+
+  static String settingsLocation({SettingsFocusTarget? focus}) {
+    if (focus == null) {
+      return settingsRoute;
+    }
+    return '$settingsRoute?${SettingsFocusTarget.queryKey}=${focus.queryValue}';
+  }
 
   static GoRouter createRouter() {
     return GoRouter(
@@ -48,7 +73,14 @@ class AppRouter {
           builder: (_, GoRouterState state) =>
               PersonDetailPage(personId: state.pathParameters['id']!),
         ),
-        GoRoute(path: settingsRoute, builder: (_, _) => const SettingsPage()),
+        GoRoute(
+          path: settingsRoute,
+          builder: (_, GoRouterState state) => SettingsPage(
+            initialFocus: SettingsFocusTarget.tryParse(
+              state.uri.queryParameters[SettingsFocusTarget.queryKey],
+            ),
+          ),
+        ),
         GoRoute(path: aboutRoute, builder: (_, _) => const SettingsAboutPage()),
         GoRoute(
           path: personalizationRoute,

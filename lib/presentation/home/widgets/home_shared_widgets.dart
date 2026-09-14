@@ -13,9 +13,9 @@ import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
+import '../home_layout.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'home_scroll_affordance.dart';
-import 'home_selection_toolbar.dart';
 
 class HomeBlockedEntriesPane extends StatelessWidget {
   const HomeBlockedEntriesPane({required this.sessionState, super.key});
@@ -121,9 +121,7 @@ class HomeDiarySliverSection extends StatelessWidget {
       title: title,
       stripeColor: stripeColor,
       trailing: trailing,
-      slivers: <Widget>[
-        HomeCompactEntrySliverList(entries: entries),
-      ],
+      slivers: <Widget>[HomeCompactEntrySliverList(entries: entries)],
     );
   }
 }
@@ -223,8 +221,8 @@ class HomeHeaderIconButton extends StatelessWidget {
           onTap: onPressed,
           borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
           child: SizedBox(
-            width: kHomeSearchRowControlHeight,
-            height: kHomeSearchRowControlHeight,
+            width: HomeLayout.searchRowControlHeight,
+            height: HomeLayout.searchRowControlHeight,
             child: Center(child: Icon(icon, size: 20, color: foregroundColor)),
           ),
         ),

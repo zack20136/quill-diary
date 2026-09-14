@@ -98,6 +98,14 @@ enum AppLanguage {
       _ => AppLanguage.zh,
     };
   }
+
+  /// 中文裝置使用繁體中文，其餘使用英文。
+  static AppLanguage fromDeviceLocale(Locale locale) {
+    if (locale.languageCode == 'zh') {
+      return AppLanguage.zh;
+    }
+    return AppLanguage.en;
+  }
 }
 
 /// 背景逾時後自動鎖定的分鐘選項。

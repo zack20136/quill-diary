@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/application/session/app_lifecycle_session_bridge.dart';
+import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
+import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
@@ -180,18 +182,27 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
     );
 
     ref.watch(sponsorBillingLifecycleProvider);
-    final Locale locale = ref
-        .watch(personalizationPreferencesProvider)
-        .maybeWhen(
-          data: (PersonalizationPreferences value) => value.materialLocale,
-          orElse: () => appZhLocale,
-        );
-    final ThemeMode themeMode = ref
-        .watch(personalizationPreferencesProvider)
-        .maybeWhen(
-          data: (value) => value.materialThemeMode,
-          orElse: () => ThemeMode.system,
-        );
+    final AsyncValue<PersonalizationPreferences> personalizationAsync = ref
+        .watch(personalizationPreferencesProvider);
+    final AppLanguage fallbackLanguage = personalizationAsync.maybeWhen(
+      data: (PersonalizationPreferences value) => value.locale,
+      orElse: () => AppLanguage.zh,
+    );
+    final AsyncValue<AppLanguage?> storedLanguageAsync = ref.watch(
+      storedAppLanguagePreferenceProvider,
+    );
+    final AsyncValue sessionAsync = ref.watch(effectiveAppSessionProvider);
+    final AppLanguage locale = resolveAppLanguage(
+      storedLanguageResolved: storedLanguageAsync.hasValue,
+      storedLanguage: storedLanguageAsync.value,
+      sessionState: sessionAsync.value,
+      deviceLocale: WidgetsBinding.instance.platformDispatcher.locale,
+      fallbackLanguage: fallbackLanguage,
+    );
+    final ThemeMode themeMode = personalizationAsync.maybeWhen(
+      data: (value) => value.materialThemeMode,
+      orElse: () => ThemeMode.system,
+    );
 
     return _sessionLifecycle.wrap(
       MaterialApp.router(
@@ -202,7 +213,7 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
         theme: buildAppTheme(brightness: Brightness.light),
         darkTheme: buildAppTheme(brightness: Brightness.dark),
         themeMode: themeMode,
-        locale: locale,
+        locale: locale.materialLocale,
         supportedLocales: appSupportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         routerConfig: _router,
