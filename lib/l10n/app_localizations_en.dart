@@ -3108,14 +3108,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get legalExternalLinkUnavailableMessage =>
-      'Unable to open the browser. Please try again later.';
+      'Unable to open the link. Please try again later.';
 
   @override
   String get settingsLegalSectionTitle => 'Legal & Privacy';
 
   @override
   String get settingsLegalSectionDescription =>
-      'View source code, privacy policy, and third-party notices on GitHub; open an Issue if you have questions.';
+      'View the source code, privacy policy, and third-party notices; open an Issue or rate Quill Diary on Google Play.';
 
   @override
   String get settingsLegalSourceCodeTitle => 'GitHub Source Code';
@@ -3128,6 +3128,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLegalContactAuthorTitle => 'Contact Author';
+
+  @override
+  String get settingsLegalRateOnGooglePlayTitle => 'Rate on Google Play';
 
   @override
   String get aboutPageTitle => 'About';

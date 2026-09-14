@@ -2918,14 +2918,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '僅透過 Google Play Billing 提供一次性支持，非訂閱、非會員；付款由 Google 處理，開發者不保存支持紀錄。支持流程不讀取日記庫內容。';
 
   @override
-  String get legalExternalLinkUnavailableMessage => '無法開啟瀏覽器，請稍後再試。';
+  String get legalExternalLinkUnavailableMessage => '無法開啟連結，請稍後再試。';
 
   @override
   String get settingsLegalSectionTitle => '法律與隱私';
 
   @override
   String get settingsLegalSectionDescription =>
-      '可在 GitHub 查看原始碼、隱私政策與第三方聲明；有問題歡迎透過 Issues 聯絡。';
+      '可查看原始碼、隱私政策與第三方聲明；也歡迎透過 Issues 聯絡或前往 Google Play 評價。';
 
   @override
   String get settingsLegalSourceCodeTitle => 'GitHub 原始碼';
@@ -2938,6 +2938,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsLegalContactAuthorTitle => '聯絡作者';
+
+  @override
+  String get settingsLegalRateOnGooglePlayTitle => '在 Google Play 評價';
 
   @override
   String get aboutPageTitle => '關於';

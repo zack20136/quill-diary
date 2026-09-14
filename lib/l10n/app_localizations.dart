@@ -5129,7 +5129,7 @@ abstract class AppLocalizations {
   /// No description provided for @legalExternalLinkUnavailableMessage.
   ///
   /// In zh, this message translates to:
-  /// **'無法開啟瀏覽器，請稍後再試。'**
+  /// **'無法開啟連結，請稍後再試。'**
   String get legalExternalLinkUnavailableMessage;
 
   /// No description provided for @settingsLegalSectionTitle.
@@ -5141,7 +5141,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLegalSectionDescription.
   ///
   /// In zh, this message translates to:
-  /// **'可在 GitHub 查看原始碼、隱私政策與第三方聲明；有問題歡迎透過 Issues 聯絡。'**
+  /// **'可查看原始碼、隱私政策與第三方聲明；也歡迎透過 Issues 聯絡或前往 Google Play 評價。'**
   String get settingsLegalSectionDescription;
 
   /// No description provided for @settingsLegalSourceCodeTitle.
@@ -5167,6 +5167,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'聯絡作者'**
   String get settingsLegalContactAuthorTitle;
+
+  /// No description provided for @settingsLegalRateOnGooglePlayTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在 Google Play 評價'**
+  String get settingsLegalRateOnGooglePlayTitle;
 
   /// No description provided for @aboutPageTitle.
   ///

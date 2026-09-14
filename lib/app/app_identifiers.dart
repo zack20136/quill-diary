@@ -27,6 +27,8 @@ abstract final class AppIdentifiers {
   static const String sourceRepositoryUrl =
       'https://github.com/zack20136/quill-diary';
   static const String issuesUrl = '$sourceRepositoryUrl/issues';
+  static const String googlePlayStoreUrl =
+      'https://play.google.com/store/apps/details?id=$androidPackageName';
   static const String publicDocsBaseUrl =
       'https://zack20136.github.io/quill-diary';
 

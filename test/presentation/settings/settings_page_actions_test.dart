@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/app/app_identifiers.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -16,13 +17,16 @@ import '../../helpers/shared/test_l10n.dart';
 
 class _FakeUrlLauncher extends UrlLauncherPlatform {
   bool launchResult = false;
+  final List<String> launchedUrls = <String>[];
 
   @override
   LinkDelegate? get linkDelegate => null;
 
   @override
-  Future<bool> launchUrl(String url, LaunchOptions options) async =>
-      launchResult;
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    launchedUrls.add(url);
+    return launchResult;
+  }
 }
 
 void main() {
@@ -105,6 +109,33 @@ void main() {
       find.text(testL10n.legalExternalLinkUnavailableMessage),
       findsOneWidget,
     );
+  });
+
+  testWidgets('點擊 Google Play 評價會開啟商店頁面', (WidgetTester tester) async {
+    urlLauncher.launchResult = true;
+
+    await pumpSettingsActionsPage(
+      tester,
+      transferService: FakeVaultTransferService(
+        connectionState: connectedState,
+      ),
+    );
+
+    await scrollSettingsPageUntilVisible(
+      tester,
+      find.text(testL10n.settingsLegalRateOnGooglePlayTitle),
+    );
+    expect(
+      find.text(testL10n.settingsLegalRateOnGooglePlayTitle),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text(testL10n.settingsLegalRateOnGooglePlayTitle));
+    await tester.pumpAndSettle();
+
+    expect(urlLauncher.launchedUrls, <String>[
+      AppIdentifiers.googlePlayStoreUrl,
+    ]);
   });
 
   testWidgets('取消中斷連線時不會呼叫服務', (WidgetTester tester) async {

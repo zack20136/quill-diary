@@ -1,7 +1,7 @@
 part of 'settings_page.dart';
 
 extension _SettingsPageCallbacks on _SettingsPageState {
-  Future<void> _openLegalLink(String url) async {
+  Future<void> _openExternalLink(String url) async {
     final BuildContext context = pageContext;
     final bool opened = await launchExternalUrl(url);
     if (!context.mounted || opened) {
@@ -27,27 +27,34 @@ extension _SettingsPageCallbacks on _SettingsPageState {
           _SettingsLegalRow(
             title: l10n.settingsLegalSourceCodeTitle,
             onTap: () =>
-                unawaited(_openLegalLink(AppIdentifiers.sourceRepositoryUrl)),
+                unawaited(_openExternalLink(AppIdentifiers.sourceRepositoryUrl)),
             colorScheme: cs,
           ),
           Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalPrivacyPolicyTitle,
             onTap: () =>
-                unawaited(_openLegalLink(AppIdentifiers.privacyPolicyUrl)),
+                unawaited(_openExternalLink(AppIdentifiers.privacyPolicyUrl)),
             colorScheme: cs,
           ),
           Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalThirdPartyNoticesTitle,
             onTap: () =>
-                unawaited(_openLegalLink(AppIdentifiers.thirdPartyNoticesUrl)),
+                unawaited(_openExternalLink(AppIdentifiers.thirdPartyNoticesUrl)),
             colorScheme: cs,
           ),
           Divider(height: 1, color: context.appColors.outlineBorder().color),
           _SettingsLegalRow(
             title: l10n.settingsLegalContactAuthorTitle,
-            onTap: () => unawaited(_openLegalLink(AppIdentifiers.issuesUrl)),
+            onTap: () => unawaited(_openExternalLink(AppIdentifiers.issuesUrl)),
+            colorScheme: cs,
+          ),
+          Divider(height: 1, color: context.appColors.outlineBorder().color),
+          _SettingsLegalRow(
+            title: l10n.settingsLegalRateOnGooglePlayTitle,
+            onTap: () =>
+                unawaited(_openExternalLink(AppIdentifiers.googlePlayStoreUrl)),
             colorScheme: cs,
           ),
         ],
