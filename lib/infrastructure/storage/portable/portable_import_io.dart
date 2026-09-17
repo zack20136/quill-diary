@@ -30,14 +30,11 @@ typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
 /// 並由 [VaultRepository] 處理加密與索引同步。
 class PortableImportIo {
   PortableImportIo({
-    required VaultPathStrategy pathStrategy,
-    required VaultRepository repository,
-    required FrontMatterCodec frontMatterCodec,
+    required this._pathStrategy,
+    required this._repository,
+    required this._frontMatterCodec,
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
-  }) : _pathStrategy = pathStrategy,
-       _repository = repository,
-       _frontMatterCodec = frontMatterCodec,
-       _easyDiaryBackupImporterFactory =
+  }) : _easyDiaryBackupImporterFactory =
            easyDiaryBackupImporterFactory ?? EasyDiaryBackupImporter.new;
 
   final VaultPathStrategy _pathStrategy;
@@ -187,8 +184,11 @@ class PortableImportIo {
     required UnlockedVaultSession session,
     required File zipFile,
   }) async {
-    final ({AnalyzedPortableImport analyzed, Directory ownedTempRoot}) prepared =
-        await analyzeDocumentsFromZip(session: session, zipFile: zipFile);
+    final ({AnalyzedPortableImport analyzed, Directory ownedTempRoot})
+    prepared = await analyzeDocumentsFromZip(
+      session: session,
+      zipFile: zipFile,
+    );
     try {
       return await persistAnalyzedImport(
         session: session,

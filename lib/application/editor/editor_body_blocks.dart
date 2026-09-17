@@ -4,7 +4,7 @@ final RegExp kEditorCheckboxLinePattern = RegExp(
   r'^(\s*)-\s*\[([ xX])\]\s*(.*)$',
 );
 
-String generateEditorLineId() => 'ln_${Ulid().toCanonical().toLowerCase()}';
+String generateEditorLineId() => 'ln_${Ulid().toBase32(lowercase: true)}';
 
 sealed class EditorBodyLine {
   const EditorBodyLine();

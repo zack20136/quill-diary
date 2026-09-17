@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:android_file_picker/android_file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -14,6 +15,7 @@ import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
 
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/storage/fake_platform_file.dart';
 import '../../helpers/storage/path_provider_test_binding.dart';
 import '../../helpers/storage/vault_transfer_service_test_helpers.dart';
 import '../../helpers/vault/vault_test_harness.dart';
@@ -89,13 +91,17 @@ void main() {
       );
 
       final MaterializedPickedFile result = await materializer.materialize(
-        PlatformFile(name: 'backup.quillvault', size: 3, path: source.path),
+        FakePlatformFile.local(
+          name: 'backup.quillvault',
+          path: source.path,
+          reportedLength: 3,
+        ),
         fallbackBaseName: 'backup.quillvault',
         alwaysCopyToTemp: false,
       );
 
       expect(result.sourceKind, PickedFileSourceKind.localPath);
-      expect(result.file.path, source.path);
+      expect(FileSystemEntity.identicalSync(result.file.path, source.path), isTrue);
       expect(result.shouldDeleteAfterUse, isFalse);
       expect(uriCalled, isFalse);
       expect(bytesCalled, isFalse);
@@ -109,10 +115,10 @@ void main() {
 
         final MaterializedPickedFile materialized = await materializer
             .materialize(
-              PlatformFile(
+              FakePlatformFile.local(
                 name: 'restore.quillvault',
-                size: 1,
                 path: source.path,
+                reportedLength: 1,
               ),
               fallbackBaseName: 'restore.quillvault',
               alwaysCopyToTemp: true,
@@ -136,13 +142,15 @@ void main() {
 
       final MaterializedPickedFile result = await materializer.materialize(
         AndroidPlatformFile(
-          file: PlatformFile(name: 'saf.quillvault', size: 2),
+          name: 'saf.quillvault',
+          uri: Uri.file('${workDir.path}/missing-cache.quillvault'),
           safHandle: AndroidSAFHandle(
             uri: Uri.parse(
               'content://com.android.providers.downloads.documents/document/123',
             ),
             accessMode: AndroidSAFAccessMode.readOnly,
           ),
+          bytesLength: 2,
         ),
         fallbackBaseName: 'saf.quillvault',
         alwaysCopyToTemp: true,
@@ -158,7 +166,7 @@ void main() {
       await result.file.delete();
     });
 
-    test('僅 identifier 為 content URI 時走 URI 複製', () async {
+    test('檔案 URI 為 content URI 時走 URI 複製', () async {
       String? copiedUri;
       materializer = createMaterializer(
         copyAndroidUriToPath:
@@ -169,10 +177,10 @@ void main() {
       );
 
       final MaterializedPickedFile result = await materializer.materialize(
-        PlatformFile(
+        FakePlatformFile.content(
           name: 'drive.zip',
-          size: 3,
-          identifier: 'content://com.google.android.apps.docs/document/abc',
+          uri: 'content://com.google.android.apps.docs/document/abc',
+          reportedLength: 3,
         ),
         fallbackBaseName: 'drive.zip',
         alwaysCopyToTemp: true,
@@ -185,7 +193,7 @@ void main() {
       await result.file.delete();
     });
 
-    test('path 為 content URI 字串時不走 File path', () async {
+    test('Android 檔案沒有 SAF handle 時仍可複製 content URI', () async {
       var uriCalled = false;
       materializer = createMaterializer(
         copyAndroidUriToPath:
@@ -196,10 +204,10 @@ void main() {
       );
 
       final MaterializedPickedFile result = await materializer.materialize(
-        PlatformFile(
+        AndroidPlatformFile(
           name: 'backup.quillvault',
-          size: 1,
-          path: 'content://provider/backup.quillvault',
+          uri: Uri.parse('content://provider/backup.quillvault'),
+          bytesLength: 1,
         ),
         fallbackBaseName: 'backup.quillvault',
         alwaysCopyToTemp: false,
@@ -210,7 +218,7 @@ void main() {
       await result.file.delete();
     });
 
-    test('無 path 無 URI 時拋出 unreadable', () async {
+    test('沒有本機路徑或 content URI 時拋出 unreadable', () async {
       var bytesCalled = false;
       materializer = createMaterializer(
         readPlatformFileBytes: (PlatformFile file) async {
@@ -221,7 +229,11 @@ void main() {
 
       expect(
         () => materializer.materialize(
-          PlatformFile(name: 'missing.zip', size: 1),
+          FakePlatformFile(
+            name: 'missing.zip',
+            uri: Uri.parse('memory://missing.zip'),
+            reportedLength: 1,
+          ),
           fallbackBaseName: 'missing.zip',
           alwaysCopyToTemp: true,
         ),
@@ -246,10 +258,10 @@ void main() {
       );
 
       final MaterializedPickedFile result = await materializer.materialize(
-        PlatformFile(
+        FakePlatformFile.content(
           name: 'large.quillvault',
-          size: largeSize,
-          identifier: 'content://provider/large.quillvault',
+          uri: 'content://provider/large.quillvault',
+          reportedLength: largeSize,
         ),
         fallbackBaseName: 'large.quillvault',
         alwaysCopyToTemp: true,
@@ -270,10 +282,10 @@ void main() {
 
       await expectLater(
         materializer.materialize(
-          PlatformFile(
+          FakePlatformFile.content(
             name: 'bad.zip',
-            size: 1,
-            identifier: 'content://provider/bad.zip',
+            uri: 'content://provider/bad.zip',
+            reportedLength: 1,
           ),
           fallbackBaseName: 'bad.zip',
           alwaysCopyToTemp: true,
@@ -287,6 +299,34 @@ void main() {
   });
 
   group('bytesFallback 保底', () {
+    test('未知檔案大小時拒絕讀入記憶體', () async {
+      materializer = createMaterializer(
+        allowBytesFallback: true,
+        readPlatformFileBytes: (PlatformFile file) async {
+          fail('未知檔案大小時不應讀取 bytes');
+        },
+      );
+
+      await expectLater(
+        materializer.materialize(
+          FakePlatformFile(
+            name: 'unknown.zip',
+            uri: Uri.parse('memory://unknown.zip'),
+          ),
+          fallbackBaseName: 'unknown.zip',
+          alwaysCopyToTemp: true,
+        ),
+        throwsA(
+          isA<PickedFileMaterializationException>().having(
+            (PickedFileMaterializationException error) => error.failure,
+            'failure',
+            PickedFileMaterializationFailure.unreadable,
+          ),
+        ),
+      );
+      expect(workDir.listSync(), isEmpty);
+    });
+
     test('小於 64 MiB 的 bytes 可寫入 temp', () async {
       materializer = createMaterializer(
         allowBytesFallback: true,
@@ -296,7 +336,11 @@ void main() {
       );
 
       final MaterializedPickedFile result = await materializer.materialize(
-        PlatformFile(name: 'tiny.md', size: 4),
+        FakePlatformFile(
+          name: 'tiny.md',
+          uri: Uri.parse('memory://tiny.md'),
+          reportedLength: 4,
+        ),
         fallbackBaseName: 'tiny.md',
         alwaysCopyToTemp: true,
       );
@@ -319,9 +363,10 @@ void main() {
 
       expect(
         () => materializer.materialize(
-          PlatformFile(
+          FakePlatformFile(
             name: 'huge.zip',
-            size: kPickedFileBytesFallbackMaxBytes + 1,
+            uri: Uri.parse('memory://huge.zip'),
+            reportedLength: kPickedFileBytesFallbackMaxBytes + 1,
           ),
           fallbackBaseName: 'huge.zip',
           alwaysCopyToTemp: true,
@@ -352,13 +397,13 @@ void main() {
               required String dialogTitle,
               required List<String> allowedExtensions,
             }) async {
-              return FilePickerResult(<PlatformFile>[
-                PlatformFile(
+              return <PlatformFile>[
+                FakePlatformFile.content(
                   name: 'import.zip',
-                  size: 3,
-                  identifier: 'content://provider/import.zip',
+                  uri: 'content://provider/import.zip',
+                  reportedLength: 3,
                 ),
-              ]);
+              ];
             },
       );
 

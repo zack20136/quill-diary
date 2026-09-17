@@ -9,17 +9,17 @@ typedef DeviceSlotId = String;
 typedef PersonId = String;
 
 /// 穩定前綴 ID 使匯出檔案可讀，並避免跨類型混淆。
-String generateVaultId() => 'vlt_${Ulid().toCanonical().toUpperCase()}';
+String generateVaultId() => 'vlt_${Ulid().toBase32()}';
 
-String generateEntryId() => 'jrn_${Ulid().toCanonical().toUpperCase()}';
+String generateEntryId() => 'jrn_${Ulid().toBase32()}';
 
-String generateAssetId() => 'att_${Ulid().toCanonical().toUpperCase()}';
+String generateAssetId() => 'att_${Ulid().toBase32()}';
 
-String generateBackupId() => 'bkp_${Ulid().toCanonical().toUpperCase()}';
+String generateBackupId() => 'bkp_${Ulid().toBase32()}';
 
-String generateDeviceSlotId() => 'dev_${Ulid().toCanonical().toUpperCase()}';
+String generateDeviceSlotId() => 'dev_${Ulid().toBase32()}';
 
-String generatePersonId() => 'per_${Ulid().toCanonical().toUpperCase()}';
+String generatePersonId() => 'per_${Ulid().toBase32()}';
 
 String normalizeText(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');

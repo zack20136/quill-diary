@@ -240,7 +240,7 @@ class SessionStartupCoordinator {
         status: AppLockStatus.fatalError,
         message: await loadUnsupportedRuntimeMessage(),
       );
-      return adoptBootstrapState(next);
+      return await adoptBootstrapState(next);
     }
 
     final VaultRepository repository = _ref.read(vaultRepositoryProvider);
@@ -253,7 +253,7 @@ class SessionStartupCoordinator {
           status: AppLockStatus.unlocked,
           message: await loadStartupNeedsRecoveryKeyMessage(),
         );
-        return adoptBootstrapState(next);
+        return await adoptBootstrapState(next);
       }
 
       final bool hasTrustedDevice = await repository.hasTrustedDeviceAccess();
@@ -262,7 +262,7 @@ class SessionStartupCoordinator {
           status: AppLockStatus.recoveryRequired,
           message: await loadStartupNeedsTrustedDeviceMessage(),
         );
-        return adoptBootstrapState(next);
+        return await adoptBootstrapState(next);
       }
 
       final UnlockOutcome outcome = await unlock();
@@ -286,7 +286,7 @@ class SessionStartupCoordinator {
           message: message,
         );
       }
-      return adoptBootstrapState(next);
+      return await adoptBootstrapState(next);
     }
   }
 

@@ -758,13 +758,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
                         padding: const EdgeInsets.all(24),
                         child: AppStateView(
                           icon: Icons.key_outlined,
-                          title: context
-                              .l10n
-                              .sessionBlockedRecoveryRequiredTitle,
+                          title:
+                              context.l10n.sessionBlockedRecoveryRequiredTitle,
                           message: context.l10n.editorNeedsRecoveryKeyMessage,
                           actionLabel: context.l10n.homeGoToSettings,
-                          onAction: () =>
-                              context.push(AppRouter.settingsRoute),
+                          onAction: () => context.push(AppRouter.settingsRoute),
                         ),
                       );
                     }
@@ -1488,10 +1486,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _pickFile() async {
-    final FilePickerResult? result = await FilePicker.pickFiles(
+    final List<PlatformFile> result = await FilePicker.pickFiles(
       type: FileType.any,
     );
-    if (result == null) {
+    if (result.isEmpty) {
       return;
     }
 
@@ -1501,7 +1499,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
 
     final List<PendingAttachment> staged = <PendingAttachment>[];
-    for (final PlatformFile file in result.files) {
+    for (final PlatformFile file in result) {
       if (file.path == null || file.path!.trim().isEmpty) {
         continue;
       }

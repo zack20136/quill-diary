@@ -79,12 +79,10 @@ class VaultTransferService {
        );
 
   VaultTransferService.fromServices({
-    required VaultBackupService backupService,
-    required VaultRestoreService restoreService,
-    required PortableTransferService portableTransferService,
-  }) : _backupService = backupService,
-       _restoreService = restoreService,
-       _portableTransferService = portableTransferService;
+    required this._backupService,
+    required this._restoreService,
+    required this._portableTransferService,
+  });
 
   final VaultBackupService _backupService;
   final VaultRestoreService _restoreService;

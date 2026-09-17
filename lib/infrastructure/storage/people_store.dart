@@ -13,11 +13,7 @@ import 'vault_path_strategy.dart';
 
 /// 加密人物名冊（`vault/people.json.enc`，LDJ2）。
 class PeopleStore {
-  PeopleStore({
-    required VaultPathStrategy pathStrategy,
-    required CryptoService cryptoService,
-  }) : _pathStrategy = pathStrategy,
-       _cryptoService = cryptoService;
+  PeopleStore({required this._pathStrategy, required this._cryptoService});
 
   static const int catalogVersion = 1;
   static const String documentId = 'people_catalog';

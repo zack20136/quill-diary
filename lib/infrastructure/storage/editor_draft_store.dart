@@ -13,11 +13,7 @@ import 'vault_path_strategy.dart';
 
 /// 管理本地加密草稿與待上傳附件暫存。
 class EditorDraftStore {
-  EditorDraftStore({
-    required VaultPathStrategy pathStrategy,
-    required CryptoService cryptoService,
-  }) : _pathStrategy = pathStrategy,
-       _cryptoService = cryptoService;
+  EditorDraftStore({required this._pathStrategy, required this._cryptoService});
 
   static const String _materializedPreviewRootName =
       'quill_diary_draft_preview';

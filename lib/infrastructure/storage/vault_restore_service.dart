@@ -19,19 +19,15 @@ import 'vault_transfer_models.dart';
 
 class VaultRestoreService {
   VaultRestoreService({
-    required VaultArchiveIo archiveIo,
-    required VaultRepository vaultRepository,
-    required VaultBackupService backupService,
-    required VaultPathStrategy pathStrategy,
+    required this._archiveIo,
+    required this._vaultRepository,
+    required this._backupService,
+    required this._pathStrategy,
     ReadPlatformFileBytes? readPlatformFileBytes,
     bool allowBytesFallback = false,
     CopyAndroidUriToPath? copyAndroidUriToPath,
     PickedFileMaterializer? pickedFileMaterializer,
-  }) : _archiveIo = archiveIo,
-       _vaultRepository = vaultRepository,
-       _backupService = backupService,
-       _pathStrategy = pathStrategy,
-       _pickedFileMaterializer =
+  }) : _pickedFileMaterializer =
            pickedFileMaterializer ??
            PickedFileMaterializer(
              copyAndroidUriToPath: copyAndroidUriToPath,

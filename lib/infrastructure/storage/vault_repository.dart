@@ -472,21 +472,14 @@ class _AssetRepairStats {
 /// 加密條目／附件 I/O 與索引同步。
 class VaultRepository {
   VaultRepository({
-    required VaultPathStrategy pathStrategy,
-    required FrontMatterCodec frontMatterCodec,
-    required CryptoService cryptoService,
-    required IndexDatabaseManager indexDatabaseManager,
-    required DeviceKeyManager deviceKeyManager,
-    required AppLockService appLockService,
-    VaultRepairFileOperations repairFileOperations =
-        const VaultRepairFileOperations(),
-  }) : _pathStrategy = pathStrategy,
-       _frontMatterCodec = frontMatterCodec,
-       _cryptoService = cryptoService,
-       _indexDatabaseManager = indexDatabaseManager,
-       _deviceKeyManager = deviceKeyManager,
-       _appLockService = appLockService,
-       _repairFileOperations = repairFileOperations;
+    required this._pathStrategy,
+    required this._frontMatterCodec,
+    required this._cryptoService,
+    required this._indexDatabaseManager,
+    required this._deviceKeyManager,
+    required this._appLockService,
+    this._repairFileOperations = const VaultRepairFileOperations(),
+  });
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
@@ -3735,7 +3728,7 @@ class VaultRepository {
       late final ParsedEncryptedDocument parsed;
       try {
         parsed = _cryptoService.parseFileBytes(await file.readAsBytes());
-      } on Object catch (parseErr, _) {
+      } on Object catch (parseErr) {
         parseProblem ??= parseErr;
         continue;
       }
@@ -3750,7 +3743,7 @@ class VaultRepository {
         return;
       } on SecretBoxAuthenticationError {
         authFailurePath ??= file.path;
-      } on Object catch (decryptErr, _) {
+      } on Object catch (decryptErr) {
         verificationProblem ??= decryptErr;
       }
     }
@@ -5179,9 +5172,7 @@ class VaultRepository {
       }
       affected++;
       people.add(
-        person.withRelationships(
-          person.relationships.difference(<String>{id}),
-        ),
+        person.withRelationships(person.relationships.difference(<String>{id})),
       );
     }
     await _persistPeopleCatalog(

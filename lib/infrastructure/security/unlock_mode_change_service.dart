@@ -31,10 +31,9 @@ class UnlockModeChangeMessage extends UnlockModeChangeOutcome {
 /// 安全地切換解鎖模式：能力檢查 → Keystore 同步 → 最後才寫入偏好。
 class UnlockModeChangeService {
   const UnlockModeChangeService({
-    required AppLockService appLock,
-    required VaultRepository vaultRepository,
-  }) : _appLock = appLock,
-       _vaultRepository = vaultRepository;
+    required this._appLock,
+    required this._vaultRepository,
+  });
 
   final AppLockService _appLock;
   final VaultRepository _vaultRepository;

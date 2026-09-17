@@ -264,9 +264,8 @@ abstract class DriveBackupService {
 class GoogleDriveBackupService implements DriveBackupService {
   GoogleDriveBackupService({
     GoogleDriveSignInClient? signInClient,
-    Future<DriveConnectionState?> Function()? androidConnectionSnapshotOverride,
-  }) : _signInClient = signInClient ?? GoogleSignInClientAdapter(),
-       _androidConnectionSnapshotOverride = androidConnectionSnapshotOverride;
+    this._androidConnectionSnapshotOverride,
+  }) : _signInClient = signInClient ?? GoogleSignInClientAdapter();
 
   /// 測試用：覆寫 Android 連線快照，不觸發 [attemptLightweightAuthentication]。
   final Future<DriveConnectionState?> Function()?
@@ -553,9 +552,9 @@ class GoogleDriveBackupService implements DriveBackupService {
       // Android：僅讀取本機已授權帳號快照。不可呼叫 attemptLightweightAuthentication，
       // 否則憑證管理員會在設定頁載入時彈出 Google 登入介面。
       if (Platform.isAndroid || _androidConnectionSnapshotOverride != null) {
-        return _getAndroidConnectionState();
+        return await _getAndroidConnectionState();
       }
-      return _getPluginConnectionState();
+      return await _getPluginConnectionState();
     } on Object {
       return const DriveConnectionState.disconnected();
     }

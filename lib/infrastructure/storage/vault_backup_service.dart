@@ -16,14 +16,11 @@ import 'vault_transfer_models.dart';
 
 class VaultBackupService {
   VaultBackupService({
-    required VaultArchiveIo archiveIo,
-    required DriveBackupService driveBackupService,
-    required ExternalDirectoryStore externalDirectoryStore,
-    required VaultPathStrategy pathStrategy,
-  }) : _archiveIo = archiveIo,
-       _driveBackupService = driveBackupService,
-       _externalDirectoryStore = externalDirectoryStore,
-       _pathStrategy = pathStrategy;
+    required this._archiveIo,
+    required this._driveBackupService,
+    required this._externalDirectoryStore,
+    required this._pathStrategy,
+  });
 
   final VaultArchiveIo _archiveIo;
   final DriveBackupService _driveBackupService;

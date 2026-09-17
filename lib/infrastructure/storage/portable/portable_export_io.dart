@@ -72,11 +72,15 @@ class HtmlExportEstimate {
 
   int get entryCount => entries.length;
 
-  int get imageCount =>
-      entries.fold<int>(0, (int sum, HtmlExportEntrySummary e) => sum + e.imageCount);
+  int get imageCount => entries.fold<int>(
+    0,
+    (int sum, HtmlExportEntrySummary e) => sum + e.imageCount,
+  );
 
-  int get imageBytes =>
-      entries.fold<int>(0, (int sum, HtmlExportEntrySummary e) => sum + e.imageBytes);
+  int get imageBytes => entries.fold<int>(
+    0,
+    (int sum, HtmlExportEntrySummary e) => sum + e.imageBytes,
+  );
 
   /// 依是否內嵌圖片估算實際匯出檔大小。
   int estimatedExportBytes({required bool includeImages}) {
@@ -194,12 +198,10 @@ class MarkdownExportEstimate {
 /// 讓使用者可檢視並以散檔重新匯入。
 class PortableExportIo {
   PortableExportIo({
-    required VaultPathStrategy pathStrategy,
-    required VaultRepository repository,
-    required FrontMatterCodec frontMatterCodec,
-  }) : _pathStrategy = pathStrategy,
-       _repository = repository,
-       _frontMatterCodec = frontMatterCodec;
+    required this._pathStrategy,
+    required this._repository,
+    required this._frontMatterCodec,
+  });
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
@@ -579,9 +581,7 @@ class PortableExportIo {
       final String rawTitle = entry.normalizedTitle ?? '未命名日記';
       final String title = anonymizer?.anonymizePlainText(rawTitle) ?? rawTitle;
       final List<String> tags = entry.tags
-          .map(
-            (String tag) => anonymizer?.anonymizePlainText(tag) ?? tag,
-          )
+          .map((String tag) => anonymizer?.anonymizePlainText(tag) ?? tag)
           .toList(growable: false);
       final String markdownBody =
           anonymizer?.anonymizeMarkdownBody(entry.markdownBody) ??
@@ -814,10 +814,7 @@ class PortableExportIo {
         maxEncryptedFileBytes: 1 << 62,
       );
       if (bytes == null) {
-        listed.add((
-          attachment: attachment,
-          label: nextImageLabel(attachment),
-        ));
+        listed.add((attachment: attachment, label: nextImageLabel(attachment)));
         continue;
       }
 

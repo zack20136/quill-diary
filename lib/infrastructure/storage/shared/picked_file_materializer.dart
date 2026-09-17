@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:android_file_picker/android_file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -130,7 +131,7 @@ class PickedFileMaterializer {
       } finally {
         if (file is AndroidPlatformFile) {
           try {
-            await file.safHandle.releaseGrant();
+            await file.safHandle?.releaseGrant();
           } on Object {
             // SAF grant 釋放失敗不應覆蓋 materialize 成敗。
           }
@@ -144,7 +145,13 @@ class PickedFileMaterializer {
       );
     }
 
-    if (file.size > kPickedFileBytesFallbackMaxBytes) {
+    final int? knownLength = file.lengthSync() ?? await file.length();
+    if (knownLength == null) {
+      throw const PickedFileMaterializationException(
+        PickedFileMaterializationFailure.unreadable,
+      );
+    }
+    if (knownLength > kPickedFileBytesFallbackMaxBytes) {
       throw const PickedFileMaterializationException(
         PickedFileMaterializationFailure.tooLargeForBytesFallback,
       );
@@ -169,7 +176,7 @@ class PickedFileMaterializer {
 
   bool _isCachedLocalPath(PlatformFile file) {
     final String? path = file.path;
-    if (path == null || path.isEmpty || path.startsWith('content://')) {
+    if (path == null || path.isEmpty) {
       return false;
     }
     try {
@@ -180,15 +187,14 @@ class PickedFileMaterializer {
   }
 
   String? _resolveContentUri(PlatformFile file) {
-    for (final String? candidate in <String?>[file.path, file.identifier]) {
-      if (candidate != null &&
-          candidate.isNotEmpty &&
-          candidate.startsWith('content://')) {
-        return candidate;
-      }
+    if (file.uri.scheme == 'content') {
+      return file.uri.toString();
     }
-    if (file is AndroidPlatformFile && file.safHandle.uri.scheme == 'content') {
-      return file.safHandle.uri.toString();
+    final Uri? safUri = file is AndroidPlatformFile
+        ? file.safHandle?.uri
+        : null;
+    if (safUri != null && safUri.scheme == 'content') {
+      return safUri.toString();
     }
     return null;
   }

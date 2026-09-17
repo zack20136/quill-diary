@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
 typedef PickPortableFiles =
-    Future<FilePickerResult?> Function({
+    Future<List<PlatformFile>> Function({
       required String dialogTitle,
       required List<String> allowedExtensions,
     });

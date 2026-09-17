@@ -20,14 +20,11 @@ import 'backup_archive_inspection.dart';
 /// 搜尋索引視為衍生資料，還原後重建。
 class VaultBackupIo {
   VaultBackupIo({
-    required VaultPathStrategy pathStrategy,
-    required VaultRepository repository,
-    required IndexDatabaseManager indexDatabaseManager,
-    required EditorDraftStore editorDraftStore,
-  }) : _pathStrategy = pathStrategy,
-       _repository = repository,
-       _indexDatabaseManager = indexDatabaseManager,
-       _editorDraftStore = editorDraftStore;
+    required this._pathStrategy,
+    required this._repository,
+    required this._indexDatabaseManager,
+    required this._editorDraftStore,
+  });
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;

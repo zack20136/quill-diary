@@ -17,21 +17,20 @@ import 'vault_archive_io.dart';
 import 'vault_transfer_models.dart';
 
 typedef ConfirmPortableImportPreview =
-    Future<PortableImportConfirmResult?> Function(PortableImportPreview preview);
+    Future<PortableImportConfirmResult?> Function(
+      PortableImportPreview preview,
+    );
 
 class PortableTransferService {
   PortableTransferService({
-    required VaultArchiveIo archiveIo,
-    required ExternalDirectoryStore externalDirectoryStore,
-    PickPortableFiles? pickPortableFiles,
+    required this._archiveIo,
+    required this._externalDirectoryStore,
+    this._pickPortableFiles,
     ReadPlatformFileBytes? readPlatformFileBytes,
     bool allowBytesFallback = false,
     CopyAndroidUriToPath? copyAndroidUriToPath,
     PickedFileMaterializer? pickedFileMaterializer,
-  }) : _archiveIo = archiveIo,
-       _externalDirectoryStore = externalDirectoryStore,
-       _pickPortableFiles = pickPortableFiles,
-       _pickedFileMaterializer =
+  }) : _pickedFileMaterializer =
            pickedFileMaterializer ??
            PickedFileMaterializer(
              copyAndroidUriToPath: copyAndroidUriToPath,
@@ -160,23 +159,23 @@ class PortableTransferService {
     required AppLocalizations l10n,
     required ConfirmPortableImportPreview confirmPreview,
   }) async {
-    final FilePickerResult? picked =
+    final List<PlatformFile> picked =
         await (_pickPortableFiles ?? _pickPortableFilesFromSystem)(
           dialogTitle: l10n.vaultTransferImportDocumentsFileTitle,
           allowedExtensions: const <String>['zip', 'md', 'html', 'htm'],
         );
-    if (picked == null || picked.files.isEmpty) {
+    if (picked.isEmpty) {
       return null;
     }
 
-    final List<PlatformFile> zipFiles = picked.files
+    final List<PlatformFile> zipFiles = picked
         .where((PlatformFile file) => _extensionOf(file) == '.zip')
         .toList(growable: false);
     if (zipFiles.isNotEmpty) {
       return _importZipFile(session, zipFiles.first, confirmPreview);
     }
 
-    final List<PlatformFile> documentFiles = picked.files
+    final List<PlatformFile> documentFiles = picked
         .where(
           (PlatformFile file) =>
               _isPortableDocumentExtension(_extensionOf(file)),
@@ -189,7 +188,7 @@ class PortableTransferService {
     return _importPickedDocumentFiles(session, documentFiles, confirmPreview);
   }
 
-  Future<FilePickerResult?> _pickPortableFilesFromSystem({
+  Future<List<PlatformFile>> _pickPortableFilesFromSystem({
     required String dialogTitle,
     required List<String> allowedExtensions,
   }) {
