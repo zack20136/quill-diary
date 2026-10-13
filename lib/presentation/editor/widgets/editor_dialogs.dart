@@ -764,6 +764,7 @@ class _EncryptedGalleryImage extends ConsumerWidget {
       entryCoverPreviewBytesProvider(path),
     );
     return async.when(
+      skipLoadingOnReload: true,
       data: (Uint8List? bytes) {
         if (bytes == null || bytes.isEmpty) {
           return Center(

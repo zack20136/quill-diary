@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_actions.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';

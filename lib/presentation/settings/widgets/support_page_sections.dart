@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';

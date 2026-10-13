@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';

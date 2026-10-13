@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 手調淺色色票：淺藍底、天藍強調色。
 const ColorScheme kAppLightColorScheme = ColorScheme(

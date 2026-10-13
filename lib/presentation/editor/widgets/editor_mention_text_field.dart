@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:async' show unawaited;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 
@@ -16,7 +16,7 @@ Widget _pickerApp({
     theme: appTestTheme(brightness: brightness),
     locale: locale,
     supportedLocales: appSupportedLocales,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     home: Builder(
       builder: (BuildContext context) => Scaffold(
         body: Center(

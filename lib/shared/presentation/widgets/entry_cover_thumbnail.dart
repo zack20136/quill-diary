@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'package:quill_diary/application/editor/editor_entry_providers.dart';
@@ -36,7 +36,9 @@ class EntryCoverThumbnail extends ConsumerWidget {
     final AsyncValue<Uint8List?> async = ref.watch(
       entryCoverPreviewBytesProvider(path),
     );
+    // 索引更新會重讀同一張圖；reload 時留著上一張，避免縮圖閃成載入中。
     return async.when(
+      skipLoadingOnReload: true,
       data: (Uint8List? bytes) {
         if (bytes == null || bytes.isEmpty) {
           return EntryCoverThumbnailPlaceholder(

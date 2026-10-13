@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 編輯器標題與內文的排版偏好（字體大小、行距、段落間距）。
 class EditorTypographyPreferences {

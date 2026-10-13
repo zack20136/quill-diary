@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/session/session_timeout_policy.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';

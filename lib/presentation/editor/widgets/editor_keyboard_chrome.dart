@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const Duration kEditorChromeEnterDuration = Duration(milliseconds: 180);
 const Duration kEditorChromeExitDuration = Duration(milliseconds: 120);

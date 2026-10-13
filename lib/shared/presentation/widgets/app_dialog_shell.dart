@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Dialog 的可見寬度尺寸。
 enum AppDialogSize { standard, compact }

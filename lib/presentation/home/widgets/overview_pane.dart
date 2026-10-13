@@ -1,8 +1,8 @@
 import 'dart:async' show unawaited;
 import '../home_formatters.dart';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/diary/diary_date_policy.dart';

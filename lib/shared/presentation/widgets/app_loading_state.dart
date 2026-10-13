@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Loading 指示器在頁面、區段與行內使用時的留白規則。
 enum AppLoadingStateLayout { page, section, inline }

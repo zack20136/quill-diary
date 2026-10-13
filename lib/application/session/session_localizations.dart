@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart' show Locale;
 
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';

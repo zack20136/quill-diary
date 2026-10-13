@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../app_test_theme.dart';
@@ -36,7 +36,7 @@ Widget widgetTestApp({
         : null,
     locale: locale,
     supportedLocales: appSupportedLocales,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     home: home,
   );
 

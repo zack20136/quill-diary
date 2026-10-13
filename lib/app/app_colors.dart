@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// App 語意色彩 token，由 [ColorScheme] 在 [buildAppTheme] 時一次性預算。
 @immutable

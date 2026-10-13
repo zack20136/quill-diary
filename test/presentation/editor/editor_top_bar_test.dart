@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_top_bar.dart';
 
 import '../../helpers/presentation/editor/editor_test_scope.dart';

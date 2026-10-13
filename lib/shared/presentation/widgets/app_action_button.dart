@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 共用操作按鈕的視覺層級。
 enum AppActionButtonAppearance { primary, tonal, outlined, destructive }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 全 App 字體堆疊與預設墨色（Inter + Noto Sans TC）。
 abstract final class AppTypography {

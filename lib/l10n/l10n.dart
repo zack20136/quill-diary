@@ -1,8 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart'
+    show GlobalCupertinoLocalizations;
+import 'package:flutter_localizations/flutter_localizations.dart'
+    show GlobalWidgetsLocalizations;
+import 'package:material_ui/material_ui.dart';
 
 import 'app_localizations.dart';
 
 export 'app_localizations.dart';
+
 export 'package:flutter/widgets.dart' show BuildContext;
 
 /// 繁體中文（台灣）；避免裸 `Locale('zh')` 被框架解析成簡體。
@@ -11,6 +16,16 @@ const Locale appZhLocale = Locale('zh', 'TW');
 const Locale appEnLocale = Locale('en');
 
 const List<Locale> appSupportedLocales = <Locale>[appZhLocale, appEnLocale];
+
+/// gen-l10n 仍把 Material／Cupertino delegate 指到 `flutter_localizations`。
+/// App 改用獨立套件的 delegate，避免和 `material_ui` 的本地化型別對不上。
+const List<LocalizationsDelegate<dynamic>> appLocalizationsDelegates =
+    <LocalizationsDelegate<dynamic>>[
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+    ];
 
 extension AppLocalizationsBuildContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
