@@ -6,14 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
-import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
+import '../../helpers/vault/manifest_write_test_crypto_service.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
@@ -1758,8 +1758,8 @@ missing asset
 
   test('manifest 寫入失敗時不會刪除已搬移檔案的來源', () async {
     await harness.dispose();
-    final _FailingManifestCryptoService crypto =
-        _FailingManifestCryptoService();
+    final ManifestWriteTestCryptoService crypto =
+        ManifestWriteTestCryptoService();
     harness = await VaultTestHarness.create(cryptoService: crypto);
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
@@ -2067,33 +2067,3 @@ attachments: []
 
 $title
 ''';
-
-class _FailingManifestCryptoService extends LocalCryptoService {
-  bool failManifestWrites = false;
-
-  @override
-  Future<EncryptionResult> encryptBytes({
-    required String documentId,
-    required String vaultId,
-    required List<int> plaintextBytes,
-    required String contentType,
-    required List<int> recoveryWrapKey,
-    required KdfDescriptor recoverySlotKdf,
-    required DateTime createdAt,
-    required DateTime updatedAt,
-  }) {
-    if (failManifestWrites && documentId == 'manifest') {
-      throw StateError('manifest failure');
-    }
-    return super.encryptBytes(
-      documentId: documentId,
-      vaultId: vaultId,
-      plaintextBytes: plaintextBytes,
-      contentType: contentType,
-      recoveryWrapKey: recoveryWrapKey,
-      recoverySlotKdf: recoverySlotKdf,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
-}

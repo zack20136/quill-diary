@@ -50,7 +50,7 @@ void main() {
   testWidgets('保存對話框提供複製與關閉按鈕', (WidgetTester tester) async {
     await pumpDialog(tester);
 
-    expect(find.text(testL10n.settingsRecoveryKeyCopyButton), findsOneWidget);
+    expect(find.text(testL10n.commonActionCopy), findsOneWidget);
     expect(find.text(testL10n.commonActionClose), findsOneWidget);
     expect(find.byType(Checkbox), findsNothing);
   });

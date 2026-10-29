@@ -2,26 +2,25 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
+import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/settings/settings_health_level.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/presentation/settings/backup_security_overview.dart';
 import 'package:quill_diary/presentation/settings/security_overview_item.dart';
-import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
-import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 
 class SettingsSectionCard extends StatelessWidget {
   const SettingsSectionCard({
@@ -710,11 +709,13 @@ class _SecurityOverviewTile extends StatelessWidget {
                         ),
                         Icon(statusIcon, size: 16, color: foreground),
                         const SizedBox(width: 4),
-                        Text(
-                          statusLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: foreground,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            statusLabel,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

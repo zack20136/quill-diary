@@ -16,6 +16,10 @@ class TestVaultPathStrategy extends VaultPathStrategy {
       Directory(p.join(root.path, 'vault'));
 
   @override
+  Future<Directory> editorDraftPreviewRootDirectory() async =>
+      Directory(p.join(root.path, 'previews'));
+
+  @override
   Future<Directory> indexRootDirectory() async =>
       Directory(p.join(root.path, 'index'));
 }

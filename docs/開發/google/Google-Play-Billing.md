@@ -1,24 +1,10 @@
 # Google Play Billing
 
-這份文件整理 Quill Diary 目前的 Google Play Billing 實作方式、商品設定原則與送審時需要對齊的邊界。內容以現有程式碼為準。
+Billing 僅提供 Google Play 一次性支持，不訂閱、不解鎖功能、不保存永久權益，也不讀取日記。流程在裝置端處理，沒有自家後端驗單或跨裝置權益同步。
 
-## 目前實作摘要
+## 商品與顯示
 
-Quill Diary 的 Billing 流程目前是：
-
-- 只支援 Google Play
-- 只做一次性支持購買
-- 不提供訂閱
-- 不解鎖額外功能
-- 不依賴自家後端驗單或權益同步
-
-程式設計上屬於 client-only 的一次性支持流程。
-
-這個選擇符合目前「不建立永久權益」的產品邊界，但不是高價值商品或可跨裝置權益的安全驗單架構。Google 官方建議把購買驗證與權益管理移到安全後端；若未來支持會解鎖功能、保存權益或需要防詐，必須先改成後端驗證，不能沿用現在的 client-only 假設。
-
-## 商品 ID
-
-目前程式碼內建的商品順序如下：
+[`billing_catalog.dart`](../../../lib/infrastructure/billing/billing_catalog.dart) 的固定順序為：
 
 1. `sponsor_coffee`
 2. `sponsor_snack`
@@ -26,144 +12,59 @@ Quill Diary 的 Billing 流程目前是：
 4. `sponsor_boost`
 5. `sponsor_super`
 
-來源：
+Play Console 應建立並啟用相同 ID 的一次性商品。App 使用可重複購買的 consumable 流程；支持頁使用 Play 回傳的 title、description、price，不寫死價格。商品描述須符合一次性支持及沒有額外功能的實際行為。
 
-- [billing_catalog.dart](../../../lib/infrastructure/billing/billing_catalog.dart)
+### Play Console 設定步驟
 
-Play Console 內商品 ID 必須與這份清單完全一致。
+1. 在 `zack20136.com.quill_diary` 對應的 App 建立上述五個一次性商品，確認商品 ID 大小寫完全一致。
+2. 為各商品提供標題、描述、售價與可購買地區，啟用實際要發布的購買選項／商品。價格由 Console 管理，不在 App 或本文件固定。
+3. 標題可依序使用「請我喝杯咖啡」、「請我吃點心」、「請我吃午餐」、「給開發一點鼓勵」、「大力支持開發」；描述統一表達「一次性支持 Quill Diary 開發，不含訂閱或額外功能」。這是建議文案，實際顯示以 Play 商品設定為準。
+4. 上傳可測試的簽章版本至測試軌道，設定測試人員與 license testers，再使用對應 Google 帳號測試。參加測試軌道與成為 license tester 是不同設定；非測試付款方式可能真實扣款。
+5. 從 Play 安裝該軌道版本，確認支持頁讀到五項商品與在地化價格，並完成一次購買、取消及再次購買。
 
-## 商品型態與購買方式
+測試帳號、付款測試方式與 Billing Lab 操作依 [Google Play Billing 測試指南](https://developer.android.com/google/play/billing/test)；不能只用 widget mock 測試代替實際交易驗收。
 
-目前 App 使用：
+## 交易生命週期
 
-- `buyConsumable(autoConsume: false)`
+[`GoogleBillingService`](../../../lib/infrastructure/billing/google_billing_service.dart) 初始化時檢查可用性、訂閱 `purchaseStream` 並呼叫 `restorePurchases()`，接手未完成交易。商品查詢後依 catalog 順序排序。
 
-完成購買後，再由 Android 端主動執行：
+| 狀態 | 處理 |
+|------|------|
+| `pending` | 顯示等待 |
+| `error`、`canceled` | 顯示對應結果並解除等待 |
+| `purchased`、`restored` | 最終處理；成功後顯示感謝 |
 
-- `consumePurchase(...)`
-- `completePurchase(...)`
+購買使用 `buyConsumable(autoConsume: false)`。Android 先 `consumePurchase()`，再依 `pendingCompletePurchase` 呼叫 `completePurchase()`，不能因畫面已顯示感謝就省略交易收尾。確認時限及退款規則以[套件文件](https://pub.dev/packages/in_app_purchase)與[Play 一次性商品生命週期](https://developer.android.com/google/play/billing/lifecycle/one-time)為準。
 
-這代表目前設計是：
+目前裝置端方案適用於不建立永久權益的支持用途。若改成解鎖功能、保存權益或高價值商品，須依[Play 安全建議](https://developer.android.com/google/play/billing/security)重新設計驗證與後端，並同步隱私政策及商店說明。
 
-- 商品在 Play Console 應建立為一次性商品
-- App 端把它當成可重複購買的 consumable 支持項目處理
+consume／complete 失敗時不能直接當成成功；App 會回報錯誤，後續初始化接手仍未完成的交易。已消耗的支持不會還原成永久購買紀錄，也不應以 `restorePurchases()` 承諾跨裝置恢復支持歷史。
 
-## 啟動與商品載入流程
+## 審查與資料揭露用說明
 
-`GoogleBillingService.initialize()` 目前會：
+> 支持開發者是自願的一次性 App 內購買。購買不提供訂閱、會員、去廣告或功能解鎖；未購買也能使用所有功能。商品與付款由 Google Play 處理，價格依 Play 顯示。App 在裝置端完成交易收尾，不建立自家帳號、付款資料庫或跨裝置權益。
 
-1. 檢查 Billing 是否可用
-2. 訂閱 `purchaseStream`
-3. 呼叫 `restorePurchases()`
+「App 不保存永久權益」不代表沒有處理交易資料：Billing 回呼仍含商品與交易識別資訊，SDK 的資料處理也須納入 Data safety 核對。不要把支持稱為慈善捐款，也不要用「永久解鎖」作為商品描述。
 
-之後商品清單透過：
+## 商品載入失敗排查
 
-- `queryProductDetails(BillingConfig.sponsorProductIds)`
+| 狀況 | 優先檢查 |
+|------|------|
+| Billing 不可用 | 裝置是否有可用 Play 商店、目前帳號與網路狀態 |
+| `no_products`／部分商品未找到 | `notFoundProductIds`、商品 ID、啟用狀態、地區及實際發布的 App |
+| `query_failed`／`init_failed` | Play 服務、帳號與網路；重試初始化，不直接改商品 ID |
+| 只能購買一次 | consume 是否成功，之後的 complete 是否仍待處理 |
+| Debug 正常但測試軌道異常 | 安裝來源、套件名稱、選取的付款帳號與 license tester 設定 |
 
-載入，再依 `sponsorProductIdsOrdered` 排序給 UI 顯示。
+狀態與 I/O 在 [`GoogleBillingService`](../../../lib/infrastructure/billing/google_billing_service.dart)；Provider 在 [`billing_providers.dart`](../../../lib/application/settings/billing_providers.dart)，畫面在 [`support_page.dart`](../../../lib/presentation/settings/pages/support_page.dart)。
 
-這表示：
+## 發布驗證
 
-- App 啟動時會先接手未完成交易
-- 商品順序不是 Play Console 回傳順序，而是程式碼固定順序
+- 五項商品可查詢，顯示順序與在地化價格正確。
+- 等待、取消、錯誤、成功與 restored 均可收尾。
+- consume／complete 成功後可再次購買，重新啟動可接手未完成交易。
+- 付款由 Play 處理，App 不保存付款憑證或支持紀錄作為永久權益。
 
-## UI 顯示邏輯
+權限見[Android 權限與資料揭露](Android-權限與資料揭露.md)，公開說明見[隱私權政策](../../privacy-policy.md)。
 
-支持頁不自訂固定價格字串，主要使用 Play 回傳的在地化內容：
-
-- `product.title`
-- `product.description`
-- `product.price`
-
-因此文件或商店說明不應把固定金額寫死成系統真相；真正顯示給使用者的是 Play Console 當下商品設定與地區化價格。
-
-## 購買狀態處理
-
-目前程式碼會處理：
-
-- `pending`
-- `error`
-- `canceled`
-- `purchased`
-- `restored`
-
-其中：
-
-- `purchased` 會進入最終處理
-- `restored` 也會進入最終處理
-
-最終處理在 Android 上會先 consume，再視需要 complete，完成後把 UI 狀態切到 `thanks`。
-
-Google Play 對 consumable 的 `consume` 同時具有確認購買的效果；Flutter `in_app_purchase` 文件則要求在 `pendingCompletePurchase` 為真時呼叫 `completePurchase`，否則超過三天可能退款。這也是為什麼兩段處理不能只因 UI 已顯示感謝就省略。
-
-## 隱私與資料邊界
-
-從文案與流程可以確認目前邊界是：
-
-- 付款由 Google Play 處理
-- App 不保存支持紀錄作為永久權益
-- App 不因支持解鎖功能
-- 支持流程不會讀取日記 vault 內容
-
-這些敘述已反映在設定頁文案與隱私政策，送審與商店說明要保持一致。
-
-## Play Console 商品設定原則
-
-建立商品時，至少要保持以下一致：
-
-- 商品 ID 與程式碼一致
-- 商品已啟用
-- 型態符合一次性支持用途
-- 商品標題與描述不要宣稱訂閱、會員、Premium 權益或功能解鎖
-
-適合的描述方向：
-
-- 一次性支持
-- 支持開發
-- 不含額外功能
-
-避免的描述方向：
-
-- 訂閱
-- 會員
-- 解鎖進階功能
-- 去廣告權益
-
-## 建議測試重點
-
-上架或改商品前，至少檢查：
-
-1. 五個商品都能成功查到
-2. 商品顯示順序符合程式碼
-3. 購買成功後會進入 `thanks`
-4. `pending`、取消、錯誤狀態都有合理回饋
-5. consume + complete 後可再次購買
-6. `restorePurchases()` 不會造成重複錯誤狀態
-
-## 變更前必查
-
-只要碰到下列變更，就應同步更新這份文件、隱私政策與商店說明：
-
-- 商品 ID 清單改動
-- Billing 型態從 consumable 改成 non-consumable 或 subscription
-- 新增後端驗單、權益同步或支持紀錄保存
-- 支持後解鎖功能
-- UI 不再使用 Play 回傳的 title/description/price
-
-## 參考實作
-
-- [google_billing_service.dart](../../../lib/infrastructure/billing/google_billing_service.dart)
-- [billing_catalog.dart](../../../lib/infrastructure/billing/billing_catalog.dart)
-- [billing_providers.dart](../../../lib/application/settings/billing_providers.dart)
-- [support_page.dart](../../../lib/presentation/settings/pages/support_page.dart)
-- [privacy-policy.md](../../privacy-policy.md)
-
-## 官方規範參考
-
-- [Google Play Billing 一次性商品生命週期](https://developer.android.com/google/play/billing/lifecycle/one-time)
-- [Google Play Billing 安全建議](https://developer.android.com/google/play/billing/security)
-- [`in_app_purchase` 套件說明](https://pub.dev/packages/in_app_purchase)
-
----
-
-[返回開發文件索引](../README.md)
+[← 返回開發文件導覽](../README.md)

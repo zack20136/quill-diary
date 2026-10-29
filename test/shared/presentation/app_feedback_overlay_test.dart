@@ -94,9 +94,7 @@ void main() {
     await _pumpToastLifecycle(tester);
   });
 
-  testWidgets('toast 顯示與關閉時更新共用 feedback 顯示計數', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('toast 顯示與關閉時更新共用 feedback 顯示計數', (WidgetTester tester) async {
     late BuildContext hostContext;
 
     await tester.pumpWidget(
@@ -123,6 +121,37 @@ void main() {
     expect(find.text('通知'), findsNothing);
     expect(container.read(appFeedbackVisibilityCountProvider), 0);
   });
+
+  for (final swipeDown in [false, true]) {
+    testWidgets('toast 可${swipeDown ? '向下滑動' : '點擊關閉'}並立即釋放顯示計數', (
+      tester,
+    ) async {
+      late BuildContext hostContext;
+      await tester.pumpWidget(
+        widgetTestApp(
+          overrides: const [],
+          child: Builder(
+            builder: (context) {
+              hostContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      final container = ProviderScope.containerOf(hostContext);
+      showAppFeedbackToast(hostContext, '可手動關閉的通知');
+      await tester.pumpAndSettle();
+      if (swipeDown) {
+        await tester.drag(find.text('可手動關閉的通知'), const Offset(0, 100));
+      } else {
+        await tester.tap(find.byTooltip('關閉'));
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('可手動關閉的通知'), findsNothing);
+      expect(container.read(appFeedbackVisibilityCountProvider), 0);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Banner 具有 liveRegion 語意', (WidgetTester tester) async {
     await tester.pumpWidget(

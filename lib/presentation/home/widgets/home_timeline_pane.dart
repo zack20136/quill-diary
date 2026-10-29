@@ -1,21 +1,23 @@
 import 'dart:async' show Timer, unawaited;
-import 'package:quill_diary/l10n/l10n.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/utils/user_facing_error.dart';
+
+import '../../../application/chat_diary/chat_diary_providers.dart';
 import '../home_export_actions.dart';
 import '../home_layout.dart';
 import '../home_pin_actions.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'entry_widgets.dart';
+import 'home_chat_diary_draft_card.dart';
 import 'home_scroll_affordance.dart';
 import 'home_selection_toolbar.dart';
 import 'home_shared_widgets.dart';
@@ -37,6 +39,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
   _entryIndexListSubscription;
   Timer? _searchDebounce;
   bool _syncingController = false;
+  bool _deletingSelection = false;
   String? _pendingSelectionSearchQuery;
 
   @override
@@ -93,6 +96,11 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
       pinnedIds:
           ref.read(homePinnedEntryIdsProvider).value ?? const <EntryId>{},
       rawEntries: rawEntries,
+      chatIds: ref.read(homeSearchQueryProvider).trim().isEmpty
+          ? (ref.read(chatDiarySessionsProvider).value ?? [])
+                .where((chat) => !chat.finished)
+                .map((chat) => chat.id)
+          : const [],
     );
     _pendingSelectionSearchQuery = null;
   }
@@ -142,6 +150,23 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     super.dispose();
   }
 
+  Future<void> _deleteSelection() async {
+    if (_deletingSelection) return;
+    final selection = ref.read(homeEntrySelectionProvider);
+    setState(() => _deletingSelection = true);
+    try {
+      await deleteSelectedHomeItems(
+        context,
+        ref,
+        widget.sessionState,
+        Set.of(selection.selectedIds),
+        chatIds: Set.of(selection.selectedChatIds),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingSelection = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppSessionState sessionState = widget.sessionState;
@@ -158,8 +183,20 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         entriesAsync.value ?? const <EntryIndexRecord>[];
     final bool showSearchResultCount =
         !selection.isActive && searchQuery.isNotEmpty && entriesAsync.hasValue;
-    final bool hasSelectedEntries = selection.selectedIds.isNotEmpty;
-    final bool canActOnSelectedEntries = hasSelectedEntries && canReadEntries;
+    final chatDrafts = canReadEntries && searchQuery.isEmpty
+        ? (ref.watch(chatDiarySessionsProvider).value ?? [])
+              .where((chat) => !chat.finished)
+              .toList()
+        : const [];
+    final canDeleteSelection =
+        selection.selectedCount > 0 && canReadEntries && !_deletingSelection;
+    final showEntryActions =
+        entries.isNotEmpty && selection.selectedChatIds.isEmpty;
+    final canActOnSelectedEntries =
+        selection.selectedIds.isNotEmpty &&
+        canReadEntries &&
+        !_deletingSelection &&
+        selection.selectedChatIds.isEmpty;
     final Set<EntryId> pinnedEntryIds = ref
         .watch(homePinnedEntryIdsProvider)
         .maybeWhen(
@@ -180,63 +217,70 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
             child: selection.isActive
                 ? HomeSelectionToolbar(
                     key: const ValueKey<String>('home-selection-toolbar'),
-                    selectedCount: selection.selectedIds.length,
+                    selectedCount: selection.selectedCount,
                     allSelected:
-                        entries.isNotEmpty &&
-                        selection.selectedIds.length == entries.length &&
+                        entries.length + chatDrafts.length > 0 &&
+                        selection.selectedCount ==
+                            entries.length + chatDrafts.length &&
                         entries.every(
-                          (EntryIndexRecord item) =>
-                              selection.selectedIds.contains(item.id),
+                          (item) => selection.selectedIds.contains(item.id),
+                        ) &&
+                        chatDrafts.every(
+                          (chat) => selection.selectedChatIds.contains(chat.id),
                         ),
-                    onCancel: () =>
-                        ref.read(homeEntrySelectionProvider.notifier).clear(),
-                    onSelectAll: () => ref
-                        .read(homeEntrySelectionProvider.notifier)
-                        .selectAll(
-                          entries.map((EntryIndexRecord item) => item.id),
-                        ),
+                    onCancel: () {
+                      if (!_deletingSelection) {
+                        ref.read(homeEntrySelectionProvider.notifier).clear();
+                      }
+                    },
+                    onSelectAll: () {
+                      if (!_deletingSelection) {
+                        ref
+                            .read(homeEntrySelectionProvider.notifier)
+                            .selectAll(
+                              entries.map((item) => item.id),
+                              chatIds: chatDrafts.map((chat) => chat.id),
+                            );
+                      }
+                    },
                     allPinned: allSelectedPinned,
                     pinToggleEnabled: canActOnSelectedEntries,
-                    onTogglePin: () => unawaited(
-                      togglePinSelectedHomeEntries(
-                        context,
-                        ref,
-                        sessionState,
-                        selection.selectedIds,
-                        pinnedEntryIds,
-                      ),
-                    ),
+                    onTogglePin: !showEntryActions
+                        ? null
+                        : () => unawaited(
+                            togglePinSelectedHomeEntries(
+                              context,
+                              ref,
+                              sessionState,
+                              selection.selectedIds,
+                              pinnedEntryIds,
+                            ),
+                          ),
                     actions: <HomeSelectionAction>[
-                      HomeSelectionAction(
-                        tooltip: context.l10n.homeTooltipExportHtml,
-                        icon: Icons.html,
-                        enabled: canActOnSelectedEntries,
-                        onPressed: !canActOnSelectedEntries
-                            ? null
-                            : () => unawaited(
-                                exportSelectedHomeEntriesAsHtml(
-                                  context,
-                                  ref,
-                                  sessionState,
-                                  selection.selectedIds,
+                      if (showEntryActions)
+                        HomeSelectionAction(
+                          tooltip: context.l10n.homeTooltipExportHtml,
+                          icon: Icons.html,
+                          enabled: canActOnSelectedEntries,
+                          onPressed: !canActOnSelectedEntries
+                              ? null
+                              : () => unawaited(
+                                  exportSelectedHomeEntriesAsHtml(
+                                    context,
+                                    ref,
+                                    sessionState,
+                                    selection.selectedIds,
+                                  ),
                                 ),
-                              ),
-                      ),
+                        ),
                       HomeSelectionAction(
                         tooltip: context.l10n.homeTooltipDelete,
                         icon: Icons.delete_outline_rounded,
                         destructive: true,
-                        enabled: canActOnSelectedEntries,
-                        onPressed: !canActOnSelectedEntries
-                            ? null
-                            : () => unawaited(
-                                deleteSelectedHomeEntries(
-                                  context,
-                                  ref,
-                                  sessionState,
-                                  selection.selectedIds,
-                                ),
-                              ),
+                        enabled: canDeleteSelection,
+                        onPressed: canDeleteSelection
+                            ? () => unawaited(_deleteSelection())
+                            : null,
                       ),
                     ],
                   )
@@ -256,7 +300,9 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         ),
                         const SizedBox(width: 8),
                         HomeSearchSelectionToggleButton(
-                          onPressed: canReadEntries
+                          onPressed:
+                              canReadEntries &&
+                                  (entries.isNotEmpty || chatDrafts.isNotEmpty)
                               ? () => ref
                                     .read(homeEntrySelectionProvider.notifier)
                                     .enterSelection(
@@ -292,7 +338,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   child: entriesAsync.when(
                     skipLoadingOnReload: true,
                     data: (List<EntryIndexRecord> loadedEntries) {
-                      if (loadedEntries.isEmpty) {
+                      if (loadedEntries.isEmpty && chatDrafts.isEmpty) {
                         if (searchQuery.isNotEmpty) {
                           return AppStateCard(
                             icon: Icons.search_off_rounded,
@@ -306,9 +352,22 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                           message: context.l10n.homeEmptyDiaryMessage,
                         );
                       }
-                      return HomeEntryList(
-                        entries: loadedEntries,
-                        controller: _scrollController,
+                      return IgnorePointer(
+                        ignoring: _deletingSelection,
+                        child: HomeEntryList(
+                          entries: loadedEntries,
+                          draftCards: [
+                            for (final chat in chatDrafts)
+                              HomeChatDiaryDraftCard(
+                                key: ValueKey(chat.id),
+                                chat: chat,
+                                entryDisplayOrder: loadedEntries
+                                    .map((entry) => entry.id)
+                                    .toList(),
+                              ),
+                          ],
+                          controller: _scrollController,
+                        ),
                       );
                     },
                     loading: () => const AppLoadingState(),

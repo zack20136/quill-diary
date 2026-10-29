@@ -8,8 +8,8 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-import '../vault/stub_crypto_service.dart';
-import '../vault/test_vault_path_strategy.dart';
+import 'stub_crypto_service.dart';
+import 'test_vault_path_strategy.dart';
 
 DateTime _monthKey(DateTime month) => DateTime(month.year, month.month);
 
@@ -126,5 +126,13 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
         pinnedEntryIds.remove(id);
       }
     }
+  }
+
+  @override
+  Future<void> deleteEntry(
+    UnlockedVaultSession session,
+    EntryId entryId,
+  ) async {
+    allEntries.removeWhere((entry) => entry.id == entryId);
   }
 }

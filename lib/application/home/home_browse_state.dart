@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:quill_diary/application/home/home_entry_sorting.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/application/home/home_entry_sorting.dart';
 
 enum HomeTab { home, calendar, tags, people, overview }
 
@@ -96,21 +95,26 @@ class HomeEntrySelectionState {
   const HomeEntrySelectionState({
     this.isActive = false,
     this.selectedIds = const <EntryId>{},
+    this.selectedChatIds = const <String>{},
     this.frozenDisplayOrder = const <EntryId>[],
   });
 
   final bool isActive;
   final Set<EntryId> selectedIds;
+  final Set<String> selectedChatIds;
+  int get selectedCount => selectedIds.length + selectedChatIds.length;
   final List<EntryId> frozenDisplayOrder;
 
   HomeEntrySelectionState copyWith({
     bool? isActive,
     Set<EntryId>? selectedIds,
+    Set<String>? selectedChatIds,
     List<EntryId>? frozenDisplayOrder,
   }) {
     return HomeEntrySelectionState(
       isActive: isActive ?? this.isActive,
       selectedIds: selectedIds ?? this.selectedIds,
+      selectedChatIds: selectedChatIds ?? this.selectedChatIds,
       frozenDisplayOrder: frozenDisplayOrder ?? this.frozenDisplayOrder,
     );
   }
@@ -153,19 +157,42 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
     state = state.copyWith(selectedIds: next);
   }
 
-  void selectAll(Iterable<EntryId> ids) {
-    final Set<EntryId> all = ids.toSet();
-    if (all.isEmpty) {
+  void toggleChat(String id, {required List<EntryId> displayOrder}) {
+    if (!state.isActive) {
+      state = HomeEntrySelectionState(
+        isActive: true,
+        selectedChatIds: {id},
+        frozenDisplayOrder: List.of(displayOrder),
+      );
       return;
     }
-    final bool allSelected =
-        state.selectedIds.length == all.length &&
-        all.every(state.selectedIds.contains);
-    if (allSelected) {
-      state = state.copyWith(selectedIds: const <EntryId>{});
-      return;
-    }
-    state = state.copyWith(selectedIds: all);
+    final next = Set<String>.of(state.selectedChatIds);
+    if (!next.remove(id)) next.add(id);
+    state = state.copyWith(selectedChatIds: next);
+  }
+
+  void selectAll(Iterable<EntryId> ids, {Iterable<String> chatIds = const []}) {
+    final entries = ids.toSet();
+    final chats = chatIds.toSet();
+    if (entries.isEmpty && chats.isEmpty) return;
+    final allSelected =
+        state.selectedCount == entries.length + chats.length &&
+        entries.every(state.selectedIds.contains) &&
+        chats.every(state.selectedChatIds.contains);
+    state = state.copyWith(
+      selectedIds: allSelected ? {} : entries,
+      selectedChatIds: allSelected ? {} : chats,
+    );
+  }
+
+  void deselectDeleted({
+    Iterable<EntryId> entryIds = const [],
+    Iterable<String> chatIds = const [],
+  }) {
+    state = state.copyWith(
+      selectedIds: state.selectedIds.difference(entryIds.toSet()),
+      selectedChatIds: state.selectedChatIds.difference(chatIds.toSet()),
+    );
   }
 
   void syncFrozenDisplayOrder(List<EntryId> displayOrder) {
@@ -181,19 +208,15 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
     state = const HomeEntrySelectionState();
   }
 
-  void pruneToVisible(Iterable<EntryId> visibleIds) {
-    if (!state.isActive) {
-      return;
-    }
-    final Set<EntryId> visible = visibleIds.toSet();
-    final Set<EntryId> next = state.selectedIds.where(visible.contains).toSet();
-    if (next.isEmpty) {
-      state = state.copyWith(selectedIds: next);
-      return;
-    }
-    if (next.length != state.selectedIds.length) {
-      state = state.copyWith(selectedIds: next);
-    }
+  void pruneToVisible(
+    Iterable<EntryId> visibleIds, {
+    Iterable<String> chatIds = const [],
+  }) {
+    if (!state.isActive) return;
+    state = state.copyWith(
+      selectedIds: state.selectedIds.intersection(visibleIds.toSet()),
+      selectedChatIds: state.selectedChatIds.intersection(chatIds.toSet()),
+    );
   }
 }
 
@@ -202,6 +225,7 @@ void resyncHomeSelectionDisplayOrder({
   required HomeEntrySelectionState selection,
   required Set<EntryId> pinnedIds,
   required List<EntryIndexRecord> rawEntries,
+  Iterable<String> chatIds = const [],
 }) {
   if (!selection.isActive) {
     return;
@@ -212,7 +236,7 @@ void resyncHomeSelectionDisplayOrder({
   );
   selectionController
     ..syncFrozenDisplayOrder(orderedIds)
-    ..pruneToVisible(orderedIds);
+    ..pruneToVisible(orderedIds, chatIds: chatIds);
 }
 
 final homeTabProvider = NotifierProvider<HomeTabController, HomeTab>(

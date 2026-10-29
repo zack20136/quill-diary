@@ -1,6 +1,6 @@
 # Quill Diary 隱私權政策
 
-**生效日期：2026 年 8 月 28 日**
+**生效日期：2026 年 10 月 28 日**
 
 本政策說明 Quill Diary（Android 套件名稱：`zack20136.com.quill_diary`，以下簡稱「本 App」）如何處理您的資料。本 App 以離線、本機加密為核心設計，預設不建立線上帳號系統，也不會主動收集或上傳您的日記內容。
 
@@ -10,12 +10,13 @@
 
 - 日記內容、人物名冊、附件、草稿、搜尋索引與多數設定預設保存在您的裝置上
 - 本 App 不內建廣告 SDK，也不以追蹤使用者為目的蒐集資料
-- 只有在您主動使用 Google Drive 備份、系統檔案選取或 Google Play 購買時，才會與對應平台服務互動
+- 只有在您主動使用 AI 聊天、Google Drive 備份、系統檔案選取或 Google Play 購買等功能時，才會與對應服務互動
+- AI 使用您自行設定的提供商、模型與 API Key；手機直接傳送處理後的對話、提示詞與附圖，開發者不提供 AI 中繼伺服器
 - 本 App 不會把日記明文上傳到開發者控制的伺服器
 
 ## 1. 適用範圍
 
-本政策適用於您透過 Google Play 或其他合法來源取得並使用的 Quill Diary Android 版本，以及本 App 提供的本機儲存、備份、匯入匯出、支持開發者與 Google Drive 備份相關功能。
+本政策適用於您透過 Google Play 或其他合法來源取得並使用的 Quill Diary Android 版本，以及本 App 提供的本機儲存、AI 聊天寫作、備份、匯入匯出、支持開發者與 Google Drive 備份相關功能。
 
 ## 2. 我們如何處理您的資料
 
@@ -27,6 +28,7 @@
 
 | 功能 | 可能涉及的資料 | 說明 |
 |------|----------------|------|
+| AI 聊天與日記生成 | 您選擇傳送的訊息、聊天上下文、有效 System Prompt、附圖與 API 認證資訊 | 手機直接連線您選擇的 OpenAI、Claude、Gemini 或 Custom 服務（可選不同 API 協定，包含 Ollama Chat）。送出前只把您反白的片段換成代號，不會把同樣文字套到未反白的訊息；有效提示詞裡的同一段原文也會換成同一個代號。接著對剩餘文字替換已登錄的姓名與別名；原文與對照表留在本機。未隱藏的文字與照片會由服務商處理，費用、資料使用與留存依帳戶、模型與服務政策而異 |
 | Google Drive 備份 | Google 帳號識別碼、電子郵件地址與顯示名稱，以及您主動上傳的備份 ZIP | 僅在您連結 Google 帳號並執行 Drive 備份或還原時發生。帳號資訊用於顯示目前帳號並確認上傳所屬帳號。ZIP 外層未另外加密；其中日記、附件與人物名冊為加密格式，但包含明文復原 metadata，以及存在時的標籤目錄與釘選項目 ID。Android 可在您觸發後於背景完成上傳並以通知顯示進度；不是自動排程同步 |
 | 選取圖片或檔案 | 您透過 Android 系統選取器挑選的檔案 | 本 App 只處理您明確選取的項目，不會掃描整個相簿或儲存空間 |
 | 生物辨識或裝置驗證解鎖 | 驗證是否成功的結果 | 驗證由 Android 系統處理；本 App 不會取得您的生物特徵原始資料 |
@@ -52,6 +54,9 @@
 - Google Drive 上傳期間建立的 App 私有暫存備份
 - Google Drive 背景上傳的工作狀態與所屬帳號識別資訊；工作完成、取消或失敗清理後不再保留於該工作
 - App 偏好設定與解鎖模式設定
+- 加密聊天草稿、附圖、私密區間與代號對照；完成聊天及有效提示詞快照
+- 裝置安全儲存中的 AI 連線、API Key 與自訂提示詞；這些設定不包含在 App 完整備份或日記匯出中
+- 加密的服務商暫存檔清理紀錄，不包含在完整備份中
 
 上述資料的控制權在您。若您清除 App 資料或解除安裝 App，通常會一併移除 App 沙盒中的本機資料；但若您曾將檔案匯出到外部資料夾、Downloads 或 Google Drive，這些副本需要由您自行刪除。
 
@@ -59,7 +64,7 @@
 
 本 App 的主 Android Manifest 直接宣告下列權限：
 
-- **`android.permission.INTERNET`**：用於 Google Sign-In、Google Drive 備份，以及 Google Play Billing 商品查詢與付款流程
+- **`android.permission.INTERNET`**：用於您主動使用的 AI 服務、Google Sign-In、Google Drive 備份，以及 Google Play Billing 商品查詢與付款流程
 - **`android.permission.ACCESS_NETWORK_STATE`**：用於判斷網路狀態，讓同一次 Google Drive 背景上傳可在恢復連線後重試
 - **`android.permission.USE_BIOMETRIC`**：用於可信裝置的生物辨識解鎖
 - **`com.android.vending.BILLING`**：用於 App 內「支持開發者」的一次性 Google Play 購買流程
@@ -75,19 +80,38 @@
 
 除下列情況外，開發者不會向第三方分享您的日記內容：
 
+- **您主動使用 AI 聊天與生成日記**：目前選定分支的上下文、有效提示詞與附圖會送到您設定的服務商。文字代號不保證匿名，也不處理照片中的人臉、證件或文字；App 不自動辨識電話、地址、Email 或一般敏感詞。送出前可查看處理後的內容。生成後在手機還原私密文字，並補記未被引用的片段；重新生成不會把還原後的原文自動送回服務商
 - **您主動備份到 Google Drive**：備份 ZIP 會存放在您的 Google 帳號關聯空間，並受 Google 服務條款與隱私政策規範；ZIP 外層未另外加密，其中日記、附件與人物名冊為加密格式，但包含明文復原 metadata，以及存在時的標籤目錄與釘選項目 ID
 - **您主動匯出資料**：例如匯出至本機資料夾、Downloads 或可攜式 Markdown/HTML 檔案；後續保存位置由您決定
 - **依法配合**：若有適用法令、法院命令或有效法律程序要求，我們可能在法律允許範圍內配合；但本 App 預設不持有您的日記明文
 
 ### Google API 資料使用限制
 
-本 App 從 Google API 取得的資訊只用於使用者可見的 Google 帳號連結、Google Drive 備份與還原功能，不用於廣告、使用者追蹤或其他無關用途，也不會傳送到開發者控制的伺服器。
+本 App 透過 Google Sign-In 與 Drive API 取得的資訊只用於使用者可見的 Google 帳號連結、Google Drive 備份與還原功能，不用於廣告、使用者追蹤或其他無關用途，也不會傳送到開發者控制的伺服器。您另外提供 Gemini API Key 所啟用的 AI 資料處理，依下列 AI 服務說明。
 
 本 App 對 Google API 資訊的使用與傳輸遵守 [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy)，包括 Limited Use 要求。
 
 與 Google 服務之間的傳輸使用 HTTPS。App 私有空間中的日記、附件、人物名冊、草稿與搜尋索引依前述方式加密；復原設定與部分輔助 metadata，以及完整備份 ZIP 外層，則不另行加密。
 
 ## 6. 資料保留與刪除
+
+### AI 服務與聊天資料
+
+- 有輸入、附圖或訊息後，未完成聊天才會在本機加密保存；只開啟空白聊天室不建立草稿。未完成聊天不納入完整備份
+- 正式日記儲存成功後，完成聊天的所有分支、有效提示詞快照，以及正式日記附件，會納入加密完整備份
+- 聊天不列入一般日記搜尋、統計或 Markdown／HTML 匯出；您可以另外刪除本機聊天
+- 目前分支的聊天圖片會自動加入生成的日記。原圖在本機加密保存；傳送用的副本會移除姓名、GPS 與拍攝資訊等中繼資料，只保留顯示方向等必要資料
+- 完成聊天只沿用日記附件。未收錄或已從日記移除的圖片顯示「圖片已刪除」，不另存圖片副本。刪除本機聊天不影響已正式儲存的日記與附件
+- 內建 OpenAI、Claude 與 Gemini 可能用服務商 Files API 暫存圖片，供同一段對話引用。完成或刪除聊天時會嘗試清理；失敗會留下待清理紀錄，之後進入 AI 功能時重試。未完成聊天的遠端圖片不清理
+- 在本機刪除或停止接收回覆，不代表服務商已刪除輸入、輸出、暫存檔或紀錄，也不代表該次請求不計費
+- Responses 協定會設定 `store: false`，包含內建 OpenAI，以及 Custom 選了 Responses。這不是零留存。Gemini 免費與付費服務的資料使用條款不同。請查看您使用的帳戶與模型適用政策：[OpenAI](https://developers.openai.com/api/docs/guides/your-data)、[Claude](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)、[Gemini](https://ai.google.dev/gemini-api/terms)、[Ollama](https://docs.ollama.com/api/authentication)
+- 內建雲端服務使用 HTTPS。Custom（含 Ollama Chat）只有在位址是 loopback、IPv4 私有網段或 IPv6 ULA 時可以使用 HTTP；此時文字、照片與憑證在網路上未加密。主機名稱、link-local 與公網 HTTP 不能使用
+- 自訂服務的資料使用與留存由該服務決定。該主機也可能再轉用其他提供商或雲端模型
+- 編輯訊息或重新回覆會保留舊分支。切換版本不會自動連線。生成與私密補記只取目前分支
+- 在聊天室儲存新的 AI 設定後，後續請求改用新的服務、協定與模型。進行中的回覆會先停止。舊回覆保留當時的連線與提示詞快照
+- 固定歡迎訊息只在本機顯示；連線測試只送出測試文字，不使用其他日記。
+- Custom 的 API Key 依服務網址分開保存，不套用到其他目的地。清空該欄位並儲存，可刪除該網址的本機金鑰
+- API Key 不會寫進 App 原始碼、聊天內容或備份。刪除本機金鑰不會撤銷服務商帳戶上的金鑰；必要時請到服務商管理頁撤銷
 
 您可以透過下列方式管理或移除資料：
 

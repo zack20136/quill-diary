@@ -9,57 +9,63 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/domain/diary/diary_entry.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/domain/diary/diary_date_policy.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
-import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dialog.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
+import 'package:quill_diary/application/editor/editor_draft_models.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/editor/editor_flow_controller.dart';
+import 'package:quill_diary/application/editor/editor_gallery_export.dart';
+import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/application/editor/editor_attachment_items.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
-import 'package:quill_diary/application/editor/editor_gallery_export.dart';
-import 'package:quill_diary/application/editor/editor_flow_controller.dart';
-import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
-import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/diary/diary_date_policy.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
+import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
+import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
+import 'package:quill_diary/shared/utils/user_facing_error.dart';
+
+import '../../chat_diary/chat_diary_saved_conversation_button.dart';
 import '../widgets/editor_attachment_strip.dart';
 import '../widgets/editor_form_sections.dart';
 import '../widgets/editor_hybrid_body.dart';
 import '../widgets/editor_keyboard_chrome.dart';
 import '../widgets/editor_person_suggestion_panel.dart';
-import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import '../widgets/editor_preview_gallery.dart';
 import '../widgets/editor_top_bar.dart';
-import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 
 part '../widgets/editor_dialogs.dart';
 
@@ -68,11 +74,13 @@ class EditorPage extends ConsumerStatefulWidget {
     super.key,
     this.entryId,
     this.salvageToken,
+    this.chatId,
     this.startInEditMode = false,
   });
 
   final String? entryId;
   final String? salvageToken;
+  final String? chatId;
   final bool startInEditMode;
 
   @override
@@ -129,7 +137,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
       ref.read(editorFlowControllerProvider);
 
   bool get _isEditing => !_previewMode;
-  String get _draftKey => widget.salvageToken == null
+  String get _draftKey => widget.chatId != null
+      ? ChatDiarySession.draftKeyFor(widget.chatId!)
+      : widget.salvageToken == null
       ? widget.entryId ?? _newDraftKey
       : VaultSalvageDraft.draftKeyForToken(widget.salvageToken!);
   bool get _hasTitle => _titleController.text.trim().isNotEmpty;
@@ -584,7 +594,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           existingEntry: entry,
           decideRestore: (EditorDraftRecord record) async {
             // salvage 草稿是使用者剛建立的修復內容，直接套用，不跳出一般草稿確認。
-            if (isSalvage) {
+            if (isSalvage || widget.chatId != null) {
               return true;
             }
             return _showRestoreDraftDialog(
@@ -796,6 +806,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 )
                               : null,
                         ),
+                        if (!_isEditing && widget.entryId != null)
+                          ChatDiarySavedConversationButton(
+                            entryId: widget.entryId!,
+                          ),
                         Expanded(
                           child: Stack(
                             children: <Widget>[
@@ -1257,12 +1271,41 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     await _persistDraftNow();
+    if (!mounted ||
+        ref.read(effectiveAppSessionProvider).value?.session != session) {
+      return;
+    }
     if (!_canSaveEntry) {
       _notifyEntryRequired();
       return;
     }
     _hybridBodyKey.currentState?.flushBodyToController();
     _draftPersistQueued = false;
+    final chatStore = ref.read(chatDiaryStoreProvider);
+    final keyFor = ref.read(aiConnectionSettingsStoreProvider).readApiKey;
+    bool canUpdateUi() =>
+        mounted &&
+        ref.read(effectiveAppSessionProvider).value?.session == session;
+    Future<void> cleanupRemoteFiles(String chatId) async {
+      var cleaned = false;
+      try {
+        cleaned = await chatStore.cleanupRemoteFiles(
+          session,
+          keyFor,
+          chatId: chatId,
+        );
+      } on Object {
+        // 正式日記已儲存，遠端清理失敗留待下次重試。
+      }
+      if (!cleaned && mounted && canUpdateUi()) {
+        showAppFeedbackToast(
+          context,
+          context.l10n.aiFileCleanupNotice,
+          tone: AppFeedbackTone.warning,
+        );
+      }
+    }
+
     setState(() => _saving = true);
     try {
       final EditorSaveResult result = await _editorFlow.saveEntry(
@@ -1284,9 +1327,22 @@ class _EditorPageState extends ConsumerState<EditorPage>
         ),
       );
       final DiaryEntry saved = result.savedEntry;
-      if (!mounted) {
-        return;
+      if (widget.chatId != null) {
+        try {
+          await chatStore.complete(widget.chatId!, saved.id, session);
+        } on Object {
+          if (mounted && canUpdateUi()) {
+            showAppFeedbackToast(
+              context,
+              context.l10n.aiErrorStorage,
+              tone: AppFeedbackTone.warning,
+            );
+          }
+        }
+        unawaited(cleanupRemoteFiles(widget.chatId!));
       }
+      if (!mounted || !canUpdateUi()) return;
+      ref.invalidate(chatDiarySessionsProvider);
       setState(() {
         _savedAssetPathFutures.clear();
         _attachmentIds = List<AssetId>.from(saved.attachmentIds);
@@ -1303,7 +1359,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
         _activeEntry = saved;
         _previewMode = result.switchToPreview;
       });
-      if (widget.entryId == null && mounted) {
+      if (widget.chatId != null && mounted) {
+        context.pop(saved.id);
+      } else if (widget.entryId == null && mounted) {
         context.pushReplacement(result.routeLocation);
       }
     } finally {
@@ -1373,9 +1431,16 @@ class _EditorPageState extends ConsumerState<EditorPage>
     await showDialog<void>(
       context: context,
       barrierColor: context.appColors.scrim,
-      builder: (BuildContext dialogContext) => _EntryImageGalleryDialog(
-        items: gallery.items,
+      builder: (BuildContext dialogContext) => AppImageGalleryDialog(
+        itemCount: gallery.items.length,
         initialIndex: gallery.initialIndex,
+        imageBuilder: (context, index) =>
+            _GalleryImagePane(item: gallery.items[index]),
+        onDownload: (context, index) => downloadGalleryImage(
+          ref: ref,
+          context: context,
+          item: gallery.items[index],
+        ),
       ),
     );
   }
@@ -1440,27 +1505,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final LostDataResponse lostData = await picker.retrieveLostData();
-    final List<XFile> files = <XFile>[
-      if (lostData.file != null) lostData.file!,
-      ...?lostData.files,
-    ];
-
-    List<XFile> picked = <XFile>[];
-    try {
-      picked = await picker.pickMultiImage();
-    } catch (_) {
-      final XFile? one = await picker.pickImage(source: ImageSource.gallery);
-      if (one != null) {
-        picked = <XFile>[one];
-      }
-    }
-
-    files.addAll(picked);
-    if (files.isEmpty) {
-      return;
-    }
+    final files = await pickGalleryImages();
+    if (!mounted || files.isEmpty) return;
 
     final UnlockedVaultSession? session = _activeSession;
     if (session == null) {

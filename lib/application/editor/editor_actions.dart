@@ -2,17 +2,18 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-
+import 'package:quill_diary/application/editor/editor_image_staging.dart'
+    as editor_image_staging;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/storage_path_providers.dart';
 import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/application/editor/editor_image_staging.dart'
-    as editor_image_staging;
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+
 import 'editor_draft_models.dart';
 
 final editorActionsProvider = Provider<EditorActionPort>((Ref ref) {
@@ -86,16 +87,17 @@ abstract interface class EditorActionPort {
 }
 
 class EditorActions implements EditorActionPort {
-  const EditorActions(this._ref);
+  EditorActions(this._ref) : _draftStore = _ref.read(editorDraftStoreProvider);
 
   final Ref _ref;
+  final EditorDraftStore _draftStore;
 
   @override
   Future<EditorDraftRecord?> readDraft(
     String draftKey,
     UnlockedVaultSession session,
   ) {
-    return _ref.read(editorDraftStoreProvider).read(draftKey, session);
+    return _draftStore.read(draftKey, session);
   }
 
   @override
@@ -104,31 +106,27 @@ class EditorActions implements EditorActionPort {
     EditorDraftRecord record,
     UnlockedVaultSession session,
   ) {
-    return _ref.read(editorDraftStoreProvider).write(draftKey, record, session);
+    return _draftStore.write(draftKey, record, session);
   }
 
   @override
   Future<void> deleteDraft(String draftKey) {
-    return _ref.read(editorDraftStoreProvider).delete(draftKey);
+    return _draftStore.delete(draftKey);
   }
 
   @override
   Future<Set<String>> listDraftKeys() {
-    return _ref.read(editorDraftStoreProvider).listDraftKeys();
+    return _draftStore.listDraftKeys();
   }
 
   @override
   Future<String> pendingRelativePath(String draftKey, String sourcePath) {
-    return _ref
-        .read(editorDraftStoreProvider)
-        .pendingRelativePath(draftKey, sourcePath);
+    return _draftStore.pendingRelativePath(draftKey, sourcePath);
   }
 
   @override
   Future<String> pendingAbsolutePath(String draftKey, String relativePath) {
-    return _ref
-        .read(editorDraftStoreProvider)
-        .pendingAbsolutePath(draftKey, relativePath);
+    return _draftStore.pendingAbsolutePath(draftKey, relativePath);
   }
 
   @override
@@ -137,9 +135,7 @@ class EditorActions implements EditorActionPort {
     String sourcePath,
     UnlockedVaultSession session,
   ) {
-    return _ref
-        .read(editorDraftStoreProvider)
-        .stagePendingFile(draftKey, sourcePath, session);
+    return _draftStore.stagePendingFile(draftKey, sourcePath, session);
   }
 
   @override
@@ -148,16 +144,16 @@ class EditorActions implements EditorActionPort {
     String relativePath,
     UnlockedVaultSession session,
   ) {
-    return _ref
-        .read(editorDraftStoreProvider)
-        .materializePendingFileForPreview(draftKey, relativePath, session);
+    return _draftStore.materializePendingFileForPreview(
+      draftKey,
+      relativePath,
+      session,
+    );
   }
 
   @override
   Future<void> clearAllMaterializedPendingFiles() {
-    return _ref
-        .read(editorDraftStoreProvider)
-        .clearAllMaterializedPendingFiles();
+    return _draftStore.clearAllMaterializedPendingFiles();
   }
 
   @override
@@ -169,7 +165,7 @@ class EditorActions implements EditorActionPort {
     required UnlockedVaultSession session,
   }) {
     return editor_image_staging.stagePickedImage(
-      draftStore: _ref.read(editorDraftStoreProvider),
+      draftStore: _draftStore,
       preset: preset,
       draftKey: draftKey,
       sourcePath: sourcePath,

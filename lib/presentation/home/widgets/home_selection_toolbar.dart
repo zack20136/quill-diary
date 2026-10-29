@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-
 import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+
 import '../home_layout.dart';
 import 'home_pin_glyph.dart';
 
@@ -155,7 +155,7 @@ class HomeSelectionToolbar extends StatelessWidget {
               child: Text(
                 selectedCount > 0
                     ? context.l10n.homeSelectionSelectedCount(selectedCount)
-                    : context.l10n.homeSelectionSelectDiary,
+                    : context.l10n.homeSelectionSelectItems,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -354,7 +354,7 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     return HomeCircleIconButton(
-      tooltip: context.l10n.homeSelectionSelectDiary,
+      tooltip: context.l10n.homeSelectionSelectItems,
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: HomeLayout.searchRowControlHeight,
@@ -366,11 +366,19 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
   }
 }
 
-Future<bool?> confirmDeleteHomeEntries(BuildContext context, int count) {
+Future<bool?> confirmDeleteHomeItems(
+  BuildContext context,
+  int count, {
+  bool includesChatDrafts = false,
+}) {
   return showAppConfirmDialog(
     context: context,
     title: context.l10n.commonConfirmDeleteTitle,
-    content: Text(context.l10n.commonConfirmDeleteEntries(count)),
+    content: Text(
+      includesChatDrafts
+          ? context.l10n.homeConfirmDeleteSelectedItems(count)
+          : context.l10n.commonConfirmDeleteEntries(count),
+    ),
     cancelLabel: context.l10n.commonActionCancel,
     confirmLabel: context.l10n.commonActionDelete,
     confirmStyle: AppConfirmStyle.destructive,

@@ -33,19 +33,27 @@ Future<void> atomicWriteString(File file, String content) async {
 }
 
 /// 以同目錄 rename 可復原地取代檔案；寫入失敗時保留最後有效版本。
-Future<void> replaceFileBytesRecoverably(File file, Uint8List bytes) async {
+Future<void> replaceFileBytesRecoverably(
+  File file,
+  Uint8List bytes, {
+  void Function()? beforeCommit,
+  void Function()? onCommitted,
+}) async {
   await file.parent.create(recursive: true);
   await recoverFileReplacement(file);
   final File tempFile = File('${file.path}.tmp');
   final File backupFile = File('${file.path}.previous');
-  await tempFile.writeAsBytes(bytes, flush: true);
   var movedOriginal = false;
   try {
+    await tempFile.writeAsBytes(bytes, flush: true);
+    beforeCommit?.call();
+    // 檢查取消、發布檔案與更新提交狀態之間不能讓出事件迴圈。
     if (file.existsSync()) {
-      await file.rename(backupFile.path);
+      file.renameSync(backupFile.path);
       movedOriginal = true;
     }
-    await tempFile.rename(file.path);
+    tempFile.renameSync(file.path);
+    onCommitted?.call();
     if (backupFile.existsSync()) {
       await backupFile.delete();
     }

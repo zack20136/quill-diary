@@ -13,6 +13,10 @@ String generateVaultId() => 'vlt_${Ulid().toBase32()}';
 
 String generateEntryId() => 'jrn_${Ulid().toBase32()}';
 
+String generateChatDiaryId() => 'chat_${Ulid().toBase32()}';
+
+String generateChatDiaryMessageId() => 'msg_${Ulid().toBase32()}';
+
 String generateAssetId() => 'att_${Ulid().toBase32()}';
 
 String generateBackupId() => 'bkp_${Ulid().toBase32()}';

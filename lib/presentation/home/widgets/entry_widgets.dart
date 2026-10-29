@@ -1,27 +1,27 @@
 import 'dart:async' show unawaited;
-import 'package:quill_diary/l10n/l10n.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
+
 import '../home_entry_presenters.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import '../home_layout.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'home_entry_preview_body.dart';
 import 'home_pin_glyph.dart';
 
@@ -66,9 +66,15 @@ class HomeTimelineEntryShell extends StatelessWidget {
 }
 
 class HomeEntryList extends ConsumerWidget {
-  const HomeEntryList({required this.entries, this.controller, super.key});
+  const HomeEntryList({
+    required this.entries,
+    this.controller,
+    this.draftCards = const [],
+    super.key,
+  });
 
   final List<EntryIndexRecord> entries;
+  final List<Widget> draftCards;
   final ScrollController? controller;
 
   @override
@@ -112,8 +118,12 @@ class HomeEntryList extends ConsumerWidget {
         primary: controller == null,
         padding: const EdgeInsets.only(bottom: 16),
         scrollCacheExtent: HomeLayout.entryListCacheExtent,
-        itemCount: entries.length,
+        itemCount: entries.length + draftCards.length,
         separatorBuilder: (BuildContext context, int index) {
+          if (index < draftCards.length) {
+            return const SizedBox(height: 14);
+          }
+          index -= draftCards.length;
           final bool showPinnedSectionDivider =
               !selection.isActive &&
               pinnedEntryIds.contains(entries[index].id) &&
@@ -132,6 +142,10 @@ class HomeEntryList extends ConsumerWidget {
           return const SizedBox(height: 14);
         },
         itemBuilder: (BuildContext context, int index) {
+          if (index < draftCards.length) {
+            return draftCards[index];
+          }
+          index -= draftCards.length;
           final EntryIndexRecord entry = entries[index];
           final bool selected = selection.selectedIds.contains(entry.id);
           return HomeTimelineEntryShell(

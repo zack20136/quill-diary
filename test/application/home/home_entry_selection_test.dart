@@ -98,6 +98,30 @@ void main() {
       });
     });
 
+    test('聊天草稿與日記共用選取，全選切換及刪除失敗保留未刪項目', () {
+      final controller = container.read(homeEntrySelectionProvider.notifier);
+      controller.toggleChat('chat-a', displayOrder: ['entry-a', 'entry-b']);
+      controller.toggle('entry-a', displayOrder: ['entry-a', 'entry-b']);
+      expect(container.read(homeEntrySelectionProvider).selectedCount, 2);
+      controller.selectAll(
+        ['entry-a', 'entry-b'],
+        chatIds: ['chat-a', 'chat-b'],
+      );
+      expect(container.read(homeEntrySelectionProvider).selectedCount, 4);
+      controller.deselectDeleted(entryIds: ['entry-a'], chatIds: ['chat-a']);
+      final remaining = container.read(homeEntrySelectionProvider);
+      expect(remaining.selectedIds, {'entry-b'});
+      expect(remaining.selectedChatIds, {'chat-b'});
+      expect(remaining.frozenDisplayOrder, ['entry-a', 'entry-b']);
+      controller.pruneToVisible(['entry-b']);
+      expect(
+        container.read(homeEntrySelectionProvider).selectedChatIds,
+        isEmpty,
+      );
+      controller.clear();
+      expect(container.read(homeEntrySelectionProvider).selectedCount, 0);
+    });
+
     test('重新同步時會套用 pinned 排序結果', () {
       final EntryIndexRecord pinned = buildEntryIndexRecord(
         id: 'pinned',

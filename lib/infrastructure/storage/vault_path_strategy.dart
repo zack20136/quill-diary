@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
 import 'package:quill_diary/app/app_identifiers.dart';
+
 import '../../domain/shared/value_objects.dart';
 
 /// 計算 vault、索引與本機備份儲存使用的所有本機路徑。
@@ -71,9 +71,23 @@ class VaultPathStrategy {
   }
 
   Future<Directory> editorDraftDirectory(String draftKey) async {
+    if (RegExp(r'^chat_diary_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(draftKey)) {
+      final Directory root = await vaultRootDirectory();
+      return Directory(
+        p.join(
+          root.path,
+          'chat_diary_drafts',
+          draftKey.replaceFirst('chat_diary_', 'chat_'),
+          'editor',
+        ),
+      );
+    }
     final Directory draftsRoot = await editorDraftsRootDirectory();
     return Directory(p.join(draftsRoot.path, draftKey));
   }
+
+  Future<Directory> editorDraftPreviewRootDirectory() async =>
+      Directory(p.join(Directory.systemTemp.path, 'quill_diary_draft_preview'));
 
   Future<String> editorDraftFilePath(String draftKey) async {
     final Directory draftDir = await editorDraftDirectory(draftKey);
@@ -91,6 +105,33 @@ class VaultPathStrategy {
       date.yearString,
       date.monthPadded,
       '$entryId.md.enc',
+    );
+  }
+
+  String entryChatRelativePath({
+    required DateOnly date,
+    required EntryId entryId,
+  }) {
+    return p.join(
+      'entries',
+      date.yearString,
+      date.monthPadded,
+      '$entryId.chat.json.enc',
+    );
+  }
+
+  /// 由日記檔路徑推出旁邊的聊天 JSON。只接受 `*.md.enc`。
+  static String chatFileBesideEntry(String entryMarkdownPath) {
+    if (!entryMarkdownPath.endsWith('.md.enc')) {
+      throw ArgumentError.value(
+        entryMarkdownPath,
+        'entryMarkdownPath',
+        '必須是日記 .md.enc 路徑',
+      );
+    }
+    return entryMarkdownPath.replaceFirst(
+      RegExp(r'\.md\.enc$'),
+      '.chat.json.enc',
     );
   }
 
@@ -115,6 +156,17 @@ class VaultPathStrategy {
     return p.join(
       vaultRoot.path,
       entryRelativePath(date: date, entryId: entryId),
+    );
+  }
+
+  Future<String> entryChatAbsolutePath({
+    required DateOnly date,
+    required EntryId entryId,
+  }) async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    return p.join(
+      vaultRoot.path,
+      entryChatRelativePath(date: date, entryId: entryId),
     );
   }
 

@@ -1,18 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
-
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
+import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/editor/editor_gallery_export.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/editor/editor_gallery_export.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/settings/settings_providers.dart';
+
 import 'editor_actions.dart';
 import 'editor_attachment_items.dart';
 import 'editor_body_blocks.dart';
@@ -146,11 +146,10 @@ class PreparedEditorGallery {
 }
 
 class EditorFlowController {
-  const EditorFlowController(this._ref);
+  EditorFlowController(this._ref) : _actions = _ref.read(editorActionsProvider);
 
   final Ref _ref;
-
-  EditorActionPort get _actions => _ref.read(editorActionsProvider);
+  final EditorActionPort _actions;
 
   Future<EditorPersistDraftResult> persistDraft(
     EditorPersistDraftRequest request,
@@ -190,13 +189,13 @@ class EditorFlowController {
       ),
     );
     await _actions.writeDraft(request.draftKey, record, request.session);
-    _ref.invalidate(editorDraftKeysProvider);
+    if (_ref.mounted) _ref.invalidate(editorDraftKeysProvider);
     return EditorPersistDraftResult(record: record, snapshot: request.snapshot);
   }
 
   Future<void> discardDraft(String draftKey) async {
     await _actions.deleteDraft(draftKey);
-    _ref.invalidate(editorDraftKeysProvider);
+    if (_ref.mounted) _ref.invalidate(editorDraftKeysProvider);
   }
 
   Future<EditorDraftRestoreDecision> restoreDraftIfNeeded({
@@ -467,6 +466,7 @@ class EditorFlowController {
     EntryId? editedEntryId,
     bool refreshVaultMaintenance = false,
   }) {
+    if (!_ref.mounted) return;
     _ref
       ..invalidate(homeEntryIndexListProvider)
       ..invalidate(calendarGridEntriesProvider)

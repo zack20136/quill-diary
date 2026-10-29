@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:quill_diary/app/router.dart';
 
 class SessionRouteSnapshotState {
@@ -38,6 +37,8 @@ bool isSessionRestorableRoute(String location) {
     normalized.startsWith('/') ? normalized : '/$normalized',
   ).path;
   return path == AppRouter.homeRoute ||
+      path == AppRouter.chatDiaryRoutePrefix ||
+      path.startsWith('${AppRouter.chatDiaryRoutePrefix}/') ||
       path == AppRouter.editorRoute ||
       path.startsWith('${AppRouter.editorRoute}/') ||
       path == AppRouter.settingsRoute ||

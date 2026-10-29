@@ -37,7 +37,7 @@ class RecoveryKeySaveDialog extends StatelessWidget {
     }
     showAppFeedbackToast(
       context,
-      context.l10n.settingsRecoveryKeyCopiedMessage,
+      context.l10n.commonCopiedToClipboard,
       tone: AppFeedbackTone.success,
     );
   }
@@ -88,7 +88,7 @@ class RecoveryKeySaveDialog extends StatelessWidget {
         TextButton.icon(
           onPressed: () => _copy(context),
           icon: const Icon(Icons.content_copy_rounded, size: 18),
-          label: Text(l10n.settingsRecoveryKeyCopyButton),
+          label: Text(l10n.commonActionCopy),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

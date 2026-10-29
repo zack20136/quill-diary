@@ -1,69 +1,32 @@
 # 第三方聲明
 
-本文件整理 Quill Diary 使用的第三方資產、授權與品牌邊界，作為對外公開的高層說明。
+本頁說明 Quill Diary 的原始碼、隨附資產、第三方授權與品牌使用範圍。
 
-## 這份文件涵蓋什麼
+## 原始碼授權
 
-- 本 App 原始碼授權
-- 隨 App 打包的字體授權
-- Flutter / pub 依賴套件授權的取得方式
-- 品牌、名稱、圖示與商店素材不屬於開源授權範圍的說明
+Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）**發布。完整條款見原始碼專案的 [LICENSE](https://github.com/zack20136/quill-diary/blob/main/LICENSE)。
 
-## 1. 本 App 原始碼授權
+修改並發布本程式，或提供可互動的修改版網路服務時，應依授權條款提供對應完整原始碼。
 
-- **授權**：GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）
-- **完整條款**：[LICENSE](../LICENSE)
-- **原始碼專案**：<https://github.com/zack20136/quill-diary>
+## 隨附字體
 
-若您修改並發布本程式，包含重新打包發行 App、提供可互動的網路服務，或以其他方式對外提供修改版本，應依 AGPL-3.0-or-later 的要求提供對應完整原始碼。
+| 字體 | 授權 |
+|------|------|
+| Inter | [SIL Open Font License 1.1](https://openfontlicense.org/) |
+| Noto Sans TC | [SIL Open Font License 1.1](https://openfontlicense.org/) |
 
-## 2. 隨 App 打包的字體
+字體使用條件以各原始授權條款為準。
 
-| 字體 | 檔案 | 授權 |
-|------|------|------|
-| Inter | `assets/fonts/Inter-Regular.ttf` | [SIL Open Font License 1.1](https://openfontlicense.org/) |
-| Noto Sans TC | `assets/fonts/NotoSansTC-Regular.ttf` | [SIL Open Font License 1.1](https://openfontlicense.org/) |
+## Flutter 與第三方套件
 
-如需進一步確認字體授權細節，請以各字體原始授權條款為準。
+本 App 使用 Flutter、Drift、Riverpod、Google Sign-In、Google APIs、In-App Purchase 等第三方套件，各套件仍受其原始授權規範。完整授權內容以實際發行版本隨附的授權資訊及各套件原始條款為準，本頁只提供摘要。
 
-## 3. Flutter 與 pub 依賴套件
+## 品牌與商店素材
 
-本 App 使用 Flutter 與多個 pub 套件，例如：
+Quill Diary 名稱、App 圖示、品牌識別與 Google Play 商店文案／素材不隨原始碼開源授權自動轉讓。發行修改版時，須確認品牌使用權限，或使用自己的名稱與素材。
 
-- Drift
-- Riverpod
-- Google Sign-In
-- Google APIs
-- In-App Purchase
+## 聯絡
 
-本頁不逐一轉載所有依賴套件的完整授權條文。Flutter 會把套件根目錄的 `LICENSE` 彙入預設 asset bundle，供 `LicenseRegistry` 使用；若需要發行版的外部清單，應依鎖定的實際套件版本檢查各套件授權，或選用並固定專案的授權稽核工具。Dart/Flutter 官方 CLI 並沒有 `flutter pub licenses` 這個指令。
+授權或第三方資產問題請透過 [GitHub Issues](https://github.com/zack20136/quill-diary/issues) 聯絡。
 
-這表示：
-
-- 本頁提供的是對外公開的高層摘要
-- 完整依賴授權列表應以實際版本、實際建置輸出與各套件原始授權為準
-
-官方參考：
-
-- [Flutter `LicenseRegistry`](https://api.flutter.dev/flutter/foundation/LicenseRegistry-class.html)
-- [Dart `pub` 子指令](https://dart.dev/tools/pub/cmd)
-
-## 4. 品牌與商店素材
-
-除原始碼與明確標示可再利用的第三方資產外，下列內容不隨開源授權自動轉讓：
-
-- **Quill Diary** 名稱
-- App 圖示與品牌識別
-- Google Play 商店 listing 文案與素材
-
-若您要發行修改版本，請自行確認是否有權使用上述品牌內容，或改用您自己的名稱、圖示與商店素材。
-
-## 5. 聯絡方式
-
-若您對授權或第三方資產使用範圍有疑問，請透過 GitHub Issues 聯絡：
-
-<https://github.com/zack20136/quill-diary/issues>
-
----
-
-[← 返回首頁](./index.md)
+[← 返回首頁](index.md)

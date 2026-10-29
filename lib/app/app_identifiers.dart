@@ -10,6 +10,7 @@ abstract final class AppIdentifiers {
   static const String appStorageDirectory = 'quill_diary';
   static const String downloadsExportDirectory = 'quill-diary';
   static const String secureStorageNamespace = 'quill_diary_device';
+  static const String aiSecureStorageNamespace = 'quill_diary_ai';
 
   static const String oauthChannel = 'quill_diary/oauth_config';
   static const String deviceKeyChannel = 'quill_diary/device_key_bridge';

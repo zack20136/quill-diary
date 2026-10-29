@@ -6,10 +6,10 @@ import 'package:path/path.dart' as p;
 
 import '../../../domain/recovery/recovery_metadata.dart';
 import '../../database/index_database_manager.dart';
+import '../backup_task_progress.dart';
 import '../editor_draft_store.dart';
 import '../restore_precheck.dart';
 import '../shared/archive_extract.dart';
-import '../backup_task_progress.dart';
 import '../vault_path_strategy.dart';
 import '../vault_repository.dart';
 import 'backup_archive_inspection.dart';
@@ -34,8 +34,30 @@ class VaultBackupIo {
   Future<File> writeBackupZip(
     File target, {
     BackupTaskProgressListener? onProgress,
+  }) => _repository.runVaultMutation(
+    () => _writeBackupZip(target, onProgress: onProgress),
+  );
+
+  Future<File> _writeBackupZip(
+    File target, {
+    BackupTaskProgressListener? onProgress,
   }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final entries = Directory(p.join(vaultRoot.path, 'entries'));
+    if (entries.existsSync()) {
+      await for (final entity in entries.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is File && entity.path.endsWith('.enc.previous')) {
+          final primary = entity.path.substring(
+            0,
+            entity.path.length - '.previous'.length,
+          );
+          if (!File(primary).existsSync()) await entity.rename(primary);
+        }
+      }
+    }
     await target.parent.create(recursive: true);
     onProgress?.call(
       const BackupTaskProgress(phase: BackupTaskPhase.creatingBackup),
@@ -56,7 +78,13 @@ class VaultBackupIo {
           final String relative = p.relative(entity.path, from: vaultRoot.path);
           final List<String> segments = p.split(relative);
           if (segments.isNotEmpty &&
-              (segments.first == 'index' || segments.first == 'quarantine')) {
+              (segments.first == 'index' ||
+                  segments.first == 'quarantine' ||
+                  segments.first == 'chat_diary_drafts' ||
+                  segments.first == 'chat_diary_remote_cleanup' ||
+                  segments.any(
+                    (s) => s.endsWith('.tmp') || s.endsWith('.previous'),
+                  ))) {
             return ZipFileOperation.skip;
           }
           return ZipFileOperation.include;

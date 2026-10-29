@@ -1,23 +1,25 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/utils/user_facing_error.dart';
+
+import '../../chat_diary/chat_diary_actions.dart';
 import '../home_layout.dart';
 import '../widgets/home_circle_action_button.dart';
 import '../widgets/home_shared_widgets.dart';
@@ -31,6 +33,45 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  bool _openingWritingFlow = false;
+  Future<void> _chooseWritingMode() async {
+    if (_openingWritingFlow) return;
+    _openingWritingFlow = true;
+    try {
+      final route = await showAppDialog<String>(
+        context: context,
+        builder: (dialogContext) => AppDialogShell(
+          title: context.l10n.homeTooltipNewEntry,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_note),
+                title: Text(context.l10n.chatDiaryWriteDirectly),
+                onTap: () =>
+                    Navigator.pop(dialogContext, AppRouter.editorRoute),
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: Text(context.l10n.chatDiaryWriteWithChat),
+                onTap: () => Navigator.pop(dialogContext, 'chat'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (route != null && mounted) {
+        if (route == 'chat') {
+          await startChatDiary(context, ref);
+        } else {
+          unawaited(context.push<void>(route));
+        }
+      }
+    } finally {
+      _openingWritingFlow = false;
+    }
+  }
+
   bool _introFlowInFlight = false;
   bool _introFlowDone = false;
 
@@ -165,9 +206,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                               tooltip: context.l10n.homeTooltipNewEntry,
                               icon: Icons.add_rounded,
                               onPressed: canCreate
-                                  ? () => unawaited(
-                                      context.push(AppRouter.editorRoute),
-                                    )
+                                  ? () => unawaited(_chooseWritingMode())
                                   : null,
                             ),
                           ),

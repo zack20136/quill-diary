@@ -9,6 +9,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
+import '../../application/editor/editor_draft_models.dart';
 import '../../domain/attachment/asset_attachment.dart';
 import '../../domain/diary/diary_entry.dart';
 import '../../domain/people/person.dart';
@@ -18,7 +19,6 @@ import '../../domain/recovery/kdf_descriptor.dart';
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
 import '../../domain/shared/value_objects.dart';
-import '../../application/editor/editor_draft_models.dart';
 import '../crypto/crypto_service.dart';
 import '../database/index_database.dart';
 import '../database/index_database_manager.dart';
@@ -29,16 +29,16 @@ import '../security/app_unlock_mode.dart';
 import '../security/device_key_manager.dart';
 import '../security/keystore_unlock_policy.dart';
 import '../security/unlock_mode_policy.dart';
-import 'restore_precheck.dart';
 import 'people_store.dart';
 import 'pinned_entries_store.dart';
-import 'tag_styles_store.dart';
+import 'restore_precheck.dart';
 import 'shared/media_type_utils.dart';
 import 'shared/vault_file_ops.dart';
+import 'tag_styles_store.dart';
 import 'vault_maintenance_models.dart';
-import 'vault_salvage_models.dart';
 import 'vault_path_strategy.dart';
 import 'vault_repair_file_operations.dart';
+import 'vault_salvage_models.dart';
 import 'vault_state_keys.dart';
 
 export 'vault_maintenance_models.dart';
@@ -820,7 +820,10 @@ class VaultRepository {
   }
 
   /// 輪替復原金鑰：先重加密 vault，最後才更新 [recovery.json]。
-  Future<RecoverySetupResult> rotateRecoveryKey(
+  Future<RecoverySetupResult> rotateRecoveryKey(UnlockedVaultSession session) =>
+      runVaultMutation(() => _rotateRecoveryKey(session));
+
+  Future<RecoverySetupResult> _rotateRecoveryKey(
     UnlockedVaultSession session,
   ) async {
     final RecoveryMetadata oldMetadata = await _requireMetadataForSession(
@@ -872,7 +875,7 @@ class VaultRepository {
         authKind: authKind,
       );
       updatedSession = await ensureKeystoreMatchesUnlockMode(updatedSession);
-      await rebuildIndex(updatedSession);
+      await _inspectVaultWithReport(updatedSession);
       await _setRewrapState(inProgress: false);
 
       return RecoverySetupResult(
@@ -1055,9 +1058,8 @@ class VaultRepository {
     Iterable<EntryId> entryIds, {
     required bool pinned,
   }) {
-    return PinnedEntriesStore(
-      _pathStrategy,
-    ).setPinnedMany(entryIds, pinned: pinned);
+    return PinnedEntriesStore(_pathStrategy)
+        .setPinnedMany(entryIds, pinned: pinned);
   }
 
   Future<void> _prunePinnedEntriesToExisting(Iterable<EntryId> existingIds) {
@@ -1076,14 +1078,16 @@ class VaultRepository {
     }
 
     final List<TagCatalogItem> catalog = await listTagCatalog();
-    final List<TagCatalogItem> merged =
-        TagStylesStore.merge(catalog, <TagCatalogItem>[
-          TagCatalogItem(
-            label: displayLabel,
-            accentArgb: accentArgb,
-            accentIsCustom: accentIsCustom,
-          ),
-        ]);
+    final List<TagCatalogItem> merged = TagStylesStore.merge(
+      catalog,
+      <TagCatalogItem>[
+        TagCatalogItem(
+          label: displayLabel,
+          accentArgb: accentArgb,
+          accentIsCustom: accentIsCustom,
+        ),
+      ],
+    );
     await _persistTagCatalogToVault(merged);
     final TagCatalogItem saved = merged.firstWhere(
       (TagCatalogItem item) => item.normalized == normalized,
@@ -1181,14 +1185,16 @@ class VaultRepository {
     final List<TagCatalogItem> base = catalog
         .where((TagCatalogItem item) => item.normalized != fromNorm)
         .toList(growable: false);
-    final List<TagCatalogItem> merged =
-        TagStylesStore.merge(base, <TagCatalogItem>[
-          TagCatalogItem(
-            label: toDisplay,
-            accentArgb: resolvedAccent,
-            accentIsCustom: resolvedIsCustom,
-          ),
-        ]);
+    final List<TagCatalogItem> merged = TagStylesStore.merge(
+      base,
+      <TagCatalogItem>[
+        TagCatalogItem(
+          label: toDisplay,
+          accentArgb: resolvedAccent,
+          accentIsCustom: resolvedIsCustom,
+        ),
+      ],
+    );
     await _persistTagCatalogToVault(merged);
 
     final IndexDatabase indexDb = _requireOpenIndex();
@@ -1302,9 +1308,8 @@ class VaultRepository {
   }
 
   Future<void> _applyTagCatalogFromVaultToIndex() async {
-    final List<TagCatalogItem> catalog = await TagStylesStore(
-      _pathStrategy,
-    ).read();
+    final List<TagCatalogItem> catalog = await TagStylesStore(_pathStrategy)
+        .read();
     if (catalog.isEmpty) {
       return;
     }
@@ -1419,7 +1424,7 @@ class VaultRepository {
     DiaryEntry draft, {
     List<PendingAttachment> pendingAttachments = const <PendingAttachment>[],
     List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
-  }) => _serializeVaultMutation(() async {
+  }) => runVaultMutation(() async {
     final DiaryEntry saved = await _saveEntry(
       session,
       draft,
@@ -1565,6 +1570,13 @@ class VaultRepository {
     await _atomicWriteBytes(File(filePath), fileBytes);
     if (previousRecord != null && previousRecord.filePath != filePath) {
       obsoletePathsAfterSave.add(previousRecord.filePath);
+      obsoletePathsAfterSave.addAll(
+        await _copyChatFilesBesideEntry(
+          fromEntryPath: previousRecord.filePath,
+          toEntryPath: filePath,
+          session: session,
+        ),
+      );
     }
 
     final _EntrySearchFields searchFields = _buildEntrySearchFields(normalized);
@@ -1599,7 +1611,7 @@ class VaultRepository {
   }
 
   Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) =>
-      _serializeVaultMutation(() => _deleteEntry(session, entryId));
+      runVaultMutation(() => _deleteEntry(session, entryId));
 
   Future<void> _deleteEntry(
     UnlockedVaultSession session,
@@ -1641,7 +1653,7 @@ class VaultRepository {
     UnlockedVaultSession session, {
     required List<VaultFinding> findings,
   }) {
-    return _serializeVaultMutation(
+    return runVaultMutation(
       () => _permanentlyDeleteAbnormalFindings(session, findings: findings),
     );
   }
@@ -1713,6 +1725,7 @@ class VaultRepository {
     var deletedCount = 0;
     for (final String path in pathsToDelete) {
       if (!_isSafeVaultContentPath(path, normalizedRoot)) continue;
+      if (path.endsWith('.md.enc')) await deleteChatFilesBesideEntry(path);
       final File file = File(path);
       if (!file.existsSync()) continue;
       await deleteFileIfExists(path);
@@ -1876,14 +1889,14 @@ class VaultRepository {
   }
 
   Future<void> rebuildIndex(UnlockedVaultSession session) =>
-      _serializeVaultMutation(() async {
+      runVaultMutation(() async {
         await _inspectVaultWithReport(session);
       });
 
   Future<VaultInspectReport> inspectVaultWithReport(
     UnlockedVaultSession session, {
     VaultRepairProgressCallback? onProgress,
-  }) => _serializeVaultMutation(
+  }) => runVaultMutation(
     () => _inspectVaultWithReport(session, onProgress: onProgress),
   );
 
@@ -2046,7 +2059,7 @@ class VaultRepository {
     UnlockedVaultSession session, {
     VaultRepairProgressCallback? onProgress,
     String? backupFileName,
-  }) => _serializeVaultMutation(
+  }) => runVaultMutation(
     () => _repairVaultWithReport(
       session,
       onProgress: onProgress,
@@ -2359,6 +2372,15 @@ class VaultRepository {
           );
           continue;
         }
+        if (!target.isAttachment && target.countsAsDuplicateEntry) {
+          final kept = await _requireOpenIndex().getEntryById(target.fileId);
+          if (kept == null) throw StateError('缺少保留的日記');
+          await _copyChatFilesBesideEntry(
+            fromEntryPath: target.path,
+            toEntryPath: kept.filePath,
+            session: session,
+          );
+        }
         final VaultRepairDeleteResult result = await _repairFileOperations
             .deleteIfValid(
               path: target.path,
@@ -2423,6 +2445,9 @@ class VaultRepository {
         if (result != VaultRepairDeleteResult.deleted &&
             result != VaultRepairDeleteResult.missing) {
           continue;
+        }
+        if (!target.isAttachment) {
+          await deleteChatFilesBesideEntry(target.path);
         }
         if (target.countsAsDuplicateEntry &&
             result == VaultRepairDeleteResult.deleted) {
@@ -2960,6 +2985,11 @@ class VaultRepository {
               ),
             );
           } else {
+            await _copyChatFilesBesideEntry(
+              fromEntryPath: currentPath,
+              toEntryPath: normalizedCanonical,
+              session: session,
+            );
             final File target = File(normalizedCanonical);
             cleanupTargets[currentPath] = _RepairCleanupTarget(
               path: currentPath,
@@ -3607,6 +3637,13 @@ class VaultRepository {
     return true;
   }
 
+  Future<void> validateRecoverySession(UnlockedVaultSession session) async {
+    await _verifyRecoveryKey(
+      await _requireMetadataForSession(session),
+      _requireRecoveryWrapKey(session),
+    );
+  }
+
   Future<RecoveryMetadata> _requireMetadataForSession(
     UnlockedVaultSession session,
   ) async {
@@ -3936,7 +3973,8 @@ class VaultRepository {
       if (entity is! File || entity.path == manifest.path) {
         continue;
       }
-      if (entity.path.endsWith('.enc')) {
+      if (entity.path.endsWith('.enc') ||
+          entity.path.endsWith('.enc.previous')) {
         files.add(entity);
       }
     }
@@ -4006,11 +4044,60 @@ class VaultRepository {
     await indexDb.deleteAppValue(kRewrapStartedAtKey);
   }
 
+  Future<List<String>> _copyChatFilesBesideEntry({
+    required String fromEntryPath,
+    required String toEntryPath,
+    required UnlockedVaultSession session,
+  }) async {
+    if (fromEntryPath == toEntryPath) return const [];
+    final from = VaultPathStrategy.chatFileBesideEntry(fromEntryPath);
+    final to = VaultPathStrategy.chatFileBesideEntry(toEntryPath);
+    final sources = <String, String>{};
+    for (final suffix in ['', '.previous', '.tmp']) {
+      final source = File('$from$suffix');
+      if (source.existsSync()) sources[source.path] = '$to$suffix';
+    }
+    for (final entry in sources.entries) {
+      final target = File(entry.value);
+      if (!target.existsSync()) continue;
+      final sourceBytes = await readDecryptedAssetBytes(session, entry.key);
+      final targetBytes = await readDecryptedAssetBytes(session, entry.value);
+      if (sourceBytes == null ||
+          targetBytes == null ||
+          !listEquals(sourceBytes, targetBytes)) {
+        throw StateError('無法確認聊天紀錄內容一致');
+      }
+    }
+    for (final entry in sources.entries) {
+      final target = File(entry.value);
+      if (target.existsSync()) continue;
+      await target.parent.create(recursive: true);
+      try {
+        // .tmp 是聊天恢復檔，不能拿來當複製過程的暫存檔。
+        await File(entry.key).copy(target.path);
+      } on Object {
+        await deleteFileIfExists(target.path);
+        rethrow;
+      }
+    }
+    return sources.keys.toList();
+  }
+
+  /// 呼叫端須已持有 vault 修改序列；只移除聊天擁有的檔案。
+  Future<void> deleteChatFilesBesideEntry(String entryPath) async {
+    final chatPath = VaultPathStrategy.chatFileBesideEntry(entryPath);
+    for (final suffix in ['', '.previous', '.tmp']) {
+      final file = File('$chatPath$suffix');
+      if (file.existsSync()) await file.delete();
+    }
+  }
+
   Future<void> _deleteEntryFilesOnDisk({
     required EntryIndexRecord record,
     required List<AssetAttachment> attachments,
   }) async {
     await deleteFileIfExists(record.filePath);
+    await deleteChatFilesBesideEntry(record.filePath);
     await _deleteAttachmentsOnDisk(date: record.date, attachments: attachments);
   }
 
@@ -4120,9 +4207,8 @@ class VaultRepository {
   AssetId? _assetIdFromFindingReference(String reference) {
     final String normalized = reference.trim().replaceAll('\\', '/');
     if (normalized.isEmpty) return null;
-    final RegExpMatch? match = RegExp(
-      r'(att_[A-Za-z0-9_-]+)',
-    ).firstMatch(normalized);
+    final RegExpMatch? match = RegExp(r'(att_[A-Za-z0-9_-]+)')
+        .firstMatch(normalized);
     if (match != null) return match.group(1);
     if (!normalized.contains('/')) {
       return _isSafePathSegment(normalized) ? normalized : null;
@@ -4216,10 +4302,22 @@ class VaultRepository {
         return false;
       }
 
+      if (!target.isAttachment) {
+        await _copyChatFilesBesideEntry(
+          fromEntryPath: target.path,
+          toEntryPath: destination,
+          session: session,
+        );
+      }
       final VaultRepairDeleteResult deleteResult = await _repairFileOperations
           .deleteIfValid(path: target.path, validate: validatePath);
-      return deleteResult == VaultRepairDeleteResult.deleted ||
+      final deleted =
+          deleteResult == VaultRepairDeleteResult.deleted ||
           deleteResult == VaultRepairDeleteResult.missing;
+      if (deleted && !target.isAttachment) {
+        await deleteChatFilesBesideEntry(target.path);
+      }
+      return deleted;
     } on Object {
       return false;
     }
@@ -4713,7 +4811,7 @@ class VaultRepository {
     }
   }
 
-  Future<T> _serializeVaultMutation<T>(Future<T> Function() operation) {
+  Future<T> runVaultMutation<T>(Future<T> Function() operation) {
     final Completer<T> completer = Completer<T>();
     final Future<void> previous = _mutationTail;
     _mutationTail = () async {

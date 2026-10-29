@@ -3,20 +3,18 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/application/editor/editor_draft_models.dart';
 
 import '../../domain/recovery/recovery_metadata.dart';
 import '../../domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import '../crypto/crypto_service.dart';
 import 'shared/media_type_utils.dart';
+import 'shared/vault_file_ops.dart';
 import 'vault_path_strategy.dart';
 
 /// 管理本地加密草稿與待上傳附件暫存。
 class EditorDraftStore {
   EditorDraftStore({required this._pathStrategy, required this._cryptoService});
-
-  static const String _materializedPreviewRootName =
-      'quill_diary_draft_preview';
 
   final VaultPathStrategy _pathStrategy;
   final CryptoService _cryptoService;
@@ -30,6 +28,7 @@ class EditorDraftStore {
     UnlockedVaultSession session,
   ) async {
     final File file = File(await _pathStrategy.editorDraftFilePath(draftKey));
+    await recoverFileReplacement(file);
     if (!file.existsSync()) {
       return null;
     }
@@ -58,8 +57,10 @@ class EditorDraftStore {
   Future<void> write(
     String draftKey,
     EditorDraftRecord record,
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    void Function()? beforeCommit,
+    void Function()? onCommitted,
+  }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final List<int> recoveryWrapKey =
         session.recoveryWrapKey ??
@@ -68,9 +69,8 @@ class EditorDraftStore {
       draftKey,
     );
     await draftDir.create(recursive: true);
-    await (await _pathStrategy.editorDraftPendingDirectory(
-      draftKey,
-    )).create(recursive: true);
+    await (await _pathStrategy.editorDraftPendingDirectory(draftKey))
+        .create(recursive: true);
 
     final Uint8List plainBytes = Uint8List.fromList(
       utf8.encode(jsonEncode(record.toJson())),
@@ -85,9 +85,12 @@ class EditorDraftStore {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     );
-    await File(
-      await _pathStrategy.editorDraftFilePath(draftKey),
-    ).writeAsBytes(encrypted.toFileBytes(), flush: true);
+    await replaceFileBytesRecoverably(
+      File(await _pathStrategy.editorDraftFilePath(draftKey)),
+      encrypted.toFileBytes(),
+      beforeCommit: beforeCommit,
+      onCommitted: onCommitted,
+    );
     await _prunePendingFiles(draftKey, record);
   }
 
@@ -115,49 +118,57 @@ class EditorDraftStore {
     await draftsRoot.delete(recursive: true);
   }
 
-  /// 讀入來源檔並以 LDJ2 加密寫入 `pending/*.enc`，回傳相對路徑。
-  Future<String> stagePendingFile(
+  Future<String> stagePendingBytes(
     String draftKey,
-    String sourcePath,
+    List<int> bytes,
+    String filename,
     UnlockedVaultSession session,
   ) async {
-    final String trimmed = sourcePath.trim();
-    if (trimmed.isEmpty) {
-      throw ArgumentError.value(sourcePath, 'sourcePath', '來源檔案路徑不可為空。');
-    }
-    final File sourceFile = File(trimmed);
-    if (!sourceFile.existsSync()) {
-      throw FileSystemException('找不到待暫存的附件', trimmed);
-    }
-
-    final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    final List<int> recoveryWrapKey =
+    final metadata = await _requireMetadataForSession(session);
+    final recoveryWrapKey =
         session.recoveryWrapKey ??
         (throw StateError('目前 session 缺少 recovery wrap key。'));
-
-    final Directory pendingDir = await _pathStrategy
-        .editorDraftPendingDirectory(draftKey);
-    await pendingDir.create(recursive: true);
-    final String baseName = _sanitizeFileName(p.basename(trimmed));
-    final String storedName =
-        '${DateTime.now().microsecondsSinceEpoch}_$baseName.enc';
-    final String absoluteEncPath = p.join(pendingDir.path, storedName);
-    final Uint8List sourceBytes = await sourceFile.readAsBytes();
-    final DateTime now = DateTime.now();
-    final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+    final directory = await _pathStrategy.editorDraftPendingDirectory(draftKey);
+    await directory.create(recursive: true);
+    final storedName =
+        '${DateTime.now().microsecondsSinceEpoch}_${_sanitizeFileName(p.basename(filename))}.enc';
+    final file = File(p.join(directory.path, storedName));
+    final now = DateTime.now();
+    final encrypted = await _cryptoService.encryptBytes(
       documentId: 'draft_pending_${draftKey}_$storedName',
       vaultId: metadata.vaultId,
-      plaintextBytes: sourceBytes,
-      contentType: mimeTypeFromFileName(baseName),
+      plaintextBytes: bytes,
+      contentType: mimeTypeFromFileName(filename),
       recoveryWrapKey: recoveryWrapKey,
       recoverySlotKdf: metadata.kdf,
       createdAt: now,
       updatedAt: now,
     );
-    await File(
-      absoluteEncPath,
-    ).writeAsBytes(encrypted.toFileBytes(), flush: true);
-    return await pendingRelativePath(draftKey, absoluteEncPath);
+    try {
+      await file.writeAsBytes(encrypted.toFileBytes(), flush: true);
+    } on Object {
+      if (file.existsSync()) await file.delete();
+      rethrow;
+    }
+    return pendingRelativePath(draftKey, file.path);
+  }
+
+  /// 讀入來源檔並以 LDJ2 加密暫存，回傳草稿內的相對路徑。
+  Future<String> stagePendingFile(
+    String draftKey,
+    String sourcePath,
+    UnlockedVaultSession session,
+  ) async {
+    final trimmed = sourcePath.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(sourcePath, 'sourcePath', '來源檔案路徑不可為空。');
+    }
+    return stagePendingBytes(
+      draftKey,
+      await File(trimmed).readAsBytes(),
+      p.basename(trimmed),
+      session,
+    );
   }
 
   /// 將加密 pending 附件解密到暫時目錄，供預覽與分享使用。
@@ -220,9 +231,8 @@ class EditorDraftStore {
   /// 清除所有草稿的暫時解密檔案（session 鎖定或還原時呼叫）。
   Future<void> clearAllMaterializedPendingFiles() async {
     _materializedPreviewCache.clear();
-    final Directory previewRoot = Directory(
-      p.join(Directory.systemTemp.path, _materializedPreviewRootName),
-    );
+    final Directory previewRoot = await _pathStrategy
+        .editorDraftPreviewRootDirectory();
     if (previewRoot.existsSync()) {
       await previewRoot.delete(recursive: true);
     }
@@ -316,14 +326,20 @@ class EditorDraftStore {
       final String relative = await pendingRelativePath(draftKey, entity.path);
       if (!keepRelativePaths.contains(relative)) {
         await entity.delete();
-        _materializedPreviewCache[draftKey]?.remove(relative);
+        final preview = _materializedPreviewCache[draftKey]?.remove(relative);
+        if (preview != null && File(preview).existsSync()) {
+          await File(preview).delete();
+        }
       }
     }
   }
 
   Future<Directory> _materializedPreviewDirectory(String draftKey) async {
     return Directory(
-      p.join(Directory.systemTemp.path, _materializedPreviewRootName, draftKey),
+      p.join(
+        (await _pathStrategy.editorDraftPreviewRootDirectory()).path,
+        draftKey,
+      ),
     );
   }
 

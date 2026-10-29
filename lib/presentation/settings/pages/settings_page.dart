@@ -5,15 +5,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/app/app_identifiers.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
@@ -26,10 +25,10 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/portable_export_confirm.dart';
 import 'package:quill_diary/presentation/home/portable_import_confirm.dart';
@@ -44,6 +43,7 @@ import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/external_url.dart';
 import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
+import '../../ai/ai_connection_settings_dialog.dart';
 import '../backup/backup_pick_list_item.dart';
 import '../settings_capabilities.dart';
 import '../widgets/drive_backup_section.dart';
@@ -307,6 +307,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         message: userFacingErrorMessage(error, l10n: l10n),
                         tone: AppFeedbackTone.error,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SettingsSectionCard(
+                    icon: Icons.chat_bubble_outline,
+                    title: l10n.aiSettings,
+                    description: l10n.aiSettingsSectionDescription,
+                    child: AppActionGroup(
+                      actions: [
+                        AppActionButton(
+                          label: l10n.aiOpenSettings,
+                          icon: Icons.tune_rounded,
+                          appearance: AppActionButtonAppearance.primary,
+                          fullWidth: true,
+                          onPressed: _busy
+                              ? null
+                              : () => unawaited(
+                                  showAiConnectionSettingsDialog(context),
+                                ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),

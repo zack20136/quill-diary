@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+
 import 'page_style.dart';
 
 enum AppFeedbackTone { info, success, warning, error }
@@ -137,9 +138,7 @@ class _AppFeedbackVisibilityLease {
   }
 }
 
-_AppFeedbackVisibilityLease? _beginFeedbackVisibility(
-  BuildContext context,
-) {
+_AppFeedbackVisibilityLease? _beginFeedbackVisibility(BuildContext context) {
   final ProviderContainer container;
   try {
     container = ProviderScope.containerOf(context);
@@ -313,37 +312,59 @@ class _AppFeedbackToastState extends State<_AppFeedbackToast>
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.only(
-            bottom: PageStyle.feedbackBottomInset,
-          ),
-          child: SlideTransition(
-            position: _slide,
-            child: FadeTransition(
-              opacity: _fade,
-              child: Semantics(
-                liveRegion: true,
-                child: Material(
-                  color: widget.backgroundColor,
-                  elevation: 6,
-                  shadowColor: Colors.black26,
-                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(
-                          widget.icon,
-                          size: 20,
-                          color: widget.foregroundColor,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(widget.message, style: widget.textStyle),
-                        ),
-                      ],
+          padding: const EdgeInsets.only(bottom: PageStyle.feedbackBottomInset),
+          child: Dismissible(
+            key: ObjectKey(this),
+            direction: DismissDirection.down,
+            resizeDuration: null,
+            dismissThresholds: const {DismissDirection.down: 0.25},
+            onDismissed: (_) {
+              _dismissed = true;
+              _dismissTimer?.cancel();
+              widget.onDismissed();
+            },
+            child: SlideTransition(
+              position: _slide,
+              child: FadeTransition(
+                opacity: _fade,
+                child: Semantics(
+                  liveRegion: true,
+                  onDismiss: _dismiss,
+                  child: Material(
+                    color: widget.backgroundColor,
+                    elevation: 6,
+                    shadowColor: Colors.black26,
+                    borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            widget.icon,
+                            size: 20,
+                            color: widget.foregroundColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.message,
+                              style: widget.textStyle,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: context.l10n.commonCloseTooltip,
+                            onPressed: _dismiss,
+                            icon: Icon(
+                              Icons.close,
+                              size: 20,
+                              color: widget.foregroundColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
