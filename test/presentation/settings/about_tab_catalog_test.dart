@@ -28,30 +28,24 @@ void main() {
           l10n.aboutTabSearchIndexLabel,
         ],
       );
-      expect(
-        tabs.map((AboutPageTabSpec tab) => tab.heroTitle),
-        <String>[
-          l10n.aboutTabIntroHeroTitle,
-          l10n.aboutTabEncryptionHeroTitle,
-          l10n.aboutTabUnlockSessionHeroTitle,
-          l10n.aboutTabBackupRestoreHeroTitle,
-          l10n.aboutTabEditorHeroTitle,
-          l10n.aboutTabPeopleHeroTitle,
-          l10n.aboutTabSearchIndexHeroTitle,
-        ],
-      );
-      expect(
-        tabs.map((AboutPageTabSpec tab) => tab.heroBody),
-        <String>[
-          l10n.aboutTabIntroHeroBody,
-          l10n.aboutTabEncryptionHeroBody,
-          l10n.aboutTabUnlockSessionHeroBody,
-          l10n.aboutTabBackupRestoreHeroBody,
-          l10n.aboutTabEditorHeroBody,
-          l10n.aboutTabPeopleHeroBody,
-          l10n.aboutTabSearchIndexHeroBody,
-        ],
-      );
+      expect(tabs.map((AboutPageTabSpec tab) => tab.heroTitle), <String>[
+        l10n.aboutTabIntroHeroTitle,
+        l10n.aboutTabEncryptionHeroTitle,
+        l10n.aboutTabUnlockSessionHeroTitle,
+        l10n.aboutTabBackupRestoreHeroTitle,
+        l10n.aboutTabEditorHeroTitle,
+        l10n.aboutTabPeopleHeroTitle,
+        l10n.aboutTabSearchIndexHeroTitle,
+      ]);
+      expect(tabs.map((AboutPageTabSpec tab) => tab.heroBody), <String>[
+        l10n.aboutTabIntroHeroBody,
+        l10n.aboutTabEncryptionHeroBody,
+        l10n.aboutTabUnlockSessionHeroBody,
+        l10n.aboutTabBackupRestoreHeroBody,
+        l10n.aboutTabEditorHeroBody,
+        l10n.aboutTabPeopleHeroBody,
+        l10n.aboutTabSearchIndexHeroBody,
+      ]);
 
       for (final AboutPageTabSpec tab in tabs) {
         expect(tab.heroTitle, isNotEmpty);
@@ -93,15 +87,12 @@ void main() {
 
     final AboutPageTabSpec peopleTab = tabs[peopleIndex];
     expect(peopleTab.heroTitle, l10n.aboutTabPeopleHeroTitle);
-    expect(
-      peopleTab.chips,
-      <String>[
-        l10n.aboutTabPeopleChip0,
-        l10n.aboutTabPeopleChip1,
-        l10n.aboutTabPeopleChip2,
-        l10n.aboutTabPeopleChip3,
-      ],
-    );
+    expect(peopleTab.chips, <String>[
+      l10n.aboutTabPeopleChip0,
+      l10n.aboutTabPeopleChip1,
+      l10n.aboutTabPeopleChip2,
+      l10n.aboutTabPeopleChip3,
+    ]);
     expect(
       peopleTab.sections.map((AboutPageSectionSpec section) => section.title),
       <String>[
@@ -137,12 +128,14 @@ void main() {
 
   test('備份分頁先顯示完整換機指南', () {
     final AppLocalizations l10n = testL10n;
-    final AboutPageTabSpec backupTab = buildAboutPageTabSpecs(
-      l10n,
-      kDefaultSessionBackgroundTimeout,
-    ).singleWhere(
-      (AboutPageTabSpec tab) => tab.label == l10n.aboutTabBackupRestoreLabel,
-    );
+    final AboutPageTabSpec backupTab =
+        buildAboutPageTabSpecs(
+          l10n,
+          kDefaultSessionBackgroundTimeout,
+        ).singleWhere(
+          (AboutPageTabSpec tab) =>
+              tab.label == l10n.aboutTabBackupRestoreLabel,
+        );
     final AboutPageSectionSpec transferSection = backupTab.sections.first;
 
     expect(transferSection.title, l10n.aboutTabBackupRestoreSection0Title);
@@ -167,12 +160,14 @@ void main() {
       testZhL10n,
       testEnL10n,
     ]) {
-      final AboutPageTabSpec backupTab = buildAboutPageTabSpecs(
-        l10n,
-        kDefaultSessionBackgroundTimeout,
-      ).singleWhere(
-        (AboutPageTabSpec tab) => tab.label == l10n.aboutTabBackupRestoreLabel,
-      );
+      final AboutPageTabSpec backupTab =
+          buildAboutPageTabSpecs(
+            l10n,
+            kDefaultSessionBackgroundTimeout,
+          ).singleWhere(
+            (AboutPageTabSpec tab) =>
+                tab.label == l10n.aboutTabBackupRestoreLabel,
+          );
 
       expect(
         backupTab.sections.map((AboutPageSectionSpec section) => section.title),
@@ -186,18 +181,14 @@ void main() {
         ],
       );
       expect(
-        backupTab.sections[3].items.map(
-          (AboutPageItemSpec item) => item.title,
-        ),
+        backupTab.sections[3].items.map((AboutPageItemSpec item) => item.title),
         <String>[
           l10n.aboutTabBackupRestoreSection3Item0Title,
           l10n.aboutTabBackupRestoreSection3Item1Title,
         ],
       );
       expect(
-        backupTab.sections[4].items.map(
-          (AboutPageItemSpec item) => item.title,
-        ),
+        backupTab.sections[4].items.map((AboutPageItemSpec item) => item.title),
         <String>[
           l10n.aboutTabBackupRestoreSection4Item0Title,
           l10n.aboutTabBackupRestoreSection4Item1Title,
@@ -205,9 +196,7 @@ void main() {
         ],
       );
       expect(
-        backupTab.sections[5].items.map(
-          (AboutPageItemSpec item) => item.title,
-        ),
+        backupTab.sections[5].items.map((AboutPageItemSpec item) => item.title),
         <String>[
           l10n.aboutTabBackupRestoreSection5Item0Title,
           l10n.aboutTabBackupRestoreSection5Item1Title,
@@ -217,13 +206,14 @@ void main() {
   });
 
   test('交換說明涵蓋獨立副本與可辨識資訊邊界', () {
-    final AboutPageTabSpec backupTab = buildAboutPageTabSpecs(
-      testL10n,
-      kDefaultSessionBackgroundTimeout,
-    ).singleWhere(
-      (AboutPageTabSpec tab) =>
-          tab.label == testL10n.aboutTabBackupRestoreLabel,
-    );
+    final AboutPageTabSpec backupTab =
+        buildAboutPageTabSpecs(
+          testL10n,
+          kDefaultSessionBackgroundTimeout,
+        ).singleWhere(
+          (AboutPageTabSpec tab) =>
+              tab.label == testL10n.aboutTabBackupRestoreLabel,
+        );
     final AboutPageSectionSpec exchangeSection = backupTab.sections[4];
     final String exchangeBody = exchangeSection.items[0].body;
     final String privacyBody = exchangeSection.items[1].body;
@@ -261,10 +251,7 @@ void main() {
     );
     expect(unlockTab.heroBody, contains('換機仍需完整備份'));
     expect(unlockTab.sections[2].items[0].body, contains('必須先取得完整備份'));
-    expect(
-      backupTab.sections[1].items[1].body,
-      contains('基本結構符合完整備份格式'),
-    );
+    expect(backupTab.sections[1].items[1].body, contains('基本結構符合完整備份格式'));
   });
 
   test('中英文人物與匯出說明採用提及篇數及有限隱私保護語意', () {

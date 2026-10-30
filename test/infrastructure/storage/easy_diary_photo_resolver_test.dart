@@ -50,9 +50,8 @@ void main() {
       ];
 
       for (final testCase in cases) {
-        await File(
-          p.join(directory.path, testCase.name),
-        ).writeAsBytes(testCase.bytes);
+        await File(p.join(directory.path, testCase.name))
+            .writeAsBytes(testCase.bytes);
       }
       final EasyDiaryPhotoIndex index = EasyDiaryPhotoIndex.scan(directory);
 

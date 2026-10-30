@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 

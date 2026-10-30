@@ -5,15 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/stub_crypto_service.dart';
@@ -121,12 +121,12 @@ class _FakePortableExportVaultRepository extends VaultRepository {
       );
 
   @override
-  Future<List<EntryIndexRecord>> listEntries({
+  Future<List<DiaryEntrySummary>> listEntries({
     String? searchQuery,
     DateOnly? date,
   }) async {
-    return <EntryIndexRecord>[
-      EntryIndexRecord(
+    return <DiaryEntrySummary>[
+      DiaryEntrySummary(
         id: 'ent_test',
         vaultId: 'vlt_test',
         filePath: 'ignored',

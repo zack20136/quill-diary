@@ -2,20 +2,20 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../../domain/people/person.dart';
-import '../../domain/people/relationship_type.dart';
-import '../../domain/recovery/recovery_metadata.dart';
-import '../../domain/security/unlocked_vault_session.dart';
-import '../../domain/shared/value_objects.dart';
-import '../crypto/crypto_service.dart';
-import 'shared/vault_file_ops.dart';
-import 'vault_path_strategy.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 加密人物名冊（`vault/people.json.enc`，LDJ2）。
 class PeopleStore {
   PeopleStore({required this._pathStrategy, required this._cryptoService});
 
-  static const int catalogVersion = 1;
   static const String documentId = 'people_catalog';
 
   final VaultPathStrategy _pathStrategy;
@@ -56,7 +56,7 @@ class PeopleStore {
       throw const FormatException('人物名冊欄位不正確。');
     }
     final Object? version = decoded['version'];
-    if (version is! int || version != catalogVersion) {
+    if (version is! int || version != DataVersions.peopleCatalog) {
       throw const FormatException('人物名冊版本不支援。');
     }
     final Object? updatedAtRaw = decoded['updatedAt'];
@@ -117,7 +117,7 @@ class PeopleStore {
         (throw StateError('目前 session 缺少 recovery wrap key。'));
     final DateTime now = DateTime.now();
     final Map<String, Object?> payload = <String, Object?>{
-      'version': catalogVersion,
+      'version': DataVersions.peopleCatalog,
       'updatedAt': now.toIso8601String(),
       'relationshipTypes': catalog.relationshipTypes
           .map((RelationshipType type) => type.toJson())

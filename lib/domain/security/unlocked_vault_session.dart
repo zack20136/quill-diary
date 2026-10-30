@@ -1,4 +1,4 @@
-import '../shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 證明目前行程可存取某個 vault 的記憶體內憑證。
 ///

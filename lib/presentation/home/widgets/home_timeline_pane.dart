@@ -2,25 +2,24 @@ import 'dart:async' show Timer, unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_export_actions.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/home_pin_actions.dart';
+import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
+import 'package:quill_diary/presentation/home/widgets/home_chat_diary_draft_card.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-
-import '../../../application/chat_diary/chat_diary_providers.dart';
-import '../home_export_actions.dart';
-import '../home_layout.dart';
-import '../home_pin_actions.dart';
-import 'entry_widgets.dart';
-import 'home_chat_diary_draft_card.dart';
-import 'home_scroll_affordance.dart';
-import 'home_selection_toolbar.dart';
-import 'home_shared_widgets.dart';
 
 class HomeTimelinePane extends ConsumerStatefulWidget {
   const HomeTimelinePane({required this.sessionState, super.key});
@@ -82,7 +81,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         );
   }
 
-  void _applySearchResync(List<EntryIndexRecord> rawEntries) {
+  void _applySearchResync(List<DiaryEntrySummary> rawEntries) {
     final HomeEntrySelectionState selection = ref.read(
       homeEntrySelectionProvider,
     );
@@ -172,15 +171,15 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     final AppSessionState sessionState = widget.sessionState;
     final bool canReadEntries =
         sessionState.isUnlocked && sessionState.session != null;
-    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(
+    final AsyncValue<List<DiaryEntrySummary>> entriesAsync = ref.watch(
       homeEntriesProvider,
     );
     final HomeEntrySelectionState selection = ref.watch(
       homeEntrySelectionProvider,
     );
     final String searchQuery = ref.watch(homeSearchQueryProvider).trim();
-    final List<EntryIndexRecord> entries =
-        entriesAsync.value ?? const <EntryIndexRecord>[];
+    final List<DiaryEntrySummary> entries =
+        entriesAsync.value ?? const <DiaryEntrySummary>[];
     final bool showSearchResultCount =
         !selection.isActive && searchQuery.isNotEmpty && entriesAsync.hasValue;
     final chatDrafts = canReadEntries && searchQuery.isEmpty
@@ -308,7 +307,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                                     .enterSelection(
                                       entries
                                           .map(
-                                            (EntryIndexRecord item) => item.id,
+                                            (DiaryEntrySummary item) => item.id,
                                           )
                                           .toList(),
                                     )
@@ -337,7 +336,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   controller: _scrollController,
                   child: entriesAsync.when(
                     skipLoadingOnReload: true,
-                    data: (List<EntryIndexRecord> loadedEntries) {
+                    data: (List<DiaryEntrySummary> loadedEntries) {
                       if (loadedEntries.isEmpty && chatDrafts.isEmpty) {
                         if (searchQuery.isNotEmpty) {
                           return AppStateCard(

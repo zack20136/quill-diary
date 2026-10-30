@@ -1,10 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/app/router.dart';
-import 'session_route_snapshot.dart';
-import 'state/app_session_state.dart';
-import 'state/session_lock_reason.dart';
-import 'state/unlock_result.dart';
+import 'package:quill_diary/application/session/session_route_snapshot.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 enum SessionNavigationAction { restore, goHome }
 
@@ -129,8 +126,8 @@ bool _shouldGoHomeAfterResumeUnlockFailure({
 String sessionNavigationLocation(SessionNavigationRequest request) {
   switch (request.action) {
     case SessionNavigationAction.restore:
-      return request.location ?? AppRouter.homeRoute;
+      return request.location ?? AppRoutes.homeRoute;
     case SessionNavigationAction.goHome:
-      return AppRouter.homeRoute;
+      return AppRoutes.homeRoute;
   }
 }

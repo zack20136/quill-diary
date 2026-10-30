@@ -37,10 +37,7 @@ enum DriveUploadPhase {
 
 @immutable
 final class DriveUploadFailureNotice {
-  const DriveUploadFailureNotice({
-    required this.jobId,
-    required this.message,
-  });
+  const DriveUploadFailureNotice({required this.jobId, required this.message});
 
   final String jobId;
   final String message;

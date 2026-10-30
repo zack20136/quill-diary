@@ -4,26 +4,34 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;
-  late VaultArchiveIo archiveIo;
+  late ({
+    VaultBackupIo backup,
+    PortableExportIo exporter,
+    PortableImportIo importer,
+  })
+  archiveIo;
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    archiveIo = harness.createArchiveIo();
+    archiveIo = harness.createTransferIo();
   });
 
   tearDown(() async {
@@ -41,11 +49,10 @@ void main() {
       );
 
       final File backupFile = File(p.join(harness.tempDir.path, 'test.zip'));
-      await archiveIo.writeBackupZip(backupFile);
+      await archiveIo.backup.writeBackupZip(backupFile);
 
-      final BackupRecoveryPreview preview = await archiveIo.peekBackupRecovery(
-        backupFile,
-      );
+      final BackupRecoveryPreview preview = await archiveIo.backup
+          .peekBackupRecovery(backupFile);
       expect(preview.metadata.vaultId, setup.session.vaultId);
       expect(preview.metadata.recoveryKeyHint, isNotEmpty);
     });
@@ -62,9 +69,9 @@ void main() {
       );
 
       final File backupFile = File(p.join(harness.tempDir.path, 'healthy.zip'));
-      await archiveIo.writeBackupZip(backupFile);
+      await archiveIo.backup.writeBackupZip(backupFile);
 
-      final BackupInspectResult report = await archiveIo.inspectBackup(
+      final BackupInspectResult report = await archiveIo.backup.inspectBackup(
         backupFile,
       );
 
@@ -76,12 +83,12 @@ void main() {
       final File backupFile = File(p.join(harness.tempDir.path, 'invalid.zip'))
         ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
-      final BackupInspectResult report = await archiveIo.inspectBackup(
+      final BackupInspectResult report = await archiveIo.backup.inspectBackup(
         backupFile,
       );
 
       expect(report.ok, isFalse);
-      expect(report.message, contains('zip 備份'));
+      expect(report.issue, VaultBackupIssue.invalidZip);
     });
 
     test('會拒絕可攜式 markdown 匯出 zip', () async {
@@ -96,12 +103,17 @@ void main() {
       final File exportZip = File(
         p.join(harness.tempDir.path, 'markdown_2026-05-26_14-03-07.zip'),
       );
-      await archiveIo.writeMarkdownZip(session: setup.session, target: exportZip);
+      await archiveIo.exporter.writeMarkdownZip(
+        session: setup.session,
+        target: exportZip,
+      );
 
-      final BackupInspectResult report = await archiveIo.inspectBackup(exportZip);
+      final BackupInspectResult report = await archiveIo.backup.inspectBackup(
+        exportZip,
+      );
 
       expect(report.ok, isFalse);
-      expect(report.message, contains('日記匯出檔'));
+      expect(report.issue, VaultBackupIssue.markdownExportNotBackup);
     });
 
     test('會拒絕損壞的 recovery.json', () async {
@@ -114,12 +126,12 @@ void main() {
         ..addFile(ArchiveFile.string('entries/a.md.enc', 'body'));
       await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
-      final BackupInspectResult report = await archiveIo.inspectBackup(
+      final BackupInspectResult report = await archiveIo.backup.inspectBackup(
         backupFile,
       );
 
       expect(report.ok, isFalse);
-      expect(report.message, contains('recovery.json'));
+      expect(report.issue, VaultBackupIssue.invalidRecoveryJson);
     });
 
     test('會拒絕缺少 recovery.json 的 zip', () async {
@@ -131,13 +143,13 @@ void main() {
         ..addFile(ArchiveFile.string('entries/a.md.enc', 'body'));
       await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
-      final BackupInspectResult report = await archiveIo.inspectBackup(
+      final BackupInspectResult report = await archiveIo.backup.inspectBackup(
         backupFile,
       );
 
       expect(report.ok, isFalse);
       expect(report.layout.hasRecovery, isFalse);
-      expect(report.message, contains('缺少復原金鑰資訊'));
+      expect(report.issue, VaultBackupIssue.missingRecovery);
     });
   });
 
@@ -164,17 +176,17 @@ void main() {
       await incompleteBackup.writeAsBytes(ZipEncoder().encode(archive));
 
       expect(
-        () => archiveIo.restoreBackupZip(incompleteBackup),
+        () => archiveIo.backup.restoreBackupZip(incompleteBackup),
         throwsA(
-          isA<StateError>().having(
-            (StateError error) => error.message,
-            'message',
-            contains('缺少加密資料'),
+          isA<VaultBackupException>().having(
+            (VaultBackupException error) => error.issue,
+            'issue',
+            VaultBackupIssue.missingEncryptedData,
           ),
         ),
       );
 
-      final List<EntryIndexRecord> entries = await harness.repository
+      final List<DiaryEntrySummary> entries = await harness.repository
           .listEntries();
       expect(entries, hasLength(1));
     });
@@ -191,7 +203,7 @@ void main() {
       );
 
       final File backupFile = File(p.join(harness.tempDir.path, 'restore.zip'));
-      await archiveIo.writeBackupZip(backupFile);
+      await archiveIo.backup.writeBackupZip(backupFile);
 
       await harness.repository.saveEntry(
         setup.session,
@@ -207,7 +219,7 @@ void main() {
       );
 
       await harness.repository.closeUnlockedResources();
-      await archiveIo.restoreBackupZip(backupFile);
+      await archiveIo.backup.restoreBackupZip(backupFile);
 
       final RecoveryMetadata? metadataAfterRestore = await harness.repository
           .readRecoveryMetadata();
@@ -215,7 +227,7 @@ void main() {
 
       final UnlockedVaultSession session = await harness.repository
           .unlockWithRecoveryKey(setup.recoveryKey);
-      final List<EntryIndexRecord> entries = await harness.repository
+      final List<DiaryEntrySummary> entries = await harness.repository
           .listEntries();
       expect(entries, hasLength(1));
       final DiaryEntry? restored = await harness.repository.loadEntry(
@@ -260,10 +272,10 @@ void main() {
       final File backupFile = File(
         p.join(harness.tempDir.path, 'draft_clear.zip'),
       );
-      await archiveIo.writeBackupZip(backupFile);
+      await archiveIo.backup.writeBackupZip(backupFile);
 
       await harness.repository.closeUnlockedResources();
-      await archiveIo.restoreBackupZip(backupFile);
+      await archiveIo.backup.restoreBackupZip(backupFile);
 
       expect(await draftStore.listDraftKeys(), isEmpty);
     });
@@ -299,10 +311,10 @@ void main() {
       final File backupFile = File(
         p.join(harness.tempDir.path, 'pending_preview_clear.zip'),
       );
-      await archiveIo.writeBackupZip(backupFile);
+      await archiveIo.backup.writeBackupZip(backupFile);
 
       await harness.repository.closeUnlockedResources();
-      await archiveIo.restoreBackupZip(backupFile);
+      await archiveIo.backup.restoreBackupZip(backupFile);
 
       expect(File(previewPath).existsSync(), isFalse);
       expect(await draftStore.listDraftKeys(), isEmpty);
@@ -321,22 +333,11 @@ void main() {
         ..writeAsBytesSync(const <int>[1, 2, 3, 4]);
 
       expect(
-        () => archiveIo.restoreBackupZip(badBackup),
-        throwsA(
-          isA<StateError>().having(
-            (StateError error) => error.message,
-            'message',
-            anyOf(
-              contains('無法讀取備份檔'),
-              contains('備份檔內容不完整'),
-              contains('缺少復原金鑰資訊'),
-              contains('缺少加密資料'),
-            ),
-          ),
-        ),
+        () => archiveIo.backup.restoreBackupZip(badBackup),
+        throwsA(isA<VaultBackupException>()),
       );
 
-      final List<EntryIndexRecord> entries = await harness.repository
+      final List<DiaryEntrySummary> entries = await harness.repository
           .listEntries();
       expect(entries, hasLength(1));
     });

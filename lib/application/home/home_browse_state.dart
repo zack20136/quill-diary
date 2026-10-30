@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/home/home_entry_sorting.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 enum HomeTab { home, calendar, tags, people, overview }
 
-enum MemoryScope { all, month, year }
+enum OverviewScope { all, month, year }
 
 ({DateOnly first, DateOnly last}) calendarGridDateRange(DateTime month) {
   final DateTime firstOfMonth = DateTime(month.year, month.month);
@@ -67,14 +67,14 @@ class OverviewTagFilterController extends Notifier<String?> {
   void set(String? value) => state = value;
 }
 
-class MemoryScopeController extends Notifier<MemoryScope> {
+class OverviewScopeController extends Notifier<OverviewScope> {
   @override
-  MemoryScope build() => MemoryScope.month;
+  OverviewScope build() => OverviewScope.month;
 
-  void set(MemoryScope value) => state = value;
+  void set(OverviewScope value) => state = value;
 }
 
-class MemoryFocusedMonthController extends Notifier<DateTime> {
+class OverviewFocusedMonthController extends Notifier<DateTime> {
   @override
   DateTime build() {
     final DateTime now = DateTime.now();
@@ -84,7 +84,7 @@ class MemoryFocusedMonthController extends Notifier<DateTime> {
   void set(DateTime value) => state = DateTime(value.year, value.month);
 }
 
-class MemoryFocusedYearController extends Notifier<int> {
+class OverviewFocusedYearController extends Notifier<int> {
   @override
   int build() => DateTime.now().year;
 
@@ -149,10 +149,6 @@ class HomeEntrySelectionController extends Notifier<HomeEntrySelectionState> {
       next.remove(id);
     } else {
       next.add(id);
-    }
-    if (next.isEmpty) {
-      state = state.copyWith(selectedIds: next);
-      return;
     }
     state = state.copyWith(selectedIds: next);
   }
@@ -224,7 +220,7 @@ void resyncHomeSelectionDisplayOrder({
   required HomeEntrySelectionController selectionController,
   required HomeEntrySelectionState selection,
   required Set<EntryId> pinnedIds,
-  required List<EntryIndexRecord> rawEntries,
+  required List<DiaryEntrySummary> rawEntries,
   Iterable<String> chatIds = const [],
 }) {
   if (!selection.isActive) {
@@ -263,19 +259,19 @@ final overviewTagFilterProvider =
       OverviewTagFilterController.new,
     );
 
-final memoryScopeProvider =
-    NotifierProvider<MemoryScopeController, MemoryScope>(
-      MemoryScopeController.new,
+final overviewScopeProvider =
+    NotifierProvider<OverviewScopeController, OverviewScope>(
+      OverviewScopeController.new,
     );
 
-final memoryFocusedMonthProvider =
-    NotifierProvider<MemoryFocusedMonthController, DateTime>(
-      MemoryFocusedMonthController.new,
+final overviewFocusedMonthProvider =
+    NotifierProvider<OverviewFocusedMonthController, DateTime>(
+      OverviewFocusedMonthController.new,
     );
 
-final memoryFocusedYearProvider =
-    NotifierProvider<MemoryFocusedYearController, int>(
-      MemoryFocusedYearController.new,
+final overviewFocusedYearProvider =
+    NotifierProvider<OverviewFocusedYearController, int>(
+      OverviewFocusedYearController.new,
     );
 
 final homeEntrySelectionProvider =

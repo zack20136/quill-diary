@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/presentation/settings/widgets/personalization_sections.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/widget_test_app.dart';

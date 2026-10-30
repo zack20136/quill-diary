@@ -5,15 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import '../../domain/shared/vault_backup_policy.dart';
+import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_oauth_errors.dart';
 import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
-import '../../l10n/l10n.dart';
-import '../../shared/presentation/display_format.dart';
-import '../storage/backup_task_progress.dart';
-import 'google_drive_error.dart';
-import 'google_drive_oauth_errors.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 設定與備份流程顯示的目前 Google Drive 連線快照。
 final class DriveConnectionState {
@@ -31,25 +28,6 @@ final class DriveConnectionState {
   final bool isConnected;
   final String? email;
   final String? displayName;
-
-  String? accountLabel(AppLocalizations l10n) {
-    final String? trimmedName = displayName?.trim();
-    final String? trimmedEmail = email?.trim();
-    if (trimmedName != null && trimmedName.isNotEmpty) {
-      if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
-        return DisplayFormat.formatGoogleAccountLabel(
-          l10n,
-          trimmedName,
-          trimmedEmail,
-        );
-      }
-      return trimmedName;
-    }
-    if (trimmedEmail != null && trimmedEmail.isNotEmpty) {
-      return trimmedEmail;
-    }
-    return null;
-  }
 }
 
 /// 與具體 Google Sign-In SDK 解耦的已授權 Drive API 工廠。
@@ -179,9 +157,8 @@ String sanitizeDriveBackupFileName(String fileName) {
   final String normalizedSeparators = trimmed.replaceAll('\\', '/');
   final String basename = p.posix.basename(normalizedSeparators);
   final bool hasPathSegments = basename != normalizedSeparators;
-  final bool hasUnsafeCharacters = RegExp(
-    r'[<>:"/\\|?*\x00-\x1F]',
-  ).hasMatch(basename);
+  final bool hasUnsafeCharacters = RegExp(r'[<>:"/\\|?*\x00-\x1F]')
+      .hasMatch(basename);
   if (trimmed.isEmpty ||
       hasPathSegments ||
       basename == '.' ||
@@ -708,12 +685,10 @@ class GoogleDriveBackupService implements DriveBackupService {
     onProgress?.call(
       const BackupTaskProgress(phase: BackupTaskPhase.downloadingDrive),
     );
-    final drive.Media media =
-        await api.files.get(
-              fileId,
-              downloadOptions: drive.DownloadOptions.fullMedia,
-            )
-            as drive.Media;
+    final drive.Media media = await api.files.get(
+      fileId,
+      downloadOptions: drive.DownloadOptions.fullMedia,
+    ) as drive.Media;
     IOSink? sink;
     try {
       sink = output.openWrite();

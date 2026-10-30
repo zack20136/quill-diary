@@ -3,14 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
-
-import '../../domain/recovery/recovery_metadata.dart';
-import '../../domain/security/unlocked_vault_session.dart';
-import '../crypto/crypto_service.dart';
-import 'shared/media_type_utils.dart';
-import 'shared/vault_file_ops.dart';
-import 'vault_path_strategy.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 /// 管理本地加密草稿與待上傳附件暫存。
 class EditorDraftStore {

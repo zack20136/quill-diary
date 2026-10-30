@@ -1,15 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../domain/shared/value_objects.dart';
-import 'shared/vault_file_ops.dart';
-import 'vault_path_strategy.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 在 [vault/pinned_entries.json] 持久化首頁釘選狀態，隨 vault 備份與還原。
 class PinnedEntriesStore {
   PinnedEntriesStore(this._pathStrategy);
-
-  static const int formatVersion = 1;
 
   final VaultPathStrategy _pathStrategy;
 
@@ -41,7 +40,7 @@ class PinnedEntriesStore {
     }
     final List<String> ordered = normalized.toList()..sort();
     final Map<String, Object?> payload = <String, Object?>{
-      'version': formatVersion,
+      'version': DataVersions.pinnedEntries,
       'entry_ids': ordered,
     };
     await atomicWriteString(

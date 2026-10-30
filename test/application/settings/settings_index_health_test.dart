@@ -1,11 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/application/session/session_messages.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 
@@ -41,13 +40,36 @@ VaultRepairSummary _repairSummary({
 }
 
 void main() {
-  test('未解鎖時索引健康為需注意', () {
+  test('索引錯誤依狀態辨識並使用目前語系顯示', () {
+    final english = lookupAppLocalizations(appEnLocale);
+    final state = AppSessionState(
+      status: AppLockStatus.recoveryRequired,
+      message: testL10n.sessionIndexDatabaseUnreadableMessage,
+      failure: SessionFailure.unreadableIndex,
+    );
     expect(
-      settingsIndexHealthLevel(
-        l10n: testL10n,
-        sessionState: null,
+      settingsIndexStatusMessage(
+        english,
+        sessionState: state,
         hasUnlockedSession: false,
       ),
+      english.sessionIndexDatabaseUnreadableMessage,
+    );
+    expect(
+      settingsIndexHealthLevel(
+        sessionState: AppSessionState(
+          status: AppLockStatus.recoveryRequired,
+          message: testL10n.sessionIndexDatabaseUnreadableMessage,
+        ),
+        hasUnlockedSession: false,
+      ),
+      SettingsHealthLevel.warning,
+    );
+  });
+
+  test('未解鎖時索引健康為需注意', () {
+    expect(
+      settingsIndexHealthLevel(sessionState: null, hasUnlockedSession: false),
       SettingsHealthLevel.warning,
     );
     expect(
@@ -63,7 +85,6 @@ void main() {
   test('已解鎖且無修復報告時索引健康為 ok', () {
     expect(
       settingsIndexHealthLevel(
-        l10n: testL10n,
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
         hasUnlockedSession: true,
       ),
@@ -83,7 +104,6 @@ void main() {
     final VaultRepairSummary summary = _repairSummary(entryIssueCount: 2);
     expect(
       settingsIndexHealthLevel(
-        l10n: testL10n,
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
         hasUnlockedSession: true,
         repairSummary: summary,
@@ -144,15 +164,14 @@ void main() {
     );
 
     expect(
-      settingsUnresolvedFindings(
+      resolveVaultMaintenanceSnapshot(
         inspectSummary: inspect,
         repairSummary: repair,
-      ),
+      )!.unresolvedFindings,
       isEmpty,
     );
     expect(
       settingsIndexHealthLevel(
-        l10n: testL10n,
         sessionState: const AppSessionState(status: AppLockStatus.unlocked),
         hasUnlockedSession: true,
         repairSummary: repair,
@@ -194,14 +213,14 @@ void main() {
     expect(message.contains('最近一次檢查'), isFalse);
   });
 
-  test('索引不可讀訊息時索引健康為錯誤', () {
-    final String indexMessage = sessionIndexDatabaseUnreadableMessage(testL10n);
+  test('索引不可讀狀態時索引健康為錯誤', () {
+    final String indexMessage = testL10n.sessionIndexDatabaseUnreadableMessage;
     expect(
       settingsIndexHealthLevel(
-        l10n: testL10n,
         sessionState: AppSessionState(
           status: AppLockStatus.recoveryRequired,
           message: indexMessage,
+          failure: SessionFailure.unreadableIndex,
         ),
         hasUnlockedSession: false,
       ),
@@ -213,6 +232,7 @@ void main() {
         sessionState: AppSessionState(
           status: AppLockStatus.fatalError,
           message: indexMessage,
+          failure: SessionFailure.unreadableIndex,
         ),
         hasUnlockedSession: false,
       ),
@@ -221,12 +241,9 @@ void main() {
   });
 
   test('非索引 fatal 不會誤標為索引錯誤', () {
-    final String unsupportedMessage = sessionUnsupportedRuntimeMessage(
-      testL10n,
-    );
+    final String unsupportedMessage = testL10n.sessionUnsupportedRuntimeMessage;
     expect(
       settingsIndexHealthLevel(
-        l10n: testL10n,
         sessionState: AppSessionState(
           status: AppLockStatus.fatalError,
           message: unsupportedMessage,

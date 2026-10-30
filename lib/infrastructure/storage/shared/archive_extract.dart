@@ -5,7 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
-import '../backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 
 /// 解壓前拒絕 zip-slip 等不安全路徑。
 void ensureSafeArchivePath(String relativePath) {

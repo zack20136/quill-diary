@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/settings/settings_health.dart';
 
 class SecurityOverviewItem {
   const SecurityOverviewItem({

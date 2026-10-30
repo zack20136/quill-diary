@@ -3,19 +3,20 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/application/session/app_lifecycle_session_bridge.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
+import 'package:quill_diary/app/app_lifecycle_session_bridge.dart';
+import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
+import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/app/theme.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_theme.dart';
+import 'package:quill_diary/shared/presentation/personalization_visual.dart';
 
 class QuillDiaryApp extends ConsumerStatefulWidget {
   const QuillDiaryApp({super.key});
@@ -87,8 +88,8 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
     if (!openDrive || !mounted) {
       return;
     }
-    if (_currentRoute != AppRouter.settingsRoute) {
-      _router.go(AppRouter.settingsRoute);
+    if (_currentRoute != AppRoutes.settingsRoute) {
+      _router.go(AppRoutes.settingsRoute);
     }
   }
 

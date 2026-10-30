@@ -1,10 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_pin_glyph.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-
-import '../home_layout.dart';
-import 'home_pin_glyph.dart';
 
 const double kHomeToolbarActionCircleSize = 44;
 

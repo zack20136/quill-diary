@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/shared/test_l10n.dart';
@@ -20,7 +20,7 @@ class _InstantOnboardingIntroController extends OnboardingIntroController {
 
   @override
   Future<void> markCompleted() async {
-    state = const AsyncData<int>(onboardingIntroCurrentVersion);
+    state = const AsyncData<int>(DataVersions.onboardingIntro);
   }
 }
 

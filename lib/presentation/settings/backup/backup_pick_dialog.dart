@@ -1,8 +1,7 @@
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'backup_pick_list_item.dart';
 
 typedef BackupDeleteConfirm = Future<bool> Function(String fileName);
 

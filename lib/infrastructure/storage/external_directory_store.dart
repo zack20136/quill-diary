@@ -3,10 +3,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import 'user_export_paths.dart';
-import 'vault_path_strategy.dart';
-import 'media_store_export.dart';
+import 'package:quill_diary/infrastructure/storage/media_store_export.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 記住使用者上次選擇的外部資料夾（備份交付、可攜式匯入／匯出共用）。
 class ExternalDirectoryStore {
@@ -55,23 +54,10 @@ class ExternalDirectoryStore {
     final File file = File(await _filePath());
     await file.parent.create(recursive: true);
     await file.writeAsString(
-      const JsonEncoder.withIndent(
-        '  ',
-      ).convert(<String, Object?>{'lastDirectory': trimmed}),
+      const JsonEncoder.withIndent('  ')
+          .convert(<String, Object?>{'lastDirectory': trimmed}),
       flush: true,
     );
-  }
-
-  Future<void> rememberSavedFilePath(String? savedPath) async {
-    if (savedPath == null || savedPath.trim().isEmpty) {
-      return;
-    }
-    if (savedPath.startsWith('content:')) {
-      return;
-    }
-
-    final String directory = p.dirname(savedPath);
-    await rememberDirectory(directory);
   }
 
   /// 優先使用上次目錄，否則回到 Downloads/quill-diary。
@@ -92,7 +78,7 @@ class ExternalDirectoryStore {
     }
 
     final Directory preferred = Directory(
-      p.join(downloads.path, UserExportPaths.subfolderName),
+      p.join(downloads.path, AppIdentifiers.downloadsExportDirectory),
     );
     try {
       await preferred.create(recursive: true);

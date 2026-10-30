@@ -1,6 +1,6 @@
-import '../../../domain/people/person.dart';
-import '../../../domain/people/person_name_matcher.dart';
-import '../../../domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/person_name_matcher.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 可攜式匯出時把名冊姓名換成穩定代號（人物A／Person A），不動 vault。
 final class HtmlExportPersonAnonymizer {
@@ -56,10 +56,7 @@ final class HtmlExportPersonAnonymizer {
     );
     working = working.replaceAllMapped(RegExp(r'`[^`\n]+`'), protect);
     working = working.replaceAllMapped(RegExp(r'\]\([^)]*\)'), protect);
-    working = working.replaceAllMapped(
-      RegExp(r'<https?://[^>\s]+>'),
-      protect,
-    );
+    working = working.replaceAllMapped(RegExp(r'<https?://[^>\s]+>'), protect);
 
     working = anonymizePlainText(working);
 

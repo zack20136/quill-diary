@@ -1,15 +1,14 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-import '../../application/settings/personalization_providers.dart';
-import '../../domain/chat_diary/chat_diary_session.dart';
-import '../../infrastructure/ai/ai_client.dart';
-import '../../l10n/l10n.dart';
-import '../../shared/presentation/app_feedback.dart';
-import '../ai/ai_error_text.dart';
-import '../editor/widgets/editor_markdown_preview.dart';
-import 'chat_diary_hidden_text.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/ai/ai_error_text.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 class ChatDiaryMessageBubble extends ConsumerWidget {
   const ChatDiaryMessageBubble({

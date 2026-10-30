@@ -25,10 +25,9 @@ class DiaryEntryDateTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final TextStyle? style = (compact
-            ? theme.textTheme.labelSmall
-            : theme.textTheme.labelMedium)
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final TextStyle? style =
+        (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final Widget content = Column(
       crossAxisAlignment: alignment,
       mainAxisSize: MainAxisSize.min,

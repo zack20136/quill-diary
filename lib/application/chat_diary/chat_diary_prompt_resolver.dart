@@ -1,7 +1,6 @@
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
-
-import '../../infrastructure/preferences/personalization_preferences.dart';
-import '../../l10n/app_localizations.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 enum ChatDiaryPromptPurpose { conversation, generation }
 

@@ -4,11 +4,10 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import 'app_unlock_mode.dart';
-import 'keystore_unlock_policy.dart';
-import 'unlock_mode_policy.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 在 vault 外持久化使用者偏好的可信裝置解鎖政策。
 abstract class AppLockService {

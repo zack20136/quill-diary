@@ -44,4 +44,7 @@
     <string name="drive_auth_unavailable">此裝置目前無法使用 Google 登入，請確認 Google Play 服務後再試。</string>
     <string name="drive_auth_cancelled">已取消 Google 登入，帳戶尚未連結。</string>
     <string name="drive_auth_failed">Google 登入失敗，請稍後再試。</string>
+    <string name="device_key_wrap_prompt">請驗證裝置身分以保護復原金鑰</string>
+    <string name="device_key_unwrap_prompt">請驗證裝置身分以解鎖復原金鑰</string>
+    <string name="device_key_rewrap_prompt">正在更新解鎖設定，請完成驗證</string>
 </resources>

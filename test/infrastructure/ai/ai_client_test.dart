@@ -80,6 +80,7 @@ void main() {
               'data: {"candidates":[{"content":{"parts":[{"text":"繁體"}]},"finishReason":"STOP"}]}',
               '',
             ];
+          case AiProvider.xai:
           case AiProvider.custom:
             wire.lines = [
               'data: {"choices":[{"delta":{"content":"繁體"},"finish_reason":null}]}',
@@ -97,6 +98,13 @@ void main() {
           '繁體',
         );
         final request = wire.streams.single;
+        if (provider == AiProvider.xai) {
+          expect(
+            request.uri.toString(),
+            'https://api.x.ai/v1/chat/completions',
+          );
+          expect(request.headers['Authorization'], 'Bearer test-key');
+        }
         switch (provider) {
           case AiProvider.openai:
             expect(request.body['instructions'], '自訂完整提示詞');
@@ -109,6 +117,7 @@ void main() {
               {'text': '自訂完整提示詞'},
             ]);
             expect(request.uri.query, isNot(contains('test-key')));
+          case AiProvider.xai:
           case AiProvider.custom:
             expect((request.body['messages'] as List).first, {
               'role': 'system',

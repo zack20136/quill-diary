@@ -99,9 +99,8 @@ void main() {
         ),
       );
 
-      final ColorScheme colorScheme = appTestTheme(
-        brightness: brightness,
-      ).colorScheme;
+      final ColorScheme colorScheme = appTestTheme(brightness: brightness)
+          .colorScheme;
       final List<FilledButton> filledButtons = tester
           .widgetList<FilledButton>(find.byType(FilledButton))
           .toList();
@@ -149,9 +148,8 @@ void main() {
       ),
     );
 
-    final ColorScheme colorScheme = appTestTheme(
-      brightness: Brightness.dark,
-    ).colorScheme;
+    final ColorScheme colorScheme = appTestTheme(brightness: Brightness.dark)
+        .colorScheme;
     final FilledButton button = tester.widget<FilledButton>(
       find.byType(FilledButton),
     );

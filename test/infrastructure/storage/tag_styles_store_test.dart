@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/application/tag/tag_defaults.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 
@@ -26,7 +27,7 @@ const List<int> _defaultPresetIndexes = <int>[
 void main() {
   test('繁中與英文預設標籤使用指定共用 preset 且不是自訂色', () {
     final List<int> expectedAccents = _defaultPresetIndexes
-        .map((int index) => colorArgb32(kAccentColorPresets[index]))
+        .map((int index) => colorArgb32(accentColorPresets[index]))
         .toList(growable: false);
 
     for (final Locale locale in <Locale>[appZhLocale, appEnLocale]) {
@@ -58,12 +59,12 @@ void main() {
     );
 
     final bool seeded = await harness.repository.seedDefaultTagCatalogIfEmpty(
-      locale: appZhLocale,
+      defaultTagCatalogForLocale(appZhLocale),
     );
 
     expect(seeded, isFalse);
-    final TagCatalogItem existing = (await harness.repository.listTagCatalog())
-        .single;
+    final TagCatalogItem existing =
+        (await harness.repository.listTagCatalog()).single;
     expect(existing.label, '既有標籤');
     expect(existing.accentArgb, 0xFF123456);
     expect(existing.accentIsCustom, isTrue);

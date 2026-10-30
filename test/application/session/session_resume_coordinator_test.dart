@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/session_inactivity_watchdog.dart';
 import 'package:quill_diary/application/session/session_resume_coordinator.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/session/session_timeout_policy.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 
 class _RecordingWatchdog extends SessionInactivityWatchdog {
@@ -88,10 +88,7 @@ void main() {
       await Future<void>.delayed(kSessionForegroundSettleDelay * 2);
 
       expect(coordinator.startupPhase, SessionStartupPhase.resumeUnlockArmed);
-      expect(
-        coordinator.canScheduleLifecycleResumeUnlock(unlockedState, null),
-        isTrue,
-      );
+      expect(coordinator.canHandleLifecycleResume(unlockedState, null), isTrue);
     });
 
     test('protected task 完成後會通知重設 watchdog 並做 cleanup', () async {

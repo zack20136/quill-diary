@@ -1,192 +1,27 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
-import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
-import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/vault_backup_service.dart';
-import 'package:quill_diary/infrastructure/storage/vault_restore_service.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 
 import '../../session/fake_session_vault_repository.dart';
-import '../../storage/fake_vault_transfer_service.dart';
-import '../../vault/test_vault_path_strategy.dart';
 import '../../shared/widget_test_app.dart';
-
-class _SettingsBackupServiceAdapter extends VaultBackupService {
-  _SettingsBackupServiceAdapter(this._transferService)
-    : super(
-        archiveIo: VaultArchiveIo(
-          pathStrategy: DummyVaultPathStrategy(),
-          repository: FakeSessionVaultRepository(),
-          frontMatterCodec: const FrontMatterCodec(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
-        ),
-        driveBackupService: _UnusedDriveBackupService(),
-        externalDirectoryStore: ExternalDirectoryStore(
-          DummyVaultPathStrategy(),
-        ),
-        pathStrategy: DummyVaultPathStrategy(),
-      );
-
-  final FakeVaultTransferService _transferService;
-
-  @override
-  Future<DriveConnectionState> getGoogleDriveConnectionState() {
-    return _transferService.getGoogleDriveConnectionState();
-  }
-
-  @override
-  Future<DriveConnectionState> linkGoogleDrive() {
-    return _transferService.linkGoogleDrive();
-  }
-
-  @override
-  Future<DriveConnectionState> switchGoogleDrive() {
-    return _transferService.switchGoogleDrive();
-  }
-
-  @override
-  Future<void> disconnectGoogleDrive() {
-    return _transferService.disconnectGoogleDrive();
-  }
-
-  @override
-  Future<List<DriveBackupFile>> listDriveBackups() {
-    return _transferService.listDriveBackups();
-  }
-
-  @override
-  Future<void> deleteDriveBackup(DriveBackupFile backup) {
-    return _transferService.deleteDriveBackup(backup);
-  }
-
-  @override
-  Future<void> deleteAppLocalBackup(LocalBackupFile backup) {
-    return _transferService.deleteAppLocalBackup(backup);
-  }
-}
-
-class _SettingsRestoreServiceAdapter extends VaultRestoreService {
-  _SettingsRestoreServiceAdapter(this._transferService)
-    : super(
-        archiveIo: VaultArchiveIo(
-          pathStrategy: DummyVaultPathStrategy(),
-          repository: FakeSessionVaultRepository(),
-          frontMatterCodec: const FrontMatterCodec(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
-        ),
-        vaultRepository: FakeSessionVaultRepository(),
-        backupService: _SettingsBackupServiceAdapter(_transferService),
-        pathStrategy: DummyVaultPathStrategy(),
-      );
-
-  final FakeVaultTransferService _transferService;
-
-  @override
-  Future<PickedBackupFile?> pickLocalBackupFile(AppLocalizations l10n) {
-    return _transferService.pickLocalBackupFile(l10n);
-  }
-
-  @override
-  Future<RestorePrecheck> precheckRestore(File backupFile) {
-    return _transferService.precheckRestore(backupFile);
-  }
-
-  @override
-  Future<File> downloadDriveBackupToTempFile(
-    DriveBackupFile backup, {
-    dynamic onProgress,
-  }) {
-    return _transferService.downloadDriveBackupToTempFile(
-      backup,
-      onProgress: onProgress,
-    );
-  }
-
-  @override
-  Future<void> verifyBackupRecoveryKey(File backupFile, String recoveryKey) {
-    return _transferService.verifyBackupRecoveryKey(backupFile, recoveryKey);
-  }
-
-  @override
-  Future<void> restoreFromBackupFile(
-    File backupFile, {
-    bool preserveTrustedDeviceAccess = false,
-    dynamic onProgress,
-  }) {
-    return _transferService.restoreFromBackupFile(
-      backupFile,
-      preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
-      onProgress: onProgress,
-    );
-  }
-}
-
-class _UnusedDriveBackupService implements DriveBackupService {
-  @override
-  Future<DriveConnectionState> connect() => throw UnimplementedError();
-
-  @override
-  Future<void> deleteBackup(String fileId, {bool interactive = true}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<File> downloadBackupById({
-    required String fileId,
-    required String fileName,
-    required Directory destinationDirectory,
-    int? totalBytes,
-    dynamic onProgress,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> disconnect() => throw UnimplementedError();
-
-  @override
-  Future<DriveConnectionState> getConnectionState() =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<DriveBackupFile>> listBackups({bool interactive = true}) => throw UnimplementedError();
-
-  @override
-  Future<List<DriveBackupFile>> pruneBackups({required int retainCount, String? keepFileId, bool interactive = true}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<DriveConnectionState> switchAccount() => throw UnimplementedError();
-}
+import '../../storage/fake_vault_transfer_services.dart';
 
 Widget settingsTestScope({
   required Widget child,
   FakeSessionVaultRepository? repository,
-  FakeVaultTransferService? transferService,
+  FakeVaultBackupService? backupService,
+  FakeVaultRestoreService? restoreService,
   AppSessionState sessionState = const AppSessionState(
     status: AppLockStatus.locked,
   ),
@@ -195,8 +30,6 @@ Widget settingsTestScope({
   bool wrapMaterialApp = true,
   bool includeDarkTheme = true,
 }) {
-  final FakeVaultTransferService resolvedTransferService =
-      transferService ?? FakeVaultTransferService();
   final Widget appChild = wrapMaterialApp
       ? widgetTestApp(
           center: false,
@@ -210,12 +43,11 @@ Widget settingsTestScope({
       vaultRepositoryProvider.overrideWithValue(
         repository ?? FakeSessionVaultRepository(metadata: recoveryMetadata),
       ),
-      vaultTransferServiceProvider.overrideWithValue(resolvedTransferService),
       vaultBackupServiceProvider.overrideWithValue(
-        _SettingsBackupServiceAdapter(resolvedTransferService),
+        backupService ?? FakeVaultBackupService(),
       ),
       vaultRestoreServiceProvider.overrideWithValue(
-        _SettingsRestoreServiceAdapter(resolvedTransferService),
+        restoreService ?? FakeVaultRestoreService(),
       ),
       effectiveAppSessionProvider.overrideWith((Ref ref) async => sessionState),
       recoveryMetadataProvider.overrideWith(
@@ -241,10 +73,7 @@ Finder appActionButton(String label) {
   );
 }
 
-AppActionButton readAppActionButton(
-  WidgetTester tester,
-  String label,
-) {
+AppActionButton readAppActionButton(WidgetTester tester, String label) {
   return tester.widget<AppActionButton>(appActionButton(label));
 }
 

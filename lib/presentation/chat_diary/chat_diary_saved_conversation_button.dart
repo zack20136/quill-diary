@@ -1,10 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import '../../app/router.dart';
-import '../../application/chat_diary/chat_diary_providers.dart';
-import '../../l10n/l10n.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 class ChatDiarySavedConversationButton extends ConsumerWidget {
   const ChatDiarySavedConversationButton({super.key, required this.entryId});
@@ -20,7 +19,7 @@ class ChatDiarySavedConversationButton extends ConsumerWidget {
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
         onPressed: () async {
-          await context.push(AppRouter.chatDiaryEntryLocation(entryId));
+          await context.push(AppRoutes.chatDiaryEntryLocation(entryId));
           if (context.mounted) {
             ref.invalidate(chatDiaryForEntryProvider(entryId));
           }

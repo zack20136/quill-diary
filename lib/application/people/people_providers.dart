@@ -1,15 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 
 /// 讀取已快取的名冊（含關係類型）；人物／類型 CRUD 會 invalidate。
 final peopleCatalogProvider = FutureProvider.autoDispose<PeopleCatalog>((
@@ -21,24 +20,24 @@ final peopleCatalogProvider = FutureProvider.autoDispose<PeopleCatalog>((
   if (!state.isUnlocked || state.session == null) {
     return PeopleCatalog.empty();
   }
-  return ref.watch(vaultPeopleServiceProvider).readPeopleCatalog(state.session!);
+  return ref.watch(vaultRepositoryProvider).readPeopleCatalog(state.session!);
 });
 
 /// 名冊中的人物列表（與 [peopleCatalogProvider] 同源）。
 final peopleListProvider = Provider.autoDispose<AsyncValue<List<Person>>>((
   Ref ref,
 ) {
-  return ref.watch(peopleCatalogProvider).whenData(
-    (PeopleCatalog catalog) => catalog.people,
-  );
+  return ref
+      .watch(peopleCatalogProvider)
+      .whenData((PeopleCatalog catalog) => catalog.people);
 });
 
 /// 現行關係類型表（與 [peopleCatalogProvider] 同源）。
 final peopleRelationshipTypesProvider =
     Provider.autoDispose<AsyncValue<List<RelationshipType>>>((Ref ref) {
-      return ref.watch(peopleCatalogProvider).whenData(
-        (PeopleCatalog catalog) => catalog.relationshipTypes,
-      );
+      return ref
+          .watch(peopleCatalogProvider)
+          .whenData((PeopleCatalog catalog) => catalog.relationshipTypes);
     });
 
 enum PeopleListSort {
@@ -60,7 +59,7 @@ final peopleMentionStatsMapProvider =
     FutureProvider.autoDispose<Map<PersonId, PersonMentionStats>>((
       Ref ref,
     ) async {
-      ref.watch(entryIndexRevisionProvider);
+      ref.watch(diaryRevisionProvider);
       await ref.watch(peopleCatalogProvider.future);
       final AppSessionState state = await ref.watch(
         effectiveAppSessionProvider.future,
@@ -69,7 +68,7 @@ final peopleMentionStatsMapProvider =
         return const <PersonId, PersonMentionStats>{};
       }
       return ref
-          .watch(vaultPeopleServiceProvider)
+          .watch(vaultRepositoryProvider)
           .allPersonMentionStats(state.session!);
     });
 
@@ -158,9 +157,8 @@ List<PersonListItem> filterPeopleListItems({
           b.person.name.toLowerCase(),
         );
       case PeopleListSort.recentMentionedEntryCount:
-        final int byRecent = (b.stats?.recentMentionedEntryCount ?? 0).compareTo(
-          a.stats?.recentMentionedEntryCount ?? 0,
-        );
+        final int byRecent = (b.stats?.recentMentionedEntryCount ?? 0)
+            .compareTo(a.stats?.recentMentionedEntryCount ?? 0);
         if (byRecent != 0) {
           return byRecent;
         }
@@ -190,17 +188,17 @@ final personDetailProvider = FutureProvider.autoDispose
     });
 
 final personRelatedEntriesProvider = FutureProvider.autoDispose
-    .family<List<EntryIndexRecord>, PersonId>((Ref ref, PersonId id) async {
-      ref.watch(entryIndexRevisionProvider);
+    .family<List<DiaryEntrySummary>, PersonId>((Ref ref, PersonId id) async {
+      ref.watch(diaryRevisionProvider);
       await ref.watch(peopleCatalogProvider.future);
       final AppSessionState state = await ref.watch(
         effectiveAppSessionProvider.future,
       );
       if (!state.isUnlocked || state.session == null) {
-        return const <EntryIndexRecord>[];
+        return const <DiaryEntrySummary>[];
       }
       return ref
-          .watch(vaultPeopleServiceProvider)
+          .watch(vaultRepositoryProvider)
           .relatedEntriesForPerson(state.session!, id);
     });
 
@@ -219,12 +217,12 @@ final class OverviewPersonRankItem {
 final overviewPeopleTop5Provider = FutureProvider.autoDispose
     .family<
       List<OverviewPersonRankItem>,
-      ({MemoryScope scope, int focusedYear, int focusedMonth})
+      ({OverviewScope scope, int focusedYear, int focusedMonth})
     >((
       Ref ref,
-      ({MemoryScope scope, int focusedYear, int focusedMonth}) key,
+      ({OverviewScope scope, int focusedYear, int focusedMonth}) key,
     ) async {
-      ref.watch(entryIndexRevisionProvider);
+      ref.watch(diaryRevisionProvider);
       final AppSessionState state = await ref.watch(
         effectiveAppSessionProvider.future,
       );
@@ -245,17 +243,17 @@ final overviewPeopleTop5Provider = FutureProvider.autoDispose
       String? yearPrefix;
       String? monthPrefix;
       switch (key.scope) {
-        case MemoryScope.all:
+        case OverviewScope.all:
           break;
-        case MemoryScope.year:
+        case OverviewScope.year:
           yearPrefix = key.focusedYear.toString().padLeft(4, '0');
-        case MemoryScope.month:
+        case OverviewScope.month:
           monthPrefix =
               '${key.focusedYear.toString().padLeft(4, '0')}-${key.focusedMonth.toString().padLeft(2, '0')}';
       }
 
       final List<PersonScopedMentionRank> ranks = await ref
-          .watch(vaultPeopleServiceProvider)
+          .watch(vaultRepositoryProvider)
           .topMentionedPeople(
             state.session!,
             limit: 5,
@@ -299,7 +297,7 @@ final overviewPeopleTop5Provider = FutureProvider.autoDispose
 
 final peopleAnalyticsProgressProvider =
     StreamProvider.autoDispose<PeopleAnalyticsProgress>((Ref ref) {
-      return ref.watch(vaultPeopleServiceProvider).peopleAnalyticsProgress;
+      return ref.watch(vaultRepositoryProvider).peopleAnalyticsProgress;
     });
 
 final class EditorPersonSuggestion {

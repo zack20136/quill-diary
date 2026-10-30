@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
-import '../../domain/security/unlocked_vault_session.dart';
-import '../storage/vault_path_strategy.dart';
-import 'index_database.dart';
-import 'index_database_connection_io.dart';
-import 'index_database_errors.dart';
-import 'index_key_derivation.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
+import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
+import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 class IndexDatabaseManager {
   IndexDatabaseManager(this._pathStrategy);

@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../application/chat_diary/chat_diary_prompt_resolver.dart';
-import '../../domain/chat_diary/chat_diary_settings.dart';
-import '../../infrastructure/preferences/personalization_preferences.dart';
-import '../../l10n/l10n.dart';
-import '../../shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
+
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class ChatDiaryPromptEdit {
   const ChatDiaryPromptEdit(this.customText);
@@ -73,11 +75,10 @@ class _ChatDiaryPromptDialogState extends State<ChatDiaryPromptDialog>
     final title = widget.purpose == ChatDiaryPromptPurpose.conversation
         ? l10n.chatDiaryConversationPrompt
         : l10n.chatDiaryGenerationPrompt;
-    final height =
-        (MediaQuery.sizeOf(context).height -
-                MediaQuery.viewInsetsOf(context).bottom -
-                240)
-            .clamp(140.0, 680.0);
+    final height = (MediaQuery.sizeOf(context).height - 240).clamp(
+      140.0,
+      680.0,
+    );
     return AppDialogShell(
       title: title,
       content: SizedBox(
@@ -123,14 +124,13 @@ class _ChatDiaryPromptDialogState extends State<ChatDiaryPromptDialog>
               ),
       ),
       actions: [
-        TextButton.icon(
+        TextButton(
           onPressed: () => setState(() {
             _custom = false;
             _invalid = false;
             _controller.text = _defaultPrompt();
           }),
-          icon: const Icon(Icons.restart_alt, size: 18),
-          label: Text(l10n.chatDiaryRestoreDefault),
+          child: Text(l10n.chatDiaryRestoreDefault),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),

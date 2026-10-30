@@ -1,13 +1,11 @@
 import 'dart:async' show unawaited;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 /// 建議列本體高度（不含外距）。
 const double kEditorPersonSuggestionBarHeight = 48;
@@ -238,7 +236,7 @@ class _PersonSuggestionChip extends StatelessWidget {
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       backgroundColor: chipBg,
       selectedColor: chipBg,
-      side: tagBorderSide(
+      side: accentChipBorderSide(
         appColors,
         colorScheme,
         chipBg,

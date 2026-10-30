@@ -1,33 +1,32 @@
 import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:go_router/go_router.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_export_actions.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class PersonDetailPage extends ConsumerWidget {
   const PersonDetailPage({required this.personId, super.key});
@@ -58,9 +57,7 @@ class PersonDetailPage extends ConsumerWidget {
       return;
     }
     try {
-      await ref
-          .read(vaultPeopleServiceProvider)
-          .deletePerson(session, personId);
+      await ref.read(vaultRepositoryProvider).deletePerson(session, personId);
       ref.invalidate(peopleCatalogProvider);
       if (context.mounted) {
         context.pop();
@@ -81,13 +78,13 @@ class PersonDetailPage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     Person person,
-    List<EntryIndexRecord> entries,
+    List<DiaryEntrySummary> entries,
   ) async {
     if (entries.isEmpty) {
       return;
     }
     final Set<EntryId> entryIds = entries
-        .map((EntryIndexRecord entry) => entry.id)
+        .map((DiaryEntrySummary entry) => entry.id)
         .toSet();
     await exportEntriesAsHtml(
       context,
@@ -101,7 +98,7 @@ class PersonDetailPage extends ConsumerWidget {
     required BuildContext context,
     required WidgetRef ref,
     required Person person,
-    required List<EntryIndexRecord> entries,
+    required List<DiaryEntrySummary> entries,
     required bool enabled,
   }) {
     return Tooltip(
@@ -109,9 +106,8 @@ class PersonDetailPage extends ConsumerWidget {
       child: TextButton.icon(
         key: const ValueKey<String>('person-export-recap'),
         onPressed: enabled
-            ? () => unawaited(
-                _exportRelatedRecap(context, ref, person, entries),
-              )
+            ? () =>
+                  unawaited(_exportRelatedRecap(context, ref, person, entries))
             : null,
         icon: const Icon(Icons.ios_share_rounded, size: 18),
         label: Text(context.l10n.homeExportRecapLabel),
@@ -129,7 +125,7 @@ class PersonDetailPage extends ConsumerWidget {
     final AsyncValue<Person?> personAsync = ref.watch(
       personDetailProvider(personId),
     );
-    final AsyncValue<List<EntryIndexRecord>> relatedAsync = ref.watch(
+    final AsyncValue<List<DiaryEntrySummary>> relatedAsync = ref.watch(
       personRelatedEntriesProvider(personId),
     );
     final AsyncValue<Map<PersonId, PersonMentionStats>> statsAsync = ref.watch(
@@ -321,11 +317,10 @@ class PersonDetailPage extends ConsumerWidget {
                                           itemCount: summaryItems.length,
                                           separatorBuilder: (_, _) =>
                                               const SizedBox(width: 8),
-                                          itemBuilder:
-                                              (
-                                                BuildContext context,
-                                                int index,
-                                              ) => summaryItems[index],
+                                          itemBuilder: (
+                                            BuildContext context,
+                                            int index,
+                                          ) => summaryItems[index],
                                         ),
                                       ),
                                     ),
@@ -345,7 +340,7 @@ class PersonDetailPage extends ConsumerWidget {
                                     context: context,
                                     ref: ref,
                                     person: person,
-                                    entries: const <EntryIndexRecord>[],
+                                    entries: const <DiaryEntrySummary>[],
                                     enabled: false,
                                   ),
                                   child: const AppLoadingState(),
@@ -362,7 +357,7 @@ class PersonDetailPage extends ConsumerWidget {
                                         context: context,
                                         ref: ref,
                                         person: person,
-                                        entries: const <EntryIndexRecord>[],
+                                        entries: const <DiaryEntrySummary>[],
                                         enabled: false,
                                       ),
                                       child: Text(
@@ -373,7 +368,7 @@ class PersonDetailPage extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                              data: (List<EntryIndexRecord> entries) {
+                              data: (List<DiaryEntrySummary> entries) {
                                 if (entries.isEmpty) {
                                   return SliverToBoxAdapter(
                                     child: AppSectionCard(
@@ -481,18 +476,18 @@ class _PersonDetailSectionCard extends StatelessWidget {
           : colors.previewPanel,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w800,
-              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 12),
-            child,
-          ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
       ),
     );
   }

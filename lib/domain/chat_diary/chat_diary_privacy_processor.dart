@@ -1,6 +1,6 @@
-import '../people/person.dart';
-import '../people/person_name_matcher.dart';
-import 'chat_diary_session.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/person_name_matcher.dart';
 
 class ChatDiaryPrivacyProcessor {
   ChatDiaryPrivacyProcessor(

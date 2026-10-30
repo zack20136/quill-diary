@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -41,9 +41,8 @@ void main() {
         saltBytes: List<int>.generate(16, (int index) => index),
       ),
     );
-    await File(
-      await pathStrategy.recoveryMetadataPath(),
-    ).writeAsString(jsonEncode(metadata.toJson()));
+    await File(await pathStrategy.recoveryMetadataPath())
+        .writeAsString(jsonEncode(metadata.toJson()));
     session = UnlockedVaultSession(
       vaultId: metadata.vaultId,
       trustedDevice: false,
@@ -242,9 +241,8 @@ void main() {
       createdAt: timestamp,
       updatedAt: timestamp,
     );
-    await File(
-      await pathStrategy.editorDraftFilePath('bad-json'),
-    ).writeAsBytes(encrypted.toFileBytes());
+    await File(await pathStrategy.editorDraftFilePath('bad-json'))
+        .writeAsBytes(encrypted.toFileBytes());
 
     await expectLater(
       store.read('bad-json', session),

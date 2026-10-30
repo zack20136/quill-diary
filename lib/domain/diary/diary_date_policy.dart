@@ -1,4 +1,4 @@
-import '../shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 abstract final class DiaryDatePolicy {
   static final DateTime earliestSelectableDate = DateTime(2000);

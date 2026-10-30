@@ -1,8 +1,5 @@
+import 'package:quill_diary/domain/diary/diary_markdown.dart';
 import 'package:ulid/ulid.dart';
-
-final RegExp kEditorCheckboxLinePattern = RegExp(
-  r'^(\s*)-\s*\[([ xX])\]\s*(.*)$',
-);
 
 String generateEditorLineId() => 'ln_${Ulid().toBase32(lowercase: true)}';
 
@@ -54,7 +51,7 @@ class EditorCheckboxLine extends EditorBodyLine {
 }
 
 bool editorBodyHasCheckboxBlocks(String markdown) {
-  return editorLinesHaveCheckbox(parseEditorBodyLines(markdown));
+  return markdownHasCheckboxLines(markdown);
 }
 
 bool editorLinesHaveCheckbox(List<EditorBodyLine> lines) {
@@ -108,7 +105,7 @@ List<EditorBodyLine> reparseEditorBodyLinesPreservingIds(
 }
 
 EditorBodyLine _parseMarkdownLine(String line) {
-  final RegExpMatch? checkboxMatch = kEditorCheckboxLinePattern.firstMatch(
+  final RegExpMatch? checkboxMatch = markdownCheckboxLinePattern.firstMatch(
     line,
   );
   if (checkboxMatch != null) {
@@ -325,7 +322,7 @@ String setCheckboxLineChecked({
   if (lineIndex < 0 || lineIndex >= lines.length) {
     return markdown;
   }
-  final RegExpMatch? match = kEditorCheckboxLinePattern.firstMatch(
+  final RegExpMatch? match = markdownCheckboxLinePattern.firstMatch(
     lines[lineIndex],
   );
   if (match == null) {

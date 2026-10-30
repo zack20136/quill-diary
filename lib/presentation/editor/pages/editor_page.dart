@@ -1,29 +1,23 @@
 import 'dart:async';
-import 'dart:collection';
-import 'dart:io';
-import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/editor/editor_draft_snapshot.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
-import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
@@ -31,43 +25,40 @@ import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_date_policy.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_saved_conversation_button.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_form_sections.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_keyboard_chrome.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_person_suggestion_panel.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_top_bar.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/presentation/tag/widgets/tag_picker_dialog.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-
-import '../../chat_diary/chat_diary_saved_conversation_button.dart';
-import '../widgets/editor_attachment_strip.dart';
-import '../widgets/editor_form_sections.dart';
-import '../widgets/editor_hybrid_body.dart';
-import '../widgets/editor_keyboard_chrome.dart';
-import '../widgets/editor_person_suggestion_panel.dart';
-import '../widgets/editor_preview_gallery.dart';
-import '../widgets/editor_top_bar.dart';
-
-part '../widgets/editor_dialogs.dart';
 
 class EditorPage extends ConsumerStatefulWidget {
   const EditorPage({
@@ -114,9 +105,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool _didOfferDraftRestore = false;
   bool _handlingDraftRestore = false;
   bool _preservesEditorOnLock = false;
-  int _previewCheckboxSaveVersion = 0;
-  bool _draftPersistInFlight = false;
-  bool _draftPersistQueued = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
   late final ProviderSubscription<AsyncValue<AppSessionState>>
@@ -133,8 +121,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   static const String _newDraftKey = '__new__';
 
-  EditorFlowController get _editorFlow =>
-      ref.read(editorFlowControllerProvider);
+  late final EditorFlowController _editorFlow;
+
+  late final EditorFlowSession _flowSession;
 
   bool get _isEditing => !_previewMode;
   String get _draftKey => widget.chatId != null
@@ -158,6 +147,15 @@ class _EditorPageState extends ConsumerState<EditorPage>
   @override
   void initState() {
     super.initState();
+    _editorFlow = ref.read(editorFlowControllerProvider);
+    // 在仍可讀取 Provider 時建立，dispose 只使用已擷取的操作與欄位快照。
+    _flowSession = _editorFlow.startSession(
+      onDraftPersisted: (result) {
+        _draftCreatedAt = result.record.createdAt;
+        _lastPersistedDraftSnapshot = result.snapshot;
+      },
+    );
+
     WidgetsBinding.instance.addObserver(this);
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _provisionalEntryId =
@@ -185,7 +183,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     WidgetsBinding.instance.removeObserver(this);
     _sessionSubscription.close();
     _persistDraftBeforeDispose();
-    _draftPersistQueued = false;
+    _flowSession.close();
     _dateController.removeListener(_onDraftChanged);
     _tagsController.removeListener(_onDraftChanged);
     _titleController.removeListener(_onDraftChanged);
@@ -311,7 +309,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         _showEntryRequiredHint = false;
       }
     });
-    _scheduleDraftPersist();
+    unawaited(_persistDraft());
   }
 
   void _onPreviewCheckboxChanged(String markdown) {
@@ -331,16 +329,15 @@ class _EditorPageState extends ConsumerState<EditorPage>
     DiaryEntry entry,
     String markdown,
   ) async {
-    final int saveVersion = ++_previewCheckboxSaveVersion;
     try {
-      final EditorSaveResult result = await _editorFlow.saveEntry(
+      final EditorSaveResult? result = await _flowSession.savePreview(
         EditorSaveRequest(
           draftKey: _draftKey,
           session: session,
           existingEntry: entry,
           titleRaw: _titleController.text,
           dateValue: _dateController.text,
-          entryTime: _entryTime,
+          entryTime: (hour: _entryTime.hour, minute: _entryTime.minute),
           tagsRaw: _tagsController.text,
           markdownBodyRaw: markdown,
           attachmentIds: List<AssetId>.from(_attachmentIds),
@@ -349,13 +346,13 @@ class _EditorPageState extends ConsumerState<EditorPage>
           switchToPreview: true,
         ),
       );
-      if (!mounted || saveVersion != _previewCheckboxSaveVersion) {
+      if (!mounted || result == null) {
         return;
       }
       _activeEntry = result.savedEntry;
       _lastSavedSnapshot = editorDraftSnapshotFromEntry(result.savedEntry);
     } catch (_) {
-      // Keep optimistic UI; user can retry by toggling again.
+      // 保留畫面上的勾選狀態，使用者可再次切換重試。
     }
   }
 
@@ -405,69 +402,33 @@ class _EditorPageState extends ConsumerState<EditorPage>
     return false;
   }
 
-  void _scheduleDraftPersist() {
-    if (_previewMode) {
-      return;
-    }
-    if (_draftPersistInFlight) {
-      _draftPersistQueued = true;
-      return;
-    }
-    unawaited(_persistDraft());
-  }
-
   Future<void> _persistDraft() async {
-    if (_draftPersistInFlight || _shouldSkipDraftPersist()) {
-      return;
-    }
-    _draftPersistInFlight = true;
-    final UnlockedVaultSession? session = _activeSession;
-    if (session == null) {
-      _draftPersistInFlight = false;
-      return;
-    }
-
-    try {
-      final EditorPersistDraftResult result = await _editorFlow.persistDraft(
-        EditorPersistDraftRequest(
-          draftKey: _draftKey,
-          snapshot: _currentDraftSnapshot(),
-          tagsRaw: _tagsController.text,
-          attachmentIds: List<AssetId>.from(_attachmentIds),
-          pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
-          session: session,
-          createdAt: _draftCreatedAt ?? DateTime.now(),
-          provisionalEntryId: _provisionalEntryId ??=
-              widget.entryId ?? generateEntryId(),
-          existingEntryId: widget.entryId,
-          salvageSourceFindings: <Map<String, Object?>>[
-            for (final VaultFinding finding in _salvageRetireFindings)
-              finding.toJson(),
-          ],
-        ),
-      );
-      _draftCreatedAt = result.record.createdAt;
-      _lastPersistedDraftSnapshot = result.snapshot;
-    } finally {
-      _draftPersistInFlight = false;
-      if (_draftPersistQueued) {
-        _draftPersistQueued = false;
-        if (!_previewMode) {
-          unawaited(_persistDraft());
-        }
-      }
-    }
+    if (_shouldSkipDraftPersist()) return;
+    final session = _activeSession;
+    if (session == null) return;
+    await _flowSession.persistDraft(
+      EditorPersistDraftRequest(
+        draftKey: _draftKey,
+        snapshot: _currentDraftSnapshot(),
+        tagsRaw: _tagsController.text,
+        attachmentIds: List<AssetId>.from(_attachmentIds),
+        pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
+        session: session,
+        createdAt: _draftCreatedAt ?? DateTime.now(),
+        provisionalEntryId: _provisionalEntryId ??=
+            widget.entryId ?? generateEntryId(),
+        existingEntryId: widget.entryId,
+        salvageSourceFindings: <Map<String, Object?>>[
+          for (final VaultFinding finding in _salvageRetireFindings)
+            finding.toJson(),
+        ],
+      ),
+    );
   }
 
   Future<void> _persistDraftNow() async {
-    if (_draftPersistInFlight) {
-      _draftPersistQueued = true;
-    } else {
-      await _persistDraft();
-    }
-    while (_draftPersistInFlight || _draftPersistQueued) {
-      await Future<void>.delayed(Duration.zero);
-    }
+    await _persistDraft();
+    await _flowSession.flushDrafts();
   }
 
   Future<void> _requestClose() async {
@@ -513,7 +474,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _discardLocalDraft() async {
-    _draftPersistQueued = false;
+    _flowSession.reset();
+    await _flowSession.flushDrafts();
     await _editorFlow.discardDraft(_draftKey);
     _lastPersistedDraftSnapshot = null;
   }
@@ -651,8 +613,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _didLoadExisting = false;
     _didOfferDraftRestore = false;
     _handlingDraftRestore = false;
-    _draftPersistInFlight = false;
-    _draftPersistQueued = false;
+    _flowSession.reset();
     _previewMode = widget.entryId != null && !widget.startInEditMode;
     _entryTime = TimeOfDay.now();
     _provisionalEntryId = widget.entryId ?? generateEntryId();
@@ -773,7 +734,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                               context.l10n.sessionBlockedRecoveryRequiredTitle,
                           message: context.l10n.editorNeedsRecoveryKeyMessage,
                           actionLabel: context.l10n.homeGoToSettings,
-                          onAction: () => context.push(AppRouter.settingsRoute),
+                          onAction: () => context.push(AppRoutes.settingsRoute),
                         ),
                       );
                     }
@@ -818,9 +779,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 child: Builder(
                                   builder: (BuildContext context) {
                                     final bool keyboardVisible =
-                                        MediaQuery.viewInsetsOf(
-                                          this.context,
-                                        ).bottom >
+                                        MediaQuery.viewInsetsOf(this.context)
+                                            .bottom >
                                         0;
                                     final bool hideEditorChromeForKeyboard =
                                         _isEditing && keyboardVisible;
@@ -1030,9 +990,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                     final double bottomSafe = keyboardInset > 0
                                         ? 6
                                         : 8 +
-                                              MediaQuery.paddingOf(
-                                                context,
-                                              ).bottom;
+                                              MediaQuery.paddingOf(context)
+                                                  .bottom;
                                     return Positioned(
                                       left: 10,
                                       right: 10,
@@ -1184,8 +1143,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   Future<List<TagCatalogUsageItem>> _tagSuggestionsFromIndexAsync() async {
     try {
-      final List<EntryIndexRecord> records = await ref.read(
-        allEntryIndexRecordsProvider.future,
+      final List<DiaryEntrySummary> records = await ref.read(
+        allDiaryEntrySummariesProvider.future,
       );
       final catalog = await ref.read(tagCatalogProvider.future);
       return mergeTagCatalogWithUsage(catalog, diaryPresenceTagCounts(records));
@@ -1280,9 +1239,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     _hybridBodyKey.currentState?.flushBodyToController();
-    _draftPersistQueued = false;
+    _flowSession.reset();
     final chatStore = ref.read(chatDiaryStoreProvider);
-    final keyFor = ref.read(aiConnectionSettingsStoreProvider).readApiKey;
+    final keyFor = ref.read(aiSettingsStoreProvider).readApiKey;
     bool canUpdateUi() =>
         mounted &&
         ref.read(effectiveAppSessionProvider).value?.session == session;
@@ -1315,7 +1274,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           existingEntry: entry,
           titleRaw: _titleController.text,
           dateValue: _dateController.text,
-          entryTime: _entryTime,
+          entryTime: (hour: _entryTime.hour, minute: _entryTime.minute),
           tagsRaw: _tagsController.text,
           markdownBodyRaw: _bodyController.text,
           attachmentIds: List<AssetId>.from(_attachmentIds),
@@ -1383,7 +1342,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           _pendingAttachments.remove(attachment);
       }
     });
-    _scheduleDraftPersist();
+    unawaited(_persistDraft());
   }
 
   List<EditorAttachmentItem> _orderedAttachments(
@@ -1412,7 +1371,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         newIndex: newIndex,
       );
     });
-    _scheduleDraftPersist();
+    unawaited(_persistDraft());
   }
 
   Future<void> _openImagePreviewGallery({
@@ -1435,7 +1394,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         itemCount: gallery.items.length,
         initialIndex: gallery.initialIndex,
         imageBuilder: (context, index) =>
-            _GalleryImagePane(item: gallery.items[index]),
+            EditorGalleryImagePane(item: gallery.items[index]),
         onDownload: (context, index) => downloadGalleryImage(
           ref: ref,
           context: context,
@@ -1484,7 +1443,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           child: Align(
             child: Material(
               color: Colors.transparent,
-              child: _TagsStudioDialog(
+              child: TagPickerDialog(
                 initialCsv: _tagsController.text,
                 suggestions: sorted,
                 onDismiss: () => Navigator.of(dialogContext).pop(),
@@ -1529,7 +1488,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         staged.map((PendingAttachment attachment) => attachment.assetId),
       );
     });
-    _scheduleDraftPersist();
+    unawaited(_persistDraft());
   }
 
   Future<void> _pickFile() async {
@@ -1569,6 +1528,69 @@ class _EditorPageState extends ConsumerState<EditorPage>
         staged.map((PendingAttachment attachment) => attachment.assetId),
       );
     });
-    _scheduleDraftPersist();
+    unawaited(_persistDraft());
+  }
+}
+
+class _RestoreDraftDialog extends StatelessWidget {
+  const _RestoreDraftDialog({
+    required this.record,
+    required this.hasExistingEntry,
+  });
+
+  final EditorDraftRecord record;
+  final bool hasExistingEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String titleText = record.title?.trim().isNotEmpty == true
+        ? record.title!.trim()
+        : context.l10n.editorUntitledDraft;
+    final String updatedAtText = DisplayFormat.formatDateTime(
+      context.l10n,
+      record.updatedAt,
+    );
+    return AppDialogShell(
+      title: context.l10n.editorRestoreDraftTitle,
+      content: Text(
+        hasExistingEntry
+            ? context.l10n.editorRestoreDraftOverwrite(titleText, updatedAtText)
+            : context.l10n.editorRestoreDraftPrompt(titleText, updatedAtText),
+        style: theme.textTheme.bodyMedium,
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(context.l10n.editorRestoreDraftDecline),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(context.l10n.editorRestoreDraftAccept),
+        ),
+      ],
+    );
+  }
+}
+
+class _DiscardDraftDialog extends StatelessWidget {
+  const _DiscardDraftDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppDialogShell(
+      title: context.l10n.editorDiscardDraftTitle,
+      content: Text(context.l10n.editorDiscardDraftBody),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(context.l10n.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(context.l10n.editorDiscardDraftConfirm),
+        ),
+      ],
+    );
   }
 }

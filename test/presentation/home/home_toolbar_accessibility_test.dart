@@ -3,7 +3,7 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
@@ -29,7 +29,7 @@ void main() {
     await tester.pumpWidget(
       host(
         HomeEntryCard(
-          entry: buildEntryIndexRecord(),
+          entry: buildDiaryEntrySummary(),
           typography: EditorTypographyPreferences.defaults,
           selectionActive: true,
           selected: true,

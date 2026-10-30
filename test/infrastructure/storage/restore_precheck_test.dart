@@ -89,9 +89,8 @@ void main() {
       test('同 vault、trusted 且同代金鑰時預期還原後可 trusted 解鎖', () {
         expect(buildPrecheck().expectsTrustedUnlockAfterRestore, isTrue);
         expect(
-          buildPrecheck(
-            localHasTrustedDevice: false,
-          ).expectsTrustedUnlockAfterRestore,
+          buildPrecheck(localHasTrustedDevice: false)
+              .expectsTrustedUnlockAfterRestore,
           isFalse,
         );
         expect(
@@ -101,7 +100,8 @@ void main() {
           isFalse,
         );
         expect(
-          buildPrecheck(localVaultId: 'vlt_other').expectsTrustedUnlockAfterRestore,
+          buildPrecheck(localVaultId: 'vlt_other')
+              .expectsTrustedUnlockAfterRestore,
           isFalse,
         );
       });
@@ -116,9 +116,8 @@ void main() {
         );
         expect(buildPrecheck().canResumeTrustedSession(priorSession), isTrue);
         expect(
-          buildPrecheck(
-            localHasTrustedDevice: false,
-          ).canResumeTrustedSession(priorSession),
+          buildPrecheck(localHasTrustedDevice: false)
+              .canResumeTrustedSession(priorSession),
           isFalse,
         );
         expect(buildPrecheck().canResumeTrustedSession(null), isFalse);
@@ -143,7 +142,8 @@ void main() {
     group('expectsRecoveryKeyAfterRestore', () {
       test('需手動輸入金鑰時預期還原後走復原金鑰流程', () {
         expect(
-          buildPrecheck(localVaultId: 'vlt_other').expectsRecoveryKeyAfterRestore,
+          buildPrecheck(localVaultId: 'vlt_other')
+              .expectsRecoveryKeyAfterRestore,
           isTrue,
         );
         expect(

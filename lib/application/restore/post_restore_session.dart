@@ -1,19 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/session_route_snapshot.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/application/restore/restore_backup_flow.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_route_snapshot.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/database/database_providers.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-
-import 'restore_prepared_context.dart';
 
 Future<AppSessionState> finishRestoreSession(
   Ref ref, {
@@ -21,8 +17,9 @@ Future<AppSessionState> finishRestoreSession(
   UnlockedVaultSession? livePriorSession,
 }) async {
   await ref.read(appSessionProvider.notifier).beginPostRestoreStartup();
-  ref.invalidate(vaultTransferServiceProvider);
-  ref.invalidate(vaultArchiveIoProvider);
+  ref.invalidate(vaultBackupIoProvider);
+  ref.invalidate(portableExportIoProvider);
+  ref.invalidate(portableImportIoProvider);
   ref.invalidate(vaultRepositoryProvider);
   ref.invalidate(indexDatabaseManagerProvider);
   ref.invalidate(editorDraftKeysProvider);
@@ -46,7 +43,7 @@ Future<AppSessionState> finishRestoreSession(
           prepared.backupRecoveryKey?.trim().isNotEmpty == true;
       if (!usedRecoveryKey && !resumeTrustedSessionAfterRestore) {
         await ref
-            .read(vaultRepairServiceProvider)
+            .read(vaultRepositoryProvider)
             .rebuildIndex(sessionState.session!);
       }
     }
@@ -55,15 +52,7 @@ Future<AppSessionState> finishRestoreSession(
     ref.read(sessionRouteSnapshotProvider.notifier).clear();
     ref.read(appSessionProvider.notifier).endTrustedUnlockBootstrap();
     if (sessionState.isUnlocked && sessionState.session != null) {
-      ref
-        ..invalidate(homeEntryIndexListProvider)
-        ..invalidate(homePinnedEntryIdsProvider)
-        ..invalidate(calendarGridEntriesProvider)
-        ..invalidate(calendarEntriesProvider)
-        ..invalidate(entryDateBoundsProvider)
-        ..invalidate(allEntryIndexRecordsProvider)
-        ..invalidate(tagCatalogProvider);
-      ref.read(entryIndexRevisionProvider.notifier).bump();
+      ref.read(diaryRevisionProvider.notifier).bump();
       ref.invalidate(peopleCatalogProvider);
     }
     ref.invalidate(sessionStartupProvider);

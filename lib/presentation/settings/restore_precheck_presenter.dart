@@ -1,9 +1,6 @@
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-
-import '../../application/settings/settings_text.dart';
 
 class RestorePrecheckSummaryItem {
   const RestorePrecheckSummaryItem({
@@ -61,7 +58,7 @@ List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
         RestorePrecheckSummaryItem(
           icon: Icons.tips_and_updates_outlined,
           title: l10n.settingsRestorePrecheckHintTitle,
-          body: settingsRecoveryKeyHintLine(l10n, hint),
+          body: l10n.settingsRecoveryKeyHintLine(hint),
         ),
       );
     }
@@ -88,7 +85,7 @@ List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
         RestorePrecheckSummaryItem(
           icon: Icons.tips_and_updates_outlined,
           title: l10n.settingsRestorePrecheckHintTitle,
-          body: settingsRecoveryKeyHintLine(l10n, hint),
+          body: l10n.settingsRecoveryKeyHintLine(hint),
         ),
       );
     }
@@ -111,39 +108,6 @@ List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
   );
 
   return items;
-}
-
-List<String> buildRestoreConfirmBulletPoints(
-  AppLocalizations l10n,
-  RestorePrecheck precheck,
-) {
-  final List<String> bullets = <String>[];
-  if (precheck.willOverwriteLocalVault) {
-    bullets.add(l10n.settingsRestoreBulletOverwriteWarning);
-  } else {
-    bullets.add(l10n.settingsRestoreBulletFreshVaultNote);
-  }
-  bullets.add(l10n.settingsRestoreBulletRebuildIndex);
-
-  if (precheck.recoveryKeyRotatedSinceBackup) {
-    bullets.add(l10n.settingsRestoreBulletRotatedBackup);
-    final String hint = precheck.backupRecoveryHint;
-    if (hint.isNotEmpty) {
-      bullets.add(settingsRecoveryKeyHintLine(l10n, hint));
-    }
-  } else if (precheck.expectsTrustedUnlockAfterRestore) {
-    bullets.add(l10n.settingsRestoreBulletTrustedAutoUnlock);
-    bullets.add(l10n.settingsRestoreBulletTrustedAutoUnlockFallback);
-  } else if (precheck.expectsRecoveryKeyAfterRestore) {
-    bullets.add(l10n.settingsRestoreBulletRecoveryKeyAfterRestore);
-    final String hint = precheck.backupRecoveryHint;
-    if (hint.isNotEmpty) {
-      bullets.add(settingsRecoveryKeyHintLine(l10n, hint));
-    }
-  }
-
-  bullets.add(l10n.settingsRestoreBulletRewrapNote);
-  return bullets;
 }
 
 String restoreRecoveryKeyDialogSubtitle(

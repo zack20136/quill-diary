@@ -2,27 +2,26 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
 Future<Person?> showPersonComposerDialog(
@@ -336,7 +335,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
 
     setState(() => _saving = true);
     try {
-      final service = ref.read(vaultPeopleServiceProvider);
+      final service = ref.read(vaultRepositoryProvider);
       final Person saved = _loaded == null
           ? await service.createPerson(session, draft)
           : await service.updatePerson(
@@ -363,7 +362,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           return;
         }
         try {
-          final service = ref.read(vaultPeopleServiceProvider);
+          final service = ref.read(vaultRepositoryProvider);
           final Person saved = _loaded == null
               ? await service.createPerson(
                   session,
@@ -492,9 +491,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         ? l10n.peopleMentionNameUsesNameFallback
         : nameText;
     final String? selected = _effectiveMentionName;
-    final TextStyle? chipStyle = Theme.of(
-      context,
-    ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600);
+    final TextStyle? chipStyle = Theme.of(context).textTheme.labelMedium
+        ?.copyWith(fontWeight: FontWeight.w600);
     return Column(
       key: const Key('person-mention-name-picker'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -504,10 +502,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Text(
             l10n.peopleFieldMentionName,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.primary,
-            ),
+            style: Theme.of(context).textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800, color: cs.primary),
           ),
         ),
         const SizedBox(height: 14),
@@ -537,9 +533,9 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               return ChoiceChip(
                 key: Key('person-mention-name-alias-$alias'),
                 label: Text(alias, style: chipStyle),
-                selected: selected != null &&
-                    normalizePersonName(selected) ==
-                        normalizePersonName(alias),
+                selected:
+                    selected != null &&
+                    normalizePersonName(selected) == normalizePersonName(alias),
                 onSelected: _saving
                     ? null
                     : (bool value) {
@@ -586,9 +582,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           return FilterChip(
             label: Text(
               relationshipTypeLabel(type, languageCode),
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             selected: _relationships.contains(type.id),
             onSelected: _saving
@@ -615,7 +610,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     } else if (_loaded != null) {
       initialColor = defaultPersonAccentColor(_loaded!.id);
     } else {
-      initialColor = kAccentColorPresets.first;
+      initialColor = accentColorPresets.first;
     }
     final Color? picked = await showAccentColorWheelDialog(
       context,
@@ -652,9 +647,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               _accentArgb == null
                   ? l10n.peopleColorAutomatic
                   : l10n.peopleColorCustom,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -664,11 +658,11 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           child: ListView.separated(
             key: const Key('person-color-list'),
             scrollDirection: Axis.horizontal,
-            itemCount: kAccentColorPresets.length,
+            itemCount: accentColorPresets.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (BuildContext context, int index) {
               final int presetIndex = index;
-              final Color color = kAccentColorPresets[presetIndex];
+              final Color color = accentColorPresets[presetIndex];
               final int argb = colorArgb32(color);
               final bool selected = _accentArgb == argb;
               final Color onAccent = accentOnSwatchColor(color);
@@ -801,9 +795,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
   }
 
   InputDecoration _expandingTextFieldDecoration(String label) {
-    return _fieldDecoration(
-      labelText: label,
-    ).copyWith(alignLabelWithHint: true);
+    return _fieldDecoration(labelText: label)
+        .copyWith(alignLabelWithHint: true);
   }
 
   Widget _dateField({
@@ -854,10 +847,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.primary,
-            ),
+            style: Theme.of(context).textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800, color: cs.primary),
           ),
         ),
         const SizedBox(height: 14),

@@ -9,11 +9,7 @@ import '../../helpers/app_test_theme.dart';
 void main() {
   for (final ({Locale locale, Brightness brightness, String name}) scenario
       in <({Locale locale, Brightness brightness, String name})>[
-        (
-          locale: appZhLocale,
-          brightness: Brightness.light,
-          name: '繁中淺色',
-        ),
+        (locale: appZhLocale, brightness: Brightness.light, name: '繁中淺色'),
         (locale: appEnLocale, brightness: Brightness.dark, name: '英文深色'),
       ]) {
     testWidgets('${scenario.name}窄螢幕可顯示交換指南且沒有版面例外', (
@@ -71,10 +67,7 @@ void main() {
         scrollable.position.jumpTo(nextOffset);
         await tester.pump();
       }
-      expect(
-        exchangeSection,
-        findsOneWidget,
-      );
+      expect(exchangeSection, findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

@@ -5,12 +5,12 @@ import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../ai/ai_test_helpers.dart';
@@ -31,8 +31,8 @@ class ChatDiaryNavigationSession extends AppSessionController {
 
 Widget chatDiaryNavigationApp({
   required GoRouter router,
-  required MemoryChatDiaryStore store,
-  required MemoryAiConnectionSettingsStore connections,
+  required OverviewChatDiaryStore store,
+  required OverviewAiSettingsStore connections,
   AiClient Function(AiConnectionConfig, String)? clientFactory,
 }) => ProviderScope(
   overrides: [
@@ -47,12 +47,9 @@ Widget chatDiaryNavigationApp({
       clientFactory ?? (connectionConfig, _) => FakeAiClient(connectionConfig),
     ),
     chatDiaryStoreProvider.overrideWithValue(store),
-    aiConnectionSettingsStoreProvider.overrideWithValue(connections),
-    chatDiarySettingsStoreProvider.overrideWithValue(
-      MemoryChatDiarySettingsStore(),
-    ),
+    aiSettingsStoreProvider.overrideWithValue(connections),
     homeEntriesProvider.overrideWith(
-      (_) => const AsyncData<List<EntryIndexRecord>>([]),
+      (_) => const AsyncData<List<DiaryEntrySummary>>([]),
     ),
     homeEntryIndexListProvider.overrideWith(
       (_) async => const HomeEntryQueryResult(query: '', entries: []),

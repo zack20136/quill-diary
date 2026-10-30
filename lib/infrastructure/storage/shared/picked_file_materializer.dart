@@ -5,19 +5,16 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import '../../../l10n/l10n.dart';
-import 'android_content_uri_import.dart';
-import 'archive_extract.dart';
-import 'portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/shared/android_content_uri_import.dart';
+import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
 
 typedef ReadPlatformFileBytes = Future<Uint8List?> Function(PlatformFile file);
 
-typedef CopyAndroidUriToPath =
-    Future<void> Function({
-      required String sourceUri,
-      required File destinationFile,
-    });
+typedef CopyAndroidUriToPath = Future<void> Function({
+  required String sourceUri,
+  required File destinationFile,
+});
 
 /// 僅測試用 bytes 保底上限；非產品檔案大小限制。
 ///
@@ -45,18 +42,6 @@ final class MaterializedPickedFile {
   final File file;
   final bool shouldDeleteAfterUse;
   final PickedFileSourceKind sourceKind;
-}
-
-String materializationFailureMessage(
-  PickedFileMaterializationFailure failure,
-  AppLocalizations l10n,
-) {
-  return switch (failure) {
-    PickedFileMaterializationFailure.unreadable =>
-      l10n.vaultTransferPickedFileUnreadable,
-    PickedFileMaterializationFailure.tooLargeForBytesFallback =>
-      l10n.vaultTransferPickedFileUnreadable,
-  };
 }
 
 PortableImportResult importResultForMaterializationFailure(

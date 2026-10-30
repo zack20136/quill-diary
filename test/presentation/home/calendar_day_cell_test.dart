@@ -3,7 +3,7 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/widgets/calendar/calendar_day_cell.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
@@ -27,7 +27,7 @@ void main() {
         center: false,
         child: CalendarDayCell(
           day: DateTime(2026, 8, 13),
-          entries: const <EntryIndexRecord>[],
+          entries: const <DiaryEntrySummary>[],
           isSelected: true,
           isToday: true,
           isOutside: false,
@@ -47,9 +47,7 @@ void main() {
     expect(node.flagsCollection.isSelected, Tristate.isTrue);
   });
 
-  testWidgets('暗色模式有日記格子使用 primary 淡色，不用標籤混色', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('暗色模式有日記格子使用 primary 淡色，不用標籤混色', (WidgetTester tester) async {
     final ThemeData darkTheme = appTestTheme(brightness: Brightness.dark);
     final ColorScheme cs = darkTheme.colorScheme;
     final Color expected = Color.alphaBlend(
@@ -58,7 +56,7 @@ void main() {
     );
     final Color muddyTagTint = Color.alphaBlend(
       Color.alphaBlend(
-        kAccentColorPresets.first.withValues(alpha: 0.18),
+        accentColorPresets.first.withValues(alpha: 0.18),
         cs.surface,
       ).withValues(alpha: 0.22),
       cs.surface,
@@ -70,18 +68,15 @@ void main() {
         center: false,
         child: CalendarDayCell(
           day: DateTime(2026, 8, 5),
-          entries: <EntryIndexRecord>[
-            buildEntryIndexRecord(
-              title: '有日記',
-              tags: const <String>['心得'],
-            ),
+          entries: <DiaryEntrySummary>[
+            buildDiaryEntrySummary(title: '有日記', tags: const <String>['心得']),
           ],
           isSelected: false,
           isToday: false,
           isOutside: false,
           rowHeight: 72,
           tagAccents: <String, int>{
-            '心得': colorArgb32(kAccentColorPresets.first),
+            '心得': colorArgb32(accentColorPresets.first),
           },
         ),
       ),

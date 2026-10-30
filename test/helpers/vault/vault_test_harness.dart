@@ -6,13 +6,15 @@ import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../session/fake_app_lock_service.dart';
-import 'fake_device_key_manager.dart';
 import '../vault/test_vault_path_strategy.dart';
+import 'fake_device_key_manager.dart';
 
 class VaultTestHarness {
   VaultTestHarness._();
@@ -22,6 +24,7 @@ class VaultTestHarness {
   late RecordingDeviceKeyManager deviceKeyManager;
   late FakeAppLockService appLockService;
   late VaultRepository repository;
+  late IndexDatabaseManager indexDatabaseManager;
 
   static Future<VaultTestHarness> create({
     RecordingDeviceKeyManager? deviceKeyManager,
@@ -35,11 +38,12 @@ class VaultTestHarness {
     harness.pathStrategy = TestVaultPathStrategy(harness.tempDir);
     harness.deviceKeyManager = deviceKeyManager ?? RecordingDeviceKeyManager();
     harness.appLockService = appLockService ?? FakeAppLockService();
+    harness.indexDatabaseManager = IndexDatabaseManager(harness.pathStrategy);
     harness.repository = VaultRepository(
       pathStrategy: harness.pathStrategy,
       frontMatterCodec: const FrontMatterCodec(),
       cryptoService: cryptoService ?? LocalCryptoService(),
-      indexDatabaseManager: IndexDatabaseManager(harness.pathStrategy),
+      indexDatabaseManager: harness.indexDatabaseManager,
       deviceKeyManager: harness.deviceKeyManager,
       appLockService: harness.appLockService,
       repairFileOperations: repairFileOperations,
@@ -48,19 +52,31 @@ class VaultTestHarness {
     return harness;
   }
 
-  VaultArchiveIo createArchiveIo({
+  ({VaultBackupIo backup, PortableExportIo exporter, PortableImportIo importer})
+  createTransferIo({
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
   }) {
-    return VaultArchiveIo(
-      pathStrategy: pathStrategy,
-      repository: repository,
-      frontMatterCodec: const FrontMatterCodec(),
-      indexDatabaseManager: IndexDatabaseManager(pathStrategy),
-      editorDraftStore: EditorDraftStore(
+    return (
+      backup: VaultBackupIo(
         pathStrategy: pathStrategy,
-        cryptoService: LocalCryptoService(),
+        repository: repository,
+        indexDatabaseManager: IndexDatabaseManager(pathStrategy),
+        editorDraftStore: EditorDraftStore(
+          pathStrategy: pathStrategy,
+          cryptoService: LocalCryptoService(),
+        ),
       ),
-      easyDiaryBackupImporterFactory: easyDiaryBackupImporterFactory,
+      exporter: PortableExportIo(
+        pathStrategy: pathStrategy,
+        repository: repository,
+        frontMatterCodec: const FrontMatterCodec(),
+      ),
+      importer: PortableImportIo(
+        pathStrategy: pathStrategy,
+        repository: repository,
+        frontMatterCodec: const FrontMatterCodec(),
+        easyDiaryBackupImporterFactory: easyDiaryBackupImporterFactory,
+      ),
     );
   }
 

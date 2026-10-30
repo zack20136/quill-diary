@@ -6,7 +6,7 @@
 |------|------|
 | 架構 | [系統架構](架構/系統架構.md)、[模組參考](架構/模組參考.md) |
 | 安全 | [解鎖與會話](安全/解鎖與會話.md)、[加密格式](安全/加密格式.md) |
-| 資料 | [索引資料庫](資料/索引資料庫.md) |
+| 資料 | [本機儲存](資料/本機儲存.md)、[索引資料庫](資料/索引資料庫.md) |
 | 功能 | [首次啟動](功能/首次啟動.md)、[日記編輯器](功能/日記編輯器.md)、[AI 聊天日記](功能/AI-聊天日記.md)、[人物與姓名查詢](功能/人物與姓名查詢.md)、[個人化設定](功能/個人化設定.md) |
 | 資料轉移與維護 | [備份與還原](功能/備份與還原.md)、[日記庫檢查與修復](功能/日記庫檢查與修復.md) |
 | Google 與發布 | [Android 權限與資料揭露](google/Android-權限與資料揭露.md)、[Google Drive OAuth 設定](google/Google-Drive-OAuth-設定.md)、[Google Play 上架](google/Google-Play-上架.md)、[Google Play Billing](google/Google-Play-Billing.md) |

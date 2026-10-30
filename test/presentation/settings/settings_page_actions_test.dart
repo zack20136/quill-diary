@@ -1,19 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/app/app_identifiers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
-import '../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../helpers/presentation/settings/settings_test_scope.dart';
 import '../../helpers/shared/test_l10n.dart';
+import '../../helpers/storage/fake_vault_transfer_services.dart';
 
 class _FakeUrlLauncher extends UrlLauncherPlatform {
   bool launchResult = false;
@@ -66,12 +66,14 @@ void main() {
 
   Future<void> pumpSettingsActionsPage(
     WidgetTester tester, {
-    required FakeVaultTransferService transferService,
+    required FakeVaultBackupService backupService,
+    FakeVaultRestoreService? restoreService,
     AppSessionState? sessionState,
   }) async {
     await tester.pumpWidget(
       settingsTestScope(
-        transferService: transferService,
+        backupService: backupService,
+        restoreService: restoreService,
         driveConnectionState: connectedState,
         recoveryMetadata: recoveryMetadata,
         sessionState:
@@ -91,9 +93,7 @@ void main() {
 
     await pumpSettingsActionsPage(
       tester,
-      transferService: FakeVaultTransferService(
-        connectionState: connectedState,
-      ),
+      backupService: FakeVaultBackupService(connectionState: connectedState),
     );
 
     await scrollSettingsPageUntilVisible(
@@ -116,9 +116,7 @@ void main() {
 
     await pumpSettingsActionsPage(
       tester,
-      transferService: FakeVaultTransferService(
-        connectionState: connectedState,
-      ),
+      backupService: FakeVaultBackupService(connectionState: connectedState),
     );
 
     await scrollSettingsPageUntilVisible(
@@ -139,11 +137,11 @@ void main() {
   });
 
   testWidgets('取消中斷連線時不會呼叫服務', (WidgetTester tester) async {
-    final FakeVaultTransferService transferService = FakeVaultTransferService(
+    final FakeVaultBackupService transferService = FakeVaultBackupService(
       connectionState: connectedState,
     );
 
-    await pumpSettingsActionsPage(tester, transferService: transferService);
+    await pumpSettingsActionsPage(tester, backupService: transferService);
 
     await scrollSettingsPageUntilVisible(
       tester,
@@ -169,11 +167,11 @@ void main() {
   });
 
   testWidgets('確認中斷連線會呼叫服務並顯示成功訊息', (WidgetTester tester) async {
-    final FakeVaultTransferService transferService = FakeVaultTransferService(
+    final FakeVaultBackupService transferService = FakeVaultBackupService(
       connectionState: connectedState,
     );
 
-    await pumpSettingsActionsPage(tester, transferService: transferService);
+    await pumpSettingsActionsPage(tester, backupService: transferService);
 
     await scrollSettingsPageUntilVisible(
       tester,
@@ -206,7 +204,7 @@ void main() {
     });
     File? downloadedFile;
 
-    final FakeVaultTransferService transferService = FakeVaultTransferService(
+    final FakeVaultBackupService transferService = FakeVaultBackupService(
       connectionState: connectedState,
       driveBackups: const <DriveBackupFile>[
         DriveBackupFile(
@@ -215,6 +213,9 @@ void main() {
           createdAt: null,
         ),
       ],
+    );
+
+    final restoreService = FakeVaultRestoreService(
       downloadToTemp: (DriveBackupFile backup) {
         downloadedFile = File('${tempDir.path}/${backup.name}');
         downloadedFile!.writeAsStringSync('backup bytes');
@@ -222,8 +223,11 @@ void main() {
       },
       precheckRestoreError: StateError('restore precheck failed'),
     );
-
-    await pumpSettingsActionsPage(tester, transferService: transferService);
+    await pumpSettingsActionsPage(
+      tester,
+      backupService: transferService,
+      restoreService: restoreService,
+    );
 
     await scrollSettingsPageUntilVisible(
       tester,
@@ -241,7 +245,7 @@ void main() {
 
     expect(downloadedFile, isNotNull);
     expect(downloadedFile!.existsSync(), isFalse);
-    expect(transferService.downloadDriveBackupToTempFileCalls, 1);
-    expect(transferService.precheckRestoreCalls, 1);
+    expect(restoreService.downloadDriveBackupToTempFileCalls, 1);
+    expect(restoreService.precheckRestoreCalls, 1);
   });
 }

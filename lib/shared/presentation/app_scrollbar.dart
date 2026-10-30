@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'page_style.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
 
 /// 全站 scrollbar 尺寸常數。
 abstract final class AppScrollbarMetrics {
@@ -369,9 +369,8 @@ class _AppScrollbarState extends State<AppScrollbar>
     if (themed != null) {
       return themed;
     }
-    return Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: widget.nested ? 0.30 : 0.35);
+    return Theme.of(context).colorScheme.onSurface
+        .withValues(alpha: widget.nested ? 0.30 : 0.35);
   }
 
   Widget _buildThumbVisual(BuildContext context) {
@@ -530,8 +529,7 @@ class AppScrollablePageBody extends StatefulWidget {
   final ScrollController? controller;
 
   @override
-  State<AppScrollablePageBody> createState() =>
-      _AppScrollablePageBodyState();
+  State<AppScrollablePageBody> createState() => _AppScrollablePageBodyState();
 }
 
 class _AppScrollablePageBodyState extends State<AppScrollablePageBody> {

@@ -1,10 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-
-import 'package:quill_diary/app/app_identifiers.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 與 Android 原生 Drive 背景上傳服務通訊。
 class DriveUploadPlatform {

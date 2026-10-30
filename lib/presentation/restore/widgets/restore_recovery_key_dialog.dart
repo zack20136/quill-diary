@@ -1,11 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
-import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
+import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import '../../settings/restore_precheck_presenter.dart';
+import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 
 Future<String?> showRestoreRecoveryKeyDialog(
   BuildContext context, {
@@ -95,7 +93,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             if (hint.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               Text(
-                settingsRecoveryKeyHintLine(l10n, hint),
+                l10n.settingsRecoveryKeyHintLine(hint),
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),

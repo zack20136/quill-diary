@@ -3,22 +3,21 @@ import 'dart:async' show unawaited;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
 /// 人物頁頂列與管理 dialog 共用的關係圖示。
 const IconData kPeopleRelationshipsIcon = Icons.diversity_3_rounded;
@@ -75,9 +74,10 @@ class _RelationshipTypesManageDialogState
     super.dispose();
   }
 
-  bool get _preferZh => Localizations.localeOf(
-    context,
-  ).languageCode.toLowerCase().startsWith('zh');
+  bool get _preferZh =>
+      Localizations.localeOf(context).languageCode
+          .toLowerCase()
+          .startsWith('zh');
 
   String get _languageCode => Localizations.localeOf(context).languageCode;
 
@@ -111,14 +111,21 @@ class _RelationshipTypesManageDialogState
     return state.session;
   }
 
-  void _toastLabelError(ArgumentError error, AppLocalizations l10n) {
-    final String message = error.message?.toString() ?? '';
-    showAppFeedbackToast(
-      context,
-      message.contains('已存在') || message.contains('already')
-          ? l10n.peopleRelationshipNameDuplicate
-          : l10n.peopleRelationshipNameEmpty,
-    );
+  bool _labelTaken(String label, {String? excludingId}) {
+    final List<RelationshipType> types =
+        _localTypes ??
+        ref.read(peopleCatalogProvider).asData?.value.relationshipTypes ??
+        defaultBuiltinRelationshipTypes();
+    for (final RelationshipType type in types) {
+      if (excludingId != null && type.id == excludingId) {
+        continue;
+      }
+      final String existing = _preferZh ? type.labelZh : type.labelEn;
+      if (existing.trim() == label) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _runMutation(
@@ -166,24 +173,16 @@ class _RelationshipTypesManageDialogState
       showAppFeedbackToast(context, l10n.peopleRelationshipNameEmpty);
       return;
     }
-    await _runMutation(
-      (UnlockedVaultSession session) async {
-        await ref
-            .read(vaultPeopleServiceProvider)
-            .addRelationshipType(session, label: label, preferZh: _preferZh);
-        _addCtrl.clear();
-      },
-      onError: (Object error) {
-        if (error is ArgumentError) {
-          _toastLabelError(error, l10n);
-        } else {
-          showAppFeedbackToast(
-            context,
-            userFacingErrorMessage(error, l10n: l10n),
-          );
-        }
-      },
-    );
+    if (_labelTaken(label)) {
+      showAppFeedbackToast(context, l10n.peopleRelationshipNameDuplicate);
+      return;
+    }
+    await _runMutation((UnlockedVaultSession session) async {
+      await ref
+          .read(vaultRepositoryProvider)
+          .addRelationshipType(session, label: label, preferZh: _preferZh);
+      _addCtrl.clear();
+    });
   }
 
   Future<void> _commitRename(String id) async {
@@ -193,30 +192,22 @@ class _RelationshipTypesManageDialogState
       showAppFeedbackToast(context, l10n.peopleRelationshipNameEmpty);
       return;
     }
-    await _runMutation(
-      (UnlockedVaultSession session) async {
-        await ref
-            .read(vaultPeopleServiceProvider)
-            .renameRelationshipType(
-              session,
-              id: id,
-              label: label,
-              preferZh: _preferZh,
-            );
-        _renamingId = null;
-        _renameCtrl.clear();
-      },
-      onError: (Object error) {
-        if (error is ArgumentError) {
-          _toastLabelError(error, l10n);
-        } else {
-          showAppFeedbackToast(
-            context,
-            userFacingErrorMessage(error, l10n: l10n),
+    if (_labelTaken(label, excludingId: id)) {
+      showAppFeedbackToast(context, l10n.peopleRelationshipNameDuplicate);
+      return;
+    }
+    await _runMutation((UnlockedVaultSession session) async {
+      await ref
+          .read(vaultRepositoryProvider)
+          .renameRelationshipType(
+            session,
+            id: id,
+            label: label,
+            preferZh: _preferZh,
           );
-        }
-      },
-    );
+      _renamingId = null;
+      _renameCtrl.clear();
+    });
   }
 
   Future<void> _deleteType(RelationshipType type) async {
@@ -247,7 +238,7 @@ class _RelationshipTypesManageDialogState
 
     await _runMutation((UnlockedVaultSession session) async {
       await ref
-          .read(vaultPeopleServiceProvider)
+          .read(vaultRepositoryProvider)
           .deleteRelationshipType(session, type.id);
       if (_renamingId == type.id) {
         _renamingId = null;
@@ -307,7 +298,7 @@ class _RelationshipTypesManageDialogState
     await _runMutation(
       (UnlockedVaultSession session) async {
         await ref
-            .read(vaultPeopleServiceProvider)
+            .read(vaultRepositoryProvider)
             .reorderRelationshipTypes(session, orderedIds);
       },
       clearLocalOnSuccess: false,
@@ -350,9 +341,7 @@ class _RelationshipTypesManageDialogState
             ),
             IconButton(
               tooltip: l10n.commonActionConfirm,
-              onPressed: _busy
-                  ? null
-                  : () => unawaited(_commitRename(type.id)),
+              onPressed: _busy ? null : () => unawaited(_commitRename(type.id)),
               icon: Icon(Icons.check_rounded, color: cs.primary),
             ),
             IconButton(
@@ -382,10 +371,7 @@ class _RelationshipTypesManageDialogState
           )
         : Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(
-              Icons.drag_handle_rounded,
-              color: cs.outlineVariant,
-            ),
+            child: Icon(Icons.drag_handle_rounded, color: cs.outlineVariant),
           );
 
     return Material(
@@ -414,9 +400,7 @@ class _RelationshipTypesManageDialogState
               ),
               IconButton(
                 tooltip: l10n.peopleDeleteRelationshipAction,
-                onPressed: _busy
-                    ? null
-                    : () => unawaited(_deleteType(type)),
+                onPressed: _busy ? null : () => unawaited(_deleteType(type)),
                 color: cs.error,
                 icon: const Icon(Icons.delete_outline_rounded, size: 20),
               ),
@@ -449,8 +433,7 @@ class _RelationshipTypesManageDialogState
         }
       });
     }
-    final bool canReorder =
-        !_busy && _renamingId == null && types.length > 1;
+    final bool canReorder = !_busy && _renamingId == null && types.length > 1;
 
     return AccentDialogShell(
       icon: kPeopleRelationshipsIcon,
@@ -533,26 +516,30 @@ class _RelationshipTypesManageDialogState
                         unawaited(_reorderTypes(types, oldIndex, newIndex));
                       },
                       proxyDecorator:
-                          (Widget child, int index, Animation<double> animation) {
-                        return AnimatedBuilder(
-                          animation: animation,
-                          builder: (BuildContext context, Widget? child) {
-                            final double t = Curves.easeInOut.transform(
-                              animation.value,
-                            );
-                            return Material(
-                              elevation: 2 + 4 * t,
-                              borderRadius: BorderRadius.circular(14),
-                              color: cs.surface,
-                              shadowColor: theme.shadowColor.withValues(
-                                alpha: 0.18,
-                              ),
+                          (
+                            Widget child,
+                            int index,
+                            Animation<double> animation,
+                          ) {
+                            return AnimatedBuilder(
+                              animation: animation,
+                              builder: (BuildContext context, Widget? child) {
+                                final double t = Curves.easeInOut.transform(
+                                  animation.value,
+                                );
+                                return Material(
+                                  elevation: 2 + 4 * t,
+                                  borderRadius: BorderRadius.circular(14),
+                                  color: cs.surface,
+                                  shadowColor: theme.shadowColor.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                  child: child,
+                                );
+                              },
                               child: child,
                             );
                           },
-                          child: child,
-                        );
-                      },
                       itemBuilder: (BuildContext context, int index) {
                         return _typeRow(
                           l10n: l10n,

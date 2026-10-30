@@ -1,18 +1,18 @@
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
-import 'editor_hybrid_body.dart';
-import 'editor_keyboard_chrome.dart';
-import 'editor_markdown_preview.dart';
-import 'editor_mention_text_field.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_keyboard_chrome.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 
 class EditorTitleSection extends StatelessWidget {
   const EditorTitleSection({
@@ -322,17 +322,17 @@ class _TagsWrap extends StatelessWidget {
         runSpacing: 6,
         children: <Widget>[
           if (showUnsavedTag)
-            TagChip.pair(
+            AccentChip.pair(
               label: context.l10n.editorUnsavedDraftLabel,
               pair: tagUnsavedPair(context.appColors),
             ),
           if (showCharCount && bodyCharCount > 0)
-            TagChip.pair(
+            AccentChip.pair(
               label: DisplayFormat.formatCharCount(context.l10n, bodyCharCount),
-              pair: tagCharCountPair(theme.colorScheme),
+              pair: tagNeutralAccentPair(theme.colorScheme),
             ),
           ...tags.map(
-            (String tag) => TagChip.pair(
+            (String tag) => AccentChip.pair(
               label: tag,
               pair: tagResolvedAccentPair(
                 tag,

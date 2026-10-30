@@ -1,13 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/infrastructure/storage/media_store_export.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
 
 enum GalleryImageSource { encrypted, local }
 
@@ -50,30 +45,6 @@ String galleryDownloadFileName(String? rawName, String mimeType) {
       ? 'image'
       : stem.replaceAll(RegExp(r'[^\w.\-]'), '_');
   return '$safeStem$ext';
-}
-
-Future<Uint8List?> loadGalleryImageBytes({
-  required WidgetRef ref,
-  required GalleryImageItem item,
-}) async {
-  switch (item.source) {
-    case GalleryImageSource.local:
-      final File file = File(item.path);
-      if (!file.existsSync()) {
-        return null;
-      }
-      return file.readAsBytes();
-    case GalleryImageSource.encrypted:
-      final AppSessionState sessionState = await ref.read(
-        effectiveAppSessionProvider.future,
-      );
-      if (!sessionState.isUnlocked || sessionState.session == null) {
-        return null;
-      }
-      return ref
-          .read(vaultEntryStoreProvider)
-          .readDecryptedAssetBytes(sessionState.session!, item.path);
-  }
 }
 
 Future<String?> saveGalleryImageToPictures({

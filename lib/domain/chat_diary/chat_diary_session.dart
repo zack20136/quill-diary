@@ -1,4 +1,5 @@
-import '../ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 class ChatDiaryPrivateRange {
   const ChatDiaryPrivateRange(this.start, this.end);
@@ -331,7 +332,7 @@ class ChatDiarySession {
 
   Map<String, Object?> toJson() {
     return {
-      'schema_version': 2,
+      'schema_version': DataVersions.chatDiary,
       'id': id,
       'vault_id': vaultId,
       'config': connectionConfig.toJson(),
@@ -361,7 +362,7 @@ class ChatDiarySession {
   factory ChatDiarySession.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String;
     final version = json['schema_version'];
-    if (!isValidId(id) || version != 2) {
+    if (!isValidId(id) || version != DataVersions.chatDiary) {
       throw const FormatException('無效的聊天格式');
     }
     final chat = ChatDiarySession(

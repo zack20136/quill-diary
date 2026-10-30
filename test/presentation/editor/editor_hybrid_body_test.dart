@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
@@ -145,10 +145,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(changedMarkdown, '前言\n- [x] 任務三');
-      expect(
-        tester.widget<Checkbox>(find.byType(Checkbox)).value,
-        isTrue,
-      );
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     });
   });
 }

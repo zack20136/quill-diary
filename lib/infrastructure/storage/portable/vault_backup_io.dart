@@ -3,16 +3,15 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
-
-import '../../../domain/recovery/recovery_metadata.dart';
-import '../../database/index_database_manager.dart';
-import '../backup_task_progress.dart';
-import '../editor_draft_store.dart';
-import '../restore_precheck.dart';
-import '../shared/archive_extract.dart';
-import '../vault_path_strategy.dart';
-import '../vault_repository.dart';
-import 'backup_archive_inspection.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 /// 讀寫加密完整 vault 備份 zip 封存。
 ///
@@ -24,19 +23,22 @@ class VaultBackupIo {
     required this._repository,
     required this._indexDatabaseManager,
     required this._editorDraftStore,
+    this._prepareVault,
   });
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
   final IndexDatabaseManager _indexDatabaseManager;
   final EditorDraftStore _editorDraftStore;
+  final Future<void> Function()? _prepareVault;
 
   Future<File> writeBackupZip(
     File target, {
     BackupTaskProgressListener? onProgress,
-  }) => _repository.runVaultMutation(
-    () => _writeBackupZip(target, onProgress: onProgress),
-  );
+  }) => _repository.runVaultMutation(() async {
+    await _prepareVault?.call();
+    return _writeBackupZip(target, onProgress: onProgress);
+  });
 
   Future<File> _writeBackupZip(
     File target, {
@@ -101,7 +103,7 @@ class VaultBackupIo {
     if (!backupFile.existsSync()) {
       return const BackupInspectResult(
         ok: false,
-        message: VaultBackupLayout.missingFileMessage,
+        issue: VaultBackupIssue.missingFile,
         layout: VaultBackupLayout.empty,
       );
     }
@@ -116,7 +118,7 @@ class VaultBackupIo {
     } on Object {
       return const BackupInspectResult(
         ok: false,
-        message: VaultBackupLayout.invalidZipMessage,
+        issue: VaultBackupIssue.invalidZip,
         layout: VaultBackupLayout.empty,
       );
     }
@@ -126,7 +128,7 @@ class VaultBackupIo {
     if (zip.archive.files.isEmpty) {
       return const BackupInspectResult(
         ok: false,
-        message: VaultBackupLayout.invalidZipMessage,
+        issue: VaultBackupIssue.invalidZip,
         layout: VaultBackupLayout.empty,
       );
     }
@@ -135,7 +137,7 @@ class VaultBackupIo {
       zip.archive.files.map((ArchiveFile file) => file.name),
     );
     var ok = layout.isRestorable;
-    var message = ok ? '備份檔案檢查通過。' : layout.failureMessage;
+    var issue = ok ? VaultBackupIssue.passed : layout.issue;
 
     if (ok && layout.hasRecovery) {
       final Uint8List? recoveryBytes = readZipEntry(
@@ -145,26 +147,26 @@ class VaultBackupIo {
       if (recoveryBytes == null ||
           parseRecoveryMetadataBytes(recoveryBytes) == null) {
         ok = false;
-        message = VaultBackupLayout.invalidRecoveryJsonMessage;
+        issue = VaultBackupIssue.invalidRecoveryJson;
       }
     }
 
-    return BackupInspectResult(ok: ok, message: message, layout: layout);
+    return BackupInspectResult(ok: ok, issue: issue, layout: layout);
   }
 
-  /// 還原前驗證 zip 結構並讀取 recovery 預覽；不合格拋 [StateError]。
+  /// 還原前驗證 zip 結構並讀取 recovery 預覽；不合格拋 [VaultBackupException]。
   Future<BackupRecoveryPreview> prepareRestorePreview(File backupFile) async {
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
         if (zip.archive.files.isEmpty) {
-          throw StateError(kInvalidBackupArchiveMessage);
+          throw const VaultBackupException(VaultBackupIssue.invalidArchive);
         }
         final VaultBackupLayout layout = inspectZipEntryNames(
           zip.archive.files.map((ArchiveFile file) => file.name),
         );
         if (!layout.isRestorable) {
-          throw StateError(layout.failureMessage);
+          throw VaultBackupException(layout.issue);
         }
         final Uint8List? recoveryBytes = readZipEntry(
           zip.archive,
@@ -174,16 +176,18 @@ class VaultBackupIo {
             ? null
             : parseRecoveryMetadataBytes(recoveryBytes);
         if (metadata == null) {
-          throw StateError(VaultBackupLayout.invalidRecoveryJsonMessage);
+          throw const VaultBackupException(
+            VaultBackupIssue.invalidRecoveryJson,
+          );
         }
         return BackupRecoveryPreview(metadata: metadata);
       } finally {
         await zip.close();
       }
-    } on StateError {
+    } on VaultBackupException {
       rethrow;
     } on Object {
-      throw StateError(kInvalidBackupArchiveMessage);
+      throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
   }
 
@@ -206,11 +210,13 @@ class VaultBackupIo {
             ? null
             : parseRecoveryMetadataBytes(recoveryBytes);
         if (metadata == null) {
-          throw StateError('此備份沒有復原金鑰資訊，無法驗證。');
+          throw const VaultBackupException(
+            VaultBackupIssue.recoveryInfoMissing,
+          );
         }
         final Uint8List? sampleBytes = readEncryptedSampleBytes(zip.archive);
         if (sampleBytes == null) {
-          throw StateError(kBackupNoEncryptedSampleMessage);
+          throw const VaultBackupException(VaultBackupIssue.noEncryptedSample);
         }
         await _repository.verifyRecoveryKeyAgainstBackupBytes(
           metadata: metadata,
@@ -220,10 +226,10 @@ class VaultBackupIo {
       } finally {
         await zip.close();
       }
-    } on StateError {
+    } on VaultBackupException {
       rethrow;
     } on Object {
-      throw StateError(kInvalidBackupArchiveMessage);
+      throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
   }
 
@@ -251,7 +257,7 @@ class VaultBackupIo {
       } finally {
         await zip.close();
       }
-    } on StateError {
+    } on VaultBackupException {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
@@ -260,7 +266,7 @@ class VaultBackupIo {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
       }
-      throw StateError(kInvalidBackupArchiveMessage);
+      throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
 
     _validateRestoredVaultPayload(tempRoot);
@@ -317,25 +323,23 @@ class VaultBackupIo {
       zip.archive.files.map((ArchiveFile file) => file.name),
     );
     if (!layout.safePaths) {
-      throw StateError(kInvalidBackupArchiveMessage);
+      throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
     if (!layout.isRestorable) {
-      throw StateError(layout.failureMessage);
+      throw VaultBackupException(layout.issue);
     }
   }
 
   void _validateRestoredVaultPayload(Directory root) {
-    final bool hasRecovery = File(
-      p.join(root.path, 'recovery.json'),
-    ).existsSync();
-    final bool hasEntries = Directory(
-      p.join(root.path, 'entries'),
-    ).existsSync();
+    final bool hasRecovery = File(p.join(root.path, 'recovery.json'))
+        .existsSync();
+    final bool hasEntries = Directory(p.join(root.path, 'entries'))
+        .existsSync();
     if (!hasRecovery) {
-      throw StateError('缺少復原金鑰資訊。');
+      throw const VaultBackupException(VaultBackupIssue.missingRecovery);
     }
     if (!hasEntries) {
-      throw StateError('備份檔內容不完整，找不到日記庫資料。');
+      throw const VaultBackupException(VaultBackupIssue.missingVaultPayload);
     }
   }
 
@@ -364,11 +368,11 @@ class VaultBackupIo {
 final class BackupInspectResult {
   const BackupInspectResult({
     required this.ok,
-    required this.message,
+    required this.issue,
     required this.layout,
   });
 
   final bool ok;
-  final String message;
+  final VaultBackupIssue issue;
   final VaultBackupLayout layout;
 }

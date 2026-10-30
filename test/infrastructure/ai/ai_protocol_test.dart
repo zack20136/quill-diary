@@ -148,7 +148,25 @@ void main() {
       customProtocol: protocol,
       baseUrl: 'https://gateway.example/proxy$prefix',
       model: 'model',
+      thinkingLevels: const {'model': AiThinkingLevel.high},
     );
+    final thinking = switch (protocol) {
+      AiApiProtocol.chatCompletions => <String, Object?>{
+        'reasoning_effort': 'high',
+      },
+      AiApiProtocol.responses => <String, Object?>{
+        'reasoning': {'effort': 'high'},
+      },
+      AiApiProtocol.claudeMessages => <String, Object?>{
+        'output_config': {'effort': 'high'},
+      },
+      AiApiProtocol.geminiContent => <String, Object?>{
+        'generationConfig': {
+          'thinkingConfig': {'thinkingLevel': 'high'},
+        },
+      },
+      AiApiProtocol.ollamaChat => <String, Object?>{'think': true},
+    };
     group(protocol.name, () {
       test('連線測試送出非串流原生請求並驗證模型回覆', () async {
         final wire = RecordingAiTransport()..respond(result(protocol));
@@ -163,6 +181,9 @@ void main() {
         expect(request.method, 'POST');
         expect(wire.streams, isEmpty);
         final body = jsonDecode(utf8.decode(request.body!)) as Map;
+        for (final field in thinking.entries) {
+          expect(body[field.key], field.value);
+        }
         if (protocol != AiApiProtocol.geminiContent) {
           expect(body['stream'], false);
         }
@@ -208,6 +229,9 @@ void main() {
           isFalse,
         );
         final body = wire.streams.single.body;
+        for (final field in thinking.entries) {
+          expect(body[field.key], field.value);
+        }
         expect(wire.streams.single.uri.path, startsWith('/proxy$prefix/'));
         expect(wire.streams.single.uri.path, isNot(contains('$prefix$prefix')));
         expect(jsonEncode(body), contains(base64Encode(testAiPng)));

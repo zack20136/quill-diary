@@ -1,18 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 
-import '../../domain/chat_diary/chat_diary_session.dart';
-import '../../infrastructure/chat_diary/chat_diary_settings_store.dart';
-import '../../infrastructure/chat_diary/chat_diary_store.dart';
-import '../../infrastructure/crypto/crypto_providers.dart';
-import '../../infrastructure/storage/storage_path_providers.dart';
-import '../../infrastructure/storage/storage_providers.dart';
-import '../editor/editor_entry_providers.dart';
-import '../session/providers/session_providers.dart';
-import 'chat_diary_controller.dart';
-
-final chatDiarySettingsStoreProvider = Provider<ChatDiarySettingsStore>(
-  (ref) => ChatDiarySettingsStore(),
-);
 final chatDiaryStoreProvider = Provider<ChatDiaryStore>(
   (ref) => ChatDiaryStore(
     paths: ref.watch(vaultPathStrategyProvider),
@@ -24,7 +17,7 @@ final chatDiaryStoreProvider = Provider<ChatDiaryStore>(
 final chatDiarySessionsProvider = FutureProvider<List<ChatDiarySession>>((
   ref,
 ) async {
-  ref.watch(entryIndexRevisionProvider);
+  ref.watch(diaryRevisionProvider);
   final session = await ref.watch(activeVaultSessionProvider.future);
   if (session == null) {
     return const [];

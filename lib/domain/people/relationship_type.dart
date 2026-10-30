@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'person.dart';
+import 'package:quill_diary/domain/people/person.dart';
 
 /// 內建關係類型 id（與舊 enum `.name` 相同，舊資料零轉換）。
 abstract final class BuiltinRelationshipIds {

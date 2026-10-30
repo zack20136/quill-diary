@@ -5,24 +5,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/transfer/vault_backup_service.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/vault_backup_service.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 
 import '../../helpers/session/fake_session_vault_repository.dart';
@@ -216,10 +216,9 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
 class _FakeVaultBackupService extends VaultBackupService {
   _FakeVaultBackupService()
     : super(
-        archiveIo: VaultArchiveIo(
+        backupIo: VaultBackupIo(
           pathStrategy: DummyVaultPathStrategy(),
           repository: FakeSessionVaultRepository(),
-          frontMatterCodec: const FrontMatterCodec(),
           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
           editorDraftStore: EditorDraftStore(
             pathStrategy: DummyVaultPathStrategy(),

@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/diary/diary_markdown.dart';
 
 class HomeEntryPreviewBody extends StatelessWidget {
   const HomeEntryPreviewBody({

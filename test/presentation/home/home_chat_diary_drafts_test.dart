@@ -7,11 +7,11 @@ import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/presentation/home/widgets/home_chat_diary_draft_card.dart';
 import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
@@ -48,7 +48,7 @@ void main() {
             (_) async => [first, second, archived],
           ),
           homeEntriesProvider.overrideWith(
-            (_) => const AsyncData<List<EntryIndexRecord>>([]),
+            (_) => const AsyncData<List<DiaryEntrySummary>>([]),
           ),
           homeEntryIndexListProvider.overrideWith(
             (_) async => const HomeEntryQueryResult(query: '', entries: []),
@@ -110,14 +110,14 @@ void main() {
       );
       final first = testChatDiarySession()..composerText = '聊天甲';
       final second = testChatDiarySession()..composerText = '聊天乙';
-      final store = MemoryChatDiaryStore()
+      final store = OverviewChatDiaryStore()
         ..storedChats[first.id] = jsonEncode(first.toJson())
         ..storedChats[second.id] = jsonEncode(second.toJson())
         ..failingDeleteId = failSecondChat ? second.id : null;
       final repository = FakeEntryIndexVaultRepository(
         allEntries: [
-          buildEntryIndexRecord(id: 'entry-a', title: '正式日記甲', tags: []),
-          buildEntryIndexRecord(id: 'entry-b', title: '正式日記乙', tags: []),
+          buildDiaryEntrySummary(id: 'entry-a', title: '正式日記甲', tags: []),
+          buildDiaryEntrySummary(id: 'entry-b', title: '正式日記乙', tags: []),
         ],
       );
       await tester.pumpWidget(
@@ -127,8 +127,8 @@ void main() {
             effectiveAppSessionProvider.overrideWith((_) async => state),
             chatDiaryStoreProvider.overrideWithValue(store),
             chatDiarySessionsProvider.overrideWith((_) => store.list(session)),
-            aiConnectionSettingsStoreProvider.overrideWithValue(
-              MemoryAiConnectionSettingsStore(),
+            aiSettingsStoreProvider.overrideWithValue(
+              OverviewAiSettingsStore(),
             ),
             vaultRepositoryProvider.overrideWithValue(repository),
             homeEntryIndexListProvider.overrideWith(

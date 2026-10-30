@@ -249,7 +249,10 @@ void main() {
     await tester.tap(find.byKey(const Key('app-date-picker-period-button')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('app-date-picker-month-view')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app-date-picker-month-12')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('app-date-picker-month-12')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -261,10 +264,7 @@ void main() {
     await tester.pumpWidget(_testApp());
     await tester.pumpAndSettle();
 
-    expect(
-      tester.getSize(find.byType(AccentDialogShell)).width,
-      876,
-    );
+    expect(tester.getSize(find.byType(AccentDialogShell)).width, 876);
     expect(find.byType(Divider), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
@@ -279,10 +279,8 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
     await tester.pumpAndSettle();
 
-    Finder fieldFor(String label) => find.ancestor(
-      of: find.text(label),
-      matching: find.byType(InkWell),
-    );
+    Finder fieldFor(String label) =>
+        find.ancestor(of: find.text(label), matching: find.byType(InkWell));
 
     await tester.tap(fieldFor('生日'));
     await tester.pumpAndSettle();
@@ -357,7 +355,7 @@ void main() {
     expect(tester.widget<ChoiceChip>(automatic).selected, isFalse);
 
     final ThemeData theme = appTestTheme();
-    final Color accent = kAccentColorPresets.first;
+    final Color accent = accentColorPresets.first;
     final Finder selectedPreset = find.byKey(
       const Key('person-color-preset-0'),
     );
@@ -369,7 +367,10 @@ void main() {
     );
     final BoxDecoration decoration = colorCircle.decoration as BoxDecoration;
     final Icon checkIcon = tester.widget<Icon>(
-      find.descendant(of: selectedPreset, matching: find.byIcon(Icons.check_rounded)),
+      find.descendant(
+        of: selectedPreset,
+        matching: find.byIcon(Icons.check_rounded),
+      ),
     );
     expect(decoration.color, accentSwatchColor(accent));
     expect(decoration.border?.top.color, theme.colorScheme.primary);
@@ -381,9 +382,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('@ 使用名稱以 ChoiceChip 選名稱與別名且刪別名會回退', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('@ 使用名稱以 ChoiceChip 選名稱與別名且刪別名會回退', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);

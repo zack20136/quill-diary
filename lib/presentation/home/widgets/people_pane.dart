@@ -3,32 +3,30 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/presentation/people/widgets/relationship_types_manage_dialog.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import '../home_layout.dart';
-import 'home_scroll_affordance.dart';
-import 'home_selection_toolbar.dart';
-import 'home_shared_widgets.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 /// 人物分頁；首次開啟後保留名冊、統計與畫面狀態。
 class PeoplePane extends ConsumerStatefulWidget {
@@ -213,9 +211,8 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cs.error),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.error),
                   ),
                 ),
                 TextButton(
@@ -309,7 +306,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                           relationshipTypes: catalog.relationshipTypes,
                           onTap: () => unawaited(
                             context.push(
-                              AppRouter.personDetailLocation(item.person.id),
+                              AppRoutes.personDetailLocation(item.person.id),
                             ),
                           ),
                         ),

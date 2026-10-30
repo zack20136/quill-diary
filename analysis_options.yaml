@@ -30,6 +30,8 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
+    always_use_package_imports: true
+    directives_ordering: true
     discarded_futures: true
     prefer_final_locals: true
     require_trailing_commas: true

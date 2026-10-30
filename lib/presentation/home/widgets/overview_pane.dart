@@ -1,51 +1,49 @@
 import 'dart:async' show unawaited;
-import '../home_formatters.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/domain/diary/diary_date_policy.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/accent_visual.dart';
-import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/shared/presentation/person_visual.dart';
-import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import '../home_export_actions.dart';
-import '../home_layout.dart';
-import '../models/overview_models.dart';
-import '../overview_export.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:go_router/go_router.dart';
-import 'package:quill_diary/app/router.dart';
-import 'home_scroll_affordance.dart';
-import 'home_shared_widgets.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/home/overview_statistics.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/domain/diary/diary_date_policy.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_export_actions.dart';
+import 'package:quill_diary/presentation/home/home_formatters.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/person_visual.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 const double kOverviewScopeControlHeight = 40;
 
 String overviewMetricRangeCaption(
   BuildContext context,
-  MemoryScope scope,
+  OverviewScope scope,
   DateTime focusedMonth,
   int focusedYear,
 ) {
   return switch (scope) {
-    MemoryScope.all => context.l10n.homeOverviewScopeAll,
-    MemoryScope.year => context.l10n.homeOverviewScopeYear(focusedYear),
-    MemoryScope.month => context.l10n.homeOverviewScopeMonth(
+    OverviewScope.all => context.l10n.homeOverviewScopeAll,
+    OverviewScope.year => context.l10n.homeOverviewScopeYear(focusedYear),
+    OverviewScope.month => context.l10n.homeOverviewScopeMonth(
       focusedMonth.year,
       focusedMonth.month,
     ),
@@ -53,25 +51,25 @@ String overviewMetricRangeCaption(
 }
 
 int overviewScopeTotalDays({
-  required MemoryScope scope,
+  required OverviewScope scope,
   required DateTime focusedMonth,
   required int focusedYear,
-  required List<EntryIndexRecord> entries,
+  required List<DiaryEntrySummary> entries,
 }) {
   switch (scope) {
-    case MemoryScope.month:
+    case OverviewScope.month:
       return DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
-    case MemoryScope.year:
+    case OverviewScope.year:
       final DateTime start = DateTime(focusedYear, 1, 1);
       final DateTime end = DateTime(focusedYear + 1, 1, 1);
       return end.difference(start).inDays;
-    case MemoryScope.all:
+    case OverviewScope.all:
       if (entries.isEmpty) {
         return 0;
       }
       final List<DateTime> dates =
           entries
-              .map((EntryIndexRecord item) => item.date.toDateTime())
+              .map((DiaryEntrySummary item) => item.date.toDateTime())
               .toList()
             ..sort();
       return dates.last.difference(dates.first).inDays + 1;
@@ -80,13 +78,13 @@ int overviewScopeTotalDays({
 
 String overviewScopedDiarySectionTitle(
   BuildContext context,
-  MemoryScope scope, {
+  OverviewScope scope, {
   String? selectedTag,
 }) {
   final String base = switch (scope) {
-    MemoryScope.all => context.l10n.homeDiarySectionAll,
-    MemoryScope.year => context.l10n.homeDiarySectionByYear,
-    MemoryScope.month => context.l10n.homeDiarySectionByMonth,
+    OverviewScope.all => context.l10n.homeDiarySectionAll,
+    OverviewScope.year => context.l10n.homeDiarySectionByYear,
+    OverviewScope.month => context.l10n.homeDiarySectionByMonth,
   };
   if (selectedTag == null || selectedTag.isEmpty) {
     return base;
@@ -99,7 +97,7 @@ List<Widget> overviewDiarySectionSlivers({
   required ColorScheme cs,
   required String diarySectionTitle,
   required String diaryEmptyText,
-  required List<EntryIndexRecord>? diaryEntries,
+  required List<DiaryEntrySummary>? diaryEntries,
   required bool diaryLoading,
   Object? diaryError,
 }) {
@@ -129,8 +127,8 @@ List<Widget> overviewDiarySectionSlivers({
     ];
   }
 
-  final List<EntryIndexRecord> entries =
-      diaryEntries ?? const <EntryIndexRecord>[];
+  final List<DiaryEntrySummary> entries =
+      diaryEntries ?? const <DiaryEntrySummary>[];
   if (entries.isEmpty) {
     return <Widget>[
       const SliverToBoxAdapter(child: SizedBox(height: HomeLayout.sectionGap)),
@@ -183,18 +181,18 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
   Widget build(BuildContext context) {
     final bool canReadEntries =
         widget.sessionState.isUnlocked && widget.sessionState.session != null;
-    final AsyncValue<List<EntryIndexRecord>> allEntriesAsync = ref.watch(
-      allEntryIndexRecordsProvider,
+    final AsyncValue<List<DiaryEntrySummary>> allEntriesAsync = ref.watch(
+      allDiaryEntrySummariesProvider,
     );
-    final AsyncValue<List<EntryIndexRecord>> scopedEntriesAsync = ref.watch(
-      memoryEntriesProvider,
+    final AsyncValue<List<DiaryEntrySummary>> scopedEntriesAsync = ref.watch(
+      overviewEntriesProvider,
     );
     final String? selectedTag = ref.watch(overviewTagFilterProvider);
-    final MemoryScope scope = ref.watch(memoryScopeProvider);
+    final OverviewScope scope = ref.watch(overviewScopeProvider);
     final DateTime focusedMonthForPeople = ref.watch(
-      memoryFocusedMonthProvider,
+      overviewFocusedMonthProvider,
     );
-    final int focusedYearForPeople = ref.watch(memoryFocusedYearProvider);
+    final int focusedYearForPeople = ref.watch(overviewFocusedYearProvider);
     final peopleTopKey = (
       scope: scope,
       focusedYear: focusedYearForPeople,
@@ -209,7 +207,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
     }
 
     return allEntriesAsync.when(
-      data: (List<EntryIndexRecord> allEntries) {
+      data: (List<DiaryEntrySummary> allEntries) {
         if (allEntries.isEmpty) {
           return HomeScrollbarGutter(
             child: AppStateCard(
@@ -227,8 +225,8 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
               data: (Map<String, int> m) => m,
               orElse: () => const <String, int>{},
             );
-        final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
-        final int focusedYear = ref.watch(memoryFocusedYearProvider);
+        final DateTime focusedMonth = ref.watch(overviewFocusedMonthProvider);
+        final int focusedYear = ref.watch(overviewFocusedYearProvider);
         final String diarySectionTitle = overviewScopedDiarySectionTitle(
           context,
           scope,
@@ -239,22 +237,21 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
             : context.l10n.homeScopeEmptyDiaryForTag(selectedTag);
 
         return scopedEntriesAsync.when(
-          data: (List<EntryIndexRecord> raw) {
-            final List<EntryIndexRecord> diaryEntries = selectedTag == null
+          data: (List<DiaryEntrySummary> raw) {
+            final List<DiaryEntrySummary> diaryEntries = selectedTag == null
                 ? raw
                 : raw
                       .where(
-                        (EntryIndexRecord e) => e.tags.any(
+                        (DiaryEntrySummary e) => e.tags.any(
                           (String t) =>
                               normalizeText(t) == normalizeText(selectedTag),
                         ),
                       )
                       .toList(growable: false);
-            final Set<EntryId> exportEntryIds = resolveOverviewExportEntryIds(
-              scope: scope,
-              allEntries: allEntries,
-              scopedEntries: raw,
-            );
+            final Set<EntryId> exportEntryIds =
+                (scope == OverviewScope.all ? allEntries : raw)
+                    .map((entry) => entry.id)
+                    .toSet();
             final List<TagCatalogUsageItem> scopedTopTags =
                 rankedTagUsageFromEntries(raw);
             final Widget exportButton = Tooltip(
@@ -364,7 +361,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         backgroundColor: chipBg,
                                         selectedColor: chipBg,
                                         checkmarkColor: chipFg,
-                                        side: tagBorderSide(
+                                        side: accentChipBorderSide(
                                           context.appColors,
                                           cs,
                                           chipBg,
@@ -428,7 +425,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                           showCheckmark: false,
                                           backgroundColor: chipBg,
                                           selectedColor: chipBg,
-                                          side: tagBorderSide(
+                                          side: accentChipBorderSide(
                                             context.appColors,
                                             cs,
                                             chipBg,
@@ -439,7 +436,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                           ),
                                           onSelected: (_) => unawaited(
                                             context.push(
-                                              AppRouter.personDetailLocation(
+                                              AppRoutes.personDetailLocation(
                                                 item.person.id,
                                               ),
                                             ),
@@ -602,10 +599,10 @@ class OverviewScopedMetricPanel extends StatelessWidget {
     super.key,
   });
 
-  final MemoryScope scope;
+  final OverviewScope scope;
   final DateTime focusedMonth;
   final int focusedYear;
-  final AsyncValue<List<EntryIndexRecord>> entriesAsync;
+  final AsyncValue<List<DiaryEntrySummary>> entriesAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -619,7 +616,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
     return OverviewMetricShell(
       rangeCaption: caption,
       child: entriesAsync.when(
-        data: (List<EntryIndexRecord> entries) {
+        data: (List<DiaryEntrySummary> entries) {
           final OverviewScopeMetrics metrics = OverviewScopeMetrics.fromEntries(
             entries,
           );
@@ -683,20 +680,20 @@ class OverviewScopedMetricPanel extends StatelessWidget {
   }
 }
 
-class MemoryFocusedPeriodBar extends ConsumerWidget {
-  const MemoryFocusedPeriodBar({super.key});
+class OverviewFocusedPeriodBar extends ConsumerWidget {
+  const OverviewFocusedPeriodBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final MemoryScope scope = ref.watch(memoryScopeProvider);
-    if (scope == MemoryScope.all) {
+    final OverviewScope scope = ref.watch(overviewScopeProvider);
+    if (scope == OverviewScope.all) {
       return const SizedBox.shrink();
     }
-    final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
-    final int focusedYear = ref.watch(memoryFocusedYearProvider);
+    final DateTime focusedMonth = ref.watch(overviewFocusedMonthProvider);
+    final int focusedYear = ref.watch(overviewFocusedYearProvider);
 
     return ref
-        .watch(memoryAvailableYearsProvider)
+        .watch(overviewAvailableYearsProvider)
         .when(
           data: (List<int> years) {
             final int? minYear = years.isEmpty ? null : years.first;
@@ -704,7 +701,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
             final ThemeData theme = Theme.of(context);
             final ColorScheme cs = theme.colorScheme;
             Future<void> pickFocusedPeriod() async {
-              if (scope == MemoryScope.month) {
+              if (scope == OverviewScope.month) {
                 final ({DateTime first, DateTime last}) policyRange =
                     DiaryDatePolicy.selectableRange();
                 DateTime firstMonth = DateTime(
@@ -734,7 +731,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                   lastMonth: lastMonth,
                 );
                 if (picked != null && context.mounted) {
-                  ref.read(memoryFocusedMonthProvider.notifier).set(picked);
+                  ref.read(overviewFocusedMonthProvider.notifier).set(picked);
                 }
                 return;
               }
@@ -754,7 +751,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                 lastYear: lastYear,
               );
               if (picked != null && context.mounted) {
-                ref.read(memoryFocusedYearProvider.notifier).set(picked);
+                ref.read(overviewFocusedYearProvider.notifier).set(picked);
               }
             }
 
@@ -779,9 +776,9 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                     children: <Widget>[
                       IconButton(
                         key: const Key('overview-period-previous'),
-                        onPressed: scope == MemoryScope.month
+                        onPressed: scope == OverviewScope.month
                             ? () => ref
-                                  .read(memoryFocusedMonthProvider.notifier)
+                                  .read(overviewFocusedMonthProvider.notifier)
                                   .set(
                                     DateTime(
                                       focusedMonth.year,
@@ -790,7 +787,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                                   )
                             : (minYear != null && focusedYear > minYear)
                             ? () => ref
-                                  .read(memoryFocusedYearProvider.notifier)
+                                  .read(overviewFocusedYearProvider.notifier)
                                   .set(focusedYear - 1)
                             : null,
                         icon: Icon(
@@ -803,7 +800,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                           child: TextButton(
                             key: const Key('overview-focused-period-button'),
                             onPressed:
-                                scope == MemoryScope.month || years.isNotEmpty
+                                scope == OverviewScope.month || years.isNotEmpty
                                 ? () => unawaited(pickFocusedPeriod())
                                 : null,
                             style: TextButton.styleFrom(
@@ -819,7 +816,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                               children: <Widget>[
                                 Flexible(
                                   child: Text(
-                                    scope == MemoryScope.month
+                                    scope == OverviewScope.month
                                         ? DisplayFormat.formatYearMonth(
                                             context.l10n,
                                             focusedMonth.year,
@@ -842,9 +839,9 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                       ),
                       IconButton(
                         key: const Key('overview-period-next'),
-                        onPressed: scope == MemoryScope.month
+                        onPressed: scope == OverviewScope.month
                             ? () => ref
-                                  .read(memoryFocusedMonthProvider.notifier)
+                                  .read(overviewFocusedMonthProvider.notifier)
                                   .set(
                                     DateTime(
                                       focusedMonth.year,
@@ -853,7 +850,7 @@ class MemoryFocusedPeriodBar extends ConsumerWidget {
                                   )
                             : (maxYear != null && focusedYear < maxYear)
                             ? () => ref
-                                  .read(memoryFocusedYearProvider.notifier)
+                                  .read(overviewFocusedYearProvider.notifier)
                                   .set(focusedYear + 1)
                             : null,
                         icon: Icon(
@@ -884,7 +881,7 @@ class OverviewScopePicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final MemoryScope scope = ref.watch(memoryScopeProvider);
+    final OverviewScope scope = ref.watch(overviewScopeProvider);
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     return HomeSectionCard(
@@ -899,7 +896,7 @@ class OverviewScopePicker extends ConsumerWidget {
               Expanded(
                 child: SizedBox(
                   height: kOverviewScopeControlHeight,
-                  child: SegmentedButton<MemoryScope>(
+                  child: SegmentedButton<OverviewScope>(
                     showSelectedIcon: false,
                     style: ButtonStyle(
                       visualDensity: VisualDensity.compact,
@@ -930,9 +927,9 @@ class OverviewScopePicker extends ConsumerWidget {
                         return cs.onSurfaceVariant;
                       }),
                     ),
-                    segments: <ButtonSegment<MemoryScope>>[
-                      ButtonSegment<MemoryScope>(
-                        value: MemoryScope.all,
+                    segments: <ButtonSegment<OverviewScope>>[
+                      ButtonSegment<OverviewScope>(
+                        value: OverviewScope.all,
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
@@ -941,8 +938,8 @@ class OverviewScopePicker extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      ButtonSegment<MemoryScope>(
-                        value: MemoryScope.year,
+                      ButtonSegment<OverviewScope>(
+                        value: OverviewScope.year,
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
@@ -951,8 +948,8 @@ class OverviewScopePicker extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      ButtonSegment<MemoryScope>(
-                        value: MemoryScope.month,
+                      ButtonSegment<OverviewScope>(
+                        value: OverviewScope.month,
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
@@ -962,17 +959,17 @@ class OverviewScopePicker extends ConsumerWidget {
                         ),
                       ),
                     ],
-                    selected: <MemoryScope>{scope},
-                    onSelectionChanged: (Set<MemoryScope> next) {
+                    selected: <OverviewScope>{scope},
+                    onSelectionChanged: (Set<OverviewScope> next) {
                       if (next.isEmpty) {
                         return;
                       }
-                      final MemoryScope picked = next.first;
+                      final OverviewScope picked = next.first;
                       if (picked == scope) {
                         return;
                       }
                       ref.read(overviewTagFilterProvider.notifier).set(null);
-                      ref.read(memoryScopeProvider.notifier).set(picked);
+                      ref.read(overviewScopeProvider.notifier).set(picked);
                     },
                   ),
                 ),
@@ -984,7 +981,7 @@ class OverviewScopePicker extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          const MemoryFocusedPeriodBar(),
+          const OverviewFocusedPeriodBar(),
         ],
       ),
     );
@@ -1009,52 +1006,52 @@ class OverviewMetricShell extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: cs.primary.withValues(alpha: 0.12),
-                  ),
-                  child: Icon(
-                    Icons.insights_rounded,
-                    color: cs.primary,
-                    size: 24,
-                  ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: cs.primary.withValues(alpha: 0.12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        context.l10n.homeOverviewDataTitle,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        rangeCaption,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.82),
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Icon(
+                  Icons.insights_rounded,
+                  color: cs.primary,
+                  size: 24,
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            child,
-          ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.homeOverviewDataTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      rangeCaption,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.82),
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          child,
+        ],
       ),
     );
   }

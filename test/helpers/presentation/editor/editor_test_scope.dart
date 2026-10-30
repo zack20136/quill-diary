@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 
 import '../../shared/widget_test_app.dart';
@@ -9,11 +9,7 @@ Widget editorTestApp({
   required Widget child,
   Size viewport = const Size(400, 600),
 }) {
-  return widgetTestApp(
-    child: child,
-    viewport: viewport,
-    center: false,
-  );
+  return widgetTestApp(child: child, viewport: viewport, center: false);
 }
 
 Future<

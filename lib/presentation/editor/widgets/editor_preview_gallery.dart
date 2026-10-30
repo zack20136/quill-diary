@@ -1,10 +1,17 @@
-import 'package:material_ui/material_ui.dart';
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
+import 'package:quill_diary/application/editor/editor_gallery_export.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
 
 class EditorPreviewGallery extends StatelessWidget {
@@ -129,6 +136,61 @@ class EditorPreviewGallery extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class EditorGalleryImagePane extends ConsumerWidget {
+  const EditorGalleryImagePane({super.key, required this.item});
+
+  final GalleryImageItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Color foreground = context.appColors.galleryForeground;
+    return switch (item.source) {
+      GalleryImageSource.encrypted => _EncryptedGalleryImage(path: item.path),
+      GalleryImageSource.local => Image.file(
+        File(item.path),
+        fit: BoxFit.contain,
+        errorBuilder: (
+          BuildContext context,
+          Object error,
+          StackTrace? stackTrace,
+        ) => Icon(Icons.broken_image_outlined, color: foreground, size: 56),
+      ),
+    };
+  }
+}
+
+class _EncryptedGalleryImage extends ConsumerWidget {
+  const _EncryptedGalleryImage({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Color foreground = context.appColors.galleryForeground;
+    final AsyncValue<Uint8List?> async = ref.watch(
+      entryCoverPreviewBytesProvider(path),
+    );
+    return async.when(
+      skipLoadingOnReload: true,
+      data: (Uint8List? bytes) {
+        if (bytes == null || bytes.isEmpty) {
+          return Center(
+            child: Text(
+              context.l10n.editorPreviewUnavailable,
+              style: TextStyle(color: foreground.withValues(alpha: 0.85)),
+            ),
+          );
+        }
+        return Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true);
+      },
+      loading: () =>
+          Center(child: CircularProgressIndicator(color: foreground)),
+      error: (Object _, StackTrace _) =>
+          Icon(Icons.broken_image_outlined, color: foreground, size: 56),
     );
   }
 }

@@ -1,32 +1,27 @@
 import 'package:flutter/material.dart' as legacy_material;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:table_calendar/table_calendar.dart';
-
-import '../../../../domain/shared/value_objects.dart';
-import '../../../../domain/diary/diary_date_policy.dart';
-import '../../../../infrastructure/database/index_database.dart';
-import '../../../../l10n/l10n.dart';
-import '../../../../shared/presentation/date_picker/app_date_picker_dialog.dart';
-import '../../../../shared/presentation/display_format.dart';
-import '../../../../app/app_colors.dart';
-import '../../../../shared/presentation/widgets/app_state_card.dart';
-import '../../../../shared/presentation/widgets/app_loading_state.dart';
-import '../../../../shared/presentation/widgets/app_surface.dart';
-import '../../../../../application/tag/tag_providers.dart';
-import '../../../../shared/utils/user_facing_error.dart';
-import '../../home_layout.dart';
-
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-
-import '../../../../application/session/state/app_session_state.dart';
-
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-
-import '../home_scroll_affordance.dart';
-import '../home_shared_widgets.dart';
-import 'calendar_day_cell.dart';
-import 'calendar_layout_policy.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/domain/diary/diary_date_policy.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/calendar/calendar_day_cell.dart';
+import 'package:quill_diary/presentation/home/widgets/calendar/calendar_layout_policy.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class CalendarSectionShell extends StatelessWidget {
   const CalendarSectionShell({required this.child, super.key});
@@ -75,7 +70,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
   Widget _buildDayCell({
     required DateTime day,
     required DateTime focusedDay,
-    required Map<String, List<EntryIndexRecord>> entriesByDate,
+    required Map<String, List<DiaryEntrySummary>> entriesByDate,
     required DateOnly selectedDate,
     required bool isSelected,
     required bool isToday,
@@ -87,7 +82,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
       day: day,
       entries:
           entriesByDate[DateOnly.fromDateTime(day).value] ??
-          const <EntryIndexRecord>[],
+          const <DiaryEntrySummary>[],
       isSelected: isSelected,
       isToday: isToday,
       isOutside: isOutside,
@@ -124,10 +119,10 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
   Widget build(BuildContext context) {
     final bool canReadEntries =
         widget.sessionState.isUnlocked && widget.sessionState.session != null;
-    final AsyncValue<List<EntryIndexRecord>> monthEntriesAsync = ref.watch(
+    final AsyncValue<List<DiaryEntrySummary>> monthEntriesAsync = ref.watch(
       calendarGridEntriesProvider,
     );
-    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(
+    final AsyncValue<List<DiaryEntrySummary>> entriesAsync = ref.watch(
       calendarEntriesProvider,
     );
     final DateTime visibleMonth = ref.watch(calendarVisibleMonthProvider);
@@ -183,14 +178,14 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     }
     // 月份格線載入時保留外層框架，避免高度跳動。
     final bool monthGridLoading = monthEntriesAsync.isLoading;
-    final List<EntryIndexRecord> monthEntries = monthGridLoading
-        ? const <EntryIndexRecord>[]
-        : (monthEntriesAsync.value ?? const <EntryIndexRecord>[]);
-    final Map<String, List<EntryIndexRecord>> entriesByDate =
-        <String, List<EntryIndexRecord>>{};
-    for (final EntryIndexRecord entry in monthEntries) {
+    final List<DiaryEntrySummary> monthEntries = monthGridLoading
+        ? const <DiaryEntrySummary>[]
+        : (monthEntriesAsync.value ?? const <DiaryEntrySummary>[]);
+    final Map<String, List<DiaryEntrySummary>> entriesByDate =
+        <String, List<DiaryEntrySummary>>{};
+    for (final DiaryEntrySummary entry in monthEntries) {
       entriesByDate
-          .putIfAbsent(entry.date.value, () => <EntryIndexRecord>[])
+          .putIfAbsent(entry.date.value, () => <DiaryEntrySummary>[])
           .add(entry);
     }
 
@@ -681,7 +676,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
             ),
             entriesAsync.when<Widget>(
               skipLoadingOnReload: true,
-              data: (List<EntryIndexRecord> entries) {
+              data: (List<DiaryEntrySummary> entries) {
                 final String dateLabel = DisplayFormat.formatDateOnly(
                   context.l10n,
                   selectedDate,

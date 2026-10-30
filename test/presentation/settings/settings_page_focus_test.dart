@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/widgets/local_backup_section.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 import '../../helpers/presentation/settings/settings_test_scope.dart';
 import '../../helpers/shared/test_l10n.dart';

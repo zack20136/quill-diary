@@ -1,11 +1,12 @@
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/shared/presentation/app_typography.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
-import 'editor_checkbox_block_row.dart';
+import 'package:quill_diary/domain/diary/diary_markdown.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_typography.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
 
 class EditorMarkdownPreview extends StatefulWidget {
   const EditorMarkdownPreview({
@@ -46,7 +47,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
   }
 
   List<String> _splitMarkdownLines(String markdown) {
-    return markdown.replaceAll('\r\n', '\n').split('\n');
+    return markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
   }
 
   void _setMarkdown(String next) {
@@ -127,7 +128,7 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         continue;
       }
 
-      final RegExpMatch? checkboxMatch = kEditorCheckboxLinePattern.firstMatch(
+      final RegExpMatch? checkboxMatch = markdownCheckboxLinePattern.firstMatch(
         line,
       );
       if (checkboxMatch != null) {
@@ -153,9 +154,8 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         continue;
       }
 
-      final RegExpMatch? heading = RegExp(
-        r'^(#{1,6})\s+(.+)$',
-      ).firstMatch(line);
+      final RegExpMatch? heading = RegExp(r'^(#{1,6})\s+(.+)$')
+          .firstMatch(line);
       if (heading != null) {
         final String text = heading.group(2)!.trim();
         children.add(
@@ -203,9 +203,8 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         continue;
       }
 
-      final RegExpMatch? listItem = RegExp(
-        r'^(\s*)([-*]|\d+\.)\s+(.+)$',
-      ).firstMatch(line);
+      final RegExpMatch? listItem = RegExp(r'^(\s*)([-*]|\d+\.)\s+(.+)$')
+          .firstMatch(line);
       if (listItem != null) {
         children.add(
           Padding(
@@ -273,9 +272,8 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         spans.add(TextSpan(text: text.substring(cursor, match.start)));
       }
       final String token = match.group(0)!;
-      final RegExpMatch? link = RegExp(
-        r'^\[([^\]]+)\]\(([^)]+)\)$',
-      ).firstMatch(token);
+      final RegExpMatch? link = RegExp(r'^\[([^\]]+)\]\(([^)]+)\)$')
+          .firstMatch(token);
       if (link != null) {
         spans.add(
           TextSpan(
@@ -297,9 +295,8 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
         spans.add(
           TextSpan(
             text: token.substring(1, token.length - 1),
-            style: AppTypography.mono(
-              const TextStyle(),
-            ).copyWith(backgroundColor: inlineCodeBackground),
+            style: AppTypography.mono(const TextStyle())
+                .copyWith(backgroundColor: inlineCodeBackground),
           ),
         );
       } else {

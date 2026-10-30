@@ -3,27 +3,26 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_actions.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_circle_action_button.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-
-import '../../chat_diary/chat_diary_actions.dart';
-import '../home_layout.dart';
-import '../widgets/home_circle_action_button.dart';
-import '../widgets/home_shared_widgets.dart';
-import '../widgets/home_tab_stack.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -49,7 +48,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 leading: const Icon(Icons.edit_note),
                 title: Text(context.l10n.chatDiaryWriteDirectly),
                 onTap: () =>
-                    Navigator.pop(dialogContext, AppRouter.editorRoute),
+                    Navigator.pop(dialogContext, AppRoutes.editorRoute),
               ),
               ListTile(
                 leading: const Icon(Icons.chat_bubble_outline),
@@ -327,9 +326,8 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                               key: _tabKeys[HomeTab.values[index]],
                               child: showTabLabels
                                   ? HomeHeaderTabButton(
-                                      label: tabVisual(
-                                        HomeTab.values[index],
-                                      ).$1,
+                                      label: tabVisual(HomeTab.values[index])
+                                          .$1,
                                       icon: tabVisual(HomeTab.values[index]).$2,
                                       active:
                                           activeTab == HomeTab.values[index],
@@ -342,12 +340,10 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                                   : SizedBox(
                                       width: 52,
                                       child: HomeHeaderTabButton(
-                                        label: tabVisual(
-                                          HomeTab.values[index],
-                                        ).$1,
-                                        icon: tabVisual(
-                                          HomeTab.values[index],
-                                        ).$2,
+                                        label: tabVisual(HomeTab.values[index])
+                                            .$1,
+                                        icon: tabVisual(HomeTab.values[index])
+                                            .$2,
                                         active:
                                             activeTab == HomeTab.values[index],
                                         onTap: () => _selectTab(
@@ -370,7 +366,7 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                 tooltip: context.l10n.homeTooltipSettings,
                 icon: Icons.tune_rounded,
                 onPressed: widget.settingsEnabled
-                    ? () => unawaited(context.push(AppRouter.settingsRoute))
+                    ? () => unawaited(context.push(AppRoutes.settingsRoute))
                     : null,
               ),
             ],

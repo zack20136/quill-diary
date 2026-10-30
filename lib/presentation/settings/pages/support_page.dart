@@ -2,15 +2,14 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/application/settings/billing_providers.dart';
+import 'package:quill_diary/infrastructure/billing/sponsor_billing_state.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/support_page_copy.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_info_cards.dart';
+import 'package:quill_diary/presentation/settings/widgets/support_page_sections.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/application/settings/billing_providers.dart';
-import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
-import 'package:quill_diary/presentation/settings/support_page_copy.dart';
-import '../widgets/settings_info_cards.dart';
-import '../widgets/support_page_sections.dart';
 
 class SupportPage extends ConsumerStatefulWidget {
   const SupportPage({super.key});
@@ -51,9 +50,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.settingsSupportPageTitle),
-      ),
+      appBar: AppBar(title: Text(l10n.settingsSupportPageTitle)),
       body: SafeArea(
         child: AppScrollablePageBody(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),

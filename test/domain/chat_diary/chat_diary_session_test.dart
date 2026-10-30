@@ -60,6 +60,7 @@ void main() {
     expect(chat.activeMessages.map((m) => m.id), ['a', 'b', 'c', 'd']);
     chat.selectMessage('e');
     expect(chat.activeMessages.map((m) => m.id), ['a', 'e', 'f']);
+    expect(chat.toJson()['schema_version'], 1);
     final restored = ChatDiarySession.fromJson(
       jsonDecode(jsonEncode(chat.toJson())),
     );
@@ -73,6 +74,14 @@ void main() {
     );
     restored.selectMessage('b');
     expect(restored.activeMessages.last.id, 'd');
+  });
+
+  test('聊天格式拒絕舊開發版本、未知版本與非整數版本', () {
+    final data = testChatDiarySession().toJson();
+    for (final version in <Object?>[null, 0, 2, '1']) {
+      data['schema_version'] = version;
+      expect(() => ChatDiarySession.fromJson(data), throwsFormatException);
+    }
   });
 
   test('損壞的父訊息與選取關係不能靜默混入目前路徑', () {

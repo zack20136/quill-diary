@@ -1,8 +1,8 @@
 library;
 
-import '../../../../l10n/l10n.dart';
-import '../../../../shared/presentation/display_format.dart';
-import '../../home_formatters.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_formatters.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
 
 const int kCalendarMaxEntriesPerCell = 2;
 const int kCalendarPreviewCharCount = 5;

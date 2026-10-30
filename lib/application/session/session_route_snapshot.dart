@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 class SessionRouteSnapshotState {
   const SessionRouteSnapshotState({
@@ -36,13 +36,13 @@ bool isSessionRestorableRoute(String location) {
   final String path = Uri.parse(
     normalized.startsWith('/') ? normalized : '/$normalized',
   ).path;
-  return path == AppRouter.homeRoute ||
-      path == AppRouter.chatDiaryRoutePrefix ||
-      path.startsWith('${AppRouter.chatDiaryRoutePrefix}/') ||
-      path == AppRouter.editorRoute ||
-      path.startsWith('${AppRouter.editorRoute}/') ||
-      path == AppRouter.settingsRoute ||
-      path.startsWith('${AppRouter.settingsRoute}/');
+  return path == AppRoutes.homeRoute ||
+      path == AppRoutes.chatDiaryRoutePrefix ||
+      path.startsWith('${AppRoutes.chatDiaryRoutePrefix}/') ||
+      path == AppRoutes.editorRoute ||
+      path.startsWith('${AppRoutes.editorRoute}/') ||
+      path == AppRoutes.settingsRoute ||
+      path.startsWith('${AppRoutes.settingsRoute}/');
 }
 
 class SessionRouteSnapshotController
@@ -59,7 +59,7 @@ class SessionRouteSnapshotController
   }
 
   String _resolveCurrentLocation() {
-    return _resolveLocation?.call() ?? AppRouter.homeRoute;
+    return _resolveLocation?.call() ?? AppRoutes.homeRoute;
   }
 
   void saveCurrentRouteBeforeBackground([String? location]) {

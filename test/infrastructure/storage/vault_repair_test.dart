@@ -4,12 +4,15 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -125,9 +128,8 @@ void main() {
       entryId,
     );
     expect(loaded?.title, 'Newer copy');
-    final bool hasQuarantine = Directory(
-      p.join(vaultRoot.path, 'quarantine'),
-    ).existsSync();
+    final bool hasQuarantine = Directory(p.join(vaultRoot.path, 'quarantine'))
+        .existsSync();
     expect(hasQuarantine, isTrue);
   });
 
@@ -701,9 +703,8 @@ body
         p.join(root.path, 'quarantine', 'old-repair'),
       );
       await oldQuarantine.create(recursive: true);
-      await File(
-        p.join(oldQuarantine.path, 'dummy.bin'),
-      ).writeAsBytes(<int>[1]);
+      await File(p.join(oldQuarantine.path, 'dummy.bin'))
+          .writeAsBytes(<int>[1]);
       final File corruptEntry = File(
         p.join(root.path, 'entries', '2026', '06', 'broken-b.md.enc'),
       );

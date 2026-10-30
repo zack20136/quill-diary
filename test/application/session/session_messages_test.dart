@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 

@@ -1,8 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_actions.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 
 import '../../helpers/presentation/editor/fake_editor_actions.dart';
@@ -30,7 +31,10 @@ void main() {
   test('salvage 草稿直接接受決定後會還原', () async {
     final FakeEditorActions actions = FakeEditorActions(draft: draft());
     final ProviderContainer container = ProviderContainer(
-      overrides: [editorActionsProvider.overrideWithValue(actions)],
+      overrides: [
+        editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
+      ],
     );
     addTearDown(container.dispose);
     var decideRestoreCalls = 0;
@@ -57,7 +61,10 @@ void main() {
     for (final bool? answer in <bool?>[false, null]) {
       final FakeEditorActions actions = FakeEditorActions(draft: draft());
       final ProviderContainer container = ProviderContainer(
-        overrides: [editorActionsProvider.overrideWithValue(actions)],
+        overrides: [
+          editorActionsProvider.overrideWithValue(actions),
+          vaultRepositoryProvider.overrideWithValue(actions.repository),
+        ],
       );
       addTearDown(container.dispose);
 

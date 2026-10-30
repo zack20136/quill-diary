@@ -4,8 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 
 void main() {

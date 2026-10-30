@@ -1,32 +1,34 @@
-import 'package:material_ui/material_ui.dart';
-import '../home_formatters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
+import 'package:quill_diary/application/tag/tag_defaults.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
+import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_formatters.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
+import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/presentation/tag/widgets/tag_accent_composer_dialog.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
-import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import '../home_layout.dart';
-import 'home_scroll_affordance.dart';
-import 'home_selection_toolbar.dart';
-import 'home_shared_widgets.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 class TagsManagePane extends ConsumerStatefulWidget {
   const TagsManagePane({required this.sessionState, super.key});
@@ -127,7 +129,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
 
     if (existingLabel != null) {
-      refreshHomeIndexCaches(ref);
+      ref.read(diaryRevisionProvider.notifier).bump();
       if (_selectedTagLabel != null &&
           normalizeText(_selectedTagLabel!) == normalizeText(existingLabel)) {
         setState(() => _selectedTagLabel = savedLabel);
@@ -151,17 +153,17 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       return;
     }
 
-    final List<EntryIndexRecord> records =
-        ref.read(allEntryIndexRecordsProvider).value ??
-        const <EntryIndexRecord>[];
+    final List<DiaryEntrySummary> records =
+        ref.read(allDiaryEntrySummariesProvider).value ??
+        const <DiaryEntrySummary>[];
     final int entryCount = _entriesMatchingTag(records, label).length;
 
     await ref
-        .read(vaultTagServiceProvider)
+        .read(vaultRepositoryProvider)
         .removeTagFromAllEntries(session, label);
     ref.invalidate(tagCatalogProvider);
     ref.invalidate(tagAccentArgbMapProvider);
-    refreshHomeIndexCaches(ref);
+    ref.read(diaryRevisionProvider.notifier).bump();
 
     if (!mounted) {
       return;
@@ -200,14 +202,14 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
   }
 
-  List<EntryIndexRecord> _entriesMatchingTag(
-    List<EntryIndexRecord> all,
+  List<DiaryEntrySummary> _entriesMatchingTag(
+    List<DiaryEntrySummary> all,
     String displayLabel,
   ) {
     final String norm = normalizeText(displayLabel);
-    final List<EntryIndexRecord> out = all
+    final List<DiaryEntrySummary> out = all
         .where(
-          (EntryIndexRecord e) =>
+          (DiaryEntrySummary e) =>
               e.tags.any((String t) => normalizeText(t) == norm),
         )
         .toList();
@@ -232,13 +234,13 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     setState(() => _seedingDefaultTags = true);
     try {
       final bool created = await ref
-          .read(vaultTagServiceProvider)
+          .read(vaultRepositoryProvider)
           .seedDefaultTagCatalogIfEmpty(
-            locale: Localizations.localeOf(context),
+            defaultTagCatalogForLocale(Localizations.localeOf(context)),
           );
       ref.invalidate(tagCatalogProvider);
       ref.invalidate(tagAccentArgbMapProvider);
-      refreshHomeIndexCaches(ref);
+      ref.read(diaryRevisionProvider.notifier).bump();
       if (!mounted) {
         return;
       }
@@ -265,7 +267,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   }
 
   List<Widget> _tagDiaryPreviewSlivers(
-    List<EntryIndexRecord> records,
+    List<DiaryEntrySummary> records,
     ThemeData theme,
     ColorScheme cs,
   ) {
@@ -309,7 +311,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
       ];
     }
 
-    final List<EntryIndexRecord> matched = _entriesMatchingTag(
+    final List<DiaryEntrySummary> matched = _entriesMatchingTag(
       records,
       _selectedTagLabel!,
     );
@@ -359,8 +361,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
 
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final AsyncValue<List<EntryIndexRecord>> entriesAsync = ref.watch(
-      allEntryIndexRecordsProvider,
+    final AsyncValue<List<DiaryEntrySummary>> entriesAsync = ref.watch(
+      allDiaryEntrySummariesProvider,
     );
     final Map<String, int> accentMap = ref
         .watch(tagAccentArgbMapProvider)
@@ -402,7 +404,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
         const SizedBox(height: 12),
         Expanded(
           child: entriesAsync.when(
-            data: (List<EntryIndexRecord> records) {
+            data: (List<DiaryEntrySummary> records) {
               final Map<String, int> freq = diaryPresenceTagCounts(records);
               final List<TagCatalogUsageItem> mergedTags =
                   mergeTagCatalogWithUsage(
@@ -499,7 +501,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               shape: BoxShape.circle,
                               color: bg,
                               border: () {
-                                final BorderSide? side = tagBorderSide(
+                                final BorderSide? side = accentChipBorderSide(
                                   context.appColors,
                                   cs,
                                   bg,

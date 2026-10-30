@@ -4,32 +4,34 @@ import 'dart:typed_data';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
-
-import '../../app/app_colors.dart';
-import '../../app/router.dart';
-import '../../application/ai/ai_connection_providers.dart';
-import '../../application/chat_diary/chat_diary_controller.dart';
-import '../../application/session/providers/session_providers.dart';
-import '../../application/session/state/app_session_state.dart';
-import '../../domain/chat_diary/chat_diary_session.dart';
-import '../../domain/security/unlocked_vault_session.dart';
-import '../../infrastructure/ai/ai_client.dart';
-import '../../infrastructure/storage/shared/gallery_image_picker.dart';
-import '../../infrastructure/storage/storage_providers.dart';
-import '../../l10n/l10n.dart';
-import '../../shared/presentation/app_feedback.dart';
-import '../../shared/presentation/widgets/app_dialog_shell.dart';
-import '../../shared/presentation/widgets/app_image_gallery_dialog.dart';
-import 'chat_diary_request_preview_dialog.dart';
-import '../ai/ai_connection_settings_dialog.dart';
-import '../ai/ai_error_text.dart';
-import '../session/widgets/session_locked_pane.dart';
-import 'chat_diary_actions.dart';
-import 'chat_diary_input_panel.dart';
-import 'chat_diary_message_bubble.dart';
-import 'chat_diary_private_text_controller.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
+import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
+import 'package:quill_diary/presentation/ai/ai_error_text.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_actions.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_input_panel.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_message_bubble.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_private_text_controller.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_request_preview_dialog.dart';
+import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 
 class ChatDiaryPage extends ConsumerStatefulWidget {
   const ChatDiaryPage({
@@ -59,6 +61,8 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
   bool _tailUpdateScheduled = false;
   final _composerFocusNode = FocusNode();
   bool _isBackgrounded = false;
+  bool _isSelectingImages = false;
+  Completer<void>? _imagePickerForeground;
   final _contentDialogContexts = <Object, BuildContext>{};
   final _imageFutures = <String, Future<Uint8List?>>{};
   AiErrorCode? _lastReportedError;
@@ -76,6 +80,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         _imageFutures.clear();
         _chatController?.lock();
         _loadedVaultSession = null;
+        _releaseImagePickerWait();
         _syncingComposer = true;
         _composerController.setDocument('', []);
         _syncingComposer = false;
@@ -182,14 +187,24 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 系統圖庫取得焦點時仍可能看見聊天；真正進入背景才遮蔽。
+    if (_isSelectingImages && state == AppLifecycleState.inactive) return;
     if (state != AppLifecycleState.resumed) {
       _chatController?.stop();
       _imageFutures.clear();
       _dismissContentDialogs();
+      _closeModelMenu();
     }
     if (mounted) {
       setState(() => _isBackgrounded = state != AppLifecycleState.resumed);
     }
+    if (state == AppLifecycleState.resumed) _releaseImagePickerWait();
+  }
+
+  void _releaseImagePickerWait() {
+    final waiting = _imagePickerForeground;
+    _imagePickerForeground = null;
+    waiting?.complete();
   }
 
   Future<void> _send() async {
@@ -206,7 +221,11 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     final chatController = _chatController;
     final chatSession = chatController?.chat;
     final vaultSession = _loadedVaultSession;
-    if (chatController == null || chatSession == null || vaultSession == null) {
+    if (chatController == null ||
+        chatSession == null ||
+        vaultSession == null ||
+        _isSelectingImages ||
+        _isBackgrounded) {
       return;
     }
     bool stillCurrent() =>
@@ -215,7 +234,24 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         _loadedVaultSession == vaultSession &&
         chatController.chat == chatSession;
     try {
-      final files = await pickGalleryImages();
+      final List<XFile> files;
+      _isSelectingImages = true;
+      try {
+        files = await pickGalleryImages();
+        // Android 可先回傳選圖結果，再通知 App 已返回前景。
+        final lifecycle = WidgetsBinding.instance.lifecycleState;
+        if (files.isNotEmpty &&
+            mounted &&
+            _loadedVaultSession == vaultSession &&
+            chatController.chat == chatSession &&
+            lifecycle != null &&
+            lifecycle != AppLifecycleState.resumed) {
+          final foreground = _imagePickerForeground = Completer<void>();
+          await foreground.future;
+        }
+      } finally {
+        _isSelectingImages = false;
+      }
       if (!stillCurrent()) return;
       for (final file in files) {
         final bytes = await file.readAsBytes();
@@ -285,21 +321,29 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
           )) {
         return;
       }
+      if (!mounted || _loadedVaultSession != vaultSession) return;
+      final result = await chatController.generate(context.l10n);
       if (!mounted ||
+          _isBackgrounded ||
           _loadedVaultSession != vaultSession ||
-          !await chatController.generate(context.l10n)) {
+          chatController.chat != chatSession) {
         return;
       }
+      if (result == ChatDiaryGenerationResult.empty) {
+        showAppFeedbackToast(context, context.l10n.chatDiaryGenerationEmpty);
+        return;
+      }
+      if (result != ChatDiaryGenerationResult.generated) return;
     } else {
       await chatController.suspendForEditor();
     }
     if (!mounted || _loadedVaultSession != vaultSession) return;
     final savedId = await context.push<String>(
-      '${AppRouter.editorRoute}?chat=${Uri.encodeComponent(chatSession.id)}',
+      '${AppRoutes.editorRoute}?chat=${Uri.encodeComponent(chatSession.id)}',
     );
     if (!mounted || _loadedVaultSession != vaultSession) return;
     if (savedId != null) {
-      context.pushReplacement('${AppRouter.editorRoute}/$savedId');
+      context.pushReplacement('${AppRoutes.editorRoute}/$savedId');
       return;
     }
     try {
@@ -310,7 +354,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       if (mounted &&
           _loadedVaultSession == vaultSession &&
           result == ChatDiaryLoadResult.missing) {
-        context.go(AppRouter.homeRoute);
+        context.go(AppRoutes.homeRoute);
       }
     } on Object {
       if (mounted) context.pop();
@@ -532,15 +576,14 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         chatController.chat != chatSession) {
       return;
     }
-    final connectionsStore = ref.read(aiConnectionSettingsStoreProvider);
-    final diaryStore = ref.read(chatDiarySettingsStoreProvider);
-    final connection = await connectionsStore.read();
-    if (!mounted || chatController.chat != chatSession) return;
-    final diary = await diaryStore.read();
+    final settingsStore = ref.read(aiSettingsStoreProvider);
+    final session = ref.read(appSessionProvider).session;
+    if (session == null) return;
+    final stored = await settingsStore.read(session);
     if (!mounted || chatController.chat != chatSession) return;
     await chatController.applySettings(
-      connection.activeConfig,
-      diary.hidePersonNames,
+      stored.connection.activeConfig,
+      stored.chatDiary.hidePersonNames,
     );
   });
 
@@ -549,14 +592,14 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     final vaultSession = _loadedVaultSession;
     final entryId = chatSession?.generatedEntryId;
     if (entryId == null || vaultSession == null) return;
-    await context.push('${AppRouter.editorRoute}/$entryId');
+    await context.push('${AppRoutes.editorRoute}/$entryId');
     if (!mounted || _loadedVaultSession != vaultSession) return;
     final entry = await ref
         .read(vaultRepositoryProvider)
         .loadEntry(vaultSession, entryId);
     if (!mounted || _loadedVaultSession != vaultSession) return;
     if (entry == null) {
-      context.go(AppRouter.homeRoute);
+      context.go(AppRoutes.homeRoute);
       return;
     }
     setState(_imageFutures.clear);
@@ -577,25 +620,122 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     if (deleted && mounted) context.pop();
   }
 
-  Widget _modelTag(BuildContext context, String model) {
+  List<ChatModelOption> _modelChoices = const [];
+  bool _currentModelIsExtra = false;
+  final LayerLink _modelMenuLink = LayerLink();
+  OverlayEntry? _modelMenuEntry;
+
+  void _closeModelMenu() {
+    _modelMenuEntry?.remove();
+    _modelMenuEntry = null;
+  }
+
+  Future<void> _openModelMenu() async {
+    final chatController = _chatController;
+    final chatSession = chatController?.chat;
+    final vaultSession = _loadedVaultSession;
+    if (chatController == null ||
+        chatSession == null ||
+        vaultSession == null ||
+        chatSession.finished ||
+        chatController.busy) {
+      return;
+    }
+    final stored = await ref.read(aiSettingsStoreProvider).read(vaultSession);
+    if (!mounted || _chatController?.chat != chatSession) return;
+    final Map<AiProvider, bool> apiKeys = {};
+    for (final AiProvider provider in aiCatalogProviders) {
+      final AiConnectionConfig config =
+          stored.connection.configs[provider] ?? defaultConnection(provider);
+      final String apiKey = await ref
+          .read(aiSettingsStoreProvider)
+          .readApiKey(config);
+      if (!mounted || _chatController?.chat != chatSession) return;
+      apiKeys[provider] = apiKey.trim().isNotEmpty;
+    }
+    final menuModels = chatModelMenu(
+      settings: stored.connection,
+      chatConfig: chatSession.connectionConfig,
+      hasApiKey: (AiProvider provider) => apiKeys[provider] ?? false,
+    );
+    if (menuModels.models.isEmpty) return;
+    setState(() {
+      _modelChoices = menuModels.models;
+      _currentModelIsExtra = menuModels.currentIsExtra;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _chatController?.chat != chatSession ||
+          chatController.busy) {
+        return;
+      }
+      _closeModelMenu();
+      _modelMenuEntry = OverlayEntry(
+        builder: (overlayContext) => _ChatModelMenu(
+          link: _modelMenuLink,
+          currentProvider: chatSession.connectionConfig.provider,
+          choices: _modelChoices,
+          current: chatSession.connectionConfig.model.trim(),
+          currentIsExtra: _currentModelIsExtra,
+          onDismiss: _closeModelMenu,
+          onSelected: (choice) {
+            _closeModelMenu();
+            unawaited(
+              chatController.selectChatModel(choice.provider, choice.modelId),
+            );
+          },
+        ),
+      );
+      Overlay.of(context).insert(_modelMenuEntry!);
+    });
+  }
+
+  Widget _modelTag(BuildContext context, AiProvider provider, String model) {
     final colors = Theme.of(context).colorScheme;
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width - 32,
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
+    final l10n = context.l10n;
+    final chatController = _chatController;
+    final canSwitch =
+        chatController != null &&
+        !chatController.busy &&
+        chatController.chat?.finished != true;
+    return CompositedTransformTarget(
+      link: _modelMenuLink,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width - 32,
+        ),
+        child: Material(
           color: colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(999),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Text(
-            model,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: colors.onSurfaceVariant),
+          clipBehavior: Clip.antiAlias,
+          child: Tooltip(
+            message: l10n.aiSwitchModel,
+            child: InkWell(
+              key: const ValueKey('chat-model-tag'),
+              onTap: canSwitch ? () => unawaited(_openModelMenu()) : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        aiModelOptionLabel(l10n, provider, model),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: colors.onSurfaceVariant),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 18,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -613,7 +753,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         sessionState:
             sessionState ??
             const AppSessionState(status: AppLockStatus.uninitialized),
-        onOpenSettings: () => context.push(AppRouter.settingsRoute),
+        onOpenSettings: () => context.push(AppRoutes.settingsRoute),
         onUnlock: () => ref.read(appSessionProvider.notifier).unlock(),
       );
     }
@@ -771,6 +911,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                 alignment: Alignment.centerLeft,
                 child: _modelTag(
                   context,
+                  chatSession.connectionConfig.provider,
                   chatSession.connectionConfig.model.trim(),
                 ),
               ),
@@ -821,7 +962,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         _loadedVaultSession == vaultSession &&
         result == ChatDiaryLoadResult.missing) {
       ref.invalidate(chatDiarySessionsProvider);
-      context.go(AppRouter.homeRoute);
+      context.go(AppRoutes.homeRoute);
     }
   }
 
@@ -946,10 +1087,109 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _releaseImagePickerWait();
     _chatController?.removeListener(_changed);
     _composerController.dispose();
     _composerFocusNode.dispose();
     _scrollController.dispose();
+    _closeModelMenu();
     super.dispose();
+  }
+}
+
+class _ChatModelMenu extends StatelessWidget {
+  const _ChatModelMenu({
+    required this.link,
+    required this.currentProvider,
+    required this.choices,
+    required this.current,
+    required this.currentIsExtra,
+    required this.onDismiss,
+    required this.onSelected,
+  });
+
+  final LayerLink link;
+  final AiProvider currentProvider;
+  final List<ChatModelOption> choices;
+  final String current;
+  final bool currentIsExtra;
+  final VoidCallback onDismiss;
+  final ValueChanged<ChatModelOption> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final menuText = Theme.of(context).textTheme.labelMedium
+        ?.copyWith(color: colors.onSurfaceVariant);
+    final menuWidth = MediaQuery.sizeOf(context).width - 32;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onDismiss,
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+        CompositedTransformFollower(
+          link: link,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.topLeft,
+          followerAnchor: Alignment.bottomLeft,
+          offset: const Offset(0, -12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: menuWidth, maxHeight: 240),
+            child: Material(
+              key: const ValueKey('chat-model-menu'),
+              color: colors.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: colors.outlineVariant),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.all(6),
+                children: [
+                  for (final choice in choices)
+                    Material(
+                      color:
+                          choice.provider == currentProvider &&
+                              choice.modelId == current
+                          ? colors.surfaceContainerHighest
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () => onSelected(choice),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            choice.provider == currentProvider &&
+                                    choice.modelId == current &&
+                                    currentIsExtra
+                                ? '${aiModelOptionLabel(l10n, choice.provider, choice.modelId)} · ${l10n.aiModelCurrent}'
+                                : aiModelOptionLabel(
+                                    l10n,
+                                    choice.provider,
+                                    choice.modelId,
+                                  ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: menuText,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

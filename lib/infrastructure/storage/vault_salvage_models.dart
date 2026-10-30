@@ -1,4 +1,4 @@
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 

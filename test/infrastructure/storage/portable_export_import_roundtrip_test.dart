@@ -9,9 +9,9 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
-import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';

@@ -2,12 +2,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'easy_diary_realm_entry.dart';
 import 'package:path/path.dart' as p;
-
-import '../../../../domain/shared/value_objects.dart';
-import '../../shared/media_type_utils.dart';
-import '../../vault_repository.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_realm_entry.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
 /// Easy Diary 將相片存成 `Photos/{uuid}`（常無副檔名），需索引並嗅探 MIME。
 class EasyDiaryPhotoIndex {

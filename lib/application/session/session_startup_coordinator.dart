@@ -1,16 +1,14 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
-import 'state/app_session_state.dart';
-import 'state/session_lock_reason.dart';
-import 'state/unlock_result.dart';
 
 class SessionStartupCoordinator {
   const SessionStartupCoordinator(this._ref);
@@ -97,7 +95,7 @@ class SessionStartupCoordinator {
         AppSessionState(
           status: AppLockStatus.locked,
           lockReason: SessionLockReason.authFailed,
-          message: error.message,
+          message: await friendlyErrorMessage(error),
         ),
       );
       await disarmSessionWatchdog();
@@ -110,7 +108,7 @@ class SessionStartupCoordinator {
         AppSessionState(
           status: AppLockStatus.locked,
           lockReason: SessionLockReason.authFailed,
-          message: error.message,
+          message: await friendlyErrorMessage(error),
         ),
       );
       await disarmSessionWatchdog();
@@ -146,7 +144,7 @@ class SessionStartupCoordinator {
       await applyState(
         AppSessionState(
           status: AppLockStatus.recoveryRequired,
-          message: error.message,
+          message: await friendlyErrorMessage(error),
         ),
       );
       await disarmSessionWatchdog();
@@ -159,7 +157,7 @@ class SessionStartupCoordinator {
       await applyState(
         AppSessionState(
           status: AppLockStatus.recoveryRequired,
-          message: error.message,
+          message: await friendlyErrorMessage(error),
         ),
       );
       await disarmSessionWatchdog();
@@ -167,22 +165,39 @@ class SessionStartupCoordinator {
         SessionUnlockResultEvent(source: source, outcome: UnlockOutcome.failed),
       );
       return UnlockOutcome.failed;
+    } on UnlockModeCapabilityException catch (error) {
+      return _failTrustedUnlockRecoveryRequired(
+        repository: repository,
+        error: error,
+        afterRestore: afterRestore,
+        source: source,
+        applyState: applyState,
+        disarmSessionWatchdog: disarmSessionWatchdog,
+        friendlyErrorMessage: friendlyErrorMessage,
+        recordUnlockResult: recordUnlockResult,
+      );
+    } on TrustedSessionException catch (error) {
+      return _failTrustedUnlockRecoveryRequired(
+        repository: repository,
+        error: error,
+        afterRestore: afterRestore,
+        source: source,
+        applyState: applyState,
+        disarmSessionWatchdog: disarmSessionWatchdog,
+        friendlyErrorMessage: friendlyErrorMessage,
+        recordUnlockResult: recordUnlockResult,
+      );
     } on StateError catch (error) {
-      await repository.clearTrustedDeviceAccess();
-      await applyState(
-        AppSessionState(
-          status: AppLockStatus.recoveryRequired,
-          message: await friendlyErrorMessage(
-            error,
-            afterRestoreTrustedUnlock: afterRestore,
-          ),
-        ),
+      return _failTrustedUnlockRecoveryRequired(
+        repository: repository,
+        error: error,
+        afterRestore: afterRestore,
+        source: source,
+        applyState: applyState,
+        disarmSessionWatchdog: disarmSessionWatchdog,
+        friendlyErrorMessage: friendlyErrorMessage,
+        recordUnlockResult: recordUnlockResult,
       );
-      await disarmSessionWatchdog();
-      await recordUnlockResult(
-        SessionUnlockResultEvent(source: source, outcome: UnlockOutcome.failed),
-      );
-      return UnlockOutcome.failed;
     } catch (error) {
       final String message = await friendlyErrorMessage(
         error,
@@ -195,6 +210,9 @@ class SessionStartupCoordinator {
           AppSessionState(
             status: AppLockStatus.recoveryRequired,
             message: message,
+            failure: isUnreadableEncryptedIndexError(error)
+                ? SessionFailure.unreadableIndex
+                : null,
           ),
         );
         await disarmSessionWatchdog();
@@ -279,11 +297,17 @@ class SessionStartupCoordinator {
         next = AppSessionState(
           status: AppLockStatus.recoveryRequired,
           message: message,
+          failure: isUnreadableEncryptedIndexError(error)
+              ? SessionFailure.unreadableIndex
+              : null,
         );
       } else {
         next = AppSessionState(
           status: AppLockStatus.fatalError,
           message: message,
+          failure: isUnreadableEncryptedIndexError(error)
+              ? SessionFailure.unreadableIndex
+              : null,
         );
       }
       return await adoptBootstrapState(next);
@@ -325,6 +349,9 @@ class SessionStartupCoordinator {
           error,
           afterRestoreTrustedUnlock: true,
         ),
+        failure: isUnreadableEncryptedIndexError(error)
+            ? SessionFailure.unreadableIndex
+            : null,
       );
       await applyState(next);
       await disarmSessionWatchdog();
@@ -374,4 +401,39 @@ class SessionStartupCoordinator {
     );
     return UnlockOutcome.failed;
   }
+}
+
+Future<UnlockOutcome> _failTrustedUnlockRecoveryRequired({
+  required VaultRepository repository,
+  required Object error,
+  required bool afterRestore,
+  required UnlockRequestSource source,
+  required Future<AppSessionState> Function(AppSessionState next) applyState,
+  required Future<void> Function() disarmSessionWatchdog,
+  required Future<String> Function(
+    Object error, {
+    bool afterRestoreTrustedUnlock,
+  })
+  friendlyErrorMessage,
+  required Future<void> Function(SessionUnlockResultEvent event)
+  recordUnlockResult,
+}) async {
+  await repository.clearTrustedDeviceAccess();
+  await applyState(
+    AppSessionState(
+      status: AppLockStatus.recoveryRequired,
+      message: await friendlyErrorMessage(
+        error,
+        afterRestoreTrustedUnlock: afterRestore,
+      ),
+      failure: isUnreadableEncryptedIndexError(error)
+          ? SessionFailure.unreadableIndex
+          : null,
+    ),
+  );
+  await disarmSessionWatchdog();
+  await recordUnlockResult(
+    SessionUnlockResultEvent(source: source, outcome: UnlockOutcome.failed),
+  );
+  return UnlockOutcome.failed;
 }

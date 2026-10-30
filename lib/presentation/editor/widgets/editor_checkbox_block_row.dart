@@ -2,8 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'editor_mention_text_field.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+
+import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
 
 class EditorCheckboxBlockRow extends StatefulWidget {
   const EditorCheckboxBlockRow({

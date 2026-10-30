@@ -1,19 +1,8 @@
-import '../../domain/security/unlocked_vault_session.dart';
-import '../../l10n/l10n.dart';
-import 'app_lock_service.dart';
-import 'app_unlock_mode.dart';
-import 'device_key_manager.dart';
-import 'keystore_unlock_policy.dart';
-
-const String kUnlockModeNeedsDeviceLockMessage = '請先在裝置設定中建立螢幕鎖，才能使用此模式。';
-const String kUnlockModeChangeNeedsUnlockMessage = '請先解鎖日記庫後，再變更解鎖方式。';
-const String kBiometricNotEnrolledSwitchModeMessage =
-    '裝置尚未登錄指紋或臉部。請先到系統設定完成生物辨識設定，或改用裝置螢幕鎖。';
-const String kUseDeviceLockToUnlockMessage = '請使用裝置螢幕鎖解鎖。';
-const String kStartupNeedsBiometricMessage = '請先完成生物驗證。';
-const String kUnlockModeChangeCancelledMessage = '已取消變更，解鎖方式維持不變。';
-const String kUnlockModeChangeAuthFailedMessage = '驗證失敗，解鎖方式維持不變。';
-const String kKeystoreMigrationInProgressMessage = '正在更新解鎖設定，請完成驗證…';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 
 /// 何時檢查裝置是否支援某解鎖模式。
 enum UnlockModeCapabilityContext {
@@ -31,15 +20,10 @@ enum UnlockModeCapabilityFailure {
   requiresBiometricEnrollment,
 }
 
-extension UnlockModeCapabilityFailureMessages on UnlockModeCapabilityFailure {
-  String get message => switch (this) {
-    UnlockModeCapabilityFailure.requiresUnlockedSession =>
-      kUnlockModeChangeNeedsUnlockMessage,
-    UnlockModeCapabilityFailure.requiresDeviceLock =>
-      kUnlockModeNeedsDeviceLockMessage,
-    UnlockModeCapabilityFailure.requiresBiometricEnrollment =>
-      kBiometricNotEnrolledSwitchModeMessage,
-  };
+class UnlockModeCapabilityException implements Exception {
+  const UnlockModeCapabilityException(this.failure);
+
+  final UnlockModeCapabilityFailure failure;
 }
 
 /// 裝置驗證能力快照（單次原生查詢，避免檢查與使用時間差）。
@@ -100,20 +84,9 @@ Future<KeystoreAuthKind> requireKeystoreAuthKindForMode({
     context: UnlockModeCapabilityContext.unlock,
   );
   if (failure != null) {
-    throw StateError(failure.message);
+    throw UnlockModeCapabilityException(failure);
   }
   return keystoreAuthFor(mode);
-}
-
-String lockedResumeMessageFor(
-  AppUnlockMode mode, {
-  required AppLocalizations l10n,
-}) {
-  return switch (mode) {
-    AppUnlockMode.none => l10n.sessionNoneModeLockedMessage,
-    AppUnlockMode.deviceLock => l10n.sessionUseDeviceLockToUnlockMessage,
-    AppUnlockMode.biometric => l10n.sessionStartupNeedsBiometricMessage,
-  };
 }
 
 /// 比對 Keystore slot 與 wrapped record 是否已符合目標策略（不含索引後綴）。

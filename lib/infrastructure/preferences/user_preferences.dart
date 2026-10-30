@@ -3,46 +3,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import 'editor_typography_preferences.dart';
-import 'personalization_preferences.dart';
-
-/// 編輯器選圖時的圖片壓縮預設。
-enum ImageCompressPreset {
-  original,
-  standard,
-  high;
-
-  String get storageValue => name;
-
-  int? get quality => switch (this) {
-    ImageCompressPreset.original => null,
-    ImageCompressPreset.standard => 70,
-    ImageCompressPreset.high => 85,
-  };
-
-  int? get minWidth => switch (this) {
-    ImageCompressPreset.original => null,
-    ImageCompressPreset.standard => 1280,
-    ImageCompressPreset.high => 1920,
-  };
-
-  int? get minHeight => switch (this) {
-    ImageCompressPreset.original => null,
-    ImageCompressPreset.standard => 1280,
-    ImageCompressPreset.high => 1920,
-  };
-
-  static ImageCompressPreset fromStorage(String? raw) {
-    return switch (raw?.trim()) {
-      'original' => ImageCompressPreset.original,
-      'high' => ImageCompressPreset.high,
-      'standard' || null || '' => ImageCompressPreset.standard,
-      _ => ImageCompressPreset.standard,
-    };
-  }
-}
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 在 vault 外持久化使用者偏好（設定頁可擴充更多 key）。
 class UserPreferences {
@@ -81,18 +43,6 @@ class UserPreferences {
       bodyLineHeight: store[_editorBodyLineHeightKey],
       bodyParagraphSpacing: store[_editorBodyParagraphSpacingKey],
     );
-  }
-
-  Future<void> setEditorTypography(EditorTypographyPreferences value) async {
-    final EditorTypographyPreferences clamped = value.clamped();
-    final Map<String, String> store = await _loadStore();
-    store[_editorTitleFontSizeKey] = clamped.titleFontSize.toString();
-    store[_editorTitleLineHeightKey] = clamped.titleLineHeight.toString();
-    store[_editorBodyFontSizeKey] = clamped.bodyFontSize.toString();
-    store[_editorBodyLineHeightKey] = clamped.bodyLineHeight.toString();
-    store[_editorBodyParagraphSpacingKey] = clamped.bodyParagraphSpacing
-        .toString();
-    await _persistStore(store);
   }
 
   Future<AppThemeModePreference> get themeMode async {

@@ -7,6 +7,7 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
+
 import '../../helpers/vault/test_vault_path_strategy.dart';
 
 void main() {
@@ -253,12 +254,13 @@ void main() {
         deviceSlotId: 'dev_test',
       );
 
-      final List<IndexDatabase> databases =
-          await Future.wait(<Future<IndexDatabase>>[
-            manager.openForSession(session),
-            manager.openForSession(session),
-            manager.openForSession(session),
-          ]);
+      final List<IndexDatabase> databases = await Future.wait(
+        <Future<IndexDatabase>>[
+          manager.openForSession(session),
+          manager.openForSession(session),
+          manager.openForSession(session),
+        ],
+      );
 
       expect(identical(databases[0], databases[1]), isTrue);
       expect(identical(databases[1], databases[2]), isTrue);

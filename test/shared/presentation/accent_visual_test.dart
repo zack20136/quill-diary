@@ -13,31 +13,28 @@ double _colorDistance(Color a, Color b) {
 
 void main() {
   test('共用色盤固定包含二十個指定色並維持順序', () {
-    expect(
-      kAccentColorPresets.map(colorArgb32),
-      <int>[
-        0xFFBF6760,
-        0xFFC47A88,
-        0xFFCC8A98,
-        0xFFCC8C74,
-        0xFFCC9A5E,
-        0xFFC4A256,
-        0xFFB0A262,
-        0xFF8EAA6A,
-        0xFF62A87C,
-        0xFF54A890,
-        0xFF4EA196,
-        0xFF559AAC,
-        0xFF5C94B8,
-        0xFF5480B0,
-        0xFF6874B0,
-        0xFF786CB0,
-        0xFF8C66AC,
-        0xFFA666A0,
-        0xFF968876,
-        0xFF748494,
-      ],
-    );
+    expect(accentColorPresets.map(colorArgb32), <int>[
+      0xFFBF6760,
+      0xFFC47A88,
+      0xFFCC8A98,
+      0xFFCC8C74,
+      0xFFCC9A5E,
+      0xFFC4A256,
+      0xFFB0A262,
+      0xFF8EAA6A,
+      0xFF62A87C,
+      0xFF54A890,
+      0xFF4EA196,
+      0xFF559AAC,
+      0xFF5C94B8,
+      0xFF5480B0,
+      0xFF6874B0,
+      0xFF786CB0,
+      0xFF8C66AC,
+      0xFFA666A0,
+      0xFF968876,
+      0xFF748494,
+    ]);
   });
 
   test('Accent 背景依表面明暗混色且前景保留原色', () {
@@ -103,7 +100,7 @@ void main() {
 
     expect(accentColorForStableKey('person-123'), first);
     expect(accentMatchesPreset(first), isTrue);
-    expect(accentColorForStableKey(''), kAccentColorPresets.first);
+    expect(accentColorForStableKey(''), accentColorPresets.first);
   });
 
   test('邊框由原始 Accent 與指定透明度及寬度產生', () {

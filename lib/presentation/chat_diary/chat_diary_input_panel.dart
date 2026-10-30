@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/chat_diary/chat_diary_session.dart';
-import '../../l10n/l10n.dart';
-import 'chat_diary_private_text_controller.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_private_text_controller.dart';
 
 class ChatDiaryInputPanel extends StatelessWidget {
   const ChatDiaryInputPanel({

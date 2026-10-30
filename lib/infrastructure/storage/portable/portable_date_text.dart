@@ -1,5 +1,5 @@
-import '../../../domain/diary/diary_entry.dart';
-import '../../../domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 const List<String> _zhTwWeekdayLong = <String>[
   '星期一',
@@ -65,27 +65,24 @@ DateTime? parsePortableDateTime(String text) {
 
 /// 從可攜式文字解析 [DateOnly]。
 DateOnly? parsePortableDateOnly(String text) {
-  final Match? ymd = RegExp(
-    r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})',
-  ).firstMatch(text);
+  final Match? ymd = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})')
+      .firstMatch(text);
   if (ymd != null) {
     return DateOnly(
       '${ymd.group(1)}-${_pad2(ymd.group(2))}-${_pad2(ymd.group(3))}',
     );
   }
 
-  final Match? korean = RegExp(
-    r'(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일',
-  ).firstMatch(text);
+  final Match? korean = RegExp(r'(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일')
+      .firstMatch(text);
   if (korean != null) {
     return DateOnly(
       '${korean.group(1)}-${_pad2(korean.group(2))}-${_pad2(korean.group(3))}',
     );
   }
 
-  final Match? cjk = RegExp(
-    r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日',
-  ).firstMatch(text);
+  final Match? cjk = RegExp(r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日')
+      .firstMatch(text);
   if (cjk != null) {
     return DateOnly(
       '${cjk.group(1)}-${_pad2(cjk.group(2))}-${_pad2(cjk.group(3))}',

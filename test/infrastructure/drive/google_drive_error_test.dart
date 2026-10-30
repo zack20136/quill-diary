@@ -1,7 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
+import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 

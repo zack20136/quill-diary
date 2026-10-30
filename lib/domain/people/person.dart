@@ -1,4 +1,4 @@
-import '../shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 熟悉程度 1–5；JSON 欄位固定為 `friendliness`。
 final class FriendlinessLevel {
@@ -234,7 +234,8 @@ final class Person {
     const Set<String> optionalKeys = <String>{'accentArgb', 'mentionName'};
     if (!requiredKeys.every(map.containsKey) ||
         map.keys.any(
-          (Object? key) => key is! String ||
+          (Object? key) =>
+              key is! String ||
               (!requiredKeys.contains(key) && !optionalKeys.contains(key)),
         )) {
       return null;
@@ -571,4 +572,30 @@ bool isValidAcquaintanceYear(int? year, {DateTime? now}) {
   }
   final int currentYear = (now ?? DateTime.now()).year;
   return year >= 1 && year <= currentYear;
+}
+
+class PersonMentionStats {
+  const PersonMentionStats({
+    required this.personId,
+    required this.mentionedEntryCount,
+    required this.recentMentionedEntryCount,
+    this.lastMentionDate,
+  });
+
+  final PersonId personId;
+  final int mentionedEntryCount;
+  final int recentMentionedEntryCount;
+  final DateOnly? lastMentionDate;
+}
+
+class PersonScopedMentionRank {
+  const PersonScopedMentionRank({
+    required this.personId,
+    required this.mentionedEntryCount,
+    required this.lastMentionDate,
+  });
+
+  final PersonId personId;
+  final int mentionedEntryCount;
+  final DateOnly lastMentionDate;
 }

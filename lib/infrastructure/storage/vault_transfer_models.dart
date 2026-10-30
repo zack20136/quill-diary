@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 
-typedef PickPortableFiles =
-    Future<List<PlatformFile>> Function({
-      required String dialogTitle,
-      required List<String> allowedExtensions,
-    });
+typedef PickPortableFiles = Future<List<PlatformFile>> Function({
+  required String dialogTitle,
+  required List<String> allowedExtensions,
+});
 
 enum BackupPersistStatus { success, inspectFailed, cancelled }
 

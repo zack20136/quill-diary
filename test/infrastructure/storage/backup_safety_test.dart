@@ -7,18 +7,26 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;
-  late VaultArchiveIo archiveIo;
+  late ({
+    VaultBackupIo backup,
+    PortableExportIo exporter,
+    PortableImportIo importer,
+  })
+  archiveIo;
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    archiveIo = harness.createArchiveIo();
+    archiveIo = harness.createTransferIo();
   });
 
   tearDown(() async {
@@ -56,7 +64,7 @@ void main() {
       ..writeAsBytesSync(const <int>[7, 7, 7]);
 
     final File backupFile = File(p.join(harness.tempDir.path, 'no_index.zip'));
-    await archiveIo.writeBackupZip(backupFile);
+    await archiveIo.backup.writeBackupZip(backupFile);
 
     final Archive archive = ZipDecoder().decodeBytes(
       await backupFile.readAsBytes(),
@@ -67,14 +75,8 @@ void main() {
 
     expect(names.any((String name) => name.startsWith('index/')), isFalse);
     expect(names.any((String name) => name.startsWith('quarantine/')), isFalse);
-    expect(
-      names.any((String name) => name.startsWith('entries/')),
-      isTrue,
-    );
-    expect(
-      names.any((String name) => name.startsWith('assets/')),
-      isTrue,
-    );
+    expect(names.any((String name) => name.startsWith('entries/')), isTrue);
+    expect(names.any((String name) => name.startsWith('assets/')), isTrue);
     expect(names, contains('people.json.enc'));
     expect(names, contains('recovery.json'));
   });
@@ -98,7 +100,7 @@ void main() {
     final File backupFile = File(
       p.join(harness.tempDir.path, 'people_round_trip.zip'),
     );
-    await archiveIo.writeBackupZip(backupFile);
+    await archiveIo.backup.writeBackupZip(backupFile);
 
     await harness.repository.createPerson(
       setup.session,
@@ -106,7 +108,7 @@ void main() {
     );
     expect(await harness.repository.listPeople(setup.session), hasLength(2));
 
-    await archiveIo.restoreBackupZip(
+    await archiveIo.backup.restoreBackupZip(
       backupFile,
       preserveTrustedDeviceAccess: true,
     );
@@ -135,9 +137,9 @@ void main() {
       ..addFile(ArchiveFile('../evil.md.enc', 1, const <int>[1]));
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
-    final report = await archiveIo.inspectBackup(backupFile);
+    final report = await archiveIo.backup.inspectBackup(backupFile);
 
     expect(report.ok, isFalse);
-    expect(report.message, contains('不安全路徑'));
+    expect(report.issue, VaultBackupIssue.unsafePath);
   });
 }

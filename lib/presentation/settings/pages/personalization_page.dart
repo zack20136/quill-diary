@@ -2,20 +2,19 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
-
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/settings/settings_capabilities.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/widgets/personalization_sections.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/application/settings/settings_providers.dart';
-import '../settings_capabilities.dart';
-import '../widgets/personalization_sections.dart';
-import '../widgets/settings_sections.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 class PersonalizationPage extends ConsumerWidget {
   const PersonalizationPage({super.key});
@@ -34,7 +33,6 @@ class PersonalizationPage extends ConsumerWidget {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final SettingsPageCapabilities pageAccess =
         SettingsPageCapabilities.fromSessionState(
-          l10n: context.l10n,
           sessionState: sessionState,
           hasRecoveryKey: recoveryMetadataAsync.asData?.value != null,
         );
@@ -42,16 +40,15 @@ class PersonalizationPage extends ConsumerWidget {
         pageAccess.canChangeSessionTimeout
         ? null
         : pageAccess.hasRecoveryKey
-        ? pageAccess.lockedSettingMessage(context.l10n)
+        ? context.l10n.settingsUnlockRequiredToChangeSettingMessage
         : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.personalizationPageTitle),
-      ),
+      appBar: AppBar(title: Text(context.l10n.personalizationPageTitle)),
       body: SafeArea(
         child: prefsAsync.when(
-          loading: () => const AppLoadingState(layout: AppLoadingStateLayout.page),
+          loading: () =>
+              const AppLoadingState(layout: AppLoadingStateLayout.page),
           error: (_, _) => AppStateView(
             icon: Icons.error_outline_rounded,
             title: context.l10n.commonReadFailureTitle,

@@ -3,13 +3,12 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-
-import '../../domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
-const int _schemaVersion = 1;
 
 /// 每個檔案內容金鑰的包裝副本。
 ///
@@ -334,7 +333,7 @@ class LocalCryptoService implements CryptoService {
 
     final List<int> contentNonce = _randomBytes(_gcmNonceLength);
     final EncryptedDocumentHeader header = EncryptedDocumentHeader(
-      schemaVersion: _schemaVersion,
+      schemaVersion: DataVersions.encryptedDocument,
       fileId: documentId,
       vaultId: vaultId,
       contentType: contentType,
@@ -481,7 +480,7 @@ class LocalCryptoService implements CryptoService {
   }
 
   void _validateHeader(EncryptedDocumentHeader header) {
-    if (header.schemaVersion != _schemaVersion) {
+    if (header.schemaVersion != DataVersions.encryptedDocument) {
       throw FormatException('不支援的加密文件版本：${header.schemaVersion}。');
     }
     if (header.fileId.isEmpty || header.vaultId.isEmpty) {

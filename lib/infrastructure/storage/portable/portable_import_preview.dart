@@ -1,6 +1,6 @@
-import '../../../domain/diary/diary_entry.dart';
-import '../../../domain/shared/value_objects.dart';
-import 'portable_io_types.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
 
 /// 匯入預覽清單中的單篇摘要（選取用暫時索引，不是 vault entry.id）。
 class PortableImportPreviewEntry {
@@ -37,9 +37,8 @@ class PortableImportPreview {
 
   int get entryCount => entries.length;
 
-  int get likelyDuplicateCount => entries
-      .where((PortableImportPreviewEntry e) => e.likelyDuplicate)
-      .length;
+  int get likelyDuplicateCount =>
+      entries.where((PortableImportPreviewEntry e) => e.likelyDuplicate).length;
 
   PortableImportPreview forSelected(Set<int> selectedPreviewIndices) {
     return PortableImportPreview(

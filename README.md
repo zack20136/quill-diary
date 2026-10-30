@@ -21,16 +21,11 @@ Quill Diary 是以 Android 為主要平台的離線加密日記 App。本 repo �
 - 開發文件導覽：[docs/開發/README.md](docs/開發/README.md)
 - 架構總覽：[docs/開發/架構/系統架構.md](docs/開發/架構/系統架構.md)
 - 模組速查：[docs/開發/架構/模組參考.md](docs/開發/架構/模組參考.md)
-- Google/OAuth/上架整備：
-  [Android 權限與資料揭露](docs/開發/google/Android-權限與資料揭露.md)、
-  [Google Drive OAuth 設定](docs/開發/google/Google-Drive-OAuth-設定.md)、
-  [Google Play 上架](docs/開發/google/Google-Play-上架.md)、
-  [Google Play Billing](docs/開發/google/Google-Play-Billing.md)
 - 公開首頁（GitHub Pages）：[docs/index.md](docs/index.md)
 - 隱私權政策：[docs/privacy-policy.md](docs/privacy-policy.md)
 - 第三方聲明：[docs/third-party-notices.md](docs/third-party-notices.md)
 
-文件與程式碼不一致時，以 `lib/`、`android/`、`lib/app/app_identifiers.dart` 與 `lib/l10n/*.arb` 的實作為準。
+文件與程式碼不一致時，以 `lib/`、`android/`、`lib/shared/app_identifiers.dart` 與 `lib/l10n/*.arb` 的實作為準。
 
 ## 開發注意事項
 

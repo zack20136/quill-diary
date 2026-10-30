@@ -215,9 +215,8 @@ String? extractFirstHtmlTagText(String html, String tagName) {
     return null;
   }
 
-  final String text = decodeHtmlEntities(
-    stripHtmlTags(match.group(1) ?? ''),
-  ).trim();
+  final String text = decodeHtmlEntities(stripHtmlTags(match.group(1) ?? ''))
+      .trim();
   return text.isEmpty ? null : text;
 }
 

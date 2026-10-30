@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/diary/diary_date_policy.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/presentation/home/widgets/calendar/calendar_pane.dart';
 
 import '../../helpers/shared/widget_test_app.dart';
@@ -24,10 +24,10 @@ void main() {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         calendarGridEntriesProvider.overrideWith(
-          (Ref ref) async => const <EntryIndexRecord>[],
+          (Ref ref) async => const <DiaryEntrySummary>[],
         ),
         calendarEntriesProvider.overrideWith(
-          (Ref ref) async => const <EntryIndexRecord>[],
+          (Ref ref) async => const <DiaryEntrySummary>[],
         ),
         entryDateBoundsProvider.overrideWith((Ref ref) async => null),
         tagAccentArgbMapProvider.overrideWith(

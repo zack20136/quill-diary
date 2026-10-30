@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show VoidCallback;
 
-import 'session_timeout_policy.dart';
+import 'package:quill_diary/application/session/session_timeout_policy.dart';
 
 enum ForegroundResumeResult { none, expired, waitingForSettle }
 
@@ -19,11 +19,6 @@ class SessionInactivityWatchdog {
   DateTime? _backgroundSince;
   Timer? _backgroundTimer;
   Timer? _foregroundSettleTimer;
-
-  bool get isArmed => _armed;
-
-  @visibleForTesting
-  DateTime? get backgroundSince => _backgroundSince;
 
   void arm({
     required Duration timeout,

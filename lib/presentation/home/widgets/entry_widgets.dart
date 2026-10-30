@@ -3,27 +3,27 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_preview_image_strip.dart';
+import 'package:quill_diary/presentation/home/home_entry_presenters.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/home_entry_preview_body.dart';
+import 'package:quill_diary/presentation/home/widgets/home_pin_glyph.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
-
-import '../home_entry_presenters.dart';
-import '../home_layout.dart';
-import 'home_entry_preview_body.dart';
-import 'home_pin_glyph.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 
 class HomeTimelineEntryShell extends StatelessWidget {
   const HomeTimelineEntryShell({
@@ -73,7 +73,7 @@ class HomeEntryList extends ConsumerWidget {
     super.key,
   });
 
-  final List<EntryIndexRecord> entries;
+  final List<DiaryEntrySummary> entries;
   final List<Widget> draftCards;
   final ScrollController? controller;
 
@@ -103,7 +103,7 @@ class HomeEntryList extends ConsumerWidget {
     final EditorTypographyPreferences typography =
         watchPersonalizationPreferences(ref).typography;
     final List<EntryId> displayOrder = entries
-        .map((EntryIndexRecord item) => item.id)
+        .map((DiaryEntrySummary item) => item.id)
         .toList();
     final Color pinnedSectionDividerColor = context.appColors.outlineMuted
         .withValues(alpha: 0.42);
@@ -146,7 +146,7 @@ class HomeEntryList extends ConsumerWidget {
             return draftCards[index];
           }
           index -= draftCards.length;
-          final EntryIndexRecord entry = entries[index];
+          final DiaryEntrySummary entry = entries[index];
           final bool selected = selection.selectedIds.contains(entry.id);
           return HomeTimelineEntryShell(
             key: ValueKey<String>(entry.id),
@@ -201,7 +201,7 @@ class HomeEntryCard extends StatelessWidget {
     super.key,
   });
 
-  final EntryIndexRecord entry;
+  final DiaryEntrySummary entry;
   final EditorTypographyPreferences typography;
   final bool selectionActive;
   final bool selected;
@@ -309,7 +309,7 @@ class HomeEntryCard extends StatelessWidget {
 class HomeCompactEntrySliverList extends ConsumerWidget {
   const HomeCompactEntrySliverList({required this.entries, super.key});
 
-  final List<EntryIndexRecord> entries;
+  final List<DiaryEntrySummary> entries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -337,7 +337,7 @@ class HomeCompactEntrySliverList extends ConsumerWidget {
     return SliverList.builder(
       itemCount: entries.length,
       itemBuilder: (BuildContext context, int index) {
-        final EntryIndexRecord entry = entries[index];
+        final DiaryEntrySummary entry = entries[index];
         final String? trimmedTitle = entry.title?.trim();
         final bool hasTitle = trimmedTitle != null && trimmedTitle.isNotEmpty;
         final bool showPreview =
@@ -445,19 +445,19 @@ class HomeEntryListTagsWrap extends StatelessWidget {
           runSpacing: 4,
           children: <Widget>[
             if (showUnsavedDraft)
-              TagChip.pair(
+              AccentChip.pair(
                 label: context.l10n.homeUnsavedDraftLabel,
                 pair: tagUnsavedPair(context.appColors),
                 compact: compactTags,
               ),
             if (charCount > 0)
-              TagChip.pair(
+              AccentChip.pair(
                 label: DisplayFormat.formatCharCount(context.l10n, charCount),
-                pair: tagCharCountPair(theme.colorScheme),
+                pair: tagNeutralAccentPair(theme.colorScheme),
                 compact: compactTags,
               ),
             ...trimmedTags.map(
-              (String tag) => TagChip.pair(
+              (String tag) => AccentChip.pair(
                 label: tag,
                 pair: tagResolvedAccentPair(
                   tag,
@@ -486,7 +486,7 @@ class HomeEntryCardHeader extends StatelessWidget {
     super.key,
   });
 
-  final EntryIndexRecord entry;
+  final DiaryEntrySummary entry;
   final TextStyle? titleStyle;
   final Widget? leading;
   final double leadingGap;
@@ -542,7 +542,7 @@ class HomeEntryCardRightDateTime extends StatelessWidget {
     super.key,
   });
 
-  final EntryIndexRecord entry;
+  final DiaryEntrySummary entry;
   final bool compact;
 
   @override

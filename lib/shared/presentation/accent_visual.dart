@@ -1,28 +1,11 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/domain/shared/accent_palette.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 /// 人物與標籤共用的可選強調色盤。
-const List<Color> kAccentColorPresets = <Color>[
-  Color(0xFFBF6760),
-  Color(0xFFC47A88),
-  Color(0xFFCC8A98),
-  Color(0xFFCC8C74),
-  Color(0xFFCC9A5E),
-  Color(0xFFC4A256),
-  Color(0xFFB0A262),
-  Color(0xFF8EAA6A),
-  Color(0xFF62A87C),
-  Color(0xFF54A890),
-  Color(0xFF4EA196),
-  Color(0xFF559AAC),
-  Color(0xFF5C94B8),
-  Color(0xFF5480B0),
-  Color(0xFF6874B0),
-  Color(0xFF786CB0),
-  Color(0xFF8C66AC),
-  Color(0xFFA666A0),
-  Color(0xFF968876),
-  Color(0xFF748494),
-];
+final List<Color> accentColorPresets = List<Color>.unmodifiable(
+  accentArgbPresets.map(Color.new),
+);
 
 const double kAccentBackgroundMixLight = 0.16;
 const double kAccentBackgroundMixDark = 0.42;
@@ -51,16 +34,17 @@ Color accentOnSwatchColor(Color accent) =>
     ? Colors.white
     : const Color(0xDE000000);
 
-Color accentBorderColor(
-  Color accent, {
-  double alpha = kAccentBorderAlpha,
-}) => accent.withValues(alpha: alpha);
+Color accentBorderColor(Color accent, {double alpha = kAccentBorderAlpha}) =>
+    accent.withValues(alpha: alpha);
 
 BorderSide accentBorderSide(
   Color accent, {
   double width = 0.95,
   double alpha = kAccentBorderAlpha,
-}) => BorderSide(color: accentBorderColor(accent, alpha: alpha), width: width);
+}) => BorderSide(
+  color: accentBorderColor(accent, alpha: alpha),
+  width: width,
+);
 
 int colorArgb32(Color color) {
   final double a = (color.a.isFinite ? color.a : 1.0).clamp(0.0, 1.0);
@@ -73,17 +57,43 @@ int colorArgb32(Color color) {
       ((b * 255.0).round() & 0xff);
 }
 
-bool accentMatchesPreset(Color color) => kAccentColorPresets.any(
+bool accentMatchesPreset(Color color) => accentColorPresets.any(
   (Color preset) => colorArgb32(preset) == colorArgb32(color),
 );
 
 Color accentColorForStableKey(String key) {
   if (key.isEmpty) {
-    return kAccentColorPresets.first;
+    return accentColorPresets.first;
   }
   final int hash = key.codeUnits.fold<int>(
     0,
     (int acc, int unit) => (acc * 31 + unit) & 0x7fffffff,
   );
-  return kAccentColorPresets[hash % kAccentColorPresets.length];
+  return accentColorPresets[hash % accentColorPresets.length];
+}
+
+bool _accentPairIsNeutral(
+  ColorScheme scheme,
+  Color background,
+  Color foreground,
+) =>
+    foreground == scheme.onSurfaceVariant &&
+    (background == scheme.surfaceContainerHighest ||
+        background == scheme.surfaceContainerHigh);
+
+BorderSide? accentChipBorderSide(
+  AppColors colors,
+  ColorScheme scheme,
+  Color background,
+  Color foreground, {
+  double width = 0.95,
+  double accentBorderAlpha = kAccentBorderAlpha,
+}) {
+  if (_accentPairIsNeutral(scheme, background, foreground)) {
+    final Color? neutralBorder = colors.tagNeutralChipBorder;
+    return neutralBorder == null
+        ? null
+        : BorderSide(color: neutralBorder, width: width);
+  }
+  return accentBorderSide(foreground, width: width, alpha: accentBorderAlpha);
 }

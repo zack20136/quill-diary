@@ -1,9 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 void main() {
   test('只有空日記庫且版本較舊時才顯示介紹', () {
@@ -27,7 +28,7 @@ void main() {
     expect(
       shouldShowOnboardingIntro(
         sessionState: emptyVault,
-        storedVersion: onboardingIntroCurrentVersion,
+        storedVersion: DataVersions.onboardingIntro,
       ),
       isFalse,
     );

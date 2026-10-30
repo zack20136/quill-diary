@@ -1,9 +1,8 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 void main() {
   test('合作夥伴篩選只保留具有該關係的人物', () {

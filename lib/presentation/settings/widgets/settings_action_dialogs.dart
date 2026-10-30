@@ -2,21 +2,19 @@ import 'dart:async';
 
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
-import 'package:quill_diary/application/settings/vault_finding_presentation.dart';
+import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/backup/backup_pick_dialog.dart';
+import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
 import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
+import 'package:quill_diary/presentation/settings/vault_finding_presentation.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import '../backup/backup_pick_dialog.dart';
-import '../backup/backup_pick_list_item.dart';
 
 Future<bool> showInspectVaultConfirmDialog(
   BuildContext context, {
@@ -157,17 +155,17 @@ class _DialogSection extends StatelessWidget {
       backgroundColor: theme.colorScheme.surfaceContainerLow,
       radius: 12,
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 6),
-            ...children,
-          ],
+          ),
+          const SizedBox(height: 6),
+          ...children,
+        ],
       ),
     );
   }
@@ -466,9 +464,8 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
   @override
   void initState() {
     super.initState();
-    _groups = groupVaultFindings(
-      widget.report.unresolvedFindings,
-    ).entries.toList();
+    _groups = groupVaultFindings(widget.report.unresolvedFindings).entries
+        .toList();
     for (final MapEntry<String, List<VaultFinding>> group in _groups) {
       unawaited(_loadSalvage(group));
     }
@@ -487,7 +484,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
       Navigator.of(context).pop();
       if (widget.hostContext.mounted) {
         unawaited(
-          widget.hostContext.push(AppRouter.editorSalvageLocation(token)),
+          widget.hostContext.push(AppRoutes.editorSalvageLocation(token)),
         );
       }
     } else {

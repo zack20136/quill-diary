@@ -1,3 +1,6 @@
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_markdown.dart';
+
 /// 日記索引需要的通用文字；不包含任何人物資訊。
 final class EntryIndexText {
   const EntryIndexText({
@@ -108,4 +111,41 @@ String _stripMarkdownLine(String line) {
   text = text.replaceAll(RegExp(r'[*_]{1,3}'), '');
   text = text.replaceAll(RegExp(r'<https?://[^>]+>'), ' ');
   return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
+class EntrySearchFields {
+  const EntrySearchFields({
+    required this.previewText,
+    required this.previewMarkdown,
+    required this.titleSearchText,
+    required this.bodySearchText,
+    required this.bodyVisibleText,
+  });
+
+  final String previewText;
+  final String previewMarkdown;
+  final String titleSearchText;
+  final String bodySearchText;
+  final String bodyVisibleText;
+}
+
+EntrySearchFields entrySearchFields(DiaryEntry entry) {
+  final EntryIndexText indexText = EntryIndexText.fromMarkdown(
+    entry.markdownBody,
+  );
+  return EntrySearchFields(
+    previewText: indexText.previewText,
+    previewMarkdown: previewMarkdownExcerpt(entry.markdownBody),
+    titleSearchText: _titleSearchText(entry.title),
+    bodySearchText: indexText.searchText,
+    bodyVisibleText: indexText.visibleText,
+  );
+}
+
+String _titleSearchText(String? title) {
+  final String? trimmed = title?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return '';
+  }
+  return normalizeSearchText(trimmed);
 }

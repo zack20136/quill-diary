@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'person_mention_query.dart';
+import 'package:quill_diary/application/editor/person_mention_query.dart';
 
 final class PersonMentionReplacementTarget {
   const PersonMentionReplacementTarget({

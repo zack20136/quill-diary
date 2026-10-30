@@ -1,22 +1,27 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/editor/editor_actions.dart';
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
+import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/editor/editor_draft_snapshot.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-
-import 'editor_actions.dart';
-import 'editor_attachment_items.dart';
-import 'editor_body_blocks.dart';
-import 'editor_draft_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 
 final editorFlowControllerProvider = Provider<EditorFlowController>((Ref ref) {
   return EditorFlowController(ref);
@@ -113,7 +118,7 @@ class EditorSaveRequest {
   final DiaryEntry? existingEntry;
   final String titleRaw;
   final String dateValue;
-  final TimeOfDay entryTime;
+  final ({int hour, int minute}) entryTime;
   final String tagsRaw;
   final String markdownBodyRaw;
   final List<AssetId> attachmentIds;
@@ -150,6 +155,10 @@ class EditorFlowController {
 
   final Ref _ref;
   final EditorActionPort _actions;
+
+  EditorFlowSession startSession({
+    required void Function(EditorPersistDraftResult) onDraftPersisted,
+  }) => EditorFlowSession._(this, onDraftPersisted);
 
   Future<EditorPersistDraftResult> persistDraft(
     EditorPersistDraftRequest request,
@@ -413,10 +422,31 @@ class EditorFlowController {
     );
   }
 
+  Future<Uint8List?> loadGalleryImageBytes(GalleryImageItem item) async {
+    switch (item.source) {
+      case GalleryImageSource.local:
+        final File file = File(item.path);
+        if (!file.existsSync()) {
+          return null;
+        }
+        return file.readAsBytes();
+      case GalleryImageSource.encrypted:
+        final AppSessionState sessionState = await _ref.read(
+          effectiveAppSessionProvider.future,
+        );
+        if (!sessionState.isUnlocked || sessionState.session == null) {
+          return null;
+        }
+        return _ref
+            .read(vaultRepositoryProvider)
+            .readDecryptedAssetBytes(sessionState.session!, item.path);
+    }
+  }
+
   DateTime _composeEntryCreatedAt({
     required DateOnly date,
     required DiaryEntry? existing,
-    required TimeOfDay entryTime,
+    required ({int hour, int minute}) entryTime,
   }) {
     final DateTime base = date.toDateTime();
     if (existing != null) {
@@ -467,23 +497,77 @@ class EditorFlowController {
     bool refreshVaultMaintenance = false,
   }) {
     if (!_ref.mounted) return;
-    _ref
-      ..invalidate(homeEntryIndexListProvider)
-      ..invalidate(calendarGridEntriesProvider)
-      ..invalidate(calendarEntriesProvider)
-      ..invalidate(entryDateBoundsProvider)
-      ..invalidate(allEntryIndexRecordsProvider)
-      ..invalidate(editorDraftKeysProvider);
+    _ref.invalidate(editorDraftKeysProvider);
     if (refreshVaultMaintenance) {
       _ref
         ..invalidate(vaultRepairSummaryProvider)
         ..invalidate(vaultInspectSummaryProvider);
     }
-    _ref.read(entryIndexRevisionProvider.notifier).bump();
+    _ref.read(diaryRevisionProvider.notifier).bump();
     final EntryId? id = editedEntryId?.trim();
     if (id != null && id.isNotEmpty) {
       _ref.invalidate(entryProvider(id));
       _ref.invalidate(entryAttachmentsProvider(id));
     }
+  }
+}
+
+/// 每個編輯器各自管理保存排程，寫入使用操作當下的欄位快照。
+class EditorFlowSession {
+  EditorFlowSession._(this._flow, this._onDraftPersisted);
+  final EditorFlowController _flow;
+  final void Function(EditorPersistDraftResult) _onDraftPersisted;
+  EditorPersistDraftRequest? _pendingDraft;
+  Future<void>? _draftWrite;
+  int _stateVersion = 0;
+  int _previewVersion = 0;
+  bool _closed = false;
+
+  Future<void> persistDraft(EditorPersistDraftRequest request) {
+    _pendingDraft = request;
+    final current = _draftWrite;
+    if (current != null) return current;
+    final completion = Completer<void>();
+    _draftWrite = completion.future;
+    unawaited(_drainDrafts(completion));
+    return completion.future;
+  }
+
+  Future<void> _drainDrafts(Completer<void> completion) async {
+    try {
+      while (_pendingDraft != null) {
+        final request = _pendingDraft!;
+        _pendingDraft = null;
+        final version = _stateVersion;
+        final result = await _flow.persistDraft(request);
+        if (!_closed && version == _stateVersion) _onDraftPersisted(result);
+      }
+      completion.complete();
+    } on Object catch (error, stackTrace) {
+      _pendingDraft = null;
+      completion.completeError(error, stackTrace);
+    } finally {
+      _draftWrite = null;
+    }
+  }
+
+  Future<void> flushDrafts() => _draftWrite ?? Future<void>.value();
+
+  Future<EditorSaveResult?> savePreview(EditorSaveRequest request) async {
+    final version = ++_previewVersion;
+    final result = await _flow.saveEntry(request);
+    return !_closed && version == _previewVersion ? result : null;
+  }
+
+  void reset() {
+    _stateVersion++;
+    _previewVersion++;
+    _pendingDraft = null;
+  }
+
+  void close() {
+    _closed = true;
+    _stateVersion++;
+    _previewVersion++;
   }
 }

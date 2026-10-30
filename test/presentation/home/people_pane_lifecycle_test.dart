@@ -4,12 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 
 import '../../helpers/shared/widget_test_app.dart';
@@ -22,12 +23,12 @@ void main() {
       overrides: [
         homeEntriesProvider.overrideWith(
           (Ref ref) =>
-              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+              const AsyncData<List<DiaryEntrySummary>>(<DiaryEntrySummary>[]),
         ),
         homeEntryIndexListProvider.overrideWith(
           (Ref ref) async => const HomeEntryQueryResult(
             query: '',
-            entries: <EntryIndexRecord>[],
+            entries: <DiaryEntrySummary>[],
           ),
         ),
         homePinnedEntryIdsProvider.overrideWith(
@@ -146,27 +147,27 @@ void main() {
   });
 
   testWidgets('總覽人物排行首次進入才載入且離開後保持訂閱', (WidgetTester tester) async {
-    final List<MemoryScope> readScopes = <MemoryScope>[];
+    final List<OverviewScope> readScopes = <OverviewScope>[];
     final ProviderContainer container = ProviderContainer(
       overrides: [
         homeEntriesProvider.overrideWith(
           (Ref ref) =>
-              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+              const AsyncData<List<DiaryEntrySummary>>(<DiaryEntrySummary>[]),
         ),
         homeEntryIndexListProvider.overrideWith(
           (Ref ref) async => const HomeEntryQueryResult(
             query: '',
-            entries: <EntryIndexRecord>[],
+            entries: <DiaryEntrySummary>[],
           ),
         ),
         homePinnedEntryIdsProvider.overrideWith(
           (Ref ref) async => const <EntryId>{},
         ),
-        allEntryIndexRecordsProvider.overrideWith(
-          (Ref ref) async => const <EntryIndexRecord>[],
+        allDiaryEntrySummariesProvider.overrideWith(
+          (Ref ref) async => const <DiaryEntrySummary>[],
         ),
-        memoryEntriesProvider.overrideWith(
-          (Ref ref) async => const <EntryIndexRecord>[],
+        overviewEntriesProvider.overrideWith(
+          (Ref ref) async => const <DiaryEntrySummary>[],
         ),
         overviewPeopleTop5Provider.overrideWith((Ref ref, key) async {
           readScopes.add(key.scope);
@@ -200,16 +201,16 @@ void main() {
 
     container.read(homeTabProvider.notifier).set(HomeTab.overview);
     await tester.pumpAndSettle();
-    expect(readScopes, <MemoryScope>[MemoryScope.month]);
+    expect(readScopes, <OverviewScope>[OverviewScope.month]);
 
     container.read(homeTabProvider.notifier).set(HomeTab.home);
     await tester.pumpAndSettle();
     container.read(homeTabProvider.notifier).set(HomeTab.overview);
     await tester.pumpAndSettle();
-    expect(readScopes, <MemoryScope>[MemoryScope.month]);
+    expect(readScopes, <OverviewScope>[OverviewScope.month]);
 
-    container.read(memoryScopeProvider.notifier).set(MemoryScope.all);
+    container.read(overviewScopeProvider.notifier).set(OverviewScope.all);
     await tester.pumpAndSettle();
-    expect(readScopes, <MemoryScope>[MemoryScope.month, MemoryScope.all]);
+    expect(readScopes, <OverviewScope>[OverviewScope.month, OverviewScope.all]);
   });
 }

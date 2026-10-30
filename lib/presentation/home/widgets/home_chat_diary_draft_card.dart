@@ -1,20 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import '../../../app/app_colors.dart';
-import '../../../app/router.dart';
-import '../../../application/chat_diary/chat_diary_providers.dart';
-import '../../../application/home/home_browse_state.dart';
-import '../../../application/settings/personalization_providers.dart';
-import '../../../domain/chat_diary/chat_diary_session.dart';
-import '../../../domain/shared/value_objects.dart';
-import '../../../l10n/l10n.dart';
-import '../../../shared/presentation/page_style.dart';
-import '../../../shared/presentation/tag_visual.dart';
-import '../../../shared/presentation/widgets/tag_chip.dart';
-import '../../diary/widgets/diary_entry_date_time.dart';
-import 'entry_widgets.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
+import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 
 class HomeChatDiaryDraftCard extends ConsumerWidget {
   const HomeChatDiaryDraftCard({
@@ -53,7 +53,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
             toggleSelection();
             return;
           }
-          await context.push(AppRouter.chatDiaryLocation(chat.id));
+          await context.push(AppRoutes.chatDiaryLocation(chat.id));
           if (context.mounted) {
             ref.invalidate(chatDiarySessionsProvider);
           }
@@ -112,7 +112,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
                   left: selection.isActive ? 34 : 0,
                   top: 8,
                 ),
-                child: TagChip.pair(
+                child: AccentChip.pair(
                   label: context.l10n.chatDiaryDraftLabel,
                   pair: tagUnsavedPair(context.appColors),
                 ),

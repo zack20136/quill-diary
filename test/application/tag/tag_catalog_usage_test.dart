@@ -1,15 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/tag/tag_catalog_usage.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 
 import '../../helpers/shared/entry_index_fixtures.dart';
 
 void main() {
   test('同篇重複標籤只計一次並合併大小寫與留白', () {
-    final List<EntryIndexRecord> entries = <EntryIndexRecord>[
-      buildEntryIndexRecord(id: 'a', tags: const <String>[' Flutter ', 'flutter']),
-      buildEntryIndexRecord(id: 'b', tags: const <String>['FLUTTER', '生活']),
+    final List<DiaryEntrySummary> entries = <DiaryEntrySummary>[
+      buildDiaryEntrySummary(
+        id: 'a',
+        tags: const <String>[' Flutter ', 'flutter'],
+      ),
+      buildDiaryEntrySummary(id: 'b', tags: const <String>['FLUTTER', '生活']),
     ];
 
     expect(diaryPresenceTagCounts(entries), <String, int>{

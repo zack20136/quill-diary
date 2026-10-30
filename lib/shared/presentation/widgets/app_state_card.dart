@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'app_action_button.dart';
-import 'app_surface.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 /// 呈現空白、錯誤或引導狀態，並可提供單一後續操作的卡片。
 class AppStateCard extends StatelessWidget {
@@ -67,45 +67,43 @@ class AppStateView extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     return Center(
       child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.primaryContainer.withValues(
-                  alpha: 0.55,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Icon(icon, size: 32, color: theme.colorScheme.primary),
-              ),
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.55),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Icon(icon, size: 32, color: theme.colorScheme.primary),
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.45,
-              ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.45,
             ),
-            if (actionLabel != null && onAction != null) ...<Widget>[
-              const SizedBox(height: 20),
-              AppActionButton(
-                label: actionLabel!,
-                icon: actionIcon ?? Icons.settings_outlined,
-                onPressed: onAction,
-                appearance: actionAppearance,
-              ),
-            ],
+          ),
+          if (actionLabel != null && onAction != null) ...<Widget>[
+            const SizedBox(height: 20),
+            AppActionButton(
+              label: actionLabel!,
+              icon: actionIcon ?? Icons.settings_outlined,
+              onPressed: onAction,
+              appearance: actionAppearance,
+            ),
           ],
+        ],
       ),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../l10n/l10n.dart';
-import '../display_format.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
 
 typedef AppMonthDay = ({int month, int day});
 
@@ -814,9 +814,9 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
                                 color: index == 0 || index == 6
                                     ? Theme.of(context).colorScheme.error
                                           .withValues(alpha: 0.78)
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
@@ -918,9 +918,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           Expanded(
             child: Text(
               widget.config.title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           if (widget.config.kind == _AppDatePickerKind.date)
@@ -931,12 +930,10 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
                 minimumSize: const Size(44, 44),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 foregroundColor: Theme.of(context).colorScheme.primary,
-                disabledForegroundColor: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.32),
-                textStyle: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                disabledForegroundColor: Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.32),
+                textStyle: Theme.of(context).textTheme.labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               child: Text(context.l10n.commonRelativeToday),
             ),
@@ -957,9 +954,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           style: TextButton.styleFrom(
             minimumSize: const Size(44, 44),
             foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            textStyle: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            textStyle: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
           child: Text(context.l10n.commonActionCancel),
         ),
@@ -976,9 +972,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           style: FilledButton.styleFrom(
             minimumSize: const Size(44, 44),
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            textStyle: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+            textStyle: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           icon: const Icon(Icons.check_rounded, size: 19),
           label: Text(context.l10n.commonActionApply),

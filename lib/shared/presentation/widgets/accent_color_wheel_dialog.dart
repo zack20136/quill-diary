@@ -1,12 +1,11 @@
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
-import '../../../app/app_colors.dart';
-import '../app_feedback.dart';
-import '../accent_visual.dart';
-import 'accent_dialog_shell.dart';
-import 'tag_chip.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 
 Future<Color?> showAccentColorWheelDialog(
   BuildContext context, {
@@ -57,8 +56,7 @@ class AccentColorWheelDialog extends StatefulWidget {
   final String saveLabel;
 
   @override
-  State<AccentColorWheelDialog> createState() =>
-      _AccentColorWheelDialogState();
+  State<AccentColorWheelDialog> createState() => _AccentColorWheelDialogState();
 }
 
 class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
@@ -105,7 +103,7 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
               ),
             ),
             const Spacer(),
-            TagChip.pair(label: widget.previewText, pair: previewPair),
+            AccentChip.pair(label: widget.previewText, pair: previewPair),
           ],
         ),
       ),
@@ -205,9 +203,8 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
                       ),
                     ),
                     IconButton(
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).copyButtonLabel,
+                      tooltip: MaterialLocalizations.of(context)
+                          .copyButtonLabel,
                       visualDensity: VisualDensity.compact,
                       onPressed: _copyColorCode,
                       icon: Icon(

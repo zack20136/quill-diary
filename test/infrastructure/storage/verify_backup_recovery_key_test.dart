@@ -5,19 +5,26 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
   late VaultTestHarness harness;
-  late VaultArchiveIo archiveIo;
+  late ({
+    VaultBackupIo backup,
+    PortableExportIo exporter,
+    PortableImportIo importer,
+  })
+  archiveIo;
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    archiveIo = harness.createArchiveIo();
+    archiveIo = harness.createTransferIo();
   });
 
   tearDown(() async {
@@ -29,10 +36,10 @@ void main() {
         .setupRecoveryKey();
     await harness.saveSimpleEntry(setup, title: 'Verify Entry');
     final File backupFile = File(p.join(harness.tempDir.path, 'valid.zip'));
-    await archiveIo.writeBackupZip(backupFile);
+    await archiveIo.backup.writeBackupZip(backupFile);
 
     await expectLater(
-      archiveIo.verifyBackupRecoveryKey(backupFile, setup.recoveryKey),
+      archiveIo.backup.verifyBackupRecoveryKey(backupFile, setup.recoveryKey),
       completes,
     );
   });
@@ -42,15 +49,15 @@ void main() {
         .setupRecoveryKey();
     await harness.saveSimpleEntry(setup, title: 'Verify Entry');
     final File backupFile = File(p.join(harness.tempDir.path, 'valid.zip'));
-    await archiveIo.writeBackupZip(backupFile);
+    await archiveIo.backup.writeBackupZip(backupFile);
 
     await expectLater(
-      archiveIo.verifyBackupRecoveryKey(backupFile, 'WRONG-KEY-XXXX'),
+      archiveIo.backup.verifyBackupRecoveryKey(backupFile, 'WRONG-KEY-XXXX'),
       throwsA(
-        isA<StateError>().having(
-          (StateError error) => error.message,
-          'message',
-          kBackupRecoveryKeyMismatchMessage,
+        isA<VaultBackupException>().having(
+          (VaultBackupException error) => error.issue,
+          'issue',
+          VaultBackupIssue.recoveryKeyMismatch,
         ),
       ),
     );
@@ -65,12 +72,12 @@ void main() {
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
     await expectLater(
-      archiveIo.verifyBackupRecoveryKey(backupFile, 'ANY-KEY'),
+      archiveIo.backup.verifyBackupRecoveryKey(backupFile, 'ANY-KEY'),
       throwsA(
-        isA<StateError>().having(
-          (StateError error) => error.message,
-          'message',
-          '此備份沒有復原金鑰資訊，無法驗證。',
+        isA<VaultBackupException>().having(
+          (VaultBackupException error) => error.issue,
+          'issue',
+          VaultBackupIssue.recoveryInfoMissing,
         ),
       ),
     );
@@ -90,12 +97,12 @@ void main() {
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
     await expectLater(
-      archiveIo.verifyBackupRecoveryKey(backupFile, setup.recoveryKey),
+      archiveIo.backup.verifyBackupRecoveryKey(backupFile, setup.recoveryKey),
       throwsA(
-        isA<StateError>().having(
-          (StateError error) => error.message,
-          'message',
-          kBackupNoEncryptedSampleMessage,
+        isA<VaultBackupException>().having(
+          (VaultBackupException error) => error.issue,
+          'issue',
+          VaultBackupIssue.noEncryptedSample,
         ),
       ),
     );

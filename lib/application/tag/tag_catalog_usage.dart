@@ -1,6 +1,6 @@
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 
 class TagCatalogUsageItem {
   const TagCatalogUsageItem({required this.label, required this.count});
@@ -8,10 +8,10 @@ class TagCatalogUsageItem {
   final int count;
 }
 
-Map<String, int> diaryPresenceTagCounts(List<EntryIndexRecord> entries) {
+Map<String, int> diaryPresenceTagCounts(List<DiaryEntrySummary> entries) {
   final Map<String, int> counts = <String, int>{};
   final Map<String, String> labels = <String, String>{};
-  for (final EntryIndexRecord entry in entries) {
+  for (final DiaryEntrySummary entry in entries) {
     final Set<String> seen = <String>{};
     for (final String raw in entry.tags) {
       final String label = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -53,7 +53,7 @@ List<TagCatalogUsageItem> mergeTagCatalogWithUsage(
 }
 
 List<TagCatalogUsageItem> rankedTagUsageFromEntries(
-  List<EntryIndexRecord> entries, {
+  List<DiaryEntrySummary> entries, {
   int limit = 8,
 }) => mergeTagCatalogWithUsage(
   const <TagCatalogItem>[],

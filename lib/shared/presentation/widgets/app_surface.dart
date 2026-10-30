@@ -1,7 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../app/app_colors.dart';
-import '../page_style.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+
+import 'package:quill_diary/shared/presentation/page_style.dart';
 
 enum AppSurfaceStyle { outlined, elevated, outlinedElevated }
 
@@ -36,13 +37,11 @@ class AppCard extends StatelessWidget {
       child: DecoratedBox(
         decoration: switch (style) {
           AppSurfaceStyle.elevated => const BoxDecoration(),
-          AppSurfaceStyle.outlined || AppSurfaceStyle.outlinedElevated =>
-            BoxDecoration(
-                border: Border.fromBorderSide(
-                  context.appColors.outlineBorder(),
-                ),
-                borderRadius: BorderRadius.circular(radius),
-              ),
+          AppSurfaceStyle.outlined ||
+          AppSurfaceStyle.outlinedElevated => BoxDecoration(
+            border: Border.fromBorderSide(context.appColors.outlineBorder()),
+            borderRadius: BorderRadius.circular(radius),
+          ),
         },
         child: Padding(padding: padding, child: child),
       ),
@@ -74,7 +73,6 @@ class AppInsetPanel extends StatelessWidget {
   );
 }
 
-
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({
     required this.title,
@@ -102,9 +100,7 @@ class AppSectionHeader extends StatelessWidget {
           Icon(icon, color: accent, size: 22),
           const SizedBox(width: 10),
         ],
-        Expanded(
-          child: Text(title, style: theme.textTheme.titleMedium),
-        ),
+        Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
       ],
     );
 

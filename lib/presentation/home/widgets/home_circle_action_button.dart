@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../home_layout.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
 
 class HomeCircleActionButton extends StatelessWidget {
   const HomeCircleActionButton({

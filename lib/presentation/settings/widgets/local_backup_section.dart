@@ -1,12 +1,11 @@
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
-import 'settings_sections.dart';
 
 class LocalBackupSection extends StatelessWidget {
   const LocalBackupSection({

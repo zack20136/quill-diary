@@ -1,0 +1,139 @@
+import 'dart:async' show unawaited;
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/application/session/app_session_controller.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+
+class AppLifecycleSessionBridge with WidgetsBindingObserver {
+  AppLifecycleSessionBridge(
+    this.ref, {
+    this.resumeUnlockDelay = const Duration(milliseconds: 350),
+  });
+
+  final WidgetRef ref;
+  final Duration resumeUnlockDelay;
+  bool _attached = false;
+  bool _isForeground = true;
+  bool _wasBackgrounded = false;
+  int _resumeUnlockToken = 0;
+  int _lastStartupCycleId = 0;
+
+  void attach() {
+    if (_attached) {
+      return;
+    }
+    _attached = true;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  void detach() {
+    if (!_attached) {
+      return;
+    }
+    clearStaleLifecycleState();
+    WidgetsBinding.instance.removeObserver(this);
+    _attached = false;
+  }
+
+  void clearStaleLifecycleState() {
+    _wasBackgrounded = false;
+    _cancelPendingResumeUnlock();
+  }
+
+  void _syncStartupCycle(AppSessionController controller) {
+    final int cycleId = controller.startupCycleId;
+    if (cycleId == _lastStartupCycleId) {
+      return;
+    }
+    _lastStartupCycleId = cycleId;
+    clearStaleLifecycleState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    unawaited(_handleLifecycleChange(state));
+  }
+
+  void onPointerDown() {
+    ref.read(appSessionProvider.notifier).notifyUserInteraction();
+  }
+
+  Future<void> _handleLifecycleChange(AppLifecycleState state) async {
+    final AppSessionController controller = ref.read(
+      appSessionProvider.notifier,
+    );
+    _syncStartupCycle(controller);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        _isForeground = false;
+        if (controller.canHandleLifecycleResume) {
+          _wasBackgrounded = true;
+        }
+        _cancelPendingResumeUnlock();
+        controller.notifyAppBackground();
+        break;
+      case AppLifecycleState.resumed:
+        _isForeground = true;
+        await controller.notifyAppForegroundResumed();
+        final bool shouldScheduleResumeUnlock =
+            controller.canHandleLifecycleResume &&
+            _wasBackgrounded &&
+            controller.shouldUnlockOnResume;
+        _wasBackgrounded = false;
+        if (shouldScheduleResumeUnlock) {
+          _scheduleResumeUnlockIfNeeded(controller);
+        }
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  void _scheduleResumeUnlockIfNeeded(AppSessionController controller) {
+    if (!_attached ||
+        !_isForeground ||
+        !controller.canHandleLifecycleResume ||
+        !controller.shouldUnlockOnResume) {
+      return;
+    }
+    final int token = ++_resumeUnlockToken;
+    unawaited(_runResumeUnlock(controller, token: token));
+  }
+
+  void _cancelPendingResumeUnlock() {
+    _resumeUnlockToken++;
+  }
+
+  Future<void> _runResumeUnlock(
+    AppSessionController controller, {
+    required int token,
+  }) async {
+    if (resumeUnlockDelay > Duration.zero) {
+      await Future<void>.delayed(resumeUnlockDelay);
+    }
+    if (!_canRunResumeUnlock(controller, token)) {
+      return;
+    }
+    await controller.unlock(source: UnlockRequestSource.lifecycleResume);
+  }
+
+  bool _canRunResumeUnlock(AppSessionController controller, int token) {
+    return _attached &&
+        _isForeground &&
+        token == _resumeUnlockToken &&
+        controller.canHandleLifecycleResume &&
+        controller.shouldUnlockOnResume;
+  }
+
+  Widget wrap(Widget child) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => onPointerDown(),
+      child: child,
+    );
+  }
+}

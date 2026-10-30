@@ -1,26 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/application/session/session_inactivity_watchdog.dart';
+import 'package:quill_diary/application/session/session_localizations.dart';
+import 'package:quill_diary/application/session/session_messages.dart';
+import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
+import 'package:quill_diary/application/session/session_resume_coordinator.dart';
+import 'package:quill_diary/application/session/session_startup_coordinator.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/infrastructure/security/security_providers.dart';
-import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_recovery_service.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-
-import 'session_localizations.dart';
-import 'session_navigation_coordinator.dart';
-import 'session_inactivity_watchdog.dart';
-import 'session_resume_coordinator.dart';
-import 'session_startup_coordinator.dart';
-import 'session_messages.dart';
-import 'state/app_session_state.dart';
-import 'state/session_lock_reason.dart';
-import 'state/unlock_result.dart';
 
 class AppSessionController extends Notifier<AppSessionState> {
   final SessionResumeCoordinator _resumeCoordinator =
@@ -31,11 +26,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       SessionStartupCoordinator(ref);
   SessionNavigationCoordinator get _navigationCoordinator =>
       SessionNavigationCoordinator(ref);
-  VaultRecoveryService get _vaultRecovery =>
-      ref.read(vaultRecoveryServiceProvider);
-
-  @visibleForTesting
-  SessionResumeCoordinator get resumeCoordinator => _resumeCoordinator;
+  VaultRepository get _vault => ref.read(vaultRepositoryProvider);
 
   @override
   AppSessionState build() {
@@ -74,16 +65,8 @@ class AppSessionController extends Notifier<AppSessionState> {
   bool get canParticipateInLifecycleResumeUnlock => _resumeCoordinator
       .canParticipateInLifecycleResumeUnlock(state, _trustedUnlockInFlight);
 
-  bool get canRecordLifecycleBackground => _resumeCoordinator
-      .canRecordLifecycleBackground(state, _trustedUnlockInFlight);
-
-  bool get canScheduleLifecycleResumeUnlock => _resumeCoordinator
-      .canScheduleLifecycleResumeUnlock(state, _trustedUnlockInFlight);
-
-  @visibleForTesting
-  void markTrustedUnlockBootstrapFinished() {
-    endTrustedUnlockBootstrap();
-  }
+  bool get canHandleLifecycleResume => _resumeCoordinator
+      .canHandleLifecycleResume(state, _trustedUnlockInFlight);
 
   void endTrustedUnlockBootstrap() {
     _resumeCoordinator.endTrustedUnlockBootstrap(state);
@@ -124,15 +107,16 @@ class AppSessionController extends Notifier<AppSessionState> {
       clearLockReason: true,
     );
     try {
-      final UnlockedVaultSession session = await _vaultRecovery
-          .unlockWithRecoveryKey(recoveryKey);
-      await _vaultRecovery.ensureIndexReady(session);
-      final UnlockedVaultSession synced = await _vaultRecovery
+      final UnlockedVaultSession session = await _vault.unlockWithRecoveryKey(
+        recoveryKey,
+      );
+      await _vault.ensureIndexReady(session);
+      final UnlockedVaultSession synced = await _vault
           .ensureKeystoreMatchesUnlockMode(session);
       state = AppSessionState(
         status: AppLockStatus.unlocked,
         session: synced,
-        message: sessionRecoveryUnlockSuccessMessage(l10n),
+        message: l10n.sessionRecoveryUnlockSuccessMessage,
       );
       onSessionUnlocked();
     } catch (error) {
@@ -140,6 +124,9 @@ class AppSessionController extends Notifier<AppSessionState> {
         status: AppLockStatus.recoveryRequired,
         clearSession: true,
         message: friendlySessionErrorMessage(l10n, error),
+        failure: isUnreadableEncryptedIndexError(error)
+            ? SessionFailure.unreadableIndex
+            : null,
         clearLockReason: true,
       );
       rethrow;
@@ -151,7 +138,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     final AppLocalizations l10n = await loadSessionL10n(ref);
     await _expireSession(
       lockReason: SessionLockReason.manual,
-      message: sessionAppLockedMessage(l10n),
+      message: l10n.sessionAppLockedMessage,
     );
   }
 
@@ -169,7 +156,7 @@ class AppSessionController extends Notifier<AppSessionState> {
     _resumeCoordinator.reset();
     _trustedUnlockInFlight = null;
     state = const AppSessionState(status: AppLockStatus.uninitialized);
-    await _vaultRecovery.closeUnlockedResources();
+    await _vault.closeUnlockedResources();
   }
 
   void adoptBootstrapState(AppSessionState next) {
@@ -181,13 +168,13 @@ class AppSessionController extends Notifier<AppSessionState> {
   }
 
   Future<void> beginPostRestoreStartup() async {
-    _resumeCoordinator.beginPostRestoreStartup();
+    _resumeCoordinator.reset();
     final AppLocalizations l10n = await loadSessionL10n(ref);
     state = AppSessionState(
       status: AppLockStatus.unlocking,
-      message: sessionPostRestoreStartupMessage(l10n),
+      message: l10n.settingsBackupStartingAfterRestore,
     );
-    await _vaultRecovery.closeUnlockedResources();
+    await _vault.closeUnlockedResources();
   }
 
   void notifyAppBackground() {
@@ -269,7 +256,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       disarmSessionWatchdog: _disarmSessionWatchdog,
       loadKeystoreMigrationMessage: () async {
         final AppLocalizations l10n = await loadSessionL10n(ref);
-        return '$kKeystoreMigrationInProgressMessage '
+        return '${l10n.sessionKeystoreMigrationInProgressMessage} '
             '${l10n.sessionKeystoreMigrationMayReverifyMessage}';
       },
       friendlyErrorMessage:
@@ -282,17 +269,15 @@ class AppSessionController extends Notifier<AppSessionState> {
             );
           },
       loadRetryVerificationMessage: () async {
-        return sessionLockedRetryVerificationMessage(
-          await loadSessionL10n(ref),
-        );
+        return (await loadSessionL10n(ref))
+            .sessionLockedRetryVerificationMessage;
       },
       loadBiometricNotEnrolledMessage: () async {
         return sessionL10n(ref).sessionBiometricNotEnrolledSwitchModeMessage;
       },
       loadTrustedUnlockProgressMessage: () async {
-        return sessionTrustedUnlockInProgressMessage(
-          await loadSessionL10n(ref),
-        );
+        return (await loadSessionL10n(ref))
+            .sessionTrustedUnlockInProgressMessage;
       },
       recordUnlockResult: _recordUnlockResult,
     );
@@ -323,7 +308,7 @@ class AppSessionController extends Notifier<AppSessionState> {
       await ref
           .read(editorDraftStoreProvider)
           .clearAllMaterializedPendingFiles();
-      await _vaultRecovery.closeUnlockedResources();
+      await _vault.closeUnlockedResources();
     });
   }
 
@@ -362,7 +347,7 @@ class AppSessionController extends Notifier<AppSessionState> {
   AppSessionState enterRecoveryRequiredAfterRestore() {
     final AppSessionState next = AppSessionState(
       status: AppLockStatus.recoveryRequired,
-      message: sessionTrustedUnlockFailedAfterRestoreMessage(sessionL10n(ref)),
+      message: (sessionL10n(ref)).sessionTrustedUnlockFailedAfterRestoreMessage,
     );
     state = next;
     _resumeCoordinator.disarm();
@@ -393,17 +378,15 @@ class AppSessionController extends Notifier<AppSessionState> {
         unlock: unlock,
         readCurrentState: () => state,
         loadUnsupportedRuntimeMessage: () async {
-          return sessionUnsupportedRuntimeMessage(await loadSessionL10n(ref));
+          return (await loadSessionL10n(ref)).sessionUnsupportedRuntimeMessage;
         },
         loadStartupNeedsRecoveryKeyMessage: () async {
-          return sessionStartupNeedsRecoveryKeyMessage(
-            await loadSessionL10n(ref),
-          );
+          return (await loadSessionL10n(ref))
+              .sessionStartupNeedsRecoveryKeyMessage;
         },
         loadStartupNeedsTrustedDeviceMessage: () async {
-          return sessionStartupNeedsTrustedDeviceMessage(
-            await loadSessionL10n(ref),
-          );
+          return (await loadSessionL10n(ref))
+              .sessionStartupNeedsTrustedDeviceMessage;
         },
         friendlyErrorMessage:
             (Object error, {bool afterRestoreTrustedUnlock = false}) async {

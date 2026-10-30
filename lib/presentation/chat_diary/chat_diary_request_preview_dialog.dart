@@ -1,11 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import '../../application/chat_diary/chat_diary_request_preview.dart';
-import '../../l10n/l10n.dart';
-import '../../shared/presentation/widgets/app_dialog_shell.dart';
-import 'chat_diary_hidden_text.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 typedef ChatDiaryPreviewImageBuilder = Widget Function(
   String imageId,

@@ -1,4 +1,4 @@
-import '../shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 加解密前後的標準日記內容模型。
 ///

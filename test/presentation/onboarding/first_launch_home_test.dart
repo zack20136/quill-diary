@@ -2,19 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/router.dart';
-import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/home/widgets/home_circle_action_button.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
+import 'package:quill_diary/shared/data_versions.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -23,7 +23,7 @@ import '../../helpers/shared/widget_test_app.dart';
 
 class _CompletedOnboardingIntroController extends OnboardingIntroController {
   @override
-  Future<int> build() async => onboardingIntroCurrentVersion;
+  Future<int> build() async => DataVersions.onboardingIntro;
 }
 
 class _PendingOnboardingIntroController extends OnboardingIntroController {
@@ -32,7 +32,7 @@ class _PendingOnboardingIntroController extends OnboardingIntroController {
 
   @override
   Future<void> markCompleted() async {
-    state = const AsyncData<int>(onboardingIntroCurrentVersion);
+    state = const AsyncData<int>(DataVersions.onboardingIntro);
   }
 }
 
@@ -203,14 +203,14 @@ void main() {
 
   testWidgets('點操作卡會前往對應設定區塊', (WidgetTester tester) async {
     final GoRouter router = GoRouter(
-      initialLocation: AppRouter.homeRoute,
+      initialLocation: AppRoutes.homeRoute,
       routes: <RouteBase>[
         GoRoute(
-          path: AppRouter.homeRoute,
+          path: AppRoutes.homeRoute,
           builder: (_, _) => const Scaffold(body: FirstLaunchHomePane()),
         ),
         GoRoute(
-          path: AppRouter.settingsRoute,
+          path: AppRoutes.settingsRoute,
           builder: (_, _) => const Scaffold(body: SizedBox()),
         ),
       ],
@@ -232,16 +232,16 @@ void main() {
     await tester.pump();
     expect(
       router.state.uri.toString(),
-      AppRouter.settingsLocation(focus: SettingsFocusTarget.recoveryKey),
+      AppRoutes.settingsLocation(focus: SettingsFocusTarget.recoveryKey),
     );
 
-    router.go(AppRouter.homeRoute);
+    router.go(AppRoutes.homeRoute);
     await tester.pump();
     await tester.tap(find.text(testL10n.firstLaunchTransferTitle));
     await tester.pump();
     expect(
       router.state.uri.toString(),
-      AppRouter.settingsLocation(focus: SettingsFocusTarget.externalRestore),
+      AppRoutes.settingsLocation(focus: SettingsFocusTarget.externalRestore),
     );
   });
 }

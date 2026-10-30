@@ -1,5 +1,5 @@
-import '../../infrastructure/ai/ai_client.dart';
-import '../../l10n/app_localizations.dart';
+import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
 
 String aiErrorText(AppLocalizations l10n, AiErrorCode code) => switch (code) {
   AiErrorCode.configuration => l10n.aiErrorConfiguration,

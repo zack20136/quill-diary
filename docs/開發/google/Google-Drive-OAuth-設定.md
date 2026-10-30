@@ -29,7 +29,7 @@ Play 安裝版還需要 Play Console App Signing 的 SHA-1，不能只登記 upl
 5. 測試狀態先加入測試帳號；對外發布前依 Console 完成正式發布與適用的品牌驗證，不能假設內部測試成功即代表一般使用者都可登入。是否需要其他驗證以實際 scope 與 Console 要求為準。
 6. 先在開發安裝版測試，再從 Play 測試軌道安裝測試；從 App 設定連線，確認帳號登入後取得 Drive appdata scope，能上傳、列出、下載及還原備份。
 
-公開隱私政策使用 `https://zack20136.github.io/quill-diary/privacy-policy`，並保留其中 Google API Limited Use 聲明。政策網址與 App 識別來源是 [`AppIdentifiers`](../../../lib/app/app_identifiers.dart)。正式發布與驗證條件見 [OAuth 品牌驗證](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)。
+公開隱私政策使用 `https://zack20136.github.io/quill-diary/privacy-policy`，並保留其中 Google API Limited Use 聲明。政策網址與 App 識別來源是 [`AppIdentifiers`](../../../lib/shared/app_identifiers.dart)。正式發布與驗證條件見 [OAuth 品牌驗證](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)。
 
 ### 建置設定與簽章核對
 

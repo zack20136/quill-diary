@@ -1,112 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 
-import '../../domain/shared/value_objects.dart';
-import '../../shared/presentation/accent_visual.dart';
-import '../../l10n/l10n.dart';
-import 'vault_path_strategy.dart';
-
-class TagCatalogItem {
-  const TagCatalogItem({
-    required this.label,
-    this.accentArgb,
-    this.accentIsCustom,
-  });
-
-  final String label;
-  final int? accentArgb;
-  final bool? accentIsCustom;
-
-  String get displayLabel => label.trim().replaceAll(RegExp(r'\s+'), ' ');
-
-  String get normalized => normalizeText(displayLabel);
-
-  Map<String, Object?> toJson() {
-    return <String, Object?>{
-      'label': displayLabel,
-      if (accentArgb != null) 'accent_argb': accentArgb,
-      if (accentIsCustom != null) 'accent_is_custom': accentIsCustom,
-    };
-  }
-
-  static TagCatalogItem? fromJson(Object? raw) {
-    if (raw is! Map<Object?, Object?>) {
-      return null;
-    }
-    final String label = '${raw['label'] ?? ''}'.trim().replaceAll(
-      RegExp(r'\s+'),
-      ' ',
-    );
-    if (label.isEmpty) {
-      return null;
-    }
-    return TagCatalogItem(
-      label: label,
-      accentArgb: _parseArgb(raw['accent_argb']),
-      accentIsCustom: _parseBool(raw['accent_is_custom']),
-    );
-  }
-
-  static bool? _parseBool(Object? value) {
-    if (value is bool) {
-      return value;
-    }
-    return null;
-  }
-
-  static int? _parseArgb(Object? value) {
-    if (value is int) {
-      return value;
-    }
-    if (value is num) {
-      return value.toInt();
-    }
-    return null;
-  }
-}
-
-const List<int> _defaultTagPresetIndexes = <int>[
-  18, // 日常：褐
-  1, // 心情：玫紅
-  10, // 心得：青綠
-  13, // 筆記：藍
-  15, // 反思：紫
-  5, // 靈感：琥珀
-  12, // 計畫：天藍
-  0, // 目標：紅
-  19, // 工作：灰藍
-  8, // 學習：綠
-  17, // 人際：洋紅
-  4, // 家庭：橘
-  9, // 健康：翠綠
-  6, // 感謝：金黃
-];
-
-List<TagCatalogItem> defaultTagCatalogFor(AppLocalizations l10n) {
-  final List<String> labels = localizedDefaultTagLabels(l10n);
-  final List<int> defaultAccents = _defaultTagPresetIndexes
-      .map((int index) => colorArgb32(kAccentColorPresets[index]))
-      .toList(growable: false);
-  assert(
-    labels.length == defaultAccents.length,
-    'localizedDefaultTagLabels (${labels.length}) 與預設標籤配色 (${defaultAccents.length}) 數量必須一致',
-  );
-  return List<TagCatalogItem>.generate(
-    labels.length,
-    (int index) => TagCatalogItem(
-      label: labels[index],
-      accentArgb: defaultAccents[index],
-      accentIsCustom: false,
-    ),
-    growable: false,
-  );
-}
-
-List<TagCatalogItem> defaultTagCatalogForLocale(Locale locale) {
-  final AppLocalizations l10n = lookupAppLocalizations(locale);
-  return defaultTagCatalogFor(l10n);
-}
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 /// 在 [vault/tag_styles.json] 持久化標籤目錄，使預設與未使用標籤在備份／還原後保留。
 class TagStylesStore {
@@ -114,13 +12,8 @@ class TagStylesStore {
 
   final VaultPathStrategy _pathStrategy;
 
-  Future<String> _filePath() async {
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    return '${vaultRoot.path}${Platform.pathSeparator}tag_styles.json';
-  }
-
   Future<List<TagCatalogItem>> read() async {
-    final File file = File(await _filePath());
+    final File file = File(await _pathStrategy.tagStylesPath());
     if (!file.existsSync()) {
       return const <TagCatalogItem>[];
     }
@@ -155,7 +48,7 @@ class TagStylesStore {
   }
 
   Future<void> write(List<TagCatalogItem> items) async {
-    final File file = File(await _filePath());
+    final File file = File(await _pathStrategy.tagStylesPath());
     await file.parent.create(recursive: true);
     final List<TagCatalogItem> normalized = _normalizeItems(items);
     final List<Map<String, Object?>> payload = normalized
@@ -212,5 +105,36 @@ class TagStylesStore {
     }
 
     return normalized;
+  }
+
+  Future<void> ensureLabels(Iterable<String> labels) async {
+    final Set<String> seenNormalized = <String>{};
+    final List<TagCatalogItem> overlay = <TagCatalogItem>[];
+    for (final String raw in labels) {
+      final String displayLabel = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+      final String normalized = normalizeText(displayLabel);
+      if (normalized.isEmpty || !seenNormalized.add(normalized)) {
+        continue;
+      }
+      overlay.add(TagCatalogItem(label: displayLabel));
+    }
+    if (overlay.isEmpty) {
+      return;
+    }
+    final List<TagCatalogItem> catalog = await read();
+    await write(TagStylesStore.merge(catalog, overlay));
+  }
+
+  Future<void> applyToIndex(IndexDatabase indexDb) async {
+    final List<TagCatalogItem> catalog = await read();
+    if (catalog.isEmpty) {
+      return;
+    }
+    for (final TagCatalogItem item in catalog) {
+      if (item.accentArgb == null) {
+        continue;
+      }
+      await indexDb.upsertTagAccentArgb(item.label, item.accentArgb!);
+    }
   }
 }

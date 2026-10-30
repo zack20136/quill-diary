@@ -135,8 +135,12 @@ void main() {
       ),
     );
     await _open(tester);
-    final Rect dial = tester.getRect(find.byKey(const Key('app-time-picker-dial')));
-    final Rect hour = tester.getRect(find.byKey(const Key('app-time-picker-hour')));
+    final Rect dial = tester.getRect(
+      find.byKey(const Key('app-time-picker-dial')),
+    );
+    final Rect hour = tester.getRect(
+      find.byKey(const Key('app-time-picker-hour')),
+    );
     final double actionsTop = math.min(
       tester.getTopLeft(find.byKey(const Key('app-time-picker-entry-mode'))).dy,
       tester.getTopLeft(find.byKey(const Key('app-time-picker-confirm'))).dy,
@@ -237,7 +241,9 @@ void main() {
     expect(find.byKey(const Key('app-time-picker-error')), findsOneWidget);
     expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('app-time-picker-confirm')))
+          .widget<FilledButton>(
+            find.byKey(const Key('app-time-picker-confirm')),
+          )
           .onPressed,
       isNull,
     );

@@ -1,26 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/presentation/tag/widgets/tag_accent_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_accent_composer_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/tag_chip.dart';
+import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  Widget host({
-    required Brightness brightness,
-    required Widget child,
-  }) => widgetTestApp(
-    brightness: brightness,
-    center: false,
-    overrides: const [],
-    child: child,
-  );
+  Widget host({required Brightness brightness, required Widget child}) =>
+      widgetTestApp(
+        brightness: brightness,
+        center: false,
+        overrides: const [],
+        child: child,
+      );
 
-  testWidgets('暗色模式下色盤與預覽使用相同 Accent，而非混色背景', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('暗色模式下色盤與預覽使用相同 Accent，而非混色背景', (WidgetTester tester) async {
     const Color accent = Color(0xFF62A87C);
     await tester.pumpWidget(
       host(
@@ -39,7 +35,7 @@ void main() {
     );
     expect(
       (presetSwatch.decoration as BoxDecoration).color,
-      accentSwatchColor(kAccentColorPresets[8]),
+      accentSwatchColor(accentColorPresets[8]),
     );
 
     final Container customSwatch = tester.widget<Container>(
@@ -50,7 +46,9 @@ void main() {
       accentSwatchColor(accent),
     );
 
-    final TagChip preview = tester.widget<TagChip>(find.byType(TagChip));
+    final AccentChip preview = tester.widget<AccentChip>(
+      find.byType(AccentChip),
+    );
     expect(preview.foreground, accent);
     expect(preview.background, isNot(accentSwatchColor(accent)));
   });

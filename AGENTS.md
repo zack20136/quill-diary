@@ -21,6 +21,8 @@
 - 狀態同步、模式切換、通知上層這類路徑，優先收成單一入口（例如集中 `_sync…` / `_apply…`），避免某些分支漏更新旗標或重複觸發副作用。
 - 能刪就刪：實驗失敗後的死碼、未使用的 helper、重複 widget、過時分支、只被測試覆蓋的過時抽象，清理優先於堆疊 workaround；不要為了「以後可能用到」而保留。
 - 重構後確保引用與測試同步更新；不要留下半套 rename 或 broken import。
+- 引用 `lib/` 內的程式統一使用 `package:quill_diary/...`，並依 Dart、套件、相對路徑排序；測試輔助檔之間使用相對路徑，產生碼遵循產生器。
+- 本機資料格式與內容版本集中於 `lib/shared/data_versions.dart`，各格式獨立升版；App 發行版本只在 `pubspec.yaml` 管理。
 - 行為變更後，同步更新對應的 unit / widget 測試；分層與避免重複案例見 [`test/test-handbook.md`](test/test-handbook.md)。
 - 註解只解釋非 obvious 的業務規則；程式本身應能自我說明，不要把顯而易見的行為重述一遍。
 
@@ -41,12 +43,12 @@
 - repo 內文件提到專案檔案、程式碼或其他文件時，一律優先使用相對路徑；不要寫死機器上的絕對路徑。
 - 公開法律頁只放對外資訊，不混入開發筆記、內部操作流程或待辦事項。
 - 文件若描述程式行為、路徑、常數、URL、權限或上架設定，必須以 `lib/`、`android/` 與 `AppIdentifiers` 等實際實作為準；若文件與程式碼暫時不一致，優先修正文件。
-- `README.md` 若提到支援平台、公開 URL、Google Drive、Billing 或隱私邊界，必須與 `lib/l10n/*.arb`、`docs/privacy-policy.md`、`lib/app/app_identifiers.dart` 與對應實作一致。
+- `README.md` 若提到支援平台、公開 URL、Google Drive、Billing 或隱私邊界，必須與 `lib/l10n/*.arb`、`docs/privacy-policy.md`、`lib/shared/app_identifiers.dart` 與對應實作一致。
 - 變更公開 URL、Google OAuth、Billing、Play 上架或權限揭露相關內容時，請一併檢查：
   - `README.md`
   - `docs/index.md`
   - `docs/開發/google/`
-  - `lib/app/app_identifiers.dart`
+  - `lib/shared/app_identifiers.dart`
   - `lib/infrastructure/drive/google_drive_oauth_errors.dart`
   - `android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt`
 

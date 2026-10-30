@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:quill_diary/app/app_identifiers.dart';
-
-import '../../domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 計算 vault、索引與本機備份儲存使用的所有本機路徑。
 ///
@@ -63,6 +63,11 @@ class VaultPathStrategy {
   Future<String> peopleCatalogPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
     return p.join(vaultRoot.path, 'people.json.enc');
+  }
+
+  Future<String> aiSettingsPath() async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    return p.join(vaultRoot.path, 'ai_settings.json.enc');
   }
 
   Future<String> manifestPath() async {
@@ -192,5 +197,19 @@ class VaultPathStrategy {
     await backupsRoot.create(recursive: true);
     final Directory draftsRoot = await editorDraftsRootDirectory();
     await draftsRoot.create(recursive: true);
+  }
+
+  Future<String> attachmentAbsolutePath({
+    required DateOnly date,
+    required AssetAttachment attachment,
+  }) async {
+    final String extension = p
+        .extension(attachment.safeFilename)
+        .replaceFirst('.', '');
+    return assetAbsolutePath(
+      date: date,
+      assetId: attachment.id,
+      extension: extension.isEmpty ? 'bin' : extension,
+    );
   }
 }

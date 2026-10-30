@@ -1,19 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
-import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
-import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
+import 'package:quill_diary/application/transfer/transfer_feedback.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
+import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
 
 import '../../helpers/presentation/settings/settings_test_scope.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
-import '../../helpers/storage/fake_vault_transfer_service.dart';
+import '../../helpers/storage/fake_vault_transfer_services.dart';
 
 void main() {
   Future<void> pumpDriveSection(
@@ -56,7 +57,6 @@ void main() {
 
   VaultTransferCapabilities lockedAccess({required bool hasRecoveryKey}) {
     return VaultTransferCapabilities.fromSessionContext(
-      l10n: testL10n,
       hasUnlockedSession: false,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: AppLockStatus.locked,
@@ -189,7 +189,7 @@ void main() {
             saltBytes: List<int>.filled(16, 1),
           ),
         ),
-        transferService: FakeVaultTransferService(
+        backupService: FakeVaultBackupService(
           connectionState: const DriveConnectionState.disconnected(),
         ),
         child: const SettingsPage(),

@@ -23,10 +23,9 @@ void main() {
       updatedAt: now,
     );
     expect(person.toJson()['relationships'], <String>['collaborator']);
-    expect(
-      Person.fromJson(person.toJson())!.relationships,
-      <String>{BuiltinRelationshipIds.collaborator},
-    );
+    expect(Person.fromJson(person.toJson())!.relationships, <String>{
+      BuiltinRelationshipIds.collaborator,
+    });
   });
 
   test('RelationshipType 依語系選字並可往返 JSON', () {

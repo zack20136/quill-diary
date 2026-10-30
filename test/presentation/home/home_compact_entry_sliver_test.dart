@@ -1,23 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
 import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_preview_image_strip.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_preview_image_strip.dart';
 
 import '../../helpers/shared/entry_index_fixtures.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  testWidgets('有 previewImagePaths 時顯示預覽圖 strip', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('有 previewImagePaths 時顯示預覽圖 strip', (WidgetTester tester) async {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         tagAccentArgbMapProvider.overrideWith(
@@ -42,8 +40,8 @@ void main() {
             slivers: <Widget>[
               HomeDiarySliverSection(
                 title: '日記',
-                entries: <EntryIndexRecord>[
-                  buildEntryIndexRecord(
+                entries: <DiaryEntrySummary>[
+                  buildDiaryEntrySummary(
                     previewImagePaths: const <String>[
                       '/tmp/cover_a.enc',
                       '/tmp/cover_b.enc',
@@ -89,7 +87,7 @@ void main() {
             slivers: <Widget>[
               HomeDiarySliverSection(
                 title: '日記',
-                entries: <EntryIndexRecord>[buildEntryIndexRecord()],
+                entries: <DiaryEntrySummary>[buildDiaryEntrySummary()],
               ),
             ],
           ),
@@ -102,12 +100,10 @@ void main() {
     expect(find.byType(EntryCoverThumbnail), findsNothing);
   });
 
-  testWidgets('大量摘要日記只建立可見範圍並可捲動到最後一筆', (
-    WidgetTester tester,
-  ) async {
-    final List<EntryIndexRecord> entries = List<EntryIndexRecord>.generate(
+  testWidgets('大量摘要日記只建立可見範圍並可捲動到最後一筆', (WidgetTester tester) async {
+    final List<DiaryEntrySummary> entries = List<DiaryEntrySummary>.generate(
       100,
-      (int index) => buildEntryIndexRecord(
+      (int index) => buildDiaryEntrySummary(
         id: 'entry_$index',
         title: 'Entry $index',
         previewText: 'Preview $index',
@@ -147,10 +143,7 @@ void main() {
         matching: find.byType(SliverPadding),
       ),
     );
-    expect(
-      sectionPadding.padding,
-      const EdgeInsets.fromLTRB(16, 16, 16, 14),
-    );
+    expect(sectionPadding.padding, const EdgeInsets.fromLTRB(16, 16, 16, 14));
 
     final DecoratedSliver decoratedSection = tester.widget<DecoratedSliver>(
       find.descendant(
@@ -158,14 +151,21 @@ void main() {
         matching: find.byType(DecoratedSliver),
       ),
     );
-    final BoxDecoration decoration = decoratedSection.decoration as BoxDecoration;
-    expect(decoration.borderRadius, BorderRadius.circular(PageStyle.radiusCard));
+    final BoxDecoration decoration =
+        decoratedSection.decoration as BoxDecoration;
+    expect(
+      decoration.borderRadius,
+      BorderRadius.circular(PageStyle.radiusCard),
+    );
     expect(decoration.boxShadow, hasLength(1));
     expect(decoration.boxShadow!.single.blurRadius, 2);
     expect(decoration.boxShadow!.single.offset, const Offset(0, 1));
     expect(decoration.boxShadow!.single.color.a, closeTo(0.08, 0.001));
 
-    final int initiallyBuilt = find.byType(HomeTimelineEntryShell).evaluate().length;
+    final int initiallyBuilt = find
+        .byType(HomeTimelineEntryShell)
+        .evaluate()
+        .length;
     expect(initiallyBuilt, greaterThan(0));
     expect(initiallyBuilt, lessThan(entries.length));
 

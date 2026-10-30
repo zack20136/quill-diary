@@ -41,9 +41,8 @@ void main() {
 ![第一張](first.png)
 ''');
 
-    await _portableImporter(
-      harness,
-    ).importDocuments(session: setup.session, rootDirectory: importRoot);
+    await _portableImporter(harness)
+        .importDocuments(session: setup.session, rootDirectory: importRoot);
 
     expect(await _importedAttachmentNames(harness), <String>[
       'second.png',
@@ -67,9 +66,8 @@ void main() {
 </body></html>
 ''');
 
-    await _portableImporter(
-      harness,
-    ).importDocuments(session: setup.session, rootDirectory: importRoot);
+    await _portableImporter(harness)
+        .importDocuments(session: setup.session, rootDirectory: importRoot);
 
     expect(await _importedAttachmentNames(harness), <String>[
       'second.png',
@@ -85,9 +83,8 @@ void main() {
       p.join(importRoot.path, 'Photos'),
     )..createSync(recursive: true);
     File(p.join(importRoot.path, 'preference.json')).writeAsStringSync('{}');
-    File(
-      p.join(databaseDirectory.path, 'diary.realm'),
-    ).writeAsBytesSync(<int>[1]);
+    File(p.join(databaseDirectory.path, 'diary.realm'))
+        .writeAsBytesSync(<int>[1]);
     await _writeImage(File(p.join(photosDirectory.path, 'second')));
     await _writeImage(File(p.join(photosDirectory.path, 'first')));
 
@@ -119,13 +116,12 @@ void main() {
         });
 
     try {
-      await EasyDiaryBackupImporter(
-        realmChannel: channel,
-      ).tryImportFromExtractedRoot(
-        session: setup.session,
-        repository: harness.repository,
-        extractedRoot: importRoot,
-      );
+      await EasyDiaryBackupImporter(realmChannel: channel)
+          .tryImportFromExtractedRoot(
+            session: setup.session,
+            repository: harness.repository,
+            extractedRoot: importRoot,
+          );
     } finally {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, null);

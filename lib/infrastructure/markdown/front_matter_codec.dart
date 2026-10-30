@@ -1,9 +1,8 @@
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:yaml/yaml.dart';
-
-import '../../domain/attachment/asset_attachment.dart';
-import '../../domain/diary/diary_entry.dart';
-import '../../domain/shared/value_objects.dart';
 
 class DecodedFrontMatterDocument {
   const DecodedFrontMatterDocument({

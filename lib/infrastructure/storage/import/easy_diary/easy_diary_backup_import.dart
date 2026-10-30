@@ -1,19 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import '../../../../domain/diary/diary_entry.dart';
-import '../../../../domain/security/unlocked_vault_session.dart';
-import '../../../../domain/shared/value_objects.dart';
-import '../../../database/index_database.dart';
-import '../../portable/portable_import_preview.dart';
-import '../../portable/portable_io_types.dart';
-import '../../shared/portable_import_result.dart';
-import '../../vault_repository.dart';
-import 'easy_diary_backup_layout.dart';
-import 'easy_diary_photo_resolver.dart';
-import 'easy_diary_realm_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_layout.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_photo_resolver.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_realm_entry.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// Easy Diary 完整備份（Realm + Photos）匯入。
 class EasyDiaryBackupImporter {
@@ -204,15 +203,18 @@ class EasyDiaryBackupImporter {
     required UnlockedVaultSession session,
     required VaultRepository repository,
   }) async {
-    final List<EntryIndexRecord> records = await repository.listEntries();
+    final List<DiaryEntrySummary> records = await repository.listEntries();
     final Set<String> keys = <String>{};
-    for (final EntryIndexRecord record in records) {
+    for (final DiaryEntrySummary record in records) {
       final String titleKey;
       final String? normalized = record.title?.trim();
       if (normalized != null && normalized.isNotEmpty) {
         titleKey = normalized;
       } else {
-        final DiaryEntry? entry = await repository.loadEntry(session, record.id);
+        final DiaryEntry? entry = await repository.loadEntry(
+          session,
+          record.id,
+        );
         titleKey = entry == null ? '' : portableImportDisplayTitle(entry);
       }
       keys.add('${record.date.value}\u0000$titleKey');

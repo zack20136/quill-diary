@@ -1,10 +1,9 @@
 import 'dart:async' show Timer;
 
 import 'package:flutter/foundation.dart';
-
-import 'session_inactivity_watchdog.dart';
-import 'session_timeout_policy.dart';
-import 'state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_inactivity_watchdog.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/session/session_timeout_policy.dart';
 
 enum SessionStartupPhase {
   bootstrapping,
@@ -40,18 +39,7 @@ class SessionResumeCoordinator {
   bool shouldUnlockOnResume(AppSessionState state) =>
       state.shouldUnlockOnResume;
 
-  bool canRecordLifecycleBackground(
-    AppSessionState state,
-    Future<Object?>? trustedUnlockInFlight,
-  ) {
-    return canParticipateInLifecycleResumeUnlock(
-          state,
-          trustedUnlockInFlight,
-        ) &&
-        _startupPhase == SessionStartupPhase.resumeUnlockArmed;
-  }
-
-  bool canScheduleLifecycleResumeUnlock(
+  bool canHandleLifecycleResume(
     AppSessionState state,
     Future<Object?>? trustedUnlockInFlight,
   ) {
@@ -77,14 +65,6 @@ class SessionResumeCoordinator {
   }
 
   void reset() {
-    _inactivityWatchdog.disarm();
-    _activeSensitiveTasks = 0;
-    _pendingResourceCleanup = false;
-    _cancelResumeArmTimer();
-    _startupPhase = SessionStartupPhase.bootstrapping;
-  }
-
-  void beginPostRestoreStartup() {
     _inactivityWatchdog.disarm();
     _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;

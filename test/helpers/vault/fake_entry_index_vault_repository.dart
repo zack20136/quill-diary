@@ -1,11 +1,11 @@
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/security/app_lock_service.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import 'stub_crypto_service.dart';
@@ -15,12 +15,12 @@ DateTime _monthKey(DateTime month) => DateTime(month.year, month.month);
 
 class FakeEntryIndexVaultRepository extends VaultRepository {
   FakeEntryIndexVaultRepository({
-    List<EntryIndexRecord> allEntries = const <EntryIndexRecord>[],
-    this.searchResponses = const <String, List<EntryIndexRecord>>{},
-    this.entriesByDate = const <DateOnly, List<EntryIndexRecord>>{},
-    this.entriesByMonth = const <DateTime, List<EntryIndexRecord>>{},
+    List<DiaryEntrySummary> allEntries = const <DiaryEntrySummary>[],
+    this.searchResponses = const <String, List<DiaryEntrySummary>>{},
+    this.entriesByDate = const <DateOnly, List<DiaryEntrySummary>>{},
+    this.entriesByMonth = const <DateTime, List<DiaryEntrySummary>>{},
     this.tagCatalog = const <TagCatalogItem>[],
-  }) : allEntries = List<EntryIndexRecord>.from(allEntries),
+  }) : allEntries = List<DiaryEntrySummary>.from(allEntries),
        super(
          pathStrategy: DummyVaultPathStrategy(),
          frontMatterCodec: const FrontMatterCodec(),
@@ -30,10 +30,10 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
          appLockService: const UnsupportedAppLockService(),
        );
 
-  List<EntryIndexRecord> allEntries;
-  final Map<String, List<EntryIndexRecord>> searchResponses;
-  final Map<DateOnly, List<EntryIndexRecord>> entriesByDate;
-  final Map<DateTime, List<EntryIndexRecord>> entriesByMonth;
+  List<DiaryEntrySummary> allEntries;
+  final Map<String, List<DiaryEntrySummary>> searchResponses;
+  final Map<DateOnly, List<DiaryEntrySummary>> entriesByDate;
+  final Map<DateTime, List<DiaryEntrySummary>> entriesByMonth;
   final List<TagCatalogItem> tagCatalog;
 
   int ensureIndexReadyCalls = 0;
@@ -51,7 +51,7 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
   }
 
   @override
-  Future<List<EntryIndexRecord>> listEntries({
+  Future<List<DiaryEntrySummary>> listEntries({
     String? searchQuery,
     DateOnly? date,
   }) async {
@@ -66,28 +66,28 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
       return entriesByDate[date]!;
     }
     if (searchQuery == null && date == null) {
-      return List<EntryIndexRecord>.from(allEntries);
+      return List<DiaryEntrySummary>.from(allEntries);
     }
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
 
   @override
-  Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) async {
+  Future<List<DiaryEntrySummary>> listEntriesForMonth(DateTime month) async {
     listEntriesForMonthCalls++;
     final DateTime key = _monthKey(month);
     listEntriesForMonths.add(key);
-    return entriesByMonth[key] ?? const <EntryIndexRecord>[];
+    return entriesByMonth[key] ?? const <DiaryEntrySummary>[];
   }
 
   @override
-  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+  Future<List<DiaryEntrySummary>> listEntriesForDateRange({
     required DateOnly firstDate,
     required DateOnly lastDate,
   }) async {
     listEntryDateRanges.add((first: firstDate, last: lastDate));
     return allEntries
         .where(
-          (EntryIndexRecord entry) =>
+          (DiaryEntrySummary entry) =>
               entry.date.value.compareTo(firstDate.value) >= 0 &&
               entry.date.value.compareTo(lastDate.value) <= 0,
         )
@@ -100,7 +100,7 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
       return null;
     }
     final List<DateOnly> dates =
-        allEntries.map((EntryIndexRecord entry) => entry.date).toList()
+        allEntries.map((DiaryEntrySummary entry) => entry.date).toList()
           ..sort((DateOnly a, DateOnly b) => a.value.compareTo(b.value));
     return (earliest: dates.first, latest: dates.last);
   }

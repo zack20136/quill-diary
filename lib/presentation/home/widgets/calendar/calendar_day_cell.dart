@@ -1,13 +1,12 @@
 import 'package:material_ui/material_ui.dart';
-
-import '../../../../infrastructure/database/index_database.dart';
-import '../../../../domain/shared/value_objects.dart';
-import '../../../../app/app_colors.dart';
-import '../../../../shared/presentation/tag_visual.dart';
-import '../../../../shared/presentation/display_format.dart';
-import '../../../../l10n/l10n.dart';
-import '../../home_entry_presenters.dart';
-import 'calendar_layout_policy.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/home_entry_presenters.dart';
+import 'package:quill_diary/presentation/home/widgets/calendar/calendar_layout_policy.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
 
 class CalendarDayCell extends StatelessWidget {
   const CalendarDayCell({
@@ -22,7 +21,7 @@ class CalendarDayCell extends StatelessWidget {
   });
 
   final DateTime day;
-  final List<EntryIndexRecord> entries;
+  final List<DiaryEntrySummary> entries;
   final bool isSelected;
   final bool isToday;
   final bool isOutside;
@@ -41,9 +40,9 @@ class CalendarDayCell extends StatelessWidget {
     final AppColors colors = context.appColors;
     final double contentOpacity = isOutside ? 0.4 : 1.0;
     final bool showTitles = calendarShouldShowEntryTitles(rowHeight);
-    final List<EntryIndexRecord> visibleEntries = showTitles
+    final List<DiaryEntrySummary> visibleEntries = showTitles
         ? entries.take(kCalendarMaxEntriesPerCell).toList()
-        : const <EntryIndexRecord>[];
+        : const <DiaryEntrySummary>[];
     final double entryFontSize = calendarEntryFontSize(rowHeight);
 
     Color cellColor = cs.surface;
@@ -94,7 +93,7 @@ class CalendarDayCell extends StatelessWidget {
                     ),
                     if (visibleEntries.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 2),
-                      for (final EntryIndexRecord entry in visibleEntries)
+                      for (final DiaryEntrySummary entry in visibleEntries)
                         CalendarEntryPreviewRow(
                           label: calendarEntryPreviewLabel(
                             entryListHeadline(entry),

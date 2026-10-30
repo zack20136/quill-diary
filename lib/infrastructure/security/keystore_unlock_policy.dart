@@ -1,4 +1,4 @@
-import 'app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 
 /// 用於包裝復原材料的 Android Keystore 驗證政策。
 enum KeystoreAuthKind { plain, deviceCredential, biometric }

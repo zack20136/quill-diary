@@ -3,19 +3,18 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'entry_widgets.dart';
+import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
+import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
+import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import '../home_layout.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'home_scroll_affordance.dart';
 
 class HomeBlockedEntriesPane extends StatelessWidget {
   const HomeBlockedEntriesPane({required this.sessionState, super.key});
@@ -32,13 +31,13 @@ class HomeBlockedEntriesPane extends StatelessWidget {
     VoidCallback? onAction;
     if (presentation.actionKind == SessionBlockedActionKind.retryUnlock) {
       onAction = () => unawaited(
-        ProviderScope.containerOf(
-          context,
-        ).read(appSessionProvider.notifier).unlock(),
+        ProviderScope.containerOf(context)
+            .read(appSessionProvider.notifier)
+            .unlock(),
       );
     } else if (presentation.actionKind ==
         SessionBlockedActionKind.openSettings) {
-      onAction = () => unawaited(context.push(AppRouter.settingsRoute));
+      onAction = () => unawaited(context.push(AppRoutes.settingsRoute));
     }
 
     return HomeScrollbarGutter(
@@ -111,7 +110,7 @@ class HomeDiarySliverSection extends StatelessWidget {
   });
 
   final String title;
-  final List<EntryIndexRecord> entries;
+  final List<DiaryEntrySummary> entries;
   final Color? stripeColor;
   final Widget? trailing;
 

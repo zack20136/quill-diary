@@ -1,36 +1,38 @@
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/application/restore/restore_backup_flow.dart';
-import 'package:quill_diary/application/restore/restore_prepared_context.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
-import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
-import 'package:quill_diary/infrastructure/storage/portable_transfer_service.dart';
-import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
+import 'package:quill_diary/application/restore/restore_backup_flow.dart';
 import 'package:quill_diary/application/session/session_messages.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/portable_import_result_presenter.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/unlock_mode_change_flow.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/application/transfer/portable_transfer_service.dart';
+import 'package:quill_diary/application/transfer/transfer_feedback.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
 
 final settingsFlowControllerProvider = Provider<SettingsFlowController>((
   Ref ref,
@@ -93,6 +95,55 @@ class SettingsRestorePrompt {
   final String primaryActionLabel;
   final String secondaryHint;
   final bool isError;
+  factory SettingsRestorePrompt.fromSessionState({
+    required AppLocalizations l10n,
+    required AppSessionState sessionState,
+    bool unlockFailedAfterRecoveryKey = false,
+  }) {
+    if (unlockFailedAfterRecoveryKey) {
+      return SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeUnlockFailedTitle,
+        body: sessionState.message?.trim().isNotEmpty == true
+            ? sessionState.message!.trim()
+            : l10n.vaultTransferRestoreUnlockFailed,
+        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+        isError: true,
+      );
+    }
+
+    return switch (sessionState.status) {
+      AppLockStatus.locked => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: l10n.postRestoreOutcomeNextStepLocked,
+        primaryAction: SettingsRestorePrimaryAction.retryVerification,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryRetryVerification,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+      ),
+      AppLockStatus.recoveryRequired => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+      ),
+      _ => SettingsRestorePrompt(
+        title: l10n.postRestoreOutcomeTitle,
+        body: snackbarMessageForPostRestore(l10n, sessionState.status),
+        nextStepHint: sessionState.message?.trim().isNotEmpty == true
+            ? sessionState.message!.trim()
+            : l10n.sessionRestoreStartupFailedMessage,
+        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
+        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
+        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
+        isError: sessionState.status == AppLockStatus.fatalError,
+      ),
+    };
+  }
 }
 
 class SettingsRestoreResult {
@@ -198,20 +249,20 @@ class SettingsFlowController {
     AppLocalizations l10n,
   ) async {
     final RecoverySetupResult result = await _ref
-        .read(vaultRecoveryServiceProvider)
+        .read(vaultRepositoryProvider)
         .setupRecoveryKey();
     _ref
         .read(appSessionProvider.notifier)
         .activateSession(
           result.session,
-          message: sessionRecoverySetupSuccessMessage(l10n),
+          message: l10n.sessionRecoverySetupSuccessMessage,
         );
     _ref.invalidate(recoveryMetadataProvider);
     _refreshCaches();
     return SettingsRecoveryKeyResult(
       recoveryKey: result.recoveryKey,
       feedback: SettingsFlowFeedback(
-        sessionRecoverySetupSuccessMessage(l10n),
+        l10n.sessionRecoverySetupSuccessMessage,
         tone: SettingsFlowFeedbackTone.success,
       ),
     );
@@ -364,7 +415,7 @@ class SettingsFlowController {
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
-              .read(vaultRepairServiceProvider)
+              .read(vaultRepositoryProvider)
               .inspectVaultWithReport(session, onProgress: onProgress);
         });
     _refreshVaultMaintenanceCaches();
@@ -388,7 +439,7 @@ class SettingsFlowController {
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
-              .read(vaultRepairServiceProvider)
+              .read(vaultRepositoryProvider)
               .repairVaultWithReport(
                 session,
                 backupFileName: backupFileName,
@@ -412,21 +463,6 @@ class SettingsFlowController {
     return report.copyWith(backupFileName: backupFileName);
   }
 
-  /// 測試／內部用：不建立修復前備份。正式 UI 請走 [repairVaultAfterVerifiedBackup]。
-  Future<VaultRepairReport> repairVault({
-    VaultRepairProgressCallback? onProgress,
-  }) async {
-    final VaultRepairReport report = await _ref
-        .read(appSessionProvider.notifier)
-        .runSensitiveTask((UnlockedVaultSession session) {
-          return _ref
-              .read(vaultRepairServiceProvider)
-              .repairVaultWithReport(session, onProgress: onProgress);
-        });
-    _refreshVaultMaintenanceCaches();
-    return report;
-  }
-
   Future<VaultSalvageDraft?> prepareSalvageDraft(
     List<VaultFinding> findings,
   ) async {
@@ -434,7 +470,7 @@ class SettingsFlowController {
       UnlockedVaultSession session,
     ) async {
       final VaultSalvageDraft? draft = await _ref
-          .read(vaultRepairServiceProvider)
+          .read(vaultRepositoryProvider)
           .tryCreateSalvageDraft(session, findings: findings);
       if (draft == null) return null;
       await _ref
@@ -453,7 +489,7 @@ class SettingsFlowController {
       UnlockedVaultSession session,
     ) {
       return _ref
-          .read(vaultRepairServiceProvider)
+          .read(vaultRepositoryProvider)
           .canSalvageFindings(session, findings);
     });
   }
@@ -466,7 +502,7 @@ class SettingsFlowController {
         .read(appSessionProvider.notifier)
         .runSensitiveTask((UnlockedVaultSession session) {
           return _ref
-              .read(vaultRepairServiceProvider)
+              .read(vaultRepositoryProvider)
               .permanentlyDeleteAbnormalFindings(session, findings: findings);
         });
     _refreshVaultMaintenanceCaches();
@@ -527,20 +563,20 @@ class SettingsFlowController {
       UnlockedVaultSession session,
     ) async {
       final RecoverySetupResult result = await _ref
-          .read(vaultRecoveryServiceProvider)
+          .read(vaultRepositoryProvider)
           .rotateRecoveryKey(session);
       _ref
           .read(appSessionProvider.notifier)
           .activateSession(
             result.session,
-            message: sessionRecoveryKeyRotatedMessage(l10n),
+            message: l10n.sessionRecoveryKeyRotatedMessage,
           );
       _ref.invalidate(recoveryMetadataProvider);
       _refreshCaches();
       return SettingsRecoveryKeyResult(
         recoveryKey: result.recoveryKey,
         feedback: SettingsFlowFeedback(
-          sessionRecoveryKeyRotatedMessage(l10n),
+          l10n.sessionRecoveryKeyRotatedMessage,
           tone: SettingsFlowFeedbackTone.success,
         ),
       );
@@ -568,7 +604,7 @@ class SettingsFlowController {
         .unlockWithRecovery(recoveryKey);
     _refreshCaches();
     return SettingsFlowFeedback(
-      sessionRecoveryUnlockSuccessMessage(l10n),
+      l10n.sessionRecoveryUnlockSuccessMessage,
       tone: SettingsFlowFeedbackTone.success,
     );
   }
@@ -577,9 +613,8 @@ class SettingsFlowController {
     File backupFile,
     String recoveryKey,
   ) async {
-    await RestoreBackupFlow(
-      _ref,
-    ).verifyBackupRecoveryKey(backupFile, recoveryKey);
+    await RestoreBackupFlow(_ref)
+        .verifyBackupRecoveryKey(backupFile, recoveryKey);
   }
 
   Future<SettingsRestoreResult> restorePreparedRequest({
@@ -647,8 +682,12 @@ class SettingsFlowController {
         _ref.invalidate(backupStatusProvider);
         break;
       case BackupPersistStatus.inspectFailed:
-        final String message = result.message.trim().isNotEmpty
-            ? result.message.trim()
+        final String detail = localizedBackupPersistDetail(
+          l10n,
+          result.message.trim(),
+        );
+        final String message = detail.isNotEmpty
+            ? detail
             : l10n.settingsLocalBackupBackupInspectFailed('');
         await store.recordFailure(action: action, message: message);
         _ref.invalidate(backupStatusProvider);
@@ -671,21 +710,9 @@ class SettingsFlowController {
     await _ref.read(driveUploadCoordinatorProvider.notifier).refresh();
   }
 
-  void _refreshCaches({String? editedEntryId}) {
-    _ref
-      ..invalidate(homeEntryIndexListProvider)
-      ..invalidate(homePinnedEntryIdsProvider)
-      ..invalidate(calendarGridEntriesProvider)
-      ..invalidate(calendarEntriesProvider)
-      ..invalidate(entryDateBoundsProvider)
-      ..invalidate(allEntryIndexRecordsProvider)
-      ..invalidate(tagCatalogProvider)
-      ..invalidate(trustedDeviceAccessProvider);
-    _ref.read(entryIndexRevisionProvider.notifier).bump();
-    final String? id = editedEntryId?.trim();
-    if (id != null && id.isNotEmpty) {
-      _ref.invalidate(entryProvider(id));
-    }
+  void _refreshCaches() {
+    _ref.read(diaryRevisionProvider.notifier).bump();
+    _ref.invalidate(trustedDeviceAccessProvider);
   }
 
   SettingsFlowFeedback? _backupPersistFeedback({
@@ -710,7 +737,9 @@ class SettingsFlowController {
             (String message) =>
                 l10n.settingsLocalBackupBackupInspectFailed(message);
         return SettingsFlowFeedback(
-          formatInspectFailed(result.message),
+          formatInspectFailed(
+            localizedBackupPersistDetail(l10n, result.message),
+          ),
           tone: SettingsFlowFeedbackTone.error,
         );
       case BackupPersistStatus.cancelled:
@@ -748,7 +777,7 @@ class SettingsFlowController {
         sessionState.status == AppLockStatus.locked ||
         sessionState.status == AppLockStatus.recoveryRequired) {
       return SettingsRestoreResult(
-        prompt: _buildRestorePrompt(
+        prompt: SettingsRestorePrompt.fromSessionState(
           l10n: l10n,
           sessionState: sessionState,
           unlockFailedAfterRecoveryKey: unlockFailedAfterKey,
@@ -769,55 +798,5 @@ class SettingsFlowController {
       ),
       navigationTarget: SettingsRestoreNavigationTarget.home,
     );
-  }
-
-  SettingsRestorePrompt _buildRestorePrompt({
-    required AppLocalizations l10n,
-    required AppSessionState sessionState,
-    required bool unlockFailedAfterRecoveryKey,
-  }) {
-    if (unlockFailedAfterRecoveryKey) {
-      return SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeUnlockFailedTitle,
-        body: sessionState.message?.trim().isNotEmpty == true
-            ? sessionState.message!.trim()
-            : l10n.vaultTransferRestoreUnlockFailed,
-        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-        isError: true,
-      );
-    }
-
-    return switch (sessionState.status) {
-      AppLockStatus.locked => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: l10n.postRestoreOutcomeNextStepLocked,
-        primaryAction: SettingsRestorePrimaryAction.retryVerification,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryRetryVerification,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-      ),
-      AppLockStatus.recoveryRequired => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-      ),
-      _ => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: sessionState.message?.trim().isNotEmpty == true
-            ? sessionState.message!.trim()
-            : l10n.sessionRestoreStartupFailedMessage,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-        isError: sessionState.status == AppLockStatus.fatalError,
-      ),
-    };
   }
 }

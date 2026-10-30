@@ -3,11 +3,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 
@@ -103,12 +103,12 @@ void main() {
       markdownBody: 'resume path',
     );
 
-    final archiveIo = harness.createArchiveIo();
+    final archiveIo = harness.createTransferIo();
     final File backupFile = File(p.join(harness.tempDir.path, 'resume.zip'));
-    await archiveIo.writeBackupZip(backupFile);
+    await archiveIo.backup.writeBackupZip(backupFile);
 
     await harness.repository.closeUnlockedResources();
-    await archiveIo.restoreBackupZip(backupFile);
+    await archiveIo.backup.restoreBackupZip(backupFile);
 
     final session = await harness.repository.resumeUnlockedSessionAfterRestore(
       setup.session,

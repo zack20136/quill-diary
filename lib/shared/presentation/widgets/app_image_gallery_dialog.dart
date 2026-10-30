@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-
-import '../../../app/app_colors.dart';
-import '../../../l10n/l10n.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 class AppImageGalleryDialog extends StatefulWidget {
   const AppImageGalleryDialog({

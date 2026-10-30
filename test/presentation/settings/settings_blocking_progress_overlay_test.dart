@@ -27,9 +27,7 @@ void main() {
     );
   }
 
-  testWidgets('無比例時顯示 indeterminate 線性條且沒有圓形指示器', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('無比例時顯示 indeterminate 線性條且沒有圓形指示器', (WidgetTester tester) async {
     await tester.pumpWidget(
       host(
         title: testL10n.settingsProgressWorkingTitle,
@@ -48,10 +46,7 @@ void main() {
       find.text(testL10n.settingsBackupStartingAfterRestore),
       findsOneWidget,
     );
-    expect(
-      find.text(testL10n.settingsProgressKeepAppOpenHint),
-      findsOneWidget,
-    );
+    expect(find.text(testL10n.settingsProgressKeepAppOpenHint), findsOneWidget);
     expect(find.textContaining('%'), findsNothing);
   });
 
@@ -109,11 +104,7 @@ void main() {
 
   testWidgets('語意標籤會帶入標題、階段與百分比', (WidgetTester tester) async {
     await tester.pumpWidget(
-      host(
-        title: '正在處理',
-        message: '正在檢查附件',
-        progress: 0.38,
-      ),
+      host(title: '正在處理', message: '正在檢查附件', progress: 0.38),
     );
     expect(
       find.bySemanticsLabel(
@@ -122,15 +113,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.pumpWidget(
-      host(title: '正在處理', message: '正在啟動還原後的日記庫…'),
-    );
+    await tester.pumpWidget(host(title: '正在處理', message: '正在啟動還原後的日記庫…'));
     expect(
       find.bySemanticsLabel(
-        testL10n.settingsProgressSemanticIndeterminate(
-          '正在處理',
-          '正在啟動還原後的日記庫…',
-        ),
+        testL10n.settingsProgressSemanticIndeterminate('正在處理', '正在啟動還原後的日記庫…'),
       ),
       findsOneWidget,
     );

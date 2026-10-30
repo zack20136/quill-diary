@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
-
-import '../../domain/attachment/asset_attachment.dart';
-import '../../domain/diary/diary_entry.dart';
-import '../../domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary/diary_markdown.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 String escapeSqlLikeSearchText(String value) =>
     value.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
@@ -38,110 +41,8 @@ const String _kFileAttachmentCountSelect = '''
       AND a.mime_type NOT LIKE 'image/%'
   ) AS file_attachment_count''';
 
-class EntryIndexRecord {
-  const EntryIndexRecord({
-    required this.id,
-    required this.vaultId,
-    required this.filePath,
-    required this.title,
-    required this.previewText,
-    this.previewMarkdown = '',
-    required this.date,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.tags,
-    required this.wordCount,
-    required this.charCount,
-    required this.attachmentCount,
-    this.imageAttachmentCount = 0,
-    this.fileAttachmentCount = 0,
-    this.previewImagePaths = const <String>[],
-  });
-
-  final EntryId id;
-  final VaultId vaultId;
-  final String filePath;
-  final String? title;
-  final String previewText;
-  final String previewMarkdown;
-  final DateOnly date;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final List<String> tags;
-  final int wordCount;
-  final int charCount;
-  final int attachmentCount;
-  final int imageAttachmentCount;
-  final int fileAttachmentCount;
-  final List<String> previewImagePaths;
-
-  factory EntryIndexRecord.fromRow(QueryRow row) {
-    return EntryIndexRecord(
-      id: row.read<String>('id'),
-      vaultId: row.read<String>('vault_id'),
-      filePath: row.read<String>('file_path'),
-      title: row.readNullable<String>('title'),
-      previewText: row.readNullable<String>('preview_text') ?? '',
-      previewMarkdown: row.readNullable<String>('preview_markdown') ?? '',
-      date: DateOnly.parse(row.read<String>('date')),
-      createdAt: DateTime.parse(row.read<String>('created_at')),
-      updatedAt: DateTime.parse(row.read<String>('updated_at')),
-      tags: _parseTags(row.readNullable<String>('tags_joined')),
-      wordCount: row.read<int>('word_count'),
-      charCount: row.read<int>('char_count'),
-      attachmentCount: row.read<int>('attachment_count'),
-      imageAttachmentCount:
-          row.readNullable<int>('image_attachment_count') ?? 0,
-      fileAttachmentCount: row.readNullable<int>('file_attachment_count') ?? 0,
-      previewImagePaths: _parsePreviewPaths(
-        row.readNullable<String>('preview_image_paths_joined'),
-      ),
-    );
-  }
-
-  static List<String> _parsePreviewPaths(String? joined) {
-    if (joined == null || joined.isEmpty) {
-      return const <String>[];
-    }
-    return joined.split('<|>').where((String s) => s.isNotEmpty).toList();
-  }
-
-  static List<String> _parseTags(String? joined) {
-    if (joined == null || joined.isEmpty) {
-      return const <String>[];
-    }
-    return joined.split('\n').where((String tag) => tag.isNotEmpty).toList();
-  }
-}
-
 /// 人物提及篇數統計（近 30 天窗口以呼叫時的 [now] 計算）。
-class PersonMentionStats {
-  const PersonMentionStats({
-    required this.personId,
-    required this.mentionedEntryCount,
-    required this.recentMentionedEntryCount,
-    this.lastMentionDate,
-  });
-
-  final PersonId personId;
-  final int mentionedEntryCount;
-  final int recentMentionedEntryCount;
-  final DateOnly? lastMentionDate;
-}
-
 /// 範圍內提及排序列（總覽 Top N）。
-class PersonScopedMentionRank {
-  const PersonScopedMentionRank({
-    required this.personId,
-    required this.mentionedEntryCount,
-    required this.lastMentionDate,
-  });
-
-  final PersonId personId;
-  final int mentionedEntryCount;
-  final DateOnly lastMentionDate;
-}
-
 /// 人物姓名分析所需的輕量索引列，不含人物關聯。
 class PeopleAnalysisSourceDocument {
   const PeopleAnalysisSourceDocument({
@@ -184,12 +85,6 @@ class PeopleAnalysisDocumentResult {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
-  static const int indexGeneration = 1;
-
-  /// 人物分析衍生索引的語意版本（與 schema generation 分開）。
-  /// 變更匹配規則時請遞增，讓既有 vault 自動重建統計。
-  static const int peopleAnalyticsGeneration = 1;
-
   static const String kPeopleAnalyticsGenerationKey =
       'people_analytics_generation';
   static const String kPeopleAnalyticsStaleKey = 'people_analytics_stale';
@@ -197,7 +92,7 @@ class IndexDatabase extends GeneratedDatabase {
       'people_analytics_catalog_fingerprint';
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => DataVersions.indexDatabase;
 
   @override
   List<TableInfo<Table, Object?>> get allTables =>
@@ -404,17 +299,6 @@ class IndexDatabase extends GeneratedDatabase {
     await replaceTags(entry.id, entry.tags);
   }
 
-  /// `normalizeText(tag)` → 儲存的 ARGB（與 Flutter `Color` 對應）。
-  Future<Map<String, int>> fetchTagAccentArgbMap() async {
-    final List<QueryRow> rows = await customSelect(
-      'SELECT tag_normalized, accent_argb FROM tag_styles;',
-    ).get();
-    return <String, int>{
-      for (final QueryRow row in rows)
-        row.read<String>('tag_normalized'): row.read<int>('accent_argb'),
-    };
-  }
-
   Future<void> upsertTagAccentArgb(String tag, int accentArgb) async {
     final String nk = normalizeText(tag);
     if (nk.isEmpty) {
@@ -489,7 +373,7 @@ class IndexDatabase extends GeneratedDatabase {
     }
   }
 
-  Future<List<EntryIndexRecord>> listEntries({
+  Future<List<DiaryEntrySummary>> listEntries({
     String? searchQuery,
     DateOnly? date,
   }) async {
@@ -524,10 +408,10 @@ class IndexDatabase extends GeneratedDatabase {
           Variable.withString(value as String),
       ],
     ).get();
-    return rows.map(EntryIndexRecord.fromRow).toList();
+    return rows.map(_entrySummaryFromRow).toList();
   }
 
-  Future<List<EntryIndexRecord>> searchEntries(String query) async {
+  Future<List<DiaryEntrySummary>> searchEntries(String query) async {
     final String normalizedQuery = normalizeSearchText(query);
     if (normalizedQuery.isEmpty) {
       return listEntries();
@@ -535,7 +419,7 @@ class IndexDatabase extends GeneratedDatabase {
     return _searchEntriesByLike(normalizedQuery);
   }
 
-  Future<List<EntryIndexRecord>> _searchEntriesByLike(
+  Future<List<DiaryEntrySummary>> _searchEntriesByLike(
     String normalizedQuery,
   ) async {
     final String escapedQuery = escapeSqlLikeSearchText(normalizedQuery);
@@ -568,10 +452,10 @@ class IndexDatabase extends GeneratedDatabase {
         Variable.withString(likeQuery),
       ],
     ).get();
-    return rows.map(EntryIndexRecord.fromRow).toList();
+    return rows.map(_entrySummaryFromRow).toList();
   }
 
-  Future<EntryIndexRecord?> getEntryById(EntryId entryId) async {
+  Future<DiaryEntrySummary?> getEntryById(EntryId entryId) async {
     final List<QueryRow> rows = await customSelect(
       '''
         SELECT
@@ -591,10 +475,10 @@ class IndexDatabase extends GeneratedDatabase {
     if (rows.isEmpty) {
       return null;
     }
-    return EntryIndexRecord.fromRow(rows.first);
+    return _entrySummaryFromRow(rows.first);
   }
 
-  Future<List<EntryIndexRecord>> listEntriesForMonth(DateTime month) async {
+  Future<List<DiaryEntrySummary>> listEntriesForMonth(DateTime month) async {
     final String prefix =
         '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
     final List<QueryRow> rows = await customSelect(
@@ -613,10 +497,10 @@ class IndexDatabase extends GeneratedDatabase {
       ''',
       variables: <Variable<Object>>[Variable.withString('$prefix%')],
     ).get();
-    return rows.map(EntryIndexRecord.fromRow).toList();
+    return rows.map(_entrySummaryFromRow).toList();
   }
 
-  Future<List<EntryIndexRecord>> listEntriesForDateRange({
+  Future<List<DiaryEntrySummary>> listEntriesForDateRange({
     required DateOnly firstDate,
     required DateOnly lastDate,
   }) async {
@@ -639,7 +523,7 @@ class IndexDatabase extends GeneratedDatabase {
         Variable.withString(lastDate.value),
       ],
     ).get();
-    return rows.map(EntryIndexRecord.fromRow).toList();
+    return rows.map(_entrySummaryFromRow).toList();
   }
 
   Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() async {
@@ -923,7 +807,7 @@ class IndexDatabase extends GeneratedDatabase {
   Future<void> markPeopleAnalyticsReady(String catalogFingerprint) async {
     await setAppValue(
       kPeopleAnalyticsGenerationKey,
-      peopleAnalyticsGeneration.toString(),
+      DataVersions.peopleAnalyticsGeneration.toString(),
     );
     await setAppValue(
       kPeopleAnalyticsCatalogFingerprintKey,
@@ -935,7 +819,7 @@ class IndexDatabase extends GeneratedDatabase {
   Future<void> beginPeopleAnalyticsRebuild(String catalogFingerprint) async {
     await setAppValue(
       kPeopleAnalyticsGenerationKey,
-      peopleAnalyticsGeneration.toString(),
+      DataVersions.peopleAnalyticsGeneration.toString(),
     );
     await setAppValue(
       kPeopleAnalyticsCatalogFingerprintKey,
@@ -946,7 +830,7 @@ class IndexDatabase extends GeneratedDatabase {
 
   Future<bool> needsPeopleAnalyticsReset(String catalogFingerprint) async {
     final String? generation = await getAppValue(kPeopleAnalyticsGenerationKey);
-    if (generation != peopleAnalyticsGeneration.toString()) {
+    if (generation != DataVersions.peopleAnalyticsGeneration.toString()) {
       return true;
     }
     return await getAppValue(kPeopleAnalyticsCatalogFingerprintKey) !=
@@ -998,7 +882,7 @@ class IndexDatabase extends GeneratedDatabase {
     };
   }
 
-  Future<List<EntryIndexRecord>> relatedEntriesForPerson(
+  Future<List<DiaryEntrySummary>> relatedEntriesForPerson(
     PersonId personId,
   ) async {
     final List<QueryRow> rows = await customSelect(
@@ -1018,7 +902,7 @@ class IndexDatabase extends GeneratedDatabase {
       ''',
       variables: <Variable<Object>>[Variable.withString(personId)],
     ).get();
-    return rows.map(EntryIndexRecord.fromRow).toList();
+    return rows.map(_entrySummaryFromRow).toList();
   }
 
   Future<List<PersonScopedMentionRank>> topMentionedPeople({
@@ -1163,4 +1047,41 @@ class IndexDatabase extends GeneratedDatabase {
         .toList();
     return words.isEmpty ? 0 : words.length;
   }
+}
+
+DiaryEntrySummary _entrySummaryFromRow(QueryRow row) {
+  return DiaryEntrySummary(
+    id: row.read<String>('id'),
+    vaultId: row.read<String>('vault_id'),
+    filePath: row.read<String>('file_path'),
+    title: row.readNullable<String>('title'),
+    previewText: row.readNullable<String>('preview_text') ?? '',
+    previewMarkdown: row.readNullable<String>('preview_markdown') ?? '',
+    date: DateOnly.parse(row.read<String>('date')),
+    createdAt: DateTime.parse(row.read<String>('created_at')),
+    updatedAt: DateTime.parse(row.read<String>('updated_at')),
+    tags: _parseTags(row.readNullable<String>('tags_joined')),
+    wordCount: row.read<int>('word_count'),
+    charCount: row.read<int>('char_count'),
+    attachmentCount: row.read<int>('attachment_count'),
+    imageAttachmentCount: row.readNullable<int>('image_attachment_count') ?? 0,
+    fileAttachmentCount: row.readNullable<int>('file_attachment_count') ?? 0,
+    previewImagePaths: _parsePreviewPaths(
+      row.readNullable<String>('preview_image_paths_joined'),
+    ),
+  );
+}
+
+List<String> _parsePreviewPaths(String? joined) {
+  if (joined == null || joined.isEmpty) {
+    return const <String>[];
+  }
+  return joined.split('<|>').where((String s) => s.isNotEmpty).toList();
+}
+
+List<String> _parseTags(String? joined) {
+  if (joined == null || joined.isEmpty) {
+    return const <String>[];
+  }
+  return joined.split('\n').where((String tag) => tag.isNotEmpty).toList();
 }

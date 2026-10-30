@@ -1,7 +1,6 @@
-import '../../../domain/attachment/asset_attachment.dart';
-import '../../../domain/diary/diary_entry.dart';
-import '../../database/index_database.dart';
-import '../vault_repository.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 
 typedef ResolvedImportAttachments = ({
   List<PendingAttachment> attachments,
@@ -44,7 +43,7 @@ class HtmlExportDocument {
     required this.attachments,
   });
 
-  final EntryIndexRecord record;
+  final DiaryEntrySummary record;
   final DiaryEntry? entry;
   final List<AssetAttachment> attachments;
 }

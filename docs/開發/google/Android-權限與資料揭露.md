@@ -14,7 +14,17 @@
 | `android.permission.POST_NOTIFICATIONS` | Android 13+ 上傳進度與停止動作；拒絕仍可上傳，但通知抽屜可能不顯示 |
 | `android.permission.WAKE_LOCK` | 上傳期間避免休眠，完成或中斷即釋放 |
 
-主 Manifest 不要求相機、錄音、`READ_MEDIA_IMAGES`、`READ_EXTERNAL_STORAGE` 或 `WRITE_EXTERNAL_STORAGE`。圖片使用 `image_picker`，一般檔案使用系統選檔，只處理使用者選取項目，不掃描整個相簿或儲存空間。材料化與授權釋放見[備份與還原](../功能/備份與還原.md#外部選檔與-materialize)。
+主 Manifest 不要求相機、錄音、`READ_MEDIA_IMAGES`、`READ_MEDIA_VIDEO`、`READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE` 或 `MANAGE_EXTERNAL_STORAGE`。圖片使用 `image_picker` 的系統相片挑選器，一般檔案使用系統選檔，只處理使用者選取項目，不掃描整個相簿或儲存空間。材料化與授權釋放見[備份與還原](../功能/備份與還原.md#外部選檔與-materialize)。
+
+目前鎖定的 `image_picker_android`、`android_file_picker`、`flutter_image_compress` 不會把上述媒體或儲存權限合併進 Manifest。不要為了自訂相簿介面加回 `READ_MEDIA_IMAGES` 或 `READ_MEDIA_VIDEO`；Play 只允許核心功能無法用系統挑選器完成時才申請，並要在 Console 提交廣泛存取宣告。本 App 是單次選取，維持挑選器即可。政策見[相片與影片權限](https://support.google.com/googleplay/android-developer/answer/14115180)。
+
+2026 年其他敏感權限規定也沒有對應功能，不要補進 Manifest：
+
+- 聯絡人：沒有讀取通訊錄。需要時用系統聯絡人挑選器，不要加 `READ_CONTACTS`。見 [2026-04-15 政策公告](https://support.google.com/googleplay/android-developer/answer/16926792)。
+- 位置：沒有精確或背景位置。前景服務是使用者手動觸發的 `dataSync` 備份，不是定位或地理圍欄。
+- 簡訊與通話紀錄：沒有 `READ_SMS`、`READ_CALL_LOG` 或相關權限。
+- 區網：Android 16 的 local network permission 仍是選擇加入，尚未強制。自訂 AI 的區網 HTTP 目前只靠 `INTERNET` 與 `validateAiEndpoint`。不要先宣告 `NEARBY_WIFI_DEVICES`；強制執行時的權限名稱仍可能更換。見 [Android 16 行為變更](https://developer.android.com/about/versions/16/behavior-changes-16)。
+- 廣告 ID：主程式沒有廣告。`play-services-basement` 18.4／18.9 的 Manifest 不含 `com.google.android.gms.permission.AD_ID`。若之後的 SDK 合併這項權限，從 Manifest 移除，不要把 Console 廣告宣告改成有廣告。
 
 生物辨識權限不代表 App 能讀取指紋或臉部影像；驗證由系統處理。選檔取消不應留下附件；選到的 URI／暫存檔只供本次操作，使用後釋放 grant。維護 `file_picker` 或 `image_picker` 版本時，除了 widget 測試，仍要在 Android 驗證系統挑選、Activity 重建及取消後清理。
 
@@ -36,7 +46,7 @@ Android 13+ 通知權限可被拒絕。上傳服務仍須依平台規則啟動�
 - Custom 的 HTTP 只接受 loopback、IPv4 私有網段及 IPv6 ULA，拒絕主機名稱、link-local 及公網 HTTP。
 - 不跟隨重新導向，不略過 TLS 驗證。
 
-target SDK 由 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter 設定提供；調整 target SDK 時一併核對 Android 區網存取與前景服務要求。
+target SDK 由 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter 設定提供。區網權限與 dataSync 前景服務的目前結論見上方主 Manifest 說明；target SDK 再升高時重新核對。
 
 ## Play Console Data safety
 

@@ -9,7 +9,7 @@
 - 平台定位目前是 Android
 - Android `applicationId`/`namespace`：`zack20136.com.quill_diary`
 - `minSdk`：`30`
-- `targetSdk` 由 Flutter/Android 建置設定解析；以當次 release merged manifest 為準
+- `compileSdk` 與 `targetSdk` 跟 [`android/app/build.gradle.kts`](../../../android/app/build.gradle.kts) 的 Flutter 設定，目前都是 API 36；不在 Gradle 另寫死數字。送審前仍以該次 release merged manifest 為準
 - 版本以 [`pubspec.yaml`](../../../pubspec.yaml) 的 `version:` 為準；送審前確認 `versionCode` 已遞增
 - release 建置要求實體簽章設定，不允許用 debug signing 發 release
 
@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 build appbundle
 
 相關來源：
 
-- [lib/app/app_identifiers.dart](../../../lib/app/app_identifiers.dart)
+- [lib/shared/app_identifiers.dart](../../../lib/shared/app_identifiers.dart)
 - [docs/privacy-policy.md](../../privacy-policy.md)
 
 若變更 GitHub Pages 路徑、repo 名稱或對外 URL，必須一起檢查上述檔案與 Play Console 連結。
@@ -93,7 +93,13 @@ Play 的隱私政策要求 URL 可公開存取、非 PDF、不可由一般訪客
 
 ## 發布時核對的外部要求
 
-發布當天核對官方 [target API 時程](https://support.google.com/googleplay/android-developer/answer/11926878)與[開發者驗證／套件註冊](https://support.google.com/googleplay/android-developer/answer/16984799)，並確認 Play Console 中本 App 的狀態。這些要求不在 repo 寫死日期；target API、發布軌道、地區、相容性及帳號政策可能影響送審或商店可見性。
+自 2026 年 8 月 31 日起，手機 App 的新提交與更新必須 target Android 16（API 36）。本專案目前由 Flutter 帶入的 compile／target 已是 API 36，符合這個送審門檻，不必申請延到 2026 年 11 月 1 日。下一個年度的 API 門檻不寫進 repo；送審當天仍核對官方 [target API 時程](https://support.google.com/googleplay/android-developer/answer/11926878)，並以該次 release merged manifest 為準。
+
+開發者驗證不是程式設定。到 Play Console 首頁確認本 App 已註冊；Play 上多數 App 會自動註冊，沒有註冊的要手動完成，否則可能從商店下架。2026 年 9 月 30 日起，巴西、印尼、新加坡、泰國的參與商店開始要求驗證；全球擴大是 2027。依據見[開發者驗證／套件註冊](https://support.google.com/googleplay/android-developer/answer/16984799)。
+
+權限政策不需要改 Manifest。相片與影片、聯絡人、位置、簡訊與通話紀錄都沒有廣泛存取；圖片與檔案走系統挑選器。Console 若詢問相片／影片廣泛存取，回答不需要，不要提交 `READ_MEDIA_IMAGES` 或 `READ_MEDIA_VIDEO` 宣告。廣告宣告維持沒有廣告。對照與不要新增的權限見[Android 權限與資料揭露](Android-權限與資料揭露.md#主-manifest-權限)。
+
+發布軌道、地區、相容性及帳號政策仍以 Console 顯示為準，無法只從 repo 判定。
 
 ## App content 與審查資料
 
@@ -199,6 +205,8 @@ target Android 14（API 34）以上並使用 `FOREGROUND_SERVICE_DATA_SYNC` 時�
 - [Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756)
 - [Google Play 使用者資料與隱私政策](https://support.google.com/googleplay/android-developer/answer/10144311)
 - [Google Play App access](https://support.google.com/googleplay/android-developer/answer/15748846)
+- [相片與影片權限](https://support.google.com/googleplay/android-developer/answer/14115180)
+- [2026-04-15 政策公告](https://support.google.com/googleplay/android-developer/answer/16926792)
 
 ---
 

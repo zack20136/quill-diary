@@ -1,5 +1,16 @@
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+
+enum VaultTransferBlock {
+  backupNeedsUnlock,
+  backupNeedsRecoveryKey,
+  portableNeedsUnlock,
+  restoreNeedsUnlock,
+}
+
+class VaultTransferBlockedException implements Exception {
+  const VaultTransferBlockedException(this.reason);
+  final VaultTransferBlock reason;
+}
 
 class VaultTransferCapabilities {
   const VaultTransferCapabilities({
@@ -10,89 +21,46 @@ class VaultTransferCapabilities {
     this.portableTransferDisabledReason,
     this.restoreDisabledReason,
   });
-
-  /// 完整備份／匯出本機或 Drive 備份（需解鎖 + Recovery Key）。
   final bool canBackup;
-
-  /// 可攜式匯入／Markdown／HTML 匯出（只需解鎖 session）。
   final bool canPortableTransfer;
-
   final bool canRestore;
-  final String? backupDisabledReason;
-  final String? portableTransferDisabledReason;
-  final String? restoreDisabledReason;
+  final VaultTransferBlock? backupDisabledReason;
+  final VaultTransferBlock? portableTransferDisabledReason;
+  final VaultTransferBlock? restoreDisabledReason;
 
   factory VaultTransferCapabilities.fromSessionContext({
-    required AppLocalizations l10n,
     required bool hasUnlockedSession,
     required bool hasRecoveryKey,
     required AppLockStatus lockStatus,
   }) {
-    final bool canBackup = hasUnlockedSession && hasRecoveryKey;
-    final bool canPortableTransfer = hasUnlockedSession;
-    final bool canRestore = _canRestoreWithoutUnlock(
-      hasUnlockedSession: hasUnlockedSession,
-      hasRecoveryKey: hasRecoveryKey,
-      lockStatus: lockStatus,
-    );
-
+    final canBackup = hasUnlockedSession && hasRecoveryKey;
+    final canRestore =
+        hasUnlockedSession ||
+        !hasRecoveryKey ||
+        lockStatus == AppLockStatus.recoveryRequired;
     return VaultTransferCapabilities(
       canBackup: canBackup,
-      canPortableTransfer: canPortableTransfer,
+      canPortableTransfer: hasUnlockedSession,
       canRestore: canRestore,
       backupDisabledReason: canBackup
           ? null
-          : _backupDisabledReason(
-              hasUnlockedSession: hasUnlockedSession,
-              hasRecoveryKey: hasRecoveryKey,
-              l10n: l10n,
-            ),
-      portableTransferDisabledReason: canPortableTransfer
+          : !hasUnlockedSession
+          ? VaultTransferBlock.backupNeedsUnlock
+          : VaultTransferBlock.backupNeedsRecoveryKey,
+      portableTransferDisabledReason: hasUnlockedSession
           ? null
-          : l10n.vaultTransferNeedsUnlockForPortableTransfer,
+          : VaultTransferBlock.portableNeedsUnlock,
       restoreDisabledReason: canRestore
           ? null
-          : l10n.vaultTransferNeedsUnlockForRestore,
+          : VaultTransferBlock.restoreNeedsUnlock,
     );
   }
 
-  void ensureCanRestore(AppLocalizations l10n) {
-    if (canRestore) {
-      return;
+  void ensureCanRestore() {
+    if (!canRestore) {
+      throw VaultTransferBlockedException(
+        restoreDisabledReason ?? VaultTransferBlock.restoreNeedsUnlock,
+      );
     }
-    throw StateError(
-      restoreDisabledReason ?? l10n.vaultTransferNeedsUnlockForRestore,
-    );
-  }
-
-  static bool _canRestoreWithoutUnlock({
-    required bool hasUnlockedSession,
-    required bool hasRecoveryKey,
-    required AppLockStatus lockStatus,
-  }) {
-    if (hasUnlockedSession) {
-      return true;
-    }
-    if (!hasRecoveryKey) {
-      return true;
-    }
-    if (lockStatus == AppLockStatus.recoveryRequired) {
-      return true;
-    }
-    return false;
-  }
-
-  static String _backupDisabledReason({
-    required AppLocalizations l10n,
-    required bool hasUnlockedSession,
-    required bool hasRecoveryKey,
-  }) {
-    if (!hasUnlockedSession) {
-      return l10n.vaultTransferNeedsUnlockForBackup;
-    }
-    if (!hasRecoveryKey) {
-      return l10n.vaultTransferNeedsRecoveryKeyForBackup;
-    }
-    return l10n.vaultTransferNeedsUnlockForBackup;
   }
 }

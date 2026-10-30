@@ -122,7 +122,10 @@ void main() {
       final List<PersonNameSpan> spans = matcher.findSpans(text);
       expect(spans, hasLength(1));
       expect(spans.single.personId, 'js');
-      expect(text.substring(spans.single.start, spans.single.end), 'John  Smith');
+      expect(
+        text.substring(spans.single.start, spans.single.end),
+        'John  Smith',
+      );
     });
   });
 }

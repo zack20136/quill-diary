@@ -1,7 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../l10n/l10n.dart';
-import '../../../app/app_colors.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 /// Accent 選色與人物表單共用的漸層外殼與標題列。
 class AccentDialogShell extends StatelessWidget {
@@ -31,7 +32,9 @@ class AccentDialogShell extends StatelessWidget {
     final AppColors appColors = context.appColors;
 
     return ConstrainedBox(
-      constraints: expand ? const BoxConstraints.expand() : const BoxConstraints(),
+      constraints: expand
+          ? const BoxConstraints.expand()
+          : const BoxConstraints(),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(expand ? 0 : 28),
         child: DecoratedBox(

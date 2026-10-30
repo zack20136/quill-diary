@@ -4,22 +4,21 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
-
-import '../../../domain/attachment/asset_attachment.dart';
-import '../../../domain/diary/diary_entry.dart';
-import '../../../domain/people/person.dart';
-import '../../../domain/security/unlocked_vault_session.dart';
-import '../../../domain/shared/value_objects.dart';
-import '../../database/index_database.dart';
-import '../../markdown/front_matter_codec.dart';
-import '../../database/entry_index_sorting.dart';
-import '../shared/media_type_utils.dart';
-import '../shared/vault_file_ops.dart';
-import '../vault_path_strategy.dart';
-import '../vault_repository.dart';
-import 'html_export_person_anonymizer.dart';
-import 'portable_date_text.dart';
-import 'portable_io_types.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/portable/html_export_person_anonymizer.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_date_text.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 /// HTML 可攜式匯出選項。
 class HtmlExportOptions {
@@ -207,23 +206,21 @@ class PortableExportIo {
   final VaultRepository _repository;
   final FrontMatterCodec _frontMatterCodec;
 
-  static const String kNoHtmlExportEntriesMessage = '沒有可匯出的日記。';
-
   Future<Directory> exportMarkdown({
     required UnlockedVaultSession session,
     required Directory parentDirectory,
     Set<EntryId>? entryIds,
     MarkdownExportOptions options = const MarkdownExportOptions(),
   }) async {
-    final List<EntryIndexRecord> allEntries = await _repository.listEntries();
+    final List<DiaryEntrySummary> allEntries = await _repository.listEntries();
     final Set<EntryId>? selected = entryIds
         ?.map((EntryId id) => id.trim())
         .where((EntryId id) => id.isNotEmpty)
         .toSet();
-    final List<EntryIndexRecord> entries = selected == null
+    final List<DiaryEntrySummary> entries = selected == null
         ? allEntries
         : allEntries
-              .where((EntryIndexRecord record) => selected.contains(record.id))
+              .where((DiaryEntrySummary record) => selected.contains(record.id))
               .toList(growable: false);
 
     HtmlExportPersonAnonymizer? anonymizer;
@@ -241,7 +238,7 @@ class PortableExportIo {
 
     final Set<String> usedEntryDirectories = <String>{};
 
-    for (final EntryIndexRecord record in entries) {
+    for (final DiaryEntrySummary record in entries) {
       final List<Object?> loaded = await Future.wait<Object?>(<Future<Object?>>[
         _repository.loadEntry(session, record.id),
         _repository.loadAttachments(record.id),
@@ -281,9 +278,8 @@ class PortableExportIo {
             './${attachmentFileNames[attachment.id] ?? attachment.safeFilename}',
       );
 
-      await File(
-        p.join(entryDirectory.path, 'index.md'),
-      ).writeAsString(exportMarkdown, flush: true);
+      await File(p.join(entryDirectory.path, 'index.md'))
+          .writeAsString(exportMarkdown, flush: true);
 
       await _exportAttachments(
         session: session,
@@ -332,7 +328,7 @@ class PortableExportIo {
     required Set<EntryId> entryIds,
   }) async {
     final List<HtmlExportDocument> documents =
-        await _requireSelectedHtmlExportDocuments(
+        await _loadSelectedHtmlExportDocuments(
           session: null,
           entryIds: entryIds,
           loadEntries: false,
@@ -341,7 +337,7 @@ class PortableExportIo {
     final List<HtmlExportEntrySummary> summaries = <HtmlExportEntrySummary>[];
     for (final HtmlExportDocument document in documents) {
       final DiaryEntry? entry = document.entry;
-      final EntryIndexRecord record = document.record;
+      final DiaryEntrySummary record = document.record;
       final int textBytes;
       final String? title;
       if (entry != null) {
@@ -385,17 +381,17 @@ class PortableExportIo {
   }
 
   Future<MarkdownExportEstimate> estimateMarkdownExport() async {
-    final List<EntryIndexRecord> entries = await _repository.listEntries();
+    final List<DiaryEntrySummary> entries = await _repository.listEntries();
     final List<List<AssetAttachment>> attachmentLists = await Future.wait(
       entries.map(
-        (EntryIndexRecord record) => _repository.loadAttachments(record.id),
+        (DiaryEntrySummary record) => _repository.loadAttachments(record.id),
       ),
     );
 
     final List<MarkdownExportEntrySummary> summaries =
         <MarkdownExportEntrySummary>[];
     for (var index = 0; index < entries.length; index++) {
-      final EntryIndexRecord record = entries[index];
+      final DiaryEntrySummary record = entries[index];
       final List<AssetAttachment> attachments = attachmentLists[index];
       var attachmentBytes = 0;
       for (final AssetAttachment attachment in attachments) {
@@ -427,7 +423,7 @@ class PortableExportIo {
     HtmlExportOptions options = const HtmlExportOptions(),
   }) async {
     final List<HtmlExportDocument> documents =
-        await _requireSelectedHtmlExportDocuments(
+        await _loadSelectedHtmlExportDocuments(
           session: session,
           entryIds: entryIds,
           loadEntries: true,
@@ -500,9 +496,9 @@ class PortableExportIo {
     final Set<EntryId> selected = entryIds
         .map((EntryId id) => id.trim())
         .toSet();
-    final List<EntryIndexRecord> records =
+    final List<DiaryEntrySummary> records =
         (await _repository.listEntries())
-            .where((EntryIndexRecord record) => selected.contains(record.id))
+            .where((DiaryEntrySummary record) => selected.contains(record.id))
             .toList()
           ..sort(compareEntriesNewestFirst);
 
@@ -512,7 +508,7 @@ class PortableExportIo {
     final List<HtmlExportDocument?> documents =
         await Future.wait<HtmlExportDocument?>(
           records.map(
-            (EntryIndexRecord record) => _loadHtmlExportDocument(
+            (DiaryEntrySummary record) => _loadHtmlExportDocument(
               record: record,
               session: exportSession,
               loadEntry: loadEntries,
@@ -522,25 +518,8 @@ class PortableExportIo {
     return documents.whereType<HtmlExportDocument>().toList(growable: false);
   }
 
-  Future<List<HtmlExportDocument>> _requireSelectedHtmlExportDocuments({
-    required UnlockedVaultSession? session,
-    required Set<EntryId> entryIds,
-    required bool loadEntries,
-  }) async {
-    final List<HtmlExportDocument> documents =
-        await _loadSelectedHtmlExportDocuments(
-          session: session,
-          entryIds: entryIds,
-          loadEntries: loadEntries,
-        );
-    if (documents.isEmpty) {
-      throw StateError(kNoHtmlExportEntriesMessage);
-    }
-    return documents;
-  }
-
   Future<HtmlExportDocument?> _loadHtmlExportDocument({
-    required EntryIndexRecord record,
+    required DiaryEntrySummary record,
     required UnlockedVaultSession? session,
     required bool loadEntry,
   }) async {
@@ -990,9 +969,8 @@ class PortableExportIo {
       return;
     }
 
-    await File(
-      p.join(entryDirectory.path, outputName),
-    ).writeAsBytes(bytes, flush: true);
+    await File(p.join(entryDirectory.path, outputName))
+        .writeAsBytes(bytes, flush: true);
   }
 }
 
@@ -1069,9 +1047,8 @@ String exportMarkdownBodyToHtml(String markdown) {
       continue;
     }
 
-    final Match? taskItem = RegExp(
-      r'^-\s*\[([ xX])\]\s*(.*)$',
-    ).firstMatch(trimmed);
+    final Match? taskItem = RegExp(r'^-\s*\[([ xX])\]\s*(.*)$')
+        .firstMatch(trimmed);
     if (taskItem != null) {
       flushParagraph();
       if (inList) {

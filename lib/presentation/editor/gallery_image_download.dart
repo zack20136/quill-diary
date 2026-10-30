@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
-import 'package:quill_diary/infrastructure/storage/user_export_paths.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/display_format.dart';
 
 void showGalleryDownloadSnackBar(
   BuildContext context,
@@ -20,7 +20,9 @@ Future<void> downloadGalleryImage({
   required BuildContext context,
   required GalleryImageItem item,
 }) async {
-  final Uint8List? bytes = await loadGalleryImageBytes(ref: ref, item: item);
+  final Uint8List? bytes = await ref
+      .read(editorFlowControllerProvider)
+      .loadGalleryImageBytes(item);
   if (!context.mounted) {
     return;
   }
@@ -51,7 +53,7 @@ Future<void> downloadGalleryImage({
   showGalleryDownloadSnackBar(
     context,
     context.l10n.editorGalleryDownloadSuccess(
-      UserExportPaths.picturesDisplayPath(savedName),
+      DisplayFormat.formatPicturesDisplayPath(savedName),
     ),
   );
 }

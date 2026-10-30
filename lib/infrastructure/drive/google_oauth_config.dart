@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'package:quill_diary/app/app_identifiers.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// Google Sign-In 在 Android 上須提供 [GoogleSignIn.initialize] 的 `serverClientId`
 ///（也就是網頁應用程式 OAuth Client ID）。

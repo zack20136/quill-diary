@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 void main() {
   test('settingsLocation 會帶入 focus query', () {
-    expect(AppRouter.settingsLocation(), AppRouter.settingsRoute);
+    expect(AppRoutes.settingsLocation(), AppRoutes.settingsRoute);
     expect(
-      AppRouter.settingsLocation(focus: SettingsFocusTarget.recoveryKey),
+      AppRoutes.settingsLocation(focus: SettingsFocusTarget.recoveryKey),
       '/settings?focus=recoveryKey',
     );
     expect(
-      AppRouter.settingsLocation(focus: SettingsFocusTarget.externalRestore),
+      AppRoutes.settingsLocation(focus: SettingsFocusTarget.externalRestore),
       '/settings?focus=externalRestore',
     );
     expect(

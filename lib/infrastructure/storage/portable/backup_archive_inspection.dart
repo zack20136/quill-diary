@@ -3,8 +3,31 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
-import '../../../domain/recovery/recovery_metadata.dart';
-import '../shared/archive_extract.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+
+enum VaultBackupIssue {
+  passed,
+  unsafePath,
+  markdownExportNotBackup,
+  missingRecovery,
+  missingEncryptedData,
+  incomplete,
+  invalidRecoveryJson,
+  invalidZip,
+  missingFile,
+  invalidArchive,
+  recoveryKeyMismatch,
+  noEncryptedSample,
+  recoveryInfoMissing,
+  missingVaultPayload,
+}
+
+class VaultBackupException implements Exception {
+  const VaultBackupException(this.issue);
+
+  final VaultBackupIssue issue;
+}
 
 /// 完整日記庫備份 zip 的內部結構檢查結果。
 final class VaultBackupLayout {
@@ -41,26 +64,22 @@ final class VaultBackupLayout {
       hasRecovery &&
       (hasManifest || entrySampleFound);
 
-  /// 第一個未通過條件的使用者可讀說明。
-  String get failureMessage {
+  /// 第一個未通過條件。
+  VaultBackupIssue get issue {
     if (!safePaths) {
-      return '備份內含不安全路徑。';
+      return VaultBackupIssue.unsafePath;
     }
     if (hasMarkdownPortableLayout) {
-      return '此 zip 為日記匯出檔，不是完整備份。';
+      return VaultBackupIssue.markdownExportNotBackup;
     }
     if (!hasRecovery) {
-      return '缺少復原金鑰資訊。';
+      return VaultBackupIssue.missingRecovery;
     }
     if (!hasManifest && !entrySampleFound) {
-      return '缺少加密資料。';
+      return VaultBackupIssue.missingEncryptedData;
     }
-    return '備份檔內容不完整，缺少必要的加密資料。';
+    return VaultBackupIssue.incomplete;
   }
-
-  static const String invalidRecoveryJsonMessage = 'recovery.json 格式無法解析。';
-  static const String invalidZipMessage = '備份檔不是有效的 zip 備份，請重新建立備份。';
-  static const String missingFileMessage = '找不到備份檔案，請重新建立一次備份。';
 }
 
 /// 依 zip 內 entry 路徑掃描完整備份結構（不解壓內容）。

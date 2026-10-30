@@ -3,12 +3,11 @@ import 'package:cupertino_ui/cupertino_ui.dart'
 import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalWidgetsLocalizations;
 import 'package:material_ui/material_ui.dart';
-
-import 'app_localizations.dart';
-
-export 'app_localizations.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
 
 export 'package:flutter/widgets.dart' show BuildContext;
+export 'package:quill_diary/l10n/app_localizations.dart';
 
 /// 繁體中文（台灣）；避免裸 `Locale('zh')` 被框架解析成簡體。
 const Locale appZhLocale = Locale('zh', 'TW');
@@ -50,4 +49,18 @@ List<String> localizedDefaultTagLabels(AppLocalizations l10n) {
     l10n.defaultTagHealth,
     l10n.defaultTagGratitude,
   ];
+}
+
+extension AppLanguageVisual on AppLanguage {
+  Locale get materialLocale => switch (this) {
+    AppLanguage.zh => appZhLocale,
+    AppLanguage.en => appEnLocale,
+  };
+}
+
+AppLanguage appLanguageFromDeviceLocale(Locale locale) {
+  if (locale.languageCode == 'zh') {
+    return AppLanguage.zh;
+  }
+  return AppLanguage.en;
 }

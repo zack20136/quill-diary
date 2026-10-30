@@ -4,9 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:flutter/foundation.dart' show compute;
-
-import '../storage/shared/media_type_utils.dart';
-import 'ai_client.dart';
+import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
 /// 移除中繼資料時保留壓縮像素；相容格式轉換也不縮小尺寸。
 Future<AiInputImage> prepareAiImage(String id, Uint8List bytes) async {

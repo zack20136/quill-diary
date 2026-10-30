@@ -1,26 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
+import 'package:quill_diary/infrastructure/billing/sponsor_billing_state.dart';
 
 void main() {
   group('SponsorBillingState', () {
     test('isPurchaseBusy 只在 buying 與 pending 為 true', () {
       expect(
-        const SponsorBillingState(
-          purchasePhase: SponsorPurchasePhase.buying,
-        ).isPurchaseBusy,
+        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.buying)
+            .isPurchaseBusy,
         isTrue,
       );
       expect(
-        const SponsorBillingState(
-          purchasePhase: SponsorPurchasePhase.pending,
-        ).isPurchaseBusy,
+        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.pending)
+            .isPurchaseBusy,
         isTrue,
       );
       expect(
-        const SponsorBillingState(
-          purchasePhase: SponsorPurchasePhase.idle,
-        ).isPurchaseBusy,
+        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.idle)
+            .isPurchaseBusy,
         isFalse,
       );
     });

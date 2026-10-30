@@ -1,68 +1,70 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import 'package:quill_diary/application/tag/tag_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/home/home_entry_sorting.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 
-final allEntryIndexRecordsProvider = FutureProvider<List<EntryIndexRecord>>((
+final allDiaryEntrySummariesProvider = FutureProvider<List<DiaryEntrySummary>>((
   Ref ref,
 ) async {
-  ref.watch(entryIndexRevisionProvider);
+  ref.watch(diaryRevisionProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
 
-  return ref.read(vaultEntryStoreProvider).listEntries();
+  return ref.read(vaultRepositoryProvider).listEntries();
 });
 
 final homePinnedEntryIdsProvider = FutureProvider<Set<EntryId>>((
   Ref ref,
 ) async {
+  ref.watch(diaryRevisionProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
     return const <EntryId>{};
   }
 
-  return ref.read(vaultTagServiceProvider).listPinnedEntryIds();
+  return ref.read(vaultRepositoryProvider).listPinnedEntryIds();
 });
 
 final class HomeEntryQueryResult {
   const HomeEntryQueryResult({required this.query, required this.entries});
 
   final String query;
-  final List<EntryIndexRecord> entries;
+  final List<DiaryEntrySummary> entries;
 }
 
 final homeEntryIndexListProvider = FutureProvider<HomeEntryQueryResult>((
   Ref ref,
 ) async {
-  ref.watch(entryIndexRevisionProvider);
+  ref.watch(diaryRevisionProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const HomeEntryQueryResult(query: '', entries: <EntryIndexRecord>[]);
+    return const HomeEntryQueryResult(
+      query: '',
+      entries: <DiaryEntrySummary>[],
+    );
   }
 
   final String query = ref.watch(homeSearchQueryProvider);
   if (query.trim().isEmpty) {
     return HomeEntryQueryResult(
       query: query,
-      entries: await ref.read(vaultEntryStoreProvider).listEntries(),
+      entries: await ref.read(vaultRepositoryProvider).listEntries(),
     );
   }
 
   return HomeEntryQueryResult(
     query: query,
     entries: await ref
-        .read(vaultEntryStoreProvider)
+        .read(vaultRepositoryProvider)
         .listEntries(searchQuery: query),
   );
 });
 
-final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
+final homeEntriesProvider = Provider<AsyncValue<List<DiaryEntrySummary>>>((
   Ref ref,
 ) {
   final AsyncValue<HomeEntryQueryResult> raw = ref.watch(
@@ -91,101 +93,88 @@ final homeEntriesProvider = Provider<AsyncValue<List<EntryIndexRecord>>>((
   );
 });
 
-final calendarEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
+final calendarEntriesProvider = FutureProvider<List<DiaryEntrySummary>>((
   Ref ref,
 ) async {
+  ref.watch(diaryRevisionProvider);
   final DateOnly? date = ref.watch(calendarSelectedDateProvider);
   if (date == null) {
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
 
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
 
-  final List<EntryIndexRecord> entries = await ref
-      .read(vaultEntryStoreProvider)
-      .listEntriesByDate(date);
+  final List<DiaryEntrySummary> entries = await ref
+      .read(vaultRepositoryProvider)
+      .listEntries(date: date);
   return entries..sort(compareEntriesNewestFirst);
 });
 
-final calendarGridEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
+final calendarGridEntriesProvider = FutureProvider<List<DiaryEntrySummary>>((
   Ref ref,
 ) async {
+  ref.watch(diaryRevisionProvider);
   final DateTime month = ref.watch(calendarVisibleMonthProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
   final ({DateOnly first, DateOnly last}) range = calendarGridDateRange(month);
   return ref
-      .read(vaultEntryStoreProvider)
+      .read(vaultRepositoryProvider)
       .listEntriesForDateRange(firstDate: range.first, lastDate: range.last);
 });
 
 final entryDateBoundsProvider =
     FutureProvider<({DateOnly earliest, DateOnly latest})?>((Ref ref) async {
-      ref.watch(entryIndexRevisionProvider);
+      ref.watch(diaryRevisionProvider);
       if (ref.watch(indexQueryableVaultSessionProvider) == null) {
         return null;
       }
-      return ref.read(vaultEntryStoreProvider).entryDateBounds();
+      return ref.read(vaultRepositoryProvider).entryDateBounds();
     });
 
-final memoryAvailableYearsProvider = FutureProvider<List<int>>((Ref ref) async {
-  final List<EntryIndexRecord> entries = await ref.watch(
-    allEntryIndexRecordsProvider.future,
+final overviewAvailableYearsProvider = FutureProvider<List<int>>((
+  Ref ref,
+) async {
+  final List<DiaryEntrySummary> entries = await ref.watch(
+    allDiaryEntrySummariesProvider.future,
   );
   final List<int> years =
-      entries.map((EntryIndexRecord item) => item.date.year).toSet().toList()
+      entries.map((DiaryEntrySummary item) => item.date.year).toSet().toList()
         ..sort();
   return years;
 });
 
-final memoryEntriesProvider = FutureProvider<List<EntryIndexRecord>>((
+final overviewEntriesProvider = FutureProvider<List<DiaryEntrySummary>>((
   Ref ref,
 ) async {
-  final MemoryScope scope = ref.watch(memoryScopeProvider);
-  if (scope == MemoryScope.all) {
-    final List<EntryIndexRecord> entries = await ref.watch(
-      allEntryIndexRecordsProvider.future,
+  ref.watch(diaryRevisionProvider);
+  final OverviewScope scope = ref.watch(overviewScopeProvider);
+  if (scope == OverviewScope.all) {
+    final List<DiaryEntrySummary> entries = await ref.watch(
+      allDiaryEntrySummariesProvider.future,
     );
-    return List<EntryIndexRecord>.from(entries)
+    return List<DiaryEntrySummary>.from(entries)
       ..sort(compareEntriesNewestFirst);
   }
-  if (scope == MemoryScope.year) {
-    final List<EntryIndexRecord> entries = await ref.watch(
-      allEntryIndexRecordsProvider.future,
+  if (scope == OverviewScope.year) {
+    final List<DiaryEntrySummary> entries = await ref.watch(
+      allDiaryEntrySummariesProvider.future,
     );
-    final int focusedYear = ref.watch(memoryFocusedYearProvider);
+    final int focusedYear = ref.watch(overviewFocusedYearProvider);
     return entries.where((item) => item.date.year == focusedYear).toList()
       ..sort(compareEntriesNewestFirst);
   }
 
-  final DateTime focusedMonth = ref.watch(memoryFocusedMonthProvider);
+  final DateTime focusedMonth = ref.watch(overviewFocusedMonthProvider);
   if (ref.watch(indexQueryableVaultSessionProvider) == null) {
-    return const <EntryIndexRecord>[];
+    return const <DiaryEntrySummary>[];
   }
 
-  final List<EntryIndexRecord> entries = await ref
-      .read(vaultEntryStoreProvider)
+  final List<DiaryEntrySummary> entries = await ref
+      .read(vaultRepositoryProvider)
       .listEntriesForMonth(focusedMonth);
   return entries..sort(compareEntriesNewestFirst);
 });
-
-void refreshHomeIndexCaches(WidgetRef ref, {EntryId? editedEntryId}) {
-  ref
-    ..invalidate(homeEntryIndexListProvider)
-    ..invalidate(homePinnedEntryIdsProvider)
-    ..invalidate(calendarGridEntriesProvider)
-    ..invalidate(calendarEntriesProvider)
-    ..invalidate(entryDateBoundsProvider)
-    ..invalidate(allEntryIndexRecordsProvider)
-    ..invalidate(tagCatalogProvider);
-
-  ref.read(entryIndexRevisionProvider.notifier).bump();
-
-  final EntryId? id = editedEntryId?.trim();
-  if (id != null && id.isNotEmpty) {
-    ref.invalidate(entryProvider(id));
-  }
-}

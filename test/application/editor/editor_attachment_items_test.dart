@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 void main() {
   test('附件解析會依統一 ID 順序交錯既有與暫存附件', () {

@@ -2,10 +2,9 @@ import 'dart:async' show unawaited;
 
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class FirstLaunchHomePane extends StatelessWidget {
@@ -39,7 +38,7 @@ class FirstLaunchHomePane extends StatelessWidget {
                     message: l10n.firstLaunchCreateVaultMessage,
                     onTap: () => unawaited(
                       context.push(
-                        AppRouter.settingsLocation(
+                        AppRoutes.settingsLocation(
                           focus: SettingsFocusTarget.recoveryKey,
                         ),
                       ),
@@ -52,7 +51,7 @@ class FirstLaunchHomePane extends StatelessWidget {
                     message: l10n.firstLaunchTransferMessage,
                     onTap: () => unawaited(
                       context.push(
-                        AppRouter.settingsLocation(
+                        AppRoutes.settingsLocation(
                           focus: SettingsFocusTarget.externalRestore,
                         ),
                       ),

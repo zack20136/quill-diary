@@ -1,3 +1,4 @@
+import 'package:quill_diary/application/home/overview_statistics.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 
@@ -71,4 +72,18 @@ List<String> calendarWeekdayLabels(AppLocalizations l10n) {
     l10n.homeCalendarWeekdayFri,
     l10n.homeCalendarWeekdaySat,
   ];
+}
+
+extension OverviewStatisticsText on OverviewScopeMetrics {
+  String attachmentDetail(AppLocalizations l10n) =>
+      l10n.homeOverviewAttachmentDetail(
+        totalPhotoAttachments,
+        totalFileAttachments,
+      );
+  String? mostEntriesInSingleDayDetail(AppLocalizations l10n) {
+    if (maxEntriesOnSingleDay <= 0) {
+      return null;
+    }
+    return homeOverviewMostEntriesInSingleDay(l10n, maxEntriesOnSingleDay);
+  }
 }

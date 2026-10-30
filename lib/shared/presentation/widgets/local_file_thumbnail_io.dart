@@ -30,9 +30,11 @@ Widget localFileThumbnail(
         width: double.infinity,
         height: double.infinity,
         cacheWidth: size.round().clamp(64, 512),
-        errorBuilder:
-            (BuildContext context, Object error, StackTrace? stackTrace) =>
-                SizedBox(width: size, height: size),
+        errorBuilder: (
+          BuildContext context,
+          Object error,
+          StackTrace? stackTrace,
+        ) => SizedBox(width: size, height: size),
       ),
     ),
   );

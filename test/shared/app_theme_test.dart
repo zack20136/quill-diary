@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_color_scheme.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/app/theme.dart';
+import 'package:quill_diary/shared/presentation/app_color_scheme.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_theme.dart';
 
 void main() {
   const testCases = <({String name, Brightness brightness})>[
@@ -38,7 +38,7 @@ void main() {
     });
   }
 
-    test('淺深色 AppColors token 會使用不同值', () {
+  test('淺深色 AppColors token 會使用不同值', () {
     final AppColors light = AppColors.from(kAppLightColorScheme);
     final AppColors dark = AppColors.from(kAppDarkColorScheme);
 

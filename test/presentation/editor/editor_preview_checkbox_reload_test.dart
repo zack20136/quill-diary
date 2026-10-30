@@ -4,21 +4,22 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_actions.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 
 import '../../helpers/presentation/editor/editor_test_scope.dart';
 import '../../helpers/presentation/editor/fake_editor_actions.dart';
@@ -53,6 +54,7 @@ void main() {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
         effectiveAppSessionProvider.overrideWith(
           (Ref ref) async => const AppSessionState(
             status: AppLockStatus.unlocked,
@@ -69,9 +71,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: editorTestApp(
-          child: const EditorPage(entryId: 'entry-1'),
-        ),
+        child: editorTestApp(child: const EditorPage(entryId: 'entry-1')),
       ),
     );
     await tester.pumpAndSettle();
@@ -93,9 +93,7 @@ void main() {
     expect(find.text('任務甲'), findsOneWidget);
   });
 
-  testWidgets('有圖片時預覽勾選重讀不會讓圖片列或縮圖先消失', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('有圖片時預覽勾選重讀不會讓圖片列或縮圖先消失', (WidgetTester tester) async {
     final AssetAttachment image = AssetAttachment(
       id: 'image-1',
       entryId: 'entry-1',
@@ -134,6 +132,7 @@ void main() {
     final ProviderContainer container = ProviderContainer(
       overrides: [
         editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
         effectiveAppSessionProvider.overrideWith(
           (Ref ref) async => const AppSessionState(
             status: AppLockStatus.unlocked,
@@ -150,9 +149,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: editorTestApp(
-          child: const EditorPage(entryId: 'entry-1'),
-        ),
+        child: editorTestApp(child: const EditorPage(entryId: 'entry-1')),
       ),
     );
     await tester.pumpAndSettle();
@@ -162,7 +159,7 @@ void main() {
     expect(find.byType(EntryCoverThumbnailLoading), findsNothing);
 
     actions.holdReloads = true;
-    container.read(entryIndexRevisionProvider.notifier).bump();
+    container.read(diaryRevisionProvider.notifier).bump();
     container
       ..invalidate(entryProvider('entry-1'))
       ..invalidate(entryAttachmentsProvider('entry-1'));

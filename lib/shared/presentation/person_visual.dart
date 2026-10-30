@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/people/person.dart';
-import '../../domain/shared/value_objects.dart';
-import 'accent_visual.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
 
 /// 優先使用自訂色；未自訂時仍依人物 ID 穩定映射既有色盤。
 Color personAccentColor(Person person) => person.accentArgb == null

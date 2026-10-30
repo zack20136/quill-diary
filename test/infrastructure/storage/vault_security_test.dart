@@ -82,9 +82,10 @@ void main() {
       expect(
         () => harness.repository.openTrustedSession(),
         throwsA(
-          predicate<Object>(
-            (Object error) =>
-                error is StateError && error.message.contains('尚未註冊'),
+          isA<TrustedSessionException>().having(
+            (TrustedSessionException error) => error.failure,
+            'failure',
+            TrustedSessionFailure.deviceNotRegistered,
           ),
         ),
       );

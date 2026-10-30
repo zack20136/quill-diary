@@ -1,5 +1,5 @@
-import '../shared/value_objects.dart';
-import 'person.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 純規則姓名比對：中文、英數與混合姓名共用最長優先的非重疊掃描。
 ///

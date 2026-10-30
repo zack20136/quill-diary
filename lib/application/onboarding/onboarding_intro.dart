@@ -1,10 +1,8 @@
 import 'package:flutter/widgets.dart';
-
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-
-/// 首次啟動功能介紹目前版本。
-const int onboardingIntroCurrentVersion = 1;
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 本機尚無可用日記庫：已進入 unlocked，但還沒有 session／復原資訊。
 bool isAwaitingVaultSetup(AppSessionState sessionState) {
@@ -27,7 +25,7 @@ AppLanguage resolveAppLanguage({
     return storedLanguage;
   }
   if (sessionState != null && isAwaitingVaultSetup(sessionState)) {
-    return AppLanguage.fromDeviceLocale(deviceLocale);
+    return appLanguageFromDeviceLocale(deviceLocale);
   }
   return fallbackLanguage;
 }
@@ -38,5 +36,5 @@ bool shouldShowOnboardingIntro({
   required int storedVersion,
 }) {
   return isAwaitingVaultSetup(sessionState) &&
-      storedVersion < onboardingIntroCurrentVersion;
+      storedVersion < DataVersions.onboardingIntro;
 }

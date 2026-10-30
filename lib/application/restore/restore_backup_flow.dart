@@ -1,17 +1,17 @@
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/application/restore/post_restore_session.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
-import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
-import 'post_restore_session.dart';
-import 'restore_prepared_context.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
@@ -27,10 +27,8 @@ class RestoreBackupFlow {
     final bool hasUnlockedSession =
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
-        await ref.read(vaultRecoveryServiceProvider).readRecoveryMetadata() !=
-        null;
+        await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
     return VaultTransferCapabilities.fromSessionContext(
-      l10n: l10n,
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState.status,
@@ -41,7 +39,7 @@ class RestoreBackupFlow {
     final VaultTransferCapabilities access = await _loadTransferCapabilities(
       l10n,
     );
-    access.ensureCanRestore(l10n);
+    access.ensureCanRestore();
   }
 
   Future<void> verifyBackupRecoveryKey(
@@ -85,7 +83,7 @@ class RestoreBackupFlow {
       await sessionController.runSensitiveTask((_) => restoreBackup());
     } else {
       await sessionController.runBackgroundSafeTask(() async {
-        await ref.read(vaultRecoveryServiceProvider).closeUnlockedResources();
+        await ref.read(vaultRepositoryProvider).closeUnlockedResources();
         await restoreBackup();
       });
     }
@@ -109,4 +107,14 @@ class RestoreBackupFlow {
       livePriorSession: livePriorSession,
     );
   }
+}
+
+class RestorePreparedContext {
+  const RestorePreparedContext({
+    required this.precheck,
+    this.backupRecoveryKey,
+  });
+
+  final RestorePrecheck precheck;
+  final String? backupRecoveryKey;
 }

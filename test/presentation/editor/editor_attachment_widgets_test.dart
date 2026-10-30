@@ -6,16 +6,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_actions.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
@@ -94,6 +94,7 @@ void main() {
       ProviderScope(
         overrides: [
           editorActionsProvider.overrideWithValue(actions),
+          vaultRepositoryProvider.overrideWithValue(actions.repository),
           effectiveAppSessionProvider.overrideWith(
             (Ref ref) async => const AppSessionState(
               status: AppLockStatus.unlocked,

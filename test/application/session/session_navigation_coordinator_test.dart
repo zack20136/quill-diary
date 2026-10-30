@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
 import 'package:quill_diary/application/session/session_route_snapshot.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/application/session/state/session_lock_reason.dart';
-import 'package:quill_diary/application/session/state/unlock_result.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 
 void main() {
   test('lifecycle resume 成功且為 inactivity lock 時會還原先前路由', () {

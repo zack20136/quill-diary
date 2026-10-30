@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:path/path.dart' as p;
-
-import '../vault_path_strategy.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 /// 在 app 暫存目錄建立唯一工作資料夾。
 Future<Directory> createWorkingDirectory(
@@ -94,5 +97,52 @@ Future<void> deleteFileIfExists(String path) async {
     await file.delete();
   } on Object {
     // 忽略刪除失敗。
+  }
+}
+
+DecryptionContext vaultDecryptionContext(UnlockedVaultSession session) {
+  return DecryptionContext(
+    vaultId: session.vaultId,
+    trustedDevice: session.trustedDevice,
+    recoveryWrapKey: session.recoveryWrapKey,
+    deviceSlotId: session.deviceSlotId,
+  );
+}
+
+List<int> requireRecoveryWrapKey(UnlockedVaultSession session) {
+  final List<int>? recoveryWrapKey = session.recoveryWrapKey;
+  if (recoveryWrapKey == null) {
+    throw StateError('目前 session 沒有可用的 Recovery wrapping key。');
+  }
+  return recoveryWrapKey;
+}
+
+Future<String> hashVaultText(String value) async {
+  return hashVaultBytes(utf8.encode(value));
+}
+
+Future<String> hashVaultBytes(List<int> bytes) async {
+  final Hash hash = await Sha256().hash(bytes);
+  return hash.bytes
+      .map((int byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+}
+
+Future<void> atomicWriteBytes(File file, Uint8List bytes) async {
+  await file.parent.create(recursive: true);
+  final File tempFile = File('${file.path}.tmp');
+  await tempFile.writeAsBytes(bytes, flush: true);
+  if (file.existsSync()) {
+    await file.delete();
+  }
+  await tempFile.rename(file.path);
+}
+
+/// 呼叫端須已持有 vault 修改序列；只移除聊天擁有的檔案。
+Future<void> deleteEntryChatFiles(String entryPath) async {
+  final chatPath = VaultPathStrategy.chatFileBesideEntry(entryPath);
+  for (final suffix in ['', '.previous', '.tmp']) {
+    final file = File('$chatPath$suffix');
+    if (file.existsSync()) await file.delete();
   }
 }

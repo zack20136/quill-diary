@@ -3,23 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/app/app.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
 import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
-import '../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
@@ -103,9 +100,6 @@ ProviderContainer _buildSmokeTestContainer() {
       vaultPlatformSupportProvider.overrideWith((Ref ref) => false),
       vaultRepositoryProvider.overrideWithValue(
         FakeEntryIndexVaultRepository(),
-      ),
-      vaultTransferServiceProvider.overrideWithValue(
-        FakeVaultTransferService(),
       ),
       effectiveAppSessionProvider.overrideWith(
         (Ref ref) async => const AppSessionState(status: AppLockStatus.locked),

@@ -5,16 +5,16 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/vault/manifest_write_test_crypto_service.dart';
@@ -517,9 +517,9 @@ void main() {
       entryId: entryId,
     );
     await File(chatPath).rename('$chatPath.previous');
-    final archive = harness.createArchiveIo();
+    final archive = harness.createTransferIo();
     final backup = File('${harness.tempDir.path}/chat.zip');
-    await archive.writeBackupZip(backup);
+    await archive.backup.writeBackupZip(backup);
     final names = ZipDecoder()
         .decodeBytes(await backup.readAsBytes())
         .files
@@ -538,7 +538,7 @@ void main() {
     edited!.activeMessages.single.text = '備份後才改寫';
     await store.save(edited, setup.session);
     await harness.repository.closeUnlockedResources();
-    await archive.restoreBackupZip(backup);
+    await archive.backup.restoreBackupZip(backup);
     final restoredSession = await harness.repository.unlockWithRecoveryKey(
       setup.recoveryKey,
     );

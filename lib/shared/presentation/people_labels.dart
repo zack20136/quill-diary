@@ -1,11 +1,9 @@
-import '../../domain/people/relationship_type.dart';
-import '../../l10n/l10n.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 /// 依目前語系取得關係類型顯示名。
-String relationshipTypeLabel(
-  RelationshipType type,
-  String languageCode,
-) => type.labelForLanguageCode(languageCode);
+String relationshipTypeLabel(RelationshipType type, String languageCode) =>
+    type.labelForLanguageCode(languageCode);
 
 /// 依語系取得熟悉程度的顯示文字。
 String personFriendlinessLabel(AppLocalizations l10n, int level) =>

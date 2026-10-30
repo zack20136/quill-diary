@@ -1,9 +1,8 @@
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<bool> showPostRestoreOutcomeDialog(
   BuildContext context, {

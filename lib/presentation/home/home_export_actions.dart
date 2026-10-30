@@ -1,23 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/home/portable_export_confirm.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-
-import '../../application/ai/ai_connection_providers.dart';
-import '../../application/chat_diary/chat_diary_providers.dart';
-import 'portable_export_confirm.dart';
-import 'widgets/home_selection_toolbar.dart';
 
 Future<void> exportSelectedHomeEntriesAsHtml(
   BuildContext context,
@@ -42,11 +41,18 @@ Future<void> exportEntriesAsHtml(
     return;
   }
 
-  final transferService = ref.read(vaultTransferServiceProvider);
+  final transferService = ref.read(portableTransferServiceProvider);
   try {
     final HtmlExportEstimate estimate = await transferService
         .estimateSelectedHtmlExport(selectedIds);
     if (!context.mounted) {
+      return;
+    }
+    if (estimate.entryCount == 0) {
+      showAppFeedbackToast(
+        context,
+        context.l10n.settingsImportExportExportNoEntriesMessage,
+      );
       return;
     }
     final HtmlExportConfirmResult confirmation = await confirmHtmlExport(
@@ -92,11 +98,11 @@ Future<void> exportEntriesAsHtml(
   }
 }
 
-String overviewExportLabel(BuildContext context, MemoryScope scope) {
+String overviewExportLabel(BuildContext context, OverviewScope scope) {
   return switch (scope) {
-    MemoryScope.all => context.l10n.homeExportRecapAll,
-    MemoryScope.year => context.l10n.homeExportRecapYear,
-    MemoryScope.month => context.l10n.homeExportRecapMonth,
+    OverviewScope.all => context.l10n.homeExportRecapAll,
+    OverviewScope.year => context.l10n.homeExportRecapYear,
+    OverviewScope.month => context.l10n.homeExportRecapMonth,
   };
 }
 
@@ -119,9 +125,9 @@ Future<void> deleteSelectedHomeItems(
       ref.read(effectiveAppSessionProvider).value?.session == session;
   if (confirmed != true || !context.mounted || !vaultIsCurrent()) return;
 
-  final entryStore = ref.read(vaultEntryStoreProvider);
+  final entryStore = ref.read(vaultRepositoryProvider);
   final chatStore = ref.read(chatDiaryStoreProvider);
-  final keyFor = ref.read(aiConnectionSettingsStoreProvider).readApiKey;
+  final keyFor = ref.read(aiSettingsStoreProvider).readApiKey;
   final selection = ref.read(homeEntrySelectionProvider.notifier);
   final deletedEntries = <EntryId>{};
   final deletedChats = <String>{};
@@ -157,7 +163,9 @@ Future<void> deleteSelectedHomeItems(
         entryIds: deletedEntries,
         chatIds: deletedChats,
       );
-      if (deletedEntries.isNotEmpty) refreshHomeIndexCaches(ref);
+      if (deletedEntries.isNotEmpty) {
+        ref.read(diaryRevisionProvider.notifier).bump();
+      }
       if (deletedChats.isNotEmpty) ref.invalidate(chatDiarySessionsProvider);
     }
   }

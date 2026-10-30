@@ -475,7 +475,7 @@ class MainActivity : FlutterFragmentActivity() {
             authenticateCipher(
                 cipher = cipher,
                 kind = kind,
-                reason = WRAP_PROMPT_REASON,
+                reason = driveString(R.string.device_key_wrap_prompt),
                 result = result,
                 onSuccess = onSuccess,
             )
@@ -517,7 +517,7 @@ class MainActivity : FlutterFragmentActivity() {
             authenticateCipher(
                 cipher = cipher,
                 kind = kind,
-                reason = UNWRAP_PROMPT_REASON,
+                reason = driveString(R.string.device_key_unwrap_prompt),
                 result = result,
                 onSuccess = onSuccess,
             )
@@ -568,7 +568,7 @@ class MainActivity : FlutterFragmentActivity() {
             authenticateCipher(
                 cipher = decryptCipher,
                 kind = sourceKind,
-                reason = REWRAP_PROMPT_REASON,
+                reason = driveString(R.string.device_key_rewrap_prompt),
                 result = result,
                 onSuccess = { authedCipher ->
                     completeRewrap(authedCipher.doFinal(ciphertext))
@@ -618,7 +618,7 @@ class MainActivity : FlutterFragmentActivity() {
         authenticateCipher(
             cipher = encryptCipher,
             kind = targetKind,
-            reason = REWRAP_PROMPT_REASON,
+            reason = driveString(R.string.device_key_rewrap_prompt),
             result = result,
             onSuccess = onSuccess,
         )
@@ -1016,9 +1016,6 @@ class MainActivity : FlutterFragmentActivity() {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val GCM_TAG_BITS = 128
-        private const val WRAP_PROMPT_REASON = "請驗證裝置身分以保護恢復金鑰"
-        private const val UNWRAP_PROMPT_REASON = "請驗證裝置身分以解鎖恢復金鑰"
-        private const val REWRAP_PROMPT_REASON = "正在更新解鎖設定，請完成驗證"
         private const val DEVICE_CREDENTIAL_REQUIRED_MESSAGE =
             "請先在裝置設定中建立螢幕鎖，才能使用此解鎖方式。"
         private const val BIOMETRIC_ENROLLMENT_REQUIRED_MESSAGE =

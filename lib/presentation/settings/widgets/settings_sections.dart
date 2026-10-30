@@ -2,10 +2,9 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
-import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
@@ -14,6 +13,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/presentation/settings/backup_security_overview.dart';
 import 'package:quill_diary/presentation/settings/security_overview_item.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -42,7 +42,7 @@ class SettingsSectionCard extends StatelessWidget {
     description: description,
     icon: icon,
     child: child,
-    );
+  );
 }
 
 class SettingsStatusPanel extends StatelessWidget {
@@ -112,7 +112,7 @@ class SettingsStatusPanel extends StatelessWidget {
           if (recoveryKeyHint != null &&
               recoveryKeyHint!.isNotEmpty) ...<Widget>[
             Text(
-              settingsRecoveryKeyHintLine(l10n, recoveryKeyHint!),
+              l10n.settingsRecoveryKeyHintLine(recoveryKeyHint!),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -553,7 +553,7 @@ class SettingsSecurityOverview extends ConsumerWidget {
             ? l10n.settingsSecurityOverviewRecoveryKeyReady
             : l10n.settingsSecurityOverviewRecoveryKeyMissing,
         subtitle: hasRecoveryKey
-            ? settingsRecoveryKeyHintLine(l10n, recoveryKeyHint ?? '----')
+            ? l10n.settingsRecoveryKeyHintLine(recoveryKeyHint ?? '----')
             : null,
         level: hasRecoveryKey
             ? SettingsHealthLevel.ok
@@ -563,8 +563,7 @@ class SettingsSecurityOverview extends ConsumerWidget {
         icon: Icons.phonelink_lock_outlined,
         title: l10n.settingsSecurityOverviewUnlockModeTitle,
         message: hasRecoveryKey
-            ? settingsSecurityOverviewUnlockModeProtectedMessage(
-                l10n,
+            ? l10n.settingsSecurityOverviewUnlockModeProtectedMessage(
                 unlockModeLabel,
               )
             : l10n.settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage,
@@ -786,12 +785,11 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
     final int? percent = clampedProgress == null
         ? null
         : (clampedProgress * 100).round();
-    final String resolvedTitle =
-        (title ?? l10n.settingsProgressWorkingTitle).trim();
+    final String resolvedTitle = (title ?? l10n.settingsProgressWorkingTitle)
+        .trim();
     final String stage = message.trim();
     final String? resolvedHint = hint?.trim();
-    final bool showStage =
-        stage.isNotEmpty && stage != resolvedTitle;
+    final bool showStage = stage.isNotEmpty && stage != resolvedTitle;
     final String percentLabel = percent == null
         ? ''
         : l10n.settingsProgressPercent(percent);

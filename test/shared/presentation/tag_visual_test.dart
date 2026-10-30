@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
-import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/tag_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
 
@@ -12,7 +12,7 @@ void main() {
       final ThemeData theme = appTestTheme(brightness: brightness);
       final ColorScheme scheme = theme.colorScheme;
       final AppColors colors = theme.extension<AppColors>()!;
-      final Color accent = kAccentColorPresets.first;
+      final Color accent = accentColorPresets.first;
       final (Color, Color) previewPair = accentColorPair(
         accent,
         colors.sectionInset,
@@ -26,7 +26,7 @@ void main() {
 
       expect(displayedPair, previewPair);
 
-      final BorderSide? border = tagBorderSide(
+      final BorderSide? border = accentChipBorderSide(
         colors,
         scheme,
         displayedPair.$1,

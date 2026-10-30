@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 import '../../helpers/shared/entry_index_fixtures.dart';
 
@@ -123,11 +123,11 @@ void main() {
     });
 
     test('重新同步時會套用 pinned 排序結果', () {
-      final EntryIndexRecord pinned = buildEntryIndexRecord(
+      final DiaryEntrySummary pinned = buildDiaryEntrySummary(
         id: 'pinned',
         date: const DateOnly('2026-01-01'),
       );
-      final EntryIndexRecord newer = buildEntryIndexRecord(
+      final DiaryEntrySummary newer = buildDiaryEntrySummary(
         id: 'newer',
         date: const DateOnly('2026-06-01'),
       );
@@ -141,7 +141,7 @@ void main() {
         selectionController: controller,
         selection: container.read(homeEntrySelectionProvider),
         pinnedIds: <String>{'pinned'},
-        rawEntries: <EntryIndexRecord>[newer, pinned],
+        rawEntries: <DiaryEntrySummary>[newer, pinned],
       );
 
       expect(

@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
@@ -76,7 +78,7 @@ void main() {
 
   test('人物名冊異動不會改寫日記檔', () async {
     await harness.saveSimpleEntry(setup, markdownBody: '原始日記內容');
-    final EntryIndexRecord entry =
+    final DiaryEntrySummary entry =
         (await harness.repository.listEntries()).single;
     final File entryFile = File(entry.filePath);
     final List<int> before = await entryFile.readAsBytes();
@@ -283,7 +285,7 @@ void main() {
         .allPersonMentionStats(setup.session, now: DateTime(2026, 8, 10));
     final List<PersonScopedMentionRank> august = await harness.repository
         .topMentionedPeople(setup.session, limit: 5, monthPrefix: '2026-08');
-    final List<EntryIndexRecord> related = await harness.repository
+    final List<DiaryEntrySummary> related = await harness.repository
         .relatedEntriesForPerson(setup.session, first.id);
 
     expect(stats[first.id]?.mentionedEntryCount, 3);
@@ -315,17 +317,13 @@ void main() {
 
     final Map<String, PersonMentionStats> stats = await harness.repository
         .allPersonMentionStats(setup.session, now: DateTime(2026, 8, 14));
-    final List<EntryIndexRecord> related = await harness.repository
+    final List<DiaryEntrySummary> related = await harness.repository
         .relatedEntriesForPerson(setup.session, person.id);
     final List<PersonScopedMentionRank> ranks = await harness.repository
-        .topMentionedPeople(
-          setup.session,
-          limit: 5,
-          monthPrefix: '2026-08',
-        );
+        .topMentionedPeople(setup.session, limit: 5, monthPrefix: '2026-08');
 
     expect(stats[person.id]?.mentionedEntryCount, 1);
-    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+    expect(related.map((DiaryEntrySummary entry) => entry.id), <String>[
       matchedId,
     ]);
     expect(ranks.map((PersonScopedMentionRank rank) => rank.personId), <String>[
@@ -362,12 +360,12 @@ void main() {
     );
     await manager.close();
 
-    final List<EntryIndexRecord> related = await harness.repository
+    final List<DiaryEntrySummary> related = await harness.repository
         .relatedEntriesForPerson(setup.session, person.id);
     final Map<String, PersonMentionStats> stats = await harness.repository
         .allPersonMentionStats(setup.session, now: DateTime(2026, 8, 12));
 
-    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+    expect(related.map((DiaryEntrySummary entry) => entry.id), <String>[
       newerId,
       olderId,
     ]);
@@ -423,10 +421,10 @@ void main() {
     );
     await manager.close();
 
-    final List<EntryIndexRecord> related = await harness.repository
+    final List<DiaryEntrySummary> related = await harness.repository
         .relatedEntriesForPerson(setup.session, person.id);
 
-    expect(related.map((EntryIndexRecord entry) => entry.id), <String>[
+    expect(related.map((DiaryEntrySummary entry) => entry.id), <String>[
       newerUpdatedId,
       olderUpdatedId,
       olderCreatedId,

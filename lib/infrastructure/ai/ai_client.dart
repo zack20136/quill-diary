@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../../domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 
 enum AiErrorCode {
   configuration,
@@ -350,6 +350,7 @@ abstract class AiClient {
           {'role': 'user', 'content': prompt},
         ],
       if (protocol == AiApiProtocol.claudeMessages) 'max_tokens': 64,
+      ...thinkingRequestFields(connectionConfig),
     };
     final data = await postJson(path, body).timeout(
       const Duration(seconds: 45),
@@ -559,6 +560,7 @@ class OpenAiCompatibleClient extends AiClient {
                   ],
           },
       ],
+      ...thinkingRequestFields(connectionConfig),
     })) {
       checkAiResponseError(event);
       for (final choice in event['choices'] as List? ?? []) {
@@ -627,6 +629,7 @@ class OpenAiClient extends AiClient {
       'input': input,
       'store': false,
       'stream': true,
+      ...thinkingRequestFields(connectionConfig),
     })) {
       if (event['type'] == 'response.output_text.delta') {
         yield event['delta'] as String;
@@ -716,6 +719,7 @@ class ClaudeAiClient extends AiClient {
       'messages': input,
       'max_tokens': 8192,
       'stream': true,
+      ...thinkingRequestFields(connectionConfig),
     }, requestHeaders: streamHeaders)) {
       if (event['type'] == 'content_block_delta' &&
           (event['delta'] as Map)['type'] == 'text_delta') {
@@ -796,6 +800,7 @@ class GeminiAiClient extends AiClient {
           ],
         },
         'contents': contents,
+        ...thinkingRequestFields(connectionConfig),
       },
     )) {
       for (final candidate in event['candidates'] as List? ?? []) {
@@ -864,6 +869,7 @@ class OllamaAiClient extends AiClient {
               ],
           },
       ],
+      ...thinkingRequestFields(connectionConfig),
     }, ndjson: true)) {
       if (event['error'] != null) throw const AiFailure(AiErrorCode.request);
       final text = (event['message'] as Map?)?['content'];

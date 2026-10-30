@@ -1,12 +1,10 @@
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/settings/settings_health_level.dart';
+import 'package:quill_diary/presentation/settings/security_overview_item.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-
-import 'security_overview_item.dart';
 
 String _backupStatusActionLabel(
   AppLocalizations l10n,
@@ -96,10 +94,8 @@ SecurityOverviewItem settingsDriveBackupSecurityOverview(
           _ => l10n.driveUploadStatusCancelCleanup,
         },
       DriveUploadPhase.statusPending ||
-      DriveUploadPhase.prunePending =>
-        l10n.driveUploadStatusFinalizing,
-      DriveUploadPhase.staged ||
-      DriveUploadPhase.uploading =>
+      DriveUploadPhase.prunePending => l10n.driveUploadStatusFinalizing,
+      DriveUploadPhase.staged || DriveUploadPhase.uploading =>
         l10n.settingsSecurityOverviewDriveUploadInProgress,
     };
     return SecurityOverviewItem(

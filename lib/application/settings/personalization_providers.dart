@@ -1,10 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 class PersonalizationPreferencesController
     extends AsyncNotifier<PersonalizationPreferences> {
@@ -51,7 +49,7 @@ class PersonalizationPreferencesController
     if (stored != null) {
       return;
     }
-    await setLocale(AppLanguage.fromDeviceLocale(deviceLocale));
+    await setLocale(appLanguageFromDeviceLocale(deviceLocale));
   }
 
   Future<void> setTypography(EditorTypographyPreferences value) async {
@@ -95,3 +93,7 @@ PersonalizationPreferences watchPersonalizationPreferences(WidgetRef ref) {
         orElse: () => PersonalizationPreferences.defaults,
       );
 }
+
+final userPreferencesProvider = Provider<UserPreferences>((Ref ref) {
+  return UserPreferences();
+});

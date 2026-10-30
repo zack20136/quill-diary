@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'local_file_thumbnail_io.dart'
-    if (dart.library.html) 'local_file_thumbnail_stub.dart'
+import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail_io.dart'
+    if (dart.library.html) 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail_stub.dart'
     as impl;
 
 Widget localFileThumbnail(

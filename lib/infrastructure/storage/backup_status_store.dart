@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'package:quill_diary/app/app_identifiers.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 備份健康度門檻（本機與 Drive 各自比對最後成功時間）。
 abstract final class BackupStatusPolicy {
@@ -274,20 +274,18 @@ class BackupStatusStore {
 
   Future<T> _enqueue<T>(Future<T> Function() action) {
     final Completer<T> completer = Completer<T>();
-    _mutationQueue = _mutationQueue
-        .catchError((Object _) {})
-        .then((_) async {
-          try {
-            final T value = await action();
-            if (!completer.isCompleted) {
-              completer.complete(value);
-            }
-          } catch (error, stack) {
-            if (!completer.isCompleted) {
-              completer.completeError(error, stack);
-            }
-          }
-        });
+    _mutationQueue = _mutationQueue.catchError((Object _) {}).then((_) async {
+      try {
+        final T value = await action();
+        if (!completer.isCompleted) {
+          completer.complete(value);
+        }
+      } catch (error, stack) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stack);
+        }
+      }
+    });
     return completer.future;
   }
 

@@ -3,23 +3,23 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
-
-import '../../../domain/diary/diary_entry.dart';
-import '../../../domain/security/unlocked_vault_session.dart';
-import '../../../domain/shared/value_objects.dart';
-import '../../database/index_database.dart';
-import '../../markdown/front_matter_codec.dart';
-import '../import/easy_diary/easy_diary_backup_import.dart';
-import '../shared/archive_extract.dart';
-import '../shared/media_type_utils.dart';
-import '../shared/portable_import_result.dart';
-import '../shared/vault_file_ops.dart';
-import '../vault_path_strategy.dart';
-import '../vault_repository.dart';
-import 'html_import_parser.dart';
-import 'portable_date_text.dart';
-import 'portable_import_preview.dart';
-import 'portable_io_types.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
+import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_date_text.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
+import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 /// 供測試與平台專用 Easy Diary 匯入接線使用的工廠掛鉤。
 typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
@@ -179,31 +179,6 @@ class PortableImportIo {
     }
   }
 
-  /// 解壓 zip 後優先嘗試 Easy Diary 完整備份，否則走 Markdown / HTML 可攜式匯入。
-  Future<PortableImportResult> importDocumentsFromZip({
-    required UnlockedVaultSession session,
-    required File zipFile,
-  }) async {
-    final ({AnalyzedPortableImport analyzed, Directory ownedTempRoot})
-    prepared = await analyzeDocumentsFromZip(
-      session: session,
-      zipFile: zipFile,
-    );
-    try {
-      return await persistAnalyzedImport(
-        session: session,
-        analyzed: prepared.analyzed,
-        selectedPreviewIndices: prepared.analyzed.preview.entries
-            .map((PortableImportPreviewEntry e) => e.previewIndex)
-            .toSet(),
-      );
-    } finally {
-      if (prepared.ownedTempRoot.existsSync()) {
-        await prepared.ownedTempRoot.delete(recursive: true);
-      }
-    }
-  }
-
   Future<PortableImportResult> persistAnalyzedImport({
     required UnlockedVaultSession session,
     required AnalyzedPortableImport analyzed,
@@ -305,9 +280,9 @@ class PortableImportIo {
   Future<Set<String>> _existingDuplicateKeys(
     UnlockedVaultSession session,
   ) async {
-    final List<EntryIndexRecord> records = await _repository.listEntries();
+    final List<DiaryEntrySummary> records = await _repository.listEntries();
     final Set<String> keys = <String>{};
-    for (final EntryIndexRecord record in records) {
+    for (final DiaryEntrySummary record in records) {
       final String titleKey;
       final String? normalized = record.title?.trim();
       if (normalized != null && normalized.isNotEmpty) {
@@ -528,9 +503,8 @@ class PortableImportIo {
           importRootDirectory: importRootDirectory,
         );
 
-    final String markdownBody = exportHtmlBodyToMarkdown(
-      entryBodyHtml ?? '',
-    ).trimRight();
+    final String markdownBody = exportHtmlBodyToMarkdown(entryBodyHtml ?? '')
+        .trimRight();
     final DateTime fallbackTimestamp = stat.modified;
     final ({DateOnly date, DateTime createdAt, DateTime updatedAt}) times =
         resolveQuillDiaryImportEntryTimes(

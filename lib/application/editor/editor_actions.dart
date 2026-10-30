@@ -4,17 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/application/editor/editor_image_staging.dart'
     as editor_image_staging;
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
-import 'package:quill_diary/infrastructure/storage/storage_path_providers.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-
-import 'editor_draft_models.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 
 final editorActionsProvider = Provider<EditorActionPort>((Ref ref) {
   return EditorActions(ref);
@@ -180,23 +178,23 @@ class EditorActions implements EditorActionPort {
     String encryptedPath,
   ) {
     return _ref
-        .read(vaultEntryStoreProvider)
+        .read(vaultRepositoryProvider)
         .readDecryptedAssetBytes(session, encryptedPath);
   }
 
   @override
   Future<DiaryEntry?> loadEntry(UnlockedVaultSession session, EntryId entryId) {
-    return _ref.read(vaultEntryStoreProvider).loadEntry(session, entryId);
+    return _ref.read(vaultRepositoryProvider).loadEntry(session, entryId);
   }
 
   @override
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
-    return _ref.read(vaultEntryStoreProvider).loadAttachments(entryId);
+    return _ref.read(vaultRepositoryProvider).loadAttachments(entryId);
   }
 
   @override
   Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId) {
-    return _ref.read(vaultEntryStoreProvider).deleteEntry(session, entryId);
+    return _ref.read(vaultRepositoryProvider).deleteEntry(session, entryId);
   }
 
   @override
@@ -207,10 +205,10 @@ class EditorActions implements EditorActionPort {
     List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
   }) {
     return _ref
-        .read(vaultEntryStoreProvider)
+        .read(vaultRepositoryProvider)
         .saveEntry(
           session,
-          draft: draft,
+          draft,
           pendingAttachments: pendingAttachments,
           retireFindingsAfterSave: retireFindingsAfterSave,
         );

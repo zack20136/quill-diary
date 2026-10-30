@@ -3,16 +3,16 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart' show getCrc32;
-import 'package:quill_diary/application/editor/editor_draft_models.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
+import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
-import 'package:quill_diary/infrastructure/ai/ai_connection_settings_store.dart';
-import 'package:quill_diary/infrastructure/chat_diary/chat_diary_settings_store.dart';
+import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -38,24 +38,39 @@ final testAiPng = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
 );
 
-class MemoryAiConnectionSettingsStore extends AiConnectionSettingsStore {
+class OverviewAiSettingsStore extends AiSettingsStore {
+  OverviewAiSettingsStore() : super.detached();
   AiConnectionSettings settings = const AiConnectionSettings();
+  ChatDiarySettings chatDiary = const ChatDiarySettings();
   final keys = <String, String>{};
   bool failReads = false;
   Future<void>? readGate;
   Future<void>? keyReadGate;
   int keyReads = 0;
+  int reads = 0;
+  Completer<void>? readStarted;
+
   @override
-  Future<AiConnectionSettings> read() async {
+  Future<AiStoredSettings> read(UnlockedVaultSession session) async {
+    reads++;
+    readStarted?.complete();
     await readGate;
     if (failReads) throw StateError('讀取設定失敗');
-    return settings;
+    return AiStoredSettings(connection: settings, chatDiary: chatDiary);
   }
 
   @override
-  Future<void> save(AiConnectionSettings value) async {
-    settings = value;
+  Future<void> save(
+    UnlockedVaultSession session, {
+    required AiConnectionSettings connection,
+    required ChatDiarySettings chatDiary,
+  }) async {
+    settings = connection;
+    this.chatDiary = chatDiary;
   }
+
+  @override
+  Future<void> ensureStored(UnlockedVaultSession session) async {}
 
   @override
   Future<String> readApiKey(AiConnectionConfig connectionConfig) async {
@@ -74,26 +89,12 @@ class MemoryAiConnectionSettingsStore extends AiConnectionSettingsStore {
         apiKey.trim().isNotEmpty) {
       throw const FormatException('金鑰缺少服務網址');
     }
-    keys[connectionConfig.credentialId] = apiKey;
-  }
-}
-
-class MemoryChatDiarySettingsStore extends ChatDiarySettingsStore {
-  ChatDiarySettings settings = const ChatDiarySettings();
-  int reads = 0;
-  Future<void>? readGate;
-  Completer<void>? readStarted;
-  @override
-  Future<ChatDiarySettings> read() async {
-    reads++;
-    readStarted?.complete();
-    await readGate;
-    return settings;
-  }
-
-  @override
-  Future<void> save(ChatDiarySettings value) async {
-    settings = value;
+    final trimmed = apiKey.trim();
+    if (trimmed.isEmpty) {
+      keys.remove(connectionConfig.credentialId);
+    } else {
+      keys[connectionConfig.credentialId] = trimmed;
+    }
   }
 }
 
@@ -175,11 +176,13 @@ class FakeAiClient extends AiClient {
     if (text.trim().isEmpty) throw const AiFailure(AiErrorCode.response);
   }
 
+  List<String> models = const ['test-model'];
+
   @override
   Future<List<String>> listModels() async {
     await modelsGate;
     if (modelFailure != null) throw modelFailure!;
-    return const ['test-model'];
+    return models;
   }
 
   @override
@@ -202,8 +205,19 @@ class FakeAiClient extends AiClient {
   }
 }
 
-class MemoryChatDiaryStore implements ChatDiaryStore {
-  MemoryChatDiaryStore([ChatDiarySession? initialChat]) {
+class EmptyEditorDraftStore implements EditorDraftStore {
+  @override
+  Future<EditorDraftRecord?> read(
+    String draftKey,
+    UnlockedVaultSession session,
+  ) async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class OverviewChatDiaryStore implements ChatDiaryStore {
+  OverviewChatDiaryStore([ChatDiarySession? initialChat]) {
     if (initialChat != null) {
       storedChats[initialChat.id] = jsonEncode(initialChat.toJson());
     }
@@ -323,8 +337,8 @@ class MemoryChatDiaryStore implements ChatDiaryStore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class MemoryChatDiaryEntryRepository implements VaultRepository {
-  MemoryChatDiaryEntryRepository(this.entry);
+class OverviewChatDiaryEntryRepository implements VaultRepository {
+  OverviewChatDiaryEntryRepository(this.entry);
   DiaryEntry? entry;
   @override
   Future<DiaryEntry?> loadEntry(

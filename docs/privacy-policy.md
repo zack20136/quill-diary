@@ -1,6 +1,6 @@
 # Quill Diary 隱私權政策
 
-**生效日期：2026 年 10 月 28 日**
+**生效日期：2026 年 10 月 30 日**
 
 本政策說明 Quill Diary（Android 套件名稱：`zack20136.com.quill_diary`，以下簡稱「本 App」）如何處理您的資料。本 App 以離線、本機加密為核心設計，預設不建立線上帳號系統，也不會主動收集或上傳您的日記內容。
 
@@ -55,7 +55,7 @@
 - Google Drive 背景上傳的工作狀態與所屬帳號識別資訊；工作完成、取消或失敗清理後不再保留於該工作
 - App 偏好設定與解鎖模式設定
 - 加密聊天草稿、附圖、私密區間與代號對照；完成聊天及有效提示詞快照
-- 裝置安全儲存中的 AI 連線、API Key 與自訂提示詞；這些設定不包含在 App 完整備份或日記匯出中
+- 加密日記庫內的 AI 服務、模型、思考設定、網址與提示詞，會隨完整備份走；API Key 只留在裝置安全儲存，不包含在 App 完整備份或日記匯出中
 - 加密的服務商暫存檔清理紀錄，不包含在完整備份中
 
 上述資料的控制權在您。若您清除 App 資料或解除安裝 App，通常會一併移除 App 沙盒中的本機資料；但若您曾將檔案匯出到外部資料夾、Downloads 或 Google Drive，這些副本需要由您自行刪除。
@@ -104,10 +104,10 @@
 - 完成聊天只沿用日記附件。未收錄或已從日記移除的圖片顯示「圖片已刪除」，不另存圖片副本。刪除本機聊天不影響已正式儲存的日記與附件
 - 內建 OpenAI、Claude 與 Gemini 可能用服務商 Files API 暫存圖片，供同一段對話引用。完成或刪除聊天時會嘗試清理；失敗會留下待清理紀錄，之後進入 AI 功能時重試。未完成聊天的遠端圖片不清理
 - 在本機刪除或停止接收回覆，不代表服務商已刪除輸入、輸出、暫存檔或紀錄，也不代表該次請求不計費
-- Responses 協定會設定 `store: false`，包含內建 OpenAI，以及 Custom 選了 Responses。這不是零留存。Gemini 免費與付費服務的資料使用條款不同。請查看您使用的帳戶與模型適用政策：[OpenAI](https://developers.openai.com/api/docs/guides/your-data)、[Claude](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)、[Gemini](https://ai.google.dev/gemini-api/terms)、[Ollama](https://docs.ollama.com/api/authentication)
-- 內建雲端服務使用 HTTPS。Custom（含 Ollama Chat）只有在位址是 loopback、IPv4 私有網段或 IPv6 ULA 時可以使用 HTTP；此時文字、照片與憑證在網路上未加密。主機名稱、link-local 與公網 HTTP 不能使用
+- Responses 協定會設定 `store: false`，包含內建 OpenAI，以及 Custom 選了 Responses。這不是零留存。Gemini 免費與付費服務的資料使用條款不同。請查看您使用的帳戶與模型適用政策：[OpenAI](https://developers.openai.com/api/docs/guides/your-data)、[Claude](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)、[Gemini](https://ai.google.dev/gemini-api/terms)、[xAI API](https://docs.x.ai/developers/faq/security)、[Ollama](https://docs.ollama.com/api/authentication)
+- 內建 xAI 透過 Chat Completions 直接傳送文字與內嵌圖片，不另上傳到 Files API。內建雲端服務使用 HTTPS。Custom（含 Ollama Chat）只有在位址是 loopback、IPv4 私有網段或 IPv6 ULA 時可以使用 HTTP；此時文字、照片與憑證在網路上未加密。主機名稱、link-local 與公網 HTTP 不能使用
 - 自訂服務的資料使用與留存由該服務決定。該主機也可能再轉用其他提供商或雲端模型
-- 編輯訊息或重新回覆會保留舊分支。切換版本不會自動連線。生成與私密補記只取目前分支
+- 編輯訊息或重新回覆會保留舊分支。切換版本不會自動連線。生成與私密補記只取目前分支。私密補記由 App 在手機追加，即使 AI 沒採用或依要求省略該片段，仍可能被補入；您可在正式儲存前刪除不想保留的補記
 - 在聊天室儲存新的 AI 設定後，後續請求改用新的服務、協定與模型。進行中的回覆會先停止。舊回覆保留當時的連線與提示詞快照
 - 固定歡迎訊息只在本機顯示；連線測試只送出測試文字，不使用其他日記。
 - Custom 的 API Key 依服務網址分開保存，不套用到其他目的地。清空該欄位並儲存，可刪除該網址的本機金鑰

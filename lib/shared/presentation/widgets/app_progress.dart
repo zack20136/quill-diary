@@ -1,8 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../app/app_colors.dart';
-import '../page_style.dart';
-import 'app_layout.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+
+import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_layout.dart';
 
 /// 共用線性進度條，會將比例限制在有效範圍內。
 class AppLinearProgressIndicator extends StatelessWidget {

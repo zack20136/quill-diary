@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 
 void main() {
   test('繁中與英文取得各自完整預設且語言指示分開', () {

@@ -2,15 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/application/editor/editor_attachment_items.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
 
 class EditorAttachmentStrip extends StatelessWidget {

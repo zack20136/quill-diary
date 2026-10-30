@@ -65,13 +65,10 @@ class _AboutTabBody extends StatelessWidget {
             startAlpha: _heroStartAlpha,
           ),
           const SizedBox(height: _sectionGap),
-          ..._childrenSeparatedByGap(
-            [
-              for (final AboutPageSectionSpec section in tab.sections)
-                _SectionCard(section: section),
-            ],
-            gap: _sectionGap,
-          ),
+          ..._childrenSeparatedByGap([
+            for (final AboutPageSectionSpec section in tab.sections)
+              _SectionCard(section: section),
+          ], gap: _sectionGap),
         ],
       ),
     );
@@ -95,13 +92,10 @@ class _SectionCard extends StatelessWidget {
       padding: _padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _childrenSeparatedByGap(
-          [
-            for (final AboutPageItemSpec item in section.items)
-              _ItemPanel(item: item),
-          ],
-          gap: _itemGap,
-        ),
+        children: _childrenSeparatedByGap([
+          for (final AboutPageItemSpec item in section.items)
+            _ItemPanel(item: item),
+        ], gap: _itemGap),
       ),
     );
   }

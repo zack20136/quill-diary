@@ -1,20 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
-import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
+import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/settings/widgets/drive_account_status.dart';
+import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-import 'package:quill_diary/shared/utils/user_facing_error.dart';
-import 'drive_account_status.dart';
-import 'settings_sections.dart';
 
 class DriveBackupSection extends ConsumerWidget {
   const DriveBackupSection({
@@ -52,7 +51,7 @@ class DriveBackupSection extends ConsumerWidget {
         .job;
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
-              ? settingsDriveBackupSectionDescriptionEnabled(l10n)
+              ? l10n.settingsDriveBackupSectionDescriptionEnabled
               : l10n.vaultTransferDriveSectionDescriptionBackupLocked)
         : l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured;
 
@@ -170,30 +169,23 @@ class _DriveConnectionErrorContent extends StatelessWidget {
             fullWidth: true,
             onPressed: pageBusy ? null : onRetry,
           ),
-        if (_lockedBannerMessage(l10n) != null) ...<Widget>[
+        if (access.backupSectionBlockedMessage(
+              l10n,
+              fallback: l10n.vaultTransferDriveBackupActionsLockedHint,
+            ) !=
+            null) ...<Widget>[
           const SizedBox(height: 12),
           AppFeedbackBanner(
             icon: Icons.lock_outline_rounded,
-            message: _lockedBannerMessage(l10n)!,
+            message: access.backupSectionBlockedMessage(
+              l10n,
+              fallback: l10n.vaultTransferDriveBackupActionsLockedHint,
+            )!,
             tone: AppFeedbackTone.warning,
           ),
         ],
       ],
     );
-  }
-
-  String? _lockedBannerMessage(AppLocalizations l10n) {
-    if (!access.canBackup && !access.canRestore) {
-      return access.restoreDisabledReason ?? access.backupDisabledReason;
-    }
-    if (!access.canBackup) {
-      return access.backupDisabledReason ??
-          l10n.vaultTransferDriveBackupActionsLockedHint;
-    }
-    if (!access.canRestore) {
-      return access.restoreDisabledReason;
-    }
-    return null;
   }
 }
 
@@ -236,9 +228,7 @@ class _DriveBackupContent extends StatelessWidget {
         uploadJob?.needsCancelCleanupAccountRecovery ?? false;
     // 取消清理中：未連線或授權錯誤時允許重連原帳號；其餘仍鎖住切換／中斷。
     final bool accountActionsUnlocked =
-        !uploadBusy ||
-        cleanupRecovery ||
-        (cleanupPending && !isConnected);
+        !uploadBusy || cleanupRecovery || (cleanupPending && !isConnected);
     final bool canUseAccountActions =
         !busy && canManageDriveAccount && accountActionsUnlocked;
     final bool showBusyBanner = uploadBusy && !cleanupPending;
@@ -296,8 +286,8 @@ class _DriveBackupContent extends StatelessWidget {
                 appearance: AppActionButtonAppearance.outlined,
                 fullWidth: true,
                 // 帳號不符時允許切回原帳；一般上傳／清理中仍鎖住。
-                onPressed: canUseAccountActions &&
-                        (!uploadBusy || cleanupRecovery)
+                onPressed:
+                    canUseAccountActions && (!uploadBusy || cleanupRecovery)
                     ? onSwitchAccount
                     : null,
               ),
@@ -306,8 +296,8 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.link_off_rounded,
                 appearance: AppActionButtonAppearance.destructive,
                 fullWidth: true,
-                onPressed: canUseAccountActions &&
-                        (!uploadBusy || cleanupRecovery)
+                onPressed:
+                    canUseAccountActions && (!uploadBusy || cleanupRecovery)
                     ? onDisconnect
                     : null,
               ),
@@ -328,30 +318,23 @@ class _DriveBackupContent extends StatelessWidget {
             message: l10n.driveUploadCancelCleanupBlocksAccountActions,
           ),
         ],
-        if (_lockedBannerMessage(l10n) != null) ...<Widget>[
+        if (access.backupSectionBlockedMessage(
+              l10n,
+              fallback: l10n.vaultTransferDriveBackupActionsLockedHint,
+            ) !=
+            null) ...<Widget>[
           const SizedBox(height: 12),
           AppFeedbackBanner(
             icon: Icons.lock_outline_rounded,
-            message: _lockedBannerMessage(l10n)!,
+            message: access.backupSectionBlockedMessage(
+              l10n,
+              fallback: l10n.vaultTransferDriveBackupActionsLockedHint,
+            )!,
             tone: AppFeedbackTone.warning,
           ),
         ],
       ],
     );
-  }
-
-  String? _lockedBannerMessage(AppLocalizations l10n) {
-    if (!access.canBackup && !access.canRestore) {
-      return access.restoreDisabledReason ?? access.backupDisabledReason;
-    }
-    if (!access.canBackup) {
-      return access.backupDisabledReason ??
-          l10n.vaultTransferDriveBackupActionsLockedHint;
-    }
-    if (!access.canRestore) {
-      return access.restoreDisabledReason;
-    }
-    return null;
   }
 }
 
@@ -385,18 +368,18 @@ class _DriveUploadStatusCard extends StatelessWidget {
         l10n.driveUploadStatusWaitingNetwork(job.fileName),
       DriveUploadPhase.staged => l10n.driveUploadStatusStaged(job.fileName),
       DriveUploadPhase.statusPending ||
-      DriveUploadPhase.prunePending =>
-        l10n.driveUploadStatusFinalizing,
-      DriveUploadPhase.cancelCleanupPending =>
-        switch (job.lastErrorCode) {
-          'cleanup_needs_reauth' =>
-            l10n.driveUploadStatusCancelCleanupNeedsReauth(accountEmail),
-          'cleanup_account_mismatch' =>
-            l10n.driveUploadStatusCancelCleanupAccountMismatch(accountEmail),
-          _ => l10n.driveUploadStatusCancelCleanup,
-        },
-      DriveUploadPhase.uploading =>
-        l10n.driveUploadStatusUploading(job.fileName, percent),
+      DriveUploadPhase.prunePending => l10n.driveUploadStatusFinalizing,
+      DriveUploadPhase.cancelCleanupPending => switch (job.lastErrorCode) {
+        'cleanup_needs_reauth' =>
+          l10n.driveUploadStatusCancelCleanupNeedsReauth(accountEmail),
+        'cleanup_account_mismatch' =>
+          l10n.driveUploadStatusCancelCleanupAccountMismatch(accountEmail),
+        _ => l10n.driveUploadStatusCancelCleanup,
+      },
+      DriveUploadPhase.uploading => l10n.driveUploadStatusUploading(
+        job.fileName,
+        percent,
+      ),
     };
     // 遠端已驗證不可再取消；取消清理改顯示放棄。
     final bool showCancel = !finalizing && !cancelCleanup;

@@ -4,18 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
@@ -23,10 +23,10 @@ import 'package:quill_diary/presentation/settings/pages/about_page.dart';
 import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/pages/support_page.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/app_test_theme.dart';
-import '../../helpers/storage/fake_vault_transfer_service.dart';
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
@@ -42,9 +42,6 @@ void main() {
         vaultPlatformSupportProvider.overrideWith((Ref ref) => true),
         vaultRepositoryProvider.overrideWithValue(
           FakeEntryIndexVaultRepository(),
-        ),
-        vaultTransferServiceProvider.overrideWithValue(
-          FakeVaultTransferService(),
         ),
         effectiveAppSessionProvider.overrideWith(
           (Ref ref) async =>
@@ -81,12 +78,12 @@ void main() {
   }
 
   testWidgets('首頁路由會建立 HomePage', (WidgetTester tester) async {
-    await pumpRoute(tester, AppRouter.homeRoute);
+    await pumpRoute(tester, AppRoutes.homeRoute);
     expect(find.byType(HomePage), findsOneWidget);
   });
 
   testWidgets('編輯器路由未帶 entryId 時會建立 EditorPage', (WidgetTester tester) async {
-    await pumpRoute(tester, AppRouter.editorRoute);
+    await pumpRoute(tester, AppRoutes.editorRoute);
     final EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
     expect(page.entryId, isNull);
     expect(page.startInEditMode, isFalse);
@@ -107,31 +104,51 @@ void main() {
   });
 
   testWidgets('設定相關路由都會建立對應頁面', (WidgetTester tester) async {
-    await pumpRoute(tester, AppRouter.settingsRoute);
+    await pumpRoute(tester, AppRoutes.settingsRoute);
     expect(find.byType(SettingsPage), findsOneWidget);
 
-    await pumpRoute(tester, AppRouter.aboutRoute);
+    await pumpRoute(tester, AppRoutes.aboutRoute);
     expect(find.byType(SettingsAboutPage), findsOneWidget);
 
-    await pumpRoute(tester, AppRouter.personalizationRoute);
+    await pumpRoute(tester, AppRoutes.personalizationRoute);
     expect(find.byType(PersonalizationPage), findsOneWidget);
 
-    await pumpRoute(tester, AppRouter.supportRoute);
+    await pumpRoute(tester, AppRoutes.supportRoute);
     expect(find.byType(SupportPage), findsOneWidget);
   });
 
-  testWidgets('主要路由在窄版與寬版視窗都不會 overflow', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('聊天路由契約能開啟新聊天、草稿與完成聊天', (tester) async {
+    final chatId = generateChatDiaryId();
+    final entryId = generateEntryId();
+    await pumpRoute(tester, AppRoutes.newChatDiaryLocation(chatId));
+    var page = tester.widget<ChatDiaryPage>(find.byType(ChatDiaryPage));
+    expect(page.chatId, chatId);
+    expect(page.isNewChat, isTrue);
+
+    await pumpRoute(tester, AppRoutes.chatDiaryLocation(chatId));
+    page = tester.widget<ChatDiaryPage>(find.byType(ChatDiaryPage));
+    expect(page.chatId, chatId);
+    expect(page.isNewChat, isFalse);
+
+    await pumpRoute(tester, AppRoutes.chatDiaryEntryLocation(entryId));
+    page = tester.widget<ChatDiaryPage>(find.byType(ChatDiaryPage));
+    expect(page.entryId, entryId);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('主要路由在窄版與寬版視窗都不會 overflow', (WidgetTester tester) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final List<(String, Finder)> routes = <(String, Finder)>[
-      (AppRouter.homeRoute, find.byType(HomePage)),
-      (AppRouter.editorRoute, find.byType(EditorPage)),
-      (AppRouter.personDetailLocation('missing'), find.byType(PersonDetailPage)),
-      (AppRouter.settingsRoute, find.byType(SettingsPage)),
-      (AppRouter.aboutRoute, find.byType(SettingsAboutPage)),
-      (AppRouter.personalizationRoute, find.byType(PersonalizationPage)),
-      (AppRouter.supportRoute, find.byType(SupportPage)),
+      (AppRoutes.homeRoute, find.byType(HomePage)),
+      (AppRoutes.editorRoute, find.byType(EditorPage)),
+      (
+        AppRoutes.personDetailLocation('missing'),
+        find.byType(PersonDetailPage),
+      ),
+      (AppRoutes.settingsRoute, find.byType(SettingsPage)),
+      (AppRoutes.aboutRoute, find.byType(SettingsAboutPage)),
+      (AppRoutes.personalizationRoute, find.byType(PersonalizationPage)),
+      (AppRoutes.supportRoute, find.byType(SupportPage)),
     ];
 
     for (final Size size in const <Size>[Size(320, 568), Size(800, 600)]) {

@@ -1,13 +1,13 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
-import 'editor_checkbox_block_row.dart';
-import 'editor_mention_text_field.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
 class EditorHybridBody extends StatefulWidget {
   const EditorHybridBody({

@@ -1,28 +1,31 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_message_bubble.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
@@ -46,7 +49,63 @@ class _ChatSession extends AppSessionController {
       state = const AppSessionState(status: AppLockStatus.locked);
 }
 
+class _ImageChatDiaryStore extends OverviewChatDiaryStore {
+  _ImageChatDiaryStore(super.initialChat);
+
+  @override
+  Future<void> saveImage(
+    String chatId,
+    ChatDiaryImage image,
+    Uint8List bytes,
+    UnlockedVaultSession session,
+  ) async {
+    images[image.id] = bytes;
+  }
+}
+
+class _PickedImageFile implements File {
+  @override
+  String get path => 'image.png';
+
+  @override
+  Future<Uint8List> readAsBytes() async => testAiPng;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
+  void resumeApp(WidgetTester tester) {
+    if (tester.binding.lifecycleState == AppLifecycleState.paused) {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    }
+    if (tester.binding.lifecycleState == AppLifecycleState.hidden) {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    }
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  }
+
+  Completer<List<String>> mockGalleryPicker(WidgetTester tester) {
+    const channel = MethodChannel('plugins.flutter.io/image_picker');
+    final result = Completer<List<String>>();
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (call) async => switch (call.method) {
+        'retrieve' => null,
+        'pickMultiImage' => result.future,
+        _ => throw StateError('非預期的選圖呼叫：${call.method}'),
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    addTearDown(() => resumeApp(tester));
+    return result;
+  }
+
   Future<ProviderContainer> pumpChat(
     WidgetTester tester,
     ChatDiarySession chat,
@@ -55,19 +114,20 @@ void main() {
     double textScale = 1,
     Locale locale = const Locale('zh'),
     bool withBack = false,
-    MemoryChatDiaryStore? store,
+    OverviewChatDiaryStore? store,
+    OverviewAiSettingsStore? aiSettings,
+    EditorDraftStore? editorDrafts,
   }) async {
     final container = ProviderContainer(
       overrides: [
+        if (editorDrafts != null)
+          editorDraftStoreProvider.overrideWithValue(editorDrafts),
         chatDiaryStoreProvider.overrideWithValue(
-          store ?? MemoryChatDiaryStore(chat),
+          store ?? OverviewChatDiaryStore(chat),
         ),
         appSessionProvider.overrideWith(_ChatSession.new),
-        aiConnectionSettingsStoreProvider.overrideWithValue(
-          MemoryAiConnectionSettingsStore(),
-        ),
-        chatDiarySettingsStoreProvider.overrideWithValue(
-          MemoryChatDiarySettingsStore(),
+        aiSettingsStoreProvider.overrideWithValue(
+          aiSettings ?? OverviewAiSettingsStore(),
         ),
         aiClientFactoryProvider.overrideWithValue((_, _) => client),
         userPreferencesProvider.overrideWithValue(_ChatPreferences()),
@@ -383,7 +443,7 @@ void main() {
     );
     chat.composerText = '還沒送出';
     chat.pendingImageIds.add(pendingImage);
-    final store = MemoryChatDiaryStore(chat);
+    final store = OverviewChatDiaryStore(chat);
     store.images[sentImage] = testAiPng;
     store.images[pendingImage] = testAiPng;
     await pumpChat(
@@ -535,6 +595,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('空白生成留在聊天室顯示提示並保留對話', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '先聊聊操作',
+        outboundText: '先聊聊操作',
+      ),
+    );
+    final client = FakeAiClient(chat.connectionConfig)..output = '';
+    final container = await pumpChat(
+      tester,
+      chat,
+      client,
+      editorDrafts: EmptyEditorDraftStore(),
+    );
+    await tester.tap(find.text('生成日記'));
+    await tester.pumpAndSettle();
+    final controller = container.read(chatDiaryControllerProvider(chat.id));
+    expect(find.byType(ChatDiaryPage), findsOneWidget);
+    expect(find.text('目前沒有適合生成的紀錄內容，可以再補充想留下的事。'), findsOneWidget);
+    expect(controller.chat!.activeMessages.single.text, '先聊聊操作');
+    expect(controller.chat!.generatedEntryId, isNull);
+    expect(controller.error, isNull);
+    expect(controller.canGenerate, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('生成失敗只顯示可關閉的 toast，不佔用輸入區上方空間', (tester) async {
     final chat = testChatDiarySession(hidePersonNames: false);
     chat.appendMessage(
@@ -587,7 +676,7 @@ void main() {
         imageIds: imageIds,
       ),
     );
-    final store = MemoryChatDiaryStore(chat);
+    final store = OverviewChatDiaryStore(chat);
     for (final id in imageIds) {
       store.images[id] = testAiPng;
     }
@@ -659,10 +748,12 @@ void main() {
   testWidgets('聊天室內儲存設定後立即更新模型與持久化連線', (tester) async {
     final chat = testChatDiarySession(hidePersonNames: false)
       ..composerText = '尚未送出的內容';
+    final aiSettings = OverviewAiSettingsStore();
     final container = await pumpChat(
       tester,
       chat,
       FakeAiClient(chat.connectionConfig),
+      aiSettings: aiSettings,
     );
     expect(
       tester.getCenter(find.byTooltip('AI 設定')).dx,
@@ -688,19 +779,39 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('AI 設定'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('ai-model-autocomplete')),
-      'updated-model',
+    final Finder addField = find.byKey(
+      const ValueKey('ai-model-add-field-custom'),
     );
+    await tester.ensureVisible(addField);
+    await tester.enterText(addField, 'updated-model');
+    await tester.pump();
+    final Finder add = find.byKey(const ValueKey('ai-model-add-custom'));
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pump();
+    final Finder protocol = find.byKey(const ValueKey('ai-protocol-field'));
+    await tester.ensureVisible(protocol);
+    await tester.tap(protocol);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.widgetWithText(MenuItemButton, 'OpenAI Chat Completions'),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '儲存'));
 
     await tester.pumpAndSettle();
-    expect(find.text('updated-model'), findsOneWidget);
+    expect(find.text('自訂/test-model'), findsOneWidget);
+    expect(find.text('自訂/updated-model'), findsNothing);
     final controller = container.read(chatDiaryControllerProvider(chat.id));
     expect(
       controller.chat!.connectionConfig.protocol,
-      AiApiProtocol.ollamaChat,
+      AiApiProtocol.chatCompletions,
     );
+    expect(controller.chat!.connectionConfig.model, 'test-model');
+    expect(aiSettings.settings.activeConfig.addedModels, [
+      'test-model',
+      'updated-model',
+    ]);
     expect(
       (await container
               .read(chatDiaryStoreProvider)
@@ -713,10 +824,47 @@ void main() {
               ))!
           .connectionConfig
           .model,
-      'updated-model',
+      'test-model',
     );
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  testWidgets('聊天室切換模型會改這一則，並成為下一則新聊天的模型', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final aiSettings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        provider: AiProvider.custom,
+        configs: {
+          AiProvider.custom: chat.connectionConfig.copyWith(
+            addedModels: const ['test-model', 'other-model'],
+            enabledModels: const ['test-model', 'other-model'],
+          ),
+        },
+      );
+    final container = await pumpChat(
+      tester,
+      chat,
+      FakeAiClient(chat.connectionConfig),
+      aiSettings: aiSettings,
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
+    await tester.pumpAndSettle();
+    final tag = tester.getRect(find.byKey(const ValueKey('chat-model-tag')));
+    final menu = tester.getRect(find.byKey(const ValueKey('chat-model-menu')));
+    expect(menu.bottom, lessThan(tag.top - 8));
+    await tester.tap(find.text('自訂/other-model'));
+    await tester.pumpAndSettle();
+    expect(
+      container
+          .read(chatDiaryControllerProvider(chat.id))
+          .chat!
+          .connectionConfig
+          .model,
+      'other-model',
+    );
+    expect(aiSettings.settings.activeConfig.model, 'other-model');
+    expect(find.text('自訂/other-model'), findsOneWidget);
   });
 
   testWidgets('閱讀舊內容時串流不拉走捲動位置，回到底部後繼續跟隨', (tester) async {
@@ -893,6 +1041,103 @@ void main() {
     }
   }
 
+  testWidgets('選圖暫時失去焦點不遮蔽聊天，取消後仍保留一般失焦遮蔽', (tester) async {
+    final picked = mockGalleryPicker(tester);
+    final chat = testChatDiarySession(hidePersonNames: false)
+      ..composerText = '選圖前輸入的文字';
+    await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
+    await tester.tap(find.byTooltip('加入圖片'));
+    await tester.pumpAndSettle();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(find.bySemanticsLabel('內容已隱藏'), findsNothing);
+    expect(find.text('選圖前輸入的文字'), findsOneWidget);
+
+    picked.complete([]);
+    await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('選圖前輸入的文字'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    '圖庫先回傳圖片再返回前景時，遮蔽背景並在前景加入圖片',
+    (tester) => IOOverrides.runZoned(() async {
+      final picked = mockGalleryPicker(tester);
+      final chat = testChatDiarySession(hidePersonNames: false);
+      final store = _ImageChatDiaryStore(chat);
+      final container = await pumpChat(
+        tester,
+        chat,
+        FakeAiClient(chat.connectionConfig),
+        store: store,
+      );
+      await tester.tap(find.byTooltip('加入圖片'));
+      await tester.pumpAndSettle();
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      tester.binding.scheduleForcedFrame();
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
+
+      picked.complete(['image.png']);
+      await tester.pumpAndSettle();
+      expect(store.images, isEmpty);
+      resumeApp(tester);
+      await tester.pumpAndSettle();
+      final restored = container
+          .read(chatDiaryControllerProvider(chat.id))
+          .chat!;
+      expect(restored.pendingImageIds, hasLength(1));
+      expect(store.images.values.single, testAiPng);
+      expect(find.bySemanticsLabel('內容已隱藏'), findsNothing);
+      expect(tester.takeException(), isNull);
+    }, createFile: (_) => _PickedImageFile()),
+  );
+
+  testWidgets('等候圖庫返回前景時鎖定，不會將已選取的圖片加入聊天', (tester) async {
+    final picked = mockGalleryPicker(tester);
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final store = _ImageChatDiaryStore(chat);
+    final container = await pumpChat(
+      tester,
+      chat,
+      FakeAiClient(chat.connectionConfig),
+      store: store,
+    );
+    await tester.tap(find.byTooltip('加入圖片'));
+    await tester.pumpAndSettle();
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+    picked.complete(['不應讀取的圖片.png']);
+    await tester.pumpAndSettle();
+
+    (container.read(appSessionProvider.notifier) as _ChatSession).setLocked();
+    await tester.pumpAndSettle();
+    resumeApp(tester);
+    await tester.pumpAndSettle();
+    expect(store.images, isEmpty);
+    expect(container.read(chatDiaryControllerProvider(chat.id)).chat, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('背景遮蔽聊天且返回不自動重送，鎖定後清除輸入與畫面', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
@@ -908,7 +1153,7 @@ void main() {
         outboundText: '已送出的合成日記內容',
       ),
     );
-    final store = MemoryChatDiaryStore(chat);
+    final store = OverviewChatDiaryStore(chat);
     final client = FakeAiClient(chat.connectionConfig);
     final container = ProviderContainer(
       overrides: [

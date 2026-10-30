@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
 
 import '../../helpers/shared/entry_index_fixtures.dart';
@@ -51,12 +51,12 @@ void main() {
           final String query = ref.watch(homeSearchQueryProvider);
           return HomeEntryQueryResult(
             query: query,
-            entries: const <EntryIndexRecord>[],
+            entries: const <DiaryEntrySummary>[],
           );
         }),
         homeEntriesProvider.overrideWith(
           (Ref ref) =>
-              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+              const AsyncData<List<DiaryEntrySummary>>(<DiaryEntrySummary>[]),
         ),
         homePinnedEntryIdsProvider.overrideWith(
           (Ref ref) async => const <EntryId>{},
@@ -85,12 +85,12 @@ void main() {
           final String query = ref.watch(homeSearchQueryProvider);
           return HomeEntryQueryResult(
             query: query,
-            entries: const <EntryIndexRecord>[],
+            entries: const <DiaryEntrySummary>[],
           );
         }),
         homeEntriesProvider.overrideWith(
           (Ref ref) =>
-              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+              const AsyncData<List<DiaryEntrySummary>>(<DiaryEntrySummary>[]),
         ),
         homePinnedEntryIdsProvider.overrideWith(
           (Ref ref) async => const <EntryId>{},
@@ -127,7 +127,7 @@ void main() {
           if (query.isEmpty) {
             return const HomeEntryQueryResult(
               query: '',
-              entries: <EntryIndexRecord>[],
+              entries: <DiaryEntrySummary>[],
             );
           }
           return pending
@@ -136,7 +136,7 @@ void main() {
         }),
         homeEntriesProvider.overrideWith(
           (Ref ref) =>
-              const AsyncData<List<EntryIndexRecord>>(<EntryIndexRecord>[]),
+              const AsyncData<List<DiaryEntrySummary>>(<DiaryEntrySummary>[]),
         ),
         homePinnedEntryIdsProvider.overrideWith(
           (Ref ref) async => const <EntryId>{},
@@ -158,14 +158,14 @@ void main() {
     pending['第一輪']!.complete(
       HomeEntryQueryResult(
         query: '第一輪',
-        entries: <EntryIndexRecord>[buildEntryIndexRecord(id: 'stale')],
+        entries: <DiaryEntrySummary>[buildDiaryEntrySummary(id: 'stale')],
       ),
     );
     await tester.pump();
     pending['第二輪']!.complete(
       HomeEntryQueryResult(
         query: '第二輪',
-        entries: <EntryIndexRecord>[buildEntryIndexRecord(id: 'latest')],
+        entries: <DiaryEntrySummary>[buildDiaryEntrySummary(id: 'latest')],
       ),
     );
     await tester.pump();

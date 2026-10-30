@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/application/session/state/app_session_state.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import 'calendar/calendar_pane.dart';
-import 'home_timeline_pane.dart';
-import 'overview_pane.dart';
-import 'people_pane.dart';
-import 'tags_pane.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/presentation/home/widgets/calendar/calendar_pane.dart';
+import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
+import 'package:quill_diary/presentation/home/widgets/overview_pane.dart';
+import 'package:quill_diary/presentation/home/widgets/people_pane.dart';
+import 'package:quill_diary/presentation/home/widgets/tags_pane.dart';
 
 class HomeTabStack extends ConsumerStatefulWidget {
   const HomeTabStack({required this.sessionState, super.key});

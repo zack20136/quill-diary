@@ -3,12 +3,10 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/router.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/session_messages.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
@@ -104,8 +102,7 @@ class SessionBlockedPresentation {
         icon: sessionBlockedIconForStatus(sessionState.status),
         title: l10n.homeUnlockingTitle,
         message:
-            sessionState.message ??
-            sessionTrustedUnlockInProgressMessage(l10n),
+            sessionState.message ?? l10n.sessionTrustedUnlockInProgressMessage,
         actionKind: SessionBlockedActionKind.none,
       );
     }
@@ -186,10 +183,8 @@ class SessionBlockedPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return SessionBlockedContent(
       sessionState: sessionState,
-      onUnlock: () =>
-          unawaited(ref.read(appSessionProvider.notifier).unlock()),
-      onOpenSettings: () =>
-          unawaited(context.push(AppRouter.settingsRoute)),
+      onUnlock: () => unawaited(ref.read(appSessionProvider.notifier).unlock()),
+      onOpenSettings: () => unawaited(context.push(AppRoutes.settingsRoute)),
     );
   }
 }

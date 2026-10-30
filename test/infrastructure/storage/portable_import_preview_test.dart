@@ -38,8 +38,8 @@ void main() {
     final Directory root = await Directory.systemTemp.createTemp(
       'qld_import_preview_',
     );
-    for (final ({String fileName, String title, String date, String body})
-        doc in docs) {
+    for (final ({String fileName, String title, String date, String body}) doc
+        in docs) {
       await File(p.join(root.path, doc.fileName)).writeAsString(
         '---\n'
         'title: ${doc.title}\n'
@@ -65,22 +65,12 @@ void main() {
       ),
     );
 
-    final Directory root = await writeMarkdownEntries(<
-      ({String fileName, String title, String date, String body})
-    >[
-      (
-        fileName: 'a.md',
-        title: '已有標題',
-        date: '2026-08-18',
-        body: '要匯入的重複候補',
-      ),
-      (
-        fileName: 'b.md',
-        title: '全新標題',
-        date: '2026-08-19',
-        body: '新內容',
-      ),
-    ]);
+    final Directory root = await writeMarkdownEntries(
+      <({String fileName, String title, String date, String body})>[
+        (fileName: 'a.md', title: '已有標題', date: '2026-08-18', body: '要匯入的重複候補'),
+        (fileName: 'b.md', title: '全新標題', date: '2026-08-19', body: '新內容'),
+      ],
+    );
     await File(p.join(root.path, 'bad.html')).writeAsString('<html></html>');
 
     try {
@@ -108,22 +98,12 @@ void main() {
   });
 
   test('只寫入勾選篇；取消選取的篇不會寫入', () async {
-    final Directory root = await writeMarkdownEntries(<
-      ({String fileName, String title, String date, String body})
-    >[
-      (
-        fileName: 'keep.md',
-        title: '保留篇',
-        date: '2026-08-18',
-        body: '保留內容',
-      ),
-      (
-        fileName: 'skip.md',
-        title: '略過篇',
-        date: '2026-08-19',
-        body: '不應寫入',
-      ),
-    ]);
+    final Directory root = await writeMarkdownEntries(
+      <({String fileName, String title, String date, String body})>[
+        (fileName: 'keep.md', title: '保留篇', date: '2026-08-18', body: '保留內容'),
+        (fileName: 'skip.md', title: '略過篇', date: '2026-08-19', body: '不應寫入'),
+      ],
+    );
 
     try {
       final AnalyzedPortableImport analyzed = await importIo.analyzeDocuments(
@@ -152,16 +132,11 @@ void main() {
   });
 
   test('分析後不 persist 時庫內不會新增', () async {
-    final Directory root = await writeMarkdownEntries(<
-      ({String fileName, String title, String date, String body})
-    >[
-      (
-        fileName: 'only.md',
-        title: '取消不寫入',
-        date: '2026-08-18',
-        body: '內容',
-      ),
-    ]);
+    final Directory root = await writeMarkdownEntries(
+      <({String fileName, String title, String date, String body})>[
+        (fileName: 'only.md', title: '取消不寫入', date: '2026-08-18', body: '內容'),
+      ],
+    );
 
     try {
       final AnalyzedPortableImport analyzed = await importIo.analyzeDocuments(

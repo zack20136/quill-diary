@@ -1,5 +1,6 @@
-import 'kdf_descriptor.dart';
-import '../shared/value_objects.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 儲存於 `vault/recovery.json` 的明文復原描述子。
 ///
@@ -13,9 +14,10 @@ class RecoveryMetadata {
     required this.recoveryKeyHint,
     required this.createdAt,
     required this.kdf,
-  }) : assert(recoveryKeyVersion >= 1, 'recovery_key_version must be >= 1.');
-
-  static const int kSchemaVersion = 1;
+  }) : assert(
+         recoveryKeyVersion >= DataVersions.initialRecoveryKey,
+         'recovery_key_version must be >= 1.',
+       );
 
   final VaultId vaultId;
   final bool recoveryEnabled;
@@ -28,7 +30,7 @@ class RecoveryMetadata {
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
-      'schema_version': kSchemaVersion,
+      'schema_version': DataVersions.recoveryMetadata,
       'vault_id': vaultId,
       'recovery_enabled': recoveryEnabled,
       'recovery_key_version': recoveryKeyVersion,
@@ -46,14 +48,16 @@ class RecoveryMetadata {
       throw const FormatException('Recovery metadata missing kdf.');
     }
     final int schemaVersion =
-        int.tryParse('${json['schema_version'] ?? kSchemaVersion}') ??
-        kSchemaVersion;
-    if (schemaVersion != kSchemaVersion) {
+        int.tryParse(
+          '${json['schema_version'] ?? DataVersions.recoveryMetadata}',
+        ) ??
+        DataVersions.recoveryMetadata;
+    if (schemaVersion != DataVersions.recoveryMetadata) {
       throw FormatException('不支援的 recovery metadata 版本：$schemaVersion。');
     }
     final int version =
         int.tryParse('${json['recovery_key_version'] ?? 0}') ?? 0;
-    if (version < 1) {
+    if (version < DataVersions.initialRecoveryKey) {
       throw FormatException('不支援的復原金鑰版本：$version。');
     }
     return RecoveryMetadata(

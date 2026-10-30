@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/chat_diary/chat_diary_privacy_processor.dart';
-import '../../domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 
 final RegExp chatDiaryPrivacyTokenPattern = RegExp(r'⟦[PS][0-9A-F]{2,}⟧');
 

@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 void main() {
   late Directory tempDir;
@@ -36,11 +36,11 @@ void main() {
         .markCompleted();
     expect(
       await container.read(onboardingIntroVersionProvider.future),
-      onboardingIntroCurrentVersion,
+      DataVersions.onboardingIntro,
     );
     expect(
       await preferences.onboardingIntroVersion,
-      onboardingIntroCurrentVersion,
+      DataVersions.onboardingIntro,
     );
   });
 }

@@ -1,10 +1,10 @@
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 int compareHomeEntriesPinnedFirst(
-  EntryIndexRecord a,
-  EntryIndexRecord b,
+  DiaryEntrySummary a,
+  DiaryEntrySummary b,
   Set<EntryId> pinnedEntryIds,
 ) {
   final bool aPinned = pinnedEntryIds.contains(a.id);
@@ -13,29 +13,29 @@ int compareHomeEntriesPinnedFirst(
   return compareEntriesNewestFirst(a, b);
 }
 
-List<EntryIndexRecord> orderEntriesByFrozenDisplay(
-  List<EntryIndexRecord> entries,
+List<DiaryEntrySummary> orderEntriesByFrozenDisplay(
+  List<DiaryEntrySummary> entries,
   List<EntryId> frozenOrder,
 ) {
   if (frozenOrder.isEmpty) {
-    return List<EntryIndexRecord>.from(entries)
+    return List<DiaryEntrySummary>.from(entries)
       ..sort(compareEntriesNewestFirst);
   }
   final Map<EntryId, int> indexById = <EntryId, int>{
     for (int index = 0; index < frozenOrder.length; index++)
       frozenOrder[index]: index,
   };
-  final List<EntryIndexRecord> known = <EntryIndexRecord>[];
-  final List<EntryIndexRecord> unknown = <EntryIndexRecord>[];
-  for (final EntryIndexRecord entry in entries) {
+  final List<DiaryEntrySummary> known = <DiaryEntrySummary>[];
+  final List<DiaryEntrySummary> unknown = <DiaryEntrySummary>[];
+  for (final DiaryEntrySummary entry in entries) {
     (indexById.containsKey(entry.id) ? known : unknown).add(entry);
   }
   known.sort(
-    (EntryIndexRecord a, EntryIndexRecord b) =>
+    (DiaryEntrySummary a, DiaryEntrySummary b) =>
         indexById[a.id]!.compareTo(indexById[b.id]!),
   );
   unknown.sort(compareEntriesNewestFirst);
-  return <EntryIndexRecord>[...known, ...unknown];
+  return <DiaryEntrySummary>[...known, ...unknown];
 }
 
 typedef HomeEntrySortState = ({
@@ -43,25 +43,25 @@ typedef HomeEntrySortState = ({
   List<EntryId> frozenDisplayOrder,
 });
 
-List<EntryIndexRecord> sortHomeEntries({
-  required List<EntryIndexRecord> list,
+List<DiaryEntrySummary> sortHomeEntries({
+  required List<DiaryEntrySummary> list,
   required HomeEntrySortState sortState,
   required Set<EntryId> pinnedIds,
 }) {
   if (sortState.isActive && sortState.frozenDisplayOrder.isNotEmpty) {
     return orderEntriesByFrozenDisplay(list, sortState.frozenDisplayOrder);
   }
-  return List<EntryIndexRecord>.from(list)..sort(
-    (EntryIndexRecord a, EntryIndexRecord b) =>
+  return List<DiaryEntrySummary>.from(list)..sort(
+    (DiaryEntrySummary a, DiaryEntrySummary b) =>
         compareHomeEntriesPinnedFirst(a, b, pinnedIds),
   );
 }
 
 List<EntryId> homeEntryDisplayOrder({
-  required List<EntryIndexRecord> entries,
+  required List<DiaryEntrySummary> entries,
   required Set<EntryId> pinnedIds,
 }) => sortHomeEntries(
   list: entries,
   sortState: (isActive: false, frozenDisplayOrder: const <EntryId>[]),
   pinnedIds: pinnedIds,
-).map((EntryIndexRecord item) => item.id).toList(growable: false);
+).map((DiaryEntrySummary item) => item.id).toList(growable: false);

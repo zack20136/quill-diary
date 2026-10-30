@@ -36,9 +36,7 @@ void main() {
     final Offset iconCenter = tester.getCenter(
       find.byIcon(Icons.edit_note_rounded),
     );
-    final Offset titleCenter = tester.getCenter(
-      find.text('寫作、暫存與正式保存各走自己的路'),
-    );
+    final Offset titleCenter = tester.getCenter(find.text('寫作、暫存與正式保存各走自己的路'));
 
     expect(titleCenter.dx, greaterThan(iconCenter.dx));
     expect((titleCenter.dy - iconCenter.dy).abs(), lessThan(8));
@@ -46,9 +44,7 @@ void main() {
     expect(find.text('自動草稿'), findsOneWidget);
   });
 
-  testWidgets('Hero chips 單列可橫向捲動並顯示指示條', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('Hero chips 單列可橫向捲動並顯示指示條', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -93,9 +89,7 @@ void main() {
     expect(afterDrag, lessThan(beforeDrag));
   });
 
-  testWidgets('橫向滑 chip 時外層垂直頁面不跟著捲動', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('橫向滑 chip 時外層垂直頁面不跟著捲動', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -136,9 +130,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(pageController.offset, 0);
-    expect(
-      tester.getTopLeft(find.text('資料留在裝置')).dx,
-      lessThan(chipBefore),
-    );
+    expect(tester.getTopLeft(find.text('資料留在裝置')).dx, lessThan(chipBefore));
   });
 }

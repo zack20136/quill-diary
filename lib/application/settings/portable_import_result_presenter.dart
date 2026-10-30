@@ -1,14 +1,8 @@
+import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
-import 'settings_text.dart';
-
 extension PortableImportResultPresentation on PortableImportResult {
-  bool isFailure(AppLocalizations l10n) =>
-      failureCode != null ||
-      failureMessage != null ||
-      (importedEntries == 0 && skippedFiles > 0);
-
   String formatSuccessMessage(AppLocalizations l10n) {
     if (skippedFiles > 0 && skippedAttachments > 0) {
       return l10n

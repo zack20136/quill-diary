@@ -4,37 +4,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/application/restore/vault_restore_service.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/application/transfer/portable_transfer_service.dart';
+import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
+import 'package:quill_diary/application/transfer/vault_backup_service.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
-import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
-import 'package:quill_diary/infrastructure/security/security_providers.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
-import 'package:quill_diary/infrastructure/storage/portable_transfer_service.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
+import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
-import 'package:quill_diary/infrastructure/storage/vault_archive_io.dart';
-import 'package:quill_diary/infrastructure/storage/vault_backup_service.dart';
+import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repair_service.dart';
-import 'package:quill_diary/infrastructure/storage/vault_restore_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
-import 'package:quill_diary/infrastructure/preferences/editor_typography_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
-import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/session/fake_app_lock_service.dart';
@@ -46,10 +48,9 @@ class _FlowBackupService extends VaultBackupService {
     this.driveBackups = const <DriveBackupFile>[],
     this.beforeRepairResult,
   }) : super(
-         archiveIo: VaultArchiveIo(
+         backupIo: VaultBackupIo(
            pathStrategy: DummyVaultPathStrategy(),
            repository: FakeSessionVaultRepository(),
-           frontMatterCodec: const FrontMatterCodec(),
            indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
            editorDraftStore: EditorDraftStore(
              pathStrategy: DummyVaultPathStrategy(),
@@ -93,10 +94,9 @@ class _FlowBackupService extends VaultBackupService {
 class _FlowRestoreService extends VaultRestoreService {
   _FlowRestoreService({this.downloadedFile, this.precheckError})
     : super(
-        archiveIo: VaultArchiveIo(
+        backupIo: VaultBackupIo(
           pathStrategy: DummyVaultPathStrategy(),
           repository: FakeSessionVaultRepository(),
-          frontMatterCodec: const FrontMatterCodec(),
           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
           editorDraftStore: EditorDraftStore(
             pathStrategy: DummyVaultPathStrategy(),
@@ -105,7 +105,6 @@ class _FlowRestoreService extends VaultRestoreService {
         ),
         vaultRepository: FakeSessionVaultRepository(),
         backupService: _FlowBackupService(),
-        pathStrategy: DummyVaultPathStrategy(),
       );
 
   final File? downloadedFile;
@@ -156,11 +155,15 @@ class _UnusedDriveBackupService implements DriveBackupService {
       throw UnimplementedError();
 
   @override
-  Future<List<DriveBackupFile>> listBackups({bool interactive = true}) => throw UnimplementedError();
+  Future<List<DriveBackupFile>> listBackups({bool interactive = true}) =>
+      throw UnimplementedError();
 
   @override
-  Future<List<DriveBackupFile>> pruneBackups({required int retainCount, String? keepFileId, bool interactive = true}) =>
-      throw UnimplementedError();
+  Future<List<DriveBackupFile>> pruneBackups({
+    required int retainCount,
+    String? keepFileId,
+    bool interactive = true,
+  }) => throw UnimplementedError();
 
   @override
   Future<DriveConnectionState> switchAccount() => throw UnimplementedError();
@@ -169,15 +172,15 @@ class _UnusedDriveBackupService implements DriveBackupService {
 class _FlowPortableTransferService extends PortableTransferService {
   _FlowPortableTransferService({this.importResult, this.exportPath})
     : super(
-        archiveIo: VaultArchiveIo(
+        exportIo: PortableExportIo(
           pathStrategy: DummyVaultPathStrategy(),
           repository: FakeSessionVaultRepository(),
           frontMatterCodec: const FrontMatterCodec(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
+        ),
+        importIo: PortableImportIo(
+          pathStrategy: DummyVaultPathStrategy(),
+          repository: FakeSessionVaultRepository(),
+          frontMatterCodec: const FrontMatterCodec(),
         ),
         externalDirectoryStore: ExternalDirectoryStore(
           DummyVaultPathStrategy(),
@@ -207,8 +210,8 @@ class _FlowPortableTransferService extends PortableTransferService {
   }
 }
 
-class _FlowRepairService extends VaultRepairService {
-  _FlowRepairService(this.report) : super(FakeSessionVaultRepository());
+class _FlowRepairService extends FakeSessionVaultRepository {
+  _FlowRepairService(this.report);
 
   final VaultRepairReport report;
   VaultRepairProgressCallback? receivedProgress;
@@ -622,7 +625,10 @@ void main() {
 
         expect(result.recoveryKey, 'setup-key');
         expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
-        expect(result.feedback.message, l10n.sessionRecoverySetupSuccessMessage);
+        expect(
+          result.feedback.message,
+          l10n.sessionRecoverySetupSuccessMessage,
+        );
         expect(
           container.read(appSessionProvider).session,
           same(_kSyncedUnlockedSession),
@@ -630,43 +636,7 @@ void main() {
       });
     });
 
-    group('repairVault', () {
-      test('會回傳報告並轉送進度', () async {
-        final VaultRepairReport report = VaultRepairReport(
-          entryCount: 9,
-          relocatedEntries: 0,
-          removedDuplicateEntries: 0,
-          removedOrphanAssets: 0,
-          tagsAdded: 0,
-          relocatedAssets: 0,
-          issues: const <VaultRepairIssue>[],
-          duration: const Duration(seconds: 2),
-          finishedAt: DateTime(2026, 7, 10),
-        );
-        final _FlowRepairService repairService = _FlowRepairService(report);
-        final ProviderContainer container = ProviderContainer(
-          overrides: [
-            vaultRepairServiceProvider.overrideWithValue(repairService),
-          ],
-        );
-        addTearDown(container.dispose);
-        container
-            .read(appSessionProvider.notifier)
-            .activateSession(_kUnlockedSession);
-        final SettingsFlowController controller = container.read(
-          settingsFlowControllerProvider,
-        );
-
-        final List<VaultRepairPhase> phases = <VaultRepairPhase>[];
-        final VaultRepairReport result = await controller.repairVault(
-          onProgress: phases.add,
-        );
-
-        expect(result.entryCount, report.entryCount);
-        repairService.receivedProgress!(VaultRepairPhase.scanningEntries);
-        expect(phases, <VaultRepairPhase>[VaultRepairPhase.scanningEntries]);
-      });
-
+    group('repairVaultAfterVerifiedBackup', () {
       test('備份驗證失敗時不會呼叫修復', () async {
         final VaultRepairReport report = VaultRepairReport(
           entryCount: 1,
@@ -687,7 +657,7 @@ void main() {
         );
         final ProviderContainer container = ProviderContainer(
           overrides: [
-            vaultRepairServiceProvider.overrideWithValue(repairService),
+            vaultRepositoryProvider.overrideWithValue(repairService),
             vaultBackupServiceProvider.overrideWithValue(backupService),
           ],
         );
@@ -739,7 +709,7 @@ void main() {
         );
         final ProviderContainer container = ProviderContainer(
           overrides: [
-            vaultRepairServiceProvider.overrideWithValue(repairService),
+            vaultRepositoryProvider.overrideWithValue(repairService),
             vaultBackupServiceProvider.overrideWithValue(backupService),
             backupStatusStoreProvider.overrideWithValue(
               BackupStatusStore(
@@ -808,9 +778,10 @@ void main() {
 
     group('unlockWithRecovery', () {
       test('成功後回傳 success feedback', () async {
-        final FakeSessionVaultRepository repository = FakeSessionVaultRepository(
-          unlockWithRecoveryKeyResult: _kUnlockedSession,
-        );
+        final FakeSessionVaultRepository repository =
+            FakeSessionVaultRepository(
+              unlockWithRecoveryKeyResult: _kUnlockedSession,
+            );
         final ProviderContainer container = ProviderContainer(
           overrides: [
             vaultRepositoryProvider.overrideWithValue(repository),
@@ -857,7 +828,10 @@ void main() {
         );
 
         expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
-        expect(feedback?.message, l10n.sessionUnlockModeChangeNeedsUnlockMessage);
+        expect(
+          feedback?.message,
+          l10n.sessionUnlockModeChangeNeedsUnlockMessage,
+        );
       });
 
       test('缺少裝置鎖回傳 warning', () async {

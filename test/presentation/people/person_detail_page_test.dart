@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -33,7 +33,7 @@ void main() {
     Map<PersonId, PersonMentionStats> stats = const {},
     Brightness brightness = Brightness.light,
     Locale locale = appZhLocale,
-    List<EntryIndexRecord> relatedEntries = const <EntryIndexRecord>[],
+    List<DiaryEntrySummary> relatedEntries = const <DiaryEntrySummary>[],
   }) {
     return widgetTestApp(
       brightness: brightness,
@@ -47,9 +47,8 @@ void main() {
           ),
         ),
         personDetailProvider(person.id).overrideWith((Ref ref) async => person),
-        personRelatedEntriesProvider(
-          person.id,
-        ).overrideWith((Ref ref) async => relatedEntries),
+        personRelatedEntriesProvider(person.id)
+            .overrideWith((Ref ref) async => relatedEntries),
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async => stats),
       ],
       child: PersonDetailPage(personId: person.id),
@@ -113,9 +112,7 @@ void main() {
         lastMentionDate: const DateOnly('2026-08-10'),
       ),
     };
-    await tester.pumpWidget(
-      testApp(stats: stats),
-    );
+    await tester.pumpWidget(testApp(stats: stats));
     await tester.pumpAndSettle();
 
     expect(
@@ -125,9 +122,7 @@ void main() {
     expect(find.text('提及篇數'), findsOneWidget);
     expect(find.text('3 篇'), findsOneWidget);
 
-    await tester.pumpWidget(
-      testApp(stats: stats, locale: const Locale('en')),
-    );
+    await tester.pumpWidget(testApp(stats: stats, locale: const Locale('en')));
     await tester.pumpAndSettle();
 
     expect(find.text('Latest'), findsOneWidget);
@@ -151,9 +146,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final AppColors colors = appTestTheme(
-      brightness: Brightness.dark,
-    ).extension<AppColors>()!;
+    final AppColors colors = appTestTheme(brightness: Brightness.dark)
+        .extension<AppColors>()!;
 
     for (final String key in <String>[
       'person-mention-overview-card',
@@ -182,9 +176,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final AppColors colors = appTestTheme(
-      brightness: Brightness.dark,
-    ).extension<AppColors>()!;
+    final AppColors colors = appTestTheme(brightness: Brightness.dark)
+        .extension<AppColors>()!;
     for (final String key in <String>[
       'person-last-mention-fact',
       'person-friendliness-fact',
@@ -200,34 +193,31 @@ void main() {
   });
 
   for (final Brightness brightness in Brightness.values) {
-    testWidgets('${brightness == Brightness.light ? '淺色' : '深色'}模式關係標籤沿用人物頭像配色', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(testApp(brightness: brightness));
-      await tester.pumpAndSettle();
+    testWidgets(
+      '${brightness == Brightness.light ? '淺色' : '深色'}模式關係標籤沿用人物頭像配色',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(testApp(brightness: brightness));
+        await tester.pumpAndSettle();
 
-      final AppColors colors = appTestTheme(
-        brightness: brightness,
-      ).extension<AppColors>()!;
-      final (Color expectedBackground, Color expectedForeground) =
-          personLabelColorPair(person, colors.sectionInset);
-      final Finder relationChip = find.byKey(
-        const ValueKey<String>('person-relation-chip-classmate'),
-      );
-      final Container container = tester.widget<Container>(
-        find.descendant(
-          of: relationChip,
-          matching: find.byType(Container),
-        ),
-      );
-      final BoxDecoration decoration = container.decoration! as BoxDecoration;
-      final Text label = tester.widget<Text>(
-        find.descendant(of: relationChip, matching: find.text('同學')),
-      );
+        final AppColors colors = appTestTheme(brightness: brightness)
+            .extension<AppColors>()!;
+        final (Color expectedBackground, Color expectedForeground) =
+            personLabelColorPair(person, colors.sectionInset);
+        final Finder relationChip = find.byKey(
+          const ValueKey<String>('person-relation-chip-classmate'),
+        );
+        final Container container = tester.widget<Container>(
+          find.descendant(of: relationChip, matching: find.byType(Container)),
+        );
+        final BoxDecoration decoration = container.decoration! as BoxDecoration;
+        final Text label = tester.widget<Text>(
+          find.descendant(of: relationChip, matching: find.text('同學')),
+        );
 
-      expect(decoration.color, expectedBackground);
-      expect(label.style?.color, expectedForeground);
-    });
+        expect(decoration.color, expectedBackground);
+        expect(label.style?.color, expectedForeground);
+      },
+    );
   }
 
   testWidgets('無相關日記時匯出回顧停用', (WidgetTester tester) async {
@@ -243,7 +233,7 @@ void main() {
 
   testWidgets('有相關日記時顯示可用的匯出回顧', (WidgetTester tester) async {
     await tester.pumpWidget(
-      testApp(relatedEntries: <EntryIndexRecord>[buildEntryIndexRecord()]),
+      testApp(relatedEntries: <DiaryEntrySummary>[buildDiaryEntrySummary()]),
     );
     await tester.pumpAndSettle();
 
@@ -257,7 +247,7 @@ void main() {
 
   testWidgets('匯出回顧與相關日記標題垂直置中對齊', (WidgetTester tester) async {
     await tester.pumpWidget(
-      testApp(relatedEntries: <EntryIndexRecord>[buildEntryIndexRecord()]),
+      testApp(relatedEntries: <DiaryEntrySummary>[buildDiaryEntrySummary()]),
     );
     await tester.pumpAndSettle();
 

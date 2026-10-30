@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
-import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/home/home_entry_query_providers.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
 import '../../helpers/presentation/home/home_test_helpers.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
@@ -20,11 +20,11 @@ void main() {
 
     setUp(() {
       repository = FakeEntryIndexVaultRepository(
-        allEntries: <EntryIndexRecord>[
-          buildEntryIndexRecord(id: 'jrn_RESTORED'),
+        allEntries: <DiaryEntrySummary>[
+          buildDiaryEntrySummary(id: 'jrn_RESTORED'),
         ],
-        searchResponses: const <String, List<EntryIndexRecord>>{
-          'query-miss': <EntryIndexRecord>[],
+        searchResponses: const <String, List<DiaryEntrySummary>>{
+          'query-miss': <DiaryEntrySummary>[],
         },
       );
       container = buildUnlockedHomeContainer(repository);
@@ -38,8 +38,8 @@ void main() {
       final ProviderContainer staleCacheContainer = buildUnlockedHomeContainer(
         repository,
         overrides: [
-          allEntryIndexRecordsProvider.overrideWith(
-            (Ref ref) async => const <EntryIndexRecord>[],
+          allDiaryEntrySummariesProvider.overrideWith(
+            (Ref ref) async => const <DiaryEntrySummary>[],
           ),
         ],
       );
@@ -48,7 +48,7 @@ void main() {
       final HomeEntryQueryResult result = await staleCacheContainer.read(
         homeEntryIndexListProvider.future,
       );
-      final List<EntryIndexRecord> entries = result.entries;
+      final List<DiaryEntrySummary> entries = result.entries;
 
       expect(entries, hasLength(1));
       expect(entries.first.id, 'jrn_RESTORED');
@@ -56,15 +56,15 @@ void main() {
     });
 
     test('entryIndexRevision 更新後會重新抓取索引', () async {
-      await container.read(allEntryIndexRecordsProvider.future);
-      repository.allEntries = <EntryIndexRecord>[
-        buildEntryIndexRecord(id: 'jrn_AFTER_BUMP'),
+      await container.read(allDiaryEntrySummariesProvider.future);
+      repository.allEntries = <DiaryEntrySummary>[
+        buildDiaryEntrySummary(id: 'jrn_AFTER_BUMP'),
       ];
 
-      container.read(entryIndexRevisionProvider.notifier).bump();
+      container.read(diaryRevisionProvider.notifier).bump();
 
-      final List<EntryIndexRecord> entries = await container.read(
-        allEntryIndexRecordsProvider.future,
+      final List<DiaryEntrySummary> entries = await container.read(
+        allDiaryEntrySummariesProvider.future,
       );
 
       expect(entries, hasLength(1));
@@ -79,7 +79,7 @@ void main() {
 
     setUp(() {
       repository = FakeEntryIndexVaultRepository(
-        allEntries: <EntryIndexRecord>[buildEntryIndexRecord(id: 'jrn_HELD')],
+        allEntries: <DiaryEntrySummary>[buildDiaryEntrySummary(id: 'jrn_HELD')],
       );
       final UnlockedVaultSession session = UnlockedVaultSession(
         vaultId: 'vlt_unlocking_hold_test',
@@ -100,7 +100,7 @@ void main() {
     });
 
     test('轉入 unlocking 期間仍保留上一個可查詢 session', () async {
-      final List<EntryIndexRecord> before = (await container.read(
+      final List<DiaryEntrySummary> before = (await container.read(
         homeEntryIndexListProvider.future,
       )).entries;
       expect(before, hasLength(1));
@@ -110,7 +110,7 @@ void main() {
       );
 
       expect(container.read(indexQueryableVaultSessionProvider), isNotNull);
-      final List<EntryIndexRecord> duringUnlocking = (await container.read(
+      final List<DiaryEntrySummary> duringUnlocking = (await container.read(
         homeEntryIndexListProvider.future,
       )).entries;
       expect(duringUnlocking, hasLength(1));
@@ -121,12 +121,12 @@ void main() {
     test('日期邊界保留基準範圍外的既有日記', () async {
       final FakeEntryIndexVaultRepository repository =
           FakeEntryIndexVaultRepository(
-            allEntries: <EntryIndexRecord>[
-              buildEntryIndexRecord(
+            allEntries: <DiaryEntrySummary>[
+              buildDiaryEntrySummary(
                 id: 'legacy',
                 date: const DateOnly('1988-02-29'),
               ),
-              buildEntryIndexRecord(
+              buildDiaryEntrySummary(
                 id: 'future',
                 date: const DateOnly('2035-06-01'),
               ),

@@ -3,25 +3,26 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../domain/ai/ai_connection_settings.dart';
-import '../../domain/chat_diary/chat_diary_privacy_processor.dart';
-import '../../domain/chat_diary/chat_diary_session.dart';
-import '../../domain/security/unlocked_vault_session.dart';
-import '../../domain/shared/value_objects.dart';
-import '../../infrastructure/ai/ai_client.dart';
-import '../../infrastructure/ai/ai_image_preparer.dart';
-import '../../infrastructure/chat_diary/chat_diary_store.dart';
-import '../../infrastructure/preferences/preferences_providers.dart';
-import '../../infrastructure/storage/shared/media_type_utils.dart';
-import '../../infrastructure/storage/storage_providers.dart';
-import '../../l10n/app_localizations.dart';
-import '../ai/ai_connection_providers.dart';
-import 'chat_diary_prompt_resolver.dart';
-import 'chat_diary_providers.dart';
-import 'chat_diary_request_preview.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/ai/ai_image_preparer.dart';
+import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
+import 'package:quill_diary/l10n/app_localizations.dart';
 
 enum ChatDiaryLoadResult { loaded, missing, cancelled, failed }
+
+enum ChatDiaryGenerationResult { generated, empty, notGenerated }
 
 class ChatDiaryController extends ChangeNotifier {
   ChatDiaryController(this.ref) : _chatStore = ref.read(chatDiaryStoreProvider);
@@ -31,6 +32,7 @@ class ChatDiaryController extends ChangeNotifier {
   UnlockedVaultSession? _vaultSession;
   AiClient? _client;
   String? _clientApiKey;
+  AiConnectionConfig? _clientConfig;
   Timer? _saveTimer;
   int _operationVersion = 0;
   bool _disposed = false;
@@ -101,26 +103,21 @@ class ChatDiaryController extends ChangeNotifier {
     chat = null;
     _setError(null);
     _handedOff = false;
-    final connectionSettingsStore = ref.read(aiConnectionSettingsStoreProvider);
-    final diarySettingsStore = ref.read(chatDiarySettingsStoreProvider);
+    final settingsStore = ref.read(aiSettingsStoreProvider);
     bool cancelled() => _disposed || operationVersion != _operationVersion;
     try {
       var chatSession = await read();
       if (cancelled()) return ChatDiaryLoadResult.cancelled;
       if (chatSession == null && newChatId != null) {
-        final connectionSettings = await connectionSettingsStore.read();
+        final stored = await settingsStore.read(vaultSession);
         if (cancelled()) return ChatDiaryLoadResult.cancelled;
-        final diarySettings = await diarySettingsStore.read();
-        if (cancelled()) return ChatDiaryLoadResult.cancelled;
-        final connectionConfig = connectionSettings.activeConfig;
+        final connectionConfig = stored.connection.activeConfig;
         validateAiEndpoint(connectionConfig);
         if (!connectionConfig.isConfigured) {
           throw const AiFailure(AiErrorCode.configuration);
         }
         if (connectionConfig.provider.requiresApiKey) {
-          final apiKey = await connectionSettingsStore.readApiKey(
-            connectionConfig,
-          );
+          final apiKey = await settingsStore.readApiKey(connectionConfig);
           if (cancelled()) return ChatDiaryLoadResult.cancelled;
           if (apiKey.isEmpty) throw const AiFailure(AiErrorCode.configuration);
         }
@@ -129,7 +126,7 @@ class ChatDiaryController extends ChangeNotifier {
           id: newChatId,
           vaultId: vaultSession.vaultId,
           connectionConfig: connectionConfig,
-          hidePersonNames: diarySettings.hidePersonNames,
+          hidePersonNames: stored.chatDiary.hidePersonNames,
           createdAt: now,
           date: DateOnly.fromDateTime(now).value,
           openingMessage: openingMessage ?? '',
@@ -157,10 +154,7 @@ class ChatDiaryController extends ChangeNotifier {
       if (cancelled()) return ChatDiaryLoadResult.cancelled;
       unawaited(
         _chatStore
-            .cleanupRemoteFiles(
-              vaultSession,
-              connectionSettingsStore.readApiKey,
-            )
+            .cleanupRemoteFiles(vaultSession, settingsStore.readApiKey)
             .onError((_, _) => false),
       );
       notifyListeners();
@@ -372,14 +366,14 @@ class ChatDiaryController extends ChangeNotifier {
       return null;
     }
     final operationVersion = _operationVersion;
-    final settingsStore = ref.read(chatDiarySettingsStoreProvider);
+    final settingsStore = ref.read(aiSettingsStoreProvider);
     final preferences = ref.read(userPreferencesProvider);
     try {
       final history = conversationHistory;
       final pending = chatSession.composer;
       final privacy = await _createPrivacyProcessor(history);
       _ensureOperationIsCurrent(operationVersion);
-      final settings = await settingsStore.read();
+      final settings = (await settingsStore.read(_vaultSession!)).chatDiary;
       _ensureOperationIsCurrent(operationVersion);
       final language = await preferences.appLocale;
       _ensureOperationIsCurrent(operationVersion);
@@ -440,13 +434,63 @@ class ChatDiaryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 改這一則聊天的供應商與模型，並記成下一則新聊天要用的。
+  Future<void> selectChatModel(AiProvider provider, String model) async {
+    final chatSession = chat;
+    final String nextModel = model.trim();
+    final session = _vaultSession;
+    if (chatSession == null ||
+        chatSession.finished ||
+        busy ||
+        _handedOff ||
+        session == null ||
+        nextModel.isEmpty ||
+        (chatSession.connectionConfig.provider == provider &&
+            chatSession.connectionConfig.model.trim() == nextModel)) {
+      return;
+    }
+    final store = ref.read(aiSettingsStoreProvider);
+    final stored = await store.read(session);
+    final AiConnectionSettings settings = stored.connection;
+    final AiConnectionConfig source = settings.configs.containsKey(provider)
+        ? settings.configs[provider]!
+        : chatSession.connectionConfig.provider == provider
+        ? chatSession.connectionConfig
+        : defaultConnection(provider);
+    final AiConnectionConfig next = source.copyWith(model: nextModel);
+    await applySettings(next, chatSession.hidePersonNames);
+    if (chat?.connectionConfig.model.trim() != nextModel ||
+        chat?.connectionConfig.provider != provider) {
+      return;
+    }
+    final configs = Map<AiProvider, AiConnectionConfig>.of(settings.configs);
+    configs[provider] = next;
+    await store.save(
+      session,
+      connection: AiConnectionSettings(provider: provider, configs: configs),
+      chatDiary: stored.chatDiary,
+    );
+  }
+
+  bool _sameClientConnection(
+    AiConnectionConfig? current,
+    AiConnectionConfig next,
+  ) =>
+      current != null &&
+      current.provider == next.provider &&
+      current.model == next.model &&
+      current.protocol == next.protocol &&
+      current.effectiveBaseUrl == next.effectiveBaseUrl &&
+      current.workspaceId == next.workspaceId &&
+      resolvedThinkingLevel(current) == resolvedThinkingLevel(next);
+
   Future<ChatDiaryPrivacyProcessor> _createPrivacyProcessor([
     Iterable<ChatDiaryMessage>? messages,
   ]) async {
     final chatSession = chat!;
     final vaultSession = _vaultSession!;
     final people = chatSession.hidePersonNames
-        ? await ref.read(vaultPeopleServiceProvider).listPeople(vaultSession)
+        ? await ref.read(vaultRepositoryProvider).listPeople(vaultSession)
         : const <Never>[];
     return ChatDiaryPrivacyProcessor(chatSession, people, messages: messages);
   }
@@ -464,17 +508,20 @@ class ChatDiaryController extends ChangeNotifier {
     _ensureOperationIsCurrent(operationVersion);
     final connectionConfig = chat!.connectionConfig;
     final key = await ref
-        .read(aiConnectionSettingsStoreProvider)
+        .read(aiSettingsStoreProvider)
         .readApiKey(connectionConfig);
     _ensureOperationIsCurrent(operationVersion);
     if (!connectionConfig.isConfigured ||
         (key.isEmpty && connectionConfig.provider.requiresApiKey)) {
       throw const AiFailure(AiErrorCode.configuration);
     }
-    if (_client == null || key != _clientApiKey) {
+    if (_client == null ||
+        key != _clientApiKey ||
+        !_sameClientConnection(_clientConfig, connectionConfig)) {
       _client?.close();
       _client = ref.read(aiClientFactoryProvider)(connectionConfig, key);
       _clientApiKey = key;
+      _clientConfig = connectionConfig;
       final chatValue = chat!;
       final vaultSession = _vaultSession!;
       _client!.onFileUploaded = (file) => _chatStore.trackRemoteFile(
@@ -553,9 +600,9 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryPrivacyProcessor privacy,
     int operationVersion,
   ) async {
-    final settingsStore = ref.read(chatDiarySettingsStoreProvider);
+    final settingsStore = ref.read(aiSettingsStoreProvider);
     final preferences = ref.read(userPreferencesProvider);
-    final settings = await settingsStore.read();
+    final settings = (await settingsStore.read(_vaultSession!)).chatDiary;
     _ensureOperationIsCurrent(operationVersion);
     final language = await preferences.appLocale;
     _ensureOperationIsCurrent(operationVersion);
@@ -782,11 +829,11 @@ class ChatDiaryController extends ChangeNotifier {
                 chatSession.generatedDraftSignature);
   }
 
-  Future<bool> generate(AppLocalizations l10n) async {
+  Future<ChatDiaryGenerationResult> generate(AppLocalizations l10n) async {
     final chatSession = chat;
     final vaultSession = _vaultSession;
     if (!canGenerate || chatSession == null || vaultSession == null) {
-      return false;
+      return ChatDiaryGenerationResult.notGenerated;
     }
     busy = true;
     _setError(null);
@@ -815,7 +862,7 @@ class ChatDiaryController extends ChangeNotifier {
       }
       _ensureOperationIsCurrent(operationVersion);
       if (output.toString().trim().isEmpty) {
-        throw const AiFailure(AiErrorCode.response);
+        return ChatDiaryGenerationResult.empty;
       }
       final draft = privacy.restoreDiary(
         output.toString(),
@@ -831,7 +878,7 @@ class ChatDiaryController extends ChangeNotifier {
       );
       _ensureOperationIsCurrent(operationVersion);
       _handedOff = true;
-      return true;
+      return ChatDiaryGenerationResult.generated;
     } on AiFailure catch (failure) {
       if (operationVersion == _operationVersion) _setError(failure.code);
     } on Object {
@@ -842,7 +889,7 @@ class ChatDiaryController extends ChangeNotifier {
         notifyListeners();
       }
     }
-    return false;
+    return ChatDiaryGenerationResult.notGenerated;
   }
 
   void _cancelOperation() {
@@ -851,6 +898,7 @@ class ChatDiaryController extends ChangeNotifier {
     _client?.close();
     _client = null;
     _clientApiKey = null;
+    _clientConfig = null;
     busy = false;
     for (final message in chat?.activeMessages ?? <ChatDiaryMessage>[]) {
       if (message.status == ChatDiaryMessageStatus.pending) {
@@ -866,7 +914,8 @@ class ChatDiaryController extends ChangeNotifier {
   }
 
   void lock() {
-    stop();
+    _cancelOperation();
+    unawaited(persist());
     _saveTimer?.cancel();
     chat = null;
     _vaultSession = null;
@@ -907,7 +956,8 @@ class ChatDiaryController extends ChangeNotifier {
 
   @override
   void dispose() {
-    stop();
+    _cancelOperation();
+    unawaited(persist());
     _saveTimer?.cancel();
     _disposed = true;
     _vaultSession = null;

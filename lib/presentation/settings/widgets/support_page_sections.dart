@@ -1,13 +1,11 @@
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:material_ui/material_ui.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
+import 'package:quill_diary/infrastructure/billing/sponsor_billing_state.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/application/settings/sponsor_billing_state.dart';
+import 'package:quill_diary/presentation/settings/support_page_copy.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
-
-import '../support_page_copy.dart';
 
 class SupportProductsSection extends StatelessWidget {
   const SupportProductsSection({
@@ -38,52 +36,52 @@ class SupportProductsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color.alphaBlend(
-                      cs.secondary.withValues(alpha: 0.14),
-                      cs.surfaceContainerLow,
-                    ),
-                    shape: BoxShape.circle,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color.alphaBlend(
+                    cs.secondary.withValues(alpha: 0.14),
+                    cs.surfaceContainerLow,
                   ),
-                  child: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: Icon(
-                      Icons.volunteer_activism_rounded,
-                      color: cs.secondary,
-                      size: 20,
-                    ),
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Icon(
+                    Icons.volunteer_activism_rounded,
+                    color: cs.secondary,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        l10n.settingsSupportProductsSectionTitle,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          height: 1.25,
-                        ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      l10n.settingsSupportProductsSectionTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.settingsSupportProductsSectionBody,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.5,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.settingsSupportProductsSectionBody,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.5,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
           if (statusBanner != null) ...<Widget>[
             const SizedBox(height: 14),
             statusBanner,
@@ -102,10 +100,7 @@ class SupportProductsSection extends StatelessWidget {
             )
           else if (billing.productLoadError != null) ...<Widget>[
             _SupportProductLoadNoticeCard(
-              notice: supportProductLoadNotice(
-                l10n,
-                billing.productLoadError,
-              ),
+              notice: supportProductLoadNotice(l10n, billing.productLoadError),
               onRetry: onRetryLoad,
               isRefreshing: billing.isRefreshingProducts,
               isError:
@@ -183,32 +178,32 @@ class SupportInfoCard extends StatelessWidget {
       style: AppSurfaceStyle.outlinedElevated,
       padding: const EdgeInsets.all(18),
       child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(icon, color: cs.onSurfaceVariant, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: cs.onSurfaceVariant, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.5,
-                    ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.5,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
       ),
     );
   }

@@ -2,15 +2,14 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-
-import 'package:quill_diary/app/app_colors.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/infrastructure/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 typedef _IntroBullet = ({IconData icon, String text});
 typedef _IntroPage = ({String title, List<_IntroBullet> bullets});

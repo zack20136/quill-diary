@@ -1,12 +1,5 @@
-import '../../domain/recovery/recovery_metadata.dart';
-import '../../domain/security/unlocked_vault_session.dart';
-
-const String kInvalidBackupArchiveMessage = '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
-
-const String kBackupRecoveryKeyMismatchMessage =
-    '復原金鑰與此備份不相符。請輸入建立該備份時保存的復原金鑰。';
-
-const String kBackupNoEncryptedSampleMessage = '備份內找不到可驗證的加密日記檔，無法確認復原金鑰。';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 
 /// 完整 vault 備份 zip 內復原中繼資料的預覽。
 ///

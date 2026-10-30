@@ -1,7 +1,7 @@
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
 
-EntryIndexRecord buildEntryIndexRecord({
+DiaryEntrySummary buildDiaryEntrySummary({
   String id = 'jrn_TEST0001',
   String vaultId = 'vlt_TEST0001',
   String filePath = '/tmp/entry.ldj2',
@@ -20,7 +20,7 @@ EntryIndexRecord buildEntryIndexRecord({
   List<String> previewImagePaths = const <String>[],
 }) {
   final DateTime created = createdAt ?? DateTime.parse('2026-05-13T20:30:12Z');
-  return EntryIndexRecord(
+  return DiaryEntrySummary(
     id: id,
     vaultId: vaultId,
     filePath: filePath,

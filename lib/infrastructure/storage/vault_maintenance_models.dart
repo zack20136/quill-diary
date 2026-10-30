@@ -1,4 +1,4 @@
-import '../../domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 日記庫維護問題種類。
 enum VaultRepairIssueKind {
@@ -37,8 +37,9 @@ enum VaultMaintenanceFlowPhase {
 
 typedef VaultRepairProgressCallback = void Function(VaultRepairPhase phase);
 
-typedef VaultMaintenanceFlowProgressCallback =
-    void Function(VaultMaintenanceFlowPhase phase);
+typedef VaultMaintenanceFlowProgressCallback = void Function(
+  VaultMaintenanceFlowPhase phase,
+);
 
 /// 預計自動處理方式。
 enum VaultPlannedAction {
@@ -669,10 +670,6 @@ class VaultRepairSummary {
   bool get hasUnresolvedIssues =>
       findings.any((VaultFinding finding) => !finding.resolved) ||
       issueCounts.values.any((int count) => count > 0);
-
-  int get unresolvedFindingCount => findings
-      .where((VaultFinding finding) => !finding.resolved)
-      .fold(0, (int total, _) => total + 1);
 
   bool get hasCompletedActions =>
       relocatedEntries > 0 ||

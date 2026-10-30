@@ -9,30 +9,30 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
-import 'package:quill_diary/application/editor/editor_entry_providers.dart';
+import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
-import 'package:quill_diary/application/session/providers/session_providers.dart';
-import 'package:quill_diary/application/session/state/app_session_state.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database.dart';
-import 'package:quill_diary/infrastructure/preferences/preferences_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
-import 'package:quill_diary/infrastructure/storage/storage_path_providers.dart';
-import 'package:quill_diary/infrastructure/storage/storage_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/home/widgets/home_chat_diary_draft_card.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/app_test_theme.dart';
@@ -49,8 +49,8 @@ void main() {
       model: 'local-model',
       baseUrl: 'https://custom.example/v1',
     );
-    final store = MemoryChatDiaryStore();
-    final connections = MemoryAiConnectionSettingsStore()
+    final store = OverviewChatDiaryStore();
+    final connections = OverviewAiSettingsStore()
       ..settings = AiConnectionSettings(
         provider: AiProvider.custom,
         configs: {AiProvider.custom: connectionConfig},
@@ -60,14 +60,14 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (context, _) => const HomePage()),
         GoRoute(
-          path: '${AppRouter.chatDiaryRoutePrefix}/new/:id',
+          path: '${AppRoutes.chatDiaryRoutePrefix}/new/:id',
           builder: (_, state) => ChatDiaryPage(
             chatId: state.pathParameters['id']!,
             isNewChat: true,
           ),
         ),
         GoRoute(
-          path: '${AppRouter.chatDiaryRoutePrefix}/:id',
+          path: '${AppRoutes.chatDiaryRoutePrefix}/:id',
           builder: (_, state) =>
               ChatDiaryPage(chatId: state.pathParameters['id']!),
         ),
@@ -103,17 +103,26 @@ void main() {
     await tester.tap(find.text('聊天寫日記'));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const ValueKey('ai-model-autocomplete')),
+      find.byKey(const ValueKey('ai-model-add-field-openai')),
       'manual-model',
     );
+    await tester.pump();
+    final Finder addModel = find.byKey(const ValueKey('ai-model-add-openai'));
+    await tester.ensureVisible(addModel);
+    await tester.tap(addModel);
+    await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, '儲存'));
     await tester.pumpAndSettle();
     expect(store.storedChats, isEmpty);
-    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
+    expect(
+      find.text('至少填一個服務的 API Key，或填自訂服務網址，並打開一個模型，才選得到。'),
+      findsOneWidget,
+    );
     expect(networkCalls, 0);
-    expect(find.text('請先填寫服務網址、模型與必要的 API Key。'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
+    await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/');
     connections.settings = readySettings;
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
@@ -221,13 +230,12 @@ void main() {
             model: 'synthetic-model',
             baseUrl: 'https://synthetic.example/v1',
           );
-          final connections = MemoryAiConnectionSettingsStore()
+          final connections = OverviewAiSettingsStore()
             ..settings = const AiConnectionSettings(
               provider: AiProvider.custom,
               configs: {AiProvider.custom: connectionConfig},
-            );
-          final diarySettings = MemoryChatDiarySettingsStore()
-            ..settings = const ChatDiarySettings(hidePersonNames: false);
+            )
+            ..chatDiary = const ChatDiarySettings(hidePersonNames: false);
           Future<void> waitUntil(
             bool Function() ready, {
             bool waitForIdle = true,
@@ -263,12 +271,7 @@ void main() {
                   ),
                   vaultRepositoryProvider.overrideWithValue(harness.repository),
                   chatDiaryStoreProvider.overrideWithValue(store),
-                  aiConnectionSettingsStoreProvider.overrideWithValue(
-                    connections,
-                  ),
-                  chatDiarySettingsStoreProvider.overrideWithValue(
-                    diarySettings,
-                  ),
+                  aiSettingsStoreProvider.overrideWithValue(connections),
                   userPreferencesProvider.overrideWithValue(
                     UserPreferences(
                       storageFile: File(
@@ -282,7 +285,7 @@ void main() {
                           ..output = '# 合成日記\n\n今天留下的一段合成內容。',
                   ),
                   homeEntriesProvider.overrideWith(
-                    (_) => const AsyncData<List<EntryIndexRecord>>([]),
+                    (_) => const AsyncData<List<DiaryEntrySummary>>([]),
                   ),
                   homeEntryIndexListProvider.overrideWith(
                     (_) async =>
@@ -346,18 +349,18 @@ void main() {
             final scope = ProviderScope.containerOf(
               tester.element(find.byType(EditorPage)),
             );
-            final initialRevision = scope.read(entryIndexRevisionProvider);
+            final initialRevision = scope.read(diaryRevisionProvider);
             await tester.tap(find.byTooltip('儲存'));
             if (leaveDuringSave) {
               await waitUntil(
                 () => crypto.manifestWriteStarted!.isCompleted,
                 waitForIdle: false,
               );
-              router.go(AppRouter.homeRoute);
+              router.go(AppRoutes.homeRoute);
               await waitUntil(() => find.byType(EditorPage).evaluate().isEmpty);
               saveGate.complete();
               await waitUntil(
-                () => scope.read(entryIndexRevisionProvider) > initialRevision,
+                () => scope.read(diaryRevisionProvider) > initialRevision,
               );
               final savedEntries = await harness.repository.listEntries();
               expect(savedEntries, hasLength(1));
@@ -370,7 +373,7 @@ void main() {
               );
               expect(
                 router.routeInformationProvider.value.uri.path,
-                AppRouter.homeRoute,
+                AppRoutes.homeRoute,
               );
               expect(tester.takeException(), isNull);
               return;
@@ -380,7 +383,7 @@ void main() {
                   tester
                       .widgetList<EditorPage>(find.byType(EditorPage))
                       .any((page) => page.entryId != null) &&
-                  scope.read(entryIndexRevisionProvider) > initialRevision,
+                  scope.read(diaryRevisionProvider) > initialRevision,
             );
             final savedId = tester
                 .widgetList<EditorPage>(find.byType(EditorPage))
@@ -447,11 +450,11 @@ void main() {
         imageIds: ['kept', 'missing', 'broken', 'invalid'],
       ),
     );
-    final store = MemoryChatDiaryStore(chat)
+    final store = OverviewChatDiaryStore(chat)
       ..images['kept'] = testAiPng
       ..images['invalid'] = Uint8List.fromList([0, 1, 2])
       ..failedImages.add('broken');
-    final repository = MemoryChatDiaryEntryRepository(
+    final repository = OverviewChatDiaryEntryRepository(
       DiaryEntry(
         id: 'entry',
         vaultId: 'vault',
@@ -473,7 +476,7 @@ void main() {
           builder: (_, _) => ChatDiaryPage(entryId: 'entry'),
         ),
         GoRoute(
-          path: '${AppRouter.editorRoute}/:id',
+          path: '${AppRoutes.editorRoute}/:id',
           builder: (context, _) => Scaffold(
             body: Column(
               children: [
@@ -504,9 +507,7 @@ void main() {
           appSessionProvider.overrideWith(ChatDiaryNavigationSession.new),
           chatDiaryStoreProvider.overrideWithValue(store),
           vaultRepositoryProvider.overrideWithValue(repository),
-          aiConnectionSettingsStoreProvider.overrideWithValue(
-            MemoryAiConnectionSettingsStore(),
-          ),
+          aiSettingsStoreProvider.overrideWithValue(OverviewAiSettingsStore()),
         ],
         child: MaterialApp.router(
           routerConfig: router,

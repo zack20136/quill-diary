@@ -1,6 +1,5 @@
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 sealed class EditorAttachmentItem {
   const EditorAttachmentItem();

@@ -1,9 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import '../../domain/shared/value_objects.dart';
-import '../../l10n/l10n.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// App 內使用者可見的日期、時間、數量與檔案大小格式化（單一來源）。
 abstract final class DisplayFormat {
@@ -163,18 +162,6 @@ abstract final class DisplayFormat {
   static String formatRatio(int numerator, int denominator, String unit) =>
       '$numerator / $denominator $unit';
 
-  /// 耗時：`350 毫秒` 或 `1.2 秒`。
-  static String formatDurationMs(AppLocalizations l10n, int milliseconds) {
-    if (milliseconds < 1000) {
-      return formatCountUnit(milliseconds, l10n.commonUnitMilliseconds);
-    }
-    final double seconds = milliseconds / 1000;
-    if (seconds < 10) {
-      return '${seconds.toStringAsFixed(1)} ${l10n.commonUnitSeconds}';
-    }
-    return formatCountUnit(seconds.round(), l10n.commonUnitSeconds);
-  }
-
   /// 檔案大小：`1.2 MB`。
   static String formatBytesForDisplay(int bytes) {
     if (bytes < 1024) {
@@ -190,11 +177,6 @@ abstract final class DisplayFormat {
     }
     final double gib = mib / 1024;
     return '${gib.toStringAsFixed(gib >= 10 ? 0 : 1)} GB';
-  }
-
-  /// Downloads 匯出路徑：`Downloads / quill-diary / file.html`。
-  static String formatDownloadsDisplayPath(String fileName) {
-    return 'Downloads / ${AppIdentifiers.downloadsExportDirectory} / $fileName';
   }
 
   /// 從本機路徑或 Android SAF content URI 取出可讀檔名。
@@ -240,4 +222,7 @@ abstract final class DisplayFormat {
     }
     return l10n.commonGoogleAccountLabel(trimmedName, trimmedEmail);
   }
+
+  static String formatPicturesDisplayPath(String fileName) =>
+      'Pictures / ${AppIdentifiers.downloadsExportDirectory} / $fileName';
 }

@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-import 'package:quill_diary/app/app_identifiers.dart';
-import '../../domain/shared/value_objects.dart';
-import 'keystore_unlock_policy.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 可信裝置金鑰槽位的公開中繼資料。
 class TrustedDeviceInfo {
@@ -54,8 +54,6 @@ class WrappedRecoveryKeyRecord {
     required this.platform,
   });
 
-  static const int kWrappedRecoveryKeyFormatVersion = 1;
-
   final DeviceSlotId slotId;
   final String nonceBase64;
   final String ciphertextBase64;
@@ -77,10 +75,10 @@ class WrappedRecoveryKeyRecord {
   factory WrappedRecoveryKeyRecord.fromJson(Map<Object?, Object?> json) {
     final int formatVersion =
         int.tryParse(
-          '${json['format_version'] ?? kWrappedRecoveryKeyFormatVersion}',
+          '${json['format_version'] ?? DataVersions.wrappedRecoveryKey}',
         ) ??
-        kWrappedRecoveryKeyFormatVersion;
-    if (formatVersion != kWrappedRecoveryKeyFormatVersion) {
+        DataVersions.wrappedRecoveryKey;
+    if (formatVersion != DataVersions.wrappedRecoveryKey) {
       throw DeviceKeyUnsupportedFormatException(
         '不支援的可信裝置金鑰格式版本：$formatVersion。',
       );
@@ -381,13 +379,15 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     required String ciphertextBase64,
   }) async {
     try {
-      final List<Object?>? result = await _channel
-          .invokeListMethod<Object?>('unwrapWithDeviceKey', <String, Object?>{
-            'vaultId': vaultId,
-            'slotId': slotId,
-            'nonce': nonceBase64,
-            'ciphertext': ciphertextBase64,
-          });
+      final List<Object?>? result = await _channel.invokeListMethod<Object?>(
+        'unwrapWithDeviceKey',
+        <String, Object?>{
+          'vaultId': vaultId,
+          'slotId': slotId,
+          'nonce': nonceBase64,
+          'ciphertext': ciphertextBase64,
+        },
+      );
       if (result == null) {
         throw const DeviceKeyInvalidatedException('無法使用裝置金鑰解開資料。');
       }

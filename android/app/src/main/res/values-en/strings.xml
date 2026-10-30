@@ -42,4 +42,7 @@
     <string name="drive_auth_unavailable">Google sign-in is unavailable on this device. Check Google Play services and try again.</string>
     <string name="drive_auth_cancelled">Google sign-in was canceled. The account is not connected.</string>
     <string name="drive_auth_failed">Google sign-in failed. Please try again later.</string>
+    <string name="device_key_wrap_prompt">Verify your identity to protect the recovery key</string>
+    <string name="device_key_unwrap_prompt">Verify your identity to unlock the recovery key</string>
+    <string name="device_key_rewrap_prompt">Updating unlock settings. Complete verification</string>
 </resources>

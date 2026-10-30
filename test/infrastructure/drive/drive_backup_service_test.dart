@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -81,24 +82,25 @@ void main() {
 
   group('雲端備份保留規則', () {
     test('sortDriveBackupsNewestFirst 會把沒有 createdAt 的檔案排到最舊端', () {
-      final List<DriveBackupFile> sorted =
-          sortDriveBackupsNewestFirst(<DriveBackupFile>[
-            DriveBackupFile(
-              id: 'unknown',
-              name: 'backup_unknown.zip',
-              createdAt: null,
-            ),
-            DriveBackupFile(
-              id: 'old',
-              name: 'backup_old.zip',
-              createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
-            ),
-            DriveBackupFile(
-              id: 'new',
-              name: 'backup_new.zip',
-              createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
-            ),
-          ]);
+      final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(
+        <DriveBackupFile>[
+          DriveBackupFile(
+            id: 'unknown',
+            name: 'backup_unknown.zip',
+            createdAt: null,
+          ),
+          DriveBackupFile(
+            id: 'old',
+            name: 'backup_old.zip',
+            createdAt: DateTime.parse('2026-05-01T00:00:00Z'),
+          ),
+          DriveBackupFile(
+            id: 'new',
+            name: 'backup_new.zip',
+            createdAt: DateTime.parse('2026-05-03T00:00:00Z'),
+          ),
+        ],
+      );
 
       expect(sorted.map((DriveBackupFile file) => file.id), <String>[
         'new',
