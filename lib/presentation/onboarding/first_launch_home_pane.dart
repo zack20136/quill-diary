@@ -94,7 +94,7 @@ class _FirstLaunchActionCard extends StatelessWidget {
               Icon(
                 icon,
                 size: 28,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -116,7 +116,7 @@ class _FirstLaunchActionCard extends StatelessWidget {
               const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ],
           ),

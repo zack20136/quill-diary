@@ -1,6 +1,5 @@
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
-
-export 'package:quill_diary/domain/ai/ai_catalog.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 
 enum AiApiProtocol {
   chatCompletions,
@@ -63,11 +62,23 @@ bool chatProviderCanList(AiConnectionConfig config, {required bool hasApiKey}) {
 }
 
 class ChatModelOption {
-  const ChatModelOption({required this.provider, required this.modelId});
-
-  final AiProvider provider;
-  final String modelId;
+  const ChatModelOption({
+    required this.connectionConfig,
+    this.isCurrentSnapshot = false,
+  });
+  final AiConnectionConfig connectionConfig;
+  final bool isCurrentSnapshot;
+  String get connectionId => connectionConfig.connectionId;
+  String get modelId => connectionConfig.model;
 }
+
+bool sameAiTarget(AiConnectionConfig left, AiConnectionConfig right) =>
+    left.connectionId == right.connectionId &&
+    left.provider == right.provider &&
+    left.model.trim() == right.model.trim() &&
+    left.protocol == right.protocol &&
+    left.effectiveBaseUrl == right.effectiveBaseUrl &&
+    left.workspaceId == right.workspaceId;
 
 class AiConnectionConfig {
   const AiConnectionConfig({
@@ -80,9 +91,18 @@ class AiConnectionConfig {
     this.enabledModels = const [],
     this.knownBuiltinModels,
     this.thinkingLevels = const {},
+    this.thinkingOverrides = const {},
+    this.customConnectionId,
+    this.displayName = '',
   });
 
   final AiProvider provider;
+  final String? customConnectionId;
+  final String displayName;
+  String get connectionId => provider == AiProvider.custom
+      ? customConnectionId ?? 'custom'
+      : provider.name;
+  final Map<String, AiModelThinkingOverride> thinkingOverrides;
 
   /// 下一則新聊天使用的模型。聊天室選模型時寫回這裡。
   final String model;
@@ -131,7 +151,9 @@ class AiConnectionConfig {
               )
               .toString()
               .replaceFirst(RegExp(r'/+$'), '');
-    return '${provider.name}:$normalized';
+    return connectionId == 'custom'
+        ? 'custom:$normalized'
+        : 'custom:$connectionId:$normalized';
   }
 
   /// 畫面上這個提供商的模型：寫死名稱在前，手動加入的接在後面。
@@ -156,6 +178,9 @@ class AiConnectionConfig {
     List<String>? enabledModels,
     Object? knownBuiltinModels = _keepKnown,
     Map<String, AiThinkingLevel>? thinkingLevels,
+    Map<String, AiModelThinkingOverride>? thinkingOverrides,
+    String? customConnectionId,
+    String? displayName,
   }) => AiConnectionConfig(
     provider: provider,
     model: model ?? this.model,
@@ -168,6 +193,9 @@ class AiConnectionConfig {
         ? this.knownBuiltinModels
         : knownBuiltinModels as List<String>?,
     thinkingLevels: thinkingLevels ?? this.thinkingLevels,
+    thinkingOverrides: thinkingOverrides ?? this.thinkingOverrides,
+    customConnectionId: customConnectionId ?? this.customConnectionId,
+    displayName: displayName ?? this.displayName,
   );
 
   /// 送出這一則需要的連線。不帶模型清單。
@@ -225,7 +253,30 @@ AiConnectionConfig _connectionConfigFromJson(Map<String, dynamic> json) {
         ? _modelNames(json['known_builtin_models'])
         : null,
     thinkingLevels: _thinkingLevels(json['thinking_levels']),
+    customConnectionId: json['connection_id'] as String?,
+    displayName: json['display_name'] as String? ?? '',
+    thinkingOverrides: _thinkingOverrides(json['thinking_overrides']),
   );
+}
+
+Map<String, AiModelThinkingOverride> _thinkingOverrides(Object? value) {
+  if (value is! Map) return const {};
+  final result = <String, AiModelThinkingOverride>{};
+  for (final entry in value.entries) {
+    if (entry.key is! String ||
+        (entry.key as String).trim().isEmpty ||
+        entry.value is! Map) {
+      continue;
+    }
+    try {
+      result[(entry.key as String).trim()] = AiModelThinkingOverride.fromJson(
+        Map<String, dynamic>.from(entry.value as Map),
+      );
+    } on Object {
+      // 無效的單一模型覆寫不影響其餘連線與舊設定。
+    }
+  }
+  return result;
 }
 
 Map<String, AiThinkingLevel> _thinkingLevels(Object? value) {
@@ -292,6 +343,16 @@ Map<String, Object?> _connectionJson(
   required bool includeCatalog,
 }) => {
   'provider': config.provider.name,
+  if (config.provider == AiProvider.custom) ...{
+    'connection_id': config.connectionId,
+    if (config.displayName.isNotEmpty) 'display_name': config.displayName,
+  },
+  if (config.thinkingOverrides.isNotEmpty)
+    'thinking_overrides': {
+      for (final entry in config.thinkingOverrides.entries)
+        if (includeCatalog || entry.key == config.model.trim())
+          entry.key: entry.value.toJson(),
+    },
   'default_model': config.model.trim(),
   if (includeCatalog) ...{
     'enabled_models': config.enabledModels,
@@ -357,10 +418,15 @@ AiConnectionConfig normalizeModelCatalog(AiConnectionConfig config) {
     config.thinkingLevels,
     catalog,
   );
+  final overrides = {
+    for (final entry in config.thinkingOverrides.entries)
+      if (catalog.contains(entry.key)) entry.key: entry.value,
+  };
   if (model == config.model &&
       _sameNames(added, config.addedModels) &&
       _sameNames(enabled, config.enabledModels) &&
-      _sameThinking(thinking, config.thinkingLevels)) {
+      _sameThinking(thinking, config.thinkingLevels) &&
+      overrides.length == config.thinkingOverrides.length) {
     return config;
   }
   return config.copyWith(
@@ -368,6 +434,7 @@ AiConnectionConfig normalizeModelCatalog(AiConnectionConfig config) {
     addedModels: added,
     enabledModels: enabled,
     thinkingLevels: thinking,
+    thinkingOverrides: overrides,
   );
 }
 
@@ -422,9 +489,8 @@ AiConnectionConfig adoptCatalogModels(AiConnectionConfig config) {
   AiConnectionSettings settings,
 ) {
   var writeBack = false;
-  final Map<AiProvider, AiConnectionConfig> configs = {};
-  for (final MapEntry<AiProvider, AiConnectionConfig> entry
-      in settings.configs.entries) {
+  final Map<String, AiConnectionConfig> connections = {};
+  for (final entry in settings.connections.entries) {
     final AiConnectionConfig next = adoptCatalogModels(entry.value);
     final List<String>? known = entry.value.knownBuiltinModels;
     if (known == null ||
@@ -432,16 +498,17 @@ AiConnectionConfig adoptCatalogModels(AiConnectionConfig config) {
         !_sameNames(entry.value.addedModels, next.addedModels) ||
         !_sameNames(entry.value.enabledModels, next.enabledModels) ||
         !_sameThinking(entry.value.thinkingLevels, next.thinkingLevels) ||
+        entry.value.thinkingOverrides.length != next.thinkingOverrides.length ||
         entry.value.model != next.model) {
       writeBack = true;
     }
-    configs[entry.key] = next;
+    connections[entry.key] = next;
   }
   if (!writeBack) return (settings: settings, writeBack: false);
   return (
     settings: AiConnectionSettings(
-      provider: settings.provider,
-      configs: configs,
+      activeConnectionId: settings.activeConnectionId,
+      connections: connections,
     ),
     writeBack: true,
   );
@@ -452,6 +519,13 @@ List<AiThinkingLevel> thinkingChoicesFor(
   AiConnectionConfig config,
   String modelId,
 ) {
+  final override = config.thinkingOverrides[modelId.trim()];
+  if (override != null) {
+    return [
+      for (final level in AiThinkingLevel.values)
+        if (override.levels.containsKey(level)) level,
+    ];
+  }
   final AiCatalogModel? model = catalogModelFor(
     config.provider,
     modelId.trim(),
@@ -469,6 +543,13 @@ AiThinkingLevel resolvedThinkingLevel(
 ]) {
   final String id = (modelId ?? config.model).trim();
   final AiCatalogModel? model = catalogModelFor(config.provider, id);
+  final override = config.thinkingOverrides[id];
+  if (override != null) {
+    final stored = config.thinkingLevels[id];
+    return override.levels.containsKey(stored)
+        ? stored!
+        : override.defaultLevel ?? AiThinkingLevel.off;
+  }
   if (model?.thinkingFixed == true) return model!.defaultThinking;
   final List<AiThinkingLevel> choices = thinkingChoicesFor(config, id);
   final AiThinkingLevel? stored = config.thinkingLevels[id];
@@ -488,7 +569,9 @@ AiConnectionConfig setThinkingLevel(
   final Map<String, AiThinkingLevel> next = Map.of(config.thinkingLevels);
   final AiCatalogModel? model = catalogModelFor(config.provider, id);
   final AiThinkingLevel fallback =
-      model?.defaultThinking ?? _protocolDefaultThinking(config.protocol);
+      config.thinkingOverrides[id]?.defaultLevel ??
+      model?.defaultThinking ??
+      _protocolDefaultThinking(config.protocol);
   if (level == fallback) {
     next.remove(id);
   } else {
@@ -503,6 +586,8 @@ Map<String, Object?> thinkingRequestFields(AiConnectionConfig config) {
   if (id.isEmpty) return const {};
   final AiCatalogModel? model = catalogModelFor(config.provider, id);
   final AiThinkingLevel level = resolvedThinkingLevel(config, id);
+  final override = config.thinkingOverrides[id];
+  if (override != null) return override.levels[level] ?? const {};
   if (model != null) return _profileFields(model.thinkingProfile, level);
   return _protocolFields(config.protocol, level);
 }
@@ -597,7 +682,16 @@ AiConnectionConfig addModel(AiConnectionConfig config, String raw) {
   if (current.catalog.contains(id) && current.enabledModels.contains(id)) {
     return current;
   }
-  return setModelEnabled(current, id, enabled: true);
+  final added = setModelEnabled(current, id, enabled: true);
+  if (current.provider != AiProvider.custom || current.catalog.contains(id)) {
+    return added;
+  }
+  return added.copyWith(
+    thinkingOverrides: {
+      ...added.thinkingOverrides,
+      id: AiModelThinkingOverride.omit(),
+    },
+  );
 }
 
 AiConnectionConfig setModelEnabled(
@@ -656,6 +750,8 @@ AiConnectionConfig removeAddedModel(AiConnectionConfig config, String modelId) {
     model: model,
     addedModels: added,
     enabledModels: enabled,
+    thinkingLevels: {...current.thinkingLevels}..remove(id),
+    thinkingOverrides: {...current.thinkingOverrides}..remove(id),
   );
 }
 
@@ -663,29 +759,27 @@ AiConnectionConfig removeAddedModel(AiConnectionConfig config, String modelId) {
 ({List<ChatModelOption> models, bool currentIsExtra}) chatModelMenu({
   required AiConnectionSettings settings,
   required AiConnectionConfig chatConfig,
-  required bool Function(AiProvider provider) hasApiKey,
+  required bool Function(AiConnectionConfig connection) hasApiKey,
 }) {
-  final List<ChatModelOption> models = [];
-  for (final AiProvider provider in aiCatalogProviders) {
-    final AiConnectionConfig config = settings.configs.containsKey(provider)
-        ? normalizeModelCatalog(settings.configs[provider]!)
-        : defaultConnection(provider);
-    if (!chatProviderCanList(config, hasApiKey: hasApiKey(provider))) {
+  final models = <ChatModelOption>[];
+  for (final config in settings.orderedConnections) {
+    if (!chatProviderCanList(config, hasApiKey: hasApiKey(config))) {
       continue;
     }
-    for (final String id in config.enabledModels) {
-      models.add(ChatModelOption(provider: provider, modelId: id));
+    for (final model in config.enabledModels) {
+      models.add(
+        ChatModelOption(connectionConfig: config.copyWith(model: model)),
+      );
     }
   }
-  final String current = chatConfig.model.trim();
-  final bool listed = models.any(
-    (ChatModelOption option) =>
-        option.provider == chatConfig.provider && option.modelId == current,
-  );
-  final bool currentIsExtra = current.isNotEmpty && !listed;
+  final currentIsExtra =
+      chatConfig.model.trim().isNotEmpty &&
+      !models.any(
+        (option) => sameAiTarget(option.connectionConfig, chatConfig),
+      );
   if (currentIsExtra) {
     models.add(
-      ChatModelOption(provider: chatConfig.provider, modelId: current),
+      ChatModelOption(connectionConfig: chatConfig, isCurrentSnapshot: true),
     );
   }
   return (models: models, currentIsExtra: currentIsExtra);
@@ -693,38 +787,91 @@ AiConnectionConfig removeAddedModel(AiConnectionConfig config, String modelId) {
 
 class AiConnectionSettings {
   const AiConnectionSettings({
-    this.provider = AiProvider.openai,
-    this.configs = const {},
+    this.activeConnectionId = 'openai',
+    this.connections = const {},
   });
-  final AiProvider provider;
-  final Map<AiProvider, AiConnectionConfig> configs;
-  AiConnectionConfig configFor(AiProvider value) =>
-      configs[value] ?? AiConnectionConfig(provider: value);
-  AiConnectionConfig get activeConfig => configFor(provider);
+  final String activeConnectionId;
+  final Map<String, AiConnectionConfig> connections;
+
+  AiConnectionConfig connectionFor(String id) {
+    final saved = connections[id];
+    if (saved != null) return saved;
+    for (final provider in aiCatalogProviders) {
+      if (provider != AiProvider.custom && provider.name == id) {
+        return defaultConnection(provider);
+      }
+    }
+    throw StateError('找不到 AI 連線：$id');
+  }
+
+  AiConnectionConfig get activeConfig {
+    final active = connections[activeConnectionId];
+    if (active != null) return active;
+    if (active == null) {
+      for (final provider in aiCatalogProviders) {
+        if (provider != AiProvider.custom &&
+            provider.name == activeConnectionId) {
+          return defaultConnection(provider);
+        }
+      }
+    }
+    for (final config in orderedConnections) {
+      if (connections.containsKey(config.connectionId) &&
+          config.isConfigured &&
+          config.enabledModels.isNotEmpty) {
+        return config;
+      }
+    }
+    return defaultConnection(AiProvider.openai);
+  }
+
+  List<AiConnectionConfig> get orderedConnections => [
+    for (final provider in aiCatalogProviders)
+      if (provider != AiProvider.custom) connectionFor(provider.name),
+    for (final config in connections.values)
+      if (config.provider == AiProvider.custom) config,
+  ];
+
   Map<String, Object?> toJson() => {
-    'provider': provider.name,
-    'configs': {
-      for (final entry in configs.entries)
-        entry.key.name: entry.value.toStoredJson(),
+    'active_connection_id': activeConnectionId,
+    'connections': {
+      for (final entry in connections.entries)
+        entry.key: entry.value.toStoredJson(),
     },
   };
+
   factory AiConnectionSettings.fromJson(
     Map<String, dynamic> json, {
     bool adoptCatalog = true,
   }) {
-    final AiConnectionSettings parsed = AiConnectionSettings(
-      provider: AiProvider.values.byName(
-        json['provider'] as String? ?? 'openai',
-      ),
-      configs: {
-        for (final entry
-            in (json['configs'] as Map<String, dynamic>? ?? {}).entries)
-          AiProvider.values.byName(entry.key): _connectionConfigFromJson(
-            (entry.value as Map).cast<String, dynamic>(),
-          ),
-      },
+    final entries = <String, AiConnectionConfig>{};
+    final current = json['connections'];
+    final legacy = json['configs'];
+    final raw = current is Map
+        ? current
+        : legacy is Map
+        ? legacy
+        : const {};
+    for (final entry in raw.entries) {
+      if (entry.value is Map && (entry.value as Map)['archived'] == true) {
+        continue;
+      }
+      final config = _connectionConfigFromJson(
+        Map<String, dynamic>.from(entry.value as Map),
+      );
+      if (current is Map && config.connectionId != entry.key) {
+        throw const FormatException('連線識別不一致。');
+      }
+      entries[config.connectionId] = config;
+    }
+    final active =
+        json['active_connection_id'] as String? ??
+        json['provider'] as String? ??
+        'openai';
+    final parsed = AiConnectionSettings(
+      activeConnectionId: active,
+      connections: entries,
     );
-    if (!adoptCatalog) return parsed;
-    return adoptConnectionCatalog(parsed).settings;
+    return adoptCatalog ? adoptConnectionCatalog(parsed).settings : parsed;
   }
 }

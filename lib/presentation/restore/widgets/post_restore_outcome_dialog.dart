@@ -18,9 +18,7 @@ Future<bool> showPostRestoreOutcomeDialog(
           outcome.isError
               ? Icons.error_outline_rounded
               : Icons.check_circle_outline_rounded,
-          color: outcome.isError
-              ? theme.colorScheme.error
-              : theme.colorScheme.primary,
+          color: theme.colorScheme.onSurface,
         ),
         title: outcome.title,
         content: SingleChildScrollView(

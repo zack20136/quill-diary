@@ -18,6 +18,7 @@ import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
@@ -28,12 +29,9 @@ import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspe
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
-import 'package:quill_diary/presentation/home/portable_export_confirm.dart';
-import 'package:quill_diary/presentation/home/portable_import_confirm.dart';
 import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
 import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
@@ -43,6 +41,8 @@ import 'package:quill_diary/presentation/settings/widgets/recovery_key_save_dial
 import 'package:quill_diary/presentation/settings/widgets/settings_action_dialogs.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_flow_feedback.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/presentation/transfer/portable_export_confirm.dart';
+import 'package:quill_diary/presentation/transfer/portable_import_confirm.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -1574,10 +1574,7 @@ class _SettingsLegalRow extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              Icon(Icons.chevron_right_rounded, color: colorScheme.onSurface),
             ],
           ),
         ),

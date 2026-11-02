@@ -15,6 +15,7 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
@@ -52,8 +53,8 @@ void main() {
     final store = OverviewChatDiaryStore();
     final connections = OverviewAiSettingsStore()
       ..settings = AiConnectionSettings(
-        provider: AiProvider.custom,
-        configs: {AiProvider.custom: connectionConfig},
+        activeConnectionId: 'custom',
+        connections: {'custom': connectionConfig},
       );
     var networkCalls = 0;
     final router = GoRouter(
@@ -87,6 +88,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     final readySettings = connections.settings;
+    await tester.tap(find.byTooltip('新增日記'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('關閉'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(store.storedChats, isEmpty);
+    expect(networkCalls, 0);
     connections.settings = const AiConnectionSettings();
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
@@ -232,8 +240,8 @@ void main() {
           );
           final connections = OverviewAiSettingsStore()
             ..settings = const AiConnectionSettings(
-              provider: AiProvider.custom,
-              configs: {AiProvider.custom: connectionConfig},
+              activeConnectionId: 'custom',
+              connections: {'custom': connectionConfig},
             )
             ..chatDiary = const ChatDiarySettings(hidePersonNames: false);
           Future<void> waitUntil(

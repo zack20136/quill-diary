@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_dialog.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
@@ -349,9 +349,7 @@ Future<bool?> showInspectVaultResultDialog(
         groups.isEmpty
             ? Icons.check_circle_outline_rounded
             : Icons.warning_amber_rounded,
-        color: groups.isEmpty
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.tertiary,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       title: l10n.settingsInspectVaultResultTitle,
       content: SizedBox(
@@ -689,7 +687,7 @@ class VaultFindingSummaryCard extends StatelessWidget {
                           l10n.settingsRepairVaultResultSalvageButton,
                         ),
                       ),
-                    if (onDelete != null)
+                    if (onDelete != null && presentation.canPermanentlyDelete)
                       FilledButton.tonal(
                         onPressed: actionsBusy ? null : onDelete,
                         child: Text(l10n.settingsAbnormalEntriesDeleteButton),
@@ -868,7 +866,7 @@ class _RestorePrecheckSummaryTile extends StatelessWidget {
     final ColorScheme colorScheme = theme.colorScheme;
     final Color iconColor = item.isWarning
         ? colorScheme.error
-        : colorScheme.primary;
+        : colorScheme.onSurface;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -889,6 +887,7 @@ class _RestorePrecheckSummaryTile extends StatelessWidget {
                   Text(
                     item.title,
                     style: theme.textTheme.titleSmall?.copyWith(
+                      color: iconColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

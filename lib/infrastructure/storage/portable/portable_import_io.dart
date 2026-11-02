@@ -10,6 +10,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/import/easy_diary/easy_diary_backup_import.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
 import 'package:quill_diary/infrastructure/storage/portable/html_import_parser.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_date_text.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
@@ -171,6 +172,13 @@ class PortableImportIo {
         );
       }
       return (analyzed: portableAnalyzed, ownedTempRoot: tempRoot);
+    } on ArchiveExtractionLimitException {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+      throw const VaultBackupException(
+        VaultBackupIssue.extractionLimitExceeded,
+      );
     } catch (_) {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);

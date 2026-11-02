@@ -476,7 +476,7 @@ class _RelationshipTypesManageDialogState
                 onPressed: _busy || _addCtrl.text.trim().isEmpty
                     ? null
                     : () => unawaited(_addType()),
-                icon: Icon(Icons.add_rounded, color: cs.primary),
+                icon: const Icon(Icons.add_rounded),
               ),
             ),
             onSubmitted: (_) => unawaited(_addType()),

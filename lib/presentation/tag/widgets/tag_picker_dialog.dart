@@ -151,11 +151,7 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
       colors,
     );
     return ActionChip(
-      avatar: Icon(
-        Icons.add_rounded,
-        size: 16,
-        color: fg0.withValues(alpha: 0.95),
-      ),
+      avatar: Icon(Icons.add_rounded, size: 16, color: fg0),
       label: Text(label),
       labelStyle: theme.textTheme.labelMedium?.copyWith(
         fontWeight: FontWeight.w700,
@@ -228,7 +224,10 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    Icon(Icons.label_rounded, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.label_rounded,
+                      color: theme.colorScheme.onSurface,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -242,10 +241,7 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
                       tooltip: context.l10n.editorTagAddTooltip,
                       visualDensity: VisualDensity.compact,
                       onPressed: _openTagAccentComposer,
-                      icon: Icon(
-                        Icons.add_rounded,
-                        color: theme.colorScheme.primary,
-                      ),
+                      icon: const Icon(Icons.add_rounded),
                     ),
                     IconButton(
                       tooltip: context.l10n.commonCloseTooltip,

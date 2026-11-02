@@ -8,6 +8,8 @@ typedef DeviceSlotId = String;
 typedef PersonId = String;
 
 /// 穩定前綴 ID 使匯出檔案可讀，並避免跨類型混淆。
+String generateAiConnectionId() => 'aic_${Ulid().toBase32()}';
+
 String generateVaultId() => 'vlt_${Ulid().toBase32()}';
 
 String generateEntryId() => 'jrn_${Ulid().toBase32()}';

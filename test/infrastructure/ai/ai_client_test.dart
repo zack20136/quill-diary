@@ -1,12 +1,132 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 
 void main() {
+  test('每種協定的連線測試與串流共用自訂 Thinking，保留本文與授權型別', () async {
+    for (final protocol in AiApiProtocol.values) {
+      final transport = RecordingAiTransport();
+      transport.respond(switch (protocol) {
+        AiApiProtocol.chatCompletions => {
+          'choices': [
+            {
+              'message': {'content': 'OK'},
+            },
+          ],
+        },
+        AiApiProtocol.responses => {
+          'output': [
+            {
+              'content': [
+                {'type': 'output_text', 'text': 'OK'},
+              ],
+            },
+          ],
+        },
+        AiApiProtocol.claudeMessages => {
+          'content': [
+            {'type': 'text', 'text': 'OK'},
+          ],
+        },
+        AiApiProtocol.geminiContent => {
+          'candidates': [
+            {
+              'content': {
+                'parts': [
+                  {'text': 'OK'},
+                ],
+              },
+            },
+          ],
+        },
+        AiApiProtocol.ollamaChat => {
+          'message': {'content': 'OK'},
+        },
+      });
+      final config = AiConnectionConfig(
+        provider: AiProvider.custom,
+        customConnectionId: 'aic_a',
+        baseUrl: 'https://synthetic.example',
+        model: 'same-model',
+        customProtocol: protocol,
+        thinkingOverrides: {
+          'same-model': AiModelThinkingOverride(
+            defaultLevel: AiThinkingLevel.high,
+            levels: {
+              AiThinkingLevel.high: {
+                'custom_thinking': {'enabled': true, 'budget': 2048},
+                'max_tokens': 4096,
+              },
+            },
+          ),
+        },
+      );
+      final client = AiClient(config, 'isolated-key', transport: transport);
+      await client.testConnection();
+      final request = transport.requests.single;
+      final body = jsonDecode(utf8.decode(request.body!)) as Map;
+      expect(body['custom_thinking'], {'enabled': true, 'budget': 2048});
+      expect(body['max_tokens'], 4096);
+      expect(body.containsKey('reasoning_effort'), isFalse);
+      expect(body.containsKey('reasoning'), isFalse);
+      expect(
+        request.headers.values,
+        contains(
+          protocol == AiApiProtocol.claudeMessages
+              ? 'isolated-key'
+              : protocol == AiApiProtocol.geminiContent
+              ? 'isolated-key'
+              : 'Bearer isolated-key',
+        ),
+      );
+      transport.lines = switch (protocol) {
+        AiApiProtocol.chatCompletions => [
+          'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":"stop"}]}',
+          '',
+        ],
+        AiApiProtocol.responses => [
+          'data: {"type":"response.output_text.delta","delta":"OK"}',
+          '',
+          'data: {"type":"response.completed"}',
+          '',
+        ],
+        AiApiProtocol.claudeMessages => [
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"OK"}}',
+          '',
+          'data: {"type":"message_stop"}',
+          '',
+        ],
+        AiApiProtocol.geminiContent => [
+          'data: {"candidates":[{"content":{"parts":[{"text":"OK"}]},"finishReason":"STOP"}]}',
+          '',
+        ],
+        AiApiProtocol.ollamaChat => [
+          '{"message":{"content":"OK"},"done":true}',
+        ],
+      };
+      expect(
+        await client.reply('系統指令', const [
+          AiInputMessage(isUser: true, text: '合成內容'),
+        ]).join(),
+        'OK',
+      );
+      final streamed = transport.streams.single;
+      expect(streamed.body['custom_thinking'], body['custom_thinking']);
+      expect(streamed.body['max_tokens'], 4096);
+      expect(streamed.body.containsKey('reasoning'), isFalse);
+      expect(streamed.body.containsKey('reasoning_effort'), isFalse);
+      expect(streamed.body.containsKey('think'), isFalse);
+      expect(streamed.uri.host, 'synthetic.example');
+      client.close();
+    }
+  });
   test('雲端固定 HTTPS 且區網 HTTP 不接受公網與帳密', () {
     for (final host in [
       'http://127.0.0.1:11434',

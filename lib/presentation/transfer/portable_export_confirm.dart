@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/portable_transfer_dialogs.dart';
+import 'package:quill_diary/presentation/transfer/portable_transfer_dialogs.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -147,7 +147,7 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
                             ),
                             Icon(
                               Icons.chevron_right_rounded,
-                              color: cs.onSurfaceVariant,
+                              color: cs.onSurface,
                             ),
                           ],
                         ),
@@ -324,7 +324,7 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
                             ),
                             Icon(
                               Icons.chevron_right_rounded,
-                              color: cs.onSurfaceVariant,
+                              color: cs.onSurface,
                             ),
                           ],
                         ),

@@ -285,7 +285,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   Icon(
                     Icons.swipe_vertical_rounded,
                     size: 40,
-                    color: cs.outline,
+                    color: cs.onSurfaceVariant,
                   ),
                   const SizedBox(height: 12),
                   Text(

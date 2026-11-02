@@ -57,7 +57,7 @@ class HomeSearchTextField extends StatelessWidget {
           prefixIcon: Icon(
             Icons.search_rounded,
             size: 20,
-            color: cs.primary.withValues(alpha: 0.85),
+            color: enabled ? cs.onSurface : theme.disabledColor,
           ),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 40,

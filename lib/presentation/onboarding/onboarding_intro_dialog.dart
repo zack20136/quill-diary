@@ -245,7 +245,7 @@ class _OnboardingBulletRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Icon(bullet.icon, size: 22, color: colors.primary),
+        Icon(bullet.icon, size: 22, color: colors.onSurfaceVariant),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

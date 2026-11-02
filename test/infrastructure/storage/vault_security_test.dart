@@ -7,6 +7,8 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
+import '../../helpers/vault/fake_device_key_manager.dart';
+import '../../helpers/vault/manifest_write_test_crypto_service.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
@@ -181,6 +183,84 @@ void main() {
       expect(
         rotated.session.recoveryWrapKey,
         isNot(setup.session.recoveryWrapKey),
+      );
+    });
+
+    test('中斷後會回復至原 Recovery Key 並保留日記', () async {
+      await harness.dispose();
+      final crypto = ManifestWriteTestCryptoService();
+      harness = await VaultTestHarness.create(cryptoService: crypto);
+      final RecoverySetupResult setup = await harness.repository
+          .setupRecoveryKey();
+      final String entryId = await harness.saveSimpleEntry(
+        setup,
+        title: '輪替中斷',
+      );
+
+      crypto.failRotationAfterEncryptedFiles = 1;
+      await expectLater(
+        harness.repository.rotateRecoveryKey(setup.session),
+        throwsStateError,
+      );
+
+      crypto.failRotationAfterEncryptedFiles = null;
+      await expectLater(
+        harness.repository.unlockWithRecoveryKey(
+          'WRON-KEY1-WRON-KEY2-WRON-KEY3',
+        ),
+        throwsA(isA<SecretBoxAuthenticationError>()),
+      );
+      await harness.repository.closeUnlockedResources();
+      final UnlockedVaultSession recovered = await harness.repository
+          .openTrustedSession();
+
+      expect(
+        (await harness.repository.loadEntry(recovered, entryId))?.title,
+        '輪替中斷',
+      );
+      expect(
+        (await harness.repository.readRecoveryMetadata())?.recoveryKeyHint,
+        setup.recoveryKey.substring(setup.recoveryKey.length - 4),
+      );
+    });
+
+    test('metadata 已更新但裝置金鑰寫入失敗時會回復原 Recovery Key', () async {
+      await harness.dispose();
+      final deviceKeyManager = CancellingDeviceKeyManager();
+      harness = await VaultTestHarness.create(
+        deviceKeyManager: deviceKeyManager,
+      );
+      final RecoverySetupResult setup = await harness.repository
+          .setupRecoveryKey();
+      final String entryId = await harness.saveSimpleEntry(
+        setup,
+        title: 'metadata 已切換',
+      );
+
+      deviceKeyManager.cancelWrap = true;
+      await expectLater(
+        harness.repository.rotateRecoveryKey(setup.session),
+        throwsStateError,
+      );
+
+      deviceKeyManager.cancelWrap = false;
+      await expectLater(
+        harness.repository.unlockWithRecoveryKey(
+          'WRON-KEY1-WRON-KEY2-WRON-KEY3',
+        ),
+        throwsA(isA<SecretBoxAuthenticationError>()),
+      );
+      await harness.repository.closeUnlockedResources();
+      final UnlockedVaultSession recovered = await harness.repository
+          .openTrustedSession();
+
+      expect(
+        (await harness.repository.loadEntry(recovered, entryId))?.title,
+        'metadata 已切換',
+      );
+      expect(
+        (await harness.repository.readRecoveryMetadata())?.recoveryKeyHint,
+        setup.recoveryKey.substring(setup.recoveryKey.length - 4),
       );
     });
   });

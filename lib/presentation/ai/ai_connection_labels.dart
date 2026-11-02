@@ -1,3 +1,4 @@
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
@@ -11,12 +12,26 @@ String aiProviderLabel(AppLocalizations l10n, AiProvider provider) =>
       AiProvider.custom => l10n.aiProviderCustom,
     };
 
-/// 畫面上的「供應商/模型 id」。斜線只是標籤，模型 id 本身可以再含有斜線。
-String aiModelOptionLabel(
+String aiConnectionLabel(AppLocalizations l10n, AiConnectionConfig config) =>
+    config.provider == AiProvider.custom && config.displayName.trim().isNotEmpty
+    ? config.displayName.trim()
+    : aiProviderLabel(l10n, config.provider);
+
+String aiConnectionModelLabel(
   AppLocalizations l10n,
-  AiProvider provider,
-  String modelId,
-) => '${aiProviderLabel(l10n, provider)}/$modelId';
+  AiConnectionConfig config,
+) => '${aiConnectionLabel(l10n, config)}/${config.model}';
+
+String aiChatModelLabel(AppLocalizations l10n, AiConnectionConfig config) {
+  if (config.provider != AiProvider.custom) {
+    return aiConnectionModelLabel(l10n, config);
+  }
+  final destination = config.effectiveBaseUrl.replaceFirst(
+    RegExp(r'^https?://', caseSensitive: false),
+    '',
+  );
+  return '${destination.isEmpty ? l10n.aiConnectionNotConfigured : destination}/${config.model}';
+}
 
 String aiThinkingLabel(AppLocalizations l10n, AiThinkingLevel level) =>
     switch (level) {

@@ -9,7 +9,10 @@ import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -426,7 +429,10 @@ class ChatDiaryController extends ChangeNotifier {
         _handedOff) {
       return;
     }
-    stop();
+    _cancelOperation(
+      closeClient:
+          busy || !_sameClientConnection(_clientConfig, connectionConfig),
+    );
     chatSession.connectionConfig = connectionConfig;
     chatSession.hidePersonNames = hidePersonNames;
     _setError(null);
@@ -435,39 +441,57 @@ class ChatDiaryController extends ChangeNotifier {
   }
 
   /// 改這一則聊天的供應商與模型，並記成下一則新聊天要用的。
-  Future<void> selectChatModel(AiProvider provider, String model) async {
+  Future<void> selectChatModel(ChatModelOption option) async {
     final chatSession = chat;
-    final String nextModel = model.trim();
     final session = _vaultSession;
     if (chatSession == null ||
         chatSession.finished ||
         busy ||
         _handedOff ||
-        session == null ||
-        nextModel.isEmpty ||
-        (chatSession.connectionConfig.provider == provider &&
-            chatSession.connectionConfig.model.trim() == nextModel)) {
+        session == null) {
       return;
     }
+    if (option.isCurrentSnapshot) return;
+    final operationVersion = _operationVersion;
     final store = ref.read(aiSettingsStoreProvider);
     final stored = await store.read(session);
-    final AiConnectionSettings settings = stored.connection;
-    final AiConnectionConfig source = settings.configs.containsKey(provider)
-        ? settings.configs[provider]!
-        : chatSession.connectionConfig.provider == provider
-        ? chatSession.connectionConfig
-        : defaultConnection(provider);
-    final AiConnectionConfig next = source.copyWith(model: nextModel);
-    await applySettings(next, chatSession.hidePersonNames);
-    if (chat?.connectionConfig.model.trim() != nextModel ||
-        chat?.connectionConfig.provider != provider) {
+    if (_disposed ||
+        operationVersion != _operationVersion ||
+        chat != chatSession ||
+        _vaultSession != session ||
+        _handedOff ||
+        busy) {
       return;
     }
-    final configs = Map<AiProvider, AiConnectionConfig>.of(settings.configs);
-    configs[provider] = next;
+    final source =
+        stored.connection.connections[option.connectionId] ??
+        (option.connectionConfig.provider != AiProvider.custom
+            ? defaultConnection(option.connectionConfig.provider)
+            : null);
+    if (source == null || !source.enabledModels.contains(option.modelId)) {
+      return;
+    }
+    final next = source.copyWith(model: option.modelId);
+    if (!sameAiTarget(next, option.connectionConfig)) return;
+    final applying = applySettings(next, chatSession.hidePersonNames);
+    final appliedVersion = _operationVersion;
+    await applying;
+    if (_disposed ||
+        appliedVersion != _operationVersion ||
+        chat != chatSession ||
+        _vaultSession != session ||
+        _handedOff) {
+      return;
+    }
     await store.save(
       session,
-      connection: AiConnectionSettings(provider: provider, configs: configs),
+      connection: AiConnectionSettings(
+        activeConnectionId: next.connectionId,
+        connections: {
+          ...stored.connection.connections,
+          next.connectionId: next,
+        },
+      ),
       chatDiary: stored.chatDiary,
     );
   }
@@ -477,12 +501,14 @@ class ChatDiaryController extends ChangeNotifier {
     AiConnectionConfig next,
   ) =>
       current != null &&
+      current.connectionId == next.connectionId &&
       current.provider == next.provider &&
       current.model == next.model &&
       current.protocol == next.protocol &&
       current.effectiveBaseUrl == next.effectiveBaseUrl &&
       current.workspaceId == next.workspaceId &&
-      resolvedThinkingLevel(current) == resolvedThinkingLevel(next);
+      resolvedThinkingLevel(current) == resolvedThinkingLevel(next) &&
+      aiJsonEquals(thinkingRequestFields(current), thinkingRequestFields(next));
 
   Future<ChatDiaryPrivacyProcessor> _createPrivacyProcessor([
     Iterable<ChatDiaryMessage>? messages,
@@ -892,13 +918,15 @@ class ChatDiaryController extends ChangeNotifier {
     return ChatDiaryGenerationResult.notGenerated;
   }
 
-  void _cancelOperation() {
+  void _cancelOperation({bool closeClient = true}) {
     _operationVersion++;
     _saveTimer?.cancel();
-    _client?.close();
-    _client = null;
-    _clientApiKey = null;
-    _clientConfig = null;
+    if (closeClient) {
+      _client?.close();
+      _client = null;
+      _clientApiKey = null;
+      _clientConfig = null;
+    }
     busy = false;
     for (final message in chat?.activeMessages ?? <ChatDiaryMessage>[]) {
       if (message.status == ChatDiaryMessageStatus.pending) {

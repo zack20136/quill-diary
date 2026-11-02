@@ -128,7 +128,7 @@ class _SystemPromptCardState extends State<_SystemPromptCard> {
                   ),
                   Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: colors.onSurfaceVariant,
+                    color: colors.onSurface,
                   ),
                 ],
               ),

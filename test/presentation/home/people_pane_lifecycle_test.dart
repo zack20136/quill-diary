@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,6 +14,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -77,6 +79,35 @@ void main() {
     container.read(homeTabProvider.notifier).set(HomeTab.people);
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byTooltip(testZhL10n.peopleSortTooltip));
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNWidgets(4));
+    expect(
+      find.descendant(
+        of: find.widgetWithText(
+          MenuItemButton,
+          testZhL10n.peopleSortLastMentionDate,
+        ),
+        matching: find.byIcon(Icons.check),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.widgetWithText(MenuItemButton, testZhL10n.peopleSortName),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(testZhL10n.peopleSortTooltip));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.widgetWithText(MenuItemButton, testZhL10n.peopleSortName),
+        matching: find.byIcon(Icons.check),
+      ),
+      findsOneWidget,
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
     expect(catalogReads, 1);
     expect(statsReads, 1);
 

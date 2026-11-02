@@ -4875,6 +4875,12 @@ abstract class AppLocalizations {
   /// **'備份檔內容不完整，找不到日記庫資料。'**
   String get vaultBackupIssueMissingVaultPayload;
 
+  /// No description provided for @vaultBackupIssueExtractionLimitExceeded.
+  ///
+  /// In zh, this message translates to:
+  /// **'壓縮檔的數量、解壓後大小或壓縮比超過上限，已停止處理。'**
+  String get vaultBackupIssueExtractionLimitExceeded;
+
   /// No description provided for @legalBrandDisclaimer.
   ///
   /// In zh, this message translates to:
@@ -6681,11 +6687,185 @@ abstract class AppLocalizations {
   /// **'聊天寫日記'**
   String get chatDiaryWriteWithChat;
 
+  /// No description provided for @entryWritingModeDirectDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自由記錄文字、照片與待辦。'**
+  String get entryWritingModeDirectDescription;
+
+  /// No description provided for @entryWritingModeChatDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'和 AI 聊聊，再整理成日記。'**
+  String get entryWritingModeChatDescription;
+
+  /// No description provided for @aiCustomConnectionName.
+  ///
+  /// In zh, this message translates to:
+  /// **'自訂連線 {number}'**
+  String aiCustomConnectionName(int number);
+
+  /// No description provided for @aiConnectionName.
+  ///
+  /// In zh, this message translates to:
+  /// **'連線名稱'**
+  String get aiConnectionName;
+
+  /// No description provided for @aiConnectionAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增自訂連線'**
+  String get aiConnectionAdd;
+
+  /// No description provided for @aiConnectionDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'刪除連線'**
+  String get aiConnectionDelete;
+
+  /// No description provided for @aiConnectionDeleteConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'確定刪除連線？'**
+  String get aiConnectionDeleteConfirmTitle;
+
+  /// No description provided for @aiConnectionDeleteConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'確定刪除「{name}」嗎？儲存後會移除這組連線，並刪除它在這台裝置上的 API Key，無法從設定還原。既有聊天紀錄會保留。'**
+  String aiConnectionDeleteConfirmBody(String name);
+
+  /// No description provided for @aiConnectionNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未設定目的地'**
+  String get aiConnectionNotConfigured;
+
+  /// No description provided for @aiCurrentChatConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'目前聊天的原連線'**
+  String get aiCurrentChatConnection;
+
+  /// No description provided for @aiConnectionNameInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'請填寫連線名稱，且使用中的名稱不可重複。'**
+  String get aiConnectionNameInvalid;
+
+  /// No description provided for @aiThinkingSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'Thinking 設定…'**
+  String get aiThinkingSettings;
+
+  /// No description provided for @aiThinkingSettingsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'Thinking 設定'**
+  String get aiThinkingSettingsTitle;
+
+  /// No description provided for @aiThinkingFormatHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'選擇這個模型的 Thinking 參數傳送方式，支援的格式與強度請以模型官方文件為準。'**
+  String get aiThinkingFormatHint;
+
+  /// No description provided for @aiThinkingAdvancedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'勾選模型支援的強度，並填入對應的 JSON 物件。空物件表示該強度不傳送額外參數。'**
+  String get aiThinkingAdvancedHint;
+
+  /// No description provided for @aiThinkingFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'參數格式'**
+  String get aiThinkingFormat;
+
+  /// No description provided for @aiThinkingInherit.
+  ///
+  /// In zh, this message translates to:
+  /// **'沿用目前協定'**
+  String get aiThinkingInherit;
+
+  /// No description provided for @aiThinkingOmit.
+  ///
+  /// In zh, this message translates to:
+  /// **'不傳送 Thinking 參數'**
+  String get aiThinkingOmit;
+
+  /// No description provided for @aiThinkingOmitShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'不傳送'**
+  String get aiThinkingOmitShort;
+
+  /// No description provided for @aiThinkingCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'手動 JSON'**
+  String get aiThinkingCustom;
+
+  /// No description provided for @aiThinkingAdvancedOverrideHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'為各個強度設定要傳送的 JSON 參數。自訂內容會直接加入請求，也可能影響回覆長度與費用。'**
+  String get aiThinkingAdvancedOverrideHint;
+
+  /// No description provided for @aiThinkingDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'預設強度'**
+  String get aiThinkingDefault;
+
+  /// No description provided for @aiThinkingAdvanced.
+  ///
+  /// In zh, this message translates to:
+  /// **'進階 JSON 對照'**
+  String get aiThinkingAdvanced;
+
+  /// No description provided for @aiThinkingPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'預設強度的參數預覽'**
+  String get aiThinkingPreview;
+
+  /// No description provided for @aiThinkingPreviewInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'請完成有效的 JSON 對照以顯示預覽。'**
+  String get aiThinkingPreviewInvalid;
+
+  /// No description provided for @aiThinkingSelectionRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少啟用一個檔位，並選擇有效的預設強度。'**
+  String get aiThinkingSelectionRequired;
+
+  /// No description provided for @aiThinkingProtectedFields.
+  ///
+  /// In zh, this message translates to:
+  /// **'只能填參數片段，不能覆寫模型、訊息或請求控制欄位。'**
+  String get aiThinkingProtectedFields;
+
+  /// No description provided for @aiThinkingJsonInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'請輸入有效的 JSON 物件。'**
+  String get aiThinkingJsonInvalid;
+
   /// No description provided for @aiModel.
   ///
   /// In zh, this message translates to:
   /// **'模型'**
   String get aiModel;
+
+  /// No description provided for @aiModelsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'開啟聊天用的模型，並調整思考強度。'**
+  String get aiModelsHint;
 
   /// No description provided for @aiModelSearch.
   ///
@@ -6804,13 +6984,13 @@ abstract class AppLocalizations {
   /// No description provided for @chatDiaryHidePeople.
   ///
   /// In zh, this message translates to:
-  /// **'依人物名冊隱藏姓名'**
+  /// **'隱藏人物姓名'**
   String get chatDiaryHidePeople;
 
   /// No description provided for @chatDiaryHidePeopleHint.
   ///
   /// In zh, this message translates to:
-  /// **'傳送前將名冊中的姓名與別名替換為代號；不會遮住照片內容。'**
+  /// **'傳送前將名冊中的姓名與別名替換為代號；不會隱藏圖片上的內容。'**
   String get chatDiaryHidePeopleHint;
 
   /// No description provided for @aiSettingsLead.
@@ -6846,7 +7026,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiThinking.
   ///
   /// In zh, this message translates to:
-  /// **'思考'**
+  /// **'Thinking'**
   String get aiThinking;
 
   /// No description provided for @aiThinkingOff.

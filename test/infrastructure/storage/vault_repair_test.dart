@@ -9,9 +9,9 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -1049,6 +1049,60 @@ body
             finding.kind == VaultRepairIssueKind.unreadableEntry,
       ),
       isFalse,
+    );
+  });
+
+  test('永久刪除衝突日記不會移除 canonical 正式檔', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final String entryId = await harness.saveSimpleEntry(
+      setup,
+      title: '保留的正式日記',
+      updatedAt: DateTime.parse('2026-07-20T10:00:00Z'),
+    );
+    final String canonicalPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-05-24'),
+      entryId: entryId,
+    );
+    final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
+    final String conflictingPath = p.join(
+      vaultRoot.path,
+      'entries',
+      'copies',
+      '$entryId.md.enc',
+    );
+    await _writeEncryptedEntry(
+      harness: harness,
+      setup: setup,
+      path: conflictingPath,
+      entryId: entryId,
+      markdown: _entryMarkdown(
+        id: entryId,
+        title: '衝突副本',
+        date: '2026-05-24',
+        updatedAt: '2026-06-20T10:00:00.000Z',
+      ),
+    );
+
+    final VaultInspectReport inspect = await harness.repository
+        .inspectVaultWithReport(setup.session);
+    final List<VaultFinding> conflicts = inspect.findings
+        .where(
+          (VaultFinding finding) =>
+              finding.kind == VaultRepairIssueKind.conflictingEntry,
+        )
+        .toList();
+    expect(conflicts, isNotEmpty);
+
+    await harness.repository.permanentlyDeleteAbnormalFindings(
+      setup.session,
+      findings: conflicts,
+    );
+
+    expect(File(canonicalPath).existsSync(), isTrue);
+    expect(
+      (await harness.repository.loadEntry(setup.session, entryId))?.title,
+      '保留的正式日記',
     );
   });
 

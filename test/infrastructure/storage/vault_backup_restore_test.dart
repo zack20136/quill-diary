@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -38,7 +38,7 @@ void main() {
     await harness.dispose();
   });
 
-  group('peekBackupRecovery', () {
+  group('prepareRestorePreview', () {
     test('可讀取備份內的 recovery.json', () async {
       final setup = await harness.repository.setupRecoveryKey();
       await harness.saveSimpleEntry(
@@ -52,7 +52,7 @@ void main() {
       await archiveIo.backup.writeBackupZip(backupFile);
 
       final BackupRecoveryPreview preview = await archiveIo.backup
-          .peekBackupRecovery(backupFile);
+          .prepareRestorePreview(backupFile);
       expect(preview.metadata.vaultId, setup.session.vaultId);
       expect(preview.metadata.recoveryKeyHint, isNotEmpty);
     });

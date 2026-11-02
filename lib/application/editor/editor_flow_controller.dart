@@ -16,12 +16,12 @@ import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 
 final editorFlowControllerProvider = Provider<EditorFlowController>((Ref ref) {
   return EditorFlowController(ref);
@@ -222,7 +222,8 @@ class EditorFlowController {
     }
 
     final EditorDraftSnapshot snapshot = editorDraftSnapshotFromRecord(record);
-    if (existingEntry == null && editorDraftIsEmpty(snapshot)) {
+    if (existingEntry == null &&
+        editorDraftIsEmpty(snapshot, initialCreatedAt: record.createdAt)) {
       await discardDraft(draftKey);
       return const EditorDraftRestoreDecision.discarded();
     }
@@ -521,6 +522,13 @@ class EditorFlowSession {
   Future<void>? _draftWrite;
   int _stateVersion = 0;
   int _previewVersion = 0;
+  ({
+    EditorSaveRequest request,
+    int version,
+    Completer<EditorSaveResult?> completion,
+  })?
+  _pendingPreviewSave;
+  Future<void>? _previewWrite;
   bool _closed = false;
 
   Future<void> persistDraft(EditorPersistDraftRequest request) {
@@ -534,17 +542,20 @@ class EditorFlowSession {
   }
 
   Future<void> _drainDrafts(Completer<void> completion) async {
+    EditorPersistDraftRequest? activeRequest;
     try {
       while (_pendingDraft != null) {
         final request = _pendingDraft!;
         _pendingDraft = null;
+        activeRequest = request;
         final version = _stateVersion;
         final result = await _flow.persistDraft(request);
         if (!_closed && version == _stateVersion) _onDraftPersisted(result);
+        activeRequest = null;
       }
       completion.complete();
     } on Object catch (error, stackTrace) {
-      _pendingDraft = null;
+      _pendingDraft ??= activeRequest;
       completion.completeError(error, stackTrace);
     } finally {
       _draftWrite = null;
@@ -555,13 +566,49 @@ class EditorFlowSession {
 
   Future<EditorSaveResult?> savePreview(EditorSaveRequest request) async {
     final version = ++_previewVersion;
-    final result = await _flow.saveEntry(request);
-    return !_closed && version == _previewVersion ? result : null;
+    if (_closed) return null;
+    final Completer<EditorSaveResult?> completion =
+        Completer<EditorSaveResult?>();
+    _pendingPreviewSave?.completion.complete(null);
+    _pendingPreviewSave = (
+      request: request,
+      version: version,
+      completion: completion,
+    );
+    if (_previewWrite == null) {
+      final Future<void> write = _drainPreviewSaves();
+      _previewWrite = write;
+      unawaited(write);
+    }
+    return completion.future;
+  }
+
+  Future<void> _drainPreviewSaves() async {
+    try {
+      while (_pendingPreviewSave != null) {
+        final pending = _pendingPreviewSave!;
+        _pendingPreviewSave = null;
+        try {
+          final EditorSaveResult result = await _flow.saveEntry(
+            pending.request,
+          );
+          pending.completion.complete(
+            !_closed && pending.version == _previewVersion ? result : null,
+          );
+        } on Object catch (error, stackTrace) {
+          pending.completion.completeError(error, stackTrace);
+        }
+      }
+    } finally {
+      _previewWrite = null;
+    }
   }
 
   void reset() {
     _stateVersion++;
     _previewVersion++;
+    _pendingPreviewSave?.completion.complete(null);
+    _pendingPreviewSave = null;
     _pendingDraft = null;
   }
 
@@ -569,5 +616,7 @@ class EditorFlowSession {
     _closed = true;
     _stateVersion++;
     _previewVersion++;
+    _pendingPreviewSave?.completion.complete(null);
+    _pendingPreviewSave = null;
   }
 }

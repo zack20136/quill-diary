@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
+import 'package:quill_diary/application/people/people_list_query.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/people/person.dart';
@@ -19,6 +20,7 @@ import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.d
 import 'package:quill_diary/presentation/people/widgets/relationship_types_manage_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_menu_style.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -39,6 +41,7 @@ class PeoplePane extends ConsumerStatefulWidget {
 }
 
 class _PeoplePaneState extends ConsumerState<PeoplePane> {
+  final _sortMenuFocus = FocusNode();
   final TextEditingController _searchCtrl = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   final Set<String> _relationships = <String>{};
@@ -46,6 +49,7 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
 
   @override
   void dispose() {
+    _sortMenuFocus.dispose();
     _searchCtrl.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -109,42 +113,58 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                PopupMenuButton<PeopleListSort>(
-                  initialValue: _sort,
-                  tooltip: context.l10n.peopleSortTooltip,
-                  onSelected: (PeopleListSort value) {
-                    setState(() => _sort = value);
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<PeopleListSort>>[
-                        PopupMenuItem(
-                          value: PeopleListSort.lastMentionDate,
-                          child: Text(context.l10n.peopleSortLastMentionDate),
-                        ),
-                        PopupMenuItem(
-                          value: PeopleListSort.mentionedEntryCount,
-                          child: Text(context.l10n.peopleSortMentionedEntries),
-                        ),
-                        PopupMenuItem(
-                          value: PeopleListSort.recentMentionedEntryCount,
-                          child: Text(
-                            context.l10n.peopleSortRecentMentionedEntries,
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: PeopleListSort.name,
-                          child: Text(context.l10n.peopleSortName),
-                        ),
-                      ],
-                  child: IgnorePointer(
-                    child: HomeCircleIconButton(
-                      tooltip: context.l10n.peopleSortTooltip,
-                      onPressed: () {},
-                      icon: Icons.sort_rounded,
-                      size: HomeLayout.searchRowControlHeight,
-                      backgroundColor: cs.secondaryContainer,
-                      foregroundColor: cs.onSecondaryContainer,
+                MenuAnchor(
+                  onOpen: _sortMenuFocus.requestFocus,
+                  style: appMenuStyle(
+                    context,
+                    width: (MediaQuery.sizeOf(context).width - 48).clamp(
+                      0,
+                      280,
                     ),
+                  ),
+                  menuChildren: [
+                    for (final (value, label) in [
+                      (
+                        PeopleListSort.lastMentionDate,
+                        context.l10n.peopleSortLastMentionDate,
+                      ),
+                      (
+                        PeopleListSort.mentionedEntryCount,
+                        context.l10n.peopleSortMentionedEntries,
+                      ),
+                      (
+                        PeopleListSort.recentMentionedEntryCount,
+                        context.l10n.peopleSortRecentMentionedEntries,
+                      ),
+                      (PeopleListSort.name, context.l10n.peopleSortName),
+                    ])
+                      MenuItemButton(
+                        focusNode: value == _sort ? _sortMenuFocus : null,
+                        overflowAxis: Axis.vertical,
+                        style: appMenuItemStyle(
+                          context,
+                          selected: value == _sort,
+                        ),
+                        trailingIcon: value == _sort
+                            ? const Icon(Icons.check, size: 18)
+                            : null,
+                        onPressed: () => setState(() => _sort = value),
+                        child: Text(label),
+                      ),
+                  ],
+                  builder: (context, controller, child) => HomeCircleIconButton(
+                    tooltip: context.l10n.peopleSortTooltip,
+                    onPressed: () {
+                      if (controller.isOpen) {
+                        controller.close();
+                      } else {
+                        controller.open();
+                      }
+                    },
+                    icon: Icons.sort_rounded,
+                    size: HomeLayout.searchRowControlHeight,
+                    backgroundColor: cs.secondaryContainer,
+                    foregroundColor: cs.onSecondaryContainer,
                   ),
                 ),
                 const SizedBox(width: 6),

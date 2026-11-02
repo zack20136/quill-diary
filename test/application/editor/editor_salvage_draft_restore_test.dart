@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_actions.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 
 import '../../helpers/presentation/editor/fake_editor_actions.dart';

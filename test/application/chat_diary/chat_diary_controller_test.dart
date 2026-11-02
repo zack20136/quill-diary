@@ -10,14 +10,16 @@ import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -57,8 +59,10 @@ void main() {
     chat = testChatDiarySession(vaultId: setup.session.vaultId);
     settings = OverviewAiSettingsStore()
       ..settings = AiConnectionSettings(
-        provider: chat.connectionConfig.provider,
-        configs: {chat.connectionConfig.provider: chat.connectionConfig},
+        activeConnectionId: chat.connectionConfig.connectionId,
+        connections: {
+          chat.connectionConfig.connectionId: chat.connectionConfig,
+        },
       );
     client = FakeAiClient(chat.connectionConfig);
     clientKeys = [];
@@ -295,7 +299,9 @@ void main() {
     final sending = controller.send();
     await started.future;
     settings.keys[chat.connectionConfig.credentialId] = 'rotated-key';
-    settings.settings = const AiConnectionSettings(provider: AiProvider.openai);
+    settings.settings = const AiConnectionSettings(
+      activeConnectionId: 'openai',
+    );
     settings.chatDiary = const ChatDiarySettings(
       prompts: ChatDiaryPromptSettings(conversationOverride: '更新後完整提示詞'),
     );
@@ -431,6 +437,101 @@ void main() {
       controller.chat!.activeMessages.last.connectionSnapshot!.thinkingLevels,
       {before.model: AiThinkingLevel.high},
     );
+  });
+
+  test('同網址同模型切換帳號會更換金鑰與連線，舊回覆保留原帳號', () async {
+    final a = chat.connectionConfig.copyWith(
+      customConnectionId: 'aic_a',
+      displayName: '工作',
+      addedModels: [chat.connectionConfig.model],
+      enabledModels: [chat.connectionConfig.model],
+    );
+    final b = a.copyWith(customConnectionId: 'aic_b', displayName: '個人');
+    settings.settings = AiConnectionSettings(
+      activeConnectionId: a.connectionId,
+      connections: {a.connectionId: a, b.connectionId: b},
+    );
+    settings.keys[a.credentialId] = 'key-a';
+    settings.keys[b.credentialId] = 'key-b';
+    await controller.applySettings(a, false);
+    controller.updateComposer('第一組帳號', []);
+    await controller.send();
+    final original = controller.chat!.activeMessages.last;
+    await controller.selectChatModel(ChatModelOption(connectionConfig: b));
+    controller.updateComposer('第二組帳號', []);
+    await controller.send();
+    expect(clientKeys, ['key-a', 'key-b']);
+    expect(clientConfigs.map((c) => c.connectionId), ['aic_a', 'aic_b']);
+    expect(original.connectionSnapshot!.connectionId, a.connectionId);
+    expect(
+      controller.chat!.activeMessages.last.connectionSnapshot!.connectionId,
+      b.connectionId,
+    );
+    expect(settings.settings.activeConnectionId, b.connectionId);
+  });
+
+  test('模型選擇等候設定時取消，不套用晚到連線或更新預設', () async {
+    final original = controller.chat!.connectionConfig;
+    final next = addModel(
+      original.copyWith(customConnectionId: 'aic_other', displayName: '另一組'),
+      original.model,
+    );
+    settings.settings = AiConnectionSettings(
+      activeConnectionId: original.connectionId,
+      connections: {original.connectionId: original, next.connectionId: next},
+    );
+    final reading = Completer<void>();
+    settings.readGate = reading.future;
+    settings.readStarted = Completer<void>();
+    final selecting = controller.selectChatModel(
+      ChatModelOption(connectionConfig: next),
+    );
+    await settings.readStarted!.future;
+    controller.stop();
+    reading.complete();
+    await selecting;
+    expect(
+      controller.chat!.connectionConfig.connectionId,
+      original.connectionId,
+    );
+    expect(settings.settings.activeConnectionId, original.connectionId);
+  });
+
+  test('相同強度更改 Thinking 參數會重建，只有 JSON 鍵順序不同不重建', () async {
+    controller.updateComposer('原設定', []);
+    await controller.send();
+    final original = controller.chat!.activeMessages.last;
+    final config = controller.chat!.connectionConfig;
+    AiConnectionConfig withFields(Map<String, Object?> fields) =>
+        config.copyWith(
+          thinkingOverrides: {
+            config.model: AiModelThinkingOverride(
+              defaultLevel: AiThinkingLevel.off,
+              levels: {AiThinkingLevel.off: fields},
+            ),
+          },
+        );
+    await controller.applySettings(
+      withFields({
+        'think': false,
+        'custom': {'budget': 1024},
+      }),
+      false,
+    );
+    controller.updateComposer('自訂設定', []);
+    await controller.send();
+    expect(clientConfigs, hasLength(2));
+    expect(original.connectionSnapshot!.thinkingOverrides, isEmpty);
+    await controller.applySettings(
+      withFields({
+        'custom': {'budget': 1024},
+        'think': false,
+      }),
+      false,
+    );
+    controller.updateComposer('相同參數', []);
+    await controller.send();
+    expect(clientConfigs, hasLength(2));
   });
 
   test('多輪上下文重複圖片不讓日記重複附圖', () async {
@@ -971,11 +1072,26 @@ void main() {
   });
 
   test('聊天室改模型後，下一則新聊天沿用剛選的模型', () async {
+    settings.settings = AiConnectionSettings(
+      activeConnectionId: 'custom',
+      connections: {
+        'custom': addModel(
+          settings.settings.connectionFor('custom'),
+          'other-model',
+        ),
+      },
+    );
     controller.updateComposer('第一段合成內容', []);
     await controller.send();
-    await controller.selectChatModel(AiProvider.custom, 'other-model');
+    await controller.selectChatModel(
+      ChatModelOption(
+        connectionConfig: settings.settings
+            .connectionFor('custom')
+            .copyWith(model: 'other-model'),
+      ),
+    );
     expect(controller.chat!.connectionConfig.model, 'other-model');
-    expect(settings.settings.provider, AiProvider.custom);
+    expect(settings.settings.activeConfig.provider, AiProvider.custom);
     expect(settings.settings.activeConfig.model, 'other-model');
     controller.updateComposer('第二段合成內容', []);
     await controller.send();

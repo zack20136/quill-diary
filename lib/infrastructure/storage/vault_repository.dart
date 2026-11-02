@@ -16,6 +16,8 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -31,12 +33,10 @@ import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspe
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_service.dart';
-import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
@@ -46,6 +46,49 @@ class RecoverySetupResult {
 
   final String recoveryKey;
   final UnlockedVaultSession session;
+}
+
+class _RecoveryRotationPending {
+  const _RecoveryRotationPending({
+    required this.oldMetadata,
+    required this.newMetadata,
+    required this.newRecoveryKey,
+  });
+
+  final RecoveryMetadata oldMetadata;
+  final RecoveryMetadata newMetadata;
+  final String newRecoveryKey;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'old_metadata': oldMetadata.toJson(),
+    'new_metadata': newMetadata.toJson(),
+    'new_recovery_key': newRecoveryKey,
+  };
+
+  factory _RecoveryRotationPending.fromJson(Map<String, Object?> json) {
+    final Object? old = json['old_metadata'];
+    final Object? next = json['new_metadata'];
+    if (old is! Map<String, Object?> || next is! Map<String, Object?>) {
+      throw const FormatException('Recovery Key 輪替續跑資料格式不正確。');
+    }
+    return _RecoveryRotationPending(
+      oldMetadata: RecoveryMetadata.fromJson(old),
+      newMetadata: RecoveryMetadata.fromJson(next),
+      newRecoveryKey: (json['new_recovery_key'] ?? '').toString(),
+    );
+  }
+}
+
+class _RecoveryRotationResolution {
+  const _RecoveryRotationResolution({
+    required this.metadata,
+    required this.recoveryWrapKey,
+    this.clearPendingAfterVerification = false,
+  });
+
+  final RecoveryMetadata metadata;
+  final List<int> recoveryWrapKey;
+  final bool clearPendingAfterVerification;
 }
 
 enum TrustedSessionFailure {
@@ -126,7 +169,7 @@ class VaultRepository {
   }
 
   Future<UnlockedVaultSession> openTrustedSession() async {
-    final RecoveryMetadata metadata =
+    RecoveryMetadata metadata =
         await readRecoveryMetadata() ??
         (throw const TrustedSessionException(
           TrustedSessionFailure.recoveryKeyMissing,
@@ -152,7 +195,7 @@ class VaultRepository {
       throw const TrustedSessionException(TrustedSessionFailure.dataUnusable);
     }
 
-    final List<int> recoveryWrapKey;
+    List<int> recoveryWrapKey;
     try {
       recoveryWrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
         vaultId: metadata.vaultId,
@@ -170,7 +213,15 @@ class VaultRepository {
       );
     }
 
+    final _RecoveryRotationResolution resolution =
+        await _recoverInterruptedRecoveryKeyRotation(
+          metadata: metadata,
+          recoveryWrapKey: recoveryWrapKey,
+        );
+    metadata = resolution.metadata;
+    recoveryWrapKey = resolution.recoveryWrapKey;
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
+    await _finalizeRecoveryRotationPending(resolution);
 
     return _openVerifiedTrustedSession(
       metadata: metadata,
@@ -286,10 +337,16 @@ class VaultRepository {
       metadata.vaultId,
       activeAuthKind: expected,
     );
-    await _verifyRecoveryKey(metadata, rewrap.recoveryWrapKey);
+    final _RecoveryRotationResolution resolution =
+        await _recoverInterruptedRecoveryKeyRotation(
+          metadata: metadata,
+          recoveryWrapKey: rewrap.recoveryWrapKey,
+        );
+    await _verifyRecoveryKey(resolution.metadata, resolution.recoveryWrapKey);
+    await _finalizeRecoveryRotationPending(resolution);
     final UnlockedVaultSession session = await _openVerifiedTrustedSession(
-      metadata: metadata,
-      recoveryWrapKey: rewrap.recoveryWrapKey,
+      metadata: resolution.metadata,
+      recoveryWrapKey: resolution.recoveryWrapKey,
       trustedDevice: true,
       deviceSlotId: rewrap.payload.slotId,
     );
@@ -305,7 +362,7 @@ class VaultRepository {
   Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
     UnlockedVaultSession priorSession,
   ) async {
-    final RecoveryMetadata metadata =
+    RecoveryMetadata metadata =
         await readRecoveryMetadata() ??
         (throw const TrustedSessionException(
           TrustedSessionFailure.recoveryKeyMissing,
@@ -314,8 +371,16 @@ class VaultRepository {
       throw const TrustedSessionException(TrustedSessionFailure.dataUnusable);
     }
 
-    final List<int> recoveryWrapKey = requireRecoveryWrapKey(priorSession);
+    List<int> recoveryWrapKey = requireRecoveryWrapKey(priorSession);
+    final _RecoveryRotationResolution resolution =
+        await _recoverInterruptedRecoveryKeyRotation(
+          metadata: metadata,
+          recoveryWrapKey: recoveryWrapKey,
+        );
+    metadata = resolution.metadata;
+    recoveryWrapKey = resolution.recoveryWrapKey;
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
+    await _finalizeRecoveryRotationPending(resolution);
 
     return _openVerifiedTrustedSession(
       metadata: metadata,
@@ -428,7 +493,7 @@ class VaultRepository {
     return RecoverySetupResult(recoveryKey: recoveryKey, session: session);
   }
 
-  /// 輪替復原金鑰：先重加密 vault，最後才更新 [recovery.json]。
+  /// 輪替復原金鑰：先建立可用舊金鑰還原的續跑資料，再更新 vault。
   Future<RecoverySetupResult> rotateRecoveryKey(UnlockedVaultSession session) =>
       runVaultMutation(() => _rotateRecoveryKey(session));
 
@@ -461,6 +526,12 @@ class VaultRepository {
         kdf: newKdf,
       );
 
+      await _writeRecoveryRotationPending(
+        oldMetadata: oldMetadata,
+        newMetadata: newMetadata,
+        newRecoveryKey: recoveryKey,
+        oldRecoveryWrapKey: oldWrapKey,
+      );
       await _rewrapVaultRecoveryKey(
         vaultId: session.vaultId,
         oldRecoveryWrapKey: oldWrapKey,
@@ -468,10 +539,9 @@ class VaultRepository {
         newMetadata: newMetadata,
       );
 
-      final File file = File(await _pathStrategy.recoveryMetadataPath());
-      await file.writeAsString(
+      await atomicWriteString(
+        File(await _pathStrategy.recoveryMetadataPath()),
         const JsonEncoder.withIndent('  ').convert(newMetadata.toJson()),
-        flush: true,
       );
       _cachedRecoveryMetadata = newMetadata;
 
@@ -486,6 +556,9 @@ class VaultRepository {
       updatedSession = await ensureKeystoreMatchesUnlockMode(updatedSession);
       await _repair.inspectVaultWithReport(updatedSession);
       await _setRewrapState(inProgress: false);
+      await deleteFileIfExists(
+        await _pathStrategy.recoveryRotationPendingPath(),
+      );
 
       return RecoverySetupResult(
         recoveryKey: recoveryKey,
@@ -525,12 +598,23 @@ class VaultRepository {
   }
 
   Future<UnlockedVaultSession> unlockWithRecoveryKey(String recoveryKey) async {
-    final RecoveryMetadata metadata =
+    RecoveryMetadata metadata =
         await readRecoveryMetadata() ??
         (throw StateError('找不到 Recovery metadata。'));
-    final List<int> recoveryWrapKey = await _cryptoService
-        .deriveRecoveryWrapKey(recoveryKey: recoveryKey, kdf: metadata.kdf);
+    List<int> recoveryWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+      recoveryKey: recoveryKey,
+      kdf: metadata.kdf,
+    );
+    final _RecoveryRotationResolution resolution =
+        await _recoverInterruptedRecoveryKeyRotation(
+          metadata: metadata,
+          recoveryWrapKey: recoveryWrapKey,
+          suppliedRecoveryKey: recoveryKey,
+        );
+    metadata = resolution.metadata;
+    recoveryWrapKey = resolution.recoveryWrapKey;
     await _verifyRecoveryKey(metadata, recoveryWrapKey);
+    await _finalizeRecoveryRotationPending(resolution);
 
     final AppUnlockMode unlockMode = await _appLockService.getUnlockMode();
     final UnlockModeCapabilityFailure? wrapFailure =
@@ -1054,16 +1138,31 @@ class VaultRepository {
       entryId: normalized.id,
     );
     final Uint8List fileBytes = encryption.toFileBytes();
+    final bool entryFileExisted = File(filePath).existsSync();
+    if (previousRecord != null && previousRecord.filePath != filePath) {
+      await _ensureChatFilesCanBeCopied(
+        fromEntryPath: previousRecord.filePath,
+        toEntryPath: filePath,
+        session: session,
+      );
+    }
     await atomicWriteBytes(File(filePath), fileBytes);
     if (previousRecord != null && previousRecord.filePath != filePath) {
       obsoletePathsAfterSave.add(previousRecord.filePath);
-      obsoletePathsAfterSave.addAll(
-        await _copyChatFilesBesideEntry(
-          fromEntryPath: previousRecord.filePath,
-          toEntryPath: filePath,
-          session: session,
-        ),
-      );
+      try {
+        obsoletePathsAfterSave.addAll(
+          await _copyChatFilesBesideEntry(
+            fromEntryPath: previousRecord.filePath,
+            toEntryPath: filePath,
+            session: session,
+          ),
+        );
+      } on Object {
+        if (!entryFileExisted) {
+          await deleteFileIfExists(filePath);
+        }
+        rethrow;
+      }
     }
 
     final EntrySearchFields searchFields = entrySearchFields(normalized);
@@ -1489,32 +1588,201 @@ class VaultRepository {
     return results;
   }
 
+  Future<void> _writeRecoveryRotationPending({
+    required RecoveryMetadata oldMetadata,
+    required RecoveryMetadata newMetadata,
+    required String newRecoveryKey,
+    required List<int> oldRecoveryWrapKey,
+  }) async {
+    final _RecoveryRotationPending pending = _RecoveryRotationPending(
+      oldMetadata: oldMetadata,
+      newMetadata: newMetadata,
+      newRecoveryKey: newRecoveryKey,
+    );
+    final DateTime now = DateTime.now();
+    final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+      documentId: 'recovery_rotation_pending',
+      vaultId: oldMetadata.vaultId,
+      plaintextBytes: utf8.encode(jsonEncode(pending.toJson())),
+      contentType: 'application/vnd.quill-diary.recovery-rotation',
+      recoveryWrapKey: oldRecoveryWrapKey,
+      recoverySlotKdf: oldMetadata.kdf,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await atomicWriteBytes(
+      File(await _pathStrategy.recoveryRotationPendingPath()),
+      encrypted.toFileBytes(),
+    );
+  }
+
+  /// 中斷的輪替一律收斂回使用者已持有的舊 Recovery Key。
+  ///
+  /// 新金鑰尚未能安全交給使用者前，不能把它變成唯一的解鎖方式。
+  Future<_RecoveryRotationResolution> _recoverInterruptedRecoveryKeyRotation({
+    required RecoveryMetadata metadata,
+    required List<int> recoveryWrapKey,
+    String? suppliedRecoveryKey,
+  }) async {
+    final File pendingFile = File(
+      await _pathStrategy.recoveryRotationPendingPath(),
+    );
+    if (!pendingFile.existsSync()) {
+      return _RecoveryRotationResolution(
+        metadata: metadata,
+        recoveryWrapKey: recoveryWrapKey,
+      );
+    }
+
+    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+      await pendingFile.readAsBytes(),
+    );
+    final KdfDescriptor? pendingKdf = parsed.header.keySlots
+        .where((EncryptionKeySlot slot) => slot.slotType == 'recovery')
+        .map((EncryptionKeySlot slot) => slot.kdf)
+        .whereType<KdfDescriptor>()
+        .firstOrNull;
+    List<int> oldRecoveryWrapKey = recoveryWrapKey;
+    _RecoveryRotationPending? pending = await _readRecoveryRotationPending(
+      parsed,
+      vaultId: metadata.vaultId,
+      recoveryWrapKey: oldRecoveryWrapKey,
+    );
+    if (pending == null &&
+        suppliedRecoveryKey != null &&
+        pendingKdf != null &&
+        !_sameKdf(pendingKdf, metadata.kdf)) {
+      final List<int> candidate = await _cryptoService.deriveRecoveryWrapKey(
+        recoveryKey: suppliedRecoveryKey,
+        kdf: pendingKdf,
+      );
+      pending = await _readRecoveryRotationPending(
+        parsed,
+        vaultId: metadata.vaultId,
+        recoveryWrapKey: candidate,
+      );
+      if (pending != null) {
+        oldRecoveryWrapKey = candidate;
+      }
+    }
+
+    if (pending == null) {
+      // 只有驗證現有 metadata 與 key 成功後，才能將其視為已完成輪替的
+      // stale pending 清掉；錯誤 Recovery Key 不得影響復原資料。
+      return _RecoveryRotationResolution(
+        metadata: metadata,
+        recoveryWrapKey: recoveryWrapKey,
+        clearPendingAfterVerification: true,
+      );
+    }
+    if (pending.oldMetadata.vaultId != metadata.vaultId ||
+        pending.newMetadata.vaultId != metadata.vaultId ||
+        pending.newRecoveryKey.isEmpty) {
+      throw const FormatException('Recovery Key 輪替續跑資料與目前日記庫不一致。');
+    }
+    final List<int> newRecoveryWrapKey = await _cryptoService
+        .deriveRecoveryWrapKey(
+          recoveryKey: pending.newRecoveryKey,
+          kdf: pending.newMetadata.kdf,
+        );
+    await _rewrapVaultFiles(
+      vaultId: metadata.vaultId,
+      sourceRecoveryWrapKeys: <List<int>>[
+        oldRecoveryWrapKey,
+        newRecoveryWrapKey,
+      ],
+      targetRecoveryWrapKey: oldRecoveryWrapKey,
+      targetMetadata: pending.oldMetadata,
+    );
+    if (!_sameRecoveryMetadata(metadata, pending.oldMetadata)) {
+      await atomicWriteString(
+        File(await _pathStrategy.recoveryMetadataPath()),
+        const JsonEncoder.withIndent('  ')
+            .convert(pending.oldMetadata.toJson()),
+      );
+      _cachedRecoveryMetadata = pending.oldMetadata;
+    }
+    await deleteFileIfExists(pendingFile.path);
+    return _RecoveryRotationResolution(
+      metadata: pending.oldMetadata,
+      recoveryWrapKey: oldRecoveryWrapKey,
+    );
+  }
+
+  Future<_RecoveryRotationPending?> _readRecoveryRotationPending(
+    ParsedEncryptedDocument parsed, {
+    required VaultId vaultId,
+    required List<int> recoveryWrapKey,
+  }) async {
+    try {
+      final List<int> bytes = await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: DecryptionContext.recovery(
+          recoveryWrapKey: recoveryWrapKey,
+          vaultId: vaultId,
+        ),
+      );
+      final Object? decoded = jsonDecode(utf8.decode(bytes));
+      if (decoded is! Map<String, Object?>) {
+        throw const FormatException('Recovery Key 輪替續跑資料格式不正確。');
+      }
+      return _RecoveryRotationPending.fromJson(decoded);
+    } on SecretBoxAuthenticationError {
+      return null;
+    }
+  }
+
+  Future<void> _finalizeRecoveryRotationPending(
+    _RecoveryRotationResolution resolution,
+  ) async {
+    if (!resolution.clearPendingAfterVerification) return;
+    await deleteFileIfExists(await _pathStrategy.recoveryRotationPendingPath());
+  }
+
+  bool _sameRecoveryMetadata(RecoveryMetadata a, RecoveryMetadata b) =>
+      jsonEncode(a.toJson()) == jsonEncode(b.toJson());
+
+  bool _sameKdf(KdfDescriptor a, KdfDescriptor b) =>
+      jsonEncode(a.toJson()) == jsonEncode(b.toJson());
+
   Future<void> _rewrapVaultRecoveryKey({
     required VaultId vaultId,
     required List<int> oldRecoveryWrapKey,
     required List<int> newRecoveryWrapKey,
     required RecoveryMetadata newMetadata,
   }) async {
+    await _rewrapVaultFiles(
+      vaultId: vaultId,
+      sourceRecoveryWrapKeys: <List<int>>[oldRecoveryWrapKey],
+      targetRecoveryWrapKey: newRecoveryWrapKey,
+      targetMetadata: newMetadata,
+    );
+  }
+
+  Future<void> _rewrapVaultFiles({
+    required VaultId vaultId,
+    required List<List<int>> sourceRecoveryWrapKeys,
+    required List<int> targetRecoveryWrapKey,
+    required RecoveryMetadata targetMetadata,
+  }) async {
     final List<File> files = await _allEncryptedFiles();
     for (final File file in files) {
       final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
         await file.readAsBytes(),
       );
-      final List<int> plaintextBytes = await _cryptoService.decryptBytes(
-        headerBytes: parsed.headerBytes,
-        ciphertextBytes: parsed.ciphertextBytes,
-        context: DecryptionContext.recovery(
-          recoveryWrapKey: oldRecoveryWrapKey,
-          vaultId: vaultId,
-        ),
+      final List<int> plaintextBytes = await _decryptWithRecoveryWrapKeys(
+        parsed: parsed,
+        vaultId: vaultId,
+        recoveryWrapKeys: sourceRecoveryWrapKeys,
       );
       final EncryptionResult encryption = await _cryptoService.encryptBytes(
         documentId: parsed.header.fileId,
         vaultId: parsed.header.vaultId,
         plaintextBytes: plaintextBytes,
         contentType: parsed.header.contentType,
-        recoveryWrapKey: newRecoveryWrapKey,
-        recoverySlotKdf: newMetadata.kdf,
+        recoveryWrapKey: targetRecoveryWrapKey,
+        recoverySlotKdf: targetMetadata.kdf,
         createdAt: parsed.header.createdAt,
         updatedAt: DateTime.now(),
       );
@@ -1526,39 +1794,22 @@ class VaultRepository {
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
   ) async {
-    final List<File> files = await _allEncryptedFiles();
     final List<int> recoveryWrapKey = requireRecoveryWrapKey(session);
-    for (final File file in files) {
-      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-        await file.readAsBytes(),
-      );
-      final List<int> plaintextBytes = await _cryptoService.decryptBytes(
-        headerBytes: parsed.headerBytes,
-        ciphertextBytes: parsed.ciphertextBytes,
-        context: DecryptionContext.recovery(
-          recoveryWrapKey: recoveryWrapKey,
-          vaultId: session.vaultId,
-        ),
-      );
-      final EncryptionResult encryption = await _cryptoService.encryptBytes(
-        documentId: parsed.header.fileId,
-        vaultId: parsed.header.vaultId,
-        plaintextBytes: plaintextBytes,
-        contentType: parsed.header.contentType,
-        recoveryWrapKey: recoveryWrapKey,
-        recoverySlotKdf: metadata.kdf,
-        createdAt: parsed.header.createdAt,
-        updatedAt: DateTime.now(),
-      );
-      await atomicWriteBytes(file, encryption.toFileBytes());
-    }
+    await _rewrapVaultFiles(
+      vaultId: session.vaultId,
+      sourceRecoveryWrapKeys: <List<int>>[recoveryWrapKey],
+      targetRecoveryWrapKey: recoveryWrapKey,
+      targetMetadata: metadata,
+    );
   }
 
   Future<List<File>> _allEncryptedFiles() async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final File manifest = File(await _pathStrategy.manifestPath());
-    final List<File> files = <File>[if (manifest.existsSync()) manifest];
-
+    final Set<String> primaryPaths = <String>{
+      if (manifest.existsSync()) manifest.path,
+    };
+    final List<File> files = <File>[];
     await for (final FileSystemEntity entity in vaultRoot.list(
       recursive: true,
       followLinks: false,
@@ -1566,12 +1817,43 @@ class VaultRepository {
       if (entity is! File || entity.path == manifest.path) {
         continue;
       }
-      if (entity.path.endsWith('.enc') ||
-          entity.path.endsWith('.enc.previous')) {
-        files.add(entity);
+      if (entity.path.endsWith('.enc')) {
+        primaryPaths.add(entity.path);
+      } else if (entity.path.endsWith('.enc.previous')) {
+        primaryPaths.add(
+          entity.path.substring(0, entity.path.length - '.previous'.length),
+        );
       }
     }
+    for (final String path in primaryPaths) {
+      final File file = File(path);
+      await recoverFileReplacement(file);
+      if (file.existsSync()) files.add(file);
+    }
     return files;
+  }
+
+  Future<List<int>> _decryptWithRecoveryWrapKeys({
+    required ParsedEncryptedDocument parsed,
+    required VaultId vaultId,
+    required List<List<int>> recoveryWrapKeys,
+  }) async {
+    SecretBoxAuthenticationError? authenticationError;
+    for (final List<int> recoveryWrapKey in recoveryWrapKeys) {
+      try {
+        return await _cryptoService.decryptBytes(
+          headerBytes: parsed.headerBytes,
+          ciphertextBytes: parsed.ciphertextBytes,
+          context: DecryptionContext.recovery(
+            recoveryWrapKey: recoveryWrapKey,
+            vaultId: vaultId,
+          ),
+        );
+      } on SecretBoxAuthenticationError catch (error) {
+        authenticationError = error;
+      }
+    }
+    throw authenticationError ?? StateError('找不到可用的 Recovery wrapping key。');
   }
 
   Future<DeviceWrappedPayload> _storeWrappedRecoveryKey({
@@ -1642,24 +1924,15 @@ class VaultRepository {
     required UnlockedVaultSession session,
   }) async {
     if (fromEntryPath == toEntryPath) return const [];
-    final from = VaultPathStrategy.chatFileBesideEntry(fromEntryPath);
-    final to = VaultPathStrategy.chatFileBesideEntry(toEntryPath);
-    final sources = <String, String>{};
-    for (final suffix in ['', '.previous', '.tmp']) {
-      final source = File('$from$suffix');
-      if (source.existsSync()) sources[source.path] = '$to$suffix';
-    }
-    for (final entry in sources.entries) {
-      final target = File(entry.value);
-      if (!target.existsSync()) continue;
-      final sourceBytes = await readDecryptedAssetBytes(session, entry.key);
-      final targetBytes = await readDecryptedAssetBytes(session, entry.value);
-      if (sourceBytes == null ||
-          targetBytes == null ||
-          !listEquals(sourceBytes, targetBytes)) {
-        throw StateError('無法確認聊天紀錄內容一致');
-      }
-    }
+    await _ensureChatFilesCanBeCopied(
+      fromEntryPath: fromEntryPath,
+      toEntryPath: toEntryPath,
+      session: session,
+    );
+    final Map<String, String> sources = _chatFilesBesideEntry(
+      fromEntryPath: fromEntryPath,
+      toEntryPath: toEntryPath,
+    );
     for (final entry in sources.entries) {
       final target = File(entry.value);
       if (target.existsSync()) continue;
@@ -1673,6 +1946,43 @@ class VaultRepository {
       }
     }
     return sources.keys.toList();
+  }
+
+  Future<void> _ensureChatFilesCanBeCopied({
+    required String fromEntryPath,
+    required String toEntryPath,
+    required UnlockedVaultSession session,
+  }) async {
+    if (fromEntryPath == toEntryPath) return;
+    final Map<String, String> sources = _chatFilesBesideEntry(
+      fromEntryPath: fromEntryPath,
+      toEntryPath: toEntryPath,
+    );
+    for (final entry in sources.entries) {
+      final target = File(entry.value);
+      if (!target.existsSync()) continue;
+      final sourceBytes = await readDecryptedAssetBytes(session, entry.key);
+      final targetBytes = await readDecryptedAssetBytes(session, entry.value);
+      if (sourceBytes == null ||
+          targetBytes == null ||
+          !listEquals(sourceBytes, targetBytes)) {
+        throw StateError('無法確認聊天紀錄內容一致');
+      }
+    }
+  }
+
+  Map<String, String> _chatFilesBesideEntry({
+    required String fromEntryPath,
+    required String toEntryPath,
+  }) {
+    final from = VaultPathStrategy.chatFileBesideEntry(fromEntryPath);
+    final to = VaultPathStrategy.chatFileBesideEntry(toEntryPath);
+    final sources = <String, String>{};
+    for (final suffix in ['', '.previous', '.tmp']) {
+      final source = File('$from$suffix');
+      if (source.existsSync()) sources[source.path] = '$to$suffix';
+    }
+    return sources;
   }
 
   Future<void> deleteChatFilesBesideEntry(String entryPath) =>

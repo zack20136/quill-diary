@@ -13,6 +13,7 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_actions.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/widgets/entry_writing_mode_picker.dart';
 import 'package:quill_diary/presentation/home/widgets/home_circle_action_button.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
@@ -20,7 +21,6 @@ import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart'
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
@@ -35,36 +35,26 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _openingWritingFlow = false;
   Future<void> _chooseWritingMode() async {
     if (_openingWritingFlow) return;
+    final initialState = ref.read(effectiveAppSessionProvider).value;
+    final session = initialState?.session;
+    if (initialState?.isUnlocked != true || session == null) return;
     _openingWritingFlow = true;
     try {
-      final route = await showAppDialog<String>(
-        context: context,
-        builder: (dialogContext) => AppDialogShell(
-          title: context.l10n.homeTooltipNewEntry,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit_note),
-                title: Text(context.l10n.chatDiaryWriteDirectly),
-                onTap: () =>
-                    Navigator.pop(dialogContext, AppRoutes.editorRoute),
-              ),
-              ListTile(
-                leading: const Icon(Icons.chat_bubble_outline),
-                title: Text(context.l10n.chatDiaryWriteWithChat),
-                onTap: () => Navigator.pop(dialogContext, 'chat'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (route != null && mounted) {
-        if (route == 'chat') {
+      final mode = await showEntryWritingModePicker(context, session: session);
+      if (!mounted || mode == null) return;
+      final current = ref.read(effectiveAppSessionProvider);
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (current.isLoading ||
+          current.value?.isUnlocked != true ||
+          current.value?.session != session ||
+          (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+        return;
+      }
+      switch (mode) {
+        case EntryWritingMode.direct:
+          unawaited(context.push<void>(AppRoutes.editorRoute));
+        case EntryWritingMode.chat:
           await startChatDiary(context, ref);
-        } else {
-          unawaited(context.push<void>(route));
-        }
       }
     } finally {
       _openingWritingFlow = false;

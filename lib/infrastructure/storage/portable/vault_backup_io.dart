@@ -150,6 +150,14 @@ class VaultBackupIo {
         issue = VaultBackupIssue.invalidRecoveryJson;
       }
     }
+    if (ok) {
+      try {
+        ensureArchiveExtractionBudget(zip.archive);
+      } on ArchiveExtractionLimitException {
+        ok = false;
+        issue = VaultBackupIssue.extractionLimitExceeded;
+      }
+    }
 
     return BackupInspectResult(ok: ok, issue: issue, layout: layout);
   }
@@ -186,13 +194,13 @@ class VaultBackupIo {
       }
     } on VaultBackupException {
       rethrow;
+    } on ArchiveExtractionLimitException {
+      throw const VaultBackupException(
+        VaultBackupIssue.extractionLimitExceeded,
+      );
     } on Object {
       throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
-  }
-
-  Future<BackupRecoveryPreview> peekBackupRecovery(File backupFile) {
-    return prepareRestorePreview(backupFile);
   }
 
   Future<void> verifyBackupRecoveryKey(
@@ -262,6 +270,13 @@ class VaultBackupIo {
         await tempRoot.delete(recursive: true);
       }
       rethrow;
+    } on ArchiveExtractionLimitException {
+      if (tempRoot.existsSync()) {
+        await tempRoot.delete(recursive: true);
+      }
+      throw const VaultBackupException(
+        VaultBackupIssue.extractionLimitExceeded,
+      );
     } on Object {
       if (tempRoot.existsSync()) {
         await tempRoot.delete(recursive: true);
@@ -327,6 +342,13 @@ class VaultBackupIo {
     }
     if (!layout.isRestorable) {
       throw VaultBackupException(layout.issue);
+    }
+    try {
+      ensureArchiveExtractionBudget(zip.archive);
+    } on ArchiveExtractionLimitException {
+      throw const VaultBackupException(
+        VaultBackupIssue.extractionLimitExceeded,
+      );
     }
   }
 

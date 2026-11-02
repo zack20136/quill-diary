@@ -20,6 +20,7 @@ import 'package:quill_diary/presentation/home/home_formatters.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
+import 'package:quill_diary/presentation/home/widgets/overview_presentation.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -33,64 +34,6 @@ import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 const double kOverviewScopeControlHeight = 40;
-
-String overviewMetricRangeCaption(
-  BuildContext context,
-  OverviewScope scope,
-  DateTime focusedMonth,
-  int focusedYear,
-) {
-  return switch (scope) {
-    OverviewScope.all => context.l10n.homeOverviewScopeAll,
-    OverviewScope.year => context.l10n.homeOverviewScopeYear(focusedYear),
-    OverviewScope.month => context.l10n.homeOverviewScopeMonth(
-      focusedMonth.year,
-      focusedMonth.month,
-    ),
-  };
-}
-
-int overviewScopeTotalDays({
-  required OverviewScope scope,
-  required DateTime focusedMonth,
-  required int focusedYear,
-  required List<DiaryEntrySummary> entries,
-}) {
-  switch (scope) {
-    case OverviewScope.month:
-      return DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
-    case OverviewScope.year:
-      final DateTime start = DateTime(focusedYear, 1, 1);
-      final DateTime end = DateTime(focusedYear + 1, 1, 1);
-      return end.difference(start).inDays;
-    case OverviewScope.all:
-      if (entries.isEmpty) {
-        return 0;
-      }
-      final List<DateTime> dates =
-          entries
-              .map((DiaryEntrySummary item) => item.date.toDateTime())
-              .toList()
-            ..sort();
-      return dates.last.difference(dates.first).inDays + 1;
-  }
-}
-
-String overviewScopedDiarySectionTitle(
-  BuildContext context,
-  OverviewScope scope, {
-  String? selectedTag,
-}) {
-  final String base = switch (scope) {
-    OverviewScope.all => context.l10n.homeDiarySectionAll,
-    OverviewScope.year => context.l10n.homeDiarySectionByYear,
-    OverviewScope.month => context.l10n.homeDiarySectionByMonth,
-  };
-  if (selectedTag == null || selectedTag.isEmpty) {
-    return base;
-  }
-  return context.l10n.homeDiarySectionWithTag(base, selectedTag);
-}
 
 List<Widget> overviewDiarySectionSlivers({
   required BuildContext context,
@@ -238,24 +181,21 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
 
         return scopedEntriesAsync.when(
           data: (List<DiaryEntrySummary> raw) {
-            final List<DiaryEntrySummary> diaryEntries = selectedTag == null
-                ? raw
-                : raw
-                      .where(
-                        (DiaryEntrySummary e) => e.tags.any(
-                          (String t) =>
-                              normalizeText(t) == normalizeText(selectedTag),
-                        ),
-                      )
-                      .toList(growable: false);
-            final Set<EntryId> exportEntryIds =
-                (scope == OverviewScope.all ? allEntries : raw)
-                    .map((entry) => entry.id)
-                    .toSet();
+            final List<DiaryEntrySummary> diaryEntries = overviewEntriesForTag(
+              raw,
+              selectedTag,
+            );
+            final Set<EntryId> exportEntryIds = diaryEntries
+                .map((DiaryEntrySummary entry) => entry.id)
+                .toSet();
             final List<TagCatalogUsageItem> scopedTopTags =
                 rankedTagUsageFromEntries(raw);
             final Widget exportButton = Tooltip(
-              message: overviewExportLabel(context, scope),
+              message: overviewExportLabel(
+                context,
+                scope,
+                selectedTag: selectedTag,
+              ),
               child: FilledButton.icon(
                 onPressed: exportEntryIds.isEmpty
                     ? null
@@ -269,6 +209,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                             scope,
                             focusedMonth,
                             focusedYear,
+                            selectedTag: selectedTag,
                           ),
                         ),
                       ),
@@ -318,7 +259,10 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                             scope: scope,
                             focusedMonth: focusedMonth,
                             focusedYear: focusedYear,
-                            entriesAsync: scopedEntriesAsync,
+                            selectedTag: selectedTag,
+                            entriesAsync: AsyncData<List<DiaryEntrySummary>>(
+                              diaryEntries,
+                            ),
                           ),
                           const SizedBox(height: HomeLayout.sectionGap),
                           HomeSectionCard(
@@ -520,6 +464,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                           scope: scope,
                           focusedMonth: focusedMonth,
                           focusedYear: focusedYear,
+                          selectedTag: selectedTag,
                           entriesAsync: scopedEntriesAsync,
                         ),
                       ],
@@ -558,6 +503,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                           scope: scope,
                           focusedMonth: focusedMonth,
                           focusedYear: focusedYear,
+                          selectedTag: selectedTag,
                           entriesAsync: scopedEntriesAsync,
                         ),
                       ],
@@ -596,6 +542,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
     required this.focusedMonth,
     required this.focusedYear,
     required this.entriesAsync,
+    this.selectedTag,
     super.key,
   });
 
@@ -603,6 +550,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
   final DateTime focusedMonth;
   final int focusedYear;
   final AsyncValue<List<DiaryEntrySummary>> entriesAsync;
+  final String? selectedTag;
 
   @override
   Widget build(BuildContext context) {
@@ -611,6 +559,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
       scope,
       focusedMonth,
       focusedYear,
+      selectedTag: selectedTag,
     );
 
     return OverviewMetricShell(
@@ -792,7 +741,7 @@ class OverviewFocusedPeriodBar extends ConsumerWidget {
                             : null,
                         icon: Icon(
                           Icons.chevron_left_rounded,
-                          color: cs.primary,
+                          color: cs.onSurface,
                         ),
                       ),
                       Expanded(
@@ -855,7 +804,7 @@ class OverviewFocusedPeriodBar extends ConsumerWidget {
                             : null,
                         icon: Icon(
                           Icons.chevron_right_rounded,
-                          color: cs.primary,
+                          color: cs.onSurface,
                         ),
                       ),
                     ],
@@ -1020,7 +969,7 @@ class OverviewMetricShell extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.insights_rounded,
-                  color: cs.primary,
+                  color: cs.onSurface,
                   size: 24,
                 ),
               ),

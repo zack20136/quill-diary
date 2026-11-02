@@ -52,7 +52,7 @@ class SupportProductsSection extends StatelessWidget {
                   height: 40,
                   child: Icon(
                     Icons.volunteer_activism_rounded,
-                    color: cs.secondary,
+                    color: cs.onSurface,
                     size: 20,
                   ),
                 ),
@@ -180,7 +180,7 @@ class SupportInfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(icon, color: cs.onSurfaceVariant, size: 22),
+          Icon(icon, color: cs.onSurface, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -287,7 +287,7 @@ class _SupportProductTile extends StatelessWidget {
                               padding: const EdgeInsets.all(7),
                               child: Icon(
                                 Icons.volunteer_activism_rounded,
-                                color: accent,
+                                color: cs.onSurface,
                                 size: 18,
                               ),
                             ),
@@ -399,6 +399,7 @@ class _SupportProductLoadNoticeCard extends StatelessWidget {
               Text(
                 notice.title,
                 style: theme.textTheme.titleSmall?.copyWith(
+                  color: tone,
                   fontWeight: FontWeight.w700,
                 ),
               ),

@@ -26,8 +26,17 @@ String userFacingErrorMessage(
         ? l10n.androidSafWriteFailed
         : l10n.androidSafWriteFailedWithCode(code);
   }
-  debugPrint('Unclassified user-facing error: $error');
+  reportUnclassifiedUserFacingError(error);
   return fallback ?? l10n.userFacingErrorDefaultMessage;
+}
+
+/// 未分類錯誤只在偵錯輸出型別，避免 release 日誌帶出路徑或回應內容。
+void reportUnclassifiedUserFacingError(
+  Object error, {
+  bool debugDiagnostics = kDebugMode,
+}) {
+  if (!debugDiagnostics) return;
+  debugPrint('Unclassified user-facing error: ${error.runtimeType}');
 }
 
 String vaultBackupIssueMessage(AppLocalizations l10n, VaultBackupIssue issue) {
@@ -53,6 +62,8 @@ String vaultBackupIssueMessage(AppLocalizations l10n, VaultBackupIssue issue) {
       l10n.vaultBackupIssueRecoveryInfoMissing,
     VaultBackupIssue.missingVaultPayload =>
       l10n.vaultBackupIssueMissingVaultPayload,
+    VaultBackupIssue.extractionLimitExceeded =>
+      l10n.vaultBackupIssueExtractionLimitExceeded,
   };
 }
 

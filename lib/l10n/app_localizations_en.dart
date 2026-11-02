@@ -2941,6 +2941,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The backup is incomplete and does not contain the diary vault.';
 
   @override
+  String get vaultBackupIssueExtractionLimitExceeded =>
+      'The archive exceeds the limit for file count, expanded size, or compression ratio, so it was not processed.';
+
+  @override
   String get legalBrandDisclaimer =>
       'The Quill Diary name, icon, and Google Play Store listing are author branding and are not transferred with the code license.';
 
@@ -4032,7 +4036,107 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDiaryWriteWithChat => 'Write through chat';
 
   @override
+  String get entryWritingModeDirectDescription =>
+      'Write freely with text, photos, and to-dos.';
+
+  @override
+  String get entryWritingModeChatDescription =>
+      'Talk with AI, then turn the conversation into a diary entry.';
+
+  @override
+  String aiCustomConnectionName(int number) {
+    return 'Custom connection $number';
+  }
+
+  @override
+  String get aiConnectionName => 'Connection name';
+
+  @override
+  String get aiConnectionAdd => 'Add custom connection';
+
+  @override
+  String get aiConnectionDelete => 'Delete connection';
+
+  @override
+  String get aiConnectionDeleteConfirmTitle => 'Delete this connection?';
+
+  @override
+  String aiConnectionDeleteConfirmBody(String name) {
+    return 'Delete “$name”? Saving will remove this connection and delete its API key from this device. It cannot be restored in settings. Existing chats will be kept.';
+  }
+
+  @override
+  String get aiConnectionNotConfigured => 'No destination configured';
+
+  @override
+  String get aiCurrentChatConnection => 'Original connection for this chat';
+
+  @override
+  String get aiConnectionNameInvalid =>
+      'Enter a connection name that is not already in use.';
+
+  @override
+  String get aiThinkingSettings => 'Thinking settings…';
+
+  @override
+  String get aiThinkingSettingsTitle => 'Thinking settings';
+
+  @override
+  String get aiThinkingFormatHint =>
+      'Choose how to send Thinking parameters for this model. Check the model’s official documentation for supported fields and levels.';
+
+  @override
+  String get aiThinkingAdvancedHint =>
+      'Enable the levels supported by your model and enter a JSON object for each. An empty object sends no extra parameters for that level.';
+
+  @override
+  String get aiThinkingFormat => 'Parameter format';
+
+  @override
+  String get aiThinkingInherit => 'Use current protocol';
+
+  @override
+  String get aiThinkingOmit => 'Do not send Thinking parameters';
+
+  @override
+  String get aiThinkingOmitShort => 'Not sent';
+
+  @override
+  String get aiThinkingCustom => 'Manual JSON';
+
+  @override
+  String get aiThinkingAdvancedOverrideHint =>
+      'Set the JSON parameters to send for each level. Your custom parameters are added directly to requests and may affect response length and cost.';
+
+  @override
+  String get aiThinkingDefault => 'Default level';
+
+  @override
+  String get aiThinkingAdvanced => 'Advanced JSON mapping';
+
+  @override
+  String get aiThinkingPreview => 'Parameters for the default level';
+
+  @override
+  String get aiThinkingPreviewInvalid =>
+      'Complete a valid JSON mapping to see the preview.';
+
+  @override
+  String get aiThinkingSelectionRequired =>
+      'Enable at least one level and select a valid default.';
+
+  @override
+  String get aiThinkingProtectedFields =>
+      'Enter only parameter fields, without overriding the model, messages or request controls.';
+
+  @override
+  String get aiThinkingJsonInvalid => 'Enter a valid JSON object.';
+
+  @override
   String get aiModel => 'Model';
+
+  @override
+  String get aiModelsHint => 'Enable chat models and adjust thinking levels.';
 
   @override
   String get aiModelSearch => 'Add a model';
@@ -4096,11 +4200,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDiaryPromptRequired => 'Prompts cannot be blank';
 
   @override
-  String get chatDiaryHidePeople => 'Hide names using the people catalog';
+  String get chatDiaryHidePeople => 'Hide people’s names';
 
   @override
   String get chatDiaryHidePeopleHint =>
-      'Replace roster names and aliases with placeholders before sending. Photo content is not obscured.';
+      'Replace roster names and aliases with placeholders before sending. Content within images is not hidden.';
 
   @override
   String get aiSettingsLead => 'Choose the service and model to use.';

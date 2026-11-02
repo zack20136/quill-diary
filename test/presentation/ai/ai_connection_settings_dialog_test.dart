@@ -8,15 +8,17 @@ import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.da
 import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_prompt_dialog.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 
@@ -40,33 +42,37 @@ void main() {
   var throwOnConnection = false;
   Completer<void>? connectionGate;
   FakeAiClient? lastClient;
-  Widget app({Widget? child}) => ProviderScope(
-    overrides: [
-      aiSettingsStoreProvider.overrideWithValue(store),
-      appSessionProvider.overrideWith(_SettingsSession.new),
-      aiClientFactoryProvider.overrideWithValue((connectionConfig, key) {
-        networkCalls++;
-        return lastClient = FakeAiClient(connectionConfig)
-          ..failure = connectionFailure
-          ..response = throwOnConnection ? () => throw StateError('未知') : null
-          ..connectionGate = connectionGate?.future;
-      }),
-    ],
-    child: ValueListenableBuilder<Locale>(
-      valueListenable: locale,
-      builder: (context, value, _) => widgetTestApp(
-        locale: value,
-        child:
-            child ??
-            Builder(
-              builder: (context) => FilledButton(
-                onPressed: () => showAiConnectionSettingsDialog(context),
-                child: Text(context.l10n.aiSettings),
-              ),
-            ),
-      ),
-    ),
-  );
+  Widget app({Widget? child, Brightness brightness = Brightness.light}) =>
+      ProviderScope(
+        overrides: [
+          aiSettingsStoreProvider.overrideWithValue(store),
+          appSessionProvider.overrideWith(_SettingsSession.new),
+          aiClientFactoryProvider.overrideWithValue((connectionConfig, key) {
+            networkCalls++;
+            return lastClient = FakeAiClient(connectionConfig)
+              ..failure = connectionFailure
+              ..response = throwOnConnection
+                  ? () => throw StateError('未知')
+                  : null
+              ..connectionGate = connectionGate?.future;
+          }),
+        ],
+        child: ValueListenableBuilder<Locale>(
+          valueListenable: locale,
+          builder: (context, value, _) => widgetTestApp(
+            locale: value,
+            brightness: brightness,
+            child:
+                child ??
+                Builder(
+                  builder: (context) => FilledButton(
+                    onPressed: () => showAiConnectionSettingsDialog(context),
+                    child: Text(context.l10n.aiSettings),
+                  ),
+                ),
+          ),
+        ),
+      );
   setUp(() {
     store = OverviewAiSettingsStore();
     locale = ValueNotifier(appZhLocale);
@@ -77,13 +83,16 @@ void main() {
     lastClient = null;
   });
   tearDown(() => locale.dispose());
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(
+    WidgetTester tester, {
+    Brightness brightness = Brightness.light,
+  }) async {
     addTearDown(() async {
       await tester.pump(const Duration(seconds: 5));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pumpWidget(const SizedBox.shrink());
     });
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(brightness: brightness));
     await tester.tap(find.text('AI 設定'));
     await tester.pumpAndSettle();
   }
@@ -94,6 +103,309 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  List<String> modelOrder() => find
+      .descendant(
+        of: find.byType(AiConnectionSettingsDialog),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Material &&
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith('ai-model-'),
+        ),
+      )
+      .evaluate()
+      .map((element) => (element.widget.key! as ValueKey<String>).value)
+      .toList();
+
+  Future<String> addConnection(
+    WidgetTester tester,
+    String name,
+    String key,
+  ) async {
+    final add = find.byKey(const ValueKey('ai-add-connection'));
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    final nameField = find
+        .byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith(
+                'ai-connection-name-',
+              ),
+        )
+        .last;
+    final id = (tester.widget<TextField>(nameField).key! as ValueKey<String>)
+        .value
+        .substring('ai-connection-name-'.length);
+    await tester.ensureVisible(nameField);
+    await tester.enterText(nameField, name);
+    await tester.enterText(
+      find.byKey(ValueKey('ai-connection-url-$id')),
+      'https://same.example/v1',
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(ValueKey('ai-api-key-$id')), key);
+    final model = find.byKey(ValueKey('ai-model-add-field-$id'));
+    await tester.ensureVisible(model);
+    await tester.enterText(model, 'same-model');
+    await tester.pump();
+    final addModel = find.byKey(ValueKey('ai-model-add-$id'));
+    await tester.ensureVisible(addModel);
+    await tester.tap(addModel);
+    await tester.pumpAndSettle();
+    return id;
+  }
+
+  testWidgets('同網址同模型分別保存，刪除須確認且儲存後不提供恢復', (tester) async {
+    await open(tester);
+    final a = await addConnection(tester, '工作', 'key-a');
+    final b = await addConnection(tester, '個人', 'key-b');
+    expect(a, isNot(b));
+    expect(store.keys, isEmpty);
+    final bName = find.byKey(ValueKey('ai-connection-name-$b'));
+    await tester.ensureVisible(bName);
+    await tester.enterText(bName, '工作');
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(find.text('請填寫連線名稱，且使用中的名稱不可重複。'), findsOneWidget);
+    expect(store.keys, isEmpty);
+    await tester.enterText(bName, '個人');
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    final configA = store.settings.connectionFor(a);
+    final configB = store.settings.connectionFor(b);
+    expect(store.keys[configA.credentialId], 'key-a');
+    expect(store.keys[configB.credentialId], 'key-b');
+    expect(store.settings.activeConnectionId, a);
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    final remove = find.byKey(ValueKey('ai-connection-delete-$a'));
+    await tester.ensureVisible(remove);
+    final colors = Theme.of(tester.element(remove)).colorScheme;
+    expect(
+      tester.widget<TextButton>(remove).style!.foregroundColor!.resolve({}),
+      colors.error,
+    );
+    final deleteIcon = find.descendant(
+      of: remove,
+      matching: find.byIcon(Icons.delete_outline),
+    );
+    expect(IconTheme.of(tester.element(deleteIcon)).color, colors.error);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(find.text('確定刪除連線？'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, '取消').last);
+    await tester.pumpAndSettle();
+    expect(remove, findsOneWidget);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '刪除'));
+    await tester.pumpAndSettle();
+    expect(remove, findsNothing);
+    expect(store.settings.connections.containsKey(a), isTrue);
+    await tester.tap(find.widgetWithText(TextButton, '取消'));
+    await tester.pumpAndSettle();
+    expect(store.settings.connections.containsKey(a), isTrue);
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(remove);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '刪除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(store.settings.connections.containsKey(a), isFalse);
+    expect(store.settings.activeConnectionId, b);
+    expect(store.keys.containsKey(configA.credentialId), isFalse);
+    expect(store.keys[configB.credentialId], 'key-b');
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    expect(find.text('已移除連線'), findsNothing);
+    expect(find.text('工作'), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, '取消'));
+    await tester.pumpAndSettle();
+    expect(networkCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('刪除最後一組可用連線仍可儲存，晚到金鑰不恢復已刪除草稿', (tester) async {
+    final config = addModel(
+      const AiConnectionConfig(
+        provider: AiProvider.custom,
+        customConnectionId: 'aic_only',
+        displayName: '唯一連線',
+        baseUrl: 'https://old.example/v1',
+      ),
+      'manual',
+    );
+    store.settings = AiConnectionSettings(
+      activeConnectionId: config.connectionId,
+      connections: {config.connectionId: config},
+    );
+    store.keys[config.credentialId] = 'old-key';
+    await open(tester);
+    final gate = Completer<void>();
+    store.keyReadGate = gate.future;
+    final url = find.byKey(const ValueKey('ai-connection-url-aic_only'));
+    await tester.ensureVisible(url);
+    await tester.enterText(url, 'https://new.example/v1');
+    await tester.pump();
+    final remove = find.byKey(const ValueKey('ai-connection-delete-aic_only'));
+    await tester.ensureVisible(remove);
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '刪除'));
+    await tester.pumpAndSettle();
+    gate.complete();
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AiConnectionSettingsDialog), findsNothing);
+    expect(
+      store.settings.connections.containsKey(config.connectionId),
+      isFalse,
+    );
+    expect(store.settings.activeConnectionId, 'openai');
+    expect(store.keys, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final language in ['zh', 'en']) {
+    testWidgets('$language 自訂連線在窄版大字級保留名稱標籤空間與可見操作', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      locale.value = language == 'zh' ? appZhLocale : appEnLocale;
+      final config = addModel(
+        const AiConnectionConfig(
+          provider: AiProvider.custom,
+          customConnectionId: 'aic_narrow',
+          displayName: 'My connection',
+          baseUrl: 'https://example.com/v1',
+        ),
+        'manual',
+      );
+      store.settings = AiConnectionSettings(
+        activeConnectionId: config.connectionId,
+        connections: {config.connectionId: config},
+      );
+      await tester.pumpWidget(app(brightness: Brightness.dark));
+      await tester.tap(find.text(language == 'zh' ? 'AI 設定' : 'AI settings'));
+      await tester.pumpAndSettle();
+      final name = find.byKey(const ValueKey('ai-connection-name-aic_narrow'));
+      await tester.ensureVisible(name);
+      await tester.pumpAndSettle();
+      final label = find.descendant(
+        of: name,
+        matching: find.text(language == 'zh' ? '連線名稱' : 'Connection name'),
+      );
+      final title = find.text('My connection').first;
+      expect(
+        tester.getTopLeft(label).dy,
+        greaterThan(tester.getBottomLeft(title).dy),
+      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.showKeyboard(name);
+      await tester.pumpAndSettle();
+      await tester.enterText(name, 'Updated connection name');
+      await tester.pumpAndSettle();
+      final remove = find.byKey(
+        const ValueKey('ai-connection-delete-aic_narrow'),
+      );
+      await tester.ensureVisible(remove);
+      await tester.pumpAndSettle();
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(
+        find.text(language == 'zh' ? '確定刪除連線？' : 'Delete this connection?'),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find
+            .widgetWithText(TextButton, language == 'zh' ? '取消' : 'Cancel')
+            .last,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('一組連線換網址的晚到金鑰不會寫進另一組，取消不保存', (tester) async {
+    await open(tester);
+    final a = await addConnection(tester, '工作', 'key-a');
+    final b = await addConnection(tester, '個人', 'key-b');
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    final before = store.settings.toJson();
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    final gate = Completer<void>();
+    store.keyReadGate = gate.future;
+    final url = find.byKey(ValueKey('ai-connection-url-$a'));
+    await tester.ensureVisible(url);
+    await tester.enterText(url, 'https://new.example/v1');
+    await tester.pump();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(ValueKey('ai-api-key-$a')))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    await tester.ensureVisible(find.widgetWithText(ExpansionTile, '個人'));
+    await tester.tap(find.widgetWithText(ExpansionTile, '個人'));
+    await tester.pumpAndSettle();
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(ValueKey('ai-api-key-$b')))
+          .controller!
+          .text,
+      'key-b',
+    );
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(store.settings.toJson(), before);
+    expect(store.keys[store.settings.connectionFor(a).credentialId], 'key-a');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('暗色模型卡片與輸入框使用既有藍灰色階', (tester) async {
+    await open(tester, brightness: Brightness.dark);
+    final row = find.byKey(const ValueKey('ai-model-openai-gpt-6.1-terra'));
+    final colors = Theme.of(tester.element(row)).colorScheme;
+    final appColors = Theme.of(tester.element(row)).extension<AppColors>()!;
+    final material = tester.widget<Material>(row);
+    expect(material.color, colors.surfaceContainerHigh);
+    expect(
+      (material.shape! as RoundedRectangleBorder).side.color,
+      appColors.entrySelectedBorder,
+    );
+    expect(
+      tester
+          .widget<Material>(
+            find.byKey(const ValueKey('ai-model-openai-gpt-6-luna')),
+          )
+          .color,
+      colors.surfaceContainer,
+    );
+    final key = find.byKey(const ValueKey('ai-api-key-openai'));
+    expect(
+      Theme.of(tester.element(key)).inputDecorationTheme.fillColor,
+      colors.surfaceContainer,
+    );
+  });
+
   for (final language in ['zh', 'en']) {
     testWidgets('設定頁以單一 AI 卡片開啟設定，$language 窄螢幕大字級可操作', (tester) async {
       tester.view.physicalSize = const Size(360, 800);
@@ -103,6 +415,16 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       locale.value = Locale(language);
+      store.settings = const AiConnectionSettings(
+        connections: {
+          'custom': AiConnectionConfig(
+            provider: AiProvider.custom,
+            model: 'custom-model',
+            addedModels: ['custom-model'],
+            enabledModels: ['custom-model'],
+          ),
+        },
+      );
       final l10n = lookupAppLocalizations(locale.value);
       await tester.pumpWidget(
         settingsTestScope(
@@ -150,10 +472,63 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
       expect(find.text(l10n.aiSettingsLead), findsOneWidget);
+      final thinking = find.byKey(
+        const ValueKey('ai-model-thinking-openai-gpt-6.1-terra'),
+      );
+      await tester.ensureVisible(thinking);
+      await tester.pumpAndSettle();
+      final modelSwitch = find.byKey(
+        const ValueKey('ai-model-switch-openai-gpt-6.1-terra'),
+      );
+      expect(
+        tester.getRect(find.text('gpt-6.1-terra')).right,
+        lessThan(tester.getRect(modelSwitch).left),
+      );
+      await tester.tap(thinking);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(MenuItemButton, l10n.aiThinkingHigh),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: thinking, matching: find.text(l10n.aiThinkingHigh)),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(modelSwitch);
+      await tester.pumpAndSettle();
+      await tester.tap(modelSwitch);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(modelSwitch).value, isFalse);
+      final remove = find.byKey(
+        const ValueKey('ai-model-remove-custom-custom-model'),
+      );
+      final customSwitch = find.byKey(
+        const ValueKey('ai-model-switch-custom-custom-model'),
+      );
+      await tester.ensureVisible(remove);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(remove).right,
+        lessThanOrEqualTo(tester.getRect(customSwitch).left),
+      );
+      expect(
+        tester.getCenter(remove).dy,
+        closeTo(tester.getCenter(customSwitch).dy, 1),
+      );
+      expect(
+        tester.getRect(find.text('custom-model')).right,
+        lessThan(tester.getRect(remove).left),
+      );
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(find.text('custom-model'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text(l10n.commonActionCancel));
       await tester.pumpAndSettle();
       expect(find.byType(AiConnectionSettingsDialog), findsNothing);
+      expect(store.settings.connectionFor('custom').addedModels, [
+        'custom-model',
+      ]);
       expect(networkCalls, 0);
       await tester.pumpWidget(const SizedBox.shrink());
     });
@@ -321,16 +696,36 @@ void main() {
     expect(find.byType(AiConnectionSettingsDialog), findsNothing);
   });
 
+  testWidgets('標準字級的模型卡片與 Thinking 按鈕維持緊湊高度', (tester) async {
+    await open(tester);
+    final row = find.byKey(const ValueKey('ai-model-openai-gpt-6.1-terra'));
+    final thinking = find.byKey(
+      const ValueKey('ai-model-thinking-openai-gpt-6.1-terra'),
+    );
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(row).height, lessThanOrEqualTo(64));
+    expect(tester.getSize(thinking).height, lessThanOrEqualTo(28));
+    expect(
+      find.descendant(of: thinking, matching: find.text('Thinking')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('提供商列出五項，模型在金鑰上方且可手動輸入，清空金鑰後儲存移除', (tester) async {
     store.keys['openai'] = 'synthetic-key';
+    store.settings = const AiConnectionSettings(
+      connections: {'custom': AiConnectionConfig(provider: AiProvider.custom)},
+    );
     await open(tester);
     expect(find.text('Ollama'), findsNothing);
-    expect(find.text('OpenAI'), findsOneWidget);
-    expect(find.text('自訂'), findsOneWidget);
-    expect(find.text('Claude'), findsOneWidget);
-    expect(find.text('Gemini'), findsOneWidget);
-    expect(find.text('xAI'), findsOneWidget);
-    final modelRow = find.text('OpenAI/gpt-6.1-terra');
+    expect(find.text('OpenAI'), findsWidgets);
+    expect(find.text('自訂'), findsWidgets);
+    expect(find.text('Claude'), findsWidgets);
+    expect(find.text('Gemini'), findsWidgets);
+    expect(find.text('xAI'), findsWidgets);
+    final modelRow = find.text('gpt-6.1-terra');
     final model = find.byKey(const ValueKey('ai-model-add-field-openai'));
     final key = find.byKey(const ValueKey('ai-api-key-openai'));
     final testConnection = find.byKey(const ValueKey('ai-test-openai'));
@@ -341,7 +736,14 @@ void main() {
       lessThan(tester.getTopLeft(testConnection).dy),
     );
     expect(tester.widget<TextField>(key).obscureText, isTrue);
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    expect(
+      find.byKey(const ValueKey('ai-connection-delete-openai')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('ai-connection-delete-custom')),
+      findsOneWidget,
+    );
     final button = tester.widget<AppActionButton>(testConnection);
     expect(button.fullWidth, isFalse);
     expect(button.appearance, AppActionButtonAppearance.outlined);
@@ -371,9 +773,9 @@ void main() {
     await tester.enterText(key, '');
     await tester.tap(find.widgetWithText(FilledButton, '儲存'));
     await tester.pumpAndSettle();
-    expect(store.settings.activeConfig.model, 'gpt-6.1-terra');
+    expect(store.settings.activeConfig.model, 'local-model');
     expect(
-      store.settings.activeConfig.enabledModels,
+      store.settings.connectionFor('openai').enabledModels,
       containsAll(['gpt-6.1-terra', 'my-manual-model']),
     );
     expect(store.keys['openai'], isNull);
@@ -382,8 +784,8 @@ void main() {
   testWidgets('官方模型用寫死清單，輸入時不會把既有列濾掉', (tester) async {
     store.keys['openai'] = 'synthetic-key';
     store.settings = const AiConnectionSettings(
-      configs: {
-        AiProvider.openai: AiConnectionConfig(
+      connections: {
+        'openai': AiConnectionConfig(
           provider: AiProvider.openai,
           model: 'kept-model',
         ),
@@ -391,8 +793,8 @@ void main() {
     );
     await open(tester);
     expect(networkCalls, 0);
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
-    expect(find.text('OpenAI/kept-model'), findsOneWidget);
+    expect(find.text('gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('kept-model'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('ai-model-remove-openai-gpt-6.1-terra')),
       findsNothing,
@@ -416,7 +818,7 @@ void main() {
     final field = find.byKey(const ValueKey('ai-model-add-field-openai'));
     await tester.enterText(field, 'manual-model-not-in-list');
     await tester.pump();
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('gpt-6.1-terra'), findsOneWidget);
     final Finder addModel = find.byKey(const ValueKey('ai-model-add-openai'));
     await tester.ensureVisible(addModel);
     await tester.tap(addModel);
@@ -446,12 +848,12 @@ void main() {
     await tester.tap(addField);
     await tester.pumpAndSettle();
     expect(networkCalls, 0);
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
-    expect(find.text('OpenAI/gpt-6.1-sol'), findsOneWidget);
-    expect(find.text('OpenAI/gpt-6-luna'), findsOneWidget);
-    expect(find.text('Claude/claude-opus-5-5'), findsOneWidget);
-    expect(find.text('Gemini/gemini-3.8-flash'), findsOneWidget);
-    expect(find.text('xAI/grok-4.7'), findsNothing);
+    expect(find.text('gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('gpt-6.1-sol'), findsOneWidget);
+    expect(find.text('gpt-6-luna'), findsOneWidget);
+    expect(find.text('claude-opus-5-5'), findsOneWidget);
+    expect(find.text('gemini-3.8-flash'), findsOneWidget);
+    expect(find.text('grok-4.7'), findsNothing);
     await tester.ensureVisible(find.text('更多'));
     await tester.tap(find.text('更多'));
     await tester.pumpAndSettle();
@@ -469,7 +871,7 @@ void main() {
     expect(claudeHeading, findsOneWidget);
     final sonnet = find.descendant(
       of: catalog,
-      matching: find.text('Claude/claude-sonnet-5-5'),
+      matching: find.text('claude-sonnet-5-5'),
     );
     expect(sonnet, findsOneWidget);
     expect(
@@ -479,19 +881,13 @@ void main() {
     expect(
       tester
           .getTopLeft(
-            find.descendant(
-              of: catalog,
-              matching: find.text('OpenAI/gpt-6.1-sol'),
-            ),
+            find.descendant(of: catalog, matching: find.text('gpt-6.1-sol')),
           )
           .dy,
       lessThan(
         tester
             .getTopLeft(
-              find.descendant(
-                of: catalog,
-                matching: find.text('OpenAI/gpt-6-luna'),
-              ),
+              find.descendant(of: catalog, matching: find.text('gpt-6-luna')),
             )
             .dy,
       ),
@@ -518,15 +914,17 @@ void main() {
           .value,
       isFalse,
     );
-    final Finder enabledModel = find.text('OpenAI/gpt-6.1-terra');
-    final Finder disabledModel = find.text('OpenAI/gpt-6.1-sol');
+    final Finder enabledModel = find.text('gpt-6.1-terra');
+    final Finder disabledModel = find.text('gpt-6.1-sol');
     expect(
       tester.getTopLeft(enabledModel).dy,
       lessThan(tester.getTopLeft(disabledModel).dy),
     );
-    await tester.tap(
-      find.byKey(const ValueKey('ai-model-switch-openai-gpt-6.1-terra')),
+    final modelSwitch = find.byKey(
+      const ValueKey('ai-model-switch-openai-gpt-6.1-terra'),
     );
+    await tester.ensureVisible(modelSwitch);
+    await tester.tap(modelSwitch);
     await tester.pump();
     expect(
       tester.getTopLeft(enabledModel).dy,
@@ -537,8 +935,8 @@ void main() {
       'luna',
     );
     await tester.pump();
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
-    expect(find.text('OpenAI/gpt-6-luna'), findsOneWidget);
+    expect(find.text('gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('gpt-6-luna'), findsOneWidget);
     expect(networkCalls, 0);
   });
 
@@ -587,14 +985,121 @@ void main() {
     );
     await tester.tap(find.widgetWithText(FilledButton, '儲存'));
     await tester.pumpAndSettle();
-    expect(store.settings.configFor(AiProvider.openai).thinkingLevels, {
+    expect(store.settings.connectionFor('openai').thinkingLevels, {
       'gpt-6.1-terra': AiThinkingLevel.low,
     });
     expect(networkCalls, 0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('手動加入的模型可以移除，寫死的列留著', (tester) async {
+  testWidgets('更多內套用 Thinking 只修改草稿，巢狀視窗保留外層捲動位置', (tester) async {
+    store.settings = AiConnectionSettings(
+      connections: {
+        'openai': addModel(defaultConnection(AiProvider.openai), 'manual'),
+      },
+    );
+    store.keys['openai'] = 'synthetic-key';
+    await open(tester);
+    final settingsScroll = tester
+        .widget<SingleChildScrollView>(
+          find.byKey(const ValueKey('ai-settings-scroll')),
+        )
+        .controller!;
+    await tester.ensureVisible(find.text('更多'));
+    await tester.pumpAndSettle();
+    final before = settingsScroll.offset;
+    await tester.tap(find.text('更多'));
+    await tester.pumpAndSettle();
+    final thinking = find.descendant(
+      of: find.byKey(const ValueKey('ai-model-catalog-dialog')),
+      matching: find.byKey(const ValueKey('ai-model-thinking-openai-manual')),
+    );
+    await tester.ensureVisible(thinking);
+    await tester.tap(thinking);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, 'Thinking 設定…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('thinking-format')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('不傳送 Thinking 參數').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '套用'));
+    await tester.pumpAndSettle();
+    expect(settingsScroll.offset, before);
+    expect(store.settings.connectionFor('openai').thinkingOverrides, isEmpty);
+    expect(
+      find.descendant(of: thinking, matching: find.text('不傳送')),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(TextButton, '關閉'));
+    await tester.pumpAndSettle();
+    expect(settingsScroll.offset, before);
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(
+      store.settings
+          .connectionFor('openai')
+          .thinkingOverrides['manual']!
+          .levels,
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('加入模型才依啟用狀態與供應商重排，取消不保存新增或設定', (tester) async {
+    await open(tester);
+    final initialOrder = modelOrder();
+    for (final model in ['gpt-6.1-terra', 'gpt-6-luna']) {
+      final modelSwitch = find.byKey(ValueKey('ai-model-switch-openai-$model'));
+      await tester.ensureVisible(modelSwitch);
+      await tester.tap(modelSwitch);
+      await tester.pumpAndSettle();
+      expect(modelOrder(), initialOrder);
+    }
+    final thinking = find.byKey(
+      const ValueKey('ai-model-thinking-openai-gpt-6.1-terra'),
+    );
+    await tester.ensureVisible(thinking);
+    await tester.tap(thinking);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, '高'));
+    await tester.pumpAndSettle();
+    expect(modelOrder(), initialOrder);
+
+    for (final name in ['new-model-b', 'new-model-a']) {
+      final field = find.byKey(const ValueKey('ai-model-add-field-openai'));
+      await tester.ensureVisible(field);
+      await tester.enterText(field, name);
+      await tester.pump();
+      final add = find.byKey(const ValueKey('ai-model-add-openai'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(
+        modelOrder().indexOf('ai-model-openai-$name'),
+        lessThan(modelOrder().indexOf('ai-model-claude-claude-sonnet-5-5')),
+      );
+    }
+    expect(modelOrder(), [
+      'ai-model-openai-gpt-6-luna',
+      'ai-model-openai-new-model-b',
+      'ai-model-openai-new-model-a',
+      'ai-model-claude-claude-sonnet-5-5',
+      'ai-model-gemini-gemini-3.8-flash',
+      'ai-model-xai-grok-4.3',
+      'ai-model-openai-gpt-6.1-terra',
+      'ai-model-openai-gpt-6.1-sol',
+      'ai-model-openai-gpt-6-astra',
+      'ai-model-claude-claude-haiku-5-5',
+    ]);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(store.settings.connections, isEmpty);
+    expect(networkCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('更多的手動模型可由開關左側移除，寫死的列留著', (tester) async {
     await open(tester);
     await tester.enterText(
       find.byKey(const ValueKey('ai-model-add-field-openai')),
@@ -608,16 +1113,38 @@ void main() {
     await tester.ensureVisible(find.text('更多'));
     await tester.tap(find.text('更多'));
     await tester.pumpAndSettle();
-    final Finder remove = find.byKey(
-      const ValueKey('ai-model-remove-openai-extra-model'),
+    final catalog = find.byKey(const ValueKey('ai-model-catalog-dialog'));
+    final Finder remove = find.descendant(
+      of: catalog,
+      matching: find.byKey(
+        const ValueKey('ai-model-remove-openai-extra-model'),
+      ),
+    );
+    final modelSwitch = find.descendant(
+      of: catalog,
+      matching: find.byKey(
+        const ValueKey('ai-model-switch-openai-extra-model'),
+      ),
     );
     await tester.ensureVisible(remove);
+    expect(
+      tester.getRect(remove).right,
+      lessThanOrEqualTo(tester.getRect(modelSwitch).left),
+    );
+    expect(
+      tester.getCenter(remove).dy,
+      closeTo(tester.getCenter(modelSwitch).dy, 1),
+    );
+    expect(
+      tester.widget<IconButton>(remove).tooltip,
+      lookupAppLocalizations(appZhLocale).aiModelRemove('extra-model'),
+    );
     await tester.tap(remove);
     await tester.pump();
-    expect(find.text('OpenAI/extra-model'), findsNothing);
+    expect(find.text('extra-model'), findsNothing);
     await tester.tap(find.widgetWithText(TextButton, '關閉'));
     await tester.pumpAndSettle();
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('gpt-6.1-terra'), findsOneWidget);
     final Finder openaiKey = find.byKey(const ValueKey('ai-api-key-openai'));
     await tester.ensureVisible(openaiKey);
     await tester.enterText(openaiKey, 'synthetic-key');
@@ -638,8 +1165,8 @@ void main() {
       baseUrl: 'https://first.example/v1',
     );
     store.settings = const AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     store.keys[connectionConfig.credentialId] = 'first-synthetic-key';
     await open(tester);
@@ -665,6 +1192,9 @@ void main() {
   });
 
   testWidgets('自訂連線有金鑰但沒有網址時儲存提示設定錯誤', (tester) async {
+    store.settings = const AiConnectionSettings(
+      connections: {'custom': AiConnectionConfig(provider: AiProvider.custom)},
+    );
     await open(tester);
     await tester.enterText(
       find.byKey(const ValueKey('ai-api-key-custom')),
@@ -681,37 +1211,48 @@ void main() {
     expect(store.keys.values, isNot(contains('orphan-key')));
   });
 
-  testWidgets('重複加入寫死名稱只會打開，空白不會多一列', (tester) async {
+  testWidgets('重複加入已關閉模型會啟用並重排，空白輸入不改順序', (tester) async {
     await open(tester);
     await tester.enterText(
       find.byKey(const ValueKey('ai-model-add-field-openai')),
-      '  gpt-6.1-terra  ',
+      '  gpt-6-luna  ',
     );
     await tester.pump();
     final Finder addModel = find.byKey(const ValueKey('ai-model-add-openai'));
     await tester.ensureVisible(addModel);
     await tester.tap(addModel);
     await tester.pump();
-    expect(find.text('OpenAI/gpt-6.1-terra'), findsOneWidget);
+    expect(find.text('gpt-6-luna'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('ai-model-remove-openai-gpt-6.1-terra')),
+      find.byKey(const ValueKey('ai-model-remove-openai-gpt-6-luna')),
       findsNothing,
     );
     expect(
       tester
           .widget<Switch>(
-            find.byKey(const ValueKey('ai-model-switch-openai-gpt-6.1-terra')),
+            find.byKey(const ValueKey('ai-model-switch-openai-gpt-6-luna')),
           )
           .value,
       isTrue,
     );
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('ai-model-openai-gpt-6.1-terra')),
+        of: find.byKey(const ValueKey('ai-model-openai-gpt-6-luna')),
         matching: find.text('預設'),
       ),
       findsNothing,
     );
+    expect(
+      modelOrder().indexOf('ai-model-openai-gpt-6-luna'),
+      lessThan(modelOrder().indexOf('ai-model-claude-claude-sonnet-5-5')),
+    );
+    final terraSwitch = find.byKey(
+      const ValueKey('ai-model-switch-openai-gpt-6.1-terra'),
+    );
+    await tester.ensureVisible(terraSwitch);
+    await tester.tap(terraSwitch);
+    await tester.pumpAndSettle();
+    final beforeBlank = modelOrder();
     await tester.enterText(
       find.byKey(const ValueKey('ai-model-add-field-openai')),
       '   ',
@@ -723,6 +1264,9 @@ void main() {
           .onPressed,
       isNull,
     );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(modelOrder(), beforeBlank);
     expect(networkCalls, 0);
   });
 
@@ -732,8 +1276,11 @@ void main() {
       model: 'test-model',
     );
     store.settings = const AiConnectionSettings(
-      provider: AiProvider.gemini,
-      configs: {AiProvider.gemini: connectionConfig},
+      activeConnectionId: 'gemini',
+      connections: {
+        'gemini': connectionConfig,
+        'custom': AiConnectionConfig(provider: AiProvider.custom),
+      },
     );
     store.keys['gemini'] = 'synthetic-key';
     await open(tester);
@@ -768,8 +1315,8 @@ void main() {
       baseUrl: 'https://gateway.example/v1',
     );
     store.settings = const AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     await open(tester);
     final field = find.byKey(const ValueKey('ai-protocol-field'));
@@ -797,8 +1344,8 @@ void main() {
       baseUrl: 'https://test.example/v1',
     );
     store.settings = AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     connectionGate = Completer<void>();
     await open(tester);
@@ -837,6 +1384,14 @@ void main() {
             find.byKey(const ValueKey('ai-model-switch-custom-model')),
           )
           .onChanged,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byKey(const ValueKey('ai-model-remove-custom-model')),
+          )
+          .onPressed,
       isNull,
     );
     connectionGate!.complete();
@@ -878,8 +1433,8 @@ void main() {
       baseUrl: 'https://test.example/v1',
     );
     store.settings = const AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     connectionFailure = const AiFailure(AiErrorCode.timeout);
     await open(tester);
@@ -899,8 +1454,8 @@ void main() {
         baseUrl: 'https://test.example/v1',
       );
       store.settings = const AiConnectionSettings(
-        provider: AiProvider.custom,
-        configs: {AiProvider.custom: connectionConfig},
+        activeConnectionId: 'custom',
+        connections: {'custom': connectionConfig},
       );
       connectionGate = Completer<void>();
       await open(tester);
@@ -937,8 +1492,8 @@ void main() {
       baseUrl: 'https://test.example/v1',
     );
     store.settings = AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     connectionFailure = const AiFailure(AiErrorCode.network, status: 503);
     await open(tester);
@@ -958,8 +1513,8 @@ void main() {
       baseUrl: 'https://test.example/v1',
     );
     store.settings = AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: connectionConfig},
+      activeConnectionId: 'custom',
+      connections: {'custom': connectionConfig},
     );
     throwOnConnection = true;
     await open(tester);
@@ -972,6 +1527,9 @@ void main() {
   });
 
   testWidgets('協定選單跟輸入框一樣寬', (tester) async {
+    store.settings = const AiConnectionSettings(
+      connections: {'custom': AiConnectionConfig(provider: AiProvider.custom)},
+    );
     await open(tester);
     final Finder field = find.byKey(const ValueKey('ai-protocol-field'));
     await tester.ensureVisible(field);

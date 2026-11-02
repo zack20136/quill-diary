@@ -263,12 +263,12 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                               const EdgeInsets.only(right: 0),
                                           leftChevronIcon: Icon(
                                             Icons.chevron_left_rounded,
-                                            color: cs.onSurfaceVariant,
+                                            color: cs.onSurface,
                                             size: 22,
                                           ),
                                           rightChevronIcon: Icon(
                                             Icons.chevron_right_rounded,
-                                            color: cs.onSurfaceVariant,
+                                            color: cs.onSurface,
                                             size: 22,
                                           ),
                                           titleTextStyle:
@@ -485,8 +485,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                                         Icon(
                                                           Icons.arrow_drop_down,
                                                           size: 20,
-                                                          color: cs
-                                                              .onSurfaceVariant,
+                                                          color: cs.onSurface,
                                                         ),
                                                       ],
                                                     ),

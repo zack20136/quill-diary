@@ -7,6 +7,7 @@ import 'package:quill_diary/application/settings/unlock_mode_change_flow.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
 
 import '../../helpers/session/fake_app_lock_service.dart';
 import '../../helpers/session/fake_session_vault_repository.dart';

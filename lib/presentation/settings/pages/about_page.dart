@@ -175,7 +175,7 @@ class _ItemIconBadge extends StatelessWidget {
         child: SizedBox(
           width: _size,
           height: _size,
-          child: Icon(icon, color: colorScheme.primary, size: _glyphSize),
+          child: Icon(icon, color: colorScheme.onSurface, size: _glyphSize),
         ),
       ),
     );

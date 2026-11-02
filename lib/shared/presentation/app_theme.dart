@@ -64,12 +64,56 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
           fontFamily: AppTypography.interFamily,
         );
 
+  // 清除獨立圖示色，讓危險操作與停用狀態跟隨按鈕文字。
+  const followForeground = WidgetStatePropertyAll<Color?>(null);
   return flexTheme.copyWith(
     colorScheme: scheme,
     extensions: <ThemeExtension<dynamic>>[appColors],
     scaffoldBackgroundColor: appColors.scaffoldBackground,
     iconTheme: IconThemeData(color: appColors.foreground),
     primaryIconTheme: IconThemeData(color: appColors.foreground),
+    textButtonTheme: TextButtonThemeData(
+      style: (flexTheme.textButtonTheme.style ?? const ButtonStyle()).copyWith(
+        iconColor: followForeground,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: (flexTheme.outlinedButtonTheme.style ?? const ButtonStyle())
+          .copyWith(iconColor: followForeground),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: (flexTheme.filledButtonTheme.style ?? const ButtonStyle())
+          .copyWith(iconColor: followForeground),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: (flexTheme.elevatedButtonTheme.style ?? const ButtonStyle())
+          .copyWith(iconColor: followForeground),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: (flexTheme.menuButtonTheme.style ?? const ButtonStyle()).copyWith(
+        iconColor: followForeground,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: (flexTheme.iconButtonTheme.style ?? const ButtonStyle()).copyWith(
+        iconColor: followForeground,
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: (flexTheme.segmentedButtonTheme.style ?? const ButtonStyle())
+          .copyWith(iconColor: followForeground),
+    ),
+    listTileTheme: flexTheme.listTileTheme.copyWith(
+      textColor: scheme.onSurface,
+      iconColor: scheme.onSurface,
+      selectedColor: scheme.primary,
+    ),
+    expansionTileTheme: flexTheme.expansionTileTheme.copyWith(
+      textColor: scheme.onSurface,
+      iconColor: scheme.onSurface,
+      collapsedTextColor: scheme.onSurface,
+      collapsedIconColor: scheme.onSurface,
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: appColors.scaffoldBackground,
       foregroundColor: appColors.foreground,

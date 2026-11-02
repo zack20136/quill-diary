@@ -24,7 +24,7 @@
 - 位置：沒有精確或背景位置。前景服務是使用者手動觸發的 `dataSync` 備份，不是定位或地理圍欄。
 - 簡訊與通話紀錄：沒有 `READ_SMS`、`READ_CALL_LOG` 或相關權限。
 - 區網：Android 16 的 local network permission 仍是選擇加入，尚未強制。自訂 AI 的區網 HTTP 目前只靠 `INTERNET` 與 `validateAiEndpoint`。不要先宣告 `NEARBY_WIFI_DEVICES`；強制執行時的權限名稱仍可能更換。見 [Android 16 行為變更](https://developer.android.com/about/versions/16/behavior-changes-16)。
-- 廣告 ID：主程式沒有廣告。`play-services-basement` 18.4／18.9 的 Manifest 不含 `com.google.android.gms.permission.AD_ID`。若之後的 SDK 合併這項權限，從 Manifest 移除，不要把 Console 廣告宣告改成有廣告。
+- 廣告 ID：主程式沒有廣告。以當次 release merged manifest 確認沒有 `com.google.android.gms.permission.AD_ID`；若之後的 SDK 合併這項權限，從 Manifest 移除，不要把 Console 廣告宣告改成有廣告。
 
 生物辨識權限不代表 App 能讀取指紋或臉部影像；驗證由系統處理。選檔取消不應留下附件；選到的 URI／暫存檔只供本次操作，使用後釋放 grant。維護 `file_picker` 或 `image_picker` 版本時，除了 widget 測試，仍要在 Android 驗證系統挑選、Activity 重建及取消後清理。
 

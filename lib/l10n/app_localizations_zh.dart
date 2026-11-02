@@ -2751,6 +2751,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vaultBackupIssueMissingVaultPayload => '備份檔內容不完整，找不到日記庫資料。';
 
   @override
+  String get vaultBackupIssueExtractionLimitExceeded =>
+      '壓縮檔的數量、解壓後大小或壓縮比超過上限，已停止處理。';
+
+  @override
   String get legalBrandDisclaimer =>
       'Quill Diary 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。';
 
@@ -3759,7 +3763,101 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryWriteWithChat => '聊天寫日記';
 
   @override
+  String get entryWritingModeDirectDescription => '自由記錄文字、照片與待辦。';
+
+  @override
+  String get entryWritingModeChatDescription => '和 AI 聊聊，再整理成日記。';
+
+  @override
+  String aiCustomConnectionName(int number) {
+    return '自訂連線 $number';
+  }
+
+  @override
+  String get aiConnectionName => '連線名稱';
+
+  @override
+  String get aiConnectionAdd => '新增自訂連線';
+
+  @override
+  String get aiConnectionDelete => '刪除連線';
+
+  @override
+  String get aiConnectionDeleteConfirmTitle => '確定刪除連線？';
+
+  @override
+  String aiConnectionDeleteConfirmBody(String name) {
+    return '確定刪除「$name」嗎？儲存後會移除這組連線，並刪除它在這台裝置上的 API Key，無法從設定還原。既有聊天紀錄會保留。';
+  }
+
+  @override
+  String get aiConnectionNotConfigured => '尚未設定目的地';
+
+  @override
+  String get aiCurrentChatConnection => '目前聊天的原連線';
+
+  @override
+  String get aiConnectionNameInvalid => '請填寫連線名稱，且使用中的名稱不可重複。';
+
+  @override
+  String get aiThinkingSettings => 'Thinking 設定…';
+
+  @override
+  String get aiThinkingSettingsTitle => 'Thinking 設定';
+
+  @override
+  String get aiThinkingFormatHint =>
+      '選擇這個模型的 Thinking 參數傳送方式，支援的格式與強度請以模型官方文件為準。';
+
+  @override
+  String get aiThinkingAdvancedHint =>
+      '勾選模型支援的強度，並填入對應的 JSON 物件。空物件表示該強度不傳送額外參數。';
+
+  @override
+  String get aiThinkingFormat => '參數格式';
+
+  @override
+  String get aiThinkingInherit => '沿用目前協定';
+
+  @override
+  String get aiThinkingOmit => '不傳送 Thinking 參數';
+
+  @override
+  String get aiThinkingOmitShort => '不傳送';
+
+  @override
+  String get aiThinkingCustom => '手動 JSON';
+
+  @override
+  String get aiThinkingAdvancedOverrideHint =>
+      '為各個強度設定要傳送的 JSON 參數。自訂內容會直接加入請求，也可能影響回覆長度與費用。';
+
+  @override
+  String get aiThinkingDefault => '預設強度';
+
+  @override
+  String get aiThinkingAdvanced => '進階 JSON 對照';
+
+  @override
+  String get aiThinkingPreview => '預設強度的參數預覽';
+
+  @override
+  String get aiThinkingPreviewInvalid => '請完成有效的 JSON 對照以顯示預覽。';
+
+  @override
+  String get aiThinkingSelectionRequired => '至少啟用一個檔位，並選擇有效的預設強度。';
+
+  @override
+  String get aiThinkingProtectedFields => '只能填參數片段，不能覆寫模型、訊息或請求控制欄位。';
+
+  @override
+  String get aiThinkingJsonInvalid => '請輸入有效的 JSON 物件。';
+
+  @override
   String get aiModel => '模型';
+
+  @override
+  String get aiModelsHint => '開啟聊天用的模型，並調整思考強度。';
 
   @override
   String get aiModelSearch => '加入模型';
@@ -3823,10 +3921,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryPromptRequired => '提示詞不可為空白';
 
   @override
-  String get chatDiaryHidePeople => '依人物名冊隱藏姓名';
+  String get chatDiaryHidePeople => '隱藏人物姓名';
 
   @override
-  String get chatDiaryHidePeopleHint => '傳送前將名冊中的姓名與別名替換為代號；不會遮住照片內容。';
+  String get chatDiaryHidePeopleHint => '傳送前將名冊中的姓名與別名替換為代號；不會隱藏圖片上的內容。';
 
   @override
   String get aiSettingsLead => '選擇要使用的服務與模型。';
@@ -3845,7 +3943,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '至少填一個服務的 API Key，或填自訂服務網址，並打開一個模型，才選得到。';
 
   @override
-  String get aiThinking => '思考';
+  String get aiThinking => 'Thinking';
 
   @override
   String get aiThinkingOff => '關閉';

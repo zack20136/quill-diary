@@ -26,8 +26,6 @@ class VaultBackupService {
   final ExternalDirectoryStore _externalDirectoryStore;
   final VaultPathStrategy _pathStrategy;
 
-  static const int backupRetainCount = VaultBackupPolicy.retainCount;
-
   Future<DriveConnectionState> getGoogleDriveConnectionState() {
     return _driveBackupService.getConnectionState();
   }
@@ -245,16 +243,19 @@ class VaultBackupService {
   Future<void> _pruneExcessAppLocalBackupsFromSorted(
     List<LocalBackupFile> sortedNewestFirst,
   ) async {
-    if (sortedNewestFirst.length <= backupRetainCount) {
+    if (sortedNewestFirst.length <= VaultBackupPolicy.retainCount) {
       return;
     }
     final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
-      backupRetainCount,
+      VaultBackupPolicy.retainCount,
     );
     for (final LocalBackupFile backup in stale) {
       await deleteAppLocalBackup(backup);
     }
-    sortedNewestFirst.removeRange(backupRetainCount, sortedNewestFirst.length);
+    sortedNewestFirst.removeRange(
+      VaultBackupPolicy.retainCount,
+      sortedNewestFirst.length,
+    );
   }
 
   Future<void> _ensureFileInsideLocalBackupsDirectory(File file) async {

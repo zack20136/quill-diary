@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 
 void main() {
   test('舊設定只有模型名稱時，把它當成唯一打開的預設', () {
@@ -69,6 +71,7 @@ void main() {
     expect(custom.toStoredJson()['known_builtin_models'], isEmpty);
     expect(custom.toJson(), {
       'provider': 'custom',
+      'connection_id': 'custom',
       'default_model': 'google/gemma-4-26b',
       'base_url': 'https://openrouter.ai/api/v1',
       'protocol': 'chatCompletions',
@@ -76,6 +79,48 @@ void main() {
     expect(AiConnectionConfig.fromJson(custom.toStoredJson()).addedModels, [
       'google/gemma-4-26b',
     ]);
+  });
+
+  test('新增自訂模型預設不傳 Thinking，重複加入保留已選的格式', () {
+    const config = AiConnectionConfig(provider: AiProvider.custom);
+    final added = addModel(config, 'manual-model');
+    expect(thinkingChoicesFor(added, added.model), isEmpty);
+    expect(thinkingRequestFields(added), isEmpty);
+    final configured = added.copyWith(
+      thinkingOverrides: {
+        added.model: AiModelThinkingOverride(
+          defaultLevel: AiThinkingLevel.off,
+          levels: {
+            AiThinkingLevel.off: {
+              'reasoning': {'effort': 'none'},
+            },
+          },
+        ),
+      },
+    );
+    final again = addModel(configured, 'manual-model');
+    expect(thinkingRequestFields(again), {
+      'reasoning': {'effort': 'none'},
+    });
+    final withSecond = addModel(again, 'second-model');
+    expect(
+      thinkingRequestFields(withSecond.copyWith(model: 'second-model')),
+      isEmpty,
+    );
+    expect(thinkingRequestFields(withSecond.copyWith(model: added.model)), {
+      'reasoning': {'effort': 'none'},
+    });
+    expect(
+      thinkingRequestFields(
+        addModel(
+          const AiConnectionConfig(provider: AiProvider.openai),
+          'manual-model',
+        ),
+      ),
+      {
+        'reasoning': {'effort': 'none'},
+      },
+    );
   });
 
   test('加入時去掉空白，重複的名稱改成打開而不多一列', () {
@@ -152,8 +197,8 @@ void main() {
       enabledModels: ['default-model'],
     );
     final AiConnectionSettings settings = AiConnectionSettings(
-      provider: AiProvider.custom,
-      configs: {AiProvider.custom: stored},
+      activeConnectionId: 'custom',
+      connections: {'custom': stored},
     );
     final menu = chatModelMenu(
       settings: settings,
@@ -166,7 +211,9 @@ void main() {
       'hidden-model',
     ]);
     expect(
-      menu.models.every((option) => option.provider == AiProvider.custom),
+      menu.models.every(
+        (option) => option.connectionConfig.provider == AiProvider.custom,
+      ),
       isTrue,
     );
     expect(menu.currentIsExtra, isTrue);
@@ -217,7 +264,7 @@ void main() {
     expect(keptOff.model, isEmpty);
 
     final settings = adoptConnectionCatalog(
-      AiConnectionSettings(configs: {AiProvider.openai: unseen}),
+      AiConnectionSettings(connections: {'openai': unseen}),
     );
     expect(settings.writeBack, isTrue);
     expect(adoptConnectionCatalog(settings.settings).writeBack, isFalse);
@@ -226,8 +273,8 @@ void main() {
   test('移除唯一啟用的舊官方模型時採用新預設，後續讀取不再變動', () {
     final adopted = adoptConnectionCatalog(
       const AiConnectionSettings(
-        configs: {
-          AiProvider.openai: AiConnectionConfig(
+        connections: {
+          'openai': AiConnectionConfig(
             provider: AiProvider.openai,
             model: 'gpt-5.6-sol',
             enabledModels: ['gpt-5.6-sol'],
@@ -237,7 +284,7 @@ void main() {
       ),
     );
     expect(adopted.writeBack, isTrue);
-    final next = adopted.settings.configFor(AiProvider.openai);
+    final next = adopted.settings.connectionFor('openai');
     expect(next.model, 'gpt-6.1-terra');
     expect(next.enabledModels, ['gpt-6.1-terra']);
     expect(next.addedModels, isEmpty);
@@ -293,26 +340,23 @@ void main() {
       AiProvider.openai,
     ).copyWith(thinkingLevels: const {'removed-model': AiThinkingLevel.high});
     final adopted = adoptConnectionCatalog(
-      AiConnectionSettings(configs: {AiProvider.openai: current}),
+      AiConnectionSettings(connections: {'openai': current}),
     );
     expect(adopted.writeBack, isTrue);
-    expect(
-      adopted.settings.configFor(AiProvider.openai).thinkingLevels,
-      isEmpty,
-    );
+    expect(adopted.settings.connectionFor('openai').thinkingLevels, isEmpty);
     expect(adoptConnectionCatalog(adopted.settings).writeBack, isFalse);
   });
 
   test('有金鑰才把官方模型放進聊天選單', () {
     final AiConnectionConfig openai = defaultConnection(AiProvider.openai);
     final menu = chatModelMenu(
-      settings: AiConnectionSettings(configs: {AiProvider.openai: openai}),
+      settings: AiConnectionSettings(connections: {'openai': openai}),
       chatConfig: openai,
-      hasApiKey: (AiProvider provider) => provider == AiProvider.openai,
+      hasApiKey: (config) => config.provider == AiProvider.openai,
     );
 
     expect(menu.models, hasLength(1));
-    expect(menu.models.single.provider, AiProvider.openai);
+    expect(menu.models.single.connectionConfig.provider, AiProvider.openai);
     expect(menu.models.single.modelId, 'gpt-6.1-terra');
     expect(menu.currentIsExtra, isFalse);
   });

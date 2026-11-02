@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -279,9 +279,35 @@ class EditorDraftStore {
     final Directory draftDir = await _pathStrategy.editorDraftDirectory(
       draftKey,
     );
-    return p.normalize(
-      p.join(draftDir.path, relativePath.replaceAll('/', p.separator)),
+    final String safeRelative = _safePendingRelativePath(relativePath);
+    final String root = p.normalize(draftDir.path);
+    final String absolute = p.normalize(
+      p.join(root, safeRelative.replaceAll('/', p.separator)),
     );
+    if (absolute != root && !p.isWithin(root, absolute)) {
+      throw const FormatException('草稿附件路徑無效。');
+    }
+    return absolute;
+  }
+
+  String _safePendingRelativePath(String relativePath) {
+    final String normalized = relativePath.replaceAll('\\', '/').trim();
+    final bool absolute =
+        normalized.startsWith('/') ||
+        RegExp(r'^[A-Za-z]:').hasMatch(normalized) ||
+        p.isAbsolute(relativePath);
+    final String collapsed = p.posix.normalize(normalized);
+    if (normalized.isEmpty ||
+        normalized.contains('\u0000') ||
+        absolute ||
+        collapsed.isEmpty ||
+        collapsed == '.' ||
+        collapsed.startsWith('../') ||
+        collapsed == '..' ||
+        p.posix.split(collapsed).contains('..')) {
+      throw const FormatException('草稿附件路徑無效。');
+    }
+    return collapsed;
   }
 
   Future<RecoveryMetadata> _requireMetadataForSession(

@@ -40,7 +40,7 @@ class DriveAccountStatus extends StatelessWidget {
           disconnectedLabel ?? l10n.settingsDriveBackupDisconnectedLabel,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isErrorState
-                ? colorScheme.onErrorContainer
+                ? colorScheme.error
                 : colorScheme.onSurfaceVariant,
             height: 1.4,
             fontWeight: isErrorState ? FontWeight.w600 : null,
@@ -55,7 +55,7 @@ class DriveAccountStatus extends StatelessWidget {
 
     return _DriveAccountStatusCard(
       icon: Icons.cloud_done_outlined,
-      iconColor: colorScheme.primary,
+      iconColor: colorScheme.onSurface,
       iconBackground: Color.alphaBlend(
         colorScheme.primary.withValues(alpha: 0.08),
         colorScheme.surfaceContainerLow,

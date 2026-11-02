@@ -1,5 +1,5 @@
 import 'package:quill_diary/application/session/session_state.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 
 enum SettingsHealthLevel { ok, warning, error }
 

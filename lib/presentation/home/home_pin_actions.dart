@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/application/home/home_entry_commands.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
-import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -24,9 +24,7 @@ Future<void> togglePinSelectedHomeEntries(
   final bool pin = !allSelectedPinned;
   final int count = selectedIds.length;
   try {
-    await ref
-        .read(vaultRepositoryProvider)
-        .setEntriesPinned(selectedIds, pinned: pin);
+    await setHomeEntriesPinned(ref, selectedIds, pinned: pin);
   } catch (error) {
     if (!context.mounted) {
       return;

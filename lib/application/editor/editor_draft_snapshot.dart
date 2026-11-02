@@ -1,7 +1,7 @@
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 
 class EditorDraftSnapshot {
@@ -102,18 +102,29 @@ List<PendingAttachment> pendingAttachmentsFromDraftRecord(
   }).toList();
 }
 
-bool editorDraftIsEmpty(EditorDraftSnapshot draft) {
+bool editorDraftIsEmpty(
+  EditorDraftSnapshot draft, {
+  DateTime? initialCreatedAt,
+}) {
+  final bool changedDateOrTime =
+      initialCreatedAt != null &&
+      (draft.dateValue != DateOnly.fromDateTime(initialCreatedAt).value ||
+          draft.entryHour != initialCreatedAt.hour ||
+          draft.entryMinute != initialCreatedAt.minute);
   return draft.title == null &&
+      draft.tags.isEmpty &&
       draft.markdownBody.isEmpty &&
-      draft.attachmentIds.isEmpty;
+      draft.attachmentIds.isEmpty &&
+      !changedDateOrTime;
 }
 
 bool editorDraftIsDirty({
   required EditorDraftSnapshot current,
   required EditorDraftSnapshot? saved,
+  DateTime? initialCreatedAt,
 }) {
   if (saved == null) {
-    return !editorDraftIsEmpty(current);
+    return !editorDraftIsEmpty(current, initialCreatedAt: initialCreatedAt);
   }
   return current.title != saved.title ||
       current.dateValue != saved.dateValue ||

@@ -3,14 +3,18 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
@@ -292,6 +296,68 @@ void main() {
     }
     expect(providers, {'openai', 'claude'});
   });
+  test('同網址同模型的遠端檔案依連線帳號清理，舊目的地也保留原金鑰', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final keys = AiSettingsStore.detached();
+    const a = AiConnectionConfig(
+      provider: AiProvider.custom,
+      customConnectionId: 'aic_a',
+      displayName: '工作',
+      model: 'same-model',
+      baseUrl: 'https://same.example/v1',
+    );
+    final b = a.copyWith(customConnectionId: 'aic_b', displayName: '個人');
+    final old = a.copyWith(baseUrl: 'https://old.example/v1');
+    final expected = {
+      a.credentialId: 'key-a',
+      b.credentialId: 'key-b',
+      old.credentialId: 'old-key-a',
+    };
+    for (final config in [a, b, old]) {
+      await keys.saveApiKey(config, expected[config.credentialId]!);
+    }
+    final deleted = <String, String>{};
+    final store = ChatDiaryStore(
+      paths: harness.pathStrategy,
+      crypto: LocalCryptoService(),
+      repository: harness.repository,
+      editorDraftStore: EditorDraftStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+      ),
+      clientFactory: (config, key) =>
+          FakeAiClient(config)
+            ..onDeleteFile = (file) async {
+              expect(file.id, 'same-file-id');
+              deleted[config.credentialId] = key;
+            },
+    );
+    final chat = testChatDiarySession(vaultId: setup.session.vaultId)
+      ..connectionConfig = b;
+    for (final config in [a, b, old]) {
+      await store.trackRemoteFile(
+        chat,
+        const AiRemoteFile(id: 'same-file-id', uri: ''),
+        setup.session,
+        connectionConfig: config,
+      );
+    }
+    expect(
+      await store.cleanupRemoteFiles(setup.session, keys.readApiKey),
+      isTrue,
+    );
+    expect(deleted, expected);
+    deleted.clear();
+    expect(
+      await store.cleanupRemoteFiles(setup.session, keys.readApiKey),
+      isTrue,
+    );
+    expect(deleted, isEmpty);
+  });
+
   test('清理跳過未完成聊天，重試時保留網路等待期間新增的檔案紀錄', () async {
     final harness = await VaultTestHarness.create();
     addTearDown(harness.dispose);

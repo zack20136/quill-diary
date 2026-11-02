@@ -8,10 +8,11 @@ import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 
 import '../../helpers/presentation/editor/fake_editor_actions.dart';
 
@@ -187,6 +188,56 @@ void main() {
     expect(actions.writtenBodies, ['已開始保存']);
     expect(callbacks, 0);
   });
+
+  test('草稿寫入失敗後會保留最後快照供下一次變更重試', () async {
+    final actions = _FailOnceDraftActions();
+    final container = ProviderContainer(
+      overrides: [
+        editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
+      ],
+    );
+    addTearDown(container.dispose);
+    final EditorFlowSession session = container
+        .read(editorFlowControllerProvider)
+        .startSession(onDraftPersisted: (_) {});
+
+    await expectLater(
+      session.persistDraft(_draftRequest('寫入失敗')),
+      throwsStateError,
+    );
+    await session.persistDraft(_draftRequest('重試成功'));
+
+    expect(actions.writtenBodies, <String>['寫入失敗', '重試成功']);
+    expect(actions.writtenDraft?.markdownBody, '重試成功');
+  });
+
+  test('預覽連續勾選會依序提交，最後狀態不會被舊寫入覆蓋', () async {
+    final actions = _GatedPreviewActions();
+    final container = ProviderContainer(
+      overrides: [
+        editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
+      ],
+    );
+    addTearDown(container.dispose);
+    final EditorFlowSession session = container
+        .read(editorFlowControllerProvider)
+        .startSession(onDraftPersisted: (_) {});
+
+    final Future<EditorSaveResult?> first = session.savePreview(
+      _previewRequest('第一個勾選'),
+    );
+    expect(actions.savedBodies, <String>['第一個勾選']);
+    final Future<EditorSaveResult?> last = session.savePreview(
+      _previewRequest('最後一個勾選'),
+    );
+    actions.firstSave.complete();
+
+    await Future.wait(<Future<EditorSaveResult?>>[first, last]);
+    expect(actions.savedBodies, <String>['第一個勾選', '最後一個勾選']);
+    expect(actions.savedEntryDraft?.markdownBody, '最後一個勾選');
+  });
 }
 
 EditorPersistDraftRequest _draftRequest(String body) =>
@@ -213,6 +264,21 @@ EditorPersistDraftRequest _draftRequest(String body) =>
       existingEntryId: null,
     );
 
+EditorSaveRequest _previewRequest(String body) => EditorSaveRequest(
+  draftKey: 'preview-draft',
+  session: const UnlockedVaultSession(vaultId: 'vault-1', trustedDevice: true),
+  existingEntry: null,
+  titleRaw: '標題',
+  dateValue: '2026-06-18',
+  entryTime: (hour: 8, minute: 0),
+  tagsRaw: '',
+  markdownBodyRaw: body,
+  attachmentIds: const <AssetId>[],
+  pendingAttachments: const <PendingAttachment>[],
+  provisionalEntryId: 'preview-entry',
+  switchToPreview: true,
+);
+
 class _GatedDraftActions extends FakeEditorActions {
   final firstWrite = Completer<void>();
   final writtenBodies = <String>[];
@@ -225,6 +291,47 @@ class _GatedDraftActions extends FakeEditorActions {
   ) async {
     writtenBodies.add(record.markdownBody);
     if (writtenBodies.length == 1) await firstWrite.future;
+    await super.writeDraft(draftKey, record, session);
+  }
+}
+
+class _GatedPreviewActions extends FakeEditorActions {
+  final Completer<void> firstSave = Completer<void>();
+  final List<String> savedBodies = <String>[];
+
+  @override
+  Future<DiaryEntry> saveEntry(
+    UnlockedVaultSession session,
+    DiaryEntry draft, {
+    required List<PendingAttachment> pendingAttachments,
+    List<VaultFinding> retireFindingsAfterSave = const <VaultFinding>[],
+  }) async {
+    savedBodies.add(draft.markdownBody);
+    if (savedBodies.length == 1) await firstSave.future;
+    return super.saveEntry(
+      session,
+      draft,
+      pendingAttachments: pendingAttachments,
+      retireFindingsAfterSave: retireFindingsAfterSave,
+    );
+  }
+}
+
+class _FailOnceDraftActions extends FakeEditorActions {
+  bool _fail = true;
+  final List<String> writtenBodies = <String>[];
+
+  @override
+  Future<void> writeDraft(
+    String draftKey,
+    EditorDraftRecord record,
+    UnlockedVaultSession session,
+  ) async {
+    writtenBodies.add(record.markdownBody);
+    if (_fail) {
+      _fail = false;
+      throw StateError('模擬草稿寫入失敗');
+    }
     await super.writeDraft(draftKey, record, session);
   }
 }

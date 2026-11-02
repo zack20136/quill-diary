@@ -3,17 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_commands.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
-import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
-import 'package:quill_diary/presentation/ai/ai_error_text.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -25,29 +24,19 @@ Future<void> startChatDiary(BuildContext context, WidgetRef ref) async {
       context.mounted &&
       ref.read(effectiveAppSessionProvider).value?.session == vault;
   try {
-    final store = ref.read(aiSettingsStoreProvider);
-    final stored = await store.read(vault);
+    var ready = await hasReadyChatDiaryConnection(ref, vault);
     if (!context.mounted || !available()) return;
-    var settings = stored.connection;
-    if (!settings.activeConfig.isConfigured ||
-        (settings.provider.requiresApiKey &&
-            (await store.readApiKey(settings.activeConfig)).isEmpty)) {
+    if (!ready) {
       if (!context.mounted ||
           !available() ||
-          !await showAiConnectionSettingsDialog(context) ||
+          await showAiConnectionSettingsDialog(context) == null ||
           !available()) {
         return;
       }
-      settings = (await store.read(vault)).connection;
+      ready = await hasReadyChatDiaryConnection(ref, vault);
     }
-    final connectionConfig = settings.activeConfig;
-    final ready =
-        connectionConfig.isConfigured &&
-        (!connectionConfig.provider.requiresApiKey ||
-            (await store.readApiKey(connectionConfig)).isNotEmpty);
     if (!context.mounted || !available()) return;
     if (!ready) throw const AiFailure(AiErrorCode.configuration);
-    validateAiEndpoint(connectionConfig);
     final chatId = generateChatDiaryId();
     Future<void> openChatAndRefreshDrafts() async {
       await context.push<void>(AppRoutes.newChatDiaryLocation(chatId));
@@ -91,21 +80,11 @@ Future<bool> deleteChatDiary(
     return false;
   }
   try {
-    final store = ref.read(chatDiaryStoreProvider);
-    final keys = ref.read(aiSettingsStoreProvider);
-    if (deleteLocalChat != null) {
-      await deleteLocalChat();
-    } else {
-      await store.delete(
-        chat.id,
-        session: session,
-        entryId: chat.generatedEntryId,
-      );
-    }
-    unawaited(
-      store
-          .cleanupRemoteFiles(session, keys.readApiKey, chatId: chat.id)
-          .onError((_, _) => false),
+    await deleteChatDiaryData(
+      ref,
+      chat,
+      session,
+      deleteLocalChat: deleteLocalChat,
     );
     if (context.mounted) ref.invalidate(chatDiarySessionsProvider);
     return true;

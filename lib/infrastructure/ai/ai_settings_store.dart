@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -183,7 +184,10 @@ class AiSettingsStore {
       connection: adopted.settings,
       chatDiary: ChatDiarySettings.fromJson(chatDiary.cast<String, dynamic>()),
     );
-    if (!adopted.writeBack) return stored;
+    if (!adopted.writeBack &&
+        aiJsonEquals(connection, adopted.settings.toJson())) {
+      return stored;
+    }
     await _writeFile(
       session,
       connection: adopted.settings,

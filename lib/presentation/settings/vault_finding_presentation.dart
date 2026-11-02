@@ -1,5 +1,5 @@
 import 'package:quill_diary/application/settings/settings_text.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 /// 同篇日記的多個 finding 合併呈現。
@@ -11,6 +11,7 @@ class VaultFindingGroupPresentation {
     required this.plannedActionLabels,
     required this.canOpenEntry,
     required this.canSalvage,
+    required this.canPermanentlyDelete,
     required this.entryId,
     required this.findings,
   });
@@ -21,6 +22,7 @@ class VaultFindingGroupPresentation {
   final List<String> plannedActionLabels;
   final bool canOpenEntry;
   final bool canSalvage;
+  final bool canPermanentlyDelete;
   final String? entryId;
   final List<VaultFinding> findings;
 
@@ -47,6 +49,12 @@ class VaultFindingGroupPresentation {
         .where((String id) => id.isNotEmpty)
         .firstOrNull;
     final bool canOpen = findings.any((VaultFinding item) => item.canOpenEntry);
+    final bool canPermanentlyDelete = findings.any(
+      (VaultFinding item) =>
+          item.kind == VaultRepairIssueKind.invalidEntryMetadata ||
+          item.kind == VaultRepairIssueKind.unreadableEntry ||
+          item.kind == VaultRepairIssueKind.entryIdentityMismatch,
+    );
     return VaultFindingGroupPresentation(
       title: settingsFindingTitle(l10n, primary),
       dateLabel: settingsFindingDateLabel(l10n, primary),
@@ -54,6 +62,7 @@ class VaultFindingGroupPresentation {
       plannedActionLabels: actions,
       canOpenEntry: canOpen,
       canSalvage: canSalvage,
+      canPermanentlyDelete: canPermanentlyDelete,
       entryId: entryId,
       findings: findings,
     );

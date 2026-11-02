@@ -3,7 +3,7 @@ import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/shared/test_l10n.dart';

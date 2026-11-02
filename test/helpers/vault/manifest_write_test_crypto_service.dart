@@ -7,6 +7,8 @@ class ManifestWriteTestCryptoService extends LocalCryptoService {
   bool failManifestWrites = false;
   Completer<void>? manifestWriteStarted;
   Future<void>? manifestWriteGate;
+  int? failRotationAfterEncryptedFiles;
+  int _rotationEncryptedFiles = 0;
 
   @override
   Future<EncryptionResult> encryptBytes({
@@ -19,6 +21,13 @@ class ManifestWriteTestCryptoService extends LocalCryptoService {
     required DateTime createdAt,
     required DateTime updatedAt,
   }) async {
+    if (failRotationAfterEncryptedFiles != null &&
+        documentId != 'recovery_rotation_pending') {
+      if (_rotationEncryptedFiles >= failRotationAfterEncryptedFiles!) {
+        throw StateError('輪替加密檔寫入失敗');
+      }
+      _rotationEncryptedFiles++;
+    }
     if (documentId == 'manifest') {
       if (failManifestWrites) throw StateError('manifest 寫入失敗');
       final gate = manifestWriteGate;

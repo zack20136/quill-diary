@@ -24,15 +24,12 @@ Future<Directory> createWorkingDirectory(
   return workingDirectory;
 }
 
-/// 以暫存檔寫入後 rename，避免中斷時留下半寫入的目標檔。
+/// 以可復原替換寫入文字檔，避免中斷時失去最後有效版本。
 Future<void> atomicWriteString(File file, String content) async {
-  await file.parent.create(recursive: true);
-  final File tempFile = File('${file.path}.tmp');
-  await tempFile.writeAsString(content, flush: true);
-  if (file.existsSync()) {
-    await file.delete();
-  }
-  await tempFile.rename(file.path);
+  await replaceFileBytesRecoverably(
+    file,
+    Uint8List.fromList(utf8.encode(content)),
+  );
 }
 
 /// 以同目錄 rename 可復原地取代檔案；寫入失敗時保留最後有效版本。
@@ -129,13 +126,7 @@ Future<String> hashVaultBytes(List<int> bytes) async {
 }
 
 Future<void> atomicWriteBytes(File file, Uint8List bytes) async {
-  await file.parent.create(recursive: true);
-  final File tempFile = File('${file.path}.tmp');
-  await tempFile.writeAsBytes(bytes, flush: true);
-  if (file.existsSync()) {
-    await file.delete();
-  }
-  await tempFile.rename(file.path);
+  await replaceFileBytesRecoverably(file, bytes);
 }
 
 /// 呼叫端須已持有 vault 修改序列；只移除聊天擁有的檔案。

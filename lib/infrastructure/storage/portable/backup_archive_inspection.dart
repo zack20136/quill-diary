@@ -21,6 +21,7 @@ enum VaultBackupIssue {
   noEncryptedSample,
   recoveryInfoMissing,
   missingVaultPayload,
+  extractionLimitExceeded,
 }
 
 class VaultBackupException implements Exception {
@@ -36,7 +37,6 @@ final class VaultBackupLayout {
     required this.hasRecovery,
     required this.hasManifest,
     required this.entrySampleFound,
-    required this.hasVaultPayload,
     required this.hasMarkdownPortableLayout,
   });
 
@@ -45,7 +45,6 @@ final class VaultBackupLayout {
     hasRecovery: false,
     hasManifest: false,
     entrySampleFound: false,
-    hasVaultPayload: false,
     hasMarkdownPortableLayout: false,
   );
 
@@ -53,7 +52,6 @@ final class VaultBackupLayout {
   final bool hasRecovery;
   final bool hasManifest;
   final bool entrySampleFound;
-  final bool hasVaultPayload;
 
   /// 是否為可攜式 Markdown 匯出 zip（`{YYYY-MM-DD}/{標題}/index.md`）。
   final bool hasMarkdownPortableLayout;
@@ -88,7 +86,6 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
   var hasRecovery = false;
   var hasManifest = false;
   var entrySampleFound = false;
-  var hasVaultPayload = false;
   var hasMarkdownPortableLayout = false;
 
   for (final String rawName in rawNames) {
@@ -112,9 +109,6 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
     if (normalized.startsWith('entries/') && normalized.endsWith('.md.enc')) {
       entrySampleFound = true;
     }
-    if (normalized.startsWith('entries/') || normalized.startsWith('assets/')) {
-      hasVaultPayload = true;
-    }
   }
 
   return VaultBackupLayout(
@@ -122,7 +116,6 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
     hasRecovery: hasRecovery,
     hasManifest: hasManifest,
     entrySampleFound: entrySampleFound,
-    hasVaultPayload: hasVaultPayload,
     hasMarkdownPortableLayout: hasMarkdownPortableLayout,
   );
 }

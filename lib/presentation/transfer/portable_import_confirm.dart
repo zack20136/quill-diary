@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/portable_transfer_dialogs.dart';
+import 'package:quill_diary/presentation/transfer/portable_transfer_dialogs.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<PortableImportConfirmResult> confirmPortableImport({
@@ -110,7 +110,7 @@ Future<PortableImportConfirmResult> confirmPortableImport({
                             ),
                             Icon(
                               Icons.chevron_right_rounded,
-                              color: cs.onSurfaceVariant,
+                              color: cs.onSurface,
                             ),
                           ],
                         ),

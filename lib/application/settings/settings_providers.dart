@@ -4,10 +4,10 @@ import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 final backupStatusProvider = FutureProvider<BackupStatusSnapshot>((Ref ref) {

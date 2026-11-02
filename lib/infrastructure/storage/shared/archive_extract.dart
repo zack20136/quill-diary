@@ -26,6 +26,73 @@ String safeArchiveRelativePath(String relativePath) {
   return p.posix.normalize(relativePath.replaceAll('\\', '/'));
 }
 
+enum ArchiveExtractionLimit {
+  tooManyEntries,
+  entryTooLarge,
+  totalTooLarge,
+  suspiciousRatio,
+}
+
+class ArchiveExtractionLimitException implements Exception {
+  const ArchiveExtractionLimitException(this.limit);
+
+  final ArchiveExtractionLimit limit;
+}
+
+/// 解壓前的資源上限。加密日記與圖片幾乎無法再壓縮，過高比例視為壓縮炸彈。
+class ArchiveExtractionBudget {
+  const ArchiveExtractionBudget({
+    this.maxEntries = 50000,
+    this.maxEntryBytes = 256 * 1024 * 1024,
+    this.maxTotalBytes = 16 * 1024 * 1024 * 1024,
+    this.maxCompressionRatio = 1024,
+  });
+
+  static const ArchiveExtractionBudget standard = ArchiveExtractionBudget();
+
+  final int maxEntries;
+  final int maxEntryBytes;
+  final int maxTotalBytes;
+  final int maxCompressionRatio;
+}
+
+void ensureArchiveExtractionBudget(
+  Archive archive, {
+  ArchiveExtractionBudget budget = ArchiveExtractionBudget.standard,
+}) {
+  if (archive.files.length > budget.maxEntries) {
+    throw const ArchiveExtractionLimitException(
+      ArchiveExtractionLimit.tooManyEntries,
+    );
+  }
+  var totalBytes = 0;
+  for (final ArchiveFile file in archive.files) {
+    if (!file.isFile) continue;
+    final int uncompressed = file.size;
+    if (uncompressed < 0 || uncompressed > budget.maxEntryBytes) {
+      throw const ArchiveExtractionLimitException(
+        ArchiveExtractionLimit.entryTooLarge,
+      );
+    }
+    totalBytes += uncompressed;
+    if (totalBytes > budget.maxTotalBytes) {
+      throw const ArchiveExtractionLimitException(
+        ArchiveExtractionLimit.totalTooLarge,
+      );
+    }
+    final int compressed = file.isCompressed
+        ? (file.rawContent?.length ?? 0)
+        : uncompressed;
+    if (uncompressed > 0 &&
+        (compressed <= 0 ||
+            uncompressed > compressed * budget.maxCompressionRatio)) {
+      throw const ArchiveExtractionLimitException(
+        ArchiveExtractionLimit.suspiciousRatio,
+      );
+    }
+  }
+}
+
 /// 以 [decodeStream] 開啟的 zip；使用完畢須呼叫 [close]。
 final class OpenedZipArchive {
   OpenedZipArchive._(this._input, this.archive);
@@ -130,7 +197,9 @@ Future<void> extractArchiveToDirectory({
   required OpenedZipArchive zip,
   required Directory targetDirectory,
   BackupTaskProgressListener? onProgress,
+  ArchiveExtractionBudget budget = ArchiveExtractionBudget.standard,
 }) async {
+  ensureArchiveExtractionBudget(zip.archive, budget: budget);
   final List<ArchiveFile> files = zip.archive.files;
   final int total = files.length;
   for (var index = 0; index < files.length; index++) {

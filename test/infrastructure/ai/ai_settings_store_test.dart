@@ -6,7 +6,9 @@ import 'package:archive/archive.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
@@ -34,6 +36,23 @@ void main() {
   );
 
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  test('同網址不同連線的金鑰隔離，改名不影響舊快照取用', () async {
+    final store = AiSettingsStore.detached();
+    final a = first.copyWith(customConnectionId: 'aic_a', displayName: '工作');
+    final b = first.copyWith(customConnectionId: 'aic_b', displayName: '個人');
+    await store.saveApiKey(a, 'key-a');
+    await store.saveApiKey(b, 'key-b');
+    await store.saveApiKey(first, 'legacy-key');
+    expect(await store.readApiKey(a.copyWith(displayName: '改名')), 'key-a');
+    expect(await store.readApiKey(b), 'key-b');
+    expect(await store.readApiKey(first), 'legacy-key');
+    expect(await store.readApiKey(a.copyWith(baseUrl: other.baseUrl)), isEmpty);
+    await store.saveApiKey(a, '');
+    expect(await store.readApiKey(a), isEmpty);
+    expect(await store.readApiKey(b), 'key-b');
+    expect(await store.readApiKey(first), 'legacy-key');
+  });
 
   test('Custom 金鑰依目的網址保存，清空只移除該目的地金鑰', () async {
     final store = AiSettingsStore.detached();
@@ -71,8 +90,8 @@ void main() {
       key: 'settings',
       value: jsonEncode(
         const AiConnectionSettings(
-          provider: AiProvider.openai,
-          configs: {AiProvider.openai: connection},
+          activeConnectionId: 'openai',
+          connections: {'openai': connection},
         ).toJson(),
       ),
     );
@@ -120,9 +139,9 @@ void main() {
     await store.save(
       setup.session,
       connection: const AiConnectionSettings(
-        provider: AiProvider.gemini,
-        configs: {
-          AiProvider.gemini: AiConnectionConfig(
+        activeConnectionId: 'gemini',
+        connections: {
+          'gemini': AiConnectionConfig(
             provider: AiProvider.gemini,
             model: 'vault-model',
           ),
@@ -135,7 +154,7 @@ void main() {
     await storage.write(
       key: 'settings',
       value: jsonEncode(
-        const AiConnectionSettings(provider: AiProvider.claude).toJson(),
+        const AiConnectionSettings(activeConnectionId: 'claude').toJson(),
       ),
     );
     await storage.write(
@@ -159,74 +178,89 @@ void main() {
     expect(await storage.read(key: 'chat_diary_settings'), isNull);
   });
 
-  test('讀取舊目錄時回寫新預設與思考設定，第二次讀取不重寫加密檔', () async {
-    final harness = await VaultTestHarness.create();
-    addTearDown(harness.dispose);
-    final setup = await harness.repository.setupRecoveryKey();
-    final metadata = (await harness.repository.readRecoveryMetadata())!;
-    final store = AiSettingsStore(
-      pathStrategy: harness.pathStrategy,
-      cryptoService: LocalCryptoService(),
-      repository: harness.repository,
-    );
-    final now = DateTime(2026, 10, 30);
-    final encrypted = await LocalCryptoService().encryptBytes(
-      documentId: AiSettingsStore.documentId,
-      vaultId: setup.session.vaultId,
-      plaintextBytes: Uint8List.fromList(
-        utf8.encode(
-          jsonEncode({
-            'version': DataVersions.aiSettings,
-            'connection': {
-              'provider': 'openai',
-              'configs': {
-                'openai': {
-                  'provider': 'openai',
-                  'default_model': 'gpt-5.6-sol',
-                  'enabled_models': ['gpt-5.6-sol'],
-                  'added_models': <String>[],
-                  'known_builtin_models': ['gpt-5.6-sol', 'gpt-6.1-terra'],
-                  'thinking_levels': {'gpt-5.6-sol': 'high'},
-                },
-                'xai': {
-                  'provider': 'xai',
-                  'default_model': 'grok-4.3',
-                  'enabled_models': ['grok-4.3'],
-                  'added_models': <String>[],
-                  'known_builtin_models': builtinModelsFor(AiProvider.xai),
-                  'thinking_levels': {'grok-4.3': 'high'},
+  for (final outdatedCatalog in [false, true]) {
+    test('版本不變且${outdatedCatalog ? '舊' : '最新'}目錄時依舊欄位移轉，第二次不重寫加密檔', () async {
+      final harness = await VaultTestHarness.create();
+      addTearDown(harness.dispose);
+      final setup = await harness.repository.setupRecoveryKey();
+      final metadata = (await harness.repository.readRecoveryMetadata())!;
+      final store = AiSettingsStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+        repository: harness.repository,
+      );
+      final now = DateTime(2026, 10, 30);
+      final encrypted = await LocalCryptoService().encryptBytes(
+        documentId: AiSettingsStore.documentId,
+        vaultId: setup.session.vaultId,
+        plaintextBytes: Uint8List.fromList(
+          utf8.encode(
+            jsonEncode({
+              'version': 1,
+              'connection': {
+                'provider': 'openai',
+                'configs': {
+                  'openai': outdatedCatalog
+                      ? {
+                          'provider': 'openai',
+                          'default_model': 'gpt-5.6-sol',
+                          'enabled_models': ['gpt-5.6-sol'],
+                          'added_models': <String>[],
+                          'known_builtin_models': [
+                            'gpt-5.6-sol',
+                            'gpt-6.1-terra',
+                          ],
+                          'thinking_levels': {'gpt-5.6-sol': 'high'},
+                        }
+                      : adoptCatalogModels(defaultConnection(AiProvider.openai))
+                            .toStoredJson(),
+                  'xai': {
+                    'provider': 'xai',
+                    'default_model': 'grok-4.3',
+                    'enabled_models': ['grok-4.3'],
+                    'added_models': <String>[],
+                    'known_builtin_models': builtinModelsFor(AiProvider.xai),
+                    'thinking_levels': {'grok-4.3': 'high'},
+                  },
                 },
               },
-            },
-            'chat_diary': const ChatDiarySettings(
-              prompts: ChatDiaryPromptSettings(generationOverride: '保留自訂提示詞'),
-            ).toJson(),
-          }),
+              'chat_diary': const ChatDiarySettings(
+                prompts: ChatDiaryPromptSettings(generationOverride: '保留自訂提示詞'),
+              ).toJson(),
+            }),
+          ),
         ),
-      ),
-      contentType: 'application/json',
-      recoveryWrapKey: requireRecoveryWrapKey(setup.session),
-      recoverySlotKdf: metadata.kdf,
-      createdAt: now,
-      updatedAt: now,
-    );
-    final file = File(await harness.pathStrategy.aiSettingsPath());
-    await file.writeAsBytes(encrypted.toFileBytes());
-    final stored = await store.read(setup.session);
-    expect(stored.connection.activeConfig.model, 'gpt-6.1-terra');
-    expect(stored.connection.activeConfig.thinkingLevels, isEmpty);
-    expect(
-      resolvedThinkingLevel(stored.connection.configFor(AiProvider.xai)),
-      AiThinkingLevel.high,
-    );
-    expect(stored.chatDiary.prompts.generationOverride, '保留自訂提示詞');
-    final saved = await file.readAsBytes();
-    final plain = await _readSettingsPlaintext(harness, setup.session);
-    expect(plain, isNot(contains('gpt-5.6-sol')));
-    expect(plain, contains('thinking_levels'));
-    await store.read(setup.session);
-    expect(await file.readAsBytes(), saved);
-  });
+        contentType: 'application/json',
+        recoveryWrapKey: requireRecoveryWrapKey(setup.session),
+        recoverySlotKdf: metadata.kdf,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final file = File(await harness.pathStrategy.aiSettingsPath());
+      await file.writeAsBytes(encrypted.toFileBytes());
+      final stored = await store.read(setup.session);
+      final decoded = jsonDecode(
+        await _readSettingsPlaintext(harness, setup.session),
+      ) as Map;
+      expect(decoded['version'], DataVersions.aiSettings);
+      expect(decoded['version'], 1);
+      expect((decoded['connection'] as Map)['active_connection_id'], 'openai');
+      expect((decoded['connection'] as Map)['connections'], isA<Map>());
+      expect(stored.connection.activeConfig.model, 'gpt-6.1-terra');
+      expect(stored.connection.activeConfig.thinkingLevels, isEmpty);
+      expect(
+        resolvedThinkingLevel(stored.connection.connectionFor('xai')),
+        AiThinkingLevel.high,
+      );
+      expect(stored.chatDiary.prompts.generationOverride, '保留自訂提示詞');
+      final saved = await file.readAsBytes();
+      final plain = await _readSettingsPlaintext(harness, setup.session);
+      expect(plain, isNot(contains('gpt-5.6-sol')));
+      expect(plain, contains('thinking_levels'));
+      await store.read(setup.session);
+      expect(await file.readAsBytes(), saved);
+    });
+  }
 
   test('完整備份包含 AI 設定，還原後仍讀得到且不含金鑰', () async {
     final harness = await VaultTestHarness.create();
@@ -248,11 +282,24 @@ void main() {
       baseUrl: 'https://backup.example/v1',
       model: 'backup-model',
     );
+    final second = connection.copyWith(
+      customConnectionId: 'aic_backup',
+      displayName: '備份第二組',
+      thinkingOverrides: {
+        'backup-model': AiModelThinkingOverride(
+          defaultLevel: AiThinkingLevel.low,
+          levels: {
+            AiThinkingLevel.low: {'think': 'low'},
+            AiThinkingLevel.high: {'think': 'high'},
+          },
+        ),
+      },
+    );
     await store.save(
       setup.session,
-      connection: const AiConnectionSettings(
-        provider: AiProvider.custom,
-        configs: {AiProvider.custom: connection},
+      connection: AiConnectionSettings(
+        activeConnectionId: 'custom',
+        connections: {'custom': connection, second.connectionId: second},
       ),
       chatDiary: const ChatDiarySettings(
         prompts: ChatDiaryPromptSettings(conversationOverride: '備份提示詞'),
@@ -260,6 +307,7 @@ void main() {
       ),
     );
     await store.saveApiKey(connection, 'backup-synthetic-key');
+    await store.saveApiKey(second, 'backup-second-key');
     final archive = harness.createTransferIo();
     final backup = File(p.join(harness.tempDir.path, 'ai_settings.zip'));
     await archive.backup.writeBackupZip(backup);
@@ -283,6 +331,20 @@ void main() {
     expect(
       restored.connection.activeConfig.baseUrl,
       'https://backup.example/v1',
+    );
+    expect(
+      restored.connection.connectionFor(second.connectionId).displayName,
+      second.displayName,
+    );
+    expect(
+      thinkingRequestFields(
+        restored.connection.connectionFor(second.connectionId),
+      ),
+      {'think': 'low'},
+    );
+    expect(
+      await _readSettingsPlaintext(harness, setup.session),
+      isNot(contains('backup-second-key')),
     );
     expect(restored.chatDiary.prompts.conversationOverride, '備份提示詞');
     expect(restored.chatDiary.hidePersonNames, isFalse);
@@ -309,9 +371,9 @@ void main() {
       key: 'settings',
       value: jsonEncode(
         const AiConnectionSettings(
-          provider: AiProvider.openai,
-          configs: {
-            AiProvider.openai: AiConnectionConfig(
+          activeConnectionId: 'openai',
+          connections: {
+            'openai': AiConnectionConfig(
               provider: AiProvider.openai,
               model: 'packed-before-open',
             ),

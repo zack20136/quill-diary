@@ -29,4 +29,4 @@ Quill Diary 名稱、App 圖示、品牌識別與 Google Play 商店文案／素
 
 授權或第三方資產問題請透過 [GitHub Issues](https://github.com/zack20136/quill-diary/issues) 聯絡。
 
-[← 返回首頁](index.md)
+[← 返回首頁](./index.md)

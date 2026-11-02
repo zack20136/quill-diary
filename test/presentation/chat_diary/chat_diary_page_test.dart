@@ -12,12 +12,13 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -748,7 +749,11 @@ void main() {
   testWidgets('聊天室內儲存設定後立即更新模型與持久化連線', (tester) async {
     final chat = testChatDiarySession(hidePersonNames: false)
       ..composerText = '尚未送出的內容';
-    final aiSettings = OverviewAiSettingsStore();
+    final aiSettings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        activeConnectionId: 'custom',
+        connections: {'custom': chat.connectionConfig},
+      );
     final container = await pumpChat(
       tester,
       chat,
@@ -800,8 +805,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '儲存'));
 
     await tester.pumpAndSettle();
-    expect(find.text('自訂/test-model'), findsOneWidget);
-    expect(find.text('自訂/updated-model'), findsNothing);
+    expect(find.text('127.0.0.1:11434/test-model'), findsOneWidget);
+    expect(find.text('127.0.0.1:11434/updated-model'), findsNothing);
     final controller = container.read(chatDiaryControllerProvider(chat.id));
     expect(
       controller.chat!.connectionConfig.protocol,
@@ -830,13 +835,179 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('編輯另一組連線不切換目前聊天，也不改變下一篇的預設模型', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final a = addModel(
+      chat.connectionConfig.copyWith(
+        customConnectionId: 'aic_a',
+        displayName: '工作',
+      ),
+      'test-model',
+    );
+    final b = a.copyWith(customConnectionId: 'aic_b', displayName: '個人');
+    chat.connectionConfig = a;
+    final settings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        activeConnectionId: b.connectionId,
+        connections: {a.connectionId: a, b.connectionId: b},
+      );
+    final container = await pumpChat(
+      tester,
+      chat,
+      FakeAiClient(a),
+      aiSettings: settings,
+    );
+    await tester.tap(find.byTooltip('AI 設定'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(ExpansionTile, '個人'));
+    await tester.tap(find.widgetWithText(ExpansionTile, '個人'));
+    await tester.pumpAndSettle();
+    final name = find.byKey(const ValueKey('ai-connection-name-aic_b'));
+    await tester.ensureVisible(name);
+    await tester.enterText(name, '私人帳號');
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    final controller = container.read(chatDiaryControllerProvider(chat.id));
+    expect(controller.chat!.connectionConfig.connectionId, a.connectionId);
+    expect(controller.chat!.connectionConfig.model, a.model);
+    expect(settings.settings.activeConnectionId, b.connectionId);
+    expect(settings.settings.activeConfig.displayName, '私人帳號');
+    expect(settings.settings.activeConfig.model, b.model);
+    expect(find.text('127.0.0.1:11434/test-model'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('自訂選單僅在網址模型重複時補連線名稱，切換保留實際目的地與帳號', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final a = addModel(
+      const AiConnectionConfig(
+        provider: AiProvider.custom,
+        customConnectionId: 'aic_work',
+        displayName: '工作',
+        baseUrl: 'https://gateway.example:8443/v1/',
+      ),
+      'same-model',
+    );
+    final b = a.copyWith(customConnectionId: 'aic_personal', displayName: '個人');
+    final c = a.copyWith(
+      customConnectionId: 'aic_other',
+      displayName: '第三組',
+      baseUrl: 'https://gateway.example:8080/v2',
+    );
+    chat.connectionConfig = a;
+    final settings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        activeConnectionId: a.connectionId,
+        connections: {a.connectionId: a, b.connectionId: b, c.connectionId: c},
+      );
+    final container = await pumpChat(
+      tester,
+      chat,
+      FakeAiClient(a),
+      aiSettings: settings,
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
+    await tester.pumpAndSettle();
+    final work = find.byKey(
+      const ValueKey('chat-model-option-aic_work-same-model'),
+    );
+    final personal = find.byKey(
+      const ValueKey('chat-model-option-aic_personal-same-model'),
+    );
+    final other = find.byKey(
+      const ValueKey('chat-model-option-aic_other-same-model'),
+    );
+    expect(
+      find.descendant(of: work, matching: find.text('工作')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: personal, matching: find.text('個人')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: other, matching: find.text('第三組')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: other,
+        matching: find.text('gateway.example:8080/v2/same-model'),
+      ),
+      findsOneWidget,
+    );
+    final tooltip = tester.widget<Tooltip>(
+      find.descendant(of: personal, matching: find.byType(Tooltip)),
+    );
+    expect(
+      tooltip.message,
+      contains('https://gateway.example:8443/v1/same-model'),
+    );
+    await tester.tap(personal);
+    await tester.pumpAndSettle();
+    expect(settings.settings.activeConnectionId, b.connectionId);
+    expect(
+      container
+          .read(chatDiaryControllerProvider(chat.id))
+          .chat!
+          .connectionConfig
+          .baseUrl,
+      b.baseUrl,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('舊快照與新目的地標籤相同時仍保留目前標記與完整網址提示', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final original = addModel(
+      const AiConnectionConfig(
+        provider: AiProvider.custom,
+        customConnectionId: 'aic_work',
+        displayName: '工作',
+        baseUrl: 'http://127.0.0.1:11434',
+        customProtocol: AiApiProtocol.ollamaChat,
+      ),
+      'same-model',
+    );
+    final changed = original.copyWith(baseUrl: 'https://127.0.0.1:11434');
+    chat.connectionConfig = original;
+    final settings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        activeConnectionId: original.connectionId,
+        connections: {original.connectionId: changed},
+      );
+    await pumpChat(tester, chat, FakeAiClient(original), aiSettings: settings);
+    await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
+    await tester.pumpAndSettle();
+    final current = find.byKey(
+      const ValueKey('chat-model-option-aic_work-same-model-current'),
+    );
+    expect(
+      find.descendant(of: current, matching: find.textContaining('目前')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: current, matching: find.text('工作')),
+      findsOneWidget,
+    );
+    final tooltip = tester.widget<Tooltip>(
+      find.descendant(of: current, matching: find.byType(Tooltip)),
+    );
+    expect(tooltip.message, contains('http://127.0.0.1:11434'));
+    expect(
+      find.descendant(of: current, matching: find.byIcon(Icons.check)),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('聊天室切換模型會改這一則，並成為下一則新聊天的模型', (tester) async {
     final chat = testChatDiarySession(hidePersonNames: false);
     final aiSettings = OverviewAiSettingsStore()
       ..settings = AiConnectionSettings(
-        provider: AiProvider.custom,
-        configs: {
-          AiProvider.custom: chat.connectionConfig.copyWith(
+        activeConnectionId: 'custom',
+        connections: {
+          'custom': chat.connectionConfig.copyWith(
             addedModels: const ['test-model', 'other-model'],
             enabledModels: const ['test-model', 'other-model'],
           ),
@@ -850,10 +1021,26 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
     await tester.pumpAndSettle();
-    final tag = tester.getRect(find.byKey(const ValueKey('chat-model-tag')));
-    final menu = tester.getRect(find.byKey(const ValueKey('chat-model-menu')));
-    expect(menu.bottom, lessThan(tag.top - 8));
-    await tester.tap(find.text('自訂/other-model'));
+    final menu = tester.getRect(
+      find
+          .ancestor(
+            of: find.byKey(
+              const ValueKey('chat-model-option-custom-test-model'),
+            ),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(menu.width, lessThanOrEqualTo(320));
+    expect(
+      menu.bottom,
+      closeTo(
+        tester.getRect(find.byKey(const ValueKey('chat-model-tag'))).top - 6,
+        1,
+      ),
+    );
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    await tester.tap(find.text('127.0.0.1:11434/other-model'));
     await tester.pumpAndSettle();
     expect(
       container
@@ -864,7 +1051,129 @@ void main() {
       'other-model',
     );
     expect(aiSettings.settings.activeConfig.model, 'other-model');
-    expect(find.text('自訂/other-model'), findsOneWidget);
+    expect(find.text('127.0.0.1:11434/other-model'), findsOneWidget);
+  });
+
+  for (final locale in [appZhLocale, appEnLocale]) {
+    testWidgets('${locale.languageCode} 模型選單在窄螢幕大字與鍵盤下可捲動、關閉及選取', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      final chat = testChatDiarySession(hidePersonNames: false);
+      final models = [
+        'test-model',
+        for (var i = 0; i < 12; i++) 'long-model-name-for-layout-$i',
+      ];
+      final settings = OverviewAiSettingsStore()
+        ..settings = AiConnectionSettings(
+          activeConnectionId: 'custom',
+          connections: {
+            'custom': chat.connectionConfig.copyWith(
+              addedModels: models,
+              enabledModels: models,
+            ),
+          },
+        );
+      await pumpChat(
+        tester,
+        chat,
+        FakeAiClient(chat.connectionConfig),
+        aiSettings: settings,
+        locale: locale,
+        textScale: 1.5,
+        brightness: locale == appZhLocale ? Brightness.dark : Brightness.light,
+      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.showKeyboard(find.byType(TextField));
+      await tester.pumpAndSettle();
+      final tag = find.byKey(const ValueKey('chat-model-tag'));
+      await tester.tap(tag);
+      await tester.pumpAndSettle();
+      final menu = find
+          .ancestor(
+            of: find.byKey(
+              const ValueKey('chat-model-option-custom-test-model'),
+            ),
+            matching: find.byType(Material),
+          )
+          .first;
+      final rect = tester.getRect(menu);
+      expect(rect.width, lessThanOrEqualTo(312));
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(360));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(rect.bottom, lessThanOrEqualTo(500));
+      expect(rect.bottom, closeTo(tester.getRect(tag).top - 6, 1));
+      expect(tester.takeException(), isNull);
+      await tester.tapAt(const Offset(350, 20));
+      await tester.pumpAndSettle();
+      expect(find.byType(MenuItemButton), findsNothing);
+      await tester.tap(tag);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(MenuItemButton), findsNothing);
+      await tester.tap(tag);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(settings.settings.activeConfig.model, models[1]);
+      await tester.tap(tag);
+      await tester.pumpAndSettle();
+      final last = find.byKey(
+        const ValueKey(
+          'chat-model-option-custom-long-model-name-for-layout-11',
+        ),
+      );
+      await tester.scrollUntilVisible(
+        last,
+        150,
+        scrollable: find
+            .ancestor(of: last, matching: find.byType(Scrollable))
+            .first,
+      );
+      await tester.tap(last);
+      await tester.pumpAndSettle();
+      expect(settings.settings.activeConfig.model, models.last);
+      expect(find.byType(MenuItemButton), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('模型選單等待設定時進入背景，返回後不顯示晚到選單；鎖定時關閉選單', (tester) async {
+    final chat = testChatDiarySession(hidePersonNames: false);
+    final settings = OverviewAiSettingsStore();
+    final container = await pumpChat(
+      tester,
+      chat,
+      FakeAiClient(chat.connectionConfig),
+      aiSettings: settings,
+    );
+    final gate = Completer<void>();
+    settings.readGate = gate.future;
+    await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    gate.complete();
+    await tester.pumpAndSettle();
+    resumeApp(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('chat-model-tag')));
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsOneWidget);
+    (container.read(appSessionProvider.notifier) as _ChatSession).setLocked();
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('閱讀舊內容時串流不拉走捲動位置，回到底部後繼續跟隨', (tester) async {

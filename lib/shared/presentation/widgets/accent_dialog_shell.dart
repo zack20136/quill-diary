@@ -64,7 +64,7 @@ class AccentDialogShell extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    Icon(icon, color: cs.primary, size: 26),
+                    Icon(icon, color: cs.onSurface, size: 26),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(

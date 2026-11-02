@@ -50,6 +50,12 @@ class VaultPathStrategy {
     return p.join(vaultRoot.path, 'recovery.json');
   }
 
+  /// Recovery Key 輪替尚未提交時，以舊金鑰保護的續跑資料。
+  Future<String> recoveryRotationPendingPath() async {
+    final Directory vaultRoot = await vaultRootDirectory();
+    return p.join(vaultRoot.path, 'recovery_rotation.pending');
+  }
+
   Future<String> tagStylesPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
     return p.join(vaultRoot.path, 'tag_styles.json');

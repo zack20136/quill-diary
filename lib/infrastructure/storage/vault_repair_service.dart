@@ -5,13 +5,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -21,11 +23,9 @@ import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
-import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
@@ -339,7 +339,9 @@ class VaultRepairService {
 
     for (final VaultFinding finding in findings) {
       final String? entryId = finding.entryId?.trim();
-      if (entryId != null && entryId.isNotEmpty) {
+      if (entryId != null &&
+          entryId.isNotEmpty &&
+          _permanentlyDeleteRemovesIndexedEntry(finding.kind)) {
         entryIdsToRemove.add(entryId);
       }
       final String reference = finding.internalReference.trim().replaceAll(
@@ -410,6 +412,21 @@ class VaultRepairService {
     await _writeEncryptedManifest(session, metadata);
     await _stripFindingsFromMaintenanceSummaries(findings, salvaged: salvaged);
     return deletedCount;
+  }
+
+  bool _permanentlyDeleteRemovesIndexedEntry(VaultRepairIssueKind kind) {
+    return switch (kind) {
+      VaultRepairIssueKind.invalidEntryMetadata ||
+      VaultRepairIssueKind.unreadableEntry ||
+      VaultRepairIssueKind.entryIdentityMismatch => true,
+      VaultRepairIssueKind.conflictingEntry ||
+      VaultRepairIssueKind.missingAsset ||
+      VaultRepairIssueKind.unreadableAsset ||
+      VaultRepairIssueKind.assetIdentityMismatch ||
+      VaultRepairIssueKind.conflictingAsset ||
+      VaultRepairIssueKind.unverifiedOrphanAsset ||
+      VaultRepairIssueKind.cleanupFailure => false,
+    };
   }
 
   bool _looksLikeVaultRelativePath(String reference) {

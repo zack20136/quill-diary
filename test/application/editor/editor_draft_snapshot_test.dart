@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/editor/editor_draft_snapshot.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 
 void main() {
@@ -65,6 +65,43 @@ void main() {
     );
 
     expect(editorDraftIsDirty(current: current, saved: saved), isTrue);
+  });
+
+  test('只有標籤的新日記不是空草稿', () {
+    final EditorDraftSnapshot snapshot = buildEditorDraftSnapshot(
+      titleRaw: '',
+      dateRaw: '2026-06-18',
+      entryHour: 8,
+      entryMinute: 0,
+      tagsRaw: '旅行',
+      bodyRaw: '',
+      attachmentIds: const <AssetId>[],
+    );
+
+    expect(editorDraftIsEmpty(snapshot), isFalse);
+  });
+
+  test('新日記調整日期或時間不是空草稿', () {
+    final DateTime createdAt = DateTime(2026, 6, 18, 8);
+    final EditorDraftSnapshot snapshot = buildEditorDraftSnapshot(
+      titleRaw: '',
+      dateRaw: '2026-06-19',
+      entryHour: 9,
+      entryMinute: 0,
+      tagsRaw: '',
+      bodyRaw: '',
+      attachmentIds: const <AssetId>[],
+    );
+
+    expect(editorDraftIsEmpty(snapshot, initialCreatedAt: createdAt), isFalse);
+    expect(
+      editorDraftIsDirty(
+        current: snapshot,
+        saved: null,
+        initialCreatedAt: createdAt,
+      ),
+      isTrue,
+    );
   });
 
   test('草稿 JSON 會保留混合附件順序與暫存附件 ID', () {

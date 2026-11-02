@@ -3,32 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
-
-enum AiErrorCode {
-  configuration,
-  endpoint,
-  authentication,
-  quota,
-  request,
-  network,
-  timeout,
-  tls,
-  response,
-  image,
-  imageUnsupported,
-  storage,
-  unavailable,
-  unreadable,
-}
-
-class AiFailure implements Exception {
-  const AiFailure(this.code, {this.status});
-  final AiErrorCode code;
-  final int? status;
-  @override
-  String toString() => 'AiFailure(${code.name})';
-}
+import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 
 class AiInputImage {
   const AiInputImage({
@@ -350,15 +328,21 @@ abstract class AiClient {
           {'role': 'user', 'content': prompt},
         ],
       if (protocol == AiApiProtocol.claudeMessages) 'max_tokens': 64,
-      ...thinkingRequestFields(connectionConfig),
     };
-    final data = await postJson(path, body).timeout(
-      const Duration(seconds: 45),
-      onTimeout: () {
-        close();
-        throw const AiFailure(AiErrorCode.timeout);
-      },
-    );
+    final data =
+        await postJson(
+          path,
+          mergeThinkingRequestFields(
+            body,
+            thinkingRequestFields(connectionConfig),
+          ),
+        ).timeout(
+          const Duration(seconds: 45),
+          onTimeout: () {
+            close();
+            throw const AiFailure(AiErrorCode.timeout);
+          },
+        );
     final String text = switch (protocol) {
       AiApiProtocol.chatCompletions =>
         ((data['choices'] as List?)?.firstOrNull
@@ -496,7 +480,7 @@ abstract class AiClient {
     await for (final line in transport.stream(
       endpoint(path),
       requestHeaders ?? headers,
-      body,
+      mergeThinkingRequestFields(body, thinkingRequestFields(connectionConfig)),
     )) {
       if (ndjson) {
         if (line.trim().isNotEmpty) {
@@ -560,7 +544,6 @@ class OpenAiCompatibleClient extends AiClient {
                   ],
           },
       ],
-      ...thinkingRequestFields(connectionConfig),
     })) {
       checkAiResponseError(event);
       for (final choice in event['choices'] as List? ?? []) {
@@ -629,7 +612,6 @@ class OpenAiClient extends AiClient {
       'input': input,
       'store': false,
       'stream': true,
-      ...thinkingRequestFields(connectionConfig),
     })) {
       if (event['type'] == 'response.output_text.delta') {
         yield event['delta'] as String;
@@ -719,7 +701,6 @@ class ClaudeAiClient extends AiClient {
       'messages': input,
       'max_tokens': 8192,
       'stream': true,
-      ...thinkingRequestFields(connectionConfig),
     }, requestHeaders: streamHeaders)) {
       if (event['type'] == 'content_block_delta' &&
           (event['delta'] as Map)['type'] == 'text_delta') {
@@ -800,7 +781,6 @@ class GeminiAiClient extends AiClient {
           ],
         },
         'contents': contents,
-        ...thinkingRequestFields(connectionConfig),
       },
     )) {
       for (final candidate in event['candidates'] as List? ?? []) {
@@ -869,7 +849,6 @@ class OllamaAiClient extends AiClient {
               ],
           },
       ],
-      ...thinkingRequestFields(connectionConfig),
     }, ndjson: true)) {
       if (event['error'] != null) throw const AiFailure(AiErrorCode.request);
       final text = (event['message'] as Map?)?['content'];

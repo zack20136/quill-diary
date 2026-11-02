@@ -76,7 +76,7 @@ class AppStateView extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(14),
-              child: Icon(icon, size: 32, color: theme.colorScheme.primary),
+              child: Icon(icon, size: 32, color: theme.colorScheme.onSurface),
             ),
           ),
           const SizedBox(height: 12),

@@ -8,8 +8,6 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-export 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
-
 Future<UnlockModeChangeOutcome> applyUnlockModeChange({
   required Ref ref,
   required AppUnlockMode mode,

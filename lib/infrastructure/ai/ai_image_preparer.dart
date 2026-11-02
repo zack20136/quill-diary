@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:flutter/foundation.dart' show compute;
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 

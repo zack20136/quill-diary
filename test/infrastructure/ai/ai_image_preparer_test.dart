@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/infrastructure/ai/ai_image_preparer.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';

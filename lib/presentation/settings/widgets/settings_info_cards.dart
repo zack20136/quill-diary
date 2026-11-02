@@ -104,7 +104,7 @@ class _SettingsGradientHeroCardState extends State<SettingsGradientHeroCard> {
                     child: SizedBox(
                       width: 44,
                       height: 44,
-                      child: Icon(widget.icon, color: startColor, size: 22),
+                      child: Icon(widget.icon, color: cs.onSurface, size: 22),
                     ),
                   ),
                   const SizedBox(width: 14),

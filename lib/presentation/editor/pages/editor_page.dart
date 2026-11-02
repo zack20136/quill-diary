@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_commands.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
@@ -25,17 +25,17 @@ import 'package:quill_diary/application/tag/tag_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_date_policy.dart';
-import 'package:quill_diary/domain/diary/diary_draft.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/vault_maintenance_models.dart';
+import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
-import 'package:quill_diary/infrastructure/storage/vault_maintenance_models.dart';
-import 'package:quill_diary/infrastructure/storage/vault_salvage_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_saved_conversation_button.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
@@ -107,6 +107,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool _preservesEditorOnLock = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
+  bool _hasDraftPersistError = false;
   late final ProviderSubscription<AsyncValue<AppSessionState>>
   _sessionSubscription;
 
@@ -153,6 +154,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       onDraftPersisted: (result) {
         _draftCreatedAt = result.record.createdAt;
         _lastPersistedDraftSnapshot = result.snapshot;
+        _hasDraftPersistError = false;
       },
     );
 
@@ -309,7 +311,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         _showEntryRequiredHint = false;
       }
     });
-    unawaited(_persistDraft());
+    unawaited(_persistDraftInBackground());
   }
 
   void _onPreviewCheckboxChanged(String markdown) {
@@ -381,6 +383,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     return editorDraftIsDirty(
       current: _currentDraftSnapshot(),
       saved: _lastSavedSnapshot,
+      initialCreatedAt: widget.entryId == null ? _draftCreatedAt : null,
     );
   }
 
@@ -396,7 +399,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
         )) {
       return true;
     }
-    if (widget.entryId == null && editorDraftIsEmpty(current)) {
+    if (widget.entryId == null &&
+        editorDraftIsEmpty(current, initialCreatedAt: _draftCreatedAt)) {
       return true;
     }
     return false;
@@ -424,6 +428,20 @@ class _EditorPageState extends ConsumerState<EditorPage>
         ],
       ),
     );
+  }
+
+  Future<void> _persistDraftInBackground() async {
+    try {
+      await _persistDraft();
+    } on Object catch (error) {
+      if (!mounted || _hasDraftPersistError) return;
+      _hasDraftPersistError = true;
+      showAppFeedbackToast(
+        context,
+        userFacingErrorMessage(error, l10n: context.l10n),
+        tone: AppFeedbackTone.error,
+      );
+    }
   }
 
   Future<void> _persistDraftNow() async {
@@ -1240,30 +1258,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     _hybridBodyKey.currentState?.flushBodyToController();
     _flowSession.reset();
-    final chatStore = ref.read(chatDiaryStoreProvider);
-    final keyFor = ref.read(aiSettingsStoreProvider).readApiKey;
     bool canUpdateUi() =>
         mounted &&
         ref.read(effectiveAppSessionProvider).value?.session == session;
-    Future<void> cleanupRemoteFiles(String chatId) async {
-      var cleaned = false;
-      try {
-        cleaned = await chatStore.cleanupRemoteFiles(
-          session,
-          keyFor,
-          chatId: chatId,
-        );
-      } on Object {
-        // 正式日記已儲存，遠端清理失敗留待下次重試。
-      }
-      if (!cleaned && mounted && canUpdateUi()) {
-        showAppFeedbackToast(
-          context,
-          context.l10n.aiFileCleanupNotice,
-          tone: AppFeedbackTone.warning,
-        );
-      }
-    }
 
     setState(() => _saving = true);
     try {
@@ -1287,9 +1284,22 @@ class _EditorPageState extends ConsumerState<EditorPage>
       );
       final DiaryEntry saved = result.savedEntry;
       if (widget.chatId != null) {
-        try {
-          await chatStore.complete(widget.chatId!, saved.id, session);
-        } on Object {
+        final bool completed = await completeChatDiaryAfterEntrySave(
+          ref,
+          chatId: widget.chatId!,
+          entryId: saved.id,
+          session: session,
+          onRemoteCleanupIncomplete: () {
+            if (mounted && canUpdateUi()) {
+              showAppFeedbackToast(
+                context,
+                context.l10n.aiFileCleanupNotice,
+                tone: AppFeedbackTone.warning,
+              );
+            }
+          },
+        );
+        if (!completed) {
           if (mounted && canUpdateUi()) {
             showAppFeedbackToast(
               context,
@@ -1298,7 +1308,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
             );
           }
         }
-        unawaited(cleanupRemoteFiles(widget.chatId!));
       }
       if (!mounted || !canUpdateUi()) return;
       ref.invalidate(chatDiarySessionsProvider);
@@ -1342,7 +1351,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           _pendingAttachments.remove(attachment);
       }
     });
-    unawaited(_persistDraft());
+    unawaited(_persistDraftInBackground());
   }
 
   List<EditorAttachmentItem> _orderedAttachments(
@@ -1371,7 +1380,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         newIndex: newIndex,
       );
     });
-    unawaited(_persistDraft());
+    unawaited(_persistDraftInBackground());
   }
 
   Future<void> _openImagePreviewGallery({
@@ -1488,7 +1497,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         staged.map((PendingAttachment attachment) => attachment.assetId),
       );
     });
-    unawaited(_persistDraft());
+    unawaited(_persistDraftInBackground());
   }
 
   Future<void> _pickFile() async {
@@ -1528,7 +1537,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         staged.map((PendingAttachment attachment) => attachment.assetId),
       );
     });
-    unawaited(_persistDraft());
+    unawaited(_persistDraftInBackground());
   }
 }
 

@@ -40,20 +40,6 @@ final peopleRelationshipTypesProvider =
           .whenData((PeopleCatalog catalog) => catalog.relationshipTypes);
     });
 
-enum PeopleListSort {
-  lastMentionDate,
-  mentionedEntryCount,
-  recentMentionedEntryCount,
-  name,
-}
-
-final class PersonListItem {
-  const PersonListItem({required this.person, required this.stats});
-
-  final Person person;
-  final PersonMentionStats? stats;
-}
-
 /// 提及統計 map；過期時會自動 ensure／rebuild。
 final peopleMentionStatsMapProvider =
     FutureProvider.autoDispose<Map<PersonId, PersonMentionStats>>((
@@ -71,108 +57,6 @@ final peopleMentionStatsMapProvider =
           .watch(vaultRepositoryProvider)
           .allPersonMentionStats(state.session!);
     });
-
-List<PersonListItem> buildPeopleListItems({
-  required List<Person> catalog,
-  required Map<PersonId, PersonMentionStats> statsMap,
-  bool statsReady = true,
-}) {
-  return <PersonListItem>[
-    for (final Person person in catalog)
-      PersonListItem(
-        person: person,
-        stats:
-            statsMap[person.id] ??
-            (statsReady
-                ? PersonMentionStats(
-                    personId: person.id,
-                    mentionedEntryCount: 0,
-                    recentMentionedEntryCount: 0,
-                  )
-                : null),
-      ),
-  ];
-}
-
-List<PersonListItem> filterPeopleListItems({
-  required List<PersonListItem> items,
-  required String query,
-  required Set<String> relationships,
-  required PeopleListSort sort,
-}) {
-  final String q = normalizePersonName(query);
-  final List<PersonListItem> filtered = <PersonListItem>[];
-  for (final PersonListItem item in items) {
-    final Person person = item.person;
-    if (relationships.isNotEmpty &&
-        person.relationships.intersection(relationships).isEmpty) {
-      continue;
-    }
-    if (q.isNotEmpty) {
-      final bool nameHit = person.normalizedName.contains(q);
-      final bool aliasHit = person.normalizedAliases.any(
-        (String a) => a.contains(q),
-      );
-      if (!nameHit && !aliasHit) {
-        continue;
-      }
-    }
-    filtered.add(item);
-  }
-
-  int compareNullableDate(DateOnly? a, DateOnly? b) {
-    if (a == null && b == null) {
-      return 0;
-    }
-    if (a == null) {
-      return 1;
-    }
-    if (b == null) {
-      return -1;
-    }
-    return b.value.compareTo(a.value);
-  }
-
-  filtered.sort((PersonListItem a, PersonListItem b) {
-    switch (sort) {
-      case PeopleListSort.lastMentionDate:
-        final int byDate = compareNullableDate(
-          a.stats?.lastMentionDate,
-          b.stats?.lastMentionDate,
-        );
-        if (byDate != 0) {
-          return byDate;
-        }
-        return a.person.name.toLowerCase().compareTo(
-          b.person.name.toLowerCase(),
-        );
-      case PeopleListSort.mentionedEntryCount:
-        final int byCount = (b.stats?.mentionedEntryCount ?? 0).compareTo(
-          a.stats?.mentionedEntryCount ?? 0,
-        );
-        if (byCount != 0) {
-          return byCount;
-        }
-        return a.person.name.toLowerCase().compareTo(
-          b.person.name.toLowerCase(),
-        );
-      case PeopleListSort.recentMentionedEntryCount:
-        final int byRecent = (b.stats?.recentMentionedEntryCount ?? 0)
-            .compareTo(a.stats?.recentMentionedEntryCount ?? 0);
-        if (byRecent != 0) {
-          return byRecent;
-        }
-        return a.person.name.toLowerCase().compareTo(
-          b.person.name.toLowerCase(),
-        );
-      case PeopleListSort.name:
-        return a.person.name.toLowerCase().compareTo(
-          b.person.name.toLowerCase(),
-        );
-    }
-  });
-  return filtered;
-}
 
 final personDetailProvider = FutureProvider.autoDispose
     .family<Person?, PersonId>((Ref ref, PersonId id) async {
