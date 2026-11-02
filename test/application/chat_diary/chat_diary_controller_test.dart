@@ -8,6 +8,7 @@ import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
@@ -36,12 +37,14 @@ void main() {
   late OverviewAiSettingsStore settings;
   late FakeAiClient client;
   late ChatDiaryController controller;
+  late ProviderSubscription<ChatDiaryController> subscription;
   late ChatDiarySession chat;
   late RecoverySetupResult setup;
   late UserPreferences preferences;
   late GatedEditorDraftStore gatedDrafts;
   late List<String> clientKeys;
   late List<AiConnectionConfig> clientConfigs;
+  late List<FakeAiClient> queuedClients;
 
   setUp(() async {
     harness = await VaultTestHarness.create();
@@ -67,6 +70,7 @@ void main() {
     client = FakeAiClient(chat.connectionConfig);
     clientKeys = [];
     clientConfigs = [];
+    queuedClients = [];
     preferences = UserPreferences(
       storageFile: File('${harness.tempDir.path}/preferences.json'),
     );
@@ -80,12 +84,15 @@ void main() {
         aiClientFactoryProvider.overrideWithValue((connectionConfig, key) {
           clientKeys.add(key);
           clientConfigs.add(connectionConfig);
-          return client;
+          return queuedClients.isEmpty ? client : queuedClients.removeAt(0);
         }),
         userPreferencesProvider.overrideWithValue(preferences),
       ],
     );
-    container.listen(chatDiaryControllerProvider(chat.id), (_, _) {});
+    subscription = container.listen(
+      chatDiaryControllerProvider(chat.id),
+      (_, _) {},
+    );
     controller = container.read(chatDiaryControllerProvider(chat.id));
     await controller.start(chat.id, setup.session, openingMessage: '');
     chat = controller.chat!;
@@ -94,6 +101,208 @@ void main() {
     container.dispose();
     await store.flush();
     await harness.dispose();
+  });
+
+  for (final fails in [false, true]) {
+    test('無畫面監聽仍完成${fails ? '失敗' : '成功'}回覆，再釋放聊天', () async {
+      final stream = StreamController<String>();
+      final started = Completer<void>();
+      client.response = () {
+        started.complete();
+        return stream.stream;
+      };
+      controller.updateComposer('合成測試內容', []);
+      final sending = controller.send();
+      await started.future;
+      subscription.close();
+      await container.pump();
+      expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+      expect(client.closed, isFalse);
+      expect(
+        await controller.load(chat.id, setup.session),
+        ChatDiaryLoadResult.loaded,
+      );
+      expect(controller.busy, isTrue);
+      if (fails) {
+        stream.addError(const AiFailure(AiErrorCode.network));
+      } else {
+        stream.add('完整的合成回覆');
+      }
+      await stream.close();
+      await sending;
+      await container.pump();
+      expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+      expect(client.calls, hasLength(1));
+      final stored = (await store.load(chat.id, setup.session))!;
+      expect(
+        stored.messages.last.status,
+        fails ? ChatDiaryMessageStatus.failed : ChatDiaryMessageStatus.complete,
+      );
+      expect(stored.messages.last.text, fails ? '' : '完整的合成回覆');
+    });
+  }
+
+  test('串流結束後仍保留聊天，等最終保存完成才釋放', () async {
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    controller.updateComposer('等候保存', []);
+    final sending = controller.send();
+    await started.future;
+    final saved = Completer<void>();
+    store.saveGate = saved.future;
+    store.saveStarted = Completer<void>();
+    subscription.close();
+    stream.add('保存後才能釋放');
+    await stream.close();
+    await store.saveStarted!.future;
+    await container.pump();
+    expect(controller.busy, isTrue);
+    expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+    store.saveGate = null;
+    store.saveStarted = null;
+    saved.complete();
+    await sending;
+    await container.pump();
+    expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+    expect(
+      (await store.load(chat.id, setup.session))!.messages.last.status,
+      ChatDiaryMessageStatus.complete,
+    );
+  });
+
+  test('離頁後日記庫鎖定仍取消請求，晚到內容不會恢復聊天', () async {
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    controller.updateComposer('鎖定前的合成內容', []);
+    final sending = controller.send();
+    await started.future;
+    subscription.close();
+    await container.read(appSessionProvider.notifier).lock();
+    expect(controller.chat, isNull);
+    expect(client.closed, isTrue);
+    stream.add('鎖定後的晚到內容');
+    await stream.close();
+    await sending;
+    final stored = (await store.load(chat.id, setup.session))!;
+    expect(stored.messages.last.status, ChatDiaryMessageStatus.interrupted);
+    expect(stored.messages.last.text, isEmpty);
+  });
+
+  test('刪除執行中的回覆後，晚到內容不會重建草稿且請求完成取消', () async {
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    controller.updateComposer('刪除前的合成內容', []);
+    final sending = controller.send();
+    await started.future;
+    subscription.close();
+    await controller.delete(chat.id, setup.session);
+    stream.add('不應留下的內容');
+    await stream.close();
+    await sending.timeout(const Duration(seconds: 3));
+    expect(await store.load(chat.id, setup.session), isNull);
+    expect(controller.chat, isNull);
+  });
+
+  test('離頁後生成完成仍保存日記草稿與來源，再釋放聊天', () async {
+    controller.updateComposer('生成用的合成內容', []);
+    await controller.send();
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    final generation = controller.generate(testZhL10n);
+    await started.future;
+    subscription.close();
+    await container.pump();
+    expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+    stream.add('# 合成日記\n\n保留這段內容');
+    await stream.close();
+    expect(await generation, ChatDiaryGenerationResult.generated);
+    await container.pump();
+    expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+    final stored = (await store.load(chat.id, setup.session))!;
+    expect(stored.generatedEntryId, isNotNull);
+    expect(stored.generatedFromMessageId, stored.activeMessages.last.id);
+    expect(
+      (await gatedDrafts.read(
+        ChatDiarySession.draftKeyFor(chat.id),
+        setup.session,
+      ))!.markdownBody,
+      '保留這段內容',
+    );
+  });
+
+  test('不同聊天同時回覆時，各自保存與釋放且不會取消另一個請求', () async {
+    final secondChat = testChatDiarySession(
+      vaultId: setup.session.vaultId,
+      hidePersonNames: false,
+    )..composerText = '第二段合成內容';
+    await store.save(secondChat, setup.session);
+    final secondSubscription = container.listen(
+      chatDiaryControllerProvider(secondChat.id),
+      (_, _) {},
+    );
+    final second = container.read(chatDiaryControllerProvider(secondChat.id));
+    await second.load(secondChat.id, setup.session);
+    final secondClient = FakeAiClient(secondChat.connectionConfig);
+    queuedClients.addAll([client, secondClient]);
+    final firstStream = StreamController<String>();
+    final secondStream = StreamController<String>();
+    final firstStarted = Completer<void>();
+    final secondStarted = Completer<void>();
+    client.response = () {
+      firstStarted.complete();
+      return firstStream.stream;
+    };
+    secondClient.response = () {
+      secondStarted.complete();
+      return secondStream.stream;
+    };
+    controller.updateComposer('第一段合成內容', []);
+    final firstSending = controller.send();
+    await firstStarted.future;
+    second.updateComposer('第二段合成內容', []);
+    final secondSending = second.send();
+    await secondStarted.future;
+    subscription.close();
+    secondSubscription.close();
+    firstStream.add('第一個獨立回覆');
+    await firstStream.close();
+    await firstSending;
+    await container.pump();
+    expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+    expect(second.busy, isTrue);
+    expect(secondClient.closed, isFalse);
+    secondStream.add('第二個獨立回覆');
+    await secondStream.close();
+    await secondSending;
+    await container.pump();
+    expect(
+      container.exists(chatDiaryControllerProvider(secondChat.id)),
+      isFalse,
+    );
+    expect(
+      (await store.load(chat.id, setup.session))!.messages.last.text,
+      '第一個獨立回覆',
+    );
+    expect(
+      (await store.load(secondChat.id, setup.session))!.messages.last.text,
+      '第二個獨立回覆',
+    );
   });
 
   test('空白聊天室只留在記憶體，鎖定與重新開啟不建立草稿檔', () async {
@@ -819,12 +1028,15 @@ void main() {
   test('刪除失敗保留聊天與輸入，重試成功後才清空狀態', () async {
     controller.updateComposer('不能遺失的輸入', []);
     store.failDeletes = true;
-    await expectLater(controller.delete(), throwsStateError);
+    await expectLater(
+      controller.delete(chat.id, setup.session),
+      throwsStateError,
+    );
     expect(controller.chat!.composerText, '不能遺失的輸入');
     expect(controller.canSend, isTrue);
     expect(controller.busy, isFalse);
     store.failDeletes = false;
-    await controller.delete();
+    await controller.delete(chat.id, setup.session);
     expect(controller.chat, isNull);
     expect(await store.list(setup.session), isEmpty);
   });

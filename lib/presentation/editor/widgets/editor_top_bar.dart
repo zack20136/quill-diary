@@ -26,6 +26,7 @@ class EditorTopBar extends StatelessWidget {
     required this.onInvalidSave,
     required this.onDelete,
     required this.onEnterEditMode,
+    this.conversationButton,
     this.bottomToolbar,
   });
 
@@ -39,6 +40,7 @@ class EditorTopBar extends StatelessWidget {
   final VoidCallback? onInvalidSave;
   final VoidCallback? onDelete;
   final VoidCallback? onEnterEditMode;
+  final Widget? conversationButton;
   final Widget? bottomToolbar;
 
   @override
@@ -82,6 +84,7 @@ class EditorTopBar extends StatelessWidget {
                   ),
                 ),
                 if (previewMode) ...<Widget>[
+                  ?conversationButton,
                   _EditorChromeIconButton(
                     key: const Key('editor-top-bar-edit'),
                     tooltip: l10n.editorTooltipEdit,

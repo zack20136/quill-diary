@@ -44,7 +44,7 @@ abstract final class DisplayFormat {
   static String formatDateOnly(AppLocalizations l10n, DateOnly date) {
     final DateTime value = date.toDateTime();
     if (isEnglishL10n(l10n)) {
-      return _formatEnglishDate(value);
+      return _formatNumericDate(value);
     }
     return '${value.year}年${value.month}月${value.day}日';
   }
@@ -102,16 +102,21 @@ abstract final class DisplayFormat {
     required int hour,
     required int minute,
   }) {
-    return formatDateTime(
-      l10n,
-      combineEntryDateTime(date, hour: hour, minute: minute),
+    final DateTime value = combineEntryDateTime(
+      date,
+      hour: hour,
+      minute: minute,
     );
+    final String weekday = isEnglishL10n(l10n)
+        ? _englishWeekdayShort[value.weekday - 1]
+        : _zhTwWeekdayLong[value.weekday - 1];
+    return '${_formatNumericDate(value)} ${formatTime24h(value)} · $weekday';
   }
 
   static String formatDateTime(AppLocalizations l10n, DateTime local) {
     final DateTime value = local.toLocal();
     if (isEnglishL10n(l10n)) {
-      return '${_formatEnglishDate(value)} ${formatTime24h(value)} · ${_englishWeekdayShort[value.weekday - 1]}';
+      return '${_formatNumericDate(value)} ${formatTime24h(value)} · ${_englishWeekdayShort[value.weekday - 1]}';
     }
     return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)} · ${_zhTwWeekdayLong[value.weekday - 1]}';
   }
@@ -123,7 +128,7 @@ abstract final class DisplayFormat {
   ) {
     final DateTime value = local.toLocal();
     if (isEnglishL10n(l10n)) {
-      return '${_formatEnglishDate(value)} ${formatTime24h(value)}';
+      return '${_formatNumericDate(value)} ${formatTime24h(value)}';
     }
     return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)}';
   }
@@ -139,7 +144,7 @@ abstract final class DisplayFormat {
     return '${_zhTwWeekdayLong[date.toDateTime().weekday - 1]} ${formatTime24h(at)}';
   }
 
-  static String _formatEnglishDate(DateTime value) {
+  static String _formatNumericDate(DateTime value) {
     final String year = value.year.toString().padLeft(4, '0');
     final String month = value.month.toString().padLeft(2, '0');
     final String day = value.day.toString().padLeft(2, '0');

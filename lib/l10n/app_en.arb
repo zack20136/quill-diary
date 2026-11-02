@@ -1974,6 +1974,8 @@
   "aiProviderCustom": "Custom",
   "chatDiaryUntitledDraft": "Untitled chat draft",
   "chatDiaryViewSavedConversation": "View saved conversation",
+  "chatDiaryAiIcon": "AI",
+  "chatDiaryNoSavedConversation": "This diary has no saved conversation.",
   "aiGeminiPolicyNotice": "Gemini has different data use policies for free and paid services. Check the policy that applies to you.",
   "chatDiaryWelcomeMessage": "What would you like to remember this time? You can start with a small moment, how you feel right now, or a photo.",
   "chatDiaryEditMessage": "Edit message",

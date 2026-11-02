@@ -81,7 +81,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         _dismissContentDialogs();
         _closeModelMenu();
         _imageFutures.clear();
-        _chatController?.lock();
         _loadedVaultSession = null;
         _releaseImagePickerWait();
         _syncingComposer = true;
@@ -196,7 +195,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     // 系統圖庫取得焦點時仍可能看見聊天；真正進入背景才遮蔽。
     if (_isSelectingImages && state == AppLifecycleState.inactive) return;
     if (state != AppLifecycleState.resumed) {
-      _chatController?.stop();
       _imageFutures.clear();
       _dismissContentDialogs();
       _closeModelMenu();
@@ -622,7 +620,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       ref,
       chatSession,
       vaultSession,
-      deleteLocalChat: _chatController!.delete,
     );
     if (deleted && mounted) context.pop();
   }
@@ -1083,9 +1080,9 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         openingMessage: context.l10n.chatDiaryWelcomeMessage,
       );
     }
-    if (mounted &&
-        _loadedVaultSession == vaultSession &&
-        result == ChatDiaryLoadResult.missing) {
+    if (!mounted || _loadedVaultSession != vaultSession) return;
+    if (result == ChatDiaryLoadResult.loaded) _changed();
+    if (result == ChatDiaryLoadResult.missing) {
       ref.invalidate(chatDiarySessionsProvider);
       context.go(AppRoutes.homeRoute);
     }
@@ -1165,9 +1162,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
             MediaQuery.sizeOf(context).width < requiredWidth;
         return PopScope(
           onPopInvokedWithResult: (didPop, _) {
-            if (didPop) {
-              chatController.stop();
-            }
+            if (didPop) unawaited(chatController.persist());
           },
           child: Scaffold(
             appBar: AppBar(

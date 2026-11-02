@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 
@@ -27,24 +26,18 @@ Future<bool> hasReadyChatDiaryConnection(
 
 Future<void> deleteChatDiaryData(
   WidgetRef ref,
-  ChatDiarySession chat,
+  String chatId,
   UnlockedVaultSession session, {
-  Future<void> Function()? deleteLocalChat,
+  String? entryId,
 }) async {
   final store = ref.read(chatDiaryStoreProvider);
-  if (deleteLocalChat != null) {
-    await deleteLocalChat();
-  } else {
-    await store.delete(
-      chat.id,
-      session: session,
-      entryId: chat.generatedEntryId,
-    );
-  }
   final keyFor = ref.read(aiSettingsStoreProvider).readApiKey;
+  await ref
+      .read(chatDiaryControllerProvider(entryId ?? chatId))
+      .delete(chatId, session, entryId: entryId);
   unawaited(
     store
-        .cleanupRemoteFiles(session, keyFor, chatId: chat.id)
+        .cleanupRemoteFiles(session, keyFor, chatId: chatId)
         .onError((_, _) => false),
   );
 }

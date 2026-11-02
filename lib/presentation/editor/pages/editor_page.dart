@@ -773,6 +773,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           onDelete: () =>
                               unawaited(_deleteCurrentEntry(session)),
                           onEnterEditMode: _enterEditMode,
+                          conversationButton: widget.entryId == null
+                              ? null
+                              : ChatDiarySavedConversationButton(
+                                  entryId: widget.entryId!,
+                                ),
                           bottomToolbar: _isEditing
                               ? EditorActionToolbar(
                                   saving: _saving,
@@ -785,10 +790,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 )
                               : null,
                         ),
-                        if (!_isEditing && widget.entryId != null)
-                          ChatDiarySavedConversationButton(
-                            entryId: widget.entryId!,
-                          ),
                         Expanded(
                           child: Stack(
                             children: <Widget>[

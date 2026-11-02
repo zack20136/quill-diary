@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:quill_diary/application/ai/ai_connection_providers.dart';
-import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_commands.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -34,8 +31,6 @@ Future<HomeItemsDeletion> deleteHomeItems(
   required bool Function() isSessionCurrent,
 }) async {
   final entries = ref.read(vaultRepositoryProvider);
-  final chats = ref.read(chatDiaryStoreProvider);
-  final keyFor = ref.read(aiSettingsStoreProvider).readApiKey;
   final deletedEntries = <EntryId>{};
   final deletedChats = <String>{};
   try {
@@ -58,13 +53,8 @@ Future<HomeItemsDeletion> deleteHomeItems(
           completed: false,
         );
       }
-      await chats.delete(id, session: session);
+      await deleteChatDiaryData(ref, id, session);
       deletedChats.add(id);
-      unawaited(
-        chats
-            .cleanupRemoteFiles(session, keyFor, chatId: id)
-            .onError((_, _) => false),
-      );
     }
   } on Object catch (error) {
     throw HomeItemsDeletionException(

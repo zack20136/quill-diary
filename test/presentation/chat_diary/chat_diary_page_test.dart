@@ -172,6 +172,79 @@ void main() {
     return container;
   }
 
+  for (final hasPartialReply in [false, true]) {
+    testWidgets('${hasPartialReply ? '串流途中' : '首段回覆前'}離頁再返回接回原請求，切換 App 仍繼續', (
+      tester,
+    ) async {
+      addTearDown(() => resumeApp(tester));
+      final chat = testChatDiarySession(hidePersonNames: false);
+      final store = OverviewChatDiaryStore(chat);
+      final stream = StreamController<String>();
+      final client = FakeAiClient(chat.connectionConfig)
+        ..response = () => stream.stream;
+      final container = await pumpChat(
+        tester,
+        chat,
+        client,
+        store: store,
+        withBack: true,
+      );
+      await tester.enterText(find.byType(TextField), '離頁中的合成內容');
+      await tester.pump();
+      await tester.tap(find.byTooltip('送出'));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(client.calls, hasLength(1));
+      final controller = container.read(chatDiaryControllerProvider(chat.id));
+      if (hasPartialReply) {
+        stream.add('前半段');
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('開啟聊天室'), findsOneWidget);
+      expect(controller.busy, isTrue);
+      expect(client.closed, isFalse);
+      await tester.tap(find.text('開啟聊天室'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id)),
+        same(controller),
+      );
+      expect(
+        controller.chat!.activeMessages.last.status,
+        ChatDiaryMessageStatus.pending,
+      );
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
+      stream.add('背景收到的回覆');
+      await tester.pump();
+      await stream.close();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(controller.busy, isFalse);
+      expect(
+        controller.chat!.activeMessages.last.status,
+        ChatDiaryMessageStatus.complete,
+      );
+      resumeApp(tester);
+      await tester.pumpAndSettle();
+      expect(client.calls, hasLength(1));
+      final expected = '${hasPartialReply ? '前半段' : ''}背景收到的回覆';
+      expect(find.text(expected), findsOneWidget);
+      expect(
+        (await store.load(
+          chat.id,
+          const UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
+        ))!.activeMessages.last.text,
+        expected,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    });
+  }
+
   testWidgets('長對話只建立可見訊息，輸入及捲動不建立全部泡泡', (tester) async {
     final chat = testChatDiarySession(hidePersonNames: false);
     for (var index = 0; index < 120; index++) {

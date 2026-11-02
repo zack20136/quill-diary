@@ -72,6 +72,7 @@ class ChatDiaryController extends ChangeNotifier {
   }) => _loadSession(
     () => _chatStore.load(id, vaultSession),
     vaultSession,
+    chatId: id,
     newChatId: id,
     openingMessage: openingMessage,
   );
@@ -83,6 +84,7 @@ class ChatDiaryController extends ChangeNotifier {
   }) => _loadSession(
     () => _chatStore.load(id, vaultSession),
     vaultSession,
+    chatId: id,
     openingMessage: openingMessage,
   );
 
@@ -97,9 +99,16 @@ class ChatDiaryController extends ChangeNotifier {
   Future<ChatDiaryLoadResult> _loadSession(
     Future<ChatDiarySession?> Function() read,
     UnlockedVaultSession vaultSession, {
+    String? chatId,
     String? newChatId,
     String? openingMessage,
   }) async {
+    if (busy &&
+        chatId != null &&
+        chat?.id == chatId &&
+        _vaultSession == vaultSession) {
+      return ChatDiaryLoadResult.loaded;
+    }
     _cancelOperation();
     final operationVersion = _operationVersion;
     _vaultSession = vaultSession;
@@ -276,6 +285,7 @@ class ChatDiaryController extends ChangeNotifier {
         _handedOff) {
       return;
     }
+    final keepAlive = ref.keepAlive();
     final operationVersion = ++_operationVersion;
     _saveTimer?.cancel();
     busy = true;
@@ -323,6 +333,7 @@ class ChatDiaryController extends ChangeNotifier {
         busy = false;
         notifyListeners();
       }
+      keepAlive.close();
     }
   }
 
@@ -753,6 +764,7 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryComposerSnapshot? newComposer,
   }) async {
     final chatSession = chat!;
+    final keepAlive = ref.keepAlive();
     busy = true;
     _setError(null);
     final operationVersion = ++_operationVersion;
@@ -801,6 +813,7 @@ class ChatDiaryController extends ChangeNotifier {
       assistantMessage.systemPromptSnapshot = prompt;
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
+      ref.invalidate(chatDiarySessionsProvider);
       final messages = await _buildRequestMessages(privacy, operationVersion);
       final client = await _clientForOperation(operationVersion);
       _ensureOperationIsCurrent(operationVersion);
@@ -833,10 +846,14 @@ class ChatDiaryController extends ChangeNotifier {
       }
     } finally {
       if (operationVersion == _operationVersion) {
-        busy = false;
         await persist();
-        notifyListeners();
+        if (operationVersion == _operationVersion) {
+          busy = false;
+          ref.invalidate(chatDiarySessionsProvider);
+          notifyListeners();
+        }
       }
+      keepAlive.close();
     }
   }
 
@@ -861,6 +878,7 @@ class ChatDiaryController extends ChangeNotifier {
     if (!canGenerate || chatSession == null || vaultSession == null) {
       return ChatDiaryGenerationResult.notGenerated;
     }
+    final keepAlive = ref.keepAlive();
     busy = true;
     _setError(null);
     final operationVersion = ++_operationVersion;
@@ -880,6 +898,8 @@ class ChatDiaryController extends ChangeNotifier {
         diary: true,
       );
       await persist(throwOnError: true);
+      _ensureOperationIsCurrent(operationVersion);
+      ref.invalidate(chatDiarySessionsProvider);
       final client = await _clientForOperation(operationVersion);
       final output = StringBuffer();
       await for (final delta in client.reply(prompt, messages)) {
@@ -912,8 +932,10 @@ class ChatDiaryController extends ChangeNotifier {
     } finally {
       if (operationVersion == _operationVersion) {
         busy = false;
+        ref.invalidate(chatDiarySessionsProvider);
         notifyListeners();
       }
+      keepAlive.close();
     }
     return ChatDiaryGenerationResult.notGenerated;
   }
@@ -950,22 +972,39 @@ class ChatDiaryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> delete() async {
+  void syncVaultSession(UnlockedVaultSession? session) {
+    if (_vaultSession != null && _vaultSession != session) lock();
+  }
+
+  Future<void> delete(
+    String id,
+    UnlockedVaultSession vaultSession, {
+    String? entryId,
+  }) async {
     final chatSession = chat;
-    final vaultSession = _vaultSession;
-    if (chatSession == null || vaultSession == null || _handedOff) return;
-    stop();
+    if (_disposed ||
+        (chatSession != null &&
+            (chatSession.id != id || _vaultSession != vaultSession))) {
+      throw const AiFailure(AiErrorCode.storage);
+    }
+    final keepAlive = ref.keepAlive();
+    _vaultSession = vaultSession;
+    _cancelOperation();
     final operationVersion = _operationVersion;
+    final saving = persist(throwOnError: true);
     _handedOff = true;
     busy = true;
     notifyListeners();
     try {
+      await saving;
       await _chatStore.flush();
-      _ensureOperationIsCurrent(operationVersion);
+      if (_disposed || operationVersion != _operationVersion) {
+        throw const AiFailure(AiErrorCode.storage);
+      }
       await _chatStore.delete(
-        chatSession.id,
+        id,
         session: vaultSession,
-        entryId: chatSession.generatedEntryId,
+        entryId: entryId ?? chatSession?.generatedEntryId,
       );
       if (operationVersion == _operationVersion) {
         chat = null;
@@ -979,6 +1018,7 @@ class ChatDiaryController extends ChangeNotifier {
         busy = false;
         notifyListeners();
       }
+      keepAlive.close();
     }
   }
 

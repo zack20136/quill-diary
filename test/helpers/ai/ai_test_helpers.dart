@@ -360,6 +360,8 @@ class FailingChatDiaryStore extends ChatDiaryStore {
   });
   bool failSaves = false;
   bool failDeletes = false;
+  Completer<void>? saveStarted;
+  Future<void>? saveGate;
   Completer<void>? imageStarted;
   Future<void>? imageGate;
   @override
@@ -391,6 +393,13 @@ class FailingChatDiaryStore extends ChatDiaryStore {
     bool pruneImages = false,
   }) {
     if (failSaves) throw const AiFailure(AiErrorCode.storage);
+    final gate = saveGate;
+    if (gate != null) {
+      saveStarted?.complete();
+      return gate.then(
+        (_) => super.save(chat, session, pruneImages: pruneImages),
+      );
+    }
     return super.save(chat, session, pruneImages: pruneImages);
   }
 }

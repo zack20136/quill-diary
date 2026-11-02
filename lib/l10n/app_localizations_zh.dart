@@ -4113,6 +4113,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryViewSavedConversation => '查看保留的對話';
 
   @override
+  String get chatDiaryAiIcon => 'AI';
+
+  @override
+  String get chatDiaryNoSavedConversation => '這篇日記沒有保留的對話。';
+
+  @override
   String get aiGeminiPolicyNotice => 'Gemini 免費與付費服務的資料使用政策不同，請先確認適用政策。';
 
   @override

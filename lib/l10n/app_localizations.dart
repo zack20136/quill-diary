@@ -7347,6 +7347,18 @@ abstract class AppLocalizations {
   /// **'查看保留的對話'**
   String get chatDiaryViewSavedConversation;
 
+  /// No description provided for @chatDiaryAiIcon.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI'**
+  String get chatDiaryAiIcon;
+
+  /// No description provided for @chatDiaryNoSavedConversation.
+  ///
+  /// In zh, this message translates to:
+  /// **'這篇日記沒有保留的對話。'**
+  String get chatDiaryNoSavedConversation;
+
   /// No description provided for @aiGeminiPolicyNotice.
   ///
   /// In zh, this message translates to:

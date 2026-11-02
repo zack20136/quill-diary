@@ -35,6 +35,9 @@ final chatDiaryForEntryProvider = FutureProvider.autoDispose
 final chatDiaryControllerProvider = Provider.autoDispose
     .family<ChatDiaryController, String>((ref, id) {
       final controller = ChatDiaryController(ref);
+      ref.listen(appSessionProvider, (_, next) {
+        controller.syncVaultSession(next.isUnlocked ? next.session : null);
+      });
       ref.onDispose(controller.dispose);
       return controller;
     });

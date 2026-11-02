@@ -1974,6 +1974,8 @@
   "aiProviderCustom": "自訂",
   "chatDiaryUntitledDraft": "未命名聊天草稿",
   "chatDiaryViewSavedConversation": "查看保留的對話",
+  "chatDiaryAiIcon": "AI",
+  "chatDiaryNoSavedConversation": "這篇日記沒有保留的對話。",
   "aiGeminiPolicyNotice": "Gemini 免費與付費服務的資料使用政策不同，請先確認適用政策。",
   "chatDiaryWelcomeMessage": "這次有什麼想留下來的？可以從一件小事、此刻的心情，或一張照片開始。",
   "chatDiaryEditMessage": "編輯訊息",

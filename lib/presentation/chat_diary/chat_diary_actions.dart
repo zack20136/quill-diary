@@ -62,9 +62,8 @@ Future<bool> deleteChatDiary(
   BuildContext context,
   WidgetRef ref,
   ChatDiarySession chat,
-  UnlockedVaultSession session, {
-  Future<void> Function()? deleteLocalChat,
-}) async {
+  UnlockedVaultSession session,
+) async {
   if (!await showAppConfirmDialog(
     context: context,
     title: context.l10n.chatDiaryDeleteChat,
@@ -82,9 +81,9 @@ Future<bool> deleteChatDiary(
   try {
     await deleteChatDiaryData(
       ref,
-      chat,
+      chat.id,
       session,
-      deleteLocalChat: deleteLocalChat,
+      entryId: chat.finished ? chat.generatedEntryId : null,
     );
     if (context.mounted) ref.invalidate(chatDiarySessionsProvider);
     return true;

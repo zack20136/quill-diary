@@ -4413,6 +4413,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDiaryViewSavedConversation => 'View saved conversation';
 
   @override
+  String get chatDiaryAiIcon => 'AI';
+
+  @override
+  String get chatDiaryNoSavedConversation =>
+      'This diary has no saved conversation.';
+
+  @override
   String get aiGeminiPolicyNotice =>
       'Gemini has different data use policies for free and paid services. Check the policy that applies to you.';
 
