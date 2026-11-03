@@ -746,6 +746,7 @@ Future<bool> showRotateRecoveryKeyDialog(BuildContext context) async {
   final AppLocalizations l10n = context.l10n;
   return showAppConfirmDialog(
     context: context,
+    size: AppDialogSize.standard,
     title: l10n.settingsRecoveryKeyRotateDialogTitle,
     content: Text(l10n.settingsRecoveryKeyRotateDialogBody),
     cancelLabel: l10n.commonActionCancel,

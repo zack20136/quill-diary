@@ -12,7 +12,7 @@ void main() {
         (locale: appZhLocale, brightness: Brightness.light, name: '繁中淺色'),
         (locale: appEnLocale, brightness: Brightness.dark, name: '英文深色'),
       ]) {
-    testWidgets('${scenario.name}窄螢幕可顯示交換指南且沒有版面例外', (
+    testWidgets('${scenario.name}窄螢幕可顯示匯出檢查說明且沒有版面例外', (
       WidgetTester tester,
     ) async {
       await tester.binding.setSurfaceSize(const Size(320, 640));
@@ -39,7 +39,7 @@ void main() {
       DefaultTabController.of(tabViewContext).animateTo(3);
       await tester.pumpAndSettle();
 
-      final Finder exchangeSection = find.text(
+      final Finder exportCheckSection = find.text(
         l10n.aboutTabBackupRestoreSection4Title,
       );
       final ScrollableState scrollable = tester.state<ScrollableState>(
@@ -53,7 +53,7 @@ void main() {
       );
       for (
         int attempt = 0;
-        attempt < 50 && exchangeSection.evaluate().isEmpty;
+        attempt < 50 && exportCheckSection.evaluate().isEmpty;
         attempt++
       ) {
         final double currentOffset = scrollable.position.pixels;
@@ -67,7 +67,7 @@ void main() {
         scrollable.position.jumpTo(nextOffset);
         await tester.pump();
       }
-      expect(exchangeSection, findsOneWidget);
+      expect(exportCheckSection, findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

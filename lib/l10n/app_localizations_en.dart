@@ -2986,22 +2986,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroHeroBody =>
-      'Quill Diary is a local, encrypted journal that does not require its own account. From writing and search to backup and export, you decide when data stays on your device and when an external copy is created.';
+      'Quill Diary is a local, encrypted journal that does not require its own account. Everyday writing and search work offline; you decide when to create external copies or use Google Drive and AI services.';
 
   @override
-  String get aboutTabIntroChip0 => 'Data Stays on Device';
+  String get aboutTabIntroChip0 => 'Data Encryption';
 
   @override
-  String get aboutTabIntroChip1 => 'Full Backup';
+  String get aboutTabIntroChip1 => 'No Sign-Up';
 
   @override
   String get aboutTabIntroChip2 => 'Full-Text Search';
 
   @override
-  String get aboutTabIntroChip3 => 'Portable Export';
-
-  @override
-  String get aboutTabIntroChip4 => 'Markdown / HTML';
+  String get aboutTabIntroChip3 => 'Backup & Export';
 
   @override
   String get aboutTabIntroSection0Title => 'Why It Works Well for Journaling';
@@ -3015,14 +3012,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      'Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings and a small amount of supporting metadata are not separately encrypted, but remain in private app storage.';
+      'Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings, the tag catalog, pinned-item IDs, and other supporting data are not separately encrypted, but remain in private app storage.';
 
   @override
   String get aboutTabIntroSection0Item1Title => 'Start without Signing Up';
 
   @override
   String get aboutTabIntroSection0Item1Body =>
-      'No Quill Diary account is required. Set up a recovery key to start reading and writing. A Google account is needed only if you use Google Drive.';
+      'You do not need a Quill Diary account. Set up a recovery key on first use to start reading and writing entries. You only link a Google account within the app when using Google Drive backup and restore.';
 
   @override
   String get aboutTabIntroSection0Item2Title =>
@@ -3060,7 +3057,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item2Body =>
-      'After unlock, search titles, tags, and body text to revisit a memory, find a keyword, or quickly review a period of time.';
+      'Once unlocked, you can search titles, tags, and body text by keyword to find an experience or something you mentioned.';
 
   @override
   String get aboutTabIntroSection1Item3Title =>
@@ -3068,14 +3065,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection1Item3Body =>
-      'Full backups restore the whole saved vault. Markdown and HTML are better for reading and organizing content outside the app. The two formats serve different purposes.';
+      'A full backup restores the entire saved vault. Markdown or HTML is suited to reading and organizing content outside the app.';
 
   @override
   String get aboutTabIntroSection1Item4Title => 'Make the App Fit You';
 
   @override
   String get aboutTabIntroSection1Item4Body =>
-      'In Personalization, you can adjust the interface language, light or dark theme, auto-lock timing, image quality, and diary typography. Image quality affects only images you add afterward.';
+      'In Personalization, you can adjust the interface language, light or dark theme, auto-lock timing, image quality, and diary typography. Image quality affects only new images added through the regular editor, not chat attachments.';
 
   @override
   String get aboutTabIntroSection2Title => 'You Stay in Control of Your Data';
@@ -3261,22 +3258,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Saved entries, attachments, people, drafts, and search data are stored encrypted and can be read or written only during a valid unlocked session. Plaintext exports and an unlocked device still need your protection.';
 
   @override
-  String get aboutTabEncryptionChip0 => 'Local Encryption';
+  String get aboutTabEncryptionChip0 => 'File Encryption';
 
   @override
-  String get aboutTabEncryptionChip1 => 'Content Encryption';
+  String get aboutTabEncryptionChip1 => 'Security Checks';
 
   @override
   String get aboutTabEncryptionChip2 => 'Key Protection';
 
   @override
-  String get aboutTabEncryptionChip3 => 'Encrypted Files';
-
-  @override
-  String get aboutTabEncryptionChip4 => 'Trusted Device';
-
-  @override
-  String get aboutTabEncryptionChip5 => 'Device Secure Storage';
+  String get aboutTabEncryptionChip3 => 'Recovery Key';
 
   @override
   String get aboutTabEncryptionSection0Title =>
@@ -3308,7 +3299,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection0Item2Body =>
-      'Each encrypted file uses an independently generated key instead of sharing one file key across all content.';
+      'LDJ2 files, such as entries and attachments, each use an independently generated content key, rather than sharing one file key across all content.';
 
   @override
   String get aboutTabEncryptionSection1Title => 'How You Open Your Own Data';
@@ -3322,7 +3313,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection1Item0Body =>
-      'Daily access usually goes through screen lock or biometrics. Vault keys are protected by built-in device security.';
+      'A trusted device uses screen lock, biometrics, or no additional authentication, depending on your chosen mode. The material used to decrypt the vault is protected by built-in device security.';
 
   @override
   String get aboutTabEncryptionSection1Item1Title => 'Recovery Key';
@@ -3344,7 +3335,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Subtitle =>
-      'Content files are encrypted, but recovery and supporting metadata, readable exports, and unlocked use have different risks.';
+      'Content is encrypted, but headers, recovery settings, and some supporting data remain readable, including the tag catalog and pinned-item IDs. Plaintext exports and unlocked use also need care.';
 
   @override
   String get aboutTabEncryptionSection2Item0Title =>
@@ -3368,7 +3359,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Item2Body =>
-      'Encryption mainly protects stored data. Someone with access to an unlocked app or compromised device may still read content that is currently available.';
+      'Encryption mainly protects stored data. Viewing or editing attachments may create readable temporary files. Someone with access to an unlocked app or compromised device may still read content that is currently available.';
 
   @override
   String get aboutTabSearchIndexLabel => 'Search';
@@ -3379,10 +3370,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabSearchIndexHeroBody =>
-      'After unlock, search saved entries to find a keyword, past experience, or period of time. If a recent edit is missing from results, first make sure the entry was formally saved.';
+      'Once unlocked, you can search saved entries by keyword. If newly edited content is missing, first check whether you have formally saved it.';
 
   @override
-  String get aboutTabSearchIndexChip0 => 'Title/Body Search';
+  String get aboutTabSearchIndexChip0 => 'Titles, Tags & Body';
 
   @override
   String get aboutTabSearchIndexChip1 => 'Encrypted Index';
@@ -3492,10 +3483,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabEditorChip0 => 'Auto Drafts';
 
   @override
-  String get aboutTabEditorChip1 => 'Unsaved Reminders';
+  String get aboutTabEditorChip1 => 'Task Lists';
 
   @override
-  String get aboutTabEditorChip2 => 'Image Attachments';
+  String get aboutTabEditorChip2 => 'Images & Files';
 
   @override
   String get aboutTabEditorChip3 => 'Markdown Editing';
@@ -3542,7 +3533,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item4Body =>
-      'Add multiple images or general files and reorder images. The Image Quality option in Personalization affects only images added afterward; it does not reprocess existing attachments.';
+      'You can add multiple images or general files and reorder images. The image-quality setting in Personalization affects only new images added through the regular editor. GIFs keep their original files, chat attachments do not use this setting, and existing attachments are not reprocessed.';
 
   @override
   String get aboutTabEditorSection1Title => 'Draft System';
@@ -3563,14 +3554,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection1Item1Body =>
-      'When reopening the same entry or unfinished new content, if a local draft remains, the app asks whether to continue where you left off.';
+      'When you reopen a regular entry or unfinished new entry, the app asks whether you want to continue if a local draft is still available. Diaries generated from chat load their drafts directly.';
 
   @override
   String get aboutTabEditorSection1Item2Title => 'Auto Cleanup After Save';
 
   @override
   String get aboutTabEditorSection1Item2Body =>
-      'After content is saved to the vault, drafts are cleared. If you cancel editing without new changes, old drafts do not pile up.';
+      'Once content is successfully saved to the vault, its draft is cleared. Closing the editor and choosing to discard changes also deletes that draft.';
 
   @override
   String get aboutTabEditorSection2Title => 'Relationship to Other Data';
@@ -3604,7 +3595,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabPeopleChip1 => 'Names & Aliases';
 
   @override
-  String get aboutTabPeopleChip2 => 'Mention Insights';
+  String get aboutTabPeopleChip2 => 'Mentioned Entries';
 
   @override
   String get aboutTabPeopleChip3 => 'Relationships & Notes';
@@ -3700,11 +3691,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreHeroTitle =>
-      'Change Phones, Restore the Vault, or Exchange Selected Entries';
+      'Restore on a New Phone, or Import and Export Entries';
 
   @override
   String get aboutTabBackupRestoreHeroBody =>
-      'A full backup preserves the entire saved vault. Markdown and HTML exports let you select content for reading, exchange, or external use. Backup, export, and sync serve different purposes and do not replace one another.';
+      'A full backup preserves the entire saved vault. Markdown and HTML exports let you select content for reading or external use. Importing entries adds content, while a full restore replaces the current saved vault.';
 
   @override
   String get aboutTabBackupRestoreChip0 => 'Full Backup';
@@ -3713,10 +3704,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabBackupRestoreChip1 => 'Google Drive';
 
   @override
-  String get aboutTabBackupRestoreChip2 => 'Markdown';
+  String get aboutTabBackupRestoreChip2 => 'Import & Export';
 
   @override
-  String get aboutTabBackupRestoreChip3 => 'HTML';
+  String get aboutTabBackupRestoreChip3 => 'Markdown / HTML';
 
   @override
   String get aboutTabBackupRestoreSection0Title =>
@@ -3771,7 +3762,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      'A full backup includes entries, attachments, people, recovery settings, and the encrypted AI service, URL, and prompts. Entries and those AI settings stay encrypted, but the backup container, recovery metadata, and any tag catalog or pinned-item IDs are not separately encrypted.';
+      'A full backup includes saved entries, attachments, people, retained conversations from completed chats, recovery settings, and the encrypted AI service, URL, and prompts. Content files stay encrypted, but the ZIP container, recovery settings, and any tag catalog or pinned-item IDs are not separately encrypted.';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title =>
@@ -3844,19 +3835,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Both Markdown and HTML let you select specific entries. A Markdown ZIP preserves separate files and attachments for easier re-import, while HTML arranges the content in a single file for direct reading.';
 
   @override
-  String get aboutTabBackupRestoreSection4Title => 'Exchange and External Use';
+  String get aboutTabBackupRestoreSection4Title => 'Check Before Exporting';
 
   @override
   String get aboutTabBackupRestoreSection4Subtitle =>
-      'Take out only the entries you need, then review their content and protection before giving them to a friend or an external tool.';
+      'Choose the entries you need, then check the exported content, privacy options, and where you will save the file.';
 
   @override
   String get aboutTabBackupRestoreSection4Item0Title =>
-      'Exchange Selected Entries';
+      'Choose Entries to Export';
 
   @override
   String get aboutTabBackupRestoreSection4Item0Body =>
-      'Select specific entries when exporting Markdown or HTML, then give the file to a friend. They can preview it with Import Entries and choose what to add. Import creates new entries that may duplicate existing content; it does not enable shared editing or sync.';
+      'Markdown and HTML exports let you choose specific entries. Import Entries previews a supported file and lets you choose content before creating new entries. Imported content may duplicate existing entries and does not sync with the source file.';
 
   @override
   String get aboutTabBackupRestoreSection4Item1Title =>
@@ -3879,23 +3870,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection5Subtitle =>
-      'Backup, export, and exchange all create copies, but their protection and ongoing relationships differ.';
+      'Backups and exports both create copies, but their protection and restore purposes differ.';
 
   @override
   String get aboutTabBackupRestoreSection5Item0Title =>
-      'Drafts and Personalization Are Not Backed Up';
+      'Drafts and device preferences are not backed up';
 
   @override
   String get aboutTabBackupRestoreSection5Item0Body =>
-      'A full backup excludes unsaved drafts, API keys, and device preferences such as language, theme, auto-lock, image quality, and diary typography. Restoring also clears drafts and pending attachments currently on the device.';
+      'A full backup excludes regular editing drafts, unfinished chats, API keys, and device preferences such as language, theme, auto-lock, image quality, and diary typography. Restoring also clears drafts and pending attachments currently on the device.';
 
   @override
   String get aboutTabBackupRestoreSection5Item1Title =>
-      'Neither Backup nor Exchange Is Sync';
+      'Backup and Import/Export Are Not Sync';
 
   @override
   String get aboutTabBackupRestoreSection5Item1Body =>
-      'Google Drive is a manually operated full-backup location, not live sync. Exchanged or imported entries are also independent copies, so later changes on either side do not update the other automatically.';
+      'Google Drive is a place to manually create and restore full backups, not to sync entries live. Imported entries and their source files are independent, so later changes do not automatically update the other copy.';
 
   @override
   String get onboardingIntroLanguageZhShort => '中';

@@ -155,7 +155,7 @@ void main() {
     expect(transferSection.items[3].body, contains('釘選'));
   });
 
-  test('中英文備份分頁依序區分匯入匯出、交換與使用邊界', () {
+  test('中英文備份分頁依序區分匯入匯出、匯出檢查與使用邊界', () {
     for (final AppLocalizations l10n in <AppLocalizations>[
       testZhL10n,
       testEnL10n,
@@ -205,7 +205,7 @@ void main() {
     }
   });
 
-  test('交換說明涵蓋獨立副本與可辨識資訊邊界', () {
+  test('匯出說明涵蓋匯入副本與可辨識資訊邊界', () {
     final AboutPageTabSpec backupTab =
         buildAboutPageTabSpecs(
           testL10n,
@@ -214,16 +214,16 @@ void main() {
           (AboutPageTabSpec tab) =>
               tab.label == testL10n.aboutTabBackupRestoreLabel,
         );
-    final AboutPageSectionSpec exchangeSection = backupTab.sections[4];
-    final String exchangeBody = exchangeSection.items[0].body;
-    final String privacyBody = exchangeSection.items[1].body;
-    final String externalToolBody = exchangeSection.items[2].body;
+    final AboutPageSectionSpec exportCheckSection = backupTab.sections[4];
+    final String importExportBody = exportCheckSection.items[0].body;
+    final String privacyBody = exportCheckSection.items[1].body;
+    final String externalToolBody = exportCheckSection.items[2].body;
 
-    expect(exchangeBody, contains('指定日記'));
-    expect(exchangeBody, contains('匯入日記'));
-    expect(exchangeBody, contains('新日記'));
-    expect(exchangeBody, contains('重複'));
-    expect(exchangeBody, contains('不會共同編輯或同步'));
+    expect(importExportBody, contains('指定日記'));
+    expect(importExportBody, contains('匯入日記'));
+    expect(importExportBody, contains('新日記'));
+    expect(importExportBody, contains('重複'));
+    expect(importExportBody, contains('不會與來源檔案同步'));
     expect(privacyBody, contains('HTML 另可關閉圖片與附件'));
     expect(privacyBody, isNot(contains('Markdown 另可關閉圖片與附件')));
     expect('$privacyBody$externalToolBody', isNot(contains('去識別化')));
