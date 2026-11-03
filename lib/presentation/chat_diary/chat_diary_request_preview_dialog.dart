@@ -1,9 +1,13 @@
 import 'dart:math' as math;
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 typedef ChatDiaryPreviewImageBuilder = Widget Function(
@@ -24,70 +28,74 @@ class ChatDiaryRequestPreviewDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final galleryImageIds = [
       for (final turn in preview.turns) ...turn.imageIds,
     ];
     final muted = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(color: colors.onSurfaceVariant);
-    return AppDialogShell(
-      title: l10n.chatDiaryPreviewRequest,
-      content: LayoutBuilder(
-        builder: (context, constraints) {
-          final screenHeight = MediaQuery.sizeOf(context).height;
-          final desiredMax = screenHeight * 0.82;
-          final maxHeight = constraints.maxHeight.isFinite
-              ? math.min(desiredMax, constraints.maxHeight)
-              : desiredMax;
-          final minHeight = math.min(screenHeight * 0.58, maxHeight);
-          return ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: minHeight,
-              maxHeight: maxHeight,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              height: maxHeight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.chatDiaryRequestPreviewHint, style: muted),
-                  const SizedBox(height: 12),
-                  _SystemPromptCard(prompt: preview.systemPrompt),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: preview.turns.isEmpty
-                        ? Align(
-                            alignment: Alignment.topLeft,
-                            child: Text(
-                              l10n.chatDiaryPreviewEmpty,
-                              style: muted,
-                            ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            itemCount: preview.turns.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) => _PreviewTurnCard(
-                              turn: preview.turns[index],
-                              galleryImageIds: galleryImageIds,
-                              imageBuilder: imageBuilder,
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.commonActionClose),
+    return Theme(
+      data: theme.copyWith(
+        dialogTheme: theme.dialogTheme.copyWith(
+          backgroundColor: theme.scaffoldBackgroundColor,
         ),
-      ],
+      ),
+      child: AppDialogShell(
+        title: l10n.chatDiaryPreviewRequest,
+        content: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenHeight = MediaQuery.sizeOf(context).height;
+            final desiredMax = screenHeight * 0.82;
+            final maxHeight = constraints.maxHeight.isFinite
+                ? math.min(desiredMax, constraints.maxHeight)
+                : desiredMax;
+            final minHeight = math.min(screenHeight * 0.58, maxHeight);
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: minHeight,
+                maxHeight: maxHeight,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: maxHeight,
+                child: ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  itemCount: preview.turns.isEmpty
+                      ? 3
+                      : preview.turns.length + 2,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Text(
+                        l10n.chatDiaryRequestPreviewHint,
+                        style: muted,
+                      );
+                    }
+                    if (index == 1) {
+                      return _SystemPromptCard(prompt: preview.systemPrompt);
+                    }
+                    if (preview.turns.isEmpty) {
+                      return Text(l10n.chatDiaryPreviewEmpty, style: muted);
+                    }
+                    return _PreviewTurnCard(
+                      turn: preview.turns[index - 2],
+                      galleryImageIds: galleryImageIds,
+                      imageBuilder: imageBuilder,
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.commonActionClose),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -187,18 +195,23 @@ class _PreviewTurnCard extends StatelessWidget {
     );
     final message = turn.text.isEmpty
         ? null
-        : user
-        ? DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.primaryContainer,
-              borderRadius: BorderRadius.circular(20),
+        : IntrinsicWidth(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: user
+                    ? colors.primaryContainer
+                    : colors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: _HiddenSelectableText(turn.text),
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: _HiddenSelectableText(turn.text),
-            ),
-          )
-        : _HiddenSelectableText(turn.text);
+          );
     final images = turn.imageIds.isEmpty
         ? null
         : Wrap(
@@ -214,18 +227,14 @@ class _PreviewTurnCard extends StatelessWidget {
       children: [
         Align(
           alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            alignment: user ? WrapAlignment.end : WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
-              if (turn.pending && user) ...[
-                pendingTag,
-                const SizedBox(width: 8),
-              ],
+              if (turn.pending && user) pendingTag,
               role,
-              if (turn.pending && !user) ...[
-                const SizedBox(width: 8),
-                pendingTag,
-              ],
+              if (turn.pending && !user) pendingTag,
             ],
           ),
         ),
@@ -233,7 +242,7 @@ class _PreviewTurnCard extends StatelessWidget {
         Align(
           alignment: user ? Alignment.centerRight : Alignment.centerLeft,
           child: FractionallySizedBox(
-            widthFactor: user ? 0.88 : 1,
+            widthFactor: 0.88,
             child: Column(
               crossAxisAlignment: user
                   ? CrossAxisAlignment.end
@@ -254,19 +263,21 @@ class _PreviewTurnCard extends StatelessWidget {
   }
 }
 
-class _HiddenSelectableText extends StatelessWidget {
+class _HiddenSelectableText extends ConsumerWidget {
   const _HiddenSelectableText(this.text);
 
   final String text;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SelectableText.rich(
       chatDiaryHiddenTextSpan(
         text: text,
         ranges: chatDiaryPrivacyTokenRanges(text),
         highlight: chatDiaryHiddenHighlight(Theme.of(context).colorScheme),
       ),
+      style: watchPersonalizationPreferences(ref).typography
+          .bodyTextStyle(Theme.of(context).textTheme),
     );
   }
 }

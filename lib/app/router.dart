@@ -9,7 +9,6 @@ import 'package:quill_diary/presentation/settings/pages/about_page.dart';
 import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/pages/support_page.dart';
-
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 
 abstract final class AppRouter {

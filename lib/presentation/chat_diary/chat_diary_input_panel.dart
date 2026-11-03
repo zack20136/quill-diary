@@ -17,6 +17,7 @@ class ChatDiaryInputPanel extends StatelessWidget {
     required this.onPickImages,
     required this.onOpenSettings,
     required this.onSend,
+    this.maxLines = 5,
   });
   final ChatDiarySession chatSession;
   final bool isBusy;
@@ -28,6 +29,7 @@ class ChatDiaryInputPanel extends StatelessWidget {
   final VoidCallback onPickImages;
   final VoidCallback onOpenSettings;
   final VoidCallback onSend;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +87,7 @@ class ChatDiaryInputPanel extends StatelessWidget {
               controller: composerController,
               focusNode: composerFocusNode,
               minLines: 1,
-              maxLines: 5,
+              maxLines: maxLines,
               enabled: !isBusy,
               decoration: InputDecoration(
                 hintText: l10n.chatDiaryMessageHint,

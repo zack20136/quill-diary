@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart' show getCrc32;
+
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
-import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -17,7 +17,6 @@ import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
-import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 ChatDiarySession testChatDiarySession({
   String vaultId = 'vault',
@@ -228,6 +227,7 @@ class OverviewChatDiaryStore implements ChatDiaryStore {
   final images = <String, Uint8List>{};
   final failedImages = <String>{};
   String? failingDeleteId;
+  bool failSaves = false;
   int imageReads = 0;
   @override
   Future<Uint8List?> readImage(
@@ -280,6 +280,7 @@ class OverviewChatDiaryStore implements ChatDiaryStore {
     UnlockedVaultSession session, {
     bool pruneImages = false,
   }) async {
+    if (failSaves) throw StateError('合成保存失敗');
     if (!chatSession.finished && !chatSession.hasDraftContent) {
       storedChats.remove(chatSession.id);
     } else {
@@ -335,18 +336,6 @@ class OverviewChatDiaryStore implements ChatDiaryStore {
       ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
   }
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class OverviewChatDiaryEntryRepository implements VaultRepository {
-  OverviewChatDiaryEntryRepository(this.entry);
-  DiaryEntry? entry;
-  @override
-  Future<DiaryEntry?> loadEntry(
-    UnlockedVaultSession session,
-    String entryId,
-  ) async => entry?.id == entryId ? entry : null;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

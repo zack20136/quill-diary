@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_generation_label.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
@@ -15,6 +18,7 @@ import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 
 class HomeChatDiaryDraftCard extends ConsumerWidget {
   const HomeChatDiaryDraftCard({
@@ -40,6 +44,13 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
     final typography = watchPersonalizationPreferences(ref).typography;
     final selection = ref.watch(homeEntrySelectionProvider);
     final selected = selection.selectedChatIds.contains(chat.id);
+    final l10n = context.l10n;
+    final generation = ref.watch(
+      chatDiaryGenerationsProvider.select(
+        (jobs) => jobs[(chat.vaultId, chat.id)],
+      ),
+    );
+    final active = generation?.phase.isActive == true;
     void toggleSelection() => ref
         .read(homeEntrySelectionProvider.notifier)
         .toggleChat(chat.id, displayOrder: entryDisplayOrder);
@@ -54,9 +65,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
             return;
           }
           await context.push(AppRoutes.chatDiaryLocation(chat.id));
-          if (context.mounted) {
-            ref.invalidate(chatDiarySessionsProvider);
-          }
+          if (context.mounted) ref.invalidate(chatDiarySessionsProvider);
         },
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -112,9 +121,32 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
                   left: selection.isActive ? 34 : 0,
                   top: 8,
                 ),
-                child: AccentChip.pair(
-                  label: context.l10n.chatDiaryDraftLabel,
-                  pair: tagUnsavedPair(context.appColors),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AccentChip.pair(
+                      label: generation == null
+                          ? (chat.generatedEntryId == null
+                                ? l10n.chatDiaryDraftLabel
+                                : l10n.chatDiaryGenerationCompleted)
+                          : active
+                          ? l10n.chatDiaryGenerating
+                          : chatDiaryGenerationPhaseLabel(
+                              l10n,
+                              generation.phase,
+                            ),
+                      pair: tagUnsavedPair(context.appColors),
+                    ),
+                    if (active) ...[
+                      const SizedBox(height: 8),
+                      AppLinearProgressIndicator(
+                        value: MediaQuery.disableAnimationsOf(context)
+                            ? 0.5
+                            : null,
+                        minHeight: 3,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

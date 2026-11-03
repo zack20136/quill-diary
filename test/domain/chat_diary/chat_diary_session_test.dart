@@ -40,6 +40,56 @@ void main() {
     expect(chat.hasDraftContent, isTrue);
   });
 
+  test('舊聊天還原時，姓名的前綴若接在後面仍對回整段姓名', () {
+    final chat = testChatDiarySession()
+      ..originalTextByToken['⟦P01⟧'] = '明明'
+      ..tokenBySourceKey['person:person-1'] = '⟦P01⟧';
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '明明明',
+        outboundText: '⟦P01⟧明',
+      ),
+    );
+    final restored = ChatDiarySession.fromJson(
+      jsonDecode(jsonEncode(chat.toJson())),
+    );
+    expect(
+      restored.messages.single.personRanges!.map(
+        (range) => (range.start, range.end, range.personId),
+      ),
+      [(0, 2, 'person-1')],
+    );
+  });
+
+  test('舊聊天還原緊貼私密片段的人物別名', () {
+    final chat = testChatDiarySession()
+      ..originalTextByToken.addAll({'⟦P01⟧': '王小明', '⟦S01⟧': '秘密'})
+      ..tokenBySourceKey.addAll({
+        'person:person-1': '⟦P01⟧',
+        'private:秘密': '⟦S01⟧',
+      });
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '小明秘密來了',
+        outboundText: '⟦P01⟧⟦S01⟧來了',
+        privateRanges: const [ChatDiaryPrivateRange(2, 4)],
+      ),
+    );
+    final restored = ChatDiarySession.fromJson(
+      jsonDecode(jsonEncode(chat.toJson())),
+    );
+    expect(
+      restored.messages.single.personRanges!.map(
+        (range) => (range.start, range.end, range.personId),
+      ),
+      [(0, 2, 'person-1')],
+    );
+  });
+
   test('版本切換恢復各自後續路徑，序列化保留所有分支與選取', () {
     final chat = testChatDiarySession();
     ChatDiaryMessage node(String id, bool user, String? parent) =>

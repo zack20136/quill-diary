@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
@@ -25,8 +26,10 @@ class ChatDiaryNavigationSession extends AppSessionController {
   });
   final UnlockedVaultSession session;
   @override
-  AppSessionState build() =>
-      AppSessionState(status: AppLockStatus.unlocked, session: session);
+  AppSessionState build() {
+    super.build();
+    return AppSessionState(status: AppLockStatus.unlocked, session: session);
+  }
 }
 
 Widget chatDiaryNavigationApp({

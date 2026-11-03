@@ -10,6 +10,148 @@ class ChatDiaryPrivateRange {
       ChatDiaryPrivateRange(json['start'] as int, json['end'] as int);
 }
 
+class ChatDiaryPersonRange {
+  const ChatDiaryPersonRange(this.start, this.end, this.personId);
+  final int start;
+  final int end;
+  final String personId;
+  Map<String, Object?> toJson() => {
+    'start': start,
+    'end': end,
+    'person_id': personId,
+  };
+  factory ChatDiaryPersonRange.fromJson(Map<String, dynamic> json) =>
+      ChatDiaryPersonRange(
+        json['start'] as int,
+        json['end'] as int,
+        json['person_id'] as String,
+      );
+}
+
+/// 從已送出的外送文字還原當時命中的人物區間。對不上就回空清單。
+List<ChatDiaryPersonRange> chatDiaryPersonRangesFromOutbound({
+  required String text,
+  required String outbound,
+  required Map<String, String> originalTextByToken,
+  required Map<String, String> tokenBySourceKey,
+}) {
+  final matches = RegExp(r'⟦[PS][0-9A-F]{2,}⟧').allMatches(outbound).toList();
+  if (matches.isEmpty) return const [];
+  final personIds = {
+    for (final entry in tokenBySourceKey.entries)
+      if (entry.key.startsWith('person:'))
+        entry.value: entry.key.substring('person:'.length),
+  };
+  final ranges = <ChatDiaryPersonRange>[];
+  var textIndex = 0;
+  var outboundIndex = 0;
+  for (var i = 0; i < matches.length;) {
+    final literal = outbound.substring(outboundIndex, matches[i].start);
+    if (!text.startsWith(literal, textIndex)) return const [];
+    textIndex += literal.length;
+    var groupEnd = i;
+    while (groupEnd + 1 < matches.length &&
+        matches[groupEnd].end == matches[groupEnd + 1].start) {
+      groupEnd++;
+    }
+    final after = groupEnd + 1 < matches.length
+        ? outbound.substring(matches[groupEnd].end, matches[groupEnd + 1].start)
+        : outbound.substring(matches[groupEnd].end);
+    var regionEnd = after.isEmpty ? text.length : -1;
+    var from = textIndex;
+    while (after.isNotEmpty) {
+      final at = text.indexOf(after, from);
+      if (at < 0) break;
+      regionEnd = at;
+      from = at + 1;
+    }
+    if (regionEnd < textIndex) return const [];
+    final surfaces = _chatDiaryTokenSurfaces(
+      text.substring(textIndex, regionEnd),
+      [for (var index = i; index <= groupEnd; index++) matches[index][0]!],
+      originalTextByToken,
+    );
+    if (surfaces == null) return const [];
+    var local = 0;
+    for (var index = 0; index < surfaces.length; index++) {
+      final token = matches[i + index][0]!;
+      final surface = surfaces[index];
+      final personId = personIds[token];
+      if (token.startsWith('⟦P') && personId != null && surface.isNotEmpty) {
+        ranges.add(
+          ChatDiaryPersonRange(
+            textIndex + local,
+            textIndex + local + surface.length,
+            personId,
+          ),
+        );
+      }
+      local += surface.length;
+    }
+    textIndex = regionEnd;
+    outboundIndex = matches[groupEnd].end;
+    i = groupEnd + 1;
+  }
+  final tail = outbound.substring(outboundIndex);
+  if (!text.startsWith(tail, textIndex) ||
+      textIndex + tail.length != text.length) {
+    return const [];
+  }
+  return ranges;
+}
+
+/// 依代號的原文對齊這一段文字。人物可以用別名，私密片段必須對上原文。
+List<String>? _chatDiaryTokenSurfaces(
+  String chunk,
+  List<String> tokens,
+  Map<String, String> originalTextByToken,
+) {
+  List<String>? cover(String piece, int count) {
+    if (count <= 0 || piece.length < count) return null;
+    if (count == 1) return [piece];
+    return [
+      for (var index = 0; index < count - 1; index++) piece[index],
+      piece.substring(count - 1),
+    ];
+  }
+
+  List<String>? walk(int offset, int index) {
+    if (index == tokens.length) {
+      return offset == chunk.length ? <String>[] : null;
+    }
+    final token = tokens[index];
+    final original = originalTextByToken[token];
+    if (original != null &&
+        original.isNotEmpty &&
+        chunk.startsWith(original, offset)) {
+      final rest = walk(offset + original.length, index + 1);
+      if (rest != null) return [original, ...rest];
+    }
+    if (!token.startsWith('⟦P')) return null;
+    for (var next = index + 1; next < tokens.length; next++) {
+      final anchor = originalTextByToken[tokens[next]];
+      if (anchor == null || anchor.isEmpty) continue;
+      var from = offset + 1;
+      while (from <= chunk.length) {
+        final at = chunk.indexOf(anchor, from);
+        if (at < 0) break;
+        final covered = cover(chunk.substring(offset, at), next - index);
+        if (covered != null) {
+          final rest = walk(at, next);
+          if (rest != null) return [...covered, ...rest];
+        }
+        from = at + 1;
+      }
+    }
+    if (tokens.skip(index).every((item) => item.startsWith('⟦P'))) {
+      return cover(chunk.substring(offset), tokens.length - index);
+    }
+    return null;
+  }
+
+  return walk(0, 0);
+}
+
 class ChatDiaryImage {
   const ChatDiaryImage({
     required this.id,
@@ -43,6 +185,7 @@ class ChatDiaryMessage {
     this.status = ChatDiaryMessageStatus.complete,
     this.parentId,
     this.privateRanges = const [],
+    this.personRanges,
     Set<String>? privateTokenIds,
     this.errorCode,
     this.systemPromptSnapshot = '',
@@ -56,6 +199,7 @@ class ChatDiaryMessage {
   ChatDiaryMessageStatus status;
   String? parentId;
   final List<ChatDiaryPrivateRange> privateRanges;
+  List<ChatDiaryPersonRange>? personRanges;
   final Set<String> privateTokenIds;
   String? errorCode;
   String systemPromptSnapshot;
@@ -70,6 +214,8 @@ class ChatDiaryMessage {
     'status': status.name,
     'parent_id': parentId,
     'private_ranges': privateRanges.map((range) => range.toJson()).toList(),
+    if (personRanges != null)
+      'person_ranges': personRanges!.map((range) => range.toJson()).toList(),
     'private_token_ids': privateTokenIds.toList(),
     'error_code': errorCode,
     'system_prompt': systemPromptSnapshot,
@@ -93,6 +239,15 @@ class ChatDiaryMessage {
               ),
             )
             .toList(),
+        personRanges: json.containsKey('person_ranges')
+            ? (json['person_ranges'] as List)
+                  .map(
+                    (range) => ChatDiaryPersonRange.fromJson(
+                      (range as Map).cast<String, dynamic>(),
+                    ),
+                  )
+                  .toList()
+            : null,
         privateTokenIds: (json['private_token_ids'] as List? ?? [])
             .cast<String>()
             .toSet(),
@@ -420,6 +575,15 @@ class ChatDiarySession {
             ),
     );
     chat.validateGraph();
+    for (final message in chat.messages) {
+      if (!message.isUser || message.personRanges != null) continue;
+      message.personRanges = chatDiaryPersonRangesFromOutbound(
+        text: message.text,
+        outbound: message.outboundText,
+        originalTextByToken: chat.originalTextByToken,
+        tokenBySourceKey: chat.tokenBySourceKey,
+      );
+    }
     return chat;
   }
 }

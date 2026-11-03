@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -65,6 +67,9 @@ Future<bool> completeChatDiaryAfterEntrySave(
     }, onError: (_, _) => onRemoteCleanupIncomplete?.call()),
   );
   if (completed) {
+    ref
+        .read(chatDiaryGenerationsProvider.notifier)
+        .forget(session.vaultId, chatId);
     ref.invalidate(chatDiarySessionsProvider);
   }
   return completed;

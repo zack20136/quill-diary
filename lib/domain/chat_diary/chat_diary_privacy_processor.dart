@@ -36,11 +36,15 @@ class ChatDiaryPrivacyProcessor {
   final ChatDiarySession chat;
   final PersonNameMatcher _matcher;
   final Set<String> _requestPrivateTokens = {};
+  final List<ChatDiaryPersonRange> _requestPersonRanges = [];
   final Set<String> _branchTokens = {};
   final Set<String> _diaryTokens = {};
   final Set<String> _restoreTokens = {};
+  var _personOrigin = 0;
   Set<String> get requestPrivateTokens =>
       Set.unmodifiable(_requestPrivateTokens);
+  List<ChatDiaryPersonRange> get requestPersonRanges =>
+      List.unmodifiable(_requestPersonRanges);
   String get _tokenPattern => chat.originalTextByToken.isEmpty
       ? r'(?!)'
       : chat.originalTextByToken.keys.map(RegExp.escape).join('|');
@@ -50,17 +54,20 @@ class ChatDiaryPrivacyProcessor {
     String text, [
     List<ChatDiaryPrivateRange> ranges = const [],
     bool rememberPrivate = true,
-  ]) => _apply(text, ranges, rememberPrivate, false);
+    List<ChatDiaryPersonRange>? personRanges,
+  ]) => _apply(text, ranges, rememberPrivate, false, personRanges);
 
   /// 提示詞另把已經標記過的私密原文換成同一個代號。
-  String protectPrompt(String text) => _apply(text, const [], true, true);
+  String protectPrompt(String text) => _apply(text, const [], true, true, null);
 
   String _apply(
     String text,
     List<ChatDiaryPrivateRange> ranges,
     bool rememberPrivate,
     bool propagateKnownSecrets,
+    List<ChatDiaryPersonRange>? personRanges,
   ) {
+    _requestPersonRanges.clear();
     final merged = mergePrivateRanges(ranges, text.length);
     for (final range in merged) {
       final originalText = text.substring(range.start, range.end);
@@ -76,22 +83,55 @@ class ChatDiaryPrivacyProcessor {
     final result = StringBuffer();
     var cursor = 0;
     for (final range in merged) {
+      _personOrigin = cursor;
       result.write(
-        _protectText(text.substring(cursor, range.start), scanTokens),
+        _protectText(
+          text.substring(cursor, range.start),
+          scanTokens,
+          _peopleInside(personRanges, cursor, range.start),
+        ),
       );
       final originalText = text.substring(range.start, range.end);
       result.write(_token('private:$originalText', originalText, 'S'));
       cursor = range.end;
     }
-    result.write(_protectText(text.substring(cursor), scanTokens));
+    _personOrigin = cursor;
+    result.write(
+      _protectText(
+        text.substring(cursor),
+        scanTokens,
+        _peopleInside(personRanges, cursor, text.length),
+      ),
+    );
     return result.toString();
   }
 
-  String _protectText(String text, Set<String> activeTokens) {
+  List<ChatDiaryPersonRange>? _peopleInside(
+    List<ChatDiaryPersonRange>? ranges,
+    int start,
+    int end,
+  ) {
+    if (ranges == null) return null;
+    return [
+      for (final range in ranges)
+        if (range.start >= start && range.end <= end)
+          ChatDiaryPersonRange(
+            range.start - start,
+            range.end - start,
+            range.personId,
+          ),
+    ];
+  }
+
+  String _protectText(
+    String text,
+    Set<String> activeTokens,
+    List<ChatDiaryPersonRange>? personRanges,
+  ) {
     final originals = {
       for (final token in activeTokens) chat.originalTextByToken[token]!: token,
     };
-    if (originals.isEmpty) return _protectPeople(text);
+    if (originals.isEmpty) return _protectPeople(text, personRanges);
     final values = originals.keys.toList()
       ..sort((a, b) => b.length.compareTo(a.length));
     final pattern = RegExp(
@@ -101,18 +141,27 @@ class ChatDiaryPrivacyProcessor {
       pattern,
       (match) => originals[match[0]] ?? match[0]!,
     );
-    return _protectPeople(protected);
+    return _protectPeople(protected, personRanges);
   }
 
-  String _protectPeople(String text) {
+  String _protectPeople(String text, List<ChatDiaryPersonRange>? fixed) {
     if (!chat.hidePersonNames) return text;
+    final spans =
+        fixed ??
+        [
+          for (final span in _matcher.findSpans(text))
+            ChatDiaryPersonRange(span.start, span.end, span.personId),
+        ];
     final tokens = RegExp(_tokenPattern).allMatches(text).toList();
     final result = StringBuffer();
     var cursor = 0;
-    for (final span in _matcher.findSpans(text)) {
-      if (tokens.any(
-        (token) => span.start < token.end && span.end > token.start,
-      )) {
+    for (final span in spans) {
+      if (span.start < cursor ||
+          span.end > text.length ||
+          span.end <= span.start ||
+          tokens.any(
+            (token) => span.start < token.end && span.end > token.start,
+          )) {
         continue;
       }
       result.write(text.substring(cursor, span.start));
@@ -121,6 +170,13 @@ class ChatDiaryPrivacyProcessor {
           'person:${span.personId}',
           text.substring(span.start, span.end),
           'P',
+        ),
+      );
+      _requestPersonRanges.add(
+        ChatDiaryPersonRange(
+          _personOrigin + span.start,
+          _personOrigin + span.end,
+          span.personId,
         ),
       );
       cursor = span.end;
@@ -136,8 +192,9 @@ class ChatDiaryPrivacyProcessor {
       return existing;
     }
     var nextNumber = 1;
+    final pattern = RegExp('^⟦$prefix([0-9A-F]{2,})⟧\$');
     for (final token in chat.originalTextByToken.keys) {
-      final match = RegExp(r'^⟦[PS]([0-9A-F]{2,})⟧$').firstMatch(token);
+      final match = pattern.firstMatch(token);
       if (match == null) continue;
       final number = int.parse(match[1]!, radix: 16);
       if (number >= nextNumber) nextNumber = number + 1;

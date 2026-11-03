@@ -595,7 +595,7 @@ void main() {
     );
     expect(
       tester.widget<TextField>(conversation).controller!.text,
-      contains('一律使用繁體中文'),
+      contains('預設使用繁體中文'),
     );
     await tester.enterText(conversation, '我的自訂聊天指示');
     locale.value = appEnLocale;
@@ -611,7 +611,7 @@ void main() {
     );
     expect(
       tester.widget<TextField>(generation).controller!.text,
-      contains('write the title and body in natural English'),
+      contains('By default use natural English'),
     );
     await tester.enterText(generation, 'My diary override');
     await tester.tap(find.text('Restore default'));

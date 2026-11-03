@@ -3,15 +3,20 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/presentation/home/widgets/home_chat_diary_draft_card.dart';
 import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
@@ -22,6 +27,51 @@ import '../../helpers/shared/widget_test_app.dart';
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
+  testWidgets('首頁草稿卡接續生成進度、失敗原因與完成狀態，不顯示操作按鈕', (tester) async {
+    final chat = testChatDiarySession()..composerText = '今天留下的片段';
+    await tester.pumpWidget(
+      widgetTestApp(
+        overrides: [],
+        child: HomeChatDiaryDraftCard(chat: chat, entryDisplayOrder: const []),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final element = tester.element(find.byType(HomeChatDiaryDraftCard));
+    final generations = ProviderScope.containerOf(element)
+        .read(chatDiaryGenerationsProvider.notifier);
+    final first = generations.begin(vaultId: chat.vaultId, chatId: chat.id);
+    await tester.pump();
+    expect(find.text('正在生成日記'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.byType(TextButton), findsNothing);
+    generations.update(
+      first,
+      ChatDiaryGenerationPhase.failed,
+      error: AiErrorCode.network,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('日記生成失敗'), findsOneWidget);
+    expect(find.byType(TextButton), findsNothing);
+    expect(find.text(element.l10n.aiErrorNetwork), findsNothing);
+    final unexpected = generations.begin(
+      vaultId: chat.vaultId,
+      chatId: chat.id,
+    );
+    generations.update(unexpected, ChatDiaryGenerationPhase.failed);
+    await tester.pumpAndSettle();
+    expect(find.text('日記生成失敗'), findsOneWidget);
+    expect(find.text(element.l10n.aiErrorUnexpected), findsNothing);
+    expect(find.text(element.l10n.aiErrorNetwork), findsNothing);
+    final second = generations.begin(vaultId: chat.vaultId, chatId: chat.id);
+    chat.generatedEntryId = 'generated-draft';
+    generations.update(second, ChatDiaryGenerationPhase.completed);
+    await tester.pumpAndSettle();
+    expect(find.text('日記草稿已完成'), findsOneWidget);
+    expect(find.byType(TextButton), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('窄螢幕大字級的聊天草稿可長按全選並取消刪除，不另列完成聊天', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;

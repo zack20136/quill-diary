@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
@@ -19,10 +20,8 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
-import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
@@ -445,7 +444,7 @@ void main() {
     );
   }
 
-  testWidgets('完成聊天區分刪除與損壞圖片，返回日記後重讀附件，日記刪除則回首頁', (tester) async {
+  testWidgets('完成聊天可返回日記，重新進入重讀刪除與損壞圖片', (tester) async {
     final chat = testChatDiarySession()
       ..finished = true
       ..generatedEntryId = 'entry';
@@ -462,18 +461,8 @@ void main() {
       ..images['kept'] = testAiPng
       ..images['invalid'] = Uint8List.fromList([0, 1, 2])
       ..failedImages.add('broken');
-    final repository = OverviewChatDiaryEntryRepository(
-      DiaryEntry(
-        id: 'entry',
-        vaultId: 'vault',
-        date: const DateOnly('2026-10-27'),
-        createdAt: DateTime(2026, 10, 27),
-        updatedAt: DateTime(2026, 10, 27),
-        markdownBody: '合成日記',
-      ),
-    );
     final router = GoRouter(
-      initialLocation: '/chat',
+      initialLocation: '${AppRoutes.editorRoute}/entry',
       routes: [
         GoRoute(
           path: '/',
@@ -488,19 +477,16 @@ void main() {
           builder: (context, _) => Scaffold(
             body: Column(
               children: [
+                const Text('日記畫面'),
                 TextButton(
-                  onPressed: () {
-                    store.images.remove('kept');
-                    context.pop();
-                  },
-                  child: const Text('移除附件'),
+                  onPressed: () => context.push('/chat'),
+                  child: const Text('查看聊天'),
                 ),
                 TextButton(
                   onPressed: () {
-                    repository.entry = null;
-                    context.pop();
+                    store.images.remove('kept');
                   },
-                  child: const Text('刪除日記'),
+                  child: const Text('移除附件'),
                 ),
               ],
             ),
@@ -514,7 +500,6 @@ void main() {
         overrides: [
           appSessionProvider.overrideWith(ChatDiaryNavigationSession.new),
           chatDiaryStoreProvider.overrideWithValue(store),
-          vaultRepositoryProvider.overrideWithValue(repository),
           aiSettingsStoreProvider.overrideWithValue(OverviewAiSettingsStore()),
         ],
         child: MaterialApp.router(
@@ -527,6 +512,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text('查看聊天'));
+    await tester.pumpAndSettle();
+    expect(find.text('開啟日記'), findsNothing);
+    expect(find.text('生成日記'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
     expect(find.byType(Image), findsNWidgets(2));
     expect(find.text('圖片已刪除'), findsOneWidget);
     expect(
@@ -535,18 +525,17 @@ void main() {
     );
     expect(find.byIcon(Icons.broken_image_outlined), findsNWidgets(2));
     expect(store.imageReads, 4);
-    await tester.tap(find.text('開啟日記'));
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     await tester.tap(find.text('移除附件'));
+    await tester.tap(find.text('查看聊天'));
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsOneWidget);
     expect(find.text('圖片已刪除'), findsNWidgets(2));
     expect(store.imageReads, 8);
-    await tester.tap(find.text('開啟日記'));
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('刪除日記'));
-    await tester.pumpAndSettle();
-    expect(find.text('測試首頁'), findsOneWidget);
+    expect(find.text('日記畫面'), findsOneWidget);
     expect(find.byType(ChatDiaryPage), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });

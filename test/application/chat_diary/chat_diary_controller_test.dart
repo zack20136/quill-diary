@@ -4,8 +4,10 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
@@ -15,6 +17,7 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
@@ -93,6 +96,7 @@ void main() {
       chatDiaryControllerProvider(chat.id),
       (_, _) {},
     );
+    container.read(appSessionProvider.notifier).activateSession(setup.session);
     controller = container.read(chatDiaryControllerProvider(chat.id));
     await controller.start(chat.id, setup.session, openingMessage: '');
     chat = controller.chat!;
@@ -101,6 +105,184 @@ void main() {
     container.dispose();
     await store.flush();
     await harness.dispose();
+  });
+
+  test('生成離頁後持續工作、暫緩自動鎖定，完成後保留草稿且不重送', () async {
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '今天去散步',
+        outboundText: '今天去散步',
+      ),
+    );
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    final phases = <ChatDiaryGenerationPhase>[];
+    final watching = container.listen(chatDiaryGenerationsProvider, (_, jobs) {
+      phases.add(jobs[(chat.vaultId, chat.id)]!.phase);
+    });
+    final generating = controller.generate(testZhL10n);
+    await started.future;
+    expect(phases.last, ChatDiaryGenerationPhase.waiting);
+    await container.read(appSessionProvider.notifier).expireFromInactivity();
+    expect(container.read(appSessionProvider).isUnlocked, isTrue);
+    subscription.close();
+    await container.pump();
+    expect(controller.busy, isTrue);
+    expect(
+      await controller.load(chat.id, setup.session),
+      ChatDiaryLoadResult.loaded,
+    );
+    expect(
+      await controller.generate(testZhL10n),
+      ChatDiaryGenerationResult.notGenerated,
+    );
+    stream.add('# 今天\n\n散步時心情很好。');
+    await stream.close();
+    expect(await generating, ChatDiaryGenerationResult.generated);
+    expect(phases, [
+      ChatDiaryGenerationPhase.preparing,
+      ChatDiaryGenerationPhase.waiting,
+      ChatDiaryGenerationPhase.writing,
+      ChatDiaryGenerationPhase.saving,
+      ChatDiaryGenerationPhase.completed,
+    ]);
+    expect(client.calls, hasLength(1));
+    expect(
+      (await store.load(chat.id, setup.session))!.generatedEntryId,
+      isNotNull,
+    );
+    watching.close();
+  });
+
+  test('生成期間手動鎖定立即停止，晚到結果不會發布完成或建立草稿', () async {
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '合成片段',
+        outboundText: '合成片段',
+      ),
+    );
+    final stream = StreamController<String>();
+    final started = Completer<void>();
+    client.response = () {
+      started.complete();
+      return stream.stream;
+    };
+    final generating = controller.generate(testZhL10n);
+    await started.future;
+    await container.read(appSessionProvider.notifier).lock();
+    expect(controller.chat, isNull);
+    expect(client.closed, isTrue);
+    expect(
+      container
+          .read(chatDiaryGenerationsProvider)[(chat.vaultId, chat.id)]!
+          .phase,
+      ChatDiaryGenerationPhase.cancelled,
+    );
+    stream.add('# 晚到\n\n不應保存');
+    await stream.close();
+    expect(await generating, ChatDiaryGenerationResult.notGenerated);
+    expect(
+      (await store.load(chat.id, setup.session))!.generatedEntryId,
+      isNull,
+    );
+  });
+
+  test('兩個聊天獨立生成，一個完成後另一個仍暫緩鎖定，停止只取消指定工作', () async {
+    final secondId = generateChatDiaryId();
+    final secondSubscription = container.listen(
+      chatDiaryControllerProvider(secondId),
+      (_, _) {},
+    );
+    final second = secondSubscription.read();
+    await second.start(secondId, setup.session, openingMessage: '');
+    for (final current in [controller, second]) {
+      current.chat!.appendMessage(
+        ChatDiaryMessage(
+          id: 'user',
+          isUser: true,
+          text: '各自的片段',
+          outboundText: '各自的片段',
+        ),
+      );
+    }
+    final streams = [StreamController<String>(), StreamController<String>()];
+    final started = [Completer<void>(), Completer<void>()];
+    final otherClient = FakeAiClient(chat.connectionConfig);
+    for (var index = 0; index < 2; index++) {
+      [client, otherClient][index].response = () {
+        started[index].complete();
+        return streams[index].stream;
+      };
+    }
+    queuedClients.addAll([client, otherClient]);
+    final firstGeneration = controller.generate(testZhL10n);
+    await started.first.future;
+    final secondGeneration = second.generate(testZhL10n);
+    await started.last.future;
+    streams.first.add('# 第一篇\n\n完成');
+    await streams.first.close();
+    expect(await firstGeneration, ChatDiaryGenerationResult.generated);
+    expect(controller.canGenerate, isTrue);
+    await container.read(appSessionProvider.notifier).expireFromInactivity();
+    expect(container.read(appSessionProvider).isUnlocked, isTrue);
+    second.stop();
+    streams.last.add('晚到內容');
+    await streams.last.close();
+    expect(await secondGeneration, ChatDiaryGenerationResult.notGenerated);
+    expect(
+      container
+          .read(chatDiaryGenerationsProvider)[(chat.vaultId, chat.id)]!
+          .phase,
+      ChatDiaryGenerationPhase.completed,
+    );
+    expect(
+      container
+          .read(chatDiaryGenerationsProvider)[(chat.vaultId, secondId)]!
+          .phase,
+      ChatDiaryGenerationPhase.cancelled,
+    );
+    secondSubscription.close();
+  });
+
+  test('等待草稿保存時離開，不交接編輯器也不鎖住後續聊天', () async {
+    controller.updateComposer('尚未離開前的輸入', []);
+    final saved = Completer<void>();
+    store.saveGate = saved.future;
+    store.saveStarted = Completer<void>();
+    var current = true;
+    final handOff = controller.handOffToEditor(canOpen: () => current);
+    await store.saveStarted!.future;
+    current = false;
+    saved.complete();
+    expect(await handOff, isFalse);
+    expect(controller.canSend, isTrue);
+    expect(controller.chat!.composerText, '尚未離開前的輸入');
+  });
+
+  test('生成錯誤不會遮住後續獨立的保存錯誤', () async {
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '合成片段',
+        outboundText: '合成片段',
+      ),
+    );
+    client.failure = const AiFailure(AiErrorCode.tls);
+    await controller.generate(testZhL10n);
+    expect(controller.errorFromGeneration, isTrue);
+    store.failSaves = true;
+    await controller.persist();
+    expect(controller.error, AiErrorCode.storage);
+    expect(controller.errorFromGeneration, isFalse);
   });
 
   for (final fails in [false, true]) {
@@ -411,14 +593,31 @@ void main() {
       isNot(contains('秘密地址')),
     );
   });
+  test('已送出的訊息不因後來新增人物而改寫', () async {
+    controller.updateComposer('小華先出現', []);
+    await controller.send();
+    expect(client.calls.single.messages.single.text, '小華先出現');
+    await harness.repository.createPerson(
+      setup.session,
+      PersonDraft(name: '小華'),
+    );
+    controller.updateComposer('後來才認識小華', []);
+    await controller.send();
+    expect(client.calls.last.messages.first.text, '小華先出現');
+    expect(controller.chat!.messages.first.personRanges, isEmpty);
+    expect(client.calls.last.messages.last.text, isNot(contains('小華')));
+  });
   test('下一次請求使用新語系與完整自訂提示詞', () async {
     controller.updateComposer('第一則', []);
     await controller.send();
-    expect(client.calls.last.prompt, contains('一律使用繁體中文'));
+    expect(client.calls.last.prompt, contains('預設使用繁體中文'));
     await preferences.setAppLocale(AppLanguage.en);
     controller.updateComposer('第二則', []);
     await controller.send();
-    expect(client.calls.last.prompt, contains('reply in natural English'));
+    expect(
+      client.calls.last.prompt,
+      contains('By default use natural English'),
+    );
     settings.chatDiary = const ChatDiarySettings(
       prompts: ChatDiaryPromptSettings(conversationOverride: '只有這一段自訂提示詞'),
     );

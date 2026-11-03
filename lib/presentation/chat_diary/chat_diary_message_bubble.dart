@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
@@ -9,6 +10,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
 class ChatDiaryMessageBubble extends ConsumerWidget {
   const ChatDiaryMessageBubble({
@@ -73,11 +75,32 @@ class ChatDiaryMessageBubble extends ConsumerWidget {
     );
   }
 
+  Widget _messageText(ColorScheme colors, TextStyle bodyStyle) {
+    final ranges = [
+      ...message.privateRanges,
+      if (chatSession.hidePersonNames)
+        for (final span
+            in message.personRanges ?? const <ChatDiaryPersonRange>[])
+          ChatDiaryPrivateRange(span.start, span.end),
+    ];
+    if (ranges.isEmpty) return Text(message.text, style: bodyStyle);
+    return Text.rich(
+      chatDiaryHiddenTextSpan(
+        text: message.text,
+        ranges: ranges,
+        highlight: chatDiaryHiddenHighlight(colors),
+      ),
+      style: bodyStyle,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chat = chatSession;
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
+    final typography = watchPersonalizationPreferences(ref).typography;
+    final bodyStyle = typography.bodyTextStyle(Theme.of(context).textTheme);
     final enabled = !isBusy && chat.editingMessageId == null && !chat.finished;
     final failed =
         message.status == ChatDiaryMessageStatus.failed ||
@@ -88,7 +111,7 @@ class ChatDiaryMessageBubble extends ConsumerWidget {
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: FractionallySizedBox(
-        widthFactor: message.isUser ? 0.88 : 1,
+        widthFactor: 0.88,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(
@@ -115,44 +138,37 @@ class ChatDiaryMessageBubble extends ConsumerWidget {
                 ),
               if (message.text.isNotEmpty ||
                   message.status == ChatDiaryMessageStatus.pending)
-                Container(
-                  padding: message.isUser
-                      ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-                      : const EdgeInsets.symmetric(vertical: 4),
-                  decoration: message.isUser
-                      ? BoxDecoration(
-                          color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        )
-                      : null,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (message.text.isNotEmpty)
-                        if (message.isUser)
-                          SelectionArea(
-                            child: message.privateRanges.isEmpty
-                                ? Text(message.text)
-                                : Text.rich(
-                                    chatDiaryHiddenTextSpan(
-                                      text: message.text,
-                                      ranges: message.privateRanges,
-                                      highlight: chatDiaryHiddenHighlight(
-                                        colors,
-                                      ),
-                                    ),
-                                  ),
-                          )
-                        else
-                          EditorMarkdownPreview(
-                            markdown: message.text,
-                            typography: watchPersonalizationPreferences(ref)
-                                .typography,
-                          ),
-                      if (message.status == ChatDiaryMessageStatus.pending)
-                        const _ReplyPendingIndicator(),
-                    ],
+                IntrinsicWidth(
+                  child: Container(
+                    key: ValueKey('chat-message-body-${message.id}'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: message.isUser
+                          ? colors.primaryContainer
+                          : colors.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (message.text.isNotEmpty)
+                          if (message.isUser)
+                            SelectionArea(
+                              child: _messageText(colors, bodyStyle),
+                            )
+                          else
+                            EditorMarkdownPreview(
+                              markdown: message.text,
+                              typography: typography,
+                            ),
+                        if (message.status == ChatDiaryMessageStatus.pending)
+                          const _ReplyPendingIndicator(),
+                      ],
+                    ),
                   ),
                 ),
               if (message.status == ChatDiaryMessageStatus.interrupted ||

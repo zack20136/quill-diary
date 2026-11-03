@@ -6,16 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
-import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
@@ -23,6 +26,9 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_actions.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_composer_actions.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_generation_card.dart';
+import 'package:quill_diary/presentation/chat_diary/chat_diary_generation_label.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_input_panel.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_message_bubble.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_private_text_controller.dart';
@@ -32,6 +38,8 @@ import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_menu_style.dart';
+import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 
@@ -63,12 +71,15 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
   bool _tailUpdateScheduled = false;
   final _composerFocusNode = FocusNode();
   bool _isBackgrounded = false;
+  bool _canAutoOpenGeneration = false;
+  bool _openingEditor = false;
   bool _isSelectingImages = false;
   Completer<void>? _imagePickerForeground;
   final _contentDialogContexts = <Object, BuildContext>{};
   final _imageFutures = <String, Future<Uint8List?>>{};
   AiErrorCode? _lastReportedError;
   bool _lastReportedUnexpected = false;
+  bool _lastReportedGenerationError = false;
 
   @override
   void initState() {
@@ -110,10 +121,16 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     final error = _chatController?.errorMessageId == null
         ? _chatController?.error
         : null;
-    if (unexpected != _lastReportedUnexpected || error != _lastReportedError) {
+    final generationError = _chatController?.errorFromGeneration == true;
+    if (unexpected != _lastReportedUnexpected ||
+        error != _lastReportedError ||
+        generationError != _lastReportedGenerationError) {
       _lastReportedUnexpected = unexpected;
       _lastReportedError = error;
-      if ((unexpected || error != null) && chatSession != null) {
+      _lastReportedGenerationError = generationError;
+      if ((unexpected || error != null) &&
+          chatSession != null &&
+          _chatController?.errorFromGeneration != true) {
         final vaultSession = _loadedVaultSession;
         final reportedError = error;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -123,6 +140,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
               _chatController?.chat == chatSession &&
               _chatController?.error == reportedError &&
               _chatController?.unexpectedError == unexpected &&
+              _chatController?.errorFromGeneration != true &&
               _chatController?.errorMessageId == null) {
             showAppFeedbackToast(
               context,
@@ -192,6 +210,10 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _canAutoOpenGeneration = false;
+    }
     // 系統圖庫取得焦點時仍可能看見聊天；真正進入背景才遮蔽。
     if (_isSelectingImages && state == AppLifecycleState.inactive) return;
     if (state != AppLifecycleState.resumed) {
@@ -274,8 +296,16 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     }
   }
 
-  Future<void> _openEditor({bool generate = false}) =>
-      _showFailure(() => _openEditorImpl(generate: generate));
+  Future<void> _openEditor({bool generate = false}) async {
+    if (_openingEditor || _isBackgrounded) return;
+    _openingEditor = true;
+    if (generate) _canAutoOpenGeneration = true;
+    try {
+      await _showFailure(() => _openEditorImpl(generate: generate));
+    } finally {
+      _openingEditor = false;
+    }
+  }
 
   Future<void> _showFailure(Future<void> Function() action) async {
     final chatSession = _chatController?.chat;
@@ -312,9 +342,15 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     if (chatController == null || chatSession == null || vaultSession == null) {
       return;
     }
+    bool canOpen() =>
+        mounted &&
+        !_isBackgrounded &&
+        _loadedVaultSession == vaultSession &&
+        chatController.chat == chatSession &&
+        ModalRoute.of(context)?.isCurrent != false;
     if (generate) {
       final edited = await chatController.hasEditedDiaryDraft();
-      if (!mounted || _loadedVaultSession != vaultSession) return;
+      if (!mounted || !canOpen() || !chatController.canGenerate) return;
       if (edited &&
           !await showAppConfirmDialog(
             context: context,
@@ -325,7 +361,8 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
           )) {
         return;
       }
-      if (!mounted || _loadedVaultSession != vaultSession) return;
+      if (!mounted || !canOpen() || !chatController.canGenerate) return;
+      _composerFocusNode.unfocus();
       final result = await chatController.generate(context.l10n);
       if (!mounted ||
           _isBackgrounded ||
@@ -333,15 +370,15 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
           chatController.chat != chatSession) {
         return;
       }
-      if (result == ChatDiaryGenerationResult.empty) {
-        showAppFeedbackToast(context, context.l10n.chatDiaryGenerationEmpty);
+      if (result != ChatDiaryGenerationResult.generated) return;
+      if (!_canAutoOpenGeneration ||
+          ModalRoute.of(context)?.isCurrent == false) {
         return;
       }
-      if (result != ChatDiaryGenerationResult.generated) return;
-    } else {
-      await chatController.suspendForEditor();
     }
-    if (!mounted || _loadedVaultSession != vaultSession) return;
+    if (!await chatController.handOffToEditor(canOpen: canOpen) || !mounted) {
+      return;
+    }
     final savedId = await context.push<String>(
       '${AppRoutes.editorRoute}?chat=${Uri.encodeComponent(chatSession.id)}',
     );
@@ -591,25 +628,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       stored.chatDiary.hidePersonNames,
     );
   });
-
-  Future<void> _openSavedDiary() async {
-    final chatSession = _chatController?.chat;
-    final vaultSession = _loadedVaultSession;
-    final entryId = chatSession?.generatedEntryId;
-    if (entryId == null || vaultSession == null) return;
-    await context.push('${AppRoutes.editorRoute}/$entryId');
-    if (!mounted || _loadedVaultSession != vaultSession) return;
-    final entry = await ref
-        .read(vaultRepositoryProvider)
-        .loadEntry(vaultSession, entryId);
-    if (!mounted || _loadedVaultSession != vaultSession) return;
-    if (entry == null) {
-      context.go(AppRoutes.homeRoute);
-      return;
-    }
-    setState(_imageFutures.clear);
-    await _chatController!.loadForEntry(entryId, vaultSession);
-  }
 
   Future<void> _deleteChat() async {
     final vaultSession = _loadedVaultSession;
@@ -868,6 +886,120 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     );
   }
 
+  String? _terminalGenerationStatus(
+    AppLocalizations l10n,
+    ChatDiaryGeneration generation,
+  ) {
+    if (generation.phase == ChatDiaryGenerationPhase.completed) return null;
+    final label = chatDiaryGenerationPhaseLabel(l10n, generation.phase);
+    final failure = chatDiaryGenerationFailureDetail(l10n, generation);
+    return failure == null ? label : '$label\n$failure';
+  }
+
+  Widget? _generationNotice(
+    AppLocalizations l10n,
+    ChatDiarySession chatSession,
+    ChatDiaryController chatController,
+    ChatDiaryGeneration? generation,
+  ) {
+    if (chatSession.finished || generation?.phase.isActive == true) return null;
+    final retry = generation == null
+        ? null
+        : _terminalGenerationStatus(l10n, generation);
+    if (retry != null) {
+      return _generationNoticeBanner(
+        message: retry,
+        tone: generation!.phase == ChatDiaryGenerationPhase.failed
+            ? AppFeedbackTone.error
+            : AppFeedbackTone.info,
+        actionLabel: l10n.chatDiaryRetryGeneration,
+        onPressed: chatController.canGenerate
+            ? () => _openEditor(generate: true)
+            : null,
+      );
+    }
+    if (chatSession.generatedEntryId == null) return null;
+    final outdated = chatSession.isDraftOutdated;
+    return _generationNoticeBanner(
+      message: outdated
+          ? l10n.chatDiaryDraftOutdated
+          : l10n.chatDiaryDraftReady,
+      tone: outdated ? AppFeedbackTone.warning : AppFeedbackTone.success,
+      actionLabel: l10n.chatDiaryViewDraft,
+      onPressed: chatController.busy || chatSession.editingMessageId != null
+          ? null
+          : () => _openEditor(),
+    );
+  }
+
+  Widget _generationNoticeBanner({
+    required String message,
+    required AppFeedbackTone tone,
+    required String actionLabel,
+    required VoidCallback? onPressed,
+  }) {
+    final theme = Theme.of(context);
+    final colors = resolveAppFeedbackColors(context, tone);
+    final split = message.split('\n');
+    final detail = split.length > 1 ? split.sublist(1).join('\n') : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: Semantics(
+        liveRegion: true,
+        child: DecoratedBox(
+          key: const ValueKey('chat-diary-generation-notice'),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  split.first,
+                  style: detail == null
+                      ? theme.textTheme.bodyMedium
+                      : theme.textTheme.titleSmall,
+                ),
+                if (detail != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    detail,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: onPressed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: colors.foreground,
+                      backgroundColor: colors.background,
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(actionLabel),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildConversationContent(
     ChatDiaryController chatController,
     UnlockedVaultSession? vaultSession,
@@ -900,6 +1032,18 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       );
     }
     final messages = chatSession.activeMessages;
+    final generation = ref.watch(
+      chatDiaryGenerationsProvider.select(
+        (jobs) => jobs[(chatSession.vaultId, chatSession.id)],
+      ),
+    );
+    final generating = generation?.phase.isActive == true;
+    final notice = _generationNotice(
+      l10n,
+      chatSession,
+      chatController,
+      generation,
+    );
     final versions = chatSession.messageVersions;
     final headers = <Widget>[
       if (chatSession.finished)
@@ -915,7 +1059,8 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
           padding: const EdgeInsets.only(top: 28, bottom: 16),
           child: Text(
             chatSession.openingMessage,
-            style: Theme.of(context).textTheme.bodyLarge,
+            style: watchPersonalizationPreferences(ref).typography
+                .bodyTextStyle(Theme.of(context).textTheme),
           ),
         ),
     ];
@@ -923,140 +1068,166 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       for (var index = 0; index < messages.length; index++)
         ValueKey(messages[index].id): headers.length + index,
     };
-    return Column(
-      children: [
-        Expanded(
-          child: Stack(
-            children: [
-              NotificationListener<ScrollMetricsNotification>(
-                onNotification: (_) {
-                  if (!_userControllingScroll) {
-                    _scheduleFollowTail();
-                  }
-                  return false;
-                },
-                child: NotificationListener<UserScrollNotification>(
-                  onNotification: (notification) {
-                    final holding =
-                        notification.direction != ScrollDirection.idle;
-                    if (holding != _userControllingScroll) {
-                      _userControllingScroll = holding;
-                      if (!holding) _scrollChanged();
-                    }
-                    return false;
-                  },
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    itemCount: headers.length + messages.length,
-                    findChildIndexCallback: (key) => messageIndices[key],
-                    itemBuilder: (context, index) {
-                      if (index < headers.length) return headers[index];
-                      final message = messages[index - headers.length];
-                      return ChatDiaryMessageBubble(
-                        key: ValueKey(message.id),
-                        chatSession: chatSession,
-                        message: message,
-                        versions: versions[(message.parentId, message.isUser)]!,
-                        isBusy: chatController.busy,
-                        imageBuilder: (id) => _image(
-                          chatSession,
-                          id,
-                          galleryImageIds: message.imageIds,
-                          size: 128,
-                        ),
-                        onSelectVersion: chatController.selectVersion,
-                        onEditMessage: _editMessage,
-                        onRegenerateReply: chatController.regenerateReply,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              if (!_followTail)
-                Positioned(
-                  bottom: 8,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: IconButton.filledTonal(
-                      onPressed: chatController.busy ? null : _jumpToLatest,
-                      tooltip: l10n.chatDiaryJumpLatest,
-                      icon: const Icon(Icons.arrow_downward),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        if (chatSession.finished)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: FilledButton(
-              onPressed: chatSession.generatedEntryId == null
-                  ? null
-                  : () => _showFailure(_openSavedDiary),
-              child: Text(l10n.chatDiaryOpenDiary),
-            ),
-          )
-        else ...[
-          if (chatSession.generatedEntryId != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final inputStyle = Theme.of(context).textTheme.bodyLarge!;
+        final lineHeight =
+            MediaQuery.textScalerOf(context).scale(inputStyle.fontSize!) *
+            (inputStyle.height ?? 1);
+        final textHeight =
+            constraints.maxHeight / 3 -
+            22 -
+            (chatSession.pendingImageIds.isEmpty ? 0 : 96) -
+            (chatSession.editingMessageId == null ? 0 : 48);
+        final composerMaxLines = (textHeight / lineHeight).floor().clamp(1, 5);
+        var composerMaxHeight = constraints.maxHeight * 0.7;
+        if (notice != null) {
+          final available = constraints.maxHeight - 260;
+          if (available < composerMaxHeight) {
+            composerMaxHeight = available > 0 ? available : 0;
+          }
+        }
+        return Column(
+          children: [
+            Expanded(
+              child: Column(
                 children: [
+                  if (notice != null) notice,
                   Expanded(
-                    child: Text(
-                      chatSession.isDraftOutdated
-                          ? l10n.chatDiaryDraftOutdated
-                          : l10n.chatDiaryDraftReady,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    child: Stack(
+                      children: [
+                        NotificationListener<ScrollMetricsNotification>(
+                          onNotification: (_) {
+                            if (!_userControllingScroll) {
+                              _scheduleFollowTail();
+                            }
+                            return false;
+                          },
+                          child: NotificationListener<UserScrollNotification>(
+                            onNotification: (notification) {
+                              final holding =
+                                  notification.direction !=
+                                  ScrollDirection.idle;
+                              if (holding != _userControllingScroll) {
+                                _userControllingScroll = holding;
+                                if (!holding) _scrollChanged();
+                              }
+                              return false;
+                            },
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              itemCount: headers.length + messages.length,
+                              findChildIndexCallback: (key) =>
+                                  messageIndices[key],
+                              itemBuilder: (context, index) {
+                                if (index < headers.length)
+                                  return headers[index];
+                                final message =
+                                    messages[index - headers.length];
+                                return ChatDiaryMessageBubble(
+                                  key: ValueKey(message.id),
+                                  chatSession: chatSession,
+                                  message: message,
+                                  versions:
+                                      versions[(
+                                        message.parentId,
+                                        message.isUser,
+                                      )]!,
+                                  isBusy: chatController.busy,
+                                  imageBuilder: (id) => _image(
+                                    chatSession,
+                                    id,
+                                    galleryImageIds: message.imageIds,
+                                    size: 128,
+                                  ),
+                                  onSelectVersion: chatController.selectVersion,
+                                  onEditMessage: _editMessage,
+                                  onRegenerateReply:
+                                      chatController.regenerateReply,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        if (!_followTail)
+                          Positioned(
+                            bottom: 8,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: IconButton.filledTonal(
+                                onPressed: chatController.busy
+                                    ? null
+                                    : _jumpToLatest,
+                                tooltip: l10n.chatDiaryJumpLatest,
+                                icon: const Icon(Icons.arrow_downward),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  TextButton(
-                    onPressed:
-                        chatController.busy ||
-                            chatSession.editingMessageId != null
-                        ? null
-                        : () => _openEditor(),
-                    child: Text(l10n.chatDiaryContinueDraft),
                   ),
                 ],
               ),
             ),
-          if (chatSession.connectionConfig.model.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _modelTag(context, chatSession.connectionConfig),
+            if (!chatSession.finished)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: composerMaxHeight),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (generating)
+                        ChatDiaryGenerationCard(
+                          generation: generation!,
+                          onStop: chatController.stop,
+                        )
+                      else ...[
+                        ChatDiaryComposerActions(
+                          model:
+                              chatSession.connectionConfig.model.trim().isEmpty
+                              ? null
+                              : _modelTag(
+                                  context,
+                                  chatSession.connectionConfig,
+                                ),
+                          onGenerate: chatController.canGenerate
+                              ? () => _openEditor(generate: true)
+                              : null,
+                        ),
+                        ChatDiaryInputPanel(
+                          maxLines: composerMaxLines,
+                          chatSession: chatSession,
+                          isBusy: chatController.busy,
+                          canSend: chatController.canSend,
+                          composerController: _composerController,
+                          composerFocusNode: _composerFocusNode,
+                          imageBuilder: (id) => _image(
+                            chatSession,
+                            id,
+                            removable: !chatController.busy,
+                            galleryImageIds: chatSession.pendingImageIds,
+                          ),
+                          onCancelEditing: chatController.cancelEditing,
+                          onPickImages: _pickImages,
+                          onOpenSettings: _openSettings,
+                          onSend: _send,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ChatDiaryInputPanel(
-            chatSession: chatSession,
-            isBusy: chatController.busy,
-            canSend: chatController.canSend,
-            composerController: _composerController,
-            composerFocusNode: _composerFocusNode,
-            imageBuilder: (id) => _image(
-              chatSession,
-              id,
-              removable: !chatController.busy,
-              galleryImageIds: chatSession.pendingImageIds,
-            ),
-            onCancelEditing: chatController.cancelEditing,
-            onPickImages: _pickImages,
-            onOpenSettings: _openSettings,
-            onSend: _send,
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -1081,7 +1252,9 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       );
     }
     if (!mounted || _loadedVaultSession != vaultSession) return;
-    if (result == ChatDiaryLoadResult.loaded) _changed();
+    if (result == ChatDiaryLoadResult.loaded) {
+      _changed();
+    }
     if (result == ChatDiaryLoadResult.missing) {
       ref.invalidate(chatDiarySessionsProvider);
       context.go(AppRoutes.homeRoute);
@@ -1115,15 +1288,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
             vaultSession != null &&
             !_isBackgrounded &&
             !chatController.busy;
-        final showGenerate = chatSession != null && !chatSession.finished;
         final actions = <Widget>[
-          if (showGenerate)
-            TextButton(
-              onPressed: canUseActions && chatController.canGenerate
-                  ? () => _openEditor(generate: true)
-                  : null,
-              child: Text(l10n.chatDiaryGenerateDiary),
-            ),
           IconButton(
             tooltip: l10n.chatDiaryPreviewRequest,
             onPressed: canUseActions ? _preview : null,
@@ -1147,22 +1312,17 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
           textDirection: Directionality.of(context),
           textScaler: MediaQuery.textScalerOf(context),
         )..layout();
-        var requiredWidth =
+        final requiredWidth =
             56 + 32 + painter.width + 2 * kMinInteractiveDimension;
-        if (showGenerate) {
-          painter.text = TextSpan(
-            text: l10n.chatDiaryGenerateDiary,
-            style: textTheme.labelLarge,
-          );
-          painter.layout();
-          requiredWidth += (painter.width + 24).clamp(64, double.infinity);
-        }
         painter.dispose();
         final separateActions =
             MediaQuery.sizeOf(context).width < requiredWidth;
         return PopScope(
           onPopInvokedWithResult: (didPop, _) {
-            if (didPop) unawaited(chatController.persist());
+            if (didPop) {
+              _canAutoOpenGeneration = false;
+              unawaited(chatController.persist());
+            }
           },
           child: Scaffold(
             appBar: AppBar(

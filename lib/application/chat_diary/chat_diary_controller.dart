@@ -3,18 +3,23 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
@@ -33,6 +38,8 @@ class ChatDiaryController extends ChangeNotifier {
   final ChatDiaryStore _chatStore;
   ChatDiarySession? chat;
   UnlockedVaultSession? _vaultSession;
+  List<Person> _people = const [];
+  int _peopleEpoch = 0;
   AiClient? _client;
   String? _clientApiKey;
   AiConnectionConfig? _clientConfig;
@@ -41,23 +48,32 @@ class ChatDiaryController extends ChangeNotifier {
   bool _disposed = false;
   bool _handedOff = false;
   bool busy = false;
+  ChatDiaryGeneration? _generation;
   AiErrorCode? _error;
   String? _errorMessageId;
   bool _unexpectedError = false;
+  bool _errorFromGeneration = false;
   AiErrorCode? get error => _error;
   String? get errorMessageId => _errorMessageId;
   bool get unexpectedError => _unexpectedError;
+  bool get errorFromGeneration => _errorFromGeneration;
 
-  void _setError(AiErrorCode? code, {String? messageId}) {
+  void _setError(
+    AiErrorCode? code, {
+    String? messageId,
+    bool fromGeneration = false,
+  }) {
     _error = code;
     _errorMessageId = messageId;
     _unexpectedError = false;
+    _errorFromGeneration = fromGeneration;
   }
 
-  void _setUnexpectedError({String? messageId}) {
+  void _setUnexpectedError({String? messageId, bool fromGeneration = false}) {
     _error = null;
     _errorMessageId = messageId;
     _unexpectedError = true;
+    _errorFromGeneration = fromGeneration;
   }
 
   @override
@@ -113,6 +129,7 @@ class ChatDiaryController extends ChangeNotifier {
     final operationVersion = _operationVersion;
     _vaultSession = vaultSession;
     chat = null;
+    _people = const [];
     _setError(null);
     _handedOff = false;
     final settingsStore = ref.read(aiSettingsStoreProvider);
@@ -354,11 +371,13 @@ class ChatDiaryController extends ChangeNotifier {
     chatSession.images.removeWhere((image) => !referenced.contains(image.id));
   }
 
-  Future<void> suspendForEditor() async {
+  Future<bool> handOffToEditor({required bool Function() canOpen}) async {
     final operationVersion = _operationVersion;
     await persist(throwOnError: true);
     _ensureOperationIsCurrent(operationVersion);
+    if (!canOpen()) return false;
     _handedOff = true;
+    return true;
   }
 
   List<ChatDiaryMessage> get conversationHistory {
@@ -521,15 +540,45 @@ class ChatDiaryController extends ChangeNotifier {
       resolvedThinkingLevel(current) == resolvedThinkingLevel(next) &&
       aiJsonEquals(thinkingRequestFields(current), thinkingRequestFields(next));
 
+  Future<void> _refreshPeople() async {
+    final epoch = ++_peopleEpoch;
+    final chatSession = chat;
+    final vaultSession = _vaultSession;
+    if (chatSession == null ||
+        vaultSession == null ||
+        !chatSession.hidePersonNames) {
+      if (epoch == _peopleEpoch) _people = const [];
+      return;
+    }
+    bool current() =>
+        epoch == _peopleEpoch &&
+        !_disposed &&
+        chat == chatSession &&
+        _vaultSession == vaultSession &&
+        chatSession.hidePersonNames;
+    try {
+      final people = await ref
+          .read(vaultRepositoryProvider)
+          .listPeople(vaultSession);
+      if (!current()) return;
+      _people = people;
+    } on Object {
+      if (!current()) return;
+      _people = const [];
+    }
+  }
+
   Future<ChatDiaryPrivacyProcessor> _createPrivacyProcessor([
     Iterable<ChatDiaryMessage>? messages,
   ]) async {
-    final chatSession = chat!;
-    final vaultSession = _vaultSession!;
-    final people = chatSession.hidePersonNames
-        ? await ref.read(vaultRepositoryProvider).listPeople(vaultSession)
-        : const <Never>[];
-    return ChatDiaryPrivacyProcessor(chatSession, people, messages: messages);
+    await _refreshPeople();
+    final chatSession = chat;
+    if (chatSession == null) throw const AiFailure(AiErrorCode.network);
+    return ChatDiaryPrivacyProcessor(
+      chatSession,
+      chatSession.hidePersonNames ? _people : const <Person>[],
+      messages: messages,
+    );
   }
 
   void _ensureOperationIsCurrent(int operationVersion) {
@@ -575,10 +624,14 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryPrivacyProcessor privacy,
     ChatDiaryMessage message,
   ) {
-    final text = privacy.protect(
-      message.isUser ? message.text : message.outboundText,
-      message.isUser ? message.privateRanges : const [],
-    );
+    final text = message.isUser
+        ? privacy.protect(
+            message.text,
+            message.privateRanges,
+            true,
+            message.personRanges ?? const [],
+          )
+        : privacy.protect(message.outboundText);
     if (message.isUser && message.outboundText != text) {
       message.outboundText = text;
     }
@@ -785,6 +838,7 @@ class ChatDiaryController extends ChangeNotifier {
           parentId: parentId,
           imageIds: List.of(newComposer.imageIds),
           privateRanges: List.of(newComposer.ranges),
+          personRanges: List.of(privacy.requestPersonRanges),
           privateTokenIds: privacy.requestPrivateTokens,
         );
         chatSession.appendMessage(message);
@@ -873,6 +927,13 @@ class ChatDiaryController extends ChangeNotifier {
   }
 
   Future<ChatDiaryGenerationResult> generate(AppLocalizations l10n) async {
+    if (!canGenerate) return ChatDiaryGenerationResult.notGenerated;
+    return ref
+        .read(appSessionProvider.notifier)
+        .runSensitiveTask((_) => _generate(l10n));
+  }
+
+  Future<ChatDiaryGenerationResult> _generate(AppLocalizations l10n) async {
     final chatSession = chat;
     final vaultSession = _vaultSession;
     if (!canGenerate || chatSession == null || vaultSession == null) {
@@ -882,6 +943,13 @@ class ChatDiaryController extends ChangeNotifier {
     busy = true;
     _setError(null);
     final operationVersion = ++_operationVersion;
+    final generations = ref.read(chatDiaryGenerationsProvider.notifier);
+    final generation = generations.begin(
+      vaultId: vaultSession.vaultId,
+      chatId: chatSession.id,
+    );
+    _generation = generation;
+    var phase = ChatDiaryGenerationPhase.failed;
     notifyListeners();
     try {
       final privacy = await _createPrivacyProcessor();
@@ -901,15 +969,23 @@ class ChatDiaryController extends ChangeNotifier {
       _ensureOperationIsCurrent(operationVersion);
       ref.invalidate(chatDiarySessionsProvider);
       final client = await _clientForOperation(operationVersion);
+      generations.update(generation, ChatDiaryGenerationPhase.waiting);
       final output = StringBuffer();
+      var writing = false;
       await for (final delta in client.reply(prompt, messages)) {
         _ensureOperationIsCurrent(operationVersion);
+        if (!writing && delta.isNotEmpty) {
+          writing = true;
+          generations.update(generation, ChatDiaryGenerationPhase.writing);
+        }
         output.write(delta);
       }
       _ensureOperationIsCurrent(operationVersion);
       if (output.toString().trim().isEmpty) {
+        phase = ChatDiaryGenerationPhase.empty;
         return ChatDiaryGenerationResult.empty;
       }
+      generations.update(generation, ChatDiaryGenerationPhase.saving);
       final draft = privacy.restoreDiary(
         output.toString(),
         l10n.chatDiaryPrivateNotes,
@@ -923,14 +999,19 @@ class ChatDiaryController extends ChangeNotifier {
         ensureCurrent: () => _ensureOperationIsCurrent(operationVersion),
       );
       _ensureOperationIsCurrent(operationVersion);
-      _handedOff = true;
+      phase = ChatDiaryGenerationPhase.completed;
       return ChatDiaryGenerationResult.generated;
     } on AiFailure catch (failure) {
-      if (operationVersion == _operationVersion) _setError(failure.code);
+      if (operationVersion == _operationVersion) {
+        _setError(failure.code, fromGeneration: true);
+      }
     } on Object {
-      if (operationVersion == _operationVersion) _setUnexpectedError();
+      if (operationVersion == _operationVersion) {
+        _setUnexpectedError(fromGeneration: true);
+      }
     } finally {
       if (operationVersion == _operationVersion) {
+        _finishGeneration(phase, error: _error);
         busy = false;
         ref.invalidate(chatDiarySessionsProvider);
         notifyListeners();
@@ -942,6 +1023,7 @@ class ChatDiaryController extends ChangeNotifier {
 
   void _cancelOperation({bool closeClient = true}) {
     _operationVersion++;
+    _finishGeneration(ChatDiaryGenerationPhase.cancelled);
     _saveTimer?.cancel();
     if (closeClient) {
       _client?.close();
@@ -957,6 +1039,15 @@ class ChatDiaryController extends ChangeNotifier {
     }
   }
 
+  void _finishGeneration(ChatDiaryGenerationPhase phase, {AiErrorCode? error}) {
+    final generation = _generation;
+    if (generation == null) return;
+    _generation = null;
+    ref
+        .read(chatDiaryGenerationsProvider.notifier)
+        .update(generation, phase, error: error);
+  }
+
   void stop() {
     _cancelOperation();
     unawaited(persist());
@@ -969,6 +1060,7 @@ class ChatDiaryController extends ChangeNotifier {
     _saveTimer?.cancel();
     chat = null;
     _vaultSession = null;
+    _people = const [];
     notifyListeners();
   }
 
@@ -1006,6 +1098,9 @@ class ChatDiaryController extends ChangeNotifier {
         session: vaultSession,
         entryId: entryId ?? chatSession?.generatedEntryId,
       );
+      ref
+          .read(chatDiaryGenerationsProvider.notifier)
+          .forget(vaultSession.vaultId, id);
       if (operationVersion == _operationVersion) {
         chat = null;
         _vaultSession = null;

@@ -25,16 +25,16 @@ void main() {
       AppLanguage.en,
       const ChatDiaryPromptSettings(),
     );
-    expect(zhChat, contains('除非使用者明確要求其他回覆語言'));
+    expect(zhChat, contains('預設使用繁體中文、台灣常用詞與自然標點'));
     expect(
       enChat,
-      contains('Unless the user explicitly requests another response language'),
+      contains('By default use natural English and ordinary punctuation'),
     );
-    expect(zhDiary, contains('除非使用者明確指定這篇日記'));
+    expect(zhDiary, contains('預設使用繁體中文與台灣自然語法'));
     expect(
       enDiary,
       contains(
-        'Unless the user explicitly requests another language for this diary',
+        'By default use natural English. Switch only when the user explicitly specifies the language for this entry.',
       ),
     );
     expect(enChat, isNot(contains('【')));

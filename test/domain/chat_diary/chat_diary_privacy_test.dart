@@ -18,26 +18,49 @@ void main() {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
     final first = privacy.protect('王小明來了');
+    expect(
+      privacy.requestPersonRanges.map(
+        (range) => (range.start, range.end, range.personId),
+      ),
+      [(0, 3, 'person-1')],
+    );
     final second = privacy.protect('和小明聊天');
+    expect(
+      privacy.requestPersonRanges.map(
+        (range) => (range.start, range.end, range.personId),
+      ),
+      [(1, 3, 'person-1')],
+    );
     expect(first, '⟦P01⟧來了');
     expect(second, isNot(contains('小明')));
     expect(chat.originalTextByToken, hasLength(1));
     expect(privacy.restore(first), '王小明來了');
     expect(privacy.protect(first), first);
   });
-  test('人物與私密片段共用短序號，重新載入後沿用同一對照', () {
+  test('已指定的人物區間不再重掃名冊', () {
+    final chat = testChatDiarySession();
+    final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
+    expect(privacy.protect('小明後來才加', const [], true, const []), '小明後來才加');
+    expect(
+      privacy.protect('看到小明', const [], true, const [
+        ChatDiaryPersonRange(2, 4, 'person-1'),
+      ]),
+      '看到⟦P01⟧',
+    );
+  });
+  test('人物與私密片段各自短序號，重新載入後沿用同一對照', () {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
     expect(privacy.protect('王小明'), '⟦P01⟧');
-    expect(privacy.protect('秘密', [const ChatDiaryPrivateRange(0, 2)]), '⟦S02⟧');
+    expect(privacy.protect('秘密', [const ChatDiaryPrivateRange(0, 2)]), '⟦S01⟧');
     final restored = ChatDiarySession.fromJson(chat.toJson());
     final next = ChatDiaryPrivacyProcessor(restored, [person()]);
     final preview = ChatDiaryPrivacyProcessor(restored, [person()]);
     expect(next.protect('小明'), '⟦P01⟧');
-    expect(next.protect('另一段', [const ChatDiaryPrivateRange(0, 3)]), '⟦S03⟧');
+    expect(next.protect('另一段', [const ChatDiaryPrivateRange(0, 3)]), '⟦S02⟧');
     expect(
       preview.protect('新片段', [const ChatDiaryPrivateRange(0, 3)]),
-      '⟦S04⟧',
+      '⟦S03⟧',
     );
   });
 
