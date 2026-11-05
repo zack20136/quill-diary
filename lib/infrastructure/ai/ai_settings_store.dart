@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -60,13 +59,29 @@ class AiSettingsStore {
     });
   }
 
-  Future<void> save(
-    UnlockedVaultSession session, {
-    required AiConnectionSettings connection,
-    required ChatDiarySettings chatDiary,
-  }) {
+  /// 只更新有效連線與模型。提示詞與人物隱藏沿用日記庫裡已存的值。
+  Future<void> updateActiveConnection(
+    UnlockedVaultSession session,
+    AiConnectionConfig next,
+  ) async {
+    final AiStoredSettings current = await read(session);
+    await save(
+      session,
+      current.copyWith(
+        connection: AiConnectionSettings(
+          activeConnectionId: next.connectionId,
+          connections: {
+            ...current.connection.connections,
+            next.connectionId: next,
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> save(UnlockedVaultSession session, AiStoredSettings settings) {
     return _vault.runVaultMutation(() async {
-      await _writeFile(session, connection: connection, chatDiary: chatDiary);
+      await _writeFile(session, settings);
       await _deleteLegacySettings();
     });
   }
@@ -90,10 +105,14 @@ class AiSettingsStore {
       _legacySettled = true;
       return;
     }
+    final legacy = _parseLegacyChat(legacyChat);
     await _writeFile(
       session,
-      connection: _parseConnection(legacyConnection),
-      chatDiary: _parseChat(legacyChat),
+      AiStoredSettings(
+        connection: _parseConnection(legacyConnection),
+        hidePersonNames: legacy.hidePersonNames,
+        chatDiaryPrompts: legacy.prompts,
+      ),
     );
     await _deleteLegacySettings();
   }
@@ -161,17 +180,31 @@ class AiSettingsStore {
     if (decoded is! Map) {
       throw const FormatException('AI 設定格式不正確。');
     }
-    const Set<String> keys = <String>{'version', 'connection', 'chat_diary'};
-    if (decoded.length != keys.length || !keys.every(decoded.containsKey)) {
-      throw const FormatException('AI 設定欄位不正確。');
-    }
     final Object? version = decoded['version'];
+    // 提示詞覆寫與頂層人物隱藏都是第 1 版的可選形狀；舊檔把開關留在
+    // chat_diary，缺少整理覆寫代表使用內建。讀取都不因此改寫。
     if (version is! int || version != DataVersions.aiSettings) {
       throw const FormatException('AI 設定版本不支援。');
     }
+    const requiredKeys = <String>{'version', 'connection'};
+    const allowedKeys = <String>{
+      'version',
+      'connection',
+      'hide_people',
+      'chat_diary',
+      'diary_organization',
+    };
+    if (decoded.length < requiredKeys.length ||
+        !requiredKeys.every(decoded.containsKey) ||
+        !decoded.keys.every(allowedKeys.contains)) {
+      throw const FormatException('AI 設定欄位不正確。');
+    }
     final Object? connection = decoded['connection'];
     final Object? chatDiary = decoded['chat_diary'];
-    if (connection is! Map || chatDiary is! Map) {
+    final Object? organization = decoded['diary_organization'];
+    if (connection is! Map ||
+        (decoded.containsKey('chat_diary') && chatDiary is! Map) ||
+        (decoded.containsKey('diary_organization') && organization is! Map)) {
       throw const FormatException('AI 設定格式不正確。');
     }
     final AiConnectionSettings raw = AiConnectionSettings.fromJson(
@@ -180,27 +213,31 @@ class AiSettingsStore {
     );
     final ({AiConnectionSettings settings, bool writeBack}) adopted =
         adoptConnectionCatalog(raw);
+    final Map<String, dynamic>? chat = chatDiary is Map
+        ? chatDiary.cast<String, dynamic>()
+        : null;
     final AiStoredSettings stored = AiStoredSettings(
       connection: adopted.settings,
-      chatDiary: ChatDiarySettings.fromJson(chatDiary.cast<String, dynamic>()),
+      hidePersonNames: _hidePersonNames(decoded, chat),
+      chatDiaryPrompts: chat == null
+          ? const AiPromptOverrides()
+          : _promptsFromJson(chat),
+      organizationPrompts: organization is Map
+          ? _promptsFromJson(organization.cast<String, dynamic>())
+          : const AiPromptOverrides(),
     );
     if (!adopted.writeBack &&
         aiJsonEquals(connection, adopted.settings.toJson())) {
       return stored;
     }
-    await _writeFile(
-      session,
-      connection: adopted.settings,
-      chatDiary: stored.chatDiary,
-    );
+    await _writeFile(session, stored);
     return stored;
   }
 
   Future<void> _writeFile(
-    UnlockedVaultSession session, {
-    required AiConnectionSettings connection,
-    required ChatDiarySettings chatDiary,
-  }) async {
+    UnlockedVaultSession session,
+    AiStoredSettings settings,
+  ) async {
     final RecoveryMetadata metadata =
         await _vault.readRecoveryMetadata() ??
         (throw StateError('找不到 Recovery metadata。'));
@@ -208,12 +245,21 @@ class AiSettingsStore {
       throw StateError('目前 session 與 vault 資料不一致。');
     }
     final DateTime now = DateTime.now();
+    final Map<String, Object?>? chatPrompts = _promptJson(
+      settings.chatDiaryPrompts,
+    );
+    final Map<String, Object?>? organizationPrompts = _promptJson(
+      settings.organizationPrompts,
+    );
     final Uint8List plainBytes = Uint8List.fromList(
       utf8.encode(
         jsonEncode(<String, Object?>{
           'version': DataVersions.aiSettings,
-          'connection': connection.toJson(),
-          'chat_diary': chatDiary.toJson(),
+          'connection': settings.connection.toJson(),
+          'hide_people': settings.hidePersonNames,
+          if (chatPrompts != null) 'chat_diary': chatPrompts,
+          if (organizationPrompts != null)
+            'diary_organization': organizationPrompts,
         }),
       ),
     );
@@ -249,14 +295,53 @@ class AiSettingsStore {
     }
   }
 
-  ChatDiarySettings _parseChat(String? raw) {
-    if (raw == null) return const ChatDiarySettings();
+  ({bool hidePersonNames, AiPromptOverrides prompts}) _parseLegacyChat(
+    String? raw,
+  ) {
+    const empty = (hidePersonNames: true, prompts: AiPromptOverrides());
+    if (raw == null) return empty;
     try {
       final Object? decoded = jsonDecode(raw);
-      if (decoded is! Map) return const ChatDiarySettings();
-      return ChatDiarySettings.fromJson(decoded.cast<String, dynamic>());
+      if (decoded is! Map) return empty;
+      return _chatFields(decoded.cast<String, dynamic>());
     } on Object {
-      return const ChatDiarySettings();
+      return empty;
     }
+  }
+
+  ({bool hidePersonNames, AiPromptOverrides prompts}) _chatFields(
+    Map<String, dynamic> json,
+  ) => (
+    hidePersonNames: json['hide_people'] as bool? ?? true,
+    prompts: _promptsFromJson(json),
+  );
+
+  bool _hidePersonNames(
+    Map<dynamic, dynamic> json,
+    Map<String, dynamic>? chat,
+  ) {
+    final Object? top = json['hide_people'];
+    if (top is bool) return top;
+    if (top != null) throw const FormatException('AI 設定格式不正確。');
+    final Object? nested = chat?['hide_people'];
+    if (nested is bool) return nested;
+    if (nested != null) throw const FormatException('AI 設定格式不正確。');
+    return true;
+  }
+
+  AiPromptOverrides _promptsFromJson(Map<String, dynamic> json) =>
+      AiPromptOverrides(
+        conversationOverride: json['conversation_prompt_override'] as String?,
+        generationOverride: json['generation_prompt_override'] as String?,
+      );
+
+  Map<String, Object?>? _promptJson(AiPromptOverrides prompts) {
+    final Map<String, Object?> json = {
+      if (prompts.conversationOverride != null)
+        'conversation_prompt_override': prompts.conversationOverride,
+      if (prompts.generationOverride != null)
+        'generation_prompt_override': prompts.generationOverride,
+    };
+    return json.isEmpty ? null : json;
   }
 }

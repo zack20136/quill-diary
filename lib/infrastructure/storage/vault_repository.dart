@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
@@ -986,6 +987,27 @@ class VaultRepository {
     UnlockedVaultSession session, {
     required List<VaultFinding> findings,
   }) => _repair.tryCreateSalvageDraft(session, findings: findings);
+
+  Future<DiaryEntry?> applyOrganizedBody(
+    UnlockedVaultSession session, {
+    required DiaryEntry source,
+    required String body,
+    void Function()? ensureCurrent,
+  }) => runVaultMutation(() async {
+    ensureCurrent?.call();
+    final current = await loadEntry(session, source.id);
+    ensureCurrent?.call();
+    if (current == null ||
+        organizationEntrySignature(current) !=
+            organizationEntrySignature(source)) {
+      return null;
+    }
+    return _saveEntry(
+      session,
+      current.copyWith(markdownBody: body),
+      pendingAttachments: const [],
+    );
+  });
 
   Future<DiaryEntry> saveEntry(
     UnlockedVaultSession session,
@@ -1994,6 +2016,10 @@ class VaultRepository {
   }) async {
     await deleteFileIfExists(record.filePath);
     await deleteChatFilesBesideEntry(record.filePath);
+    final organization = await _pathStrategy.organizationDraftDirectory(
+      record.id,
+    );
+    if (organization.existsSync()) await organization.delete(recursive: true);
     await _deleteAttachmentsOnDisk(date: record.date, attachments: attachments);
   }
 
@@ -2056,6 +2082,8 @@ class VaultRepository {
   }
 
   Future<void> closeUnlockedResources() async {
+    // 鎖定時的最後一次暫存仍需要索引，先完成已排入的寫入再關閉。
+    await _mutationTail;
     await _people.closeUnlockedResources();
     await _indexDatabaseManager.close();
   }

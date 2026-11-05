@@ -1,6 +1,8 @@
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/person_name_matcher.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
 class ChatDiaryPrivacyProcessor {
   ChatDiaryPrivacyProcessor(
@@ -36,14 +38,14 @@ class ChatDiaryPrivacyProcessor {
   final ChatDiarySession chat;
   final PersonNameMatcher _matcher;
   final Set<String> _requestPrivateTokens = {};
-  final List<ChatDiaryPersonRange> _requestPersonRanges = [];
+  final List<PersonTextRange> _requestPersonRanges = [];
   final Set<String> _branchTokens = {};
   final Set<String> _diaryTokens = {};
   final Set<String> _restoreTokens = {};
   var _personOrigin = 0;
   Set<String> get requestPrivateTokens =>
       Set.unmodifiable(_requestPrivateTokens);
-  List<ChatDiaryPersonRange> get requestPersonRanges =>
+  List<PersonTextRange> get requestPersonRanges =>
       List.unmodifiable(_requestPersonRanges);
   String get _tokenPattern => chat.originalTextByToken.isEmpty
       ? r'(?!)'
@@ -52,9 +54,9 @@ class ChatDiaryPrivacyProcessor {
   /// 只替換 [ranges] 標記的區間，不搜尋其他副本。
   String protect(
     String text, [
-    List<ChatDiaryPrivateRange> ranges = const [],
+    List<PrivateTextRange> ranges = const [],
     bool rememberPrivate = true,
-    List<ChatDiaryPersonRange>? personRanges,
+    List<PersonTextRange>? personRanges,
   ]) => _apply(text, ranges, rememberPrivate, false, personRanges);
 
   /// 提示詞另把已經標記過的私密原文換成同一個代號。
@@ -62,10 +64,10 @@ class ChatDiaryPrivacyProcessor {
 
   String _apply(
     String text,
-    List<ChatDiaryPrivateRange> ranges,
+    List<PrivateTextRange> ranges,
     bool rememberPrivate,
     bool propagateKnownSecrets,
-    List<ChatDiaryPersonRange>? personRanges,
+    List<PersonTextRange>? personRanges,
   ) {
     _requestPersonRanges.clear();
     final merged = mergePrivateRanges(ranges, text.length);
@@ -106,8 +108,8 @@ class ChatDiaryPrivacyProcessor {
     return result.toString();
   }
 
-  List<ChatDiaryPersonRange>? _peopleInside(
-    List<ChatDiaryPersonRange>? ranges,
+  List<PersonTextRange>? _peopleInside(
+    List<PersonTextRange>? ranges,
     int start,
     int end,
   ) {
@@ -115,7 +117,7 @@ class ChatDiaryPrivacyProcessor {
     return [
       for (final range in ranges)
         if (range.start >= start && range.end <= end)
-          ChatDiaryPersonRange(
+          PersonTextRange(
             range.start - start,
             range.end - start,
             range.personId,
@@ -126,7 +128,7 @@ class ChatDiaryPrivacyProcessor {
   String _protectText(
     String text,
     Set<String> activeTokens,
-    List<ChatDiaryPersonRange>? personRanges,
+    List<PersonTextRange>? personRanges,
   ) {
     final originals = {
       for (final token in activeTokens) chat.originalTextByToken[token]!: token,
@@ -144,13 +146,13 @@ class ChatDiaryPrivacyProcessor {
     return _protectPeople(protected, personRanges);
   }
 
-  String _protectPeople(String text, List<ChatDiaryPersonRange>? fixed) {
+  String _protectPeople(String text, List<PersonTextRange>? fixed) {
     if (!chat.hidePersonNames) return text;
     final spans =
         fixed ??
         [
           for (final span in _matcher.findSpans(text))
-            ChatDiaryPersonRange(span.start, span.end, span.personId),
+            PersonTextRange(span.start, span.end, span.personId),
         ];
     final tokens = RegExp(_tokenPattern).allMatches(text).toList();
     final result = StringBuffer();
@@ -166,14 +168,10 @@ class ChatDiaryPrivacyProcessor {
       }
       result.write(text.substring(cursor, span.start));
       result.write(
-        _token(
-          'person:${span.personId}',
-          text.substring(span.start, span.end),
-          'P',
-        ),
+        _personToken(span.personId, text.substring(span.start, span.end)),
       );
       _requestPersonRanges.add(
-        ChatDiaryPersonRange(
+        PersonTextRange(
           _personOrigin + span.start,
           _personOrigin + span.end,
           span.personId,
@@ -185,22 +183,33 @@ class ChatDiaryPrivacyProcessor {
     return result.toString();
   }
 
+  String _personToken(String personId, String surface) {
+    final people = {
+      for (final entry in chat.tokenBySourceKey.entries)
+        if (entry.key.startsWith('person:'))
+          entry.key.substring('person:'.length): entry.value,
+    };
+    final token = privacyTokenForPerson(
+      personId: personId,
+      surface: surface,
+      tokenByPersonId: people,
+      originals: chat.originalTextByToken,
+    );
+    chat.tokenBySourceKey['person:$personId'] = token;
+    _restoreTokens.add(token);
+    return token;
+  }
+
   String _token(String sourceKey, String originalText, String prefix) {
     final existing = chat.tokenBySourceKey[sourceKey];
     if (existing != null) {
       _restoreTokens.add(existing);
       return existing;
     }
-    var nextNumber = 1;
-    final pattern = RegExp('^⟦$prefix([0-9A-F]{2,})⟧\$');
-    for (final token in chat.originalTextByToken.keys) {
-      final match = pattern.firstMatch(token);
-      if (match == null) continue;
-      final number = int.parse(match[1]!, radix: 16);
-      if (number >= nextNumber) nextNumber = number + 1;
-    }
-    final number = nextNumber.toRadixString(16).toUpperCase().padLeft(2, '0');
-    final token = '⟦$prefix$number⟧';
+    final token = nextPrivacyToken(
+      chat.originalTextByToken.keys,
+      prefix: prefix,
+    );
     chat.tokenBySourceKey[sourceKey] = token;
     chat.originalTextByToken[token] = originalText;
     _restoreTokens.add(token);
@@ -228,86 +237,4 @@ class ChatDiaryPrivacyProcessor {
           : '$restored\n\n## $privateNotesHeading\n\n${missing.join('\n\n')}',
     );
   }
-}
-
-List<ChatDiaryPrivateRange> mergePrivateRanges(
-  List<ChatDiaryPrivateRange> ranges,
-  int length,
-) {
-  final sorted =
-      ranges
-          .map(
-            (range) => ChatDiaryPrivateRange(
-              range.start.clamp(0, length),
-              range.end.clamp(0, length),
-            ),
-          )
-          .where((range) => range.start < range.end)
-          .toList()
-        ..sort((a, b) => a.start.compareTo(b.start));
-  final result = <ChatDiaryPrivateRange>[];
-  for (final range in sorted) {
-    if (result.isNotEmpty && range.start <= result.last.end) {
-      final last = result.removeLast();
-      result.add(
-        ChatDiaryPrivateRange(
-          last.start,
-          range.end > last.end ? range.end : last.end,
-        ),
-      );
-    } else {
-      result.add(range);
-    }
-  }
-  return result;
-}
-
-List<ChatDiaryPrivateRange> removePrivateRange(
-  List<ChatDiaryPrivateRange> ranges,
-  int start,
-  int end,
-) => [
-  for (final range in ranges)
-    if (end <= range.start || start >= range.end)
-      range
-    else ...[
-      if (range.start < start) ChatDiaryPrivateRange(range.start, start),
-      if (range.end > end) ChatDiaryPrivateRange(end, range.end),
-    ],
-];
-
-/// 編輯碰到私密範圍時，替換的新文字也保持隱藏；不因組字或貼上洩漏。
-List<ChatDiaryPrivateRange> updatePrivateRanges(
-  String oldText,
-  String newText,
-  List<ChatDiaryPrivateRange> ranges,
-) {
-  if (oldText == newText) return ranges;
-  var start = 0;
-  while (start < oldText.length &&
-      start < newText.length &&
-      oldText.codeUnitAt(start) == newText.codeUnitAt(start)) {
-    start++;
-  }
-  var oldEnd = oldText.length;
-  var newEnd = newText.length;
-  while (oldEnd > start &&
-      newEnd > start &&
-      oldText.codeUnitAt(oldEnd - 1) == newText.codeUnitAt(newEnd - 1)) {
-    oldEnd--;
-    newEnd--;
-  }
-  final delta = newText.length - oldText.length;
-  return mergePrivateRanges([
-    for (final range in ranges)
-      if (oldEnd < range.start)
-        ChatDiaryPrivateRange(range.start + delta, range.end + delta)
-      else if (start > range.end)
-        range
-      else
-        ChatDiaryPrivateRange(
-          range.start < start ? range.start : start,
-          range.end + delta > newEnd ? range.end + delta : newEnd,
-        ),
-  ], newText.length);
 }

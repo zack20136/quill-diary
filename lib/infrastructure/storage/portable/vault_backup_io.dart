@@ -83,6 +83,7 @@ class VaultBackupIo {
               (segments.first == 'index' ||
                   segments.first == 'quarantine' ||
                   segments.first == 'chat_diary_drafts' ||
+                  segments.first == 'diary_organization_drafts' ||
                   segments.first == 'chat_diary_remote_cleanup' ||
                   segments.any(
                     (s) => s.endsWith('.tmp') || s.endsWith('.previous'),

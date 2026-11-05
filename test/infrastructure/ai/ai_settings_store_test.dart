@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
+import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -97,11 +97,11 @@ void main() {
     );
     await storage.write(
       key: 'chat_diary_settings',
-      value: jsonEncode(
-        const ChatDiarySettings(
-          prompts: ChatDiaryPromptSettings(conversationOverride: '舊提示詞'),
-        ).toJson(),
-      ),
+      value: jsonEncode(<String, Object?>{
+        'conversation_prompt_override': '舊提示詞',
+        'generation_prompt_override': null,
+        'hide_people': true,
+      }),
     );
     final store = AiSettingsStore(
       pathStrategy: harness.pathStrategy,
@@ -112,7 +112,7 @@ void main() {
     await store.saveApiKey(connection, 'synthetic-secret-key');
     final stored = await store.read(setup.session);
     expect(stored.connection.activeConfig.model, 'moved-model');
-    expect(stored.chatDiary.prompts.conversationOverride, '舊提示詞');
+    expect(stored.chatDiaryPrompts.conversationOverride, '舊提示詞');
     expect(await storage.read(key: 'settings'), isNull);
     expect(await storage.read(key: 'chat_diary_settings'), isNull);
     expect(await storage.read(key: 'key_openai'), 'synthetic-secret-key');
@@ -138,17 +138,17 @@ void main() {
     );
     await store.save(
       setup.session,
-      connection: const AiConnectionSettings(
-        activeConnectionId: 'gemini',
-        connections: {
-          'gemini': AiConnectionConfig(
-            provider: AiProvider.gemini,
-            model: 'vault-model',
-          ),
-        },
-      ),
-      chatDiary: const ChatDiarySettings(
-        prompts: ChatDiaryPromptSettings(generationOverride: '日記庫提示詞'),
+      const AiStoredSettings(
+        connection: AiConnectionSettings(
+          activeConnectionId: 'gemini',
+          connections: {
+            'gemini': AiConnectionConfig(
+              provider: AiProvider.gemini,
+              model: 'vault-model',
+            ),
+          },
+        ),
+        chatDiaryPrompts: AiPromptOverrides(generationOverride: '日記庫提示詞'),
       ),
     );
     await storage.write(
@@ -159,11 +159,11 @@ void main() {
     );
     await storage.write(
       key: 'chat_diary_settings',
-      value: jsonEncode(
-        const ChatDiarySettings(
-          prompts: ChatDiaryPromptSettings(generationOverride: '不該採用'),
-        ).toJson(),
-      ),
+      value: jsonEncode(<String, Object?>{
+        'conversation_prompt_override': null,
+        'generation_prompt_override': '不該採用',
+        'hide_people': true,
+      }),
     );
     final reread = AiSettingsStore(
       pathStrategy: harness.pathStrategy,
@@ -173,94 +173,164 @@ void main() {
     );
     final stored = await reread.read(setup.session);
     expect(stored.connection.activeConfig.model, 'vault-model');
-    expect(stored.chatDiary.prompts.generationOverride, '日記庫提示詞');
+    expect(stored.chatDiaryPrompts.generationOverride, '日記庫提示詞');
     expect(await storage.read(key: 'settings'), isNull);
     expect(await storage.read(key: 'chat_diary_settings'), isNull);
   });
 
   for (final outdatedCatalog in [false, true]) {
-    test('版本不變且${outdatedCatalog ? '舊' : '最新'}目錄時依舊欄位移轉，第二次不重寫加密檔', () async {
-      final harness = await VaultTestHarness.create();
-      addTearDown(harness.dispose);
-      final setup = await harness.repository.setupRecoveryKey();
-      final metadata = (await harness.repository.readRecoveryMetadata())!;
-      final store = AiSettingsStore(
-        pathStrategy: harness.pathStrategy,
-        cryptoService: LocalCryptoService(),
-        repository: harness.repository,
-      );
-      final now = DateTime(2026, 10, 30);
-      final encrypted = await LocalCryptoService().encryptBytes(
-        documentId: AiSettingsStore.documentId,
-        vaultId: setup.session.vaultId,
-        plaintextBytes: Uint8List.fromList(
-          utf8.encode(
-            jsonEncode({
-              'version': 1,
-              'connection': {
-                'provider': 'openai',
-                'configs': {
-                  'openai': outdatedCatalog
-                      ? {
-                          'provider': 'openai',
-                          'default_model': 'gpt-5.6-sol',
-                          'enabled_models': ['gpt-5.6-sol'],
-                          'added_models': <String>[],
-                          'known_builtin_models': [
-                            'gpt-5.6-sol',
-                            'gpt-6.1-terra',
-                          ],
-                          'thinking_levels': {'gpt-5.6-sol': 'high'},
-                        }
-                      : adoptCatalogModels(defaultConnection(AiProvider.openai))
-                            .toStoredJson(),
-                  'xai': {
-                    'provider': 'xai',
-                    'default_model': 'grok-4.3',
-                    'enabled_models': ['grok-4.3'],
-                    'added_models': <String>[],
-                    'known_builtin_models': builtinModelsFor(AiProvider.xai),
-                    'thinking_levels': {'grok-4.3': 'high'},
+    test(
+      '${outdatedCatalog ? '舊' : '最新'}目錄的第 1 版連線欄位仍回寫為第 1 版，空覆寫不寫出',
+      () async {
+        final harness = await VaultTestHarness.create();
+        addTearDown(harness.dispose);
+        final setup = await harness.repository.setupRecoveryKey();
+        final metadata = (await harness.repository.readRecoveryMetadata())!;
+        final store = AiSettingsStore(
+          pathStrategy: harness.pathStrategy,
+          cryptoService: LocalCryptoService(),
+          repository: harness.repository,
+        );
+        final now = DateTime(2026, 10, 30);
+        final encrypted = await LocalCryptoService().encryptBytes(
+          documentId: AiSettingsStore.documentId,
+          vaultId: setup.session.vaultId,
+          plaintextBytes: Uint8List.fromList(
+            utf8.encode(
+              jsonEncode({
+                'version': 1,
+                'connection': {
+                  'provider': 'openai',
+                  'configs': {
+                    'openai': outdatedCatalog
+                        ? {
+                            'provider': 'openai',
+                            'default_model': 'gpt-5.6-sol',
+                            'enabled_models': ['gpt-5.6-sol'],
+                            'added_models': <String>[],
+                            'known_builtin_models': [
+                              'gpt-5.6-sol',
+                              'gpt-6.1-terra',
+                            ],
+                            'thinking_levels': {'gpt-5.6-sol': 'high'},
+                          }
+                        : adoptCatalogModels(
+                            defaultConnection(AiProvider.openai),
+                          ).toStoredJson(),
+                    'xai': {
+                      'provider': 'xai',
+                      'default_model': 'grok-4.3',
+                      'enabled_models': ['grok-4.3'],
+                      'added_models': <String>[],
+                      'known_builtin_models': builtinModelsFor(AiProvider.xai),
+                      'thinking_levels': {'grok-4.3': 'high'},
+                    },
                   },
                 },
-              },
-              'chat_diary': const ChatDiarySettings(
-                prompts: ChatDiaryPromptSettings(generationOverride: '保留自訂提示詞'),
-              ).toJson(),
-            }),
+                'chat_diary': {
+                  'conversation_prompt_override': null,
+                  'generation_prompt_override': '保留自訂提示詞',
+                  'hide_people': true,
+                },
+              }),
+            ),
           ),
-        ),
-        contentType: 'application/json',
-        recoveryWrapKey: requireRecoveryWrapKey(setup.session),
-        recoverySlotKdf: metadata.kdf,
-        createdAt: now,
-        updatedAt: now,
-      );
-      final file = File(await harness.pathStrategy.aiSettingsPath());
-      await file.writeAsBytes(encrypted.toFileBytes());
-      final stored = await store.read(setup.session);
-      final decoded = jsonDecode(
-        await _readSettingsPlaintext(harness, setup.session),
-      ) as Map;
-      expect(decoded['version'], DataVersions.aiSettings);
-      expect(decoded['version'], 1);
-      expect((decoded['connection'] as Map)['active_connection_id'], 'openai');
-      expect((decoded['connection'] as Map)['connections'], isA<Map>());
-      expect(stored.connection.activeConfig.model, 'gpt-6.1-terra');
-      expect(stored.connection.activeConfig.thinkingLevels, isEmpty);
-      expect(
-        resolvedThinkingLevel(stored.connection.connectionFor('xai')),
-        AiThinkingLevel.high,
-      );
-      expect(stored.chatDiary.prompts.generationOverride, '保留自訂提示詞');
-      final saved = await file.readAsBytes();
-      final plain = await _readSettingsPlaintext(harness, setup.session);
-      expect(plain, isNot(contains('gpt-5.6-sol')));
-      expect(plain, contains('thinking_levels'));
-      await store.read(setup.session);
-      expect(await file.readAsBytes(), saved);
-    });
+          contentType: 'application/json',
+          recoveryWrapKey: requireRecoveryWrapKey(setup.session),
+          recoverySlotKdf: metadata.kdf,
+          createdAt: now,
+          updatedAt: now,
+        );
+        final file = File(await harness.pathStrategy.aiSettingsPath());
+        await file.writeAsBytes(encrypted.toFileBytes());
+        final stored = await store.read(setup.session);
+        final decoded = jsonDecode(
+          await _readSettingsPlaintext(harness, setup.session),
+        ) as Map;
+        expect(decoded['version'], DataVersions.aiSettings);
+        expect(decoded['hide_people'], isTrue);
+        expect(decoded.containsKey('diary_organization'), isFalse);
+        expect(decoded['chat_diary'], {
+          'generation_prompt_override': '保留自訂提示詞',
+        });
+        expect(stored.organizationPrompts.conversationOverride, isNull);
+        expect(stored.organizationPrompts.generationOverride, isNull);
+        expect(
+          (decoded['connection'] as Map)['active_connection_id'],
+          'openai',
+        );
+        expect((decoded['connection'] as Map)['connections'], isA<Map>());
+        expect(stored.connection.activeConfig.model, 'gpt-6.1-terra');
+        expect(stored.connection.activeConfig.thinkingLevels, isEmpty);
+        expect(
+          resolvedThinkingLevel(stored.connection.connectionFor('xai')),
+          AiThinkingLevel.high,
+        );
+        expect(stored.chatDiaryPrompts.generationOverride, '保留自訂提示詞');
+        final saved = await file.readAsBytes();
+        final plain = await _readSettingsPlaintext(harness, setup.session);
+        expect(plain, isNot(contains('gpt-5.6-sol')));
+        expect(plain, contains('thinking_levels'));
+        await store.read(setup.session);
+        expect(await file.readAsBytes(), saved);
+      },
+    );
   }
+
+  test('第 1 版連線已是目前欄位時，不因舊的人物隱藏位置或缺少整理提示詞而改寫', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final metadata = (await harness.repository.readRecoveryMetadata())!;
+    final store = AiSettingsStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: LocalCryptoService(),
+      repository: harness.repository,
+    );
+    await store.save(
+      setup.session,
+      const AiStoredSettings(
+        hidePersonNames: false,
+        chatDiaryPrompts: AiPromptOverrides(conversationOverride: '保留'),
+      ),
+    );
+    final current = jsonDecode(
+      await _readSettingsPlaintext(harness, setup.session),
+    ) as Map<String, Object?>;
+    current['version'] = 1;
+    current.remove('hide_people');
+    current.remove('diary_organization');
+    current['chat_diary'] = {
+      'conversation_prompt_override': '保留',
+      'generation_prompt_override': null,
+      'hide_people': false,
+    };
+    final now = DateTime(2026, 10, 30);
+    final encrypted = await LocalCryptoService().encryptBytes(
+      documentId: AiSettingsStore.documentId,
+      vaultId: setup.session.vaultId,
+      plaintextBytes: Uint8List.fromList(utf8.encode(jsonEncode(current))),
+      contentType: 'application/json',
+      recoveryWrapKey: requireRecoveryWrapKey(setup.session),
+      recoverySlotKdf: metadata.kdf,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final file = File(await harness.pathStrategy.aiSettingsPath());
+    await file.writeAsBytes(encrypted.toFileBytes());
+    final before = await file.readAsBytes();
+    final stored = await store.read(setup.session);
+    expect(await file.readAsBytes(), before);
+    expect(stored.hidePersonNames, isFalse);
+    expect(stored.chatDiaryPrompts.conversationOverride, '保留');
+    expect(stored.organizationPrompts.conversationOverride, isNull);
+    final decoded =
+        jsonDecode(await _readSettingsPlaintext(harness, setup.session)) as Map;
+    expect(decoded['version'], 1);
+    expect(decoded.containsKey('hide_people'), isFalse);
+    expect(decoded.containsKey('diary_organization'), isFalse);
+    expect((decoded['chat_diary'] as Map)['hide_people'], isFalse);
+  });
 
   test('完整備份包含 AI 設定，還原後仍讀得到且不含金鑰', () async {
     final harness = await VaultTestHarness.create();
@@ -297,13 +367,18 @@ void main() {
     );
     await store.save(
       setup.session,
-      connection: AiConnectionSettings(
-        activeConnectionId: 'custom',
-        connections: {'custom': connection, second.connectionId: second},
-      ),
-      chatDiary: const ChatDiarySettings(
-        prompts: ChatDiaryPromptSettings(conversationOverride: '備份提示詞'),
+      AiStoredSettings(
+        connection: AiConnectionSettings(
+          activeConnectionId: 'custom',
+          connections: {'custom': connection, second.connectionId: second},
+        ),
         hidePersonNames: false,
+        chatDiaryPrompts: const AiPromptOverrides(
+          conversationOverride: '備份提示詞',
+        ),
+        organizationPrompts: const AiPromptOverrides(
+          generationOverride: '整理覆寫',
+        ),
       ),
     );
     await store.saveApiKey(connection, 'backup-synthetic-key');
@@ -346,8 +421,16 @@ void main() {
       await _readSettingsPlaintext(harness, setup.session),
       isNot(contains('backup-second-key')),
     );
-    expect(restored.chatDiary.prompts.conversationOverride, '備份提示詞');
-    expect(restored.chatDiary.hidePersonNames, isFalse);
+    expect(restored.chatDiaryPrompts.conversationOverride, '備份提示詞');
+    expect(restored.organizationPrompts.generationOverride, '整理覆寫');
+    expect(restored.organizationPrompts.conversationOverride, isNull);
+    expect(
+      jsonDecode(
+        await _readSettingsPlaintext(harness, setup.session),
+      )['version'],
+      DataVersions.aiSettings,
+    );
+    expect(restored.hidePersonNames, isFalse);
     expect(
       await storage.read(key: _customKey(connection)),
       'backup-synthetic-key',
@@ -383,11 +466,11 @@ void main() {
     );
     await storage.write(
       key: 'chat_diary_settings',
-      value: jsonEncode(
-        const ChatDiarySettings(
-          prompts: ChatDiaryPromptSettings(conversationOverride: '打包前提示詞'),
-        ).toJson(),
-      ),
+      value: jsonEncode(<String, Object?>{
+        'conversation_prompt_override': '打包前提示詞',
+        'generation_prompt_override': null,
+        'hide_people': true,
+      }),
     );
     final store = AiSettingsStore(
       pathStrategy: harness.pathStrategy,

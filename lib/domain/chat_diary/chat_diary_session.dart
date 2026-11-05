@@ -1,35 +1,9 @@
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
-class ChatDiaryPrivateRange {
-  const ChatDiaryPrivateRange(this.start, this.end);
-  final int start;
-  final int end;
-  Map<String, int> toJson() => {'start': start, 'end': end};
-  factory ChatDiaryPrivateRange.fromJson(Map<String, dynamic> json) =>
-      ChatDiaryPrivateRange(json['start'] as int, json['end'] as int);
-}
-
-class ChatDiaryPersonRange {
-  const ChatDiaryPersonRange(this.start, this.end, this.personId);
-  final int start;
-  final int end;
-  final String personId;
-  Map<String, Object?> toJson() => {
-    'start': start,
-    'end': end,
-    'person_id': personId,
-  };
-  factory ChatDiaryPersonRange.fromJson(Map<String, dynamic> json) =>
-      ChatDiaryPersonRange(
-        json['start'] as int,
-        json['end'] as int,
-        json['person_id'] as String,
-      );
-}
-
 /// 從已送出的外送文字還原當時命中的人物區間。對不上就回空清單。
-List<ChatDiaryPersonRange> chatDiaryPersonRangesFromOutbound({
+List<PersonTextRange> chatDiaryPersonRangesFromOutbound({
   required String text,
   required String outbound,
   required Map<String, String> originalTextByToken,
@@ -42,7 +16,7 @@ List<ChatDiaryPersonRange> chatDiaryPersonRangesFromOutbound({
       if (entry.key.startsWith('person:'))
         entry.value: entry.key.substring('person:'.length),
   };
-  final ranges = <ChatDiaryPersonRange>[];
+  final ranges = <PersonTextRange>[];
   var textIndex = 0;
   var outboundIndex = 0;
   for (var i = 0; i < matches.length;) {
@@ -79,7 +53,7 @@ List<ChatDiaryPersonRange> chatDiaryPersonRangesFromOutbound({
       final personId = personIds[token];
       if (token.startsWith('⟦P') && personId != null && surface.isNotEmpty) {
         ranges.add(
-          ChatDiaryPersonRange(
+          PersonTextRange(
             textIndex + local,
             textIndex + local + surface.length,
             personId,
@@ -198,8 +172,8 @@ class ChatDiaryMessage {
   final List<String> imageIds;
   ChatDiaryMessageStatus status;
   String? parentId;
-  final List<ChatDiaryPrivateRange> privateRanges;
-  List<ChatDiaryPersonRange>? personRanges;
+  final List<PrivateTextRange> privateRanges;
+  List<PersonTextRange>? personRanges;
   final Set<String> privateTokenIds;
   String? errorCode;
   String systemPromptSnapshot;
@@ -212,14 +186,14 @@ class ChatDiaryMessage {
     'outbound_text': outboundText,
     'image_ids': imageIds,
     'status': status.name,
-    'parent_id': parentId,
+    if (parentId != null) 'parent_id': parentId,
     'private_ranges': privateRanges.map((range) => range.toJson()).toList(),
     if (personRanges != null)
       'person_ranges': personRanges!.map((range) => range.toJson()).toList(),
     'private_token_ids': privateTokenIds.toList(),
-    'error_code': errorCode,
+    if (errorCode != null) 'error_code': errorCode,
     'system_prompt': systemPromptSnapshot,
-    'connection': connectionSnapshot?.toJson(),
+    if (connectionSnapshot != null) 'connection': connectionSnapshot!.toJson(),
   };
   factory ChatDiaryMessage.fromJson(Map<String, dynamic> json) =>
       ChatDiaryMessage(
@@ -234,7 +208,7 @@ class ChatDiaryMessage {
         parentId: json['parent_id'] as String?,
         privateRanges: (json['private_ranges'] as List? ?? [])
             .map(
-              (range) => ChatDiaryPrivateRange.fromJson(
+              (range) => PrivateTextRange.fromJson(
                 (range as Map).cast<String, dynamic>(),
               ),
             )
@@ -242,7 +216,7 @@ class ChatDiaryMessage {
         personRanges: json.containsKey('person_ranges')
             ? (json['person_ranges'] as List)
                   .map(
-                    (range) => ChatDiaryPersonRange.fromJson(
+                    (range) => PersonTextRange.fromJson(
                       (range as Map).cast<String, dynamic>(),
                     ),
                   )
@@ -261,34 +235,6 @@ class ChatDiaryMessage {
       );
 }
 
-class ChatDiaryComposerSnapshot {
-  ChatDiaryComposerSnapshot({
-    required this.text,
-    required this.ranges,
-    required this.imageIds,
-  });
-  final String text;
-  final List<ChatDiaryPrivateRange> ranges;
-  final List<String> imageIds;
-  Map<String, Object?> toJson() => {
-    'text': text,
-    'ranges': ranges.map((range) => range.toJson()).toList(),
-    'image_ids': imageIds,
-  };
-  factory ChatDiaryComposerSnapshot.fromJson(Map<String, dynamic> json) =>
-      ChatDiaryComposerSnapshot(
-        text: json['text'] as String,
-        ranges: (json['ranges'] as List)
-            .map(
-              (range) => ChatDiaryPrivateRange.fromJson(
-                (range as Map).cast<String, dynamic>(),
-              ),
-            )
-            .toList(),
-        imageIds: (json['image_ids'] as List).cast<String>(),
-      );
-}
-
 class ChatDiarySession {
   ChatDiarySession({
     required this.id,
@@ -302,7 +248,7 @@ class ChatDiarySession {
     Map<String, String>? originalTextByToken,
     Map<String, String>? tokenBySourceKey,
     this.composerText = '',
-    List<ChatDiaryPrivateRange>? composerRanges,
+    List<PrivateTextRange>? composerRanges,
     List<String>? pendingImageIds,
     this.generationPromptSnapshot = '',
     this.generationConnectionSnapshot,
@@ -340,7 +286,7 @@ class ChatDiarySession {
   final Map<String, String> originalTextByToken;
   final Map<String, String> tokenBySourceKey;
   String composerText;
-  List<ChatDiaryPrivateRange> composerRanges;
+  List<PrivateTextRange> composerRanges;
   final List<String> pendingImageIds;
   String generationPromptSnapshot;
   AiConnectionConfig? generationConnectionSnapshot;
@@ -351,7 +297,7 @@ class ChatDiarySession {
   String? generatedFromMessageId;
   String? generatedDraftSignature;
   String? editingMessageId;
-  ChatDiaryComposerSnapshot? editBackup;
+  AiComposerSnapshot? editBackup;
   static const _root = '__root__';
 
   Set<String> get referencedImageIds => {
@@ -372,12 +318,12 @@ class ChatDiarySession {
       (editBackup?.text.trim().isNotEmpty ?? false) ||
       (editBackup?.imageIds.isNotEmpty ?? false);
 
-  ChatDiaryComposerSnapshot get composer => ChatDiaryComposerSnapshot(
+  AiComposerSnapshot get composer => AiComposerSnapshot(
     text: composerText,
     ranges: List.of(composerRanges),
     imageIds: List.of(pendingImageIds),
   );
-  set composer(ChatDiaryComposerSnapshot snapshot) {
+  set composer(AiComposerSnapshot snapshot) {
     composerText = snapshot.text;
     composerRanges = List.of(snapshot.ranges);
     pendingImageIds
@@ -502,15 +448,18 @@ class ChatDiarySession {
       'composer_ranges': composerRanges.map((range) => range.toJson()).toList(),
       'pending_image_ids': pendingImageIds,
       'diary_prompt': generationPromptSnapshot,
-      'generation_connection': generationConnectionSnapshot?.toJson(),
-      'generated_entry_id': generatedEntryId,
+      if (generationConnectionSnapshot != null)
+        'generation_connection': generationConnectionSnapshot!.toJson(),
+      if (generatedEntryId != null) 'generated_entry_id': generatedEntryId,
       'finished': finished,
       'selected_children': selectedChildren,
       'opening_message': openingMessage,
-      'generated_from_message_id': generatedFromMessageId,
-      'generated_draft_signature': generatedDraftSignature,
-      'editing_message_id': editingMessageId,
-      'edit_backup': editBackup?.toJson(),
+      if (generatedFromMessageId != null)
+        'generated_from_message_id': generatedFromMessageId,
+      if (generatedDraftSignature != null)
+        'generated_draft_signature': generatedDraftSignature,
+      if (editingMessageId != null) 'editing_message_id': editingMessageId,
+      if (editBackup != null) 'edit_backup': editBackup!.toJson(),
     };
   }
 
@@ -547,7 +496,7 @@ class ChatDiarySession {
       composerText: json['composer_text'] as String? ?? '',
       composerRanges: (json['composer_ranges'] as List? ?? [])
           .map(
-            (range) => ChatDiaryPrivateRange.fromJson(
+            (range) => PrivateTextRange.fromJson(
               (range as Map).cast<String, dynamic>(),
             ),
           )
@@ -570,7 +519,7 @@ class ChatDiarySession {
       editingMessageId: json['editing_message_id'] as String?,
       editBackup: json['edit_backup'] == null
           ? null
-          : ChatDiaryComposerSnapshot.fromJson(
+          : AiComposerSnapshot.fromJson(
               (json['edit_backup'] as Map).cast<String, dynamic>(),
             ),
     );

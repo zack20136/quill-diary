@@ -4,13 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_segmented_choice_bar.dart';
 
 class PersonalizationLanguageSectionBody extends StatelessWidget {
   const PersonalizationLanguageSectionBody({
@@ -27,14 +27,14 @@ class PersonalizationLanguageSectionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsSegmentedChoiceBar<AppLanguage>(
-          choices: <SettingsSegmentChoice<AppLanguage>>[
-            SettingsSegmentChoice<AppLanguage>(
+        AppSegmentedChoiceBar<AppLanguage>(
+          choices: <AppSegmentChoice<AppLanguage>>[
+            AppSegmentChoice<AppLanguage>(
               value: AppLanguage.zh,
               label: context.l10n.languageNameZh,
               icon: Icons.translate_rounded,
             ),
-            SettingsSegmentChoice<AppLanguage>(
+            AppSegmentChoice<AppLanguage>(
               value: AppLanguage.en,
               label: context.l10n.languageNameEn,
               icon: Icons.language_rounded,
@@ -74,25 +74,22 @@ class PersonalizationSessionTimeoutSectionBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Expanded(
-              child:
-                  SettingsSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
-                    choices: _options
-                        .map(
-                          (SessionBackgroundTimeoutMinutes value) =>
-                              SettingsSegmentChoice<
-                                SessionBackgroundTimeoutMinutes
-                              >(
-                                value: value,
-                                label: '${value.minutes}',
-                                icon: null,
-                                flex: 1,
-                                enabled: enabled,
-                              ),
-                        )
-                        .toList(growable: false),
-                    selected: selected,
-                    onSelected: onSelected,
-                  ),
+              child: AppSegmentedChoiceBar<SessionBackgroundTimeoutMinutes>(
+                choices: _options
+                    .map(
+                      (SessionBackgroundTimeoutMinutes value) =>
+                          AppSegmentChoice<SessionBackgroundTimeoutMinutes>(
+                            value: value,
+                            label: '${value.minutes}',
+                            icon: null,
+                            flex: 1,
+                            enabled: enabled,
+                          ),
+                    )
+                    .toList(growable: false),
+                selected: selected,
+                onSelected: onSelected,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
@@ -132,21 +129,21 @@ class PersonalizationImageCompressSectionBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SettingsSegmentedChoiceBar<ImageCompressPreset>(
-          choices: <SettingsSegmentChoice<ImageCompressPreset>>[
-            SettingsSegmentChoice<ImageCompressPreset>(
+        AppSegmentedChoiceBar<ImageCompressPreset>(
+          choices: <AppSegmentChoice<ImageCompressPreset>>[
+            AppSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.standard,
               label: context.l10n.personalizationImageCompressStandardLabel,
               icon: Icons.photo_size_select_small_outlined,
               flex: 2,
             ),
-            SettingsSegmentChoice<ImageCompressPreset>(
+            AppSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.high,
               label: context.l10n.personalizationImageCompressHighLabel,
               icon: Icons.high_quality_outlined,
               flex: 2,
             ),
-            SettingsSegmentChoice<ImageCompressPreset>(
+            AppSegmentChoice<ImageCompressPreset>(
               value: ImageCompressPreset.original,
               label: context.l10n.personalizationImageCompressOriginalLabel,
               icon: Icons.photo_size_select_large_outlined,
@@ -181,21 +178,21 @@ class PersonalizationAppearanceSectionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsSegmentedChoiceBar<AppThemeModePreference>(
-      choices: <SettingsSegmentChoice<AppThemeModePreference>>[
-        SettingsSegmentChoice<AppThemeModePreference>(
+    return AppSegmentedChoiceBar<AppThemeModePreference>(
+      choices: <AppSegmentChoice<AppThemeModePreference>>[
+        AppSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.system,
           label: context.l10n.personalizationAppearanceSystemLabel,
           icon: Icons.brightness_auto_rounded,
           flex: 3,
         ),
-        SettingsSegmentChoice<AppThemeModePreference>(
+        AppSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.light,
           label: context.l10n.personalizationAppearanceLightLabel,
           icon: Icons.light_mode_outlined,
           flex: 2,
         ),
-        SettingsSegmentChoice<AppThemeModePreference>(
+        AppSegmentChoice<AppThemeModePreference>(
           value: AppThemeModePreference.dark,
           label: context.l10n.personalizationAppearanceDarkLabel,
           icon: Icons.dark_mode_outlined,

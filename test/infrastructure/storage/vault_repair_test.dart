@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -16,6 +17,7 @@ import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
+import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/vault/manifest_write_test_crypto_service.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
@@ -1963,6 +1965,204 @@ missing asset
       9,
     );
   });
+
+  test('可讀且對得上的聊天留在原位', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final String entryId = await harness.saveSimpleEntry(setup);
+    final String chatPath = await harness.pathStrategy.entryChatAbsolutePath(
+      date: const DateOnly('2026-05-24'),
+      entryId: entryId,
+    );
+    final ChatDiarySession session = testChatDiarySession(
+      vaultId: setup.session.vaultId,
+    )..generatedEntryId = entryId;
+    await _writeEncryptedChat(
+      harness: harness,
+      setup: setup,
+      path: chatPath,
+      session: session,
+    );
+
+    final VaultInspectReport inspect = await harness.repository
+        .inspectVaultWithReport(setup.session);
+    final VaultRepairReport repair = await harness.repository
+        .repairVaultWithReport(setup.session);
+
+    expect(File(chatPath).existsSync(), isTrue);
+    expect(
+      inspect.findings.where(
+        (VaultFinding finding) =>
+            finding.kind == VaultRepairIssueKind.unreadableChat ||
+            finding.kind == VaultRepairIssueKind.orphanChat,
+      ),
+      isEmpty,
+    );
+    expect(
+      repair.unresolvedFindings.where(
+        (VaultFinding finding) =>
+            finding.kind == VaultRepairIssueKind.unreadableChat ||
+            finding.kind == VaultRepairIssueKind.orphanChat,
+      ),
+      isEmpty,
+    );
+  });
+
+  test('讀不了的聊天只隔離聊天檔', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final String entryId = await harness.saveSimpleEntry(setup);
+    final String entryPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-05-24'),
+      entryId: entryId,
+    );
+    final String chatPath = await harness.pathStrategy.entryChatAbsolutePath(
+      date: const DateOnly('2026-05-24'),
+      entryId: entryId,
+    );
+    final ChatDiarySession session = testChatDiarySession(
+      vaultId: setup.session.vaultId,
+    )..generatedEntryId = generateEntryId();
+    await _writeEncryptedChat(
+      harness: harness,
+      setup: setup,
+      path: chatPath,
+      session: session,
+    );
+    await File('$chatPath.previous').writeAsBytes(<int>[1, 2, 3]);
+
+    final VaultInspectReport inspect = await harness.repository
+        .inspectVaultWithReport(setup.session);
+    expect(
+      inspect.findings.any(
+        (VaultFinding finding) =>
+            finding.kind == VaultRepairIssueKind.unreadableChat &&
+            finding.entryId == entryId,
+      ),
+      isTrue,
+    );
+    expect(File(chatPath).existsSync(), isTrue);
+    expect(File(entryPath).existsSync(), isTrue);
+
+    final VaultRepairReport repair = await harness.repository
+        .repairVaultWithReport(setup.session);
+    final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
+
+    expect(File(chatPath).existsSync(), isFalse);
+    expect(File('$chatPath.previous').existsSync(), isFalse);
+    expect(File(entryPath).existsSync(), isTrue);
+    expect(
+      repair.unresolvedFindings.where(
+        (VaultFinding finding) =>
+            finding.kind == VaultRepairIssueKind.unreadableChat,
+      ),
+      isEmpty,
+    );
+    expect(
+      Directory(p.join(vaultRoot.path, 'quarantine'))
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((File file) => file.path.contains('.chat.json.enc')),
+      isNotEmpty,
+    );
+  });
+
+  test('沒有日記的聊天只隔離聊天檔', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
+    final File orphan = File(
+      p.join(vaultRoot.path, 'entries', '2026', '05', 'missing.chat.json.enc'),
+    );
+    await orphan.parent.create(recursive: true);
+    await orphan.writeAsBytes(<int>[9, 9, 9]);
+    await File('${orphan.path}.tmp').writeAsBytes(<int>[4]);
+
+    final VaultInspectReport inspect = await harness.repository
+        .inspectVaultWithReport(setup.session);
+    expect(
+      inspect.findings.any(
+        (VaultFinding finding) =>
+            finding.kind == VaultRepairIssueKind.orphanChat &&
+            finding.entryId == null,
+      ),
+      isTrue,
+    );
+
+    await harness.repository.repairVaultWithReport(setup.session);
+
+    expect(orphan.existsSync(), isFalse);
+    expect(File('${orphan.path}.tmp').existsSync(), isFalse);
+    expect(
+      Directory(p.join(vaultRoot.path, 'quarantine'))
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((File file) => p.basename(file.path).startsWith('missing.')),
+      isNotEmpty,
+    );
+  });
+
+  test('修復清掉離開資料夾的日記時刪除整理草稿，搬回原位則保留', () async {
+    final RecoverySetupResult setup = await harness.repository
+        .setupRecoveryKey();
+    final String keptId = await harness.saveSimpleEntry(setup, title: 'Kept');
+    final String movedId = await harness.saveSimpleEntry(
+      setup,
+      title: 'Moved',
+      date: '2026-06-02',
+    );
+    final Directory vaultRoot = await harness.pathStrategy.vaultRootDirectory();
+    final String keptPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-05-24'),
+      entryId: keptId,
+    );
+    final String duplicatePath = p.join(
+      vaultRoot.path,
+      'entries',
+      '2026',
+      '05',
+      'copy-$keptId.md.enc',
+    );
+    await File(duplicatePath).parent.create(recursive: true);
+    await File(keptPath).copy(duplicatePath);
+    final String movedPath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-06-02'),
+      entryId: movedId,
+    );
+    final String wrongPath = p.join(
+      vaultRoot.path,
+      'entries',
+      '2099',
+      '01',
+      '$movedId.md.enc',
+    );
+    await File(wrongPath).parent.create(recursive: true);
+    await File(movedPath).rename(wrongPath);
+
+    final Directory keptDraft = await harness.pathStrategy
+        .organizationDraftDirectory(keptId);
+    final Directory movedDraft = await harness.pathStrategy
+        .organizationDraftDirectory(movedId);
+    final Directory junk = Directory(
+      p.join(vaultRoot.path, 'diary_organization_drafts', 'not-an-id'),
+    );
+    await keptDraft.create(recursive: true);
+    await movedDraft.create(recursive: true);
+    await junk.create(recursive: true);
+    await File(p.join(keptDraft.path, 'draft.txt')).writeAsString('kept');
+    await File(p.join(movedDraft.path, 'draft.txt')).writeAsString('moved');
+    await File(p.join(junk.path, 'note.txt')).writeAsString('leave');
+
+    await harness.repository.repairVaultWithReport(setup.session);
+
+    expect(keptDraft.existsSync(), isFalse);
+    expect(movedDraft.existsSync(), isTrue);
+    expect(File(p.join(junk.path, 'note.txt')).existsSync(), isTrue);
+    expect(File(movedPath).existsSync(), isTrue);
+    expect(File(wrongPath).existsSync(), isFalse);
+    expect(File(keptPath).existsSync(), isTrue);
+    expect(File(duplicatePath).existsSync(), isFalse);
+  });
 }
 
 List<int> _pngBytes(int marker) => <int>[
@@ -2070,6 +2270,29 @@ Future<void> _writeEncryptedAsset({
     vaultId: setup.session.vaultId,
     plaintextBytes: bytes,
     contentType: 'image/png',
+    recoveryWrapKey: setup.session.recoveryWrapKey!,
+    recoverySlotKdf: metadata!.kdf,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  );
+  final File file = File(path);
+  await file.parent.create(recursive: true);
+  await file.writeAsBytes(encrypted.toFileBytes(), flush: true);
+}
+
+Future<void> _writeEncryptedChat({
+  required VaultTestHarness harness,
+  required RecoverySetupResult setup,
+  required String path,
+  required ChatDiarySession session,
+}) async {
+  final metadata = await harness.repository.readRecoveryMetadata();
+  final DateTime timestamp = DateTime.parse('2026-06-20T10:00:00Z');
+  final EncryptionResult encrypted = await LocalCryptoService().encryptBytes(
+    documentId: p.basename(path),
+    vaultId: setup.session.vaultId,
+    plaintextBytes: utf8.encode(jsonEncode(session.toJson())),
+    contentType: 'application/json',
     recoveryWrapKey: setup.session.recoveryWrapKey!,
     recoverySlotKdf: metadata!.kdf,
     createdAt: timestamp,

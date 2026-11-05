@@ -5,6 +5,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_choice_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_layout.dart';
 
 enum EntryWritingMode { direct, chat }
@@ -181,7 +182,7 @@ class _EntryWritingModePickerState
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _WritingModeCard(
+                          AppChoiceCard(
                             key: const ValueKey('entry-writing-mode-direct'),
                             icon: Icons.edit_note,
                             title: l10n.chatDiaryWriteDirectly,
@@ -189,10 +190,10 @@ class _EntryWritingModePickerState
                             onPressed: () => _finish(EntryWritingMode.direct),
                           ),
                           const SizedBox(height: 12),
-                          _WritingModeCard(
+                          AppChoiceCard(
                             key: const ValueKey('entry-writing-mode-chat'),
                             icon: Icons.chat_bubble_outline,
-                            title: l10n.chatDiaryWriteWithChat,
+                            title: l10n.chatDiaryTitle,
                             description: l10n.entryWritingModeChatDescription,
                             onPressed: () => _finish(EntryWritingMode.chat),
                           ),
@@ -213,79 +214,5 @@ class _EntryWritingModePickerState
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-}
-
-class _WritingModeCard extends StatelessWidget {
-  const _WritingModeCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onPressed,
-  });
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Semantics(
-      button: true,
-      child: Material(
-        color: colors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-          side: BorderSide(color: colors.outlineVariant),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 80),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(icon, size: 24, color: colors.onSurface),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: colors.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: colors.onSurface,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

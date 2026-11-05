@@ -1,18 +1,14 @@
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/errors/ai_error_text.dart';
-import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/domain/ai/restored_private_ranges.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/chat_diary/chat_diary_hidden_text.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
 
-class ChatDiaryMessageBubble extends ConsumerWidget {
+class ChatDiaryMessageBubble extends StatelessWidget {
   const ChatDiaryMessageBubble({
     super.key,
     required this.chatSession,
@@ -32,16 +28,6 @@ class ChatDiaryMessageBubble extends ConsumerWidget {
   final ValueChanged<String> onSelectVersion;
   final ValueChanged<ChatDiaryMessage> onEditMessage;
   final ValueChanged<String> onRegenerateReply;
-
-  Future<void> _copyMessage(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: message.text));
-    if (!context.mounted) return;
-    showAppFeedbackToast(
-      context,
-      context.l10n.commonCopiedToClipboard,
-      tone: AppFeedbackTone.success,
-    );
-  }
 
   Widget _versions(BuildContext context) {
     final chat = chatSession;
@@ -75,235 +61,50 @@ class ChatDiaryMessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _messageText(ColorScheme colors, TextStyle bodyStyle) {
-    final ranges = [
-      ...message.privateRanges,
-      if (chatSession.hidePersonNames)
-        for (final span
-            in message.personRanges ?? const <ChatDiaryPersonRange>[])
-          ChatDiaryPrivateRange(span.start, span.end),
-    ];
-    if (ranges.isEmpty) return Text(message.text, style: bodyStyle);
-    return Text.rich(
-      chatDiaryHiddenTextSpan(
-        text: message.text,
-        ranges: ranges,
-        highlight: chatDiaryHiddenHighlight(colors),
-      ),
-      style: bodyStyle,
-    );
-  }
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final chat = chatSession;
     final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
-    final typography = watchPersonalizationPreferences(ref).typography;
-    final bodyStyle = typography.bodyTextStyle(Theme.of(context).textTheme);
-    final enabled = !isBusy && chat.editingMessageId == null && !chat.finished;
     final failed =
         message.status == ChatDiaryMessageStatus.failed ||
         message.status == ChatDiaryMessageStatus.interrupted;
     final failure = AiErrorCode.values
         .where((e) => e.name == message.errorCode)
         .firstOrNull;
-    return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: 0.88,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            crossAxisAlignment: message.isUser
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              if (message.imageIds.isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.only(
-                    bottom: message.text.isNotEmpty ? 8 : 0,
-                  ),
-                  child: Wrap(
-                    alignment: message.isUser
-                        ? WrapAlignment.end
-                        : WrapAlignment.start,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final imageId in message.imageIds)
-                        imageBuilder(imageId),
-                    ],
-                  ),
-                ),
-              if (message.text.isNotEmpty ||
-                  message.status == ChatDiaryMessageStatus.pending)
-                IntrinsicWidth(
-                  child: Container(
-                    key: ValueKey('chat-message-body-${message.id}'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: message.isUser
-                          ? colors.primaryContainer
-                          : colors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (message.text.isNotEmpty)
-                          if (message.isUser)
-                            SelectionArea(
-                              child: _messageText(colors, bodyStyle),
-                            )
-                          else
-                            EditorMarkdownPreview(
-                              markdown: message.text,
-                              typography: typography,
-                            ),
-                        if (message.status == ChatDiaryMessageStatus.pending)
-                          const _ReplyPendingIndicator(),
-                      ],
-                    ),
-                  ),
-                ),
-              if (message.status == ChatDiaryMessageStatus.interrupted ||
-                  message.status == ChatDiaryMessageStatus.failed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    message.status == ChatDiaryMessageStatus.interrupted
-                        ? l10n.chatDiaryInterrupted
-                        : failure == null
-                        ? l10n.aiErrorUnexpected
-                        : aiErrorText(l10n, failure),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: colors.error),
-                  ),
-                ),
-              if (message.status != ChatDiaryMessageStatus.pending)
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 2,
-                  children: [
-                    _versions(context),
-                    if (message.text.isNotEmpty)
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: l10n.commonActionCopy,
-                        icon: const Icon(Icons.content_copy_outlined, size: 17),
-                        onPressed: !isBusy && chat.editingMessageId == null
-                            ? () => _copyMessage(context)
-                            : null,
-                      ),
-                    if (!chat.finished && message.isUser)
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: l10n.chatDiaryEditMessage,
-                        icon: const Icon(Icons.edit_outlined, size: 17),
-                        onPressed: enabled
-                            ? () => onEditMessage(message)
-                            : null,
-                      ),
-                    if (!chat.finished && !message.isUser) ...[
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: failed
-                            ? l10n.chatDiaryRetry
-                            : l10n.chatDiaryRegenerateReply,
-                        icon: const Icon(Icons.refresh, size: 18),
-                        onPressed: enabled
-                            ? () => onRegenerateReply(message.id)
-                            : null,
-                      ),
-                    ],
-                  ],
-                ),
-            ],
+    return AiMessageBubble(
+      id: message.id,
+      text: message.text,
+      isUser: message.isUser,
+      privateRanges: [
+        if (!message.isUser)
+          ...restoredPrivateRanges(
+            outboundText: message.outboundText,
+            text: message.text,
+            originals: chat.originalTextByToken,
           ),
-        ),
-      ),
+        ...message.privateRanges,
+        if (chat.hidePersonNames)
+          for (final span in message.personRanges ?? const <PersonTextRange>[])
+            PrivateTextRange(span.start, span.end),
+      ],
+      images: [for (final id in message.imageIds) imageBuilder(id)],
+      pending: message.status == ChatDiaryMessageStatus.pending,
+      failureText: !failed
+          ? null
+          : message.status == ChatDiaryMessageStatus.interrupted
+          ? l10n.chatDiaryInterrupted
+          : failure == null
+          ? l10n.aiErrorUnexpected
+          : aiErrorText(l10n, failure),
+      canAct: !isBusy && chat.editingMessageId == null,
+      leadingActions: _versions(context),
+      onEdit: !chat.finished && message.isUser
+          ? () => onEditMessage(message)
+          : null,
+      onRetry: !chat.finished && !message.isUser
+          ? () => onRegenerateReply(message.id)
+          : null,
+      retryFailed: failed,
     );
   }
-}
-
-class _ReplyPendingIndicator extends StatefulWidget {
-  const _ReplyPendingIndicator();
-
-  @override
-  State<_ReplyPendingIndicator> createState() => _ReplyPendingIndicatorState();
-}
-
-class _ReplyPendingIndicatorState extends State<_ReplyPendingIndicator>
-    with SingleTickerProviderStateMixin {
-  late final _animationController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
-  bool? _animationsDisabled;
-  late final _dotOpacities = [
-    for (var index = 0; index < 3; index++)
-      Tween<double>(begin: 0.25, end: 1)
-          .chain(
-            CurveTween(
-              curve: Interval(
-                index * 0.2,
-                0.6 + index * 0.2,
-                curve: Curves.easeInOut,
-              ),
-            ),
-          )
-          .animate(_animationController),
-  ];
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final disabled = MediaQuery.disableAnimationsOf(context);
-    if (_animationsDisabled == disabled) return;
-    _animationsDisabled = disabled;
-    if (disabled) {
-      _animationController.stop();
-      _animationController.value = 0.5;
-    } else {
-      _animationController.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label: context.l10n.chatDiaryWaitingForReply,
-    child: SizedBox(
-      height: 24,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final opacity in _dotOpacities)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: FadeTransition(
-                opacity: opacity,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const SizedBox.square(dimension: 6),
-                ),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
 }

@@ -12,10 +12,10 @@ import 'package:quill_diary/application/editor/editor_attachment_items.dart';
 import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_snapshot.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
-import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/application/people/person_mention_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
@@ -37,16 +37,16 @@ import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/chat_diary/chat_diary_saved_conversation_button.dart';
+import 'package:quill_diary/presentation/diary_organization/diary_ai_actions_button.dart';
 import 'package:quill_diary/presentation/editor/gallery_image_download.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_form_sections.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_keyboard_chrome.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_person_suggestion_panel.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_top_bar.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
+import 'package:quill_diary/presentation/people/widgets/person_suggestion_panel.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/presentation/tag/widgets/tag_picker_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
@@ -87,8 +87,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
   );
   final TextEditingController _tagsController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
-  final EditorPersonMentionController _personMentionController =
-      EditorPersonMentionController();
+  final PersonMentionController _personMentionController =
+      PersonMentionController();
   final GlobalKey<EditorHybridBodyState> _hybridBodyKey =
       GlobalKey<EditorHybridBodyState>();
   final List<PendingAttachment> _pendingAttachments = <PendingAttachment>[];
@@ -217,10 +217,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
     };
   }
 
-  List<EditorPersonSuggestion> _activePersonSuggestions({
-    List<Person>? catalog,
-  }) {
-    return filterEditorPersonSuggestions(
+  List<PersonSuggestion> _activePersonSuggestions({List<Person>? catalog}) {
+    return filterPersonSuggestions(
       catalog:
           catalog ??
           ref.read(peopleCatalogProvider).asData?.value.people ??
@@ -231,7 +229,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   KeyEventResult _onPersonMentionKeyEvent(FocusNode _, KeyEvent event) {
-    final List<EditorPersonSuggestion> suggestions = _activePersonSuggestions();
+    final List<PersonSuggestion> suggestions = _activePersonSuggestions();
     final ({KeyEventResult result, bool shouldApplySelection}) handled =
         _personMentionController.handleKeyEvent(
           event,
@@ -247,7 +245,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     return handled.result;
   }
 
-  void _applyPersonMention(EditorPersonSuggestion suggestion) {
+  void _applyPersonMention(PersonSuggestion suggestion) {
     _personMentionController.applyMentionLabel(
       suggestion.person.diaryMentionLabel,
     );
@@ -351,8 +349,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
       if (!mounted || result == null) {
         return;
       }
-      _activeEntry = result.savedEntry;
-      _lastSavedSnapshot = editorDraftSnapshotFromEntry(result.savedEntry);
+      _syncSavedEntry(result.savedEntry, updateControllers: false);
+      if (_previewMode && _bodyController.text == markdown) {
+        _bodyController.text = result.savedEntry.markdownBody;
+      }
     } catch (_) {
       // 保留畫面上的勾選狀態，使用者可再次切換重試。
     }
@@ -486,7 +486,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     final DiaryEntry? entry = _activeEntry;
     if (entry != null) {
-      _applyEntryToControllers(entry);
+      _syncSavedEntry(entry);
     }
     setState(() => _previewMode = true);
   }
@@ -498,7 +498,11 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _lastPersistedDraftSnapshot = null;
   }
 
-  void _applyEntryToControllers(DiaryEntry entry) {
+  void _syncSavedEntry(DiaryEntry entry, {bool updateControllers = true}) {
+    _activeEntry = entry;
+    _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
+    _lastPersistedDraftSnapshot = null;
+    if (!updateControllers) return;
     _suppressDraftListener = true;
     _suppressTagDraftListener = true;
     _titleController.text = entry.title ?? '';
@@ -515,7 +519,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _provisionalEntryId = entry.id;
     _persistedEntryDate = entry.date;
     _draftCreatedAt = entry.createdAt;
-    _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
     _showEntryRequiredHint = false;
     _suppressTagDraftListener = false;
     _suppressDraftListener = false;
@@ -592,7 +595,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     if (decision.kind == EditorDraftRestoreKind.discarded && entry != null) {
-      _applyEntryToControllers(entry);
+      _syncSavedEntry(entry);
       setState(() {});
     }
   }
@@ -626,6 +629,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _pendingAttachments.clear();
     _attachmentIds = <AssetId>[];
     _savedAssetPathFutures.clear();
+    _activeEntry = null;
+    _activeSession = null;
     _lastSavedSnapshot = null;
     _lastPersistedDraftSnapshot = null;
     _didLoadExisting = false;
@@ -684,16 +689,16 @@ class _EditorPageState extends ConsumerState<EditorPage>
         return entryAsync.when(
           skipLoadingOnReload: true,
           data: (DiaryEntry? entry) {
-            _loadExistingEntryIfNeeded(entry);
             _activeSession = session;
-            _activeEntry = entry;
+            _syncEntryFromProvider(entry, loading: entryAsync.isLoading);
+            final currentEntry = _activeEntry ?? entry;
             if (_preservesEditorOnLock) {
               _preservesEditorOnLock = false;
             }
             if (!_didOfferDraftRestore) {
               _didOfferDraftRestore = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                unawaited(_offerDraftRestoreIfNeeded(session, entry));
+                unawaited(_offerDraftRestoreIfNeeded(session, currentEntry));
               });
             }
 
@@ -767,16 +772,30 @@ class _EditorPageState extends ConsumerState<EditorPage>
                           canDelete: widget.entryId != null,
                           timestampLabel: _formattedTimestampLabel(context),
                           onClose: () => unawaited(_requestClose()),
-                          onSave: () =>
-                              unawaited(_saveCurrentEntry(session, entry)),
+                          onSave: () => unawaited(
+                            _saveCurrentEntry(session, currentEntry),
+                          ),
                           onInvalidSave: _notifyEntryRequired,
                           onDelete: () =>
                               unawaited(_deleteCurrentEntry(session)),
                           onEnterEditMode: _enterEditMode,
                           conversationButton: widget.entryId == null
                               ? null
-                              : ChatDiarySavedConversationButton(
+                              : DiaryAiActionsButton(
                                   entryId: widget.entryId!,
+                                  onEntryUpdated: (saved) {
+                                    if (!mounted ||
+                                        _isEditing ||
+                                        _handlingDraftRestore ||
+                                        saved.id != widget.entryId ||
+                                        _activeSession?.vaultId !=
+                                            saved.vaultId) {
+                                      return;
+                                    }
+                                    setState(() {
+                                      _syncSavedEntry(saved);
+                                    });
+                                  },
                                 ),
                           bottomToolbar: _isEditing
                               ? EditorActionToolbar(
@@ -899,7 +918,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                                   _isEditing &&
                                                       _personMentionController
                                                           .isActive
-                                                  ? kEditorPersonSuggestionBodyReserve
+                                                  ? kPersonSuggestionBodyReserve
                                                   : 0;
                                               return Padding(
                                                 padding: EdgeInsets.only(
@@ -999,10 +1018,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                     final List<Person> catalog =
                                         catalogAsync.asData?.value.people ??
                                         const <Person>[];
-                                    final List<EditorPersonSuggestion>
-                                    suggestions = _activePersonSuggestions(
-                                      catalog: catalog,
-                                    );
+                                    final List<PersonSuggestion> suggestions =
+                                        _activePersonSuggestions(
+                                          catalog: catalog,
+                                        );
                                     // Scaffold 縮放 body 後貼鍵盤上方；無鍵盤時避開 home indicator。
                                     final double keyboardInset =
                                         MediaQuery.viewInsetsOf(context).bottom;
@@ -1015,7 +1034,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                       left: 10,
                                       right: 10,
                                       bottom: bottomSafe,
-                                      child: EditorPersonSuggestionPanel(
+                                      child: PersonSuggestionPanel(
                                         suggestions: suggestions,
                                         highlightIndex: _personMentionController
                                             .highlightIndex,
@@ -1072,12 +1091,23 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
   }
 
-  void _loadExistingEntryIfNeeded(DiaryEntry? entry) {
-    if (_didLoadExisting || entry == null) {
-      return;
+  void _syncEntryFromProvider(DiaryEntry? entry, {required bool loading}) {
+    if (entry == null || loading) return;
+    if (_didLoadExisting) {
+      if (identical(entry, _activeEntry) ||
+          _isEditing ||
+          _saving ||
+          _handlingDraftRestore ||
+          _isDraftDirty()) {
+        return;
+      }
+      if (_activeEntry != null &&
+          entry.updatedAt.isBefore(_activeEntry!.updatedAt)) {
+        return;
+      }
     }
     _didLoadExisting = true;
-    _applyEntryToControllers(entry);
+    _syncSavedEntry(entry);
   }
 
   Future<void> _pickEntryDate() async {
@@ -1313,19 +1343,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
       if (!mounted || !canUpdateUi()) return;
       ref.invalidate(chatDiarySessionsProvider);
       setState(() {
-        _savedAssetPathFutures.clear();
-        _attachmentIds = List<AssetId>.from(saved.attachmentIds);
-        _pendingAttachments.clear();
-        _entryTime = TimeOfDay(
-          hour: saved.createdAt.hour,
-          minute: saved.createdAt.minute,
-        );
-        _lastSavedSnapshot = editorDraftSnapshotFromEntry(saved);
-        _lastPersistedDraftSnapshot = null;
-        _provisionalEntryId = saved.id;
-        _persistedEntryDate = saved.date;
-        _draftCreatedAt = saved.createdAt;
-        _activeEntry = saved;
+        _syncSavedEntry(saved);
         _previewMode = result.switchToPreview;
       });
       if (widget.chatId != null && mounted) {

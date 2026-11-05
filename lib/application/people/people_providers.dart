@@ -184,8 +184,8 @@ final peopleAnalyticsProgressProvider =
       return ref.watch(vaultRepositoryProvider).peopleAnalyticsProgress;
     });
 
-final class EditorPersonSuggestion {
-  const EditorPersonSuggestion({required this.person, this.matchedAlias});
+final class PersonSuggestion {
+  const PersonSuggestion({required this.person, this.matchedAlias});
 
   final Person person;
   final String? matchedAlias;
@@ -194,24 +194,24 @@ final class EditorPersonSuggestion {
 /// 同步過濾已載入 catalog；勿用 FutureProvider.family 綁 keystroke。
 ///
 /// [mentionedEntryCountById] 有值時，優先依提及日記篇數排序（多者在前）。
-List<EditorPersonSuggestion> filterEditorPersonSuggestions({
+List<PersonSuggestion> filterPersonSuggestions({
   required List<Person> catalog,
   required String query,
   int limit = 6,
   Map<PersonId, int>? mentionedEntryCountById,
 }) {
   if (catalog.isEmpty) {
-    return const <EditorPersonSuggestion>[];
+    return const <PersonSuggestion>[];
   }
   final String q = normalizePersonName(query);
-  final List<EditorPersonSuggestion> hits = <EditorPersonSuggestion>[];
+  final List<PersonSuggestion> hits = <PersonSuggestion>[];
   for (final Person person in catalog) {
     if (q.isEmpty) {
-      hits.add(EditorPersonSuggestion(person: person));
+      hits.add(PersonSuggestion(person: person));
       continue;
     }
     if (person.normalizedName.contains(q)) {
-      hits.add(EditorPersonSuggestion(person: person));
+      hits.add(PersonSuggestion(person: person));
       continue;
     }
     String? matchedAlias;
@@ -222,12 +222,10 @@ List<EditorPersonSuggestion> filterEditorPersonSuggestions({
       }
     }
     if (matchedAlias != null) {
-      hits.add(
-        EditorPersonSuggestion(person: person, matchedAlias: matchedAlias),
-      );
+      hits.add(PersonSuggestion(person: person, matchedAlias: matchedAlias));
     }
   }
-  hits.sort((EditorPersonSuggestion a, EditorPersonSuggestion b) {
+  hits.sort((PersonSuggestion a, PersonSuggestion b) {
     if (mentionedEntryCountById != null) {
       final int byCount = (mentionedEntryCountById[b.person.id] ?? 0).compareTo(
         mentionedEntryCountById[a.person.id] ?? 0,

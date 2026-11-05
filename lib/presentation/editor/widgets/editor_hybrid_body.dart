@@ -1,11 +1,11 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
-import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/application/people/person_mention_controller.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
+import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
@@ -22,7 +22,7 @@ class EditorHybridBody extends StatefulWidget {
   final TextEditingController bodyController;
   final EditorTypographyPreferences typography;
   final VoidCallback onBodyChanged;
-  final EditorPersonMentionController? mentionController;
+  final PersonMentionController? mentionController;
   final KeyEventResult Function(FocusNode node, KeyEvent event)?
   onMentionKeyEvent;
 
@@ -695,7 +695,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
           decoration: _plainTextDecoration(context, bodyStyle),
         );
       }
-      return EditorMentionTextField(
+      return PersonMentionTextField(
         controller: widget.bodyController,
         focusNode: _plainTextFocusNode,
         mentionController: widget.mentionController,
@@ -778,7 +778,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
               style: bodyStyle,
               decoration: _lineDecoration(),
             )
-          : EditorMentionTextField(
+          : PersonMentionTextField(
               controller: controller,
               focusNode: focusNode,
               mentionController: widget.mentionController,

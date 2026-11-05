@@ -9,7 +9,6 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -42,7 +41,9 @@ final testAiPng = base64Decode(
 class OverviewAiSettingsStore extends AiSettingsStore {
   OverviewAiSettingsStore() : super.detached();
   AiConnectionSettings settings = const AiConnectionSettings();
-  ChatDiarySettings chatDiary = const ChatDiarySettings();
+  bool hidePersonNames = true;
+  AiPromptOverrides chatDiaryPrompts = const AiPromptOverrides();
+  AiPromptOverrides organizationPrompts = const AiPromptOverrides();
   final keys = <String, String>{};
   bool failReads = false;
   Future<void>? readGate;
@@ -57,17 +58,23 @@ class OverviewAiSettingsStore extends AiSettingsStore {
     readStarted?.complete();
     await readGate;
     if (failReads) throw StateError('讀取設定失敗');
-    return AiStoredSettings(connection: settings, chatDiary: chatDiary);
+    return AiStoredSettings(
+      connection: settings,
+      hidePersonNames: hidePersonNames,
+      chatDiaryPrompts: chatDiaryPrompts,
+      organizationPrompts: organizationPrompts,
+    );
   }
 
   @override
   Future<void> save(
-    UnlockedVaultSession session, {
-    required AiConnectionSettings connection,
-    required ChatDiarySettings chatDiary,
-  }) async {
-    settings = connection;
-    this.chatDiary = chatDiary;
+    UnlockedVaultSession session,
+    AiStoredSettings stored,
+  ) async {
+    settings = stored.connection;
+    hidePersonNames = stored.hidePersonNames;
+    chatDiaryPrompts = stored.chatDiaryPrompts;
+    organizationPrompts = stored.organizationPrompts;
   }
 
   @override

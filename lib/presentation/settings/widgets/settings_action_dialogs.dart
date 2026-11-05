@@ -40,6 +40,8 @@ Future<bool> showInspectVaultConfirmDialog(
                   children: <Widget>[
                     Text(l10n.settingsInspectVaultConfirmBody),
                     const SizedBox(height: 12),
+                    const _MaintenanceScope(),
+                    const SizedBox(height: 12),
                     if (repairSummary != null)
                       _PreflightLastRepairCard(summary: repairSummary)
                     else
@@ -138,6 +140,44 @@ class _PreflightLastRepairCard extends StatelessWidget {
           Text(l10n.settingsLastRepairLogBackupFile(backup)),
         if (unresolved > 0)
           Text(l10n.settingsLastRepairLogUnresolved(unresolved)),
+      ],
+    );
+  }
+}
+
+const int _inspectPreviewLimit = 3;
+
+class _MaintenanceScope extends StatelessWidget {
+  const _MaintenanceScope({this.showInspect = true, this.showRepair = false});
+
+  final bool showInspect;
+  final bool showRepair;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (showInspect)
+          _DialogSection(
+            title: l10n.settingsInspectVaultScopeTitle,
+            children: <Widget>[
+              Text(l10n.settingsInspectVaultScopeEntries),
+              Text(l10n.settingsInspectVaultScopeDerived),
+              Text(l10n.settingsInspectVaultScopeReadOnly),
+            ],
+          ),
+        if (showRepair) ...<Widget>[
+          if (showInspect) const SizedBox(height: 12),
+          _DialogSection(
+            title: l10n.settingsRepairVaultScopeTitle,
+            children: <Widget>[
+              Text(l10n.settingsRepairVaultScopeRelocate),
+              Text(l10n.settingsRepairVaultScopeOrganization),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -368,6 +408,10 @@ Future<bool?> showInspectVaultResultDialog(
                     report.entryCount,
                   ),
                 ),
+                if (groups.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 12),
+                  const _MaintenanceScope(showInspect: false, showRepair: true),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   groups.isEmpty
@@ -377,7 +421,7 @@ Future<bool?> showInspectVaultResultDialog(
                 if (groups.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 12),
                   for (final MapEntry<String, List<VaultFinding>> entry
-                      in groups.entries)
+                      in groups.entries.take(_inspectPreviewLimit))
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: VaultFindingSummaryCard(
@@ -387,6 +431,12 @@ Future<bool?> showInspectVaultResultDialog(
                               entry.value,
                             ),
                         showPlannedActions: false,
+                      ),
+                    ),
+                  if (groups.length > _inspectPreviewLimit)
+                    Text(
+                      l10n.settingsInspectVaultResultMore(
+                        groups.length - _inspectPreviewLimit,
                       ),
                     ),
                 ],

@@ -199,6 +199,9 @@ String settingsRepairIssueLabel(
       l10n.settingsRepairIssueUnverifiedOrphanAsset,
     VaultRepairIssueKind.cleanupFailure =>
       l10n.settingsRepairIssueCleanupFailure,
+    VaultRepairIssueKind.unreadableChat =>
+      l10n.settingsRepairIssueUnreadableChat,
+    VaultRepairIssueKind.orphanChat => l10n.settingsRepairIssueOrphanChat,
   };
 }
 

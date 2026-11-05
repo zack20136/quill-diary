@@ -3,19 +3,18 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/ai/ai_prompts.dart';
+import 'package:quill_diary/application/ai/ai_request_preview.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
-import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
-import 'package:quill_diary/application/chat_diary/chat_diary_request_preview.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
-import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
@@ -155,7 +154,7 @@ class ChatDiaryController extends ChangeNotifier {
           id: newChatId,
           vaultId: vaultSession.vaultId,
           connectionConfig: connectionConfig,
-          hidePersonNames: stored.chatDiary.hidePersonNames,
+          hidePersonNames: stored.hidePersonNames,
           createdAt: now,
           date: DateOnly.fromDateTime(now).value,
           openingMessage: openingMessage ?? '',
@@ -236,7 +235,7 @@ class ChatDiaryController extends ChangeNotifier {
     return ChatDiaryLoadResult.loaded;
   }
 
-  void updateComposer(String text, List<ChatDiaryPrivateRange> ranges) {
+  void updateComposer(String text, List<PrivateTextRange> ranges) {
     final chatSession = chat;
     if (chatSession == null || busy || chatSession.finished || _handedOff) {
       return;
@@ -393,7 +392,7 @@ class ChatDiaryController extends ChangeNotifier {
           );
   }
 
-  Future<ChatDiaryRequestPreview?> previewConversation() async {
+  Future<AiRequestPreview?> previewRequest({bool generate = false}) async {
     final chatSession = chat;
     if (chatSession == null || _vaultSession == null) {
       return null;
@@ -402,33 +401,40 @@ class ChatDiaryController extends ChangeNotifier {
     final settingsStore = ref.read(aiSettingsStoreProvider);
     final preferences = ref.read(userPreferencesProvider);
     try {
-      final history = conversationHistory;
+      final history = generate
+          ? chatSession.activeMessages
+          : conversationHistory;
       final pending = chatSession.composer;
       final privacy = await _createPrivacyProcessor(history);
       _ensureOperationIsCurrent(operationVersion);
-      final settings = (await settingsStore.read(_vaultSession!)).chatDiary;
+      final prompts = (await settingsStore.read(_vaultSession!))
+          .chatDiaryPrompts;
       _ensureOperationIsCurrent(operationVersion);
       final language = await preferences.appLocale;
       _ensureOperationIsCurrent(operationVersion);
-      final composer = privacy.protect(pending.text, pending.ranges, false);
+      final composer = generate
+          ? ''
+          : privacy.protect(pending.text, pending.ranges, false);
       final prompt = privacy.protectPrompt(
         resolveChatDiaryPrompt(
-          ChatDiaryPromptPurpose.conversation,
+          generate
+              ? ChatDiaryPromptPurpose.generation
+              : ChatDiaryPromptPurpose.conversation,
           language,
-          settings.prompts,
+          prompts,
         ),
       );
-      final turns = <ChatDiaryPreviewTurn>[
+      final turns = <AiPreviewTurn>[
         for (final message in history)
           if (message.isUser ||
               message.status == ChatDiaryMessageStatus.complete)
-            ChatDiaryPreviewTurn(
+            AiPreviewTurn(
               isUser: message.isUser,
               text: _protectedMessageText(privacy, message),
               imageIds: List.of(message.imageIds),
             ),
-        if (composer.isNotEmpty || pending.imageIds.isNotEmpty)
-          ChatDiaryPreviewTurn(
+        if (!generate && (composer.isNotEmpty || pending.imageIds.isNotEmpty))
+          AiPreviewTurn(
             isUser: true,
             text: composer,
             imageIds: List.of(pending.imageIds),
@@ -437,7 +443,25 @@ class ChatDiaryController extends ChangeNotifier {
       ];
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
-      return ChatDiaryRequestPreview(systemPrompt: prompt, turns: turns);
+      return AiRequestPreview(
+        instructions: prompt,
+        conversationTurns: generate ? turns : null,
+        turns: generate
+            ? [
+                AiPreviewTurn(
+                  isUser: true,
+                  text: jsonEncode([
+                    for (final turn in turns)
+                      {
+                        'role': turn.isUser ? 'user' : 'assistant',
+                        'text': turn.text,
+                      },
+                  ]),
+                  imageIds: [for (final turn in turns) ...turn.imageIds],
+                ),
+              ]
+            : turns,
+      );
     } on Object {
       if (_disposed ||
           operationVersion != _operationVersion ||
@@ -471,17 +495,17 @@ class ChatDiaryController extends ChangeNotifier {
   }
 
   /// 改這一則聊天的供應商與模型，並記成下一則新聊天要用的。
-  Future<void> selectChatModel(ChatModelOption option) async {
+  Future<void> selectModel(ChatModelOption option) async {
     final chatSession = chat;
     final session = _vaultSession;
     if (chatSession == null ||
         chatSession.finished ||
         busy ||
         _handedOff ||
-        session == null) {
+        session == null ||
+        option.isCurrentSnapshot) {
       return;
     }
-    if (option.isCurrentSnapshot) return;
     final operationVersion = _operationVersion;
     final store = ref.read(aiSettingsStoreProvider);
     final stored = await store.read(session);
@@ -493,16 +517,8 @@ class ChatDiaryController extends ChangeNotifier {
         busy) {
       return;
     }
-    final source =
-        stored.connection.connections[option.connectionId] ??
-        (option.connectionConfig.provider != AiProvider.custom
-            ? defaultConnection(option.connectionConfig.provider)
-            : null);
-    if (source == null || !source.enabledModels.contains(option.modelId)) {
-      return;
-    }
-    final next = source.copyWith(model: option.modelId);
-    if (!sameAiTarget(next, option.connectionConfig)) return;
+    final next = connectionForSelectedModel(stored.connection, option);
+    if (next == null) return;
     final applying = applySettings(next, chatSession.hidePersonNames);
     final appliedVersion = _operationVersion;
     await applying;
@@ -513,17 +529,7 @@ class ChatDiaryController extends ChangeNotifier {
         _handedOff) {
       return;
     }
-    await store.save(
-      session,
-      connection: AiConnectionSettings(
-        activeConnectionId: next.connectionId,
-        connections: {
-          ...stored.connection.connections,
-          next.connectionId: next,
-        },
-      ),
-      chatDiary: stored.chatDiary,
-    );
+    await store.updateActiveConnection(session, next);
   }
 
   bool _sameClientConnection(
@@ -692,12 +698,12 @@ class ChatDiaryController extends ChangeNotifier {
   ) async {
     final settingsStore = ref.read(aiSettingsStoreProvider);
     final preferences = ref.read(userPreferencesProvider);
-    final settings = (await settingsStore.read(_vaultSession!)).chatDiary;
+    final prompts = (await settingsStore.read(_vaultSession!)).chatDiaryPrompts;
     _ensureOperationIsCurrent(operationVersion);
     final language = await preferences.appLocale;
     _ensureOperationIsCurrent(operationVersion);
     return privacy.protectPrompt(
-      resolveChatDiaryPrompt(purpose, language, settings.prompts),
+      resolveChatDiaryPrompt(purpose, language, prompts),
     );
   }
 
@@ -737,7 +743,7 @@ class ChatDiaryController extends ChangeNotifier {
     }
     chatSession.editBackup = chatSession.composer;
     chatSession.editingMessageId = message.id;
-    chatSession.composer = ChatDiaryComposerSnapshot(
+    chatSession.composer = AiComposerSnapshot(
       text: message.text,
       ranges: List.of(message.privateRanges),
       imageIds: List.of(message.imageIds),
@@ -814,7 +820,7 @@ class ChatDiaryController extends ChangeNotifier {
 
   Future<void> _requestReply({
     required String? parentId,
-    ChatDiaryComposerSnapshot? newComposer,
+    AiComposerSnapshot? newComposer,
   }) async {
     final chatSession = chat!;
     final keepAlive = ref.keepAlive();
@@ -845,7 +851,7 @@ class ChatDiaryController extends ChangeNotifier {
         replyParent = message.id;
         chatSession.composer =
             chatSession.editBackup ??
-            ChatDiaryComposerSnapshot(text: '', ranges: [], imageIds: []);
+            AiComposerSnapshot(text: '', ranges: [], imageIds: []);
         chatSession.editingMessageId = null;
         chatSession.editBackup = null;
       }

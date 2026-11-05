@@ -40,6 +40,16 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(testL10n.settingsInspectVaultConfirmBody), findsOneWidget);
+    expect(find.text(testL10n.settingsInspectVaultScopeTitle), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsInspectVaultScopeEntries),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.settingsInspectVaultScopeReadOnly),
+      findsOneWidget,
+    );
+    expect(find.text(testL10n.settingsRepairVaultScopeTitle), findsNothing);
     expect(
       find.text(testL10n.settingsInspectVaultPreflightNoRepair),
       findsOneWidget,
@@ -356,6 +366,8 @@ void main() {
 
     expect(find.text(testL10n.settingsInspectVaultResultTitle), findsOneWidget);
     expect(find.text(testL10n.settingsInspectVaultResultClean), findsOneWidget);
+    expect(find.text(testL10n.settingsInspectVaultScopeTitle), findsNothing);
+    expect(find.text(testL10n.settingsRepairVaultScopeTitle), findsNothing);
     expect(
       find.text(testL10n.settingsInspectVaultRepairAfterBackupButton),
       findsNothing,
@@ -369,7 +381,7 @@ void main() {
     expect(result, isFalse);
   });
 
-  testWidgets('檢查有異常時列出全部日記且不顯示預計動作教學', (WidgetTester tester) async {
+  testWidgets('檢查有異常時最多預覽三項且不顯示預計動作教學', (WidgetTester tester) async {
     bool? result;
     const String hiddenId = 'entry_HIDDEN_ID';
     const String hiddenPath = 'entries/2026/08/broken.md.enc';
@@ -410,8 +422,16 @@ void main() {
     expect(find.text('日記 0'), findsOneWidget);
     expect(find.text('日記 1'), findsOneWidget);
     expect(find.text('日記 2'), findsOneWidget);
-    expect(find.text('日記 3'), findsOneWidget);
-    expect(find.text('週末散步'), findsOneWidget);
+    expect(find.text('日記 3'), findsNothing);
+    expect(find.text('週末散步'), findsNothing);
+    expect(
+      find.text(testL10n.settingsInspectVaultResultMore(2)),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.settingsRepairVaultScopeRelocate),
+      findsOneWidget,
+    );
     expect(find.textContaining(hiddenId), findsNothing);
     expect(find.textContaining(hiddenPath), findsNothing);
     expect(
@@ -427,6 +447,50 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(result, isTrue);
+  });
+
+  testWidgets('修復結果保留每一項的手動修復與刪除', (WidgetTester tester) async {
+    final VaultRepairReport report = VaultRepairReport(
+      entryCount: 4,
+      duration: const Duration(milliseconds: 10),
+      finishedAt: DateTime(2026, 8, 18),
+      relocatedEntries: 0,
+      removedDuplicateEntries: 0,
+      tagsAdded: 0,
+      relocatedAssets: 0,
+      removedOrphanAssets: 0,
+      unresolvedFindings: <VaultFinding>[
+        for (var index = 0; index < 4; index++)
+          VaultFinding(
+            kind: VaultRepairIssueKind.unreadableEntry,
+            plannedAction: VaultPlannedAction.quarantine,
+            manualAction: VaultManualAction.none,
+            canOpenEntry: false,
+            entryId: 'entry_$index',
+            entryTitle: '待處理 $index',
+            entryDate: const DateOnly('2026-08-01'),
+            internalReference: 'entries/2026/08/entry_$index.md.enc',
+          ),
+      ],
+    );
+    await pumpLauncher(tester, (BuildContext context) async {
+      await showRepairVaultResultDialog(
+        context: context,
+        report: report,
+        canSalvage: (_) async => false,
+        onSalvage: (_) async => null,
+        onDelete: (_) async => false,
+      );
+    });
+
+    for (var index = 0; index < 4; index++) {
+      expect(find.text('待處理 $index'), findsOneWidget);
+    }
+    expect(
+      find.text(testL10n.settingsAbnormalEntriesDeleteButton),
+      findsNWidgets(4),
+    );
+    expect(find.text(testL10n.settingsInspectVaultResultMore(1)), findsNothing);
   });
 
   testWidgets('檢查前確認與修復完成皆可開啟詳細資料', (WidgetTester tester) async {
@@ -615,6 +679,9 @@ void main() {
       find.text(testL10n.settingsRepairVaultResultSalvageButton),
       findsOneWidget,
     );
+    await tester.ensureVisible(
+      find.text(testL10n.settingsRepairVaultResultSalvageButton),
+    );
     await tester.tap(
       find.text(testL10n.settingsRepairVaultResultSalvageButton),
     );
@@ -625,6 +692,9 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.ensureVisible(
+      find.text(testL10n.settingsAbnormalEntriesDeleteButton),
+    );
     await tester.tap(find.text(testL10n.settingsAbnormalEntriesDeleteButton));
     await tester.pumpAndSettle();
     expect(

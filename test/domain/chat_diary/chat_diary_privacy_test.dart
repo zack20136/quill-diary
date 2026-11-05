@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/people/person.dart';
@@ -43,7 +44,7 @@ void main() {
     expect(privacy.protect('小明後來才加', const [], true, const []), '小明後來才加');
     expect(
       privacy.protect('看到小明', const [], true, const [
-        ChatDiaryPersonRange(2, 4, 'person-1'),
+        PersonTextRange(2, 4, 'person-1'),
       ]),
       '看到⟦P01⟧',
     );
@@ -52,16 +53,13 @@ void main() {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
     expect(privacy.protect('王小明'), '⟦P01⟧');
-    expect(privacy.protect('秘密', [const ChatDiaryPrivateRange(0, 2)]), '⟦S01⟧');
+    expect(privacy.protect('秘密', [const PrivateTextRange(0, 2)]), '⟦S01⟧');
     final restored = ChatDiarySession.fromJson(chat.toJson());
     final next = ChatDiaryPrivacyProcessor(restored, [person()]);
     final preview = ChatDiaryPrivacyProcessor(restored, [person()]);
     expect(next.protect('小明'), '⟦P01⟧');
-    expect(next.protect('另一段', [const ChatDiaryPrivateRange(0, 3)]), '⟦S02⟧');
-    expect(
-      preview.protect('新片段', [const ChatDiaryPrivateRange(0, 3)]),
-      '⟦S03⟧',
-    );
+    expect(next.protect('另一段', [const PrivateTextRange(0, 3)]), '⟦S02⟧');
+    expect(preview.protect('新片段', [const PrivateTextRange(0, 3)]), '⟦S03⟧');
   });
 
   test('短序號超過 FF 自動延長，對照表有缺號時仍由最大值繼續', () {
@@ -70,22 +68,20 @@ void main() {
     var last = '';
     for (var i = 1; i <= 255; i++) {
       final text = '私密片段$i';
-      last = privacy.protect(text, [ChatDiaryPrivateRange(0, text.length)]);
+      last = privacy.protect(text, [PrivateTextRange(0, text.length)]);
     }
     expect(last, '⟦SFF⟧');
     chat.originalTextByToken.remove('⟦S02⟧');
     chat.tokenBySourceKey.remove('private:私密片段2');
     final next = ChatDiaryPrivacyProcessor(chat, []);
-    expect(next.protect('延長', [const ChatDiaryPrivateRange(0, 2)]), '⟦S100⟧');
-    expect(next.protect('繼續', [const ChatDiaryPrivateRange(0, 2)]), '⟦S101⟧');
+    expect(next.protect('延長', [const PrivateTextRange(0, 2)]), '⟦S100⟧');
+    expect(next.protect('繼續', [const PrivateTextRange(0, 2)]), '⟦S101⟧');
   });
 
   test('關閉人物隱藏仍保護手動選取的片段', () {
     final chat = testChatDiarySession(hidePersonNames: false);
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
-    final result = privacy.protect('王小明住在秘密地址', [
-      const ChatDiaryPrivateRange(5, 9),
-    ]);
+    final result = privacy.protect('王小明住在秘密地址', [const PrivateTextRange(5, 9)]);
     expect(result, contains('王小明'));
     expect(result, isNot(contains('秘密地址')));
     expect(privacy.restore(result), '王小明住在秘密地址');
@@ -94,12 +90,12 @@ void main() {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, []);
     final result = privacy.protect('秘密 秘密 0912345678', [
-      const ChatDiaryPrivateRange(0, 2),
+      const PrivateTextRange(0, 2),
     ]);
     expect(result, '⟦S01⟧ 秘密 0912345678');
     expect(privacy.protect('再次提到秘密'), '再次提到秘密');
     expect(
-      privacy.protect('再次提到秘密', [const ChatDiaryPrivateRange(4, 6)]),
+      privacy.protect('再次提到秘密', [const PrivateTextRange(4, 6)]),
       '再次提到⟦S01⟧',
     );
     expect(privacy.protectPrompt('提示裡的秘密'), '提示裡的⟦S01⟧');
@@ -109,17 +105,15 @@ void main() {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);
     final text = '王小明的祕密';
-    final result = privacy.protect(text, [
-      ChatDiaryPrivateRange(0, text.length),
-    ]);
+    final result = privacy.protect(text, [PrivateTextRange(0, text.length)]);
     expect(chat.originalTextByToken, hasLength(1));
     expect(privacy.restore(result), text);
   });
   test('生成未引用的私密片段加到補記而已引用者不重複', () {
     final chat = testChatDiarySession();
     final privacy = ChatDiaryPrivacyProcessor(chat, []);
-    final a = privacy.protect('第一段私密', [const ChatDiaryPrivateRange(0, 5)]);
-    privacy.protect('第二段私密', [const ChatDiaryPrivateRange(0, 5)]);
+    final a = privacy.protect('第一段私密', [const PrivateTextRange(0, 5)]);
+    privacy.protect('第二段私密', [const PrivateTextRange(0, 5)]);
     final result = privacy.restoreDiary('# 回憶\n\n$a', '私密補記');
     expect(result.title, '回憶');
     expect(result.markdownBody, '第一段私密\n\n## 私密補記\n\n第二段私密');
@@ -127,7 +121,7 @@ void main() {
   test('其他分支的代號不還原或補入目前日記', () {
     final chat = testChatDiarySession();
     final old = ChatDiaryPrivacyProcessor(chat, []);
-    final token = old.protect('另一條路徑的秘密', [const ChatDiaryPrivateRange(0, 8)]);
+    final token = old.protect('另一條路徑的秘密', [const PrivateTextRange(0, 8)]);
     final current = ChatDiaryPrivacyProcessor(chat, [], messages: []);
     expect(current.restore(token), token);
     chat.appendMessage(
@@ -155,7 +149,7 @@ void main() {
     expect(privacy.protect('|內容| {{一般文字}} ⟦PAA⟧'), '|內容| {{一般文字}} ⟦PAA⟧');
   });
   test('插入刪除與取代保持私密區間', () {
-    var ranges = [const ChatDiaryPrivateRange(2, 4)];
+    var ranges = [const PrivateTextRange(2, 4)];
     ranges = updatePrivateRanges('前言秘密結尾', '新前言秘密結尾', ranges);
     expect(ranges.single.start, 3);
     expect(ranges.single.end, 5);
@@ -167,15 +161,15 @@ void main() {
   });
   test('部分取消隱藏會拆成兩段且重疊標記會合併', () {
     final ranges = mergePrivateRanges([
-      const ChatDiaryPrivateRange(0, 4),
-      const ChatDiaryPrivateRange(2, 8),
+      const PrivateTextRange(0, 4),
+      const PrivateTextRange(2, 8),
     ], 10);
     final parts = removePrivateRange(ranges, 3, 5);
     expect(parts.map((r) => (r.start, r.end)), [(0, 3), (5, 8)]);
   });
   test('整段貼上取代不會解除原本的保護', () {
     final ranges = updatePrivateRanges('公開秘密文字', '重新貼上的內容', [
-      const ChatDiaryPrivateRange(2, 4),
+      const PrivateTextRange(2, 4),
     ]);
     expect(ranges.single.start, 0);
     expect(ranges.single.end, 7);

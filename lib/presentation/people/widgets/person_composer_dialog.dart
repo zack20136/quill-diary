@@ -28,9 +28,10 @@ Future<Person?> showPersonComposerDialog(
   BuildContext context, {
   PersonId? personId,
   String initialName = '',
+  ValueChanged<Route<Person>>? onRouteCreated,
 }) async {
   final Color barrierColor = context.appColors.scrim;
-  return showDialog<Person>(
+  final route = DialogRoute<Person>(
     context: context,
     barrierDismissible: false,
     barrierColor: barrierColor,
@@ -60,6 +61,8 @@ Future<Person?> showPersonComposerDialog(
       );
     },
   );
+  onRouteCreated?.call(route);
+  return Navigator.of(context, rootNavigator: true).push(route);
 }
 
 /// 新增／編輯人物；外殼與標籤 Composer 相同。

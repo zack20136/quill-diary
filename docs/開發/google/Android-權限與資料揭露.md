@@ -62,7 +62,7 @@ target SDK 由 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter 設�
 | 付款 | 由 Google Play 處理，App 不保存付款憑證或永久權益 |
 | HTTP 自訂服務 | 區網 HTTP 的文字、照片與憑證未加密；填寫傳輸加密答案時必須揭露這條路徑 |
 
-完整資料揭露見[隱私權政策](../../privacy-policy.md)。AI 資料流程見[AI 聊天日記](../功能/AI-聊天日記.md)，Drive 上傳、取消及清理狀態見[備份與還原](../功能/備份與還原.md#背景上傳生命週期)。
+完整資料揭露見[隱私權政策](../../privacy-policy.md)。AI 資料流程見[AI](../功能/AI.md)，Drive 上傳、取消及清理狀態見[備份與還原](../功能/備份與還原.md#背景上傳生命週期)。
 
 ### 表單填寫依據
 

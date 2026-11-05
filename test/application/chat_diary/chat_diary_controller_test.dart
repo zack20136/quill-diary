@@ -17,9 +17,10 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
+import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
@@ -523,7 +524,7 @@ void main() {
     final reading = Completer<void>();
     settings.readGate = reading.future;
     settings.readStarted = Completer<void>();
-    final preview = controller.previewConversation();
+    final preview = controller.previewRequest();
     await settings.readStarted!.future;
     controller.stop();
     controller.updateComposer('後續的新內容', []);
@@ -577,7 +578,7 @@ void main() {
     );
     const text = '和王小明在秘密地址聊天，電話0912345678';
     final start = text.indexOf('秘密地址');
-    controller.updateComposer(text, [ChatDiaryPrivateRange(start, start + 4)]);
+    controller.updateComposer(text, [PrivateTextRange(start, start + 4)]);
     await controller.send();
     final outgoing = client.calls.single.messages.single.text;
     expect(outgoing, isNot(contains('王小明')));
@@ -618,26 +619,22 @@ void main() {
       client.calls.last.prompt,
       contains('By default use natural English'),
     );
-    settings.chatDiary = const ChatDiarySettings(
-      prompts: ChatDiaryPromptSettings(conversationOverride: '只有這一段自訂提示詞'),
+    settings.chatDiaryPrompts = const AiPromptOverrides(
+      conversationOverride: '只有這一段自訂提示詞',
     );
     controller.updateComposer('第三則', []);
     await controller.send();
     expect(client.calls.last.prompt, '只有這一段自訂提示詞');
   });
   test('反白只隱藏標記區間，較早訊息保留原文，提示詞仍隱藏同一段', () async {
-    settings.chatDiary = const ChatDiarySettings(
-      prompts: ChatDiaryPromptSettings(
-        conversationOverride: '我的住址是秘密地址',
-        generationOverride: '整理秘密地址的故事',
-      ),
+    settings.chatDiaryPrompts = const AiPromptOverrides(
+      conversationOverride: '我的住址是秘密地址',
+      generationOverride: '整理秘密地址的故事',
     );
     controller.updateComposer('先前提過秘密地址', []);
     await controller.send();
-    controller.updateComposer('秘密地址再提一次秘密地址', [
-      const ChatDiaryPrivateRange(0, 4),
-    ]);
-    final beforeSend = (await controller.previewConversation())!;
+    controller.updateComposer('秘密地址再提一次秘密地址', [const PrivateTextRange(0, 4)]);
+    final beforeSend = (await controller.previewRequest())!;
     final pendingTurns = beforeSend.turns.where((turn) => turn.isUser).toList();
     expect(pendingTurns.first.text, '先前提過秘密地址');
     expect(pendingTurns.last.text, '⟦S01⟧再提一次秘密地址');
@@ -647,7 +644,7 @@ void main() {
     expect(sent.first.text, '先前提過秘密地址');
     expect(sent.last.text, '⟦S01⟧再提一次秘密地址');
     expect(client.calls.last.prompt, isNot(contains('秘密地址')));
-    final preview = (await controller.previewConversation())!;
+    final preview = (await controller.previewRequest())!;
     final userTurns = preview.turns.where((turn) => turn.isUser).toList();
     expect(userTurns.first.text, '先前提過秘密地址');
     expect(userTurns.last.text, '⟦S01⟧再提一次秘密地址');
@@ -666,11 +663,11 @@ void main() {
         isUser: true,
         text: original,
         outboundText: '⟦S01⟧ 再提一次⟦S01⟧',
-        privateRanges: [const ChatDiaryPrivateRange(0, 2)],
+        privateRanges: [const PrivateTextRange(0, 2)],
         privateTokenIds: {'⟦S01⟧'},
       ),
     );
-    final preview = (await controller.previewConversation())!;
+    final preview = (await controller.previewRequest())!;
     expect(preview.turns.single.text, '⟦S01⟧ 再提一次秘密');
     expect(chat.messages.single.outboundText, '⟦S01⟧ 再提一次秘密');
     controller.updateComposer('下一則', []);
@@ -680,8 +677,8 @@ void main() {
   test('預覽後未送出的私密文字不進入日記補記', () async {
     controller.updateComposer('已經說過的事情', []);
     await controller.send();
-    controller.updateComposer('不能加入的私密文字', [const ChatDiaryPrivateRange(0, 9)]);
-    await controller.previewConversation();
+    controller.updateComposer('不能加入的私密文字', [const PrivateTextRange(0, 9)]);
+    await controller.previewRequest();
     client.output = '# 日記\n\n已經說過的事情';
     await controller.generate(testZhL10n);
     final draft = await container
@@ -690,12 +687,45 @@ void main() {
     expect(draft!.markdownBody, isNot(contains('不能加入')));
     expect(draft.markdownBody, isNot(contains('私密補記')));
   });
+
+  test('生成預覽與實際提示詞、對話 JSON 及圖片相同，不含待送內容', () async {
+    settings.chatDiaryPrompts = const AiPromptOverrides(
+      conversationOverride: '需求對話提示詞',
+      generationOverride: '生成提示詞與秘密',
+    );
+    await controller.addImage(testAiPng);
+    final sentImage = chat.pendingImageIds.single;
+    controller.updateComposer('秘密與散步', [const PrivateTextRange(0, 2)]);
+    await controller.send();
+    await controller.addImage(testAiPng);
+    final unsentImage = chat.pendingImageIds.single;
+    controller.updateComposer('未送出的私密內容', [const PrivateTextRange(0, 3)]);
+    final conversation = (await controller.previewRequest())!;
+    expect(conversation.turns.last.pending, isTrue);
+    final generation = (await controller.previewRequest(generate: true))!;
+    expect(generation.systemPrompt, '生成提示詞與⟦S01⟧');
+    expect(generation.turns.single.pending, isFalse);
+    expect(generation.turns.single.imageIds, [sentImage]);
+    expect(generation.turns.single.text, isNot(contains('未送出')));
+    expect(generation.turns.single.text, isNot(contains('秘密')));
+    client.output = '# 記錄\n\n今天去散步。';
+    await controller.generate(testZhL10n);
+    expect(client.calls.last.prompt, generation.systemPrompt);
+    expect(
+      client.calls.last.messages.single.text,
+      generation.turns.single.text,
+    );
+    expect(client.calls.last.messages.single.images.map((image) => image.id), [
+      sentImage,
+    ]);
+    expect(chat.pendingImageIds, [unsentImage]);
+  });
   test('API Key 替換於下一次請求使用，進行中的提示詞維持快照', () async {
     final started = Completer<void>();
     final finish = Completer<void>();
     settings.keys[chat.connectionConfig.credentialId] = 'first-key';
-    settings.chatDiary = const ChatDiarySettings(
-      prompts: ChatDiaryPromptSettings(conversationOverride: '原始完整提示詞'),
+    settings.chatDiaryPrompts = const AiPromptOverrides(
+      conversationOverride: '原始完整提示詞',
     );
     client.response = () async* {
       started.complete();
@@ -710,8 +740,8 @@ void main() {
     settings.settings = const AiConnectionSettings(
       activeConnectionId: 'openai',
     );
-    settings.chatDiary = const ChatDiarySettings(
-      prompts: ChatDiaryPromptSettings(conversationOverride: '更新後完整提示詞'),
+    settings.chatDiaryPrompts = const AiPromptOverrides(
+      conversationOverride: '更新後完整提示詞',
     );
     finish.complete();
     await sending;
@@ -728,7 +758,7 @@ void main() {
   });
   test('已送出的圖片自動交接到獨立編輯草稿並加入私密補記', () async {
     await controller.addImage(testAiPng);
-    controller.updateComposer('今天去了秘密地點', [const ChatDiaryPrivateRange(4, 8)]);
+    controller.updateComposer('今天去了秘密地點', [const PrivateTextRange(4, 8)]);
     await controller.send();
     expect(client.calls.single.messages.single.images, hasLength(1));
     expect(client.calls.single.messages.single.images.single.bytes, testAiPng);
@@ -756,7 +786,7 @@ void main() {
   });
   test('空白生成保留人工草稿、附件與生成快照，仍可接續聊天', () async {
     await controller.addImage(testAiPng);
-    controller.updateComposer('今天去了秘密地點', [const ChatDiaryPrivateRange(4, 8)]);
+    controller.updateComposer('今天去了秘密地點', [const PrivateTextRange(4, 8)]);
     await controller.send();
     client.output = '# 原草稿\n\n想保留的內容';
     expect(
@@ -865,7 +895,7 @@ void main() {
     controller.updateComposer('第一組帳號', []);
     await controller.send();
     final original = controller.chat!.activeMessages.last;
-    await controller.selectChatModel(ChatModelOption(connectionConfig: b));
+    await controller.selectModel(ChatModelOption(connectionConfig: b));
     controller.updateComposer('第二組帳號', []);
     await controller.send();
     expect(clientKeys, ['key-a', 'key-b']);
@@ -891,7 +921,7 @@ void main() {
     final reading = Completer<void>();
     settings.readGate = reading.future;
     settings.readStarted = Completer<void>();
-    final selecting = controller.selectChatModel(
+    final selecting = controller.selectModel(
       ChatModelOption(connectionConfig: next),
     );
     await settings.readStarted!.future;
@@ -1314,7 +1344,7 @@ void main() {
   test('編輯重送保留未送輸入，分支之外的文字圖片與私密補記不進入生成', () async {
     await controller.addImage(testAiPng);
     final oldImage = controller.chat!.pendingImageIds.single;
-    controller.updateComposer('舊分支的秘密地點', [const ChatDiaryPrivateRange(0, 8)]);
+    controller.updateComposer('舊分支的秘密地點', [const PrivateTextRange(0, 8)]);
     await controller.send();
     final oldUser = controller.chat!.activeMessages.first;
     final oldToken = oldUser.privateTokenIds.single;
@@ -1323,7 +1353,7 @@ void main() {
     final oldLeaf = controller.chat!.activeMessages.last.id;
     await controller.addImage(testAiPng);
     final unsentImage = controller.chat!.pendingImageIds.single;
-    controller.updateComposer('還沒送出的文字', [const ChatDiaryPrivateRange(0, 7)]);
+    controller.updateComposer('還沒送出的文字', [const PrivateTextRange(0, 7)]);
     controller.beginEditing(oldUser.id);
     expect(controller.chat!.composerRanges.single.end, 8);
     expect(controller.chat!.pendingImageIds, [oldImage]);
@@ -1342,7 +1372,7 @@ void main() {
     );
     await controller.addImage(testAiPng);
     final newImage = controller.chat!.pendingImageIds.single;
-    controller.updateComposer('新分支私密', [const ChatDiaryPrivateRange(0, 5)]);
+    controller.updateComposer('新分支私密', [const PrivateTextRange(0, 5)]);
     await controller.send();
     expect(controller.chat!.messages, hasLength(6));
     expect(controller.chat!.activeMessages, hasLength(2));
@@ -1351,7 +1381,7 @@ void main() {
     expect(client.calls.last.messages.single.text, isNot(contains(oldToken)));
     expect(client.calls.last.messages.single.images.single.id, newImage);
     expect(
-      (await controller.previewConversation())!.turns
+      (await controller.previewRequest())!.turns
           .map((turn) => turn.text)
           .join(),
       isNot(contains('舊分支')),
@@ -1494,7 +1524,7 @@ void main() {
     );
     controller.updateComposer('第一段合成內容', []);
     await controller.send();
-    await controller.selectChatModel(
+    await controller.selectModel(
       ChatModelOption(
         connectionConfig: settings.settings
             .connectionFor('custom')

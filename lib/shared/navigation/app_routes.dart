@@ -26,6 +26,9 @@ abstract final class AppRoutes {
   static const String personalizationRoute = '/settings/personalization';
   static const String supportRoute = '/settings/support';
   static const String chatDiaryRoutePrefix = '/chat-diary';
+  static const String diaryOrganizationRoutePrefix = '/diary-organization';
+  static String diaryOrganizationLocation(String entryId) =>
+      '$diaryOrganizationRoutePrefix/$entryId';
   static String chatDiaryLocation(String id) => '$chatDiaryRoutePrefix/$id';
   static String newChatDiaryLocation(String id) =>
       '$chatDiaryRoutePrefix/new/$id';

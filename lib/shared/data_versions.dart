@@ -9,6 +9,7 @@ abstract final class DataVersions {
   static const int aiSettings = 1;
   static const int pinnedEntries = 1;
   static const int chatDiary = 1;
+  static const int diaryOrganization = 1;
   static const int indexDatabase = 1;
   static const int entryIndexGeneration = 1;
 

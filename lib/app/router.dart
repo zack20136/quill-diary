@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
+import 'package:quill_diary/presentation/diary_organization/diary_organization_page.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
@@ -17,6 +18,15 @@ abstract final class AppRouter {
       initialLocation: AppRoutes.homeRoute,
       routes: <RouteBase>[
         GoRoute(path: AppRoutes.homeRoute, builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: '${AppRoutes.diaryOrganizationRoutePrefix}/:entryId',
+          builder: (_, state) {
+            final id = state.pathParameters['entryId'] ?? '';
+            return RegExp(r'^jrn_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(id)
+                ? DiaryOrganizationPage(entryId: id)
+                : const HomePage();
+          },
+        ),
         GoRoute(
           path: '${AppRoutes.chatDiaryRoutePrefix}/entry/:entryId',
           builder: (_, state) {

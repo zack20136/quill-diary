@@ -80,6 +80,25 @@ bool sameAiTarget(AiConnectionConfig left, AiConnectionConfig right) =>
     left.effectiveBaseUrl == right.effectiveBaseUrl &&
     left.workspaceId == right.workspaceId;
 
+/// 由選單選項解析可保存的連線。目前快照、未啟用或對不上的選項回 null。
+AiConnectionConfig? connectionForSelectedModel(
+  AiConnectionSettings settings,
+  ChatModelOption option,
+) {
+  if (option.isCurrentSnapshot) return null;
+  final source =
+      settings.connections[option.connectionId] ??
+      (option.connectionConfig.provider != AiProvider.custom
+          ? defaultConnection(option.connectionConfig.provider)
+          : null);
+  if (source == null || !source.enabledModels.contains(option.modelId)) {
+    return null;
+  }
+  final next = source.copyWith(model: option.modelId);
+  if (!sameAiTarget(next, option.connectionConfig)) return null;
+  return next;
+}
+
 class AiConnectionConfig {
   const AiConnectionConfig({
     required this.provider,

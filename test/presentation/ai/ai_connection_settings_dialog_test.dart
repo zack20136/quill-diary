@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
-import 'package:quill_diary/application/chat_diary/chat_diary_prompt_resolver.dart';
+import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
@@ -15,7 +15,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
-import 'package:quill_diary/presentation/chat_diary/chat_diary_prompt_dialog.dart';
+import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -587,7 +587,7 @@ void main() {
 
   testWidgets('兩份提示詞在獨立對話框編輯，自訂內容不被語系切換覆寫', (tester) async {
     await open(tester);
-    expect(find.text('使用內建提示詞'), findsNWidgets(2));
+    expect(find.text('使用內建提示詞'), findsNWidgets(4));
     await prompt(tester, '對話引導');
     expect(find.text('這些提示詞決定 AI 怎麼聊天、怎麼寫日記，儲存後從下一次回覆或生成生效。'), findsOneWidget);
     final conversation = find.byKey(
@@ -604,7 +604,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
     await tester.pumpAndSettle();
     expect(find.text('Custom prompt'), findsOneWidget);
-    expect(find.text('Built-in prompt'), findsOneWidget);
+    expect(find.text('Built-in prompt'), findsNWidgets(3));
     await prompt(tester, 'Diary generation');
     final generation = find.byKey(
       const ValueKey(ChatDiaryPromptPurpose.generation),
@@ -627,8 +627,50 @@ void main() {
     await tester.enterText(englishKey, 'synthetic-key');
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
-    expect(store.chatDiary.prompts.conversationOverride, '我的自訂聊天指示');
-    expect(store.chatDiary.prompts.generationOverride, isNull);
+    expect(store.chatDiaryPrompts.conversationOverride, '我的自訂聊天指示');
+    expect(store.chatDiaryPrompts.generationOverride, isNull);
+    expect(store.organizationPrompts.conversationOverride, isNull);
+    expect(networkCalls, 0);
+  });
+
+  testWidgets('日記整理提示詞可自訂，還原後恢復內建', (tester) async {
+    await open(tester);
+    await prompt(tester, '需求對話');
+    expect(
+      find.textContaining('整理生成仍須輸出含 reply 與 body 的 JSON，並原樣保留保護代號。'),
+      findsWidgets,
+    );
+    final conversation = find.byKey(
+      const ValueKey('organization-conversation-prompt'),
+    );
+    expect(
+      tester.widget<TextField>(conversation).controller!.text,
+      contains('日記整理夥伴'),
+    );
+    await tester.enterText(conversation, '自訂整理對話');
+    await tester.tap(find.widgetWithText(FilledButton, '套用'));
+    await tester.pumpAndSettle();
+    expect(find.text('使用自訂提示詞'), findsOneWidget);
+    await prompt(tester, '整理生成');
+    final generation = find.byKey(
+      const ValueKey('organization-generation-prompt'),
+    );
+    await tester.enterText(generation, '不要輸出 JSON');
+    await tester.tap(find.text('還原預設'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(generation).controller!.text,
+      contains('只輸出一個有效的 JSON'),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '套用'));
+    await tester.pumpAndSettle();
+    final key = find.byKey(const ValueKey('ai-api-key-openai'));
+    await tester.ensureVisible(key);
+    await tester.enterText(key, 'synthetic-key');
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(store.organizationPrompts.conversationOverride, '自訂整理對話');
+    expect(store.organizationPrompts.generationOverride, isNull);
     expect(networkCalls, 0);
   });
 
@@ -662,7 +704,7 @@ void main() {
     expect(pixels(), before);
     await tester.tap(find.text('取消').last);
     await tester.pumpAndSettle();
-    expect(find.byType(ChatDiaryPromptDialog), findsNothing);
+    expect(find.byType(AiPromptDialog), findsNothing);
     expect(pixels(), closeTo(before, 0.5));
   });
 
@@ -687,12 +729,12 @@ void main() {
     );
     await tester.tap(find.text('取消').last);
     await tester.pumpAndSettle();
-    expect(find.byType(ChatDiaryPromptDialog), findsNothing);
+    expect(find.byType(AiPromptDialog), findsNothing);
     tester.view.resetViewInsets();
     await tester.pumpAndSettle();
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
-    expect(store.chatDiary.prompts.conversationOverride, isNull);
+    expect(store.chatDiaryPrompts.conversationOverride, isNull);
     expect(find.byType(AiConnectionSettingsDialog), findsNothing);
   });
 

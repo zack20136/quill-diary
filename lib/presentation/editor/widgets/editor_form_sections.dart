@@ -1,12 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
-import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/application/people/person_mention_controller.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_keyboard_chrome.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
+import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
@@ -39,7 +39,7 @@ class EditorTitleSection extends StatelessWidget {
   final bool showUnsavedTag;
   final bool showMetadataTags;
   final Map<String, int> tagAccentArgbMap;
-  final EditorPersonMentionController? mentionController;
+  final PersonMentionController? mentionController;
   final KeyEventResult Function(FocusNode node, KeyEvent event)?
   onMentionKeyEvent;
 
@@ -141,7 +141,7 @@ class EditorTitleSection extends StatelessWidget {
             decoration: titleDecoration,
           )
         else
-          EditorMentionTextField(
+          PersonMentionTextField(
             controller: titleController,
             mentionController: mentionController,
             onMentionKeyEvent: onMentionKeyEvent,
@@ -172,7 +172,7 @@ class EditorTitleSection extends StatelessWidget {
   }
 }
 
-class EditorBodySection extends StatefulWidget {
+class EditorBodySection extends StatelessWidget {
   const EditorBodySection({
     super.key,
     required this.previewMode,
@@ -191,79 +191,48 @@ class EditorBodySection extends StatefulWidget {
   final VoidCallback onBodyChanged;
   final ValueChanged<String>? onPreviewCheckboxChanged;
   final GlobalKey<EditorHybridBodyState>? hybridBodyKey;
-  final EditorPersonMentionController? mentionController;
+  final PersonMentionController? mentionController;
   final KeyEventResult Function(FocusNode node, KeyEvent event)?
   onMentionKeyEvent;
 
   @override
-  State<EditorBodySection> createState() => _EditorBodySectionState();
-}
-
-class _EditorBodySectionState extends State<EditorBodySection> {
-  String? _previewMarkdown;
-
-  @override
-  void initState() {
-    super.initState();
-    _previewMarkdown = widget.bodyController.text;
-  }
-
-  @override
-  void didUpdateWidget(EditorBodySection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.previewMode) {
-      _previewMarkdown = null;
-      return;
-    }
-    if (oldWidget.bodyController != widget.bodyController ||
-        (oldWidget.previewMode != widget.previewMode &&
-            widget.bodyController.text != _previewMarkdown)) {
-      _previewMarkdown = widget.bodyController.text;
-    }
-  }
-
-  void _handlePreviewCheckboxChanged(String markdown) {
-    setState(() => _previewMarkdown = markdown);
-    widget.bodyController.text = markdown;
-    widget.onPreviewCheckboxChanged?.call(markdown);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final ThemeData paneTheme = Theme.of(context);
-    final TextStyle bodyStyle = widget.typography.bodyTextStyle(
-      paneTheme.textTheme,
-    );
-    final String previewMarkdown =
-        _previewMarkdown ?? widget.bodyController.text;
-    final Widget body = widget.previewMode
-        ? SelectionArea(
-            child: SingleChildScrollView(
-              child: previewMarkdown.isEmpty
-                  ? Text(
-                      context.l10n.editorBodyEmptyPreview,
-                      style: bodyStyle.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: context.appColors.mutedForeground,
+    final TextStyle bodyStyle = typography.bodyTextStyle(paneTheme.textTheme);
+    final Widget body = previewMode
+        ? ValueListenableBuilder<TextEditingValue>(
+            valueListenable: bodyController,
+            builder: (context, value, _) => SelectionArea(
+              child: SingleChildScrollView(
+                child: value.text.isEmpty
+                    ? Text(
+                        context.l10n.editorBodyEmptyPreview,
+                        style: bodyStyle.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: context.appColors.mutedForeground,
+                        ),
+                      )
+                    : EditorMarkdownPreview(
+                        markdown: value.text,
+                        typography: typography,
+                        interactiveCheckboxes: editorBodyHasCheckboxBlocks(
+                          value.text,
+                        ),
+                        onMarkdownChanged: (markdown) {
+                          bodyController.text = markdown;
+                          onPreviewCheckboxChanged?.call(markdown);
+                        },
                       ),
-                    )
-                  : EditorMarkdownPreview(
-                      markdown: previewMarkdown,
-                      typography: widget.typography,
-                      interactiveCheckboxes: editorBodyHasCheckboxBlocks(
-                        previewMarkdown,
-                      ),
-                      onMarkdownChanged: _handlePreviewCheckboxChanged,
-                    ),
+              ),
             ),
           )
         : EditorHybridBody(
-            key: widget.hybridBodyKey,
-            bodyController: widget.bodyController,
-            typography: widget.typography,
-            onBodyChanged: widget.onBodyChanged,
-            mentionController: widget.mentionController,
-            onMentionKeyEvent: widget.onMentionKeyEvent,
+            key: hybridBodyKey,
+            bodyController: bodyController,
+            typography: typography,
+            onBodyChanged: onBodyChanged,
+            mentionController: mentionController,
+            onMentionKeyEvent: onMentionKeyEvent,
           );
 
     final AppColors colors = context.appColors;

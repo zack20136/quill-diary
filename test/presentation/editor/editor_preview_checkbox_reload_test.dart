@@ -18,6 +18,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 
@@ -80,6 +81,14 @@ void main() {
     expect(find.text('任務甲'), findsOneWidget);
     expect(find.byType(AppLoadingState), findsNothing);
 
+    final preview = tester.widget<EditorMarkdownPreview>(
+      find.byType(EditorMarkdownPreview),
+    );
+    preview.onMarkdownChanged!('- [x] 任務甲');
+    await tester.pumpAndSettle();
+    final saved = actions.savedEntryDraft!;
+    expect(find.text('${saved.markdownBody.runes.length} 字'), findsOneWidget);
+
     // 模擬預覽勾選存檔後 invalidate entryProvider 的 reload。
     container.invalidate(entryProvider('entry-1'));
     await tester.pump();
@@ -91,6 +100,54 @@ void main() {
     reloadHang.complete(entryWithTasks);
     await tester.pumpAndSettle();
     expect(find.text('任務甲'), findsOneWidget);
+  });
+
+  testWidgets('重新讀取完成不覆蓋正在編輯的文字', (tester) async {
+    final reload = Completer<DiaryEntry?>();
+    final actions = _ReloadAwareEditorActions(
+      existingEntry: entryWithTasks.copyWith(markdownBody: '原本的日記內文'),
+      hangAfterFirstLoad: reload,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        editorActionsProvider.overrideWithValue(actions),
+        vaultRepositoryProvider.overrideWithValue(actions.repository),
+        effectiveAppSessionProvider.overrideWith(
+          (ref) async => const AppSessionState(
+            status: AppLockStatus.unlocked,
+            session: session,
+          ),
+        ),
+        recoveryMetadataProvider.overrideWith((ref) async => _recoveryMetadata),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: editorTestApp(child: const EditorPage(entryId: 'entry-1')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editor-top-bar-edit')));
+    await tester.pumpAndSettle();
+    final editor = tester.widget<EditorHybridBody>(
+      find.byType(EditorHybridBody),
+    );
+    editor.bodyController.text = '尚未儲存的手動修改';
+    await tester.pump();
+    container.invalidate(entryProvider('entry-1'));
+    await tester.pump();
+    reload.complete(
+      entryWithTasks.copyWith(
+        markdownBody: '重新讀取的新內容',
+        updatedAt: DateTime(2026, 6, 18, 10),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(editor.bodyController.text, '尚未儲存的手動修改');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('有圖片時預覽勾選重讀不會讓圖片列或縮圖先消失', (WidgetTester tester) async {

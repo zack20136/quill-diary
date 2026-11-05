@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 
@@ -18,7 +18,7 @@ void main() {
     chat.pendingImageIds.add('image');
     expect(chat.hasDraftContent, isTrue);
     chat.pendingImageIds.clear();
-    chat.editBackup = ChatDiaryComposerSnapshot(
+    chat.editBackup = AiComposerSnapshot(
       text: '編輯前的輸入',
       ranges: [],
       imageIds: [],
@@ -76,7 +76,7 @@ void main() {
         isUser: true,
         text: '小明秘密來了',
         outboundText: '⟦P01⟧⟦S01⟧來了',
-        privateRanges: const [ChatDiaryPrivateRange(2, 4)],
+        privateRanges: const [PrivateTextRange(2, 4)],
       ),
     );
     final restored = ChatDiarySession.fromJson(
@@ -126,6 +126,55 @@ void main() {
     expect(restored.activeMessages.last.id, 'd');
   });
 
+  test('沒有的父訊息、錯誤、連線與生成欄位不寫入', () {
+    final chat = testChatDiarySession();
+    chat.appendMessage(
+      ChatDiaryMessage(
+        id: 'user',
+        isUser: true,
+        text: '你好',
+        outboundText: '你好',
+      ),
+    );
+    final json = chat.toJson();
+    for (final key in [
+      'generation_connection',
+      'generated_entry_id',
+      'generated_from_message_id',
+      'generated_draft_signature',
+      'editing_message_id',
+      'edit_backup',
+    ]) {
+      expect(json.containsKey(key), isFalse, reason: key);
+    }
+    final message = (json['messages'] as List).single as Map;
+    expect(message.containsKey('parent_id'), isFalse);
+    expect(message.containsKey('error_code'), isFalse);
+    expect(message.containsKey('connection'), isFalse);
+    chat.editBackup = AiComposerSnapshot(
+      text: '編輯前',
+      ranges: const [],
+      imageIds: const [],
+    );
+    expect(
+      (chat.toJson()['edit_backup'] as Map).containsKey('image_ids'),
+      isFalse,
+    );
+    chat.editBackup = AiComposerSnapshot(
+      text: '編輯前',
+      ranges: const [],
+      imageIds: const ['att'],
+    );
+    expect((chat.toJson()['edit_backup'] as Map)['image_ids'], ['att']);
+    final restored = ChatDiarySession.fromJson(
+      jsonDecode(jsonEncode(json)) as Map<String, dynamic>,
+    );
+    expect(restored.messages.single.parentId, isNull);
+    expect(restored.messages.single.errorCode, isNull);
+    expect(restored.generationConnectionSnapshot, isNull);
+    expect(restored.editBackup, isNull);
+  });
+
   test('聊天格式拒絕舊開發版本、未知版本與非整數版本', () {
     final data = testChatDiarySession().toJson();
     for (final version in <Object?>[null, 0, 2, '1']) {
@@ -159,15 +208,5 @@ void main() {
       () => ChatDiarySession.draftKeyFor('../private'),
       throwsFormatException,
     );
-  });
-
-  test('自訂提示詞覆寫可還原，未設定的維持預設', () {
-    final diary = ChatDiarySettings(
-      prompts: const ChatDiaryPromptSettings(conversationOverride: '保持原文'),
-    );
-    final restored = ChatDiarySettings.fromJson(diary.toJson());
-    expect(restored.prompts.conversationOverride, '保持原文');
-    expect(restored.prompts.generationOverride, isNull);
-    expect(restored.hidePersonNames, isTrue);
   });
 }

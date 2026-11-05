@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
@@ -234,18 +235,25 @@ class VaultRepairService {
     UnlockedVaultSession session, {
     required List<VaultFinding> findings,
   }) async {
-    if (findings.isEmpty || isAssetOnlyFindingGroup(findings)) return null;
+    if (findings.isEmpty ||
+        isAssetOnlyFindingGroup(findings) ||
+        findings.every(_isChatFinding)) {
+      return null;
+    }
     await _indexDatabaseManager.openForSession(session);
     final EntryId? preferredEntryId = findings
         .map((VaultFinding finding) => finding.entryId)
         .firstWhere((EntryId? id) => id != null, orElse: () => null);
-    final List<VaultFinding> sourceFindings = preferredEntryId == null
-        ? findings
-        : findings
-              .where(
-                (VaultFinding finding) => finding.entryId == preferredEntryId,
-              )
-              .toList(growable: false);
+    final List<VaultFinding> sourceFindings =
+        (preferredEntryId == null
+                ? findings
+                : findings.where(
+                    (VaultFinding finding) =>
+                        finding.entryId == preferredEntryId,
+                  ))
+            .where((VaultFinding finding) => !_isChatFinding(finding))
+            .toList(growable: false);
+    if (sourceFindings.isEmpty) return null;
     final VaultFinding source = sourceFindings.first;
     final DiaryEntrySummary? indexed = preferredEntryId == null
         ? null
@@ -396,6 +404,10 @@ class VaultRepairService {
     for (final String path in pathsToDelete) {
       if (!_isSafeVaultContentPath(path, normalizedRoot)) continue;
       if (path.endsWith('.md.enc')) await deleteEntryChatFiles(path);
+      if (path.endsWith('.chat.json.enc')) {
+        await deleteFileIfExists('$path.previous');
+        await deleteFileIfExists('$path.tmp');
+      }
       final File file = File(path);
       if (!file.existsSync()) continue;
       await deleteFileIfExists(path);
@@ -406,6 +418,7 @@ class VaultRepairService {
     for (final EntryId entryId in entryIdsToRemove) {
       await indexDb.removeEntry(entryId);
       await PinnedEntriesStore(_pathStrategy).remove(entryId);
+      await _deleteOrganizationDraft(entryId);
     }
 
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
@@ -425,7 +438,9 @@ class VaultRepairService {
       VaultRepairIssueKind.assetIdentityMismatch ||
       VaultRepairIssueKind.conflictingAsset ||
       VaultRepairIssueKind.unverifiedOrphanAsset ||
-      VaultRepairIssueKind.cleanupFailure => false,
+      VaultRepairIssueKind.cleanupFailure ||
+      VaultRepairIssueKind.unreadableChat ||
+      VaultRepairIssueKind.orphanChat => false,
     };
   }
 
@@ -593,6 +608,14 @@ class VaultRepairService {
       inventory.entries,
       repair: false,
     );
+    await _scanCompletedChats(
+      session: session,
+      metadata: metadata,
+      scanned: entryStats.scanned,
+      cleanupTargets: entryStats.cleanupTargets,
+      findings: entryStats.findings,
+      repair: false,
+    );
     onProgress?.call(VaultRepairPhase.checkingAttachments);
     final bool hasEntryIssues = _hasUnresolvedEntryIssues(entryStats.issues);
     final _AssetRepairStats assetStats = await _scanAssets(
@@ -754,6 +777,14 @@ class VaultRepairService {
       repair: true,
       actionEvents: actionEvents,
     );
+    await _scanCompletedChats(
+      session: session,
+      metadata: metadata,
+      scanned: entryStats.scanned,
+      cleanupTargets: entryStats.cleanupTargets,
+      findings: entryStats.findings,
+      repair: true,
+    );
 
     final Set<String> catalogNorms = (await TagStylesStore(
       _pathStrategy,
@@ -894,7 +925,11 @@ class VaultRepairService {
     for (final MapEntry<String, _RepairCleanupTarget> item
         in cleanupTargets.entries.toList()) {
       final _RepairCleanupTarget target = item.value;
-      if (!target.isAttachment || target.entryId != null) continue;
+      if (!target.isAttachment ||
+          target.entryId != null ||
+          target.path.contains('.chat.json.enc')) {
+        continue;
+      }
       final AssetId? assetId = _assetIdFromFindingReference(
         await _vaultRelativeReference(target.path),
       );
@@ -1115,6 +1150,7 @@ class VaultRepairService {
         }
         if (target.countsAsDuplicateEntry &&
             result == VaultRepairDeleteResult.deleted) {
+          await _deleteOrganizationDraft(target.entryId ?? target.fileId);
           actionEvents.add(
             VaultRepairActionEvent(
               scope: VaultRepairActionScope.entry,
@@ -1321,6 +1357,155 @@ class VaultRepairService {
     return report;
   }
 
+  bool _isChatFinding(VaultFinding finding) =>
+      finding.kind == VaultRepairIssueKind.unreadableChat ||
+      finding.kind == VaultRepairIssueKind.orphanChat;
+
+  Future<void> _deleteOrganizationDraft(String? entryId) async {
+    final String id = entryId?.trim() ?? '';
+    if (!RegExp(r'^jrn_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(id)) return;
+    final Directory directory = await _pathStrategy.organizationDraftDirectory(
+      id,
+    );
+    if (directory.existsSync()) await directory.delete(recursive: true);
+  }
+
+  Future<void> _scanCompletedChats({
+    required UnlockedVaultSession session,
+    required RecoveryMetadata metadata,
+    required List<_ScannedEntry> scanned,
+    required Map<String, _RepairCleanupTarget> cleanupTargets,
+    required List<VaultFinding> findings,
+    required bool repair,
+  }) async {
+    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final Directory entriesDirectory = Directory(
+      p.join(vaultRoot.path, 'entries'),
+    );
+    final Map<String, _ScannedEntry> scannedByPath = <String, _ScannedEntry>{
+      for (final _ScannedEntry item in scanned)
+        p.normalize(item.filePath): item,
+    };
+    final Set<String> quarantinedEntries = <String>{
+      for (final _RepairCleanupTarget target in cleanupTargets.values)
+        if (target.quarantine && target.path.endsWith('.md.enc'))
+          p.normalize(target.path),
+    };
+    final List<File> chatFiles = await _repairFileOperations.snapshotFiles(
+      entriesDirectory,
+      '.chat.json.enc',
+    );
+    for (final File chatFile in chatFiles) {
+      final String entryPath = chatFile.path.replaceFirst(
+        RegExp(r'\.chat\.json\.enc$'),
+        '.md.enc',
+      );
+      final String normalizedEntry = p.normalize(entryPath);
+      if (quarantinedEntries.contains(normalizedEntry)) continue;
+      final _ScannedEntry? entry = scannedByPath[normalizedEntry];
+      if (entry == null) {
+        if (File(entryPath).existsSync()) continue;
+        await _recordChatProblem(
+          chatFile: chatFile,
+          kind: VaultRepairIssueKind.orphanChat,
+          findings: findings,
+          cleanupTargets: cleanupTargets,
+          repair: repair,
+        );
+        continue;
+      }
+      if (await _completedChatMatches(
+        chatFile,
+        session: session,
+        metadata: metadata,
+        entryId: entry.entry.id,
+      )) {
+        continue;
+      }
+      await _recordChatProblem(
+        chatFile: chatFile,
+        kind: VaultRepairIssueKind.unreadableChat,
+        findings: findings,
+        cleanupTargets: cleanupTargets,
+        repair: repair,
+        entry: entry,
+      );
+    }
+  }
+
+  Future<bool> _completedChatMatches(
+    File chatFile, {
+    required UnlockedVaultSession session,
+    required RecoveryMetadata metadata,
+    required EntryId entryId,
+  }) async {
+    try {
+      final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
+        await chatFile.readAsBytes(),
+      );
+      if (parsed.header.vaultId != metadata.vaultId ||
+          parsed.header.contentType != 'application/json') {
+        return false;
+      }
+      final List<int> plain = await _cryptoService.decryptBytes(
+        headerBytes: parsed.headerBytes,
+        ciphertextBytes: parsed.ciphertextBytes,
+        context: vaultDecryptionContext(session),
+      );
+      final Object? decoded = jsonDecode(utf8.decode(plain));
+      if (decoded is! Map) return false;
+      final ChatDiarySession chat = ChatDiarySession.fromJson(
+        decoded.cast<String, dynamic>(),
+      );
+      final String? generated = chat.generatedEntryId;
+      return chat.vaultId == metadata.vaultId &&
+          (generated == null || generated == entryId);
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<void> _recordChatProblem({
+    required File chatFile,
+    required VaultRepairIssueKind kind,
+    required List<VaultFinding> findings,
+    required Map<String, _RepairCleanupTarget> cleanupTargets,
+    required bool repair,
+    _ScannedEntry? entry,
+  }) async {
+    findings.add(
+      VaultFinding(
+        kind: kind,
+        plannedAction: plannedActionForIssue(kind, forRepair: repair),
+        manualAction: manualActionForIssue(kind),
+        canOpenEntry: false,
+        entryId: entry?.entry.id,
+        entryTitle: entry?.entry.normalizedTitle,
+        entryDate: entry?.entry.date,
+        internalReference: await _vaultRelativeReference(chatFile.path),
+      ),
+    );
+    if (!repair) return;
+    for (final String path in <String>[
+      chatFile.path,
+      '${chatFile.path}.previous',
+      '${chatFile.path}.tmp',
+    ]) {
+      if (!File(path).existsSync()) continue;
+      cleanupTargets[path] = _RepairCleanupTarget(
+        path: path,
+        fileId: 'unknown',
+        contentType: 'application/json',
+        plaintextHash: 'unknown',
+        isAttachment: true,
+        quarantine: true,
+        entryTitle: entry?.entry.normalizedTitle,
+        entryDate: entry?.entry.date,
+        entryId: entry?.entry.id,
+      );
+    }
+  }
+
   Future<_EntryRepairStats> _scanEntries(
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
@@ -1333,7 +1518,7 @@ class VaultRepairService {
       p.join(vaultRoot.path, 'entries'),
     );
     if (files.isEmpty) {
-      return const _EntryRepairStats(
+      return _EntryRepairStats(
         scanned: <_ScannedEntry>[],
         relocatedEntries: 0,
         issues: <VaultRepairIssue>[],
@@ -2394,6 +2579,9 @@ class VaultRepairService {
           deleteResult == VaultRepairDeleteResult.missing;
       if (deleted && !target.isAttachment) {
         await deleteEntryChatFiles(target.path);
+        if (target.path.endsWith('.md.enc')) {
+          await _deleteOrganizationDraft(target.entryId ?? target.fileId);
+        }
       }
       return deleted;
     } on Object {

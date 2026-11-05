@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
-import 'package:quill_diary/application/editor/editor_person_mention_controller.dart';
+import 'package:quill_diary/application/people/person_mention_controller.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 
-import 'package:quill_diary/presentation/editor/widgets/editor_mention_text_field.dart';
+import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 class EditorCheckboxBlockRow extends StatefulWidget {
   const EditorCheckboxBlockRow({
@@ -21,6 +23,7 @@ class EditorCheckboxBlockRow extends StatefulWidget {
     this.onMentionKeyEvent,
     this.onSubmitted,
     this.dragHandle,
+    this.privateRanges = const [],
   });
 
   final EditorCheckboxLine block;
@@ -31,11 +34,12 @@ class EditorCheckboxBlockRow extends StatefulWidget {
   final ValueChanged<bool>? onCheckedChanged;
   final ValueChanged<String> onTextChanged;
   final FocusNode? textFocusNode;
-  final EditorPersonMentionController? mentionController;
+  final PersonMentionController? mentionController;
   final KeyEventResult Function(FocusNode node, KeyEvent event)?
   onMentionKeyEvent;
   final VoidCallback? onSubmitted;
   final Widget? dragHandle;
+  final List<PrivateTextRange> privateRanges;
 
   @override
   State<EditorCheckboxBlockRow> createState() => _EditorCheckboxBlockRowState();
@@ -97,11 +101,15 @@ class _EditorCheckboxBlockRowState extends State<EditorCheckboxBlockRow> {
       isDense: true,
     );
     final TextEditingController? controller = widget.textController;
-    final EditorPersonMentionController? mention = widget.mentionController;
+    final PersonMentionController? mention = widget.mentionController;
     final Widget textField = !widget.editable
         ? (widget.block.text.isEmpty
               ? const SizedBox.shrink()
-              : Text(widget.block.text, style: labelStyle))
+              : PrivateText(
+                  text: widget.block.text,
+                  ranges: widget.privateRanges,
+                  style: labelStyle,
+                ))
         : (mention == null || controller == null)
         ? TextField(
             focusNode: widget.textFocusNode,
@@ -116,7 +124,7 @@ class _EditorCheckboxBlockRowState extends State<EditorCheckboxBlockRow> {
             style: labelStyle,
             decoration: fieldDecoration,
           )
-        : EditorMentionTextField(
+        : PersonMentionTextField(
             focusNode: widget.textFocusNode,
             controller: controller,
             mentionController: mention,

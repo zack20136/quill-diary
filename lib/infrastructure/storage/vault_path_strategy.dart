@@ -100,6 +100,19 @@ class VaultPathStrategy {
   Future<Directory> editorDraftPreviewRootDirectory() async =>
       Directory(p.join(Directory.systemTemp.path, 'quill_diary_draft_preview'));
 
+  Future<Directory> organizationDraftDirectory(String entryId) async {
+    if (!RegExp(r'^jrn_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(entryId)) {
+      throw const FormatException('無效的日記識別');
+    }
+    return Directory(
+      p.join(
+        (await vaultRootDirectory()).path,
+        'diary_organization_drafts',
+        entryId,
+      ),
+    );
+  }
+
   Future<String> editorDraftFilePath(String draftKey) async {
     final Directory draftDir = await editorDraftDirectory(draftKey);
     return p.join(draftDir.path, 'draft.json.enc');

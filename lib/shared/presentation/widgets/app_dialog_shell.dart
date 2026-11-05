@@ -4,8 +4,12 @@ import 'package:material_ui/material_ui.dart';
 enum AppDialogSize { standard, compact }
 
 /// 將各種 dialog 的實際寬度統一為對應層級比例。
-class _AppDialogWidth extends StatelessWidget {
-  const _AppDialogWidth({required this.child, required this.size});
+class AppDialogWidth extends StatelessWidget {
+  const AppDialogWidth({
+    super.key,
+    required this.child,
+    this.size = AppDialogSize.standard,
+  });
 
   final Widget child;
   final AppDialogSize size;
@@ -33,7 +37,7 @@ Future<T?> showAppDialog<T>({
 }) => showDialog<T>(
   context: context,
   builder: (BuildContext dialogContext) =>
-      _AppDialogWidth(size: size, child: builder(dialogContext)),
+      AppDialogWidth(size: size, child: builder(dialogContext)),
   barrierDismissible: barrierDismissible,
   barrierColor: barrierColor,
   useSafeArea: useSafeArea,

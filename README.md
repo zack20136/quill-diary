@@ -9,7 +9,7 @@ Quill Diary 是以 Android 為主要平台的離線加密日記 App。本 repo �
 - 只在有效解鎖 session 期間可用的加密搜尋索引
 - 加密人物名冊與可重建的姓名/別名查詢快取
 - Markdown 編輯、任務清單、預覽與本機加密草稿
-- AI 聊天寫日記；服務、協定與 API Key 由使用者自行提供
+- AI 聊天日記與既有日記整理；服務、協定與 API Key 由使用者自行提供
 - 完整備份與還原，以及 Markdown/HTML 可攜式匯入匯出
 - Google Drive `appDataFolder` 備份與還原；由使用者手動啟動，不是即時同步
 - Google Play 一次性支持，不提供訂閱、會員或額外功能解鎖

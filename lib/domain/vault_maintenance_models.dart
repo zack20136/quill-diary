@@ -12,6 +12,8 @@ enum VaultRepairIssueKind {
   conflictingAsset,
   unverifiedOrphanAsset,
   cleanupFailure,
+  unreadableChat,
+  orphanChat,
 }
 
 /// 底層修復階段（不含 application 層的備份階段）。
@@ -965,7 +967,9 @@ VaultPlannedAction plannedActionForIssue(
     VaultRepairIssueKind.assetIdentityMismatch =>
       VaultPlannedAction.removeReference,
     VaultRepairIssueKind.conflictingAsset => VaultPlannedAction.splitAttachment,
-    VaultRepairIssueKind.unverifiedOrphanAsset => VaultPlannedAction.quarantine,
+    VaultRepairIssueKind.unverifiedOrphanAsset ||
+    VaultRepairIssueKind.unreadableChat ||
+    VaultRepairIssueKind.orphanChat => VaultPlannedAction.quarantine,
     VaultRepairIssueKind.cleanupFailure => VaultPlannedAction.none,
   };
 }
@@ -985,7 +989,9 @@ VaultManualAction manualActionForIssue(VaultRepairIssueKind kind) {
       VaultManualAction.restoreFromBackup,
     VaultRepairIssueKind.conflictingEntry ||
     VaultRepairIssueKind.unverifiedOrphanAsset ||
-    VaultRepairIssueKind.cleanupFailure => VaultManualAction.none,
+    VaultRepairIssueKind.cleanupFailure ||
+    VaultRepairIssueKind.unreadableChat ||
+    VaultRepairIssueKind.orphanChat => VaultManualAction.none,
   };
 }
 
@@ -1000,6 +1006,8 @@ bool canOpenEntryForIssue(VaultRepairIssueKind kind) {
     VaultRepairIssueKind.unreadableEntry ||
     VaultRepairIssueKind.entryIdentityMismatch ||
     VaultRepairIssueKind.unverifiedOrphanAsset ||
-    VaultRepairIssueKind.cleanupFailure => false,
+    VaultRepairIssueKind.cleanupFailure ||
+    VaultRepairIssueKind.unreadableChat ||
+    VaultRepairIssueKind.orphanChat => false,
   };
 }

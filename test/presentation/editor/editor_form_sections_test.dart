@@ -4,7 +4,7 @@ import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_form_sections.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_person_suggestion_panel.dart';
+import 'package:quill_diary/presentation/people/widgets/person_suggestion_panel.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
@@ -62,10 +62,8 @@ void main() {
       testApp(
         brightness: Brightness.dark,
         bodyController: controller,
-        footer: EditorPersonSuggestionPanel(
-          suggestions: <EditorPersonSuggestion>[
-            EditorPersonSuggestion(person: person),
-          ],
+        footer: PersonSuggestionPanel(
+          suggestions: <PersonSuggestion>[PersonSuggestion(person: person)],
           highlightIndex: 0,
           catalogEmpty: false,
           onSelected: (_) {},
@@ -79,9 +77,7 @@ void main() {
     final Color bodyColor = bodyDecoration(tester).color!;
     final Color suggestionColor = tester
         .widget<Material>(
-          find.byKey(
-            const ValueKey<String>('editor-person-suggestion-background'),
-          ),
+          find.byKey(const ValueKey<String>('person-suggestion-background')),
         )
         .color!;
     final (Color chipBackground, Color chipForeground) = personLabelColorPair(

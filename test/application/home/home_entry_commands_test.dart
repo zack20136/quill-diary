@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_entry_commands.dart';
+import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
@@ -66,6 +67,7 @@ void main() {
           ),
         ),
       );
+      container.read(appSessionProvider.notifier).activateSession(session);
       final subscription = container.listen(
         chatDiaryControllerProvider(chat.id),
         (_, _) {},

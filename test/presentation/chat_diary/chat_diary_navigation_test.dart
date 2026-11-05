@@ -19,7 +19,6 @@ import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
-import 'package:quill_diary/domain/chat_diary/chat_diary_settings.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
@@ -97,7 +96,7 @@ void main() {
     connections.settings = const AiConnectionSettings();
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('聊天寫日記'));
+    await tester.tap(find.text('聊天日記'));
     await tester.pumpAndSettle();
     expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
     await tester.tap(find.text('取消'));
@@ -107,7 +106,7 @@ void main() {
     expect(store.storedChats, isEmpty);
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('聊天寫日記'));
+    await tester.tap(find.text('聊天日記'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('ai-model-add-field-openai')),
@@ -133,7 +132,7 @@ void main() {
     connections.settings = readySettings;
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('聊天寫日記'));
+    await tester.tap(find.text('聊天日記'));
     await tester.pumpAndSettle();
     expect(store.storedChats, isEmpty);
     expect(find.byType(ChatDiaryPage), findsOneWidget);
@@ -158,7 +157,7 @@ void main() {
     expect(find.byType(HomeChatDiaryDraftCard), findsNothing);
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('聊天寫日記'));
+    await tester.tap(find.text('聊天日記'));
     await tester.pumpAndSettle();
     final firstId = tester
         .widget<ChatDiaryPage>(find.byType(ChatDiaryPage))
@@ -184,7 +183,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('聊天寫日記'));
+    await tester.tap(find.text('聊天日記'));
     await tester.pumpAndSettle();
     expect(store.storedChats.keys, [firstId]);
     expect(
@@ -242,7 +241,7 @@ void main() {
               activeConnectionId: 'custom',
               connections: {'custom': connectionConfig},
             )
-            ..chatDiary = const ChatDiarySettings(hidePersonNames: false);
+            ..hidePersonNames = false;
           Future<void> waitUntil(
             bool Function() ready, {
             bool waitForIdle = true,
@@ -312,7 +311,7 @@ void main() {
             await waitUntil(() => find.byTooltip('新增日記').evaluate().isNotEmpty);
             await tester.tap(find.byTooltip('新增日記'));
             await tester.pumpAndSettle();
-            final mode = chatMode ? '聊天寫日記' : '直接寫日記';
+            final mode = chatMode ? '聊天日記' : '直接寫日記';
             await tester.tap(find.text(mode));
             if (chatMode) {
               await waitUntil(
