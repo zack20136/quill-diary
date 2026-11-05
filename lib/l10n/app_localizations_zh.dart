@@ -3392,7 +3392,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorHeroBody =>
-      '編輯內容會先保存為加密草稿，畫面也會提示尚未正式保存；確認後才寫入日記庫。您也能使用標籤、任務清單、圖片與附件整理內容。';
+      '編輯內容會先保存為加密草稿，畫面也會提示尚未正式保存；確認後才寫入日記庫。您也能使用標籤、任務清單、圖片與附件整理內容，或用 AI 聊天寫日記、整理既有內文。';
 
   @override
   String get aboutTabEditorChip0 => '自動草稿';
@@ -3407,6 +3407,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutTabEditorChip3 => 'Markdown 編輯';
 
   @override
+  String get aboutTabEditorChip4 => 'AI';
+
+  @override
+  String get aboutTabEditorAiSectionTitle => 'AI 功能';
+
+  @override
+  String get aboutTabEditorAiSectionSubtitle =>
+      '可和 AI 聊聊再寫成日記，或整理既有內文；兩種都要確認後才寫入日記庫。';
+
+  @override
+  String get aboutTabEditorAiItem0Title => '聊天日記';
+
+  @override
+  String get aboutTabEditorAiItem0Body =>
+      '新增日記時可選擇直接書寫，或和 AI 聊聊再整理成日記。生成後才產生草稿，內容依目前對話整理；確認並正式儲存後才寫入日記庫。未完成的聊天會列在首頁，完成後可從該篇日記再看保留的對話。對話、提示詞與附圖會直接送到您設定的服務商。';
+
+  @override
+  String get aboutTabEditorAiItem1Title => '日記整理';
+
+  @override
+  String get aboutTabEditorAiItem1Body =>
+      '既有日記可從 AI 按鈕開啟整理。先標記不想送給 AI 的文字，再討論想怎麼改；進入聊天室不會立刻呼叫 AI。按下整理後產生一份整理稿，查看差異並確認才更新內文，標題、日期、標籤與附件維持不變。只傳送本篇遮罩後的內文與本次對話，不傳圖片及附件。';
+
+  @override
   String get aboutTabEditorSection0Title => '日常寫作功能';
 
   @override
@@ -3417,7 +3441,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item0Body =>
-      '新建日記會直接進入編輯模式；既有日記則可先閱讀，確定要改時再切換到編輯狀態。也能從 AI 按鈕開啟日記整理，先標記隱藏內容、討論需求，再生成單一整理稿，查看差異並確認後才更新內文。';
+      '新建日記會直接進入編輯模式；既有日記則可先閱讀，確定要改時再切換到編輯狀態。';
 
   @override
   String get aboutTabEditorSection0Item1Title => '內容、標題與日期';

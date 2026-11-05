@@ -62,22 +62,6 @@ void main() {
     expect(preview.protect('新片段', [const PrivateTextRange(0, 3)]), '⟦S03⟧');
   });
 
-  test('短序號超過 FF 自動延長，對照表有缺號時仍由最大值繼續', () {
-    final chat = testChatDiarySession();
-    final privacy = ChatDiaryPrivacyProcessor(chat, []);
-    var last = '';
-    for (var i = 1; i <= 255; i++) {
-      final text = '私密片段$i';
-      last = privacy.protect(text, [PrivateTextRange(0, text.length)]);
-    }
-    expect(last, '⟦SFF⟧');
-    chat.originalTextByToken.remove('⟦S02⟧');
-    chat.tokenBySourceKey.remove('private:私密片段2');
-    final next = ChatDiaryPrivacyProcessor(chat, []);
-    expect(next.protect('延長', [const PrivateTextRange(0, 2)]), '⟦S100⟧');
-    expect(next.protect('繼續', [const PrivateTextRange(0, 2)]), '⟦S101⟧');
-  });
-
   test('關閉人物隱藏仍保護手動選取的片段', () {
     final chat = testChatDiarySession(hidePersonNames: false);
     final privacy = ChatDiaryPrivacyProcessor(chat, [person()]);

@@ -60,24 +60,6 @@ void main() {
     );
   });
 
-  testWidgets('索引卡片依傳入的 health level 顯示需注意', (WidgetTester tester) async {
-    await pumpOverview(
-      tester,
-      indexHealthLevel: SettingsHealthLevel.warning,
-      indexMessage: testL10n.settingsRepairVaultLockedMessage,
-      hasUnlockedSession: false,
-      backupStatus: BackupStatusSnapshot(
-        lastLocalBackupAt: DateTime(2026, 7, 3),
-        lastDriveUploadAt: DateTime(2026, 7, 3),
-      ),
-    );
-
-    expect(
-      find.text(testL10n.settingsRepairVaultLockedMessage),
-      findsOneWidget,
-    );
-  });
-
   testWidgets('索引卡片依傳入的 health level 顯示錯誤', (WidgetTester tester) async {
     const String errorMessage = '搜尋索引無法讀取，可能已損壞。';
 

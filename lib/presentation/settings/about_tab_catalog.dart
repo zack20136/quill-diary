@@ -445,6 +445,7 @@ AboutPageTabSpec _editorTab(AppLocalizations l10n) => _tab(
     l10n.aboutTabEditorChip1,
     l10n.aboutTabEditorChip2,
     l10n.aboutTabEditorChip3,
+    l10n.aboutTabEditorChip4,
   ],
   sections: <AboutPageSectionSpec>[
     _section(
@@ -475,6 +476,22 @@ AboutPageTabSpec _editorTab(AppLocalizations l10n) => _tab(
           Icons.attach_file,
           l10n.aboutTabEditorSection0Item4Title,
           l10n.aboutTabEditorSection0Item4Body,
+        ),
+      ],
+    ),
+    _section(
+      title: l10n.aboutTabEditorAiSectionTitle,
+      subtitle: l10n.aboutTabEditorAiSectionSubtitle,
+      items: <AboutPageItemSpec>[
+        _item(
+          Icons.forum_outlined,
+          l10n.aboutTabEditorAiItem0Title,
+          l10n.aboutTabEditorAiItem0Body,
+        ),
+        _item(
+          Icons.auto_awesome_outlined,
+          l10n.aboutTabEditorAiItem1Title,
+          l10n.aboutTabEditorAiItem1Body,
         ),
       ],
     ),

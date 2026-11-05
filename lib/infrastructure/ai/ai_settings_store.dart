@@ -257,9 +257,8 @@ class AiSettingsStore {
           'version': DataVersions.aiSettings,
           'connection': settings.connection.toJson(),
           'hide_people': settings.hidePersonNames,
-          if (chatPrompts != null) 'chat_diary': chatPrompts,
-          if (organizationPrompts != null)
-            'diary_organization': organizationPrompts,
+          'chat_diary': ?chatPrompts,
+          'diary_organization': ?organizationPrompts,
         }),
       ),
     );

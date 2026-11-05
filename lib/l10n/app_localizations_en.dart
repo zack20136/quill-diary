@@ -3645,7 +3645,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorHeroBody =>
-      'Edits are first kept as encrypted drafts, with a reminder when they are not formally saved. When ready, save them to the vault and organize the entry with tags, checklists, images, and attachments.';
+      'Edits are first kept as encrypted drafts, with a reminder when they are not formally saved. When ready, save them to the vault and organize the entry with tags, checklists, images, and attachments, or use AI to write from a chat or organize an existing entry.';
 
   @override
   String get aboutTabEditorChip0 => 'Auto Drafts';
@@ -3660,6 +3660,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutTabEditorChip3 => 'Markdown Editing';
 
   @override
+  String get aboutTabEditorChip4 => 'AI';
+
+  @override
+  String get aboutTabEditorAiSectionTitle => 'AI Features';
+
+  @override
+  String get aboutTabEditorAiSectionSubtitle =>
+      'Talk with AI and turn the conversation into an entry, or organize an existing entry. Both are written to the vault only after you confirm.';
+
+  @override
+  String get aboutTabEditorAiItem0Title => 'Chat Diary';
+
+  @override
+  String get aboutTabEditorAiItem0Body =>
+      'When creating an entry, you can write directly or chat with AI. A draft is created only after you generate it from the current conversation, and it is saved to the vault only after you confirm. Unfinished chats appear on the home screen; after saving, you can reopen the retained conversation from that entry. Conversations, prompts, and images go directly to the provider you configure.';
+
+  @override
+  String get aboutTabEditorAiItem1Title => 'Diary Organization';
+
+  @override
+  String get aboutTabEditorAiItem1Body =>
+      'Open organization from the AI button on a saved entry. Mark text you do not want to send, then discuss how to revise it. Opening the chat does not call AI immediately. After you organize, one draft is created; the body updates only after you review the differences and confirm. The title, date, tags, and attachments stay the same. Only this entry’s masked body and the current conversation are sent, and it does not send images or attachments.';
+
+  @override
   String get aboutTabEditorSection0Title => 'Everyday Writing Features';
 
   @override
@@ -3672,7 +3696,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEditorSection0Item0Body =>
-      'New entries open in edit mode; saved entries can be read before switching to edit. The AI button also opens diary organization: mark hidden content, discuss your requirements, generate a single draft, then review and confirm changes before updating the body.';
+      'New entries open in edit mode; saved entries can be read before switching to edit.';
 
   @override
   String get aboutTabEditorSection0Item1Title => 'Content, Title, and Date';

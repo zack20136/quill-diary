@@ -1422,12 +1422,17 @@ class VaultRepairService {
       )) {
         continue;
       }
+      // 副本還帶著聊天檔時先不隔離，等後面比對；對不上就兩邊都留著。
+      final bool duplicateHoldsChat = _duplicateEntryHoldsChat(
+        cleanupTargets,
+        entry.entry.id,
+      );
       await _recordChatProblem(
         chatFile: chatFile,
         kind: VaultRepairIssueKind.unreadableChat,
         findings: findings,
         cleanupTargets: cleanupTargets,
-        repair: repair,
+        repair: repair && !duplicateHoldsChat,
         entry: entry,
       );
     }
@@ -1463,6 +1468,21 @@ class VaultRepairService {
     } on Object {
       return false;
     }
+  }
+
+  bool _duplicateEntryHoldsChat(
+    Map<String, _RepairCleanupTarget> cleanupTargets,
+    EntryId entryId,
+  ) {
+    for (final _RepairCleanupTarget target in cleanupTargets.values) {
+      if (target.isAttachment || !target.countsAsDuplicateEntry) continue;
+      if (target.entryId != entryId) continue;
+      final String chat = VaultPathStrategy.chatFileBesideEntry(target.path);
+      for (final String suffix in const <String>['', '.previous', '.tmp']) {
+        if (File('$chat$suffix').existsSync()) return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _recordChatProblem({

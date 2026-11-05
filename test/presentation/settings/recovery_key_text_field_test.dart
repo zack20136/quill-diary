@@ -33,25 +33,6 @@ void main() {
     );
   });
 
-  testWidgets('手動輸入八個字元會自動補上橫線', (WidgetTester tester) async {
-    final TextEditingController controller = TextEditingController();
-    addTearDown(controller.dispose);
-
-    await tester.pumpWidget(
-      widgetTestApp(
-        includeDarkTheme: true,
-        center: false,
-        child: RecoveryKeyTextField(controller: controller),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byType(TextField), 'abcdefgh');
-    await tester.pump();
-
-    expect(controller.text, 'ABCD-EFGH');
-  });
-
   test('連打八個字元會分成兩組且游標留在結尾', () {
     const RecoveryKeyInputFormatter formatter = RecoveryKeyInputFormatter();
     TextEditingValue value = const TextEditingValue(

@@ -1981,9 +1981,14 @@ class VaultRepository {
       toEntryPath: toEntryPath,
     );
     for (final entry in sources.entries) {
-      final target = File(entry.value);
-      if (!target.existsSync()) continue;
       final sourceBytes = await readDecryptedAssetBytes(session, entry.key);
+      final target = File(entry.value);
+      if (!target.existsSync()) {
+        if (sourceBytes == null) {
+          throw StateError('無法確認聊天紀錄內容一致');
+        }
+        continue;
+      }
       final targetBytes = await readDecryptedAssetBytes(session, entry.value);
       if (sourceBytes == null ||
           targetBytes == null ||
