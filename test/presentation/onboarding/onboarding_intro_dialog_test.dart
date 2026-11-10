@@ -131,6 +131,25 @@ void main() {
 
     await tester.tap(find.text(testL10n.onboardingIntroLanguageEnShort));
     await tester.pumpAndSettle();
-    expect(await preferences.storedAppLocaleOrNull, AppLanguage.en);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(OnboardingIntroDialog)),
+    );
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (container.read(personalizationPreferencesProvider).value?.locale !=
+            AppLanguage.en &&
+        DateTime.now().isBefore(deadline)) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(
+      container.read(personalizationPreferencesProvider).value?.locale,
+      AppLanguage.en,
+    );
+    expect(
+      await tester.runAsync(() => preferences.storedAppLocaleOrNull),
+      AppLanguage.en,
+    );
   });
 }

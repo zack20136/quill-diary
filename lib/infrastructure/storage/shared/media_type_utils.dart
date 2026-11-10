@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:path/path.dart' as p;
 
-/// 依副檔名推斷 MIME。
 String mimeTypeFromFileName(String fileName) {
   return switch (p.extension(fileName).toLowerCase()) {
     '.jpg' || '.jpeg' => 'image/jpeg',
@@ -21,7 +20,6 @@ String mimeTypeFromFileName(String fileName) {
   };
 }
 
-/// 依 MIME 推斷副檔名（不含點）。
 String extensionFromMimeType(String mimeType) {
   return switch (mimeType.toLowerCase()) {
     'image/jpeg' => 'jpg',

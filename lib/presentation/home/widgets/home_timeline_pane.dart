@@ -96,8 +96,8 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
           ref.read(homePinnedEntryIdsProvider).value ?? const <EntryId>{},
       rawEntries: rawEntries,
       chatIds: ref.read(homeSearchQueryProvider).trim().isEmpty
-          ? (ref.read(chatDiarySessionsProvider).value ?? [])
-                .where((chat) => !chat.finished)
+          ? (ref.read(chatDiaryDraftsProvider).value ?? [])
+                .where((item) => item.chat?.finished != true)
                 .map((chat) => chat.id)
           : const [],
     );
@@ -182,11 +182,15 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
         entriesAsync.value ?? const <DiaryEntrySummary>[];
     final bool showSearchResultCount =
         !selection.isActive && searchQuery.isNotEmpty && entriesAsync.hasValue;
-    final chatDrafts = canReadEntries && searchQuery.isEmpty
-        ? (ref.watch(chatDiarySessionsProvider).value ?? [])
-              .where((chat) => !chat.finished)
-              .toList()
-        : const [];
+    final chatDraftsState = canReadEntries && searchQuery.isEmpty
+        ? ref.watch(chatDiaryDraftsProvider)
+        : null;
+    final draftLoadFailed = chatDraftsState?.hasError == true;
+    final chatDrafts =
+        chatDraftsState?.value
+            ?.where((item) => item.chat?.finished != true)
+            .toList() ??
+        const [];
     final canDeleteSelection =
         selection.selectedCount > 0 && canReadEntries && !_deletingSelection;
     final showEntryActions =
@@ -337,7 +341,9 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                   child: entriesAsync.when(
                     skipLoadingOnReload: true,
                     data: (List<DiaryEntrySummary> loadedEntries) {
-                      if (loadedEntries.isEmpty && chatDrafts.isEmpty) {
+                      if (loadedEntries.isEmpty &&
+                          chatDrafts.isEmpty &&
+                          !draftLoadFailed) {
                         if (searchQuery.isNotEmpty) {
                           return AppStateCard(
                             icon: Icons.search_off_rounded,
@@ -356,10 +362,20 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         child: HomeEntryList(
                           entries: loadedEntries,
                           draftCards: [
+                            if (draftLoadFailed)
+                              AppStateCard(
+                                icon: Icons.error_outline,
+                                title:
+                                    context.l10n.chatDiaryDraftNeedsAttention,
+                                message: context.l10n.chatDiaryDraftReadError,
+                                actionLabel: context.l10n.commonActionRetry,
+                                onAction: () =>
+                                    ref.invalidate(chatDiaryDraftsProvider),
+                              ),
                             for (final chat in chatDrafts)
                               HomeChatDiaryDraftCard(
                                 key: ValueKey(chat.id),
-                                chat: chat,
+                                draft: chat,
                                 entryDisplayOrder: loadedEntries
                                     .map((entry) => entry.id)
                                     .toList(),

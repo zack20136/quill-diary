@@ -117,7 +117,7 @@ bool keystoreSlotsMatchExpected({
   return true;
 }
 
-/// 僅索引 [kKeystoreWrapModeKey] 落後，Keystore slot 本身已正確。
+/// 僅索引的 `keystore_wrap_mode` 落後，Keystore slot 本身已正確。
 bool needsOnlyIndexSuffixSync({
   required UnlockedVaultSession session,
   required KeystoreAuthKind expected,

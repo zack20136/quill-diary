@@ -1,15 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
+import 'package:quill_diary/infrastructure/storage/shared/app_support_string_map.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 
-/// 在 vault 外持久化使用者偏好的可信裝置解鎖政策。
+/// 在日記庫外持久化使用者偏好的可信裝置解鎖政策。
 abstract class AppLockService {
   Future<AppUnlockMode> getUnlockMode();
 
@@ -26,26 +24,26 @@ abstract class AppLockService {
 
 /// 檔案型 App 鎖定偏好，外加原生 Android 憑證能力檢查。
 class LocalAppLockService implements AppLockService {
-  LocalAppLockService();
+  LocalAppLockService()
+    : _store = AppSupportStringMap(fileName: 'app_lock_store.json');
 
   static const String _unlockModeKey = 'app_lock.unlock_mode';
+  final AppSupportStringMap _store;
 
   static const MethodChannel _deviceKeyChannel = MethodChannel(
     AppIdentifiers.deviceKeyChannel,
   );
 
-  Map<String, String>? _cache;
-
   @override
   Future<AppUnlockMode> getUnlockMode() async {
-    final String? raw = await _readValue(_unlockModeKey);
-    return AppUnlockModeStorage.fromStorage(raw);
+    return AppUnlockModeStorage.fromStorage(
+      (await _store.load())[_unlockModeKey],
+    );
   }
 
   @override
-  Future<void> setUnlockMode(AppUnlockMode mode) async {
-    await _writeValue(_unlockModeKey, mode.storageValue);
-  }
+  Future<void> setUnlockMode(AppUnlockMode mode) =>
+      _store.update({_unlockModeKey: mode.storageValue});
 
   @override
   Future<KeystoreAuthKind> keystoreAuthKindForCurrentMode() async {
@@ -90,60 +88,6 @@ class LocalAppLockService implements AppLockService {
         biometricStrongAvailable: false,
       );
     }
-  }
-
-  Future<String?> _readValue(String key) async {
-    final Map<String, String> store = await _loadStore();
-    return store[key];
-  }
-
-  Future<void> _writeValue(String key, String value) async {
-    final Map<String, String> store = await _loadStore();
-    store[key] = value;
-    await _persistStore(store);
-  }
-
-  Future<Map<String, String>> _loadStore() async {
-    if (_cache != null) {
-      return _cache!;
-    }
-
-    final File file = await _storageFile();
-    if (!file.existsSync()) {
-      _cache = <String, String>{};
-      return _cache!;
-    }
-
-    final Object? decoded = jsonDecode(await file.readAsString());
-    if (decoded is Map<String, dynamic>) {
-      _cache = decoded.map(
-        (String key, dynamic value) => MapEntry(key, value.toString()),
-      );
-    } else {
-      _cache = <String, String>{};
-    }
-    return _cache!;
-  }
-
-  Future<void> _persistStore(Map<String, String> store) async {
-    final File file = await _storageFile();
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(store),
-      flush: true,
-    );
-    _cache = Map<String, String>.from(store);
-  }
-
-  Future<File> _storageFile() async {
-    final Directory supportDir = await getApplicationSupportDirectory();
-    return File(
-      p.join(
-        supportDir.path,
-        AppIdentifiers.appStorageDirectory,
-        'app_lock_store.json',
-      ),
-    );
   }
 }
 

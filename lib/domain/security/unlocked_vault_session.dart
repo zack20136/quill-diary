@@ -1,6 +1,6 @@
 import 'package:quill_diary/domain/shared/value_objects.dart';
 
-/// 證明目前行程可存取某個 vault 的記憶體內憑證。
+/// 證明目前行程可存取某個日記庫的記憶體內憑證。
 ///
 /// session 可透過可信裝置材料或 Recovery Key 還原。
 /// 實例應短生命週期，避免持久化 [recoveryWrapKey]。

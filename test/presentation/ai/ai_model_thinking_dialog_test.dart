@@ -6,6 +6,7 @@ import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_model_thinking_dialog.dart';
 
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -60,13 +61,13 @@ void main() {
     await tester.enterText(low, '{bad');
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
-    expect(find.text('請輸入有效的 JSON 物件。'), findsOneWidget);
+    expect(find.text(testL10n.aiThinkingJsonInvalid), findsOneWidget);
     expect(tester.widget<TextField>(low).controller!.text, '{bad');
     expect(result, isNull);
     await tester.enterText(low, '{"messages": []}');
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
-    expect(find.text('只能填參數片段，不能覆寫模型、訊息或請求控制欄位。'), findsOneWidget);
+    expect(find.text(testL10n.aiThinkingProtectedFields), findsOneWidget);
     await tester.enterText(
       low,
       '{"think":"xhigh","extra":{"enabled":true,"budget":1024}}',
@@ -156,7 +157,7 @@ void main() {
     }
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
-    expect(find.text('至少啟用一個檔位，並選擇有效的預設強度。'), findsOneWidget);
+    expect(find.text(testL10n.aiThinkingSelectionRequired), findsOneWidget);
     expect(result, isNull);
     expect(tester.takeException(), isNull);
   });

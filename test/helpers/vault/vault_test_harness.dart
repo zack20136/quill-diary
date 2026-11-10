@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
+import 'package:quill_diary/infrastructure/persona/persona_store.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
@@ -55,6 +57,7 @@ class VaultTestHarness {
   ({VaultBackupIo backup, PortableExportIo exporter, PortableImportIo importer})
   createTransferIo({
     EasyDiaryBackupImporterFactory? easyDiaryBackupImporterFactory,
+    UnlockedVaultSession? session,
   }) {
     return (
       backup: VaultBackupIo(
@@ -65,6 +68,13 @@ class VaultTestHarness {
           pathStrategy: pathStrategy,
           cryptoService: LocalCryptoService(),
         ),
+        personaBackupFiles: session == null
+            ? null
+            : () => PersonaStore(
+                paths: pathStrategy,
+                crypto: LocalCryptoService(),
+                repository: repository,
+              ).createBackupFiles(session),
       ),
       exporter: PortableExportIo(
         pathStrategy: pathStrategy,

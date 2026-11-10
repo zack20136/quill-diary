@@ -82,15 +82,15 @@ class AppDialogShell extends StatelessWidget {
 /// 二元確認操作的按鈕語意。
 enum AppConfirmStyle { primary, destructive }
 
-/// 統一取消與確認操作的標準 dialog。
-class _AppConfirmDialog extends StatelessWidget {
-  const _AppConfirmDialog({
+class AppConfirmDialog extends StatelessWidget {
+  const AppConfirmDialog({
     required this.title,
     required this.content,
     required this.cancelLabel,
     required this.confirmLabel,
     this.confirmStyle = AppConfirmStyle.primary,
     this.icon,
+    super.key,
   });
 
   final String title;
@@ -142,7 +142,7 @@ Future<bool> showAppConfirmDialog({
     await showAppDialog<bool>(
       context: context,
       size: size,
-      builder: (_) => _AppConfirmDialog(
+      builder: (_) => AppConfirmDialog(
         title: title,
         content: content,
         cancelLabel: cancelLabel,

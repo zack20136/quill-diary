@@ -24,6 +24,8 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   int unwrapWithDeviceKeyCalls = 0;
   int wrapWithDeviceKeyCalls = 0;
   int rewrapTrustedRecoveryKeyCalls = 0;
+  bool rejectStoredRecord = false;
+  bool rejectStoredDeviceInfo = false;
 
   void seedTrustedDevice({
     required String vaultId,
@@ -56,18 +58,24 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
 
   @override
   Future<bool> hasTrustedKey(String vaultId) async {
+    if (rejectStoredRecord) throw const DeviceKeyUnsupportedFormatException();
     return _wrappedRecords.containsKey(vaultId) &&
         _deviceInfos.containsKey(vaultId);
   }
 
   @override
-  Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async =>
-      _deviceInfos[vaultId];
+  Future<TrustedDeviceInfo?> readDeviceInfo(String vaultId) async {
+    if (rejectStoredDeviceInfo) {
+      throw const DeviceKeyUnsupportedFormatException();
+    }
+    return _deviceInfos[vaultId];
+  }
 
   @override
   Future<WrappedRecoveryKeyRecord?> readWrappedRecoveryKey(
     String vaultId,
   ) async {
+    if (rejectStoredRecord) throw const DeviceKeyUnsupportedFormatException();
     return _wrappedRecords[vaultId];
   }
 
@@ -76,6 +84,8 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     required String vaultId,
     required WrappedRecoveryKeyRecord record,
   }) async {
+    rejectStoredRecord = false;
+    rejectStoredDeviceInfo = false;
     _wrappedRecords[vaultId] = record;
     _deviceInfos[vaultId] = TrustedDeviceInfo(
       slotId: record.slotId,

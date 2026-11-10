@@ -57,6 +57,10 @@ class ChatDiaryStore {
     String contentType,
   ) async {
     await repository.validateRecoverySession(session);
+    if (contentType == 'application/json' &&
+        (hasFileReplacementCandidates(file))) {
+      await _readEncryptedFile(file, session);
+    }
     final RecoveryMetadata? metadata = await repository.readRecoveryMetadata();
     if (metadata == null ||
         metadata.vaultId != session.vaultId ||
@@ -64,42 +68,88 @@ class ChatDiaryStore {
       throw const AiFailure(AiErrorCode.storage);
     }
     final now = DateTime.now();
-    final encrypted = await crypto.encryptBytes(
+    await writeEncryptedVaultJson(
+      file: file,
+      crypto: crypto,
+      session: session,
+      metadata: metadata,
       documentId: p.basename(file.path),
-      vaultId: session.vaultId,
       plaintextBytes: bytes,
       contentType: contentType,
-      recoveryWrapKey: session.recoveryWrapKey!,
-      recoverySlotKdf: metadata.kdf,
       createdAt: now,
       updatedAt: now,
+      validateTemporary: (temporary) async {
+        await _decodeEncryptedFile(temporary, session, p.basename(file.path));
+      },
     );
-    await replaceFileBytesRecoverably(file, encrypted.toFileBytes());
   }
 
   Future<Uint8List> _readEncryptedFile(
     File file,
     UnlockedVaultSession session,
   ) async {
-    if (!file.existsSync() && File('${file.path}.previous').existsSync()) {
-      await File('${file.path}.previous').rename(file.path);
+    final identity = p.basename(file.path);
+    try {
+      await recoverFileReplacement(
+        file,
+        validate: (candidate) async {
+          await _decodeEncryptedFile(candidate, session, identity);
+        },
+      );
+      return await _decodeEncryptedFile(file, session, identity);
+    } on Object catch (error) {
+      if (isUnreadableContentError(error)) {
+        throw const AiFailure(AiErrorCode.unreadable);
+      }
+      rethrow;
     }
+  }
+
+  Future<Uint8List> _decodeEncryptedFile(
+    File file,
+    UnlockedVaultSession session,
+    String identity,
+  ) async {
     final parsed = crypto.parseFileBytes(await file.readAsBytes());
-    if (parsed.header.vaultId != session.vaultId) {
-      throw const AiFailure(AiErrorCode.storage);
+    if (parsed.header.vaultId != session.vaultId ||
+        (parsed.header.contentType == 'application/json' &&
+            parsed.header.fileId != identity)) {
+      throw const AiFailure(AiErrorCode.unreadable);
     }
-    return Uint8List.fromList(
+    final bytes = Uint8List.fromList(
       await crypto.decryptBytes(
         headerBytes: parsed.headerBytes,
         ciphertextBytes: parsed.ciphertextBytes,
-        context: DecryptionContext(
-          vaultId: session.vaultId,
-          trustedDevice: session.trustedDevice,
-          recoveryWrapKey: session.recoveryWrapKey,
-          deviceSlotId: session.deviceSlotId,
-        ),
+        context: vaultDecryptionContext(session),
       ),
     );
+    if (identity.endsWith('.json.enc')) {
+      if (parsed.header.contentType != 'application/json') {
+        throw const AiFailure(AiErrorCode.unreadable);
+      }
+      final json = Map<String, dynamic>.from(
+        jsonDecode(utf8.decode(bytes)) as Map,
+      );
+      if (p.basename(file.parent.path) == 'chat_diary_remote_cleanup') {
+        AiConnectionConfig.fromSnapshotJson(
+          Map<String, dynamic>.from(json['config'] as Map),
+        );
+        for (final item in json['files'] as List) {
+          AiRemoteFile.fromJson(Map<String, dynamic>.from(item as Map));
+        }
+      } else {
+        final chat = ChatDiarySession.fromJson(json);
+        final directoryId = p.basename(file.parent.path);
+        final entryId = identity.replaceFirst('.chat.json.enc', '');
+        if (chat.vaultId != session.vaultId ||
+            identity == 'session.json.enc' && chat.id != directoryId ||
+            identity.endsWith('.chat.json.enc') &&
+                chat.generatedEntryId != entryId) {
+          throw const AiFailure(AiErrorCode.unreadable);
+        }
+      }
+    }
+    return bytes;
   }
 
   Future<void> save(
@@ -111,6 +161,9 @@ class ChatDiaryStore {
     final discardEmptyDraft = !chat.finished && !chat.hasDraftContent;
     final imageIds = pruneImages ? chat.referencedImageIds : null;
     return _runStorageOperation(() async {
+      final chat = ChatDiarySession.fromJson(
+        jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
+      );
       if (discardEmptyDraft) {
         await _deleteDraftFiles(chat.id);
         return;
@@ -273,7 +326,10 @@ class ChatDiaryStore {
   Future<ChatDiarySession?> loadForEntry(
     String entryId,
     UnlockedVaultSession session,
-  ) => _runStorageOperation(() => _loadForEntry(entryId, session));
+  ) => _runStorageOperation(() async {
+    await repository.validateRecoverySession(session);
+    return _loadForEntry(entryId, session);
+  });
 
   Future<ChatDiarySession?> _loadForEntry(
     String entryId,
@@ -284,7 +340,7 @@ class ChatDiaryStore {
       final file = File(
         await paths.entryChatAbsolutePath(date: entry.date, entryId: entryId),
       );
-      if (file.existsSync() || File('${file.path}.previous').existsSync()) {
+      if (hasFileReplacementCandidates(file)) {
         final chat = ChatDiarySession.fromJson(
           (jsonDecode(
             utf8.decode(await _readEncryptedFile(file, session)),
@@ -311,14 +367,17 @@ class ChatDiaryStore {
     final file = File(
       await paths.entryChatAbsolutePath(date: entry.date, entryId: entryId),
     );
-    if (!file.existsSync() && !File('${file.path}.previous').existsSync()) {
+    if (!hasFileReplacementCandidates(file)) {
       return null;
     }
     return file;
   }
 
   Future<ChatDiarySession?> load(String id, UnlockedVaultSession session) =>
-      _runStorageOperation(() => _loadDraftIfExists(id, session));
+      _runStorageOperation(() async {
+        await repository.validateRecoverySession(session);
+        return _loadDraftIfExists(id, session);
+      });
 
   Future<ChatDiarySession?> _loadDraftIfExists(
     String id,
@@ -327,7 +386,7 @@ class ChatDiaryStore {
     final file = File(
       p.join((await draftDirectory(id)).path, 'session.json.enc'),
     );
-    if (!file.existsSync() && !File('${file.path}.previous').existsSync()) {
+    if (!hasFileReplacementCandidates(file)) {
       return null;
     }
     return _loadDraft(id, session);
@@ -350,12 +409,13 @@ class ChatDiaryStore {
     return chat;
   }
 
-  Future<List<ChatDiarySession>> list(UnlockedVaultSession session) =>
+  Future<List<ChatDiaryDraftItem>> listDrafts(UnlockedVaultSession session) =>
       _runStorageOperation(() async {
         final root = Directory(
           p.join((await paths.vaultRootDirectory()).path, 'chat_diary_drafts'),
         );
-        final result = <ChatDiarySession>[];
+        await repository.validateRecoverySession(session);
+        final result = <ChatDiaryDraftItem>[];
         if (!root.existsSync()) return result;
         await for (final entity in root.list(followLinks: false)) {
           if (entity is! Directory ||
@@ -370,13 +430,38 @@ class ChatDiaryStore {
                 await repository.loadEntry(session, entryId) != null) {
               await _complete(chat.id, entryId, session);
             } else if (chat.hasDraftContent) {
-              result.add(chat);
+              result.add(ChatDiaryDraftItem.readable(chat));
             }
-          } on Object {
-            // 保留無法讀取的草稿，讓單一壞檔不阻斷其他聊天。
+          } on Object catch (error) {
+            final AiErrorCode issue;
+            if (error is FileSystemException) {
+              issue = AiErrorCode.storage;
+            } else if (isUnreadableContentError(error) || error is AiFailure) {
+              issue = AiErrorCode.unreadable;
+            } else {
+              rethrow;
+            }
+            DateTime? modifiedAt;
+            try {
+              modifiedAt = (await entity.stat()).modified;
+            } on FileSystemException {
+              /* 無法取得日期仍保留工作。 */
+            }
+            result.add(
+              ChatDiaryDraftItem.unreadable(
+                id: p.basename(entity.path),
+                vaultId: session.vaultId,
+                error: issue,
+                modifiedAt: modifiedAt,
+              ),
+            );
           }
         }
-        return result..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return result..sort(
+          (a, b) => (b.modifiedAt ?? DateTime(0)).compareTo(
+            a.modifiedAt ?? DateTime(0),
+          ),
+        );
       });
 
   Future<void> saveImage(
@@ -384,23 +469,26 @@ class ChatDiaryStore {
     ChatDiaryImage image,
     Uint8List bytes,
     UnlockedVaultSession session,
-  ) => _runStorageOperation(() async {
-    if (!RegExp(r'^att_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(image.id)) {
-      throw const FormatException('無效的圖片識別');
-    }
-    await _writeEncryptedFile(
-      File(
-        p.join(
-          (await draftDirectory(chatId)).path,
-          'images',
-          '${image.id}.enc',
+  ) {
+    final snapshot = Uint8List.fromList(bytes);
+    return _runStorageOperation(() async {
+      if (!RegExp(r'^att_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(image.id)) {
+        throw const FormatException('無效的圖片識別');
+      }
+      await _writeEncryptedFile(
+        File(
+          p.join(
+            (await draftDirectory(chatId)).path,
+            'images',
+            '${image.id}.enc',
+          ),
         ),
-      ),
-      bytes,
-      session,
-      image.mimeType,
-    );
-  });
+        snapshot,
+        session,
+        image.mimeType,
+      );
+    });
+  }
 
   Future<void> deleteDraftImage(String chatId, String imageId) =>
       _runStorageOperation(() async {
@@ -442,7 +530,7 @@ class ChatDiaryStore {
     final file = File(
       p.join((await draftDirectory(chat.id)).path, 'images', '$imageId.enc'),
     );
-    if (!file.existsSync() && !File('${file.path}.previous').existsSync()) {
+    if (!hasFileReplacementCandidates(file)) {
       return null;
     }
     return _readEncryptedFile(file, session);
@@ -497,6 +585,7 @@ class ChatDiaryStore {
     }
     final entry = await repository.loadEntry(session, entryId);
     if (entry == null) throw const AiFailure(AiErrorCode.storage);
+    chat.validateGraph();
     final usedImageIds = {
       for (final message in chat.messages) ...message.imageIds,
     };
@@ -565,10 +654,15 @@ class ChatDiaryStore {
     UnlockedVaultSession session, {
     AiConnectionConfig? connectionConfig,
   }) {
-    final connection = connectionConfig ?? chat.connectionConfig;
+    final snapshot = jsonEncode(
+      (connectionConfig ?? chat.connectionConfig).toSnapshotJson(),
+    );
     return _runStorageOperation(() async {
+      final connection = AiConnectionConfig.fromSnapshotJson(
+        jsonDecode(snapshot) as Map<String, dynamic>,
+      );
       final scope = (await Sha256().hash(
-        utf8.encode(jsonEncode(connection.toJson())),
+        utf8.encode(jsonEncode(connection.toSnapshotJson())),
       )).bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
       final record = File(
         p.join(
@@ -578,7 +672,7 @@ class ChatDiaryStore {
         ),
       );
       var files = <Object?>[];
-      if (record.existsSync() || File('${record.path}.previous').existsSync()) {
+      if (hasFileReplacementCandidates(record)) {
         files =
             ((jsonDecode(utf8.decode(await _readEncryptedFile(record, session)))
                         as Map)['files']
@@ -593,7 +687,7 @@ class ChatDiaryStore {
       await _writeEncryptedFile(
         record,
         utf8.encode(
-          jsonEncode({'config': connection.toJson(), 'files': files}),
+          jsonEncode({'config': connection.toSnapshotJson(), 'files': files}),
         ),
         session,
         'application/json',
@@ -620,9 +714,13 @@ class ChatDiaryStore {
           .where(
             (file) =>
                 file.path.endsWith('.json.enc') ||
-                file.path.endsWith('.json.enc.previous'),
+                file.path.endsWith('.json.enc.previous') ||
+                file.path.endsWith('.json.enc.tmp'),
           )
-          .map((file) => file.path.replaceFirst(RegExp(r'\.previous$'), ''))
+          .map(
+            (file) =>
+                file.path.replaceFirst(RegExp(r'\.(?:previous|tmp)$'), ''),
+          )
           .where(
             (path) => chatId == null || p.basename(path).startsWith('$chatId.'),
           )
@@ -635,8 +733,7 @@ class ChatDiaryStore {
       AiClient? client;
       try {
         final cleanupRecord = await _runStorageOperation(() async {
-          if (!file.existsSync() &&
-              !File('${file.path}.previous').existsSync()) {
+          if (!hasFileReplacementCandidates(file)) {
             return null;
           }
           if (chatId == null) {
@@ -644,8 +741,7 @@ class ChatDiaryStore {
             final draft = File(
               p.join((await draftDirectory(id)).path, 'session.json.enc'),
             );
-            if (draft.existsSync() ||
-                File('${draft.path}.previous').existsSync()) {
+            if (hasFileReplacementCandidates(draft)) {
               final chat = await _loadDraft(id, session);
               if (chat.generatedEntryId == null ||
                   await repository.loadEntry(session, chat.generatedEntryId!) ==
@@ -659,7 +755,7 @@ class ChatDiaryStore {
           ) as Map).cast<String, dynamic>();
         });
         if (cleanupRecord == null) continue;
-        final connectionConfig = AiConnectionConfig.fromJson(
+        final connectionConfig = AiConnectionConfig.fromSnapshotJson(
           (cleanupRecord['config'] as Map).cast<String, dynamic>(),
         );
         final key = await keyFor(connectionConfig);
@@ -681,8 +777,7 @@ class ChatDiaryStore {
           }
         }
         await _runStorageOperation(() async {
-          if (!file.existsSync() &&
-              !File('${file.path}.previous').existsSync()) {
+          if (!hasFileReplacementCandidates(file)) {
             return;
           }
           final current = (jsonDecode(

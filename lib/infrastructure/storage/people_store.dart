@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
@@ -112,9 +111,6 @@ class PeopleStore {
     required PeopleCatalog catalog,
   }) async {
     _validateCatalog(catalog);
-    final List<int> recoveryWrapKey =
-        session.recoveryWrapKey ??
-        (throw StateError('目前 session 缺少 recovery wrap key。'));
     final DateTime now = DateTime.now();
     final Map<String, Object?> payload = <String, Object?>{
       'version': DataVersions.peopleCatalog,
@@ -131,22 +127,17 @@ class PeopleStore {
           )
           .toList(growable: false),
     };
-    final Uint8List plainBytes = Uint8List.fromList(
-      utf8.encode(jsonEncode(payload)),
-    );
-    final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+    final File file = File(await _pathStrategy.peopleCatalogPath());
+    await writeEncryptedVaultJson(
+      file: file,
+      crypto: _cryptoService,
+      session: session,
+      metadata: metadata,
       documentId: documentId,
-      vaultId: metadata.vaultId,
-      plaintextBytes: plainBytes,
-      contentType: 'application/json',
-      recoveryWrapKey: recoveryWrapKey,
-      recoverySlotKdf: metadata.kdf,
+      plaintextBytes: utf8.encode(jsonEncode(payload)),
       createdAt: now,
       updatedAt: now,
     );
-
-    final File file = File(await _pathStrategy.peopleCatalogPath());
-    await replaceFileBytesRecoverably(file, encrypted.toFileBytes());
   }
 }
 

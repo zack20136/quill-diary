@@ -41,7 +41,7 @@ final class RelationshipType {
   final String labelZh;
   final String labelEn;
 
-  /// 依語系 languageCode 選字；缺則 fallback 另一語，再不行用 [id]。
+  /// 依語系代碼選字；缺則改用另一語，再不行用 [id]。
   String labelForLanguageCode(String languageCode) {
     final bool preferZh = languageCode.toLowerCase().startsWith('zh');
     final String primary = preferZh ? labelZh : labelEn;
@@ -235,7 +235,6 @@ final class PeopleCatalog {
     return null;
   }
 
-  /// 依類型表順序排出人物已選的關係 id。
   List<String> orderedRelationshipIds(Set<String> selected) {
     return <String>[
       for (final RelationshipType type in relationshipTypes)

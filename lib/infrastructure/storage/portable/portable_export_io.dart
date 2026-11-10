@@ -20,7 +20,6 @@ import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-/// HTML 可攜式匯出選項。
 class HtmlExportOptions {
   const HtmlExportOptions({
     this.includeImages = true,
@@ -33,7 +32,6 @@ class HtmlExportOptions {
   final bool useEnglishPersonLabels;
 }
 
-/// Markdown ZIP 可攜式匯出選項。
 class MarkdownExportOptions {
   const MarkdownExportOptions({
     this.hidePersonNames = false,
@@ -193,7 +191,7 @@ class MarkdownExportEstimate {
 
 /// 寫入使用者可攜的 Markdown、ZIP 與所選條目 HTML 匯出。
 ///
-/// 這些格式刻意與加密完整 vault 備份 zip 分開，
+/// 這些格式刻意與加密完整日記庫備份 zip 分開，
 /// 讓使用者可檢視並以散檔重新匯入。
 class PortableExportIo {
   PortableExportIo({
@@ -974,7 +972,7 @@ class PortableExportIo {
   }
 }
 
-/// Converts diary body markdown to portable export HTML fragment.
+/// 將日記正文 Markdown 轉成可攜式匯出用的 HTML 片段。
 String exportMarkdownBodyToHtml(String markdown) {
   final List<String> lines = markdown
       .replaceAll('\r\n', '\n')

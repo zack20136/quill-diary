@@ -6,7 +6,7 @@ import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:quill_diary/infrastructure/billing/billing_catalog.dart';
 import 'package:quill_diary/infrastructure/billing/sponsor_billing_state.dart';
 
-/// Google Play Billing 的 client-side 封裝。
+/// Google Play Billing 的用戶端封裝。
 class GoogleBillingService {
   GoogleBillingService({InAppPurchase? inAppPurchase})
     : _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;

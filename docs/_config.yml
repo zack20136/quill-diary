@@ -4,3 +4,4 @@ permalink: pretty
 markdown: kramdown
 exclude:
   - 開發
+  - play-store-assets

@@ -1,130 +1,9 @@
+import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/shared/data_versions.dart';
-
-/// 從已送出的外送文字還原當時命中的人物區間。對不上就回空清單。
-List<PersonTextRange> chatDiaryPersonRangesFromOutbound({
-  required String text,
-  required String outbound,
-  required Map<String, String> originalTextByToken,
-  required Map<String, String> tokenBySourceKey,
-}) {
-  final matches = RegExp(r'⟦[PS][0-9A-F]{2,}⟧').allMatches(outbound).toList();
-  if (matches.isEmpty) return const [];
-  final personIds = {
-    for (final entry in tokenBySourceKey.entries)
-      if (entry.key.startsWith('person:'))
-        entry.value: entry.key.substring('person:'.length),
-  };
-  final ranges = <PersonTextRange>[];
-  var textIndex = 0;
-  var outboundIndex = 0;
-  for (var i = 0; i < matches.length;) {
-    final literal = outbound.substring(outboundIndex, matches[i].start);
-    if (!text.startsWith(literal, textIndex)) return const [];
-    textIndex += literal.length;
-    var groupEnd = i;
-    while (groupEnd + 1 < matches.length &&
-        matches[groupEnd].end == matches[groupEnd + 1].start) {
-      groupEnd++;
-    }
-    final after = groupEnd + 1 < matches.length
-        ? outbound.substring(matches[groupEnd].end, matches[groupEnd + 1].start)
-        : outbound.substring(matches[groupEnd].end);
-    var regionEnd = after.isEmpty ? text.length : -1;
-    var from = textIndex;
-    while (after.isNotEmpty) {
-      final at = text.indexOf(after, from);
-      if (at < 0) break;
-      regionEnd = at;
-      from = at + 1;
-    }
-    if (regionEnd < textIndex) return const [];
-    final surfaces = _chatDiaryTokenSurfaces(
-      text.substring(textIndex, regionEnd),
-      [for (var index = i; index <= groupEnd; index++) matches[index][0]!],
-      originalTextByToken,
-    );
-    if (surfaces == null) return const [];
-    var local = 0;
-    for (var index = 0; index < surfaces.length; index++) {
-      final token = matches[i + index][0]!;
-      final surface = surfaces[index];
-      final personId = personIds[token];
-      if (token.startsWith('⟦P') && personId != null && surface.isNotEmpty) {
-        ranges.add(
-          PersonTextRange(
-            textIndex + local,
-            textIndex + local + surface.length,
-            personId,
-          ),
-        );
-      }
-      local += surface.length;
-    }
-    textIndex = regionEnd;
-    outboundIndex = matches[groupEnd].end;
-    i = groupEnd + 1;
-  }
-  final tail = outbound.substring(outboundIndex);
-  if (!text.startsWith(tail, textIndex) ||
-      textIndex + tail.length != text.length) {
-    return const [];
-  }
-  return ranges;
-}
-
-/// 依代號的原文對齊這一段文字。人物可以用別名，私密片段必須對上原文。
-List<String>? _chatDiaryTokenSurfaces(
-  String chunk,
-  List<String> tokens,
-  Map<String, String> originalTextByToken,
-) {
-  List<String>? cover(String piece, int count) {
-    if (count <= 0 || piece.length < count) return null;
-    if (count == 1) return [piece];
-    return [
-      for (var index = 0; index < count - 1; index++) piece[index],
-      piece.substring(count - 1),
-    ];
-  }
-
-  List<String>? walk(int offset, int index) {
-    if (index == tokens.length) {
-      return offset == chunk.length ? <String>[] : null;
-    }
-    final token = tokens[index];
-    final original = originalTextByToken[token];
-    if (original != null &&
-        original.isNotEmpty &&
-        chunk.startsWith(original, offset)) {
-      final rest = walk(offset + original.length, index + 1);
-      if (rest != null) return [original, ...rest];
-    }
-    if (!token.startsWith('⟦P')) return null;
-    for (var next = index + 1; next < tokens.length; next++) {
-      final anchor = originalTextByToken[tokens[next]];
-      if (anchor == null || anchor.isEmpty) continue;
-      var from = offset + 1;
-      while (from <= chunk.length) {
-        final at = chunk.indexOf(anchor, from);
-        if (at < 0) break;
-        final covered = cover(chunk.substring(offset, at), next - index);
-        if (covered != null) {
-          final rest = walk(at, next);
-          if (rest != null) return [...covered, ...rest];
-        }
-        from = at + 1;
-      }
-    }
-    if (tokens.skip(index).every((item) => item.startsWith('⟦P'))) {
-      return cover(chunk.substring(offset), tokens.length - index);
-    }
-    return null;
-  }
-
-  return walk(0, 0);
-}
 
 class ChatDiaryImage {
   const ChatDiaryImage({
@@ -159,11 +38,12 @@ class ChatDiaryMessage {
     this.status = ChatDiaryMessageStatus.complete,
     this.parentId,
     this.privateRanges = const [],
-    this.personRanges,
+    this.personRanges = const [],
     Set<String>? privateTokenIds,
     this.errorCode,
     this.systemPromptSnapshot = '',
     this.connectionSnapshot,
+    this.persona,
   }) : privateTokenIds = privateTokenIds ?? {};
   final String id;
   final bool isUser;
@@ -173,11 +53,12 @@ class ChatDiaryMessage {
   ChatDiaryMessageStatus status;
   String? parentId;
   final List<PrivateTextRange> privateRanges;
-  List<PersonTextRange>? personRanges;
+  List<PersonTextRange> personRanges;
   final Set<String> privateTokenIds;
   String? errorCode;
   String systemPromptSnapshot;
   AiConnectionConfig? connectionSnapshot;
+  PersonaReference? persona;
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -188,12 +69,14 @@ class ChatDiaryMessage {
     'status': status.name,
     if (parentId != null) 'parent_id': parentId,
     'private_ranges': privateRanges.map((range) => range.toJson()).toList(),
-    if (personRanges != null)
-      'person_ranges': personRanges!.map((range) => range.toJson()).toList(),
+    if (personRanges.isNotEmpty)
+      'person_ranges': personRanges.map((range) => range.toJson()).toList(),
     'private_token_ids': privateTokenIds.toList(),
     if (errorCode != null) 'error_code': errorCode,
-    'system_prompt': systemPromptSnapshot,
-    if (connectionSnapshot != null) 'connection': connectionSnapshot!.toJson(),
+    if (persona == null) 'system_prompt': systemPromptSnapshot,
+    if (persona != null) 'persona': persona!.toJson(),
+    if (connectionSnapshot != null)
+      'connection': connectionSnapshot!.toSnapshotJson(),
   };
   factory ChatDiaryMessage.fromJson(Map<String, dynamic> json) =>
       ChatDiaryMessage(
@@ -221,15 +104,20 @@ class ChatDiaryMessage {
                     ),
                   )
                   .toList()
-            : null,
+            : const [],
         privateTokenIds: (json['private_token_ids'] as List? ?? [])
             .cast<String>()
             .toSet(),
         errorCode: json['error_code'] as String?,
         systemPromptSnapshot: json['system_prompt'] as String? ?? '',
+        persona: json['persona'] == null
+            ? null
+            : PersonaReference.fromJson(
+                Map<String, dynamic>.from(json['persona'] as Map),
+              ),
         connectionSnapshot: json['connection'] == null
             ? null
-            : AiConnectionConfig.fromJson(
+            : AiConnectionConfig.fromSnapshotJson(
                 (json['connection'] as Map).cast<String, dynamic>(),
               ),
       );
@@ -260,13 +148,16 @@ class ChatDiarySession {
     this.generatedDraftSignature,
     this.editingMessageId,
     this.editBackup,
+    this.selectedPersona,
+    Map<String, PersonaParticipant>? personaParticipants,
   }) : messages = messages ?? [],
        images = images ?? [],
        originalTextByToken = originalTextByToken ?? {},
        tokenBySourceKey = tokenBySourceKey ?? {},
        composerRanges = composerRanges ?? [],
        pendingImageIds = pendingImageIds ?? [],
-       selectedChildren = selectedChildren ?? {};
+       selectedChildren = selectedChildren ?? {},
+       personaParticipants = personaParticipants ?? {};
 
   static bool isValidId(String id) =>
       RegExp(r'^chat_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(id);
@@ -298,6 +189,8 @@ class ChatDiarySession {
   String? generatedDraftSignature;
   String? editingMessageId;
   AiComposerSnapshot? editBackup;
+  PersonaReference? selectedPersona;
+  final Map<String, PersonaParticipant> personaParticipants;
   static const _root = '__root__';
 
   Set<String> get referencedImageIds => {
@@ -398,6 +291,30 @@ class ChatDiarySession {
       generatedFromMessageId != activeMessages.lastOrNull?.id;
 
   void validateGraph() {
+    validatePrivateRanges(composerText, composerRanges);
+    if (editBackup case final backup?) {
+      validatePrivateRanges(backup.text, backup.ranges);
+    }
+    if (tokenBySourceKey.values.any(
+      (token) => !originalTextByToken.containsKey(token),
+    )) {
+      throw const FormatException('聊天隱私對照不完整');
+    }
+    for (final message in messages) {
+      validatePrivateRanges(message.text, message.privateRanges);
+      validatePrivateRanges(
+        message.text,
+        message.personRanges.map(
+          (range) => PrivateTextRange(range.start, range.end),
+        ),
+      );
+      if (message.privateTokenIds.any(
+        (token) => !originalTextByToken.containsKey(token),
+      )) {
+        throw const FormatException('訊息隱私對照不完整');
+      }
+    }
+
     final byId = {for (final message in messages) message.id: message};
     if (byId.length != messages.length) {
       throw const FormatException('重複的訊息識別');
@@ -434,9 +351,15 @@ class ChatDiarySession {
   Map<String, Object?> toJson() {
     return {
       'schema_version': DataVersions.chatDiary,
+      if (selectedPersona != null)
+        'selected_persona': selectedPersona!.toJson(),
+      if (personaParticipants.isNotEmpty)
+        'persona_participants': {
+          for (final e in personaParticipants.entries) e.key: e.value.toJson(),
+        },
       'id': id,
       'vault_id': vaultId,
-      'config': connectionConfig.toJson(),
+      'config': connectionConfig.toSnapshotJson(),
       'hide_people': hidePersonNames,
       'created_at': createdAt.toIso8601String(),
       'date': date,
@@ -449,7 +372,7 @@ class ChatDiarySession {
       'pending_image_ids': pendingImageIds,
       'diary_prompt': generationPromptSnapshot,
       if (generationConnectionSnapshot != null)
-        'generation_connection': generationConnectionSnapshot!.toJson(),
+        'generation_connection': generationConnectionSnapshot!.toSnapshotJson(),
       if (generatedEntryId != null) 'generated_entry_id': generatedEntryId,
       'finished': finished,
       'selected_children': selectedChildren,
@@ -466,13 +389,26 @@ class ChatDiarySession {
   factory ChatDiarySession.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String;
     final version = json['schema_version'];
-    if (!isValidId(id) || version != DataVersions.chatDiary) {
+    if (!isValidId(id) ||
+        version is! int ||
+        version != DataVersions.chatDiary) {
       throw const FormatException('無效的聊天格式');
     }
     final chat = ChatDiarySession(
       id: id,
+      selectedPersona: json['selected_persona'] == null
+          ? null
+          : PersonaReference.fromJson(
+              Map<String, dynamic>.from(json['selected_persona'] as Map),
+            ),
+      personaParticipants: {
+        for (final e in (json['persona_participants'] as Map? ?? {}).entries)
+          e.key as String: PersonaParticipant.fromJson(
+            Map<String, dynamic>.from(e.value as Map),
+          ),
+      },
       vaultId: json['vault_id'] as String,
-      connectionConfig: AiConnectionConfig.fromJson(
+      connectionConfig: AiConnectionConfig.fromSnapshotJson(
         (json['config'] as Map).cast<String, dynamic>(),
       ),
       hidePersonNames: json['hide_people'] as bool,
@@ -506,7 +442,7 @@ class ChatDiarySession {
       generationPromptSnapshot: json['diary_prompt'] as String? ?? '',
       generationConnectionSnapshot: json['generation_connection'] == null
           ? null
-          : AiConnectionConfig.fromJson(
+          : AiConnectionConfig.fromSnapshotJson(
               (json['generation_connection'] as Map).cast<String, dynamic>(),
             ),
       generatedEntryId: json['generated_entry_id'] as String?,
@@ -524,15 +460,6 @@ class ChatDiarySession {
             ),
     );
     chat.validateGraph();
-    for (final message in chat.messages) {
-      if (!message.isUser || message.personRanges != null) continue;
-      message.personRanges = chatDiaryPersonRangesFromOutbound(
-        text: message.text,
-        outbound: message.outboundText,
-        originalTextByToken: chat.originalTextByToken,
-        tokenBySourceKey: chat.tokenBySourceKey,
-      );
-    }
     return chat;
   }
 }
@@ -549,4 +476,25 @@ class ChatDiaryDraft {
       markdownBody: match == null ? text : text.substring(match.end).trim(),
     );
   }
+}
+
+/// 清單保留不可讀的工作識別，不用空白聊天冒充可用草稿。
+class ChatDiaryDraftItem {
+  ChatDiaryDraftItem.readable(ChatDiarySession value)
+    : id = value.id,
+      vaultId = value.vaultId,
+      modifiedAt = value.createdAt,
+      chat = value,
+      error = null;
+  const ChatDiaryDraftItem.unreadable({
+    required this.id,
+    required this.vaultId,
+    required this.error,
+    this.modifiedAt,
+  }) : chat = null;
+  final String id;
+  final String vaultId;
+  final DateTime? modifiedAt;
+  final ChatDiarySession? chat;
+  final AiErrorCode? error;
 }

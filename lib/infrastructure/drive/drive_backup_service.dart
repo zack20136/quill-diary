@@ -35,7 +35,7 @@ abstract interface class GoogleDriveAuthorizationHandle {
   drive.DriveApi createDriveApi(List<String> scopes);
 }
 
-/// 用於保持 Drive 程式可測試的已登入 Google 帳號抽象。
+/// 用於保持 Drive 程式可測試的已登入 Google 帳戶抽象。
 abstract interface class GoogleDriveSignedInAccount {
   String get email;
 
@@ -526,7 +526,7 @@ class GoogleDriveBackupService implements DriveBackupService {
   @override
   Future<DriveConnectionState> getConnectionState() async {
     try {
-      // Android：僅讀取本機已授權帳號快照。不可呼叫 attemptLightweightAuthentication，
+      // Android：僅讀取本機已授權帳戶快照。不可呼叫 attemptLightweightAuthentication，
       // 否則憑證管理員會在設定頁載入時彈出 Google 登入介面。
       if (Platform.isAndroid || _androidConnectionSnapshotOverride != null) {
         return await _getAndroidConnectionState();

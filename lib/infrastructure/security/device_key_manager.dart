@@ -7,7 +7,6 @@ import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart'
 import 'package:quill_diary/shared/app_identifiers.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
-/// 可信裝置金鑰槽位的公開中繼資料。
 class TrustedDeviceInfo {
   const TrustedDeviceInfo({required this.slotId, required this.platform});
 
@@ -30,7 +29,6 @@ class DeviceWrappedPayload {
   final String platform;
 }
 
-/// 單次驗證完成 unwrap + re-wrap 的結果。
 class RewrapTrustedRecoveryKeyResult {
   const RewrapTrustedRecoveryKeyResult({
     required this.recoveryWrapKey,
@@ -73,27 +71,57 @@ class WrappedRecoveryKeyRecord {
   }
 
   factory WrappedRecoveryKeyRecord.fromJson(Map<Object?, Object?> json) {
-    final int formatVersion =
-        int.tryParse(
-          '${json['format_version'] ?? DataVersions.wrappedRecoveryKey}',
-        ) ??
-        DataVersions.wrappedRecoveryKey;
-    if (formatVersion != DataVersions.wrappedRecoveryKey) {
-      throw DeviceKeyUnsupportedFormatException(
-        '不支援的可信裝置金鑰格式版本：$formatVersion。',
-      );
+    final version = json['format_version'] ?? DataVersions.wrappedRecoveryKey;
+    if (version is! int || version != DataVersions.wrappedRecoveryKey) {
+      throw const DeviceKeyUnsupportedFormatException();
+    }
+    final slotId = _requiredDeviceString(json['slot_id']);
+    final nonce = _requiredDeviceString(json['nonce']);
+    final ciphertext = _requiredDeviceString(json['ciphertext']);
+    try {
+      if (base64Decode(nonce).length != 12 ||
+          base64Decode(ciphertext).length < 16) {
+        throw const FormatException('裝置金鑰密文長度不正確');
+      }
+    } on FormatException {
+      throw const DeviceKeyUnsupportedFormatException();
+    }
+    final rawTime = json['wrapped_at'];
+    final time = rawTime == null
+        ? DateTime.fromMillisecondsSinceEpoch(0)
+        : rawTime is String
+        ? DateTime.tryParse(rawTime)
+        : null;
+    if (time == null ||
+        json['platform'] != null && json['platform'] is! String) {
+      throw const DeviceKeyUnsupportedFormatException();
     }
     return WrappedRecoveryKeyRecord(
-      slotId: '${json['slot_id'] ?? ''}',
-      nonceBase64: '${json['nonce'] ?? ''}',
-      ciphertextBase64: '${json['ciphertext'] ?? ''}',
-      wrappedAt:
-          DateTime.tryParse('${json['wrapped_at'] ?? ''}') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      formatVersion: formatVersion,
-      platform: '${json['platform'] ?? ''}',
+      slotId: slotId,
+      nonceBase64: nonce,
+      ciphertextBase64: ciphertext,
+      wrappedAt: time,
+      formatVersion: version,
+      platform: json['platform'] as String? ?? '',
     );
   }
+}
+
+Map<Object?, Object?> _decodeDeviceRecord(String value) {
+  try {
+    final decoded = jsonDecode(value);
+    if (decoded is! Map) throw const DeviceKeyUnsupportedFormatException();
+    return decoded;
+  } on FormatException {
+    throw const DeviceKeyUnsupportedFormatException();
+  }
+}
+
+String _requiredDeviceString(Object? value) {
+  if (value is! String || value.trim().isEmpty) {
+    throw const DeviceKeyUnsupportedFormatException();
+  }
+  return value;
 }
 
 sealed class DeviceKeyException implements Exception {
@@ -142,7 +170,7 @@ final class DeviceKeyUnsupportedFormatException extends DeviceKeyException {
   ]);
 }
 
-/// vault 復原邏輯與平台保護裝置金鑰之間的橋接層。
+/// 日記庫復原邏輯與平台保護裝置金鑰之間的橋接層。
 abstract class DeviceKeyManager {
   Future<bool> hasTrustedKey(VaultId vaultId);
 
@@ -291,15 +319,14 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
       return null;
     }
 
-    final Map<Object?, Object?> decoded =
-        jsonDecode(encoded) as Map<Object?, Object?>;
-    final TrustedDeviceInfo info = TrustedDeviceInfo(
-      slotId: '${decoded['slot_id'] ?? ''}',
-      platform: '${decoded['platform'] ?? ''}',
-    );
-    if (info.slotId.isEmpty) {
-      return null;
+    final decoded = _decodeDeviceRecord(encoded);
+    if (decoded['platform'] != null && decoded['platform'] is! String) {
+      throw const DeviceKeyUnsupportedFormatException();
     }
+    final TrustedDeviceInfo info = TrustedDeviceInfo(
+      slotId: _requiredDeviceString(decoded['slot_id']),
+      platform: decoded['platform'] as String? ?? '',
+    );
     return info;
   }
 
@@ -313,9 +340,7 @@ class AndroidDeviceKeyManager implements DeviceKeyManager {
     if (encoded == null || encoded.isEmpty) {
       return null;
     }
-    return WrappedRecoveryKeyRecord.fromJson(
-      jsonDecode(encoded) as Map<Object?, Object?>,
-    );
+    return WrappedRecoveryKeyRecord.fromJson(_decodeDeviceRecord(encoded));
   }
 
   @override

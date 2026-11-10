@@ -211,7 +211,7 @@ abstract final class DisplayFormat {
     return p.basename(trimmed);
   }
 
-  /// Google 帳號顯示：`名稱 · email@example.com`。
+  /// Google 帳戶顯示：`名稱 · email@example.com`。
   static String formatGoogleAccountLabel(
     AppLocalizations l10n,
     String name,

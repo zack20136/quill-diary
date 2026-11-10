@@ -184,10 +184,8 @@ class _AssetRepairStats {
   final Set<AssetId> recoveredAssetIds;
 }
 
-/// 加密 vault 儲存的主要協調層。
-///
-/// 此儲存庫負責 Recovery Key 建立／解鎖、可信裝置 session 還原、
-/// 加密條目／附件 I/O 與索引同步。
+/// 日記庫檢查與修復的執行端：掃描正式日記與附件、隔離或搬移異常檔案，
+/// 並同步索引與最新修復摘要。
 
 class VaultRepairService {
   VaultRepairService({
@@ -1084,7 +1082,7 @@ class VaultRepairService {
             .deleteIfValid(
               path: target.path,
               validate: (String path) async {
-                // 壞附件本來就無法通過內容驗證；只確認仍在 vault 內即可刪除。
+                // 壞附件本來就無法通過內容驗證；只確認仍在日記庫內即可刪除。
                 if (target.fileId == 'unknown' || target.countsAsBadAsset) {
                   final Directory root = await _pathStrategy
                       .vaultRootDirectory();

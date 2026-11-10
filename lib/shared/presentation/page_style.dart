@@ -14,4 +14,7 @@ abstract final class PageStyle {
   static const double sectionGap = 16;
   static const double feedbackHorizontalInset = 16;
   static const double feedbackBottomInset = 16;
+
+  /// 達到這個寬度時，自適應面板改以置中對話框呈現。
+  static const double wideBreakpoint = 600;
 }

@@ -2,7 +2,7 @@ import 'package:quill_diary/application/settings/settings_text.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
-/// 同篇日記的多個 finding 合併呈現。
+/// 同篇日記的多個修復項目合併呈現。
 class VaultFindingGroupPresentation {
   const VaultFindingGroupPresentation({
     required this.title,

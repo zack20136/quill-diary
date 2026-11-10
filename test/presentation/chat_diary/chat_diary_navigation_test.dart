@@ -36,12 +36,56 @@ import 'package:quill_diary/shared/navigation/app_routes.dart';
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/presentation/chat_diary/chat_diary_navigation_scope.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/vault/manifest_write_test_crypto_service.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 enum _WritingFlowScenario { direct, chat, leaveDuringSave }
 
 void main() {
+  testWidgets('AI 關閉時新增直接進一般編輯器，重新開啟後恢復選擇', (tester) async {
+    final store = OverviewChatDiaryStore();
+    final settings = OverviewAiSettingsStore();
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: AppRoutes.editorRoute,
+          builder: (_, _) => const Scaffold(body: Text('一般日記編輯器')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      chatDiaryNavigationApp(
+        router: router,
+        store: store,
+        connections: settings,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomePage)),
+    );
+    await container.read(aiEnabledProvider.notifier).setEnabled(false);
+    expect(container.read(aiEnabledProvider), isFalse);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(testL10n.homeTooltipNewEntry));
+    await tester.pumpAndSettle();
+    // push 不會更新 routeInformationProvider，需讀取目前的路由狀態。
+    expect(router.state.uri.path, AppRoutes.editorRoute);
+    expect(find.text(testL10n.chatDiaryTitle), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await container.read(aiEnabledProvider.notifier).setEnabled(true);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(testL10n.homeTooltipNewEntry));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.text(testL10n.chatDiaryTitle), findsOneWidget);
+    expect(store.storedChats, isEmpty);
+  });
+
   testWidgets('空白聊天離開不留草稿，有輸入可續聊且再次新增不沿用舊內容', (tester) async {
     const connectionConfig = AiConnectionConfig(
       provider: AiProvider.custom,
@@ -101,9 +145,59 @@ void main() {
     expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
+    expect(find.byType(ChatDiaryPage), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-diary-composer')),
+      '離線準備的內容',
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.arrow_upward_rounded),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(networkCalls, 0);
+    await tester.tap(find.byTooltip(testL10n.aiSettings));
+    await tester.pumpAndSettle();
+    final keyField = find.byKey(const ValueKey('ai-api-key-openai'));
+    await tester.ensureVisible(keyField);
+    await tester.enterText(keyField, 'synthetic-key');
+    await tester.pump();
+    await tester.tap(
+      find.widgetWithText(FilledButton, testL10n.aiSaveSettings),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AiConnectionSettingsDialog), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('chat-diary-composer')))
+          .controller!
+          .text,
+      '離線準備的內容',
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.arrow_upward_rounded),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(networkCalls, 0);
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-diary-composer')),
+      '',
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, '/');
     expect(find.byType(HomePage), findsOneWidget);
     expect(store.storedChats, isEmpty);
+    connections.settings = const AiConnectionSettings();
+    connections.keys.clear();
     await tester.tap(find.byTooltip('新增日記'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('聊天日記'));
@@ -121,12 +215,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.storedChats, isEmpty);
     expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
-    expect(
-      find.text('至少填一個服務的 API Key，或填自訂服務網址，並打開一個模型，才選得到。'),
-      findsOneWidget,
-    );
+    expect(find.text(testL10n.aiSettingsNeedConnection), findsOneWidget);
     expect(networkCalls, 0);
     await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatDiaryPage), findsOneWidget);
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, '/');
     connections.settings = readySettings;
@@ -146,7 +240,7 @@ void main() {
       isNotEmpty,
     );
     expect(
-      await store.list(
+      await store.listDrafts(
         const UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
       ),
       isEmpty,

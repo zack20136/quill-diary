@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Google Drive 背景上傳工作階段。
+/// 原生背景上傳服務回報的上傳階段。
 enum DriveUploadPhase {
   staged,
   uploading,
@@ -129,7 +129,7 @@ final class DriveUploadJobSnapshot {
   bool get isCancelCleanupPending =>
       phase == DriveUploadPhase.cancelCleanupPending;
 
-  /// 取消清理因授權失效或帳號不符而卡住，允許重連原帳號或放棄。
+  /// 取消清理因授權失效或帳戶不符而卡住，允許重連原帳戶或放棄。
   bool get needsCancelCleanupAccountRecovery {
     if (!isCancelCleanupPending) {
       return false;

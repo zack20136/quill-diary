@@ -22,8 +22,10 @@
 - 能刪就刪：實驗失敗後的死碼、未使用的 helper、重複 widget、過時分支、只被測試覆蓋的過時抽象，清理優先於堆疊 workaround；不要為了「以後可能用到」而保留。
 - 重構後確保引用與測試同步更新；不要留下半套 rename 或 broken import。
 - 引用 `lib/` 內的程式統一使用 `package:quill_diary/...`，並依 Dart、套件、相對路徑排序；測試輔助檔之間使用相對路徑，產生碼遵循產生器。
-- 本機資料格式與內容版本集中於 `lib/shared/data_versions.dart`，各格式獨立升版；App 發行版本只在 `pubspec.yaml` 管理。
-- 行為變更後，同步更新對應的 unit / widget 測試；分層與避免重複案例見 [`test/test-handbook.md`](test/test-handbook.md)。
+- 本機資料格式與內容版本集中於 `lib/shared/data_versions.dart`，App 發行版本只在 `pubspec.yaml` 管理。升版判準與首次格式規則見 [`本機儲存`](docs/開發/資料/本機儲存.md#ai-格式與版本規則)；提示詞、UI、模型目錄與有預設值的可選欄位不升版。
+- JSON 編解碼只還原資料；模型目錄更新與回寫由儲存入口明確執行。AI 連線設定與請求快照分開編解碼，不用目前目錄改寫歷史快照。
+- AI 不保留舊格式搬移與推測重建分支。不相容資料由對應功能重設或重建；未知未來版本不自動覆寫，正式日記與附件不得連帶刪除。細節見 [`本機儲存`](docs/開發/資料/本機儲存.md#ai-格式與版本規則)。
+- 行為變更後，同步更新對應的 unit / widget 測試；分層與避免重複案例見 [`test/test-handbook.md`](test/test-handbook.md)。不為預設值、目錄內容、文案或常數寫測試，見手冊「不寫的測試」；守門測試 `test/meta/test_hygiene_test.dart` 會擋下寫死模型 ID 與 ARB 整句比對。
 - 註解只解釋非 obvious 的業務規則；程式本身應能自我說明，不要把顯而易見的行為重述一遍。
 
 ### 繁體中文

@@ -18,7 +18,7 @@ typedef CopyAndroidUriToPath = Future<void> Function({
 
 /// 僅測試用 bytes 保底上限；非產品檔案大小限制。
 ///
-/// Android 匯入/還原應走本機 path 或 content:// URI 串流複製。
+/// Android 匯入／還原應走本機檔案路徑或 content:// URI 串流複製。
 @visibleForTesting
 const int kPickedFileBytesFallbackMaxBytes = 64 * 1024 * 1024;
 

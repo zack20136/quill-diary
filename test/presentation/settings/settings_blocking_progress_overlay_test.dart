@@ -113,10 +113,15 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.pumpWidget(host(title: '正在處理', message: '正在啟動還原後的日記庫…'));
+    await tester.pumpWidget(
+      host(title: '正在處理', message: testL10n.settingsBackupStartingAfterRestore),
+    );
     expect(
       find.bySemanticsLabel(
-        testL10n.settingsProgressSemanticIndeterminate('正在處理', '正在啟動還原後的日記庫…'),
+        testL10n.settingsProgressSemanticIndeterminate(
+          '正在處理',
+          testL10n.settingsBackupStartingAfterRestore,
+        ),
       ),
       findsOneWidget,
     );

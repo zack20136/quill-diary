@@ -1,11 +1,12 @@
 import 'package:go_router/go_router.dart';
-
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/presentation/diary_organization/diary_organization_page.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
+import 'package:quill_diary/presentation/persona/persona_page.dart';
 import 'package:quill_diary/presentation/settings/pages/about_page.dart';
 import 'package:quill_diary/presentation/settings/pages/personalization_page.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
@@ -17,6 +18,13 @@ abstract final class AppRouter {
     return GoRouter(
       initialLocation: AppRoutes.homeRoute,
       routes: <RouteBase>[
+        GoRoute(
+          path: AppRoutes.personaRoute,
+          builder: (_, state) =>
+              isPrefixedId(state.pathParameters['personId'] ?? '', 'per')
+              ? PersonaPage(personId: state.pathParameters['personId']!)
+              : const HomePage(),
+        ),
         GoRoute(path: AppRoutes.homeRoute, builder: (_, _) => const HomePage()),
         GoRoute(
           path: '${AppRoutes.diaryOrganizationRoutePrefix}/:entryId',

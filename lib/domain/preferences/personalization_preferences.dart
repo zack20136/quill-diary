@@ -134,7 +134,7 @@ class EditorTypographyPreferences {
   static const double defaultListPreviewFontSize = 14;
   static const double defaultListPreviewLineHeight = 1.4;
 
-  /// 精簡列表摘要原始為 `bodySmall` + `height: 1.35`。
+  /// 精簡列表摘要原始為 `bodySmall` + `height: 1.45`。
   static const double defaultListCompactPreviewLineHeight = 1.45;
 
   static const double minTitleFontSize = 18;

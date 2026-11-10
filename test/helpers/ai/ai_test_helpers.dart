@@ -28,7 +28,7 @@ ChatDiarySession testChatDiarySession({
     customProtocol: AiApiProtocol.ollamaChat,
     model: 'test-model',
     baseUrl: 'http://127.0.0.1:11434',
-  ),
+  ).captureRequestSnapshot(),
   hidePersonNames: hidePersonNames,
   createdAt: DateTime(2026, 10, 27),
   date: '2026-10-27',
@@ -41,11 +41,15 @@ final testAiPng = base64Decode(
 class OverviewAiSettingsStore extends AiSettingsStore {
   OverviewAiSettingsStore() : super.detached();
   AiConnectionSettings settings = const AiConnectionSettings();
+  bool aiEnabled = true;
   bool hidePersonNames = true;
-  AiPromptOverrides chatDiaryPrompts = const AiPromptOverrides();
-  AiPromptOverrides organizationPrompts = const AiPromptOverrides();
+  ChatDiaryPromptSettings chatDiaryPrompts = const ChatDiaryPromptSettings();
+  DiaryOrganizationPromptSettings organizationPrompts =
+      const DiaryOrganizationPromptSettings();
   final keys = <String, String>{};
   bool failReads = false;
+  bool failEnabledWrites = false;
+  Future<void>? enabledWriteGate;
   Future<void>? readGate;
   Future<void>? keyReadGate;
   int keyReads = 0;
@@ -57,9 +61,10 @@ class OverviewAiSettingsStore extends AiSettingsStore {
     reads++;
     readStarted?.complete();
     await readGate;
-    if (failReads) throw StateError('讀取設定失敗');
+    if (failReads) throw const AiFailure(AiErrorCode.settings);
     return AiStoredSettings(
       connection: settings,
+      aiEnabled: aiEnabled,
       hidePersonNames: hidePersonNames,
       chatDiaryPrompts: chatDiaryPrompts,
       organizationPrompts: organizationPrompts,
@@ -72,13 +77,56 @@ class OverviewAiSettingsStore extends AiSettingsStore {
     AiStoredSettings stored,
   ) async {
     settings = stored.connection;
+    aiEnabled = stored.aiEnabled;
     hidePersonNames = stored.hidePersonNames;
     chatDiaryPrompts = stored.chatDiaryPrompts;
     organizationPrompts = stored.organizationPrompts;
   }
 
   @override
-  Future<void> ensureStored(UnlockedVaultSession session) async {}
+  Future<AiSettingsInspection> inspect(UnlockedVaultSession session) async =>
+      AiSettingsInspection(
+        vaultId: session.vaultId,
+        revision: 'test',
+        status: failReads
+            ? AiSettingsStatus.unreadable
+            : AiSettingsStatus.ready,
+      );
+
+  @override
+  Future<void> replaceUnreadableWithDefaults(
+    UnlockedVaultSession session, {
+    required AiSettingsInspection expected,
+  }) async {
+    failReads = false;
+    settings = const AiConnectionSettings();
+    chatDiaryPrompts = const ChatDiaryPromptSettings();
+    organizationPrompts = const DiaryOrganizationPromptSettings();
+    hidePersonNames = true;
+    aiEnabled = true;
+  }
+
+  @override
+  Future<void> updateAiEnabled(
+    UnlockedVaultSession session,
+    bool enabled,
+  ) async {
+    final fail = failEnabledWrites;
+    await enabledWriteGate;
+    if (fail) throw StateError('AI 開關寫入失敗');
+    aiEnabled = enabled;
+  }
+
+  @override
+  Future<void> updateActiveConnection(
+    UnlockedVaultSession session,
+    AiConnectionConfig next,
+  ) async {
+    settings = AiConnectionSettings(
+      activeConnectionId: next.connectionId,
+      connections: {...settings.connections, next.connectionId: next},
+    );
+  }
 
   @override
   Future<String> readApiKey(AiConnectionConfig connectionConfig) async {
@@ -115,6 +163,7 @@ class RecordingAiTransport implements AiTransport {
       <({Uri uri, Map<String, String> headers, Map<String, Object?> body})>[];
   final responses = <AiHttpResponse>[];
   List<String> lines = [];
+  bool hang = false;
   bool closed = false;
   @override
   Future<AiHttpResponse> request(
@@ -141,6 +190,7 @@ class RecordingAiTransport implements AiTransport {
   ) async* {
     streams.add((uri: uri, headers: Map.of(headers), body: body));
     yield* Stream.fromIterable(lines);
+    if (hang) await Completer<void>().future;
   }
 
   @override
@@ -219,6 +269,9 @@ class EmptyEditorDraftStore implements EditorDraftStore {
     String draftKey,
     UnlockedVaultSession session,
   ) async => null;
+
+  @override
+  Future<void> clearAllMaterializedPendingFiles() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -329,7 +382,9 @@ class OverviewChatDiaryStore implements ChatDiaryStore {
   @override
   Future<void> flush() async {}
   @override
-  Future<List<ChatDiarySession>> list(UnlockedVaultSession session) async {
+  Future<List<ChatDiaryDraftItem>> listDrafts(
+    UnlockedVaultSession session,
+  ) async {
     final result = <ChatDiarySession>[];
     for (final id in storedChats.keys.toList()) {
       final chatSession = await load(id, session);
@@ -339,8 +394,8 @@ class OverviewChatDiaryStore implements ChatDiaryStore {
         result.add(chatSession);
       }
     }
-    return result
-      ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+    result.sort((left, right) => right.createdAt.compareTo(left.createdAt));
+    return result.map(ChatDiaryDraftItem.readable).toList();
   }
 
   @override

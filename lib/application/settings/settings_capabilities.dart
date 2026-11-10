@@ -39,7 +39,7 @@ class SettingsPageCapabilities {
       vaultTransferCapabilities: vaultTransferCapabilities,
       // 建立復原金鑰只取決於 metadata 是否已存在，不依賴暫時性的 session 狀態。
       canCreateRecoveryKey: !hasRecoveryKey,
-      // 尚無日記庫時允許登入 Drive 以便還原；已有金鑰但未解鎖時維持不能改帳號。
+      // 尚無日記庫時允許登入 Drive 以便還原；已有金鑰但未解鎖時維持不能改帳戶。
       canManageDriveAccount: hasUnlockedSession || !hasRecoveryKey,
       canChangeSessionTimeout: hasRecoveryKey && hasUnlockedSession,
     );

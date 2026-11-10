@@ -618,7 +618,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
         },
         loading: () => const SizedBox(
           height: 160,
-          child: Center(child: CircularProgressIndicator()),
+          child: AppLoadingState(layout: AppLoadingStateLayout.section),
         ),
         error: (Object error, StackTrace _) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),

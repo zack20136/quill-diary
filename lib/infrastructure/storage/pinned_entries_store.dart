@@ -6,7 +6,7 @@ import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
-/// 在 [vault/pinned_entries.json] 持久化首頁釘選狀態，隨 vault 備份與還原。
+/// 在 [vault/pinned_entries.json] 持久化首頁釘選狀態，隨日記庫備份與還原。
 class PinnedEntriesStore {
   PinnedEntriesStore(this._pathStrategy);
 

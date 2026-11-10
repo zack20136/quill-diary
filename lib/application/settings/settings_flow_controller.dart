@@ -707,7 +707,7 @@ class SettingsFlowController {
   Future<void> _refreshDriveConnection() async {
     _ref.invalidate(settingsDriveConnectionProvider);
     await _ref.read(settingsDriveConnectionProvider.future);
-    // 連回帳號後立刻重試 CANCEL_CLEANUP_PENDING 對帳。
+    // 連回帳戶後立刻重試 CANCEL_CLEANUP_PENDING 對帳。
     await _ref.read(driveUploadCoordinatorProvider.notifier).refresh();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
 
 abstract final class HomeLayout {
   static const double bodyHorizontal = 16;
@@ -12,7 +13,7 @@ abstract final class HomeLayout {
   static const double sectionGap = 12;
   static const double tagListSectionHeight = 350;
   static const double searchRowControlHeight = 46;
-  static const double tabWideBreakpoint = 600;
+  static const double tabWideBreakpoint = PageStyle.wideBreakpoint;
 
   static const EdgeInsets tagListSectionCardPadding = EdgeInsets.fromLTRB(
     bodyHorizontal,

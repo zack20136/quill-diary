@@ -3,10 +3,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/home_layout.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/adaptive_panel.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_choice_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_layout.dart';
 
 enum EntryWritingMode { direct, chat }
 
@@ -15,49 +13,16 @@ Future<EntryWritingMode?> showEntryWritingModePicker(
   required UnlockedVaultSession session,
 }) {
   FocusManager.instance.primaryFocus?.unfocus();
-  final wide = MediaQuery.sizeOf(context).width >= HomeLayout.tabWideBreakpoint;
-  final colors = Theme.of(context).colorScheme;
-  final content = _EntryWritingModePicker(session: session, wide: wide);
-  if (wide) {
-    return showDialog<EntryWritingMode>(
-      context: context,
-      builder: (_) => Center(
-        child: AppResponsiveWidth(
-          maxWidth: 480,
-          child: Dialog(
-            insetPadding: EdgeInsets.zero,
-            backgroundColor: colors.surfaceContainerHigh,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: content,
-          ),
-        ),
-      ),
-    );
-  }
-  return showModalBottomSheet<EntryWritingMode>(
+  final content = _EntryWritingModePicker(session: session);
+  return showAdaptivePanel<EntryWritingMode>(
     context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: false,
-    backgroundColor: colors.surfaceContainerHigh,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(PageStyle.radiusCard),
-      ),
-    ),
-    clipBehavior: Clip.antiAlias,
     builder: (_) => content,
   );
 }
 
 class _EntryWritingModePicker extends ConsumerStatefulWidget {
-  const _EntryWritingModePicker({required this.session, required this.wide});
+  const _EntryWritingModePicker({required this.session});
   final UnlockedVaultSession session;
-  final bool wide;
 
   @override
   ConsumerState<_EntryWritingModePicker> createState() =>
@@ -122,89 +87,33 @@ class _EntryWritingModePickerState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     return PopScope<EntryWritingMode>(
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) _completed = true;
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) => ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.8),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(20, widget.wide ? 16 : 12, 20, 20),
-              child: Column(
-                key: const ValueKey('entry-writing-mode-picker'),
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!widget.wide) ...[
-                    Center(
-                      child: Container(
-                        key: const ValueKey('entry-writing-mode-handle'),
-                        width: 32,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: colors.onSurfaceVariant,
-                          borderRadius: BorderRadius.circular(
-                            PageStyle.radiusPanel,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Semantics(
-                          header: true,
-                          child: Text(
-                            l10n.homeTooltipNewEntry,
-                            style: theme.textTheme.titleLarge,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: l10n.commonCloseTooltip,
-                        onPressed: () => _finish(null),
-                        style: IconButton.styleFrom(
-                          foregroundColor: colors.onSurface,
-                        ),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          AppChoiceCard(
-                            key: const ValueKey('entry-writing-mode-direct'),
-                            icon: Icons.edit_note,
-                            title: l10n.chatDiaryWriteDirectly,
-                            description: l10n.entryWritingModeDirectDescription,
-                            onPressed: () => _finish(EntryWritingMode.direct),
-                          ),
-                          const SizedBox(height: 12),
-                          AppChoiceCard(
-                            key: const ValueKey('entry-writing-mode-chat'),
-                            icon: Icons.chat_bubble_outline,
-                            title: l10n.chatDiaryTitle,
-                            description: l10n.entryWritingModeChatDescription,
-                            onPressed: () => _finish(EntryWritingMode.chat),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      child: AdaptiveChoicePanel(
+        title: l10n.homeTooltipNewEntry,
+        onClose: () => _finish(null),
+        panelKey: const ValueKey('entry-writing-mode-picker'),
+        handleKey: const ValueKey('entry-writing-mode-handle'),
+        child: Column(
+          children: [
+            AppChoiceCard(
+              key: const ValueKey('entry-writing-mode-direct'),
+              icon: Icons.edit_note,
+              title: l10n.chatDiaryWriteDirectly,
+              description: l10n.entryWritingModeDirectDescription,
+              onPressed: () => _finish(EntryWritingMode.direct),
             ),
-          ),
+            const SizedBox(height: 12),
+            AppChoiceCard(
+              key: const ValueKey('entry-writing-mode-chat'),
+              icon: Icons.chat_bubble_outline,
+              title: l10n.chatDiaryTitle,
+              description: l10n.entryWritingModeChatDescription,
+              onPressed: () => _finish(EntryWritingMode.chat),
+            ),
+          ],
         ),
       ),
     );

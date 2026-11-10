@@ -13,9 +13,9 @@ import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-/// 讀寫加密完整 vault 備份 zip 封存。
+/// 讀寫加密完整日記庫備份 zip 封存。
 ///
-/// 備份複製 vault 權威加密檔與復原中繼資料；
+/// 一般正式資料直接複製密文；分身由儲存層去除草稿後重新加密。
 /// 搜尋索引視為衍生資料，還原後重建。
 class VaultBackupIo {
   VaultBackupIo({
@@ -23,28 +23,36 @@ class VaultBackupIo {
     required this._repository,
     required this._indexDatabaseManager,
     required this._editorDraftStore,
-    this._prepareVault,
+    this.personaBackupFiles,
   });
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
   final IndexDatabaseManager _indexDatabaseManager;
   final EditorDraftStore _editorDraftStore;
-  final Future<void> Function()? _prepareVault;
+
+  /// 已在日記庫修改序列內呼叫；回傳 ZIP 相對路徑及正式分身密文。
+  final Future<Map<String, Uint8List>> Function()? personaBackupFiles;
 
   Future<File> writeBackupZip(
     File target, {
     BackupTaskProgressListener? onProgress,
-  }) => _repository.runVaultMutation(() async {
-    await _prepareVault?.call();
-    return _writeBackupZip(target, onProgress: onProgress);
-  });
+  }) => _repository.runVaultMutation(
+    () => _writeBackupZip(target, onProgress: onProgress),
+  );
 
   Future<File> _writeBackupZip(
     File target, {
     BackupTaskProgressListener? onProgress,
   }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
+    final personas = Directory(p.join(vaultRoot.path, 'personas'));
+    if (personaBackupFiles == null &&
+        personas.existsSync() &&
+        personas.listSync(followLinks: false).isNotEmpty) {
+      throw StateError('備份人物分身需要已解鎖的日記庫');
+    }
+    final publishedPersonas = await personaBackupFiles?.call() ?? const {};
     final entries = Directory(p.join(vaultRoot.path, 'entries'));
     if (entries.existsSync()) {
       await for (final entity in entries.list(
@@ -83,6 +91,7 @@ class VaultBackupIo {
               (segments.first == 'index' ||
                   segments.first == 'quarantine' ||
                   segments.first == 'chat_diary_drafts' ||
+                  segments.first.toLowerCase() == 'personas' ||
                   segments.first == 'diary_organization_drafts' ||
                   segments.first == 'chat_diary_remote_cleanup' ||
                   segments.any(
@@ -93,6 +102,11 @@ class VaultBackupIo {
           return ZipFileOperation.include;
         },
       );
+      for (final entry in publishedPersonas.entries) {
+        encoder.addArchiveFile(
+          ArchiveFile(entry.key, entry.value.length, entry.value),
+        );
+      }
     } finally {
       await encoder.close();
     }
@@ -335,6 +349,16 @@ class VaultBackupIo {
   }
 
   void _ensureZipRestorable(OpenedZipArchive zip) {
+    for (final file in zip.archive.files.where((file) => file.isFile)) {
+      final segments = p.posix.split(
+        p.posix.normalize(file.name.replaceAll('\\', '/')),
+      );
+      if (segments.isNotEmpty &&
+          segments.first.toLowerCase() == 'personas' &&
+          segments.length != 3) {
+        throw const VaultBackupException(VaultBackupIssue.invalidArchive);
+      }
+    }
     final VaultBackupLayout layout = inspectZipEntryNames(
       zip.archive.files.map((ArchiveFile file) => file.name),
     );

@@ -495,7 +495,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _flowSession.reset();
     await _flowSession.flushDrafts();
     await _editorFlow.discardDraft(_draftKey);
-    _lastPersistedDraftSnapshot = null;
+    // 記住捨棄時的內容：離開頁面時若內容未變，不再把已捨棄的草稿寫回。
+    _lastPersistedDraftSnapshot = _currentDraftSnapshot();
   }
 
   void _syncSavedEntry(DiaryEntry entry, {bool updateControllers = true}) {
@@ -1341,7 +1342,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
         }
       }
       if (!mounted || !canUpdateUi()) return;
-      ref.invalidate(chatDiarySessionsProvider);
+      ref.invalidate(chatDiaryDraftsProvider);
       setState(() {
         _syncSavedEntry(saved);
         _previewMode = result.switchToPreview;

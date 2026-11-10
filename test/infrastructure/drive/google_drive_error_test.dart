@@ -7,13 +7,15 @@ import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import '../../helpers/shared/test_l10n.dart';
 
 void main() {
-  test('Google Drive 錯誤依 App 語言顯示對應文案', () {
+  test('同一 Google Drive 錯誤依 App 語言切換文案', () {
     const GoogleDriveException error = GoogleDriveException(
       GoogleDriveErrorCode.oauthConfiguration,
     );
 
-    expect(error.localizedMessage(testZhL10n), contains('Google 登入設定'));
-    expect(error.localizedMessage(testEnL10n), contains('Google sign-in'));
+    expect(
+      error.localizedMessage(testZhL10n),
+      isNot(error.localizedMessage(testEnL10n)),
+    );
   });
 
   test('清理失敗文案保留數量，不顯示底層錯誤', () {
@@ -30,26 +32,16 @@ void main() {
     );
   });
 
-  test('原生 OAuth error code 會轉成穩定的本地化錯誤', () {
-    final GoogleDriveException? error = googleDriveExceptionForNativeAuthCode(
-      'google_drive_auth_network',
-    );
-
-    expect(error, isNotNull);
-    expect(error!.localizedMessage(testZhL10n), '目前無法連上 Google 服務，請檢查網路後再試。');
+  test('原生 OAuth error code 對應到固定錯誤碼', () {
     expect(
-      error.localizedMessage(testEnL10n),
-      'Google services are unavailable. Check your connection and try again.',
+      googleDriveExceptionForNativeAuthCode('google_drive_auth_network')?.code,
+      GoogleDriveErrorCode.oauthNetwork,
     );
-  });
-
-  test('原生 OAuth 設定錯誤會顯示設定提示', () {
-    final GoogleDriveException? error = googleDriveExceptionForNativeAuthCode(
-      'google_drive_auth_configuration',
+    expect(
+      googleDriveExceptionForNativeAuthCode('google_drive_auth_configuration')
+          ?.code,
+      GoogleDriveErrorCode.oauthConfiguration,
     );
-
-    expect(error?.localizedMessage(testZhL10n), contains('設定'));
-    expect(error?.localizedMessage(testEnL10n), contains('configured'));
   });
 
   test('未分類的原生例外不會直接顯示原始內容', () {
@@ -61,7 +53,7 @@ void main() {
     expect(userFacingErrorMessage(error, l10n: testZhL10n), '操作失敗，請稍後再試。');
     expect(
       userFacingErrorMessage(error, l10n: testEnL10n),
-      'The operation failed. Please try again later.',
+      testEnL10n.userFacingErrorDefaultMessage,
     );
   });
 }

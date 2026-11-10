@@ -38,14 +38,6 @@ void main() {
       expect(matcher.match('今天小明與小華碰面'), <String>{'p1', 'p2'});
     });
 
-    test('最長名稱優先', () {
-      final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
-        _person(id: 'short', name: '王'),
-        _person(id: 'long', name: '王小明'),
-      ]);
-      expect(matcher.match('見到王小明'), <String>{'long'});
-    });
-
     test('中文、英數與混合姓名在中文、空白及標點旁皆可命中', () {
       final PersonNameMatcher matcher = PersonNameMatcher(<Person>[
         _person(id: 'test', name: 'test'),

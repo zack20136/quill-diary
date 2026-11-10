@@ -2,7 +2,7 @@ import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 
-/// 一次性手動修復草稿；成功儲存新日記後才 retire 舊問題檔。
+/// 一次性手動修復草稿；成功儲存新日記後才淘汰舊問題檔。
 class VaultSalvageDraft {
   const VaultSalvageDraft({
     required this.token,

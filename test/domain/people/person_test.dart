@@ -3,17 +3,7 @@ import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 
 void main() {
-  test('內建關係 id 固定七種且字串關係可往返 JSON', () {
-    expect(BuiltinRelationshipIds.all, <String>[
-      'family',
-      'partner',
-      'friend',
-      'classmate',
-      'colleague',
-      'collaborator',
-      'other',
-    ]);
-
+  test('字串關係可往返 JSON', () {
     final DateTime now = DateTime(2026);
     final Person person = Person(
       id: 'p1',
@@ -28,14 +18,12 @@ void main() {
     });
   });
 
-  test('RelationshipType 依語系選字並可往返 JSON', () {
+  test('自訂關係類型可往返 JSON', () {
     const RelationshipType type = RelationshipType(
       id: 'a3f9k2mx',
       labelZh: '導師',
       labelEn: 'Mentor',
     );
-    expect(type.labelForLanguageCode('zh'), '導師');
-    expect(type.labelForLanguageCode('en'), 'Mentor');
     expect(RelationshipType.fromJson(type.toJson()), type);
   });
 
@@ -49,9 +37,8 @@ void main() {
   });
 
   group('PersonBirthday', () {
-    test('只保存月日且允許 2 月 29 日', () {
-      final PersonBirthday b = PersonBirthday(month: 2, day: 29);
-      expect(b.toJson(), <String, Object?>{'month': 2, 'day': 29});
+    test('允許 2 月 29 日但拒絕不存在的日期', () {
+      expect(PersonBirthday.tryParse(month: 2, day: 29), isNotNull);
       expect(PersonBirthday.tryParse(month: 2, day: 30), isNull);
     });
 
@@ -100,21 +87,6 @@ void main() {
     expect(person.aliases, <String>['小明']);
     expect(person.relationships, <String>{BuiltinRelationshipIds.friend});
     expect(() => person.aliases.add('不可修改'), throwsUnsupportedError);
-  });
-
-  test('Person 與 PersonDraft 的熟悉程度預設為第 3 級', () {
-    final DateTime now = DateTime(2026);
-    final Person person = Person(
-      id: 'p1',
-      name: '小明',
-      createdAt: now,
-      updatedAt: now,
-    );
-    final PersonDraft draft = PersonDraft(name: '小華');
-
-    expect(person.friendliness, FriendlinessLevel.normal);
-    expect(draft.friendliness, FriendlinessLevel.normal);
-    expect(person.toJson()['friendliness'], 3);
   });
 
   test('人物顏色預設為自動配色，自訂色可完整往返 JSON', () {

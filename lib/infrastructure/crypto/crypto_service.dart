@@ -193,7 +193,7 @@ class DecryptionContext {
   final String? deviceSlotId;
 }
 
-/// 加解密 vault 文件，並衍生 Recovery Key 包裝金鑰。
+/// 加解密日記庫文件，並衍生 Recovery Key 包裝金鑰。
 abstract class CryptoService {
   Future<EncryptionResult> encryptMarkdown({
     required String documentId,

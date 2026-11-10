@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
@@ -8,6 +11,76 @@ import '../../helpers/vault/fake_device_key_manager.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  for (final invalid in ['[]', '{', '{"slot_id":123}', '{"slot_id":""}']) {
+    test('裝置資訊錯誤 JSON $invalid 導向可辨識的復原錯誤', () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'vault.test.device_info': invalid,
+      });
+      final manager = AndroidDeviceKeyManager(
+        storage: const FlutterSecureStorage(),
+      );
+      await expectLater(
+        manager.readDeviceInfo('test'),
+        throwsA(isA<DeviceKeyUnsupportedFormatException>()),
+      );
+    });
+  }
+  for (final invalid in ['[]', '{', '{}']) {
+    test('裝置包裝錯誤 JSON $invalid 不延遲為 unwrap 失敗', () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'vault.test.wrapped_recovery_key': invalid,
+      });
+      final manager = AndroidDeviceKeyManager(
+        storage: const FlutterSecureStorage(),
+      );
+      await expectLater(
+        manager.readWrappedRecoveryKey('test'),
+        throwsA(isA<DeviceKeyUnsupportedFormatException>()),
+      );
+    });
+  }
+
+  for (final field in ['slot_id', 'nonce', 'ciphertext']) {
+    for (final value in [null, '', 123]) {
+      test('裝置包裝記錄 $field 為 $value 時立即拒讀', () {
+        final json = <Object?, Object?>{
+          'slot_id': 'slot',
+          'nonce': base64Encode(List.filled(12, 1)),
+          'ciphertext': base64Encode(List.filled(48, 2)),
+          'format_version': 1,
+          'wrapped_at': DateTime.utc(2026).toIso8601String(),
+          'platform': 'android',
+        };
+        if (value == null) {
+          json.remove(field);
+        } else {
+          json[field] = value;
+        }
+        expect(
+          () => WrappedRecoveryKeyRecord.fromJson(json),
+          throwsA(isA<DeviceKeyUnsupportedFormatException>()),
+        );
+      });
+    }
+  }
+  test('裝置記錄缺少可選 metadata 使用固定缺省，但錯誤編碼拒讀', () {
+    final json = <Object?, Object?>{
+      'slot_id': 'slot',
+      'nonce': base64Encode(List.filled(12, 1)),
+      'ciphertext': base64Encode(List.filled(48, 2)),
+    };
+    final value = WrappedRecoveryKeyRecord.fromJson(json);
+    expect(value.formatVersion, 1);
+    expect(value.wrappedAt.millisecondsSinceEpoch, 0);
+    expect(value.platform, '');
+    json['nonce'] = '不是 base64';
+    expect(
+      () => WrappedRecoveryKeyRecord.fromJson(json),
+      throwsA(isA<DeviceKeyUnsupportedFormatException>()),
+    );
+  });
+
   late VaultTestHarness harness;
   late CancellingDeviceKeyManager cancellingManager;
 

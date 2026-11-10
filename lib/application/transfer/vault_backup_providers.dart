@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/restore/vault_restore_service.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
@@ -12,10 +12,10 @@ final vaultBackupIoProvider = Provider<VaultBackupIo>(
     repository: ref.watch(vaultRepositoryProvider),
     indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
     editorDraftStore: ref.watch(editorDraftStoreProvider),
-    prepareVault: () async {
+    personaBackupFiles: () {
       final session = ref.read(appSessionProvider).session;
-      if (session == null) return;
-      await ref.read(aiSettingsStoreProvider).ensureStored(session);
+      if (session == null) throw StateError('備份人物分身需要已解鎖的日記庫');
+      return ref.read(personaStoreProvider).createBackupFiles(session);
     },
   ),
 );

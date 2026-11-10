@@ -17,6 +17,10 @@ Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGP
 
 字體使用條件以各原始授權條款為準。
 
+## 索引加密與 SQLite
+
+本地索引資料庫使用 `sqlite3` 套件（MIT License，Copyright (c) 2020 Simon Binder），並在建置時以 `sqlite3mc` 作為 SQLite 來源，提供加密索引檔。SQLite3 Multiple Ciphers（sqlite3mc）及 SQLite 本身各有其授權條款，發行時以上游專案的授權文字為準。
+
 ## Flutter 與第三方套件
 
 本 App 使用 Flutter、Drift、Riverpod、Google Sign-In、Google APIs、In-App Purchase 等第三方套件，各套件仍受其原始授權規範。完整授權內容以實際發行版本隨附的授權資訊及各套件原始條款為準，本頁只提供摘要。

@@ -1,5 +1,6 @@
 enum AiErrorCode {
   configuration,
+  settings,
   endpoint,
   authentication,
   quota,

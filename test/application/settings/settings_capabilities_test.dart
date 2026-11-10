@@ -10,7 +10,7 @@ void main() {
     recoveryWrapKey: <int>[1],
   );
 
-  test('尚無復原金鑰時允許管理 Drive 帳號，已有金鑰且未解鎖時禁止', () {
+  test('尚無復原金鑰時允許管理 Drive 帳戶，已有金鑰且未解鎖時禁止', () {
     final SettingsPageCapabilities firstLaunch =
         SettingsPageCapabilities.fromSessionState(
           sessionState: const AppSessionState(status: AppLockStatus.unlocked),

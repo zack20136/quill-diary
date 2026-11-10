@@ -35,10 +35,10 @@ object DriveRemoteFileCleanup {
 
         data object RetryLater : CancelCleanupOutcome()
 
-        /** 未登入或需使用者重新授權；保留 pending，UI 應允許重連原帳號。 */
+        /** 未登入或需使用者重新授權；保留 pending，UI 應允許重連原帳戶。 */
         data object NeedsReauth : CancelCleanupOutcome()
 
-        /** 目前簽入帳號與 job 不符；保留 pending，UI 應提示重連或放棄。 */
+        /** 目前簽入帳戶與 job 不符；保留 pending，UI 應提示重連或放棄。 */
         data object AccountMismatch : CancelCleanupOutcome()
     }
 
@@ -226,7 +226,7 @@ object DriveRemoteFileCleanup {
     }
 
     /**
-     * 使用者確認放棄清理：帳號相符時盡力刪已知殘檔，再一律清本機 job。
+     * 使用者確認放棄清理：帳戶相符時盡力刪已知殘檔，再一律清本機 job。
      * 刪除失敗不阻擋解除鎖定。
      */
     fun abandonCancelCleanup(

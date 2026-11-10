@@ -11,8 +11,8 @@ class ChatDiaryPrivacyProcessor {
     Iterable<ChatDiaryMessage>? messages,
   }) : _matcher = PersonNameMatcher(people) {
     final personTokens = {
-      for (final entry in chat.tokenBySourceKey.entries)
-        if (entry.key.startsWith('person:')) entry.value,
+      for (final token in chat.originalTextByToken.keys)
+        if (token.startsWith('⟦P')) token,
     };
     for (final message in messages ?? chat.activeMessages) {
       _restoreTokens.addAll(
@@ -20,7 +20,7 @@ class ChatDiaryPrivacyProcessor {
             .allMatches(
               message.isUser
                   ? message.outboundText
-                  : message.systemPromptSnapshot,
+                  : '${message.outboundText}\n${message.systemPromptSnapshot}',
             )
             .map((m) => m[0]!)
             .where((token) => personTokens.contains(token)),
@@ -45,6 +45,12 @@ class ChatDiaryPrivacyProcessor {
   var _personOrigin = 0;
   Set<String> get requestPrivateTokens =>
       Set.unmodifiable(_requestPrivateTokens);
+
+  String personaPersonToken(String personId, String surface) =>
+      chat.hidePersonNames ? _personToken(personId, surface) : surface;
+
+  String personaAnonymousToken(String scope, String label) =>
+      _token('persona:$scope', label, 'P');
   List<PersonTextRange> get requestPersonRanges =>
       List.unmodifiable(_requestPersonRanges);
   String get _tokenPattern => chat.originalTextByToken.isEmpty

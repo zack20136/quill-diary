@@ -36,9 +36,6 @@ GoogleDriveException googleDriveExceptionForSignIn(
 ) {
   final String? detail = error.description?.trim();
   final String lowerDetail = detail?.toLowerCase() ?? '';
-  debugPrint(
-    'Google Drive sign-in failed: code=${error.code.name}, detail=$detail',
-  );
 
   if (lowerDetail.contains('admin_policy_enforced')) {
     return const GoogleDriveException(GoogleDriveErrorCode.oauthAdminPolicy);

@@ -6,7 +6,7 @@ import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 
-/// 計算 vault、索引與本機備份儲存使用的所有本機路徑。
+/// 計算日記庫、索引與本機備份儲存使用的所有本機路徑。
 ///
 /// 路徑建構集中於此，便於稽核命名空間變更。
 class VaultPathStrategy {
@@ -24,7 +24,7 @@ class VaultPathStrategy {
     return Directory(p.join(root.path, 'vault'));
   }
 
-  /// 與日記內容目錄分開，否則還原備份刪除整個 vault 時會讓仍開啟的索引庫變成唯讀。
+  /// 與日記內容目錄分開，否則還原備份刪除整個日記庫時會讓仍開啟的索引庫變成唯讀。
   Future<Directory> indexRootDirectory() async {
     final Directory root = await appRootDirectory();
     return Directory(p.join(root.path, 'index'));

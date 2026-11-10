@@ -14,6 +14,7 @@ import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -23,16 +24,86 @@ import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 import '../../helpers/vault/fake_entry_index_vault_repository.dart';
 
 void main() {
+  testWidgets('草稿目錄讀取失敗保留可重試狀態，不冒充空白日記庫', (tester) async {
+    const state = AppSessionState(
+      status: AppLockStatus.unlocked,
+      session: UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
+    );
+    var attempts = 0;
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        overrides: [
+          effectiveAppSessionProvider.overrideWith((_) async => state),
+          chatDiaryDraftsProvider.overrideWith((_) async {
+            if (attempts++ == 0) throw const AiFailure(AiErrorCode.storage);
+            return [];
+          }),
+          homeEntriesProvider.overrideWith(
+            (_) => const AsyncData<List<DiaryEntrySummary>>([]),
+          ),
+          homeEntryIndexListProvider.overrideWith(
+            (_) async => const HomeEntryQueryResult(query: '', entries: []),
+          ),
+          homePinnedEntryIdsProvider.overrideWith((_) async => {}),
+        ],
+        child: const HomeTimelinePane(sessionState: state),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(testL10n.chatDiaryDraftReadError), findsOneWidget);
+    await tester.tap(find.text('重試'));
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.text(testL10n.chatDiaryDraftReadError), findsNothing);
+  });
+
+  testWidgets('不可讀草稿顯示需要處理狀態並可個別選取', (tester) async {
+    await tester.pumpWidget(
+      widgetTestApp(
+        overrides: [],
+        child: const HomeChatDiaryDraftCard(
+          draft: ChatDiaryDraftItem.unreadable(
+            id: 'chat_unreadable',
+            vaultId: 'vault',
+            error: AiErrorCode.unreadable,
+          ),
+          entryDisplayOrder: [],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('需要處理的聊天草稿'), findsOneWidget);
+    await tester.longPress(find.text('需要處理的聊天草稿'));
+    await tester.pump();
+    final element = tester.element(find.byType(HomeChatDiaryDraftCard));
+    final selection = ProviderScope.containerOf(element)
+        .read(homeEntrySelectionProvider);
+    expect(selection.selectedChatIds, contains('chat_unreadable'));
+    await tester.tap(find.text('需要處理的聊天草稿'));
+    await tester.pump();
+    expect(
+      ProviderScope.containerOf(element)
+          .read(homeEntrySelectionProvider)
+          .selectedChatIds,
+      isEmpty,
+    );
+  });
+
   testWidgets('首頁草稿卡接續生成進度、失敗原因與完成狀態，不顯示操作按鈕', (tester) async {
     final chat = testChatDiarySession()..composerText = '今天留下的片段';
     await tester.pumpWidget(
       widgetTestApp(
         overrides: [],
-        child: HomeChatDiaryDraftCard(chat: chat, entryDisplayOrder: const []),
+        child: HomeChatDiaryDraftCard(
+          draft: ChatDiaryDraftItem.readable(chat),
+          entryDisplayOrder: const [],
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -94,8 +165,12 @@ void main() {
         center: false,
         overrides: [
           effectiveAppSessionProvider.overrideWith((_) async => state),
-          chatDiarySessionsProvider.overrideWith(
-            (_) async => [first, second, archived],
+          chatDiaryDraftsProvider.overrideWith(
+            (_) async => [
+              first,
+              second,
+              archived,
+            ].map(ChatDiaryDraftItem.readable).toList(),
           ),
           homeEntriesProvider.overrideWith(
             (_) => const AsyncData<List<DiaryEntrySummary>>([]),
@@ -176,7 +251,9 @@ void main() {
           overrides: [
             effectiveAppSessionProvider.overrideWith((_) async => state),
             chatDiaryStoreProvider.overrideWithValue(store),
-            chatDiarySessionsProvider.overrideWith((_) => store.list(session)),
+            chatDiaryDraftsProvider.overrideWith(
+              (_) => store.listDrafts(session),
+            ),
             aiSettingsStoreProvider.overrideWithValue(
               OverviewAiSettingsStore(),
             ),

@@ -15,7 +15,6 @@ enum AiThinkingProfile {
   geminiLite,
   xaiChat,
   xaiChatNoOff,
-  xaiOmit,
 }
 
 const List<AiThinkingLevel> aiThinkingLevels = [
@@ -39,7 +38,6 @@ class AiCatalogModel {
     required this.defaultThinking,
     required this.thinkingProfile,
     this.thinkingChoices = aiThinkingLevels,
-    this.thinkingFixed = false,
   });
 
   final String id;
@@ -54,8 +52,6 @@ class AiCatalogModel {
 
   /// 空清單表示不顯示選單。
   final List<AiThinkingLevel> thinkingChoices;
-
-  final bool thinkingFixed;
 }
 
 /// 設定選單的供應商順序。從這裡拿掉就不再出現；舊設定檔仍讀得開。
@@ -97,24 +93,18 @@ const Map<AiProvider, List<AiCatalogModel>> aiModelCatalog = {
   AiProvider.claude: [
     AiCatalogModel(
       'claude-sonnet-5-5',
-      enabledByDefault: true,
       defaultThinking: AiThinkingLevel.low,
       thinkingProfile: AiThinkingProfile.claudeSonnet,
       thinkingChoices: aiThinkingLevelsWithoutOff,
     ),
     AiCatalogModel(
       'claude-haiku-5-5',
+      enabledByDefault: true,
       defaultThinking: AiThinkingLevel.low,
       thinkingProfile: AiThinkingProfile.claudeHaiku,
     ),
     AiCatalogModel(
       'claude-opus-5-5',
-      defaultThinking: AiThinkingLevel.low,
-      thinkingProfile: AiThinkingProfile.claudeAlwaysOn,
-      thinkingChoices: aiThinkingLevelsWithoutOff,
-    ),
-    AiCatalogModel(
-      'claude-fable-5-1',
       defaultThinking: AiThinkingLevel.low,
       thinkingProfile: AiThinkingProfile.claudeAlwaysOn,
       thinkingChoices: aiThinkingLevelsWithoutOff,
@@ -146,13 +136,6 @@ const Map<AiProvider, List<AiCatalogModel>> aiModelCatalog = {
       enabledByDefault: true,
       defaultThinking: AiThinkingLevel.off,
       thinkingProfile: AiThinkingProfile.xaiChat,
-    ),
-    AiCatalogModel(
-      'grok-4.20-non-reasoning',
-      defaultThinking: AiThinkingLevel.off,
-      thinkingProfile: AiThinkingProfile.xaiOmit,
-      thinkingChoices: [],
-      thinkingFixed: true,
     ),
     AiCatalogModel(
       'grok-4.7',

@@ -1,106 +1,109 @@
 # Android 權限與資料揭露
 
-權限來源是[主 Manifest](../../../android/app/src/main/AndroidManifest.xml)與當次 release AAB 的 merged manifest。依賴可能合併額外權限與套件查詢，舊 `build/` 產物不能代表目前原始碼。
+以[主 Manifest](../../../android/app/src/main/AndroidManifest.xml)及當次 release AAB 的 merged manifest 為準；依賴可能合併額外權限與套件查詢，勿引用舊 `build/` 產物。
 
 ## 主 Manifest 權限
 
-| 權限 | 實際用途 |
-|------|------|
-| `android.permission.INTERNET` | 使用者設定的 AI、Google Sign-In、Drive 與 Play Billing |
-| `android.permission.ACCESS_NETWORK_STATE` | Drive 上傳等待網路後重試 |
-| `android.permission.USE_BIOMETRIC` | 可信裝置與 session 重新驗證 |
-| `com.android.vending.BILLING` | 一次性支持購買 |
-| `android.permission.FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC` | 使用者觸發後的 Drive dataSync 前景服務 |
-| `android.permission.POST_NOTIFICATIONS` | Android 13+ 上傳進度與停止動作；拒絕仍可上傳，但通知抽屜可能不顯示 |
-| `android.permission.WAKE_LOCK` | 上傳期間避免休眠，完成或中斷即釋放 |
+| 權限 | 實際用途 | 授權方式 |
+|------|------|------|
+| `android.permission.INTERNET` | AI、Google Sign-In、Drive、Play Billing，含既有工作的對帳、清理與交易收尾 | 一般權限 |
+| `android.permission.ACCESS_NETWORK_STATE` | Drive 上傳等待網路後重試 | 一般權限 |
+| `android.permission.USE_BIOMETRIC` | 可信裝置與 session 重新驗證 | 一般權限；系統驗證視窗另行確認身分 |
+| `com.android.vending.BILLING` | 一次性支持、Billing 可用性與未完成交易查詢 | Manifest 宣告；購買由 Play 確認 |
+| `android.permission.FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC` | 使用者觸發後的 Drive dataSync 前景服務 | 一般權限；啟動及執行時間另受平台限制 |
+| `android.permission.POST_NOTIFICATIONS` | 上傳進度與停止動作 | Android 13+ 執行時權限，上傳前檢查／請求 |
+| `android.permission.WAKE_LOCK` | 上傳期間避免休眠，完成或中斷即釋放 | 一般權限 |
 
-主 Manifest 不要求相機、錄音、`READ_MEDIA_IMAGES`、`READ_MEDIA_VIDEO`、`READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE` 或 `MANAGE_EXTERNAL_STORAGE`。圖片使用 `image_picker` 的系統相片挑選器，一般檔案使用系統選檔，只處理使用者選取項目，不掃描整個相簿或儲存空間。材料化與授權釋放見[備份與還原](../功能/備份與還原.md#外部選檔與-materialize)。
+主 Manifest 不要求相機、錄音、`READ_MEDIA_IMAGES`、`READ_MEDIA_VIDEO`、`READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE` 或 `MANAGE_EXTERNAL_STORAGE`；鎖定的 `image_picker_android`、`android_file_picker`、`flutter_image_compress` 也未合併這些權限。
 
-目前鎖定的 `image_picker_android`、`android_file_picker`、`flutter_image_compress` 不會把上述媒體或儲存權限合併進 Manifest。不要為了自訂相簿介面加回 `READ_MEDIA_IMAGES` 或 `READ_MEDIA_VIDEO`；Play 只允許核心功能無法用系統挑選器完成時才申請，並要在 Console 提交廣泛存取宣告。本 App 是單次選取，維持挑選器即可。政策見[相片與影片權限](https://support.google.com/googleplay/android-developer/answer/14115180)。
+`image_picker` 的[鎖定版本](../../../pubspec.lock)在 API 36+ 使用 Photo Picker，較舊系統預設走 `ACTION_GET_CONTENT`。一般檔案走系統選檔，資料夾匯入只遞迴選定範圍，不掃描整個儲存空間。單次選取不需廣泛媒體權限；核心功能無法由挑選器完成時，才依 [Play 政策](https://support.google.com/googleplay/android-developer/answer/14115180)申請及宣告。
 
-2026 年其他敏感權限規定也沒有對應功能，不要補進 Manifest：
+其他權限邊界：
 
-- 聯絡人：沒有讀取通訊錄。需要時用系統聯絡人挑選器，不要加 `READ_CONTACTS`。見 [2026-04-15 政策公告](https://support.google.com/googleplay/android-developer/answer/16926792)。
-- 位置：沒有精確或背景位置。前景服務是使用者手動觸發的 `dataSync` 備份，不是定位或地理圍欄。
-- 簡訊與通話紀錄：沒有 `READ_SMS`、`READ_CALL_LOG` 或相關權限。
-- 區網：Android 16 的 local network permission 仍是選擇加入，尚未強制。自訂 AI 的區網 HTTP 目前只靠 `INTERNET` 與 `validateAiEndpoint`。不要先宣告 `NEARBY_WIFI_DEVICES`；強制執行時的權限名稱仍可能更換。見 [Android 16 行為變更](https://developer.android.com/about/versions/16/behavior-changes-16)。
-- 廣告 ID：主程式沒有廣告。以當次 release merged manifest 確認沒有 `com.google.android.gms.permission.AD_ID`；若之後的 SDK 合併這項權限，從 Manifest 移除，不要把 Console 廣告宣告改成有廣告。
+- 聯絡人：不讀通訊錄，不需 `READ_CONTACTS`；日後單次選取使用系統挑選器。見[政策公告](https://support.google.com/googleplay/android-developer/answer/16926792)。
+- 位置、簡訊與通話紀錄：無精確／背景位置、`READ_SMS`、`READ_CALL_LOG`；`dataSync` 服務只做手動備份，不做定位或地理圍欄。
+- 區網：target API 36 使用 `INTERNET`，不新增 `NEARBY_WIFI_DEVICES` 或提前請求 `ACCESS_LOCAL_NETWORK`。升至 target API 37+ 時，須處理 Android 17 的 `ACCESS_LOCAL_NETWORK` 授權、拒絕與撤銷；HTTP、HTTPS 均受影響，網址驗證不能取代授權。見[區網權限](https://developer.android.com/privacy-and-security/local-network-permission)。
+- 廣告 ID：目前無廣告。確認 release manifest 無 `com.google.android.gms.permission.AD_ID`；若 SDK 合併，移除該權限，Console 維持無廣告。
 
-生物辨識權限不代表 App 能讀取指紋或臉部影像；驗證由系統處理。選檔取消不應留下附件；選到的 URI／暫存檔只供本次操作，使用後釋放 grant。維護 `file_picker` 或 `image_picker` 版本時，除了 widget 測試，仍要在 Android 驗證系統挑選、Activity 重建及取消後清理。
+生物辨識由系統驗證，App 不取得指紋／臉部影像。`drive.appdata` 是獨立 OAuth scope，只授權 App 專用 Drive 空間，不授予整個 Drive、通訊錄或裝置儲存權限。
 
-Android 13+ 通知權限可被拒絕。上傳服務仍須依平台規則啟動前景服務，App 不能以未顯示通知抽屜推論服務沒有執行。通知的進度、停止與帳號清理狀態，依[備份生命週期](../功能/備份與還原.md#背景上傳生命週期)驗收。
+URI grant 僅涵蓋選定項目；content URI 複製分支會嘗試釋放 `AndroidPlatformFile.safHandle`，外部寫入 tree URI 不取得永久授權。材料化及暫檔規則見[備份與還原](../功能/備份與還原.md#外部選檔與-materialize)；升級套件須實機驗證挑選、Activity 重建與取消清理。
 
-依賴可合併生物辨識相容權限 `USE_FINGERPRINT` 與 AndroidX 的 `{applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`；後者為內部 signature 權限。發布前仍須核對當次產物。
+Android 13+ 拒絕通知仍可啟動前景服務；須建立通知，但通知抽屜不顯示，Task Manager 仍有提示。App 也檢查全 App／上傳頻道通知；不可見時可在設定頁 Google Drive 區塊查看進度並停止可取消的上傳。見[通知規則](https://developer.android.com/develop/ui/compose/notifications/notification-permission)與[備份驗收](../功能/備份與還原.md#背景上傳生命週期)。
+
+依賴另合併 `androidx.biometric:biometric` 的 `USE_FINGERPRINT` 相容權限，以及 `androidx.core:core` 保護內部 receiver 的 `{applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`（signature）。兩者均不另跳執行時授權視窗；發布前以當次 manifest merger report 核對來源。
 
 ## 套件查詢與系統備份
 
-`<queries>` 是套件可見性設定，不授予執行時權限。主設定與依賴涉及 PROCESS_TEXT、HTTP／HTTPS VIEW、GET_CONTENT，以及 Billing service 查詢；以 merged manifest 確認實際集合。
+`<queries>` 只控制套件可見性，不授予存取權限；涉及 PROCESS_TEXT、HTTP／HTTPS VIEW、GET_CONTENT 及 Billing service，以 merged manifest 核對。
 
-`android:allowBackup="false"` 關閉 Android 雲端 Auto Backup；Android 12+ 部分裝置廠牌仍可能允許裝置到裝置移轉，不能宣稱此屬性阻擋所有搬機路徑。
+`android:allowBackup="false"` 關閉雲端 Auto Backup，但 Android 12+ 部分廠牌仍可能允許裝置移轉。主 Manifest 未引用 `res/xml/backup_rules.xml` 或 `res/xml/data_extraction_rules.xml`，這些排除規則未生效。
 
 ## 網路傳輸
 
-[`network_security_config.xml`](../../../android/app/src/main/res/xml/network_security_config.xml) 的 base 允許 cleartext，只對 openai.com、anthropic.com、googleapis.com 關閉。自訂 AI 區網 IP 無法靜態列舉，實際限制由 `validateAiEndpoint` 在送出憑證前執行：
+[`network_security_config.xml`](../../../android/app/src/main/res/xml/network_security_config.xml) 預設允許 cleartext，對 openai.com、anthropic.com、googleapis.com 關閉。AI 另由 `validateAiEndpoint` 在送憑證前限制：
 
 - 內建雲端服務固定使用 HTTPS。
 - Custom 的 HTTP 只接受 loopback、IPv4 私有網段及 IPv6 ULA，拒絕主機名稱、link-local 及公網 HTTP。
 - 不跟隨重新導向，不略過 TLS 驗證。
 
-target SDK 由 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter 設定提供。區網權限與 dataSync 前景服務的目前結論見上方主 Manifest 說明；target SDK 再升高時重新核對。
+target SDK 沿用 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter 設定，升版時重查區網與 dataSync 限制。
 
 ## Play Console Data safety
 
-資料與實作邊界如下；表單分類、collection／sharing 定義及例外，發布當天重新核對[官方說明](https://support.google.com/googleplay/android-developer/answer/10787469)。使用者主動操作不等於 collection 全面豁免。
+依實際資料流填寫，不由權限清單直接推導。純本機處理不屬離機 collection；傳到第三方仍可能屬 collection。使用者主動傳送可能符合 sharing 例外，但不自動豁免 collection；發布時逐項核對[官方定義與例外](https://support.google.com/googleplay/android-developer/answer/10787469)。
 
 | 資料流 | 揭露重點 |
 |------|------|
-| 本機日記、人物與索引 | 預設在裝置加密處理；人物名冊屬正式備份資料，人物分析 SQLite 為衍生快取 |
-| AI 聊天 | 目前分支、提示詞、圖片及認證資訊直接送到使用者選定服務，須依內容與服務核對 collection／sharing |
-| AI 隱藏與留存 | 文字代號不保證匿名，不遮蔽照片；完成聊天的所有分支納入完整備份，遠端暫存清理不代表服務商刪除全部紀錄 |
-| Drive | ZIP 經 HTTPS 寫入 `appDataFolder`；ZIP 外層未加密，含明文 recovery metadata、標籤與釘選 ID，不能把整份上傳視為端對端加密例外 |
+| 本機日記、人物與索引 | 預設本機加密；人物名冊納入正式備份，分析 SQLite 為衍生快取 |
+| AI | 分支對話、提示詞、圖片及認證資訊直接送指定服務；分身另含選取日記、匯入聊天、目前記憶／風格、中間證據與試聊 |
+| AI 隱私與備份 | 代號不保證匿名，不遮蔽照片；完成聊天全分支與正式分身納入加密備份，分身草稿／匯入材料排除。遠端暫存清理不等於刪除全部紀錄 |
+| Drive | ZIP 經 HTTPS 寫入 `appDataFolder`；外層未加密，含明文復原 metadata、標籤與釘選 ID，不能整份視為端對端加密豁免 |
 | 生物辨識 | 系統驗證結果，不取得生物特徵原始資料 |
-| 付款 | 由 Google Play 處理，App 不保存付款憑證或永久權益 |
-| HTTP 自訂服務 | 區網 HTTP 的文字、照片與憑證未加密；填寫傳輸加密答案時必須揭露這條路徑 |
+| 付款 | Play 處理付款；App 啟動即查詢 Billing 可用性與未完成交易，回呼含商品與交易識別，不保存永久權益 |
+| HTTP 自訂服務 | 區網 HTTP 的文字、照片與憑證未加密，須納入傳輸加密判斷 |
 
-完整資料揭露見[隱私權政策](../../privacy-policy.md)。AI 資料流程見[AI](../功能/AI.md)，Drive 上傳、取消及清理狀態見[備份與還原](../功能/備份與還原.md#背景上傳生命週期)。
+細節見[隱私權政策](../../privacy-policy.md)、[AI](../功能/AI.md)及[備份生命週期](../功能/備份與還原.md#背景上傳生命週期)。
 
 ### 表單填寫依據
 
-以下是依 repo 資料流整理的填寫底稿，不代表已提交到 Console。應以當次版本的全部功能與依賴判定，不能因「沒有開發者伺服器」或「使用者自備金鑰」就直接填成完全不蒐集資料。
+以下為填寫底稿，須涵蓋當次版本全部功能與 SDK；不代表已提交 Console，自備 Key 或無開發者伺服器也不代表無蒐集。
 
 | 表單項目 | 本專案應採用的依據 |
 |------|------|
-| 蒐集／分享資料 | 先列 AI、Google 登入、Drive、Billing 與其 SDK 的離機資料，再套官方定義及例外；純本機加密處理不列成遠端蒐集 |
-| 必要或可選 | 一般日記可不連 Google、不用 AI、不購買；相關離機資料可依可選功能填寫，不能把功能內必要欄位誤寫成全 App 必填 |
-| 用途 | AI 生成、Drive 備份與交易收尾對應 App 功能；Google 帳號連結另核對帳號管理。主程式沒有將這些資料用於廣告或行銷 |
-| 暫時處理 | 遠端 Files API 與服務商留存不能只視為記憶體內暫時處理；`store: false` 也不是零留存保證 |
-| 資料分享例外 | 使用者明確啟動的第三方傳送可能符合 sharing 例外，仍須對照實際揭露／同意；不會自動排除 collection |
-| 傳輸加密 | Google 與內建 AI 使用 HTTPS，Custom 可用區網 HTTP。官方另有使用者連結其他服務的說明；未確認適用例外前，不能只依 HTTPS 路徑勾選「全部」加密 |
-| 刪除方式 | 依公開政策列出本機刪除、Drive 備份刪除及服務商管理方式；本機刪除不等於已刪除 AI 遠端紀錄 |
-| 帳號建立／刪除 | 本機建庫與復原金鑰不是開發者線上帳號，Google 登入用於可選 Drive。依當次表單確認第三方登入的適用性，不宣稱 App 可以刪除 Google 帳號 |
-| 安全認證 | 沒有獨立安全驗證證據，不勾選已通過獨立安全審查；自動測試通過不能當成認證 |
+| 蒐集／分享資料 | 列出 AI、Google 登入、Drive、Billing 及 SDK 離機資料，再套官方定義與例外 |
+| 必要或可選 | AI 與 Drive 為選用功能；Billing 啟動查詢另行核對，不全屬點擊購買才發生。功能內必要欄位不等於全 App 必填 |
+| 用途 | AI、備份與交易屬 App 功能；Google 連結另核對帳戶管理。主程式無廣告／行銷用途 |
+| 暫時處理 | Files API 及服務商留存不等於僅記憶體處理；`store: false` 不保證零留存 |
+| 資料分享例外 | 按實際揭露／同意核對使用者主動傳送的 sharing 例外，不能直接豁免 collection |
+| 傳輸加密 | Google／內建 AI 用 HTTPS，Custom 可用區網 HTTP；核對第三方服務例外後才判斷是否勾選「全部」加密 |
+| 刪除方式 | 按政策列出本機、Drive 與服務商管理方式；本機刪除不代表 AI 遠端已刪除 |
+| 帳戶建立／刪除 | 本機建庫不是線上帳戶；Google 僅供選用 Drive，依表單核對第三方登入，不宣稱可刪除 Google 帳戶 |
+| 安全認證 | 無獨立安全審查證據不勾選，自動測試不能當成認證 |
+
+付款例外涵蓋服務直接取得、App 未存取的卡號等資料，交易回呼另核對。自有雲端備份例外要求 App 不蒐集／存取相關資料，本專案會建立及讀取備份，不能直接套用。
 
 ### 資料類型逐項核對
 
 | 可能對應的 Console 類型 | 實際資料與核對範圍 |
 |------|------|
-| 其他使用者產生內容 | AI 的聊天文字、提示詞、生成請求；Drive 明文標籤等 metadata。不能只因正文加密就忽略 ZIP 其他內容 |
-| 相片 | 使用者附加並送至 AI 的圖片；原圖仍留本機，傳送副本清理 metadata，不遮蔽影像內容 |
-| 檔案與文件 | Drive 完整備份，以及使用者交付至外部位置的 Markdown／HTML／附件；依收件端與實際操作判斷 collection／sharing |
-| 姓名、電子郵件地址、使用者 ID | Google 登入的顯示名稱、Email 與 SDK 帳號識別；使用者在文字中主動提供的身分資料也不能由隱私代號保證消失 |
-| 購買記錄 | Billing 回呼的商品與交易狀態。App 不保存永久權益，仍要確認套件／Google Play 的實際處理 |
-| 裝置或其他 ID、診斷、App 活動 | 主程式沒有自建分析／廣告後端；仍須逐一核對發布版 SDK，不能僅憑本機日記定位替依賴填「無」 |
+| 其他使用者產生內容 | 上表 AI 文字與分身材料、Drive 明文標籤等 metadata |
+| 相片 | 送至 AI 的附圖；原圖留本機，傳送副本清理 metadata，但不遮蔽影像 |
+| 檔案與文件 | Drive ZIP、交付外部的 Markdown／HTML／附件，按收件端與操作判斷 collection／sharing |
+| 姓名、電子郵件地址、使用者 ID | Google 顯示名稱、Email、SDK 帳戶識別及文字中的身分資訊；代號不保證匿名 |
+| 購買記錄 | Billing 回呼的商品與交易狀態，不因未保存永久權益就免核對 |
+| 裝置或其他 ID、診斷、App 活動 | 主程式無分析／廣告後端，仍須逐一核對發布版 SDK |
 
-自由輸入的聊天可能包含其他敏感資料，這張表不代表只需勾選這些類型。最後答案要與 Console 當下分類、對外政策和實際提供商處理一致；不要把未知項目當作已確認不蒐集。
+聊天可能包含其他敏感資料；按當次 Console 分類、公開政策及服務商處理補齊，未知不填成已確認無蒐集。
 
 ## 發布核對
 
-新增權限、變更 Drive scope、導入後端／分析 SDK 或改變 Billing 型態時，同步校正公開政策與 Play Console。以當次 AAB 核對套件名稱、版本、min／target SDK、全部權限及 `<queries>`；上架流程見[Google Play 上架](Google-Play-上架.md)。
+變更權限、Drive scope、後端／分析 SDK 或 Billing 型態時，同步公開政策與 Console。流程見[Google Play 上架](Google-Play-上架.md)。
 
-1. 重新產生本次 release AAB，再使用 Android Studio／Play App Bundle Explorer 檢查 Manifest；若讀本機 merged manifest，先確認檔案來自同一次建置。
-2. 把全部 `uses-permission`、服務型態、`queries` 與上表比對，追查新增項目來自主專案還是哪個套件。不要刪除套件必要設定只為縮短清單。
-3. 確認沒有意外新增相機、麥克風、廣泛儲存或媒體庫權限；若功能真的需要新增，先完成對應使用者揭露與 Play 權限審查。
-4. 同步檢查 Data safety、dataSync declaration、隱私政策及審查影片，並保留該 AAB 的權限核對結果。
+1. 產生當次 release AAB，以 Android Studio／Play App Bundle Explorer 或同次 merged manifest 核對套件、版本、min／target SDK。
+2. 比對全部權限、服務型態與 `queries`，追查主專案／依賴來源，保留必要設定。
+3. 確認無意外相機、麥克風或廣泛儲存／媒體權限；確需新增時先完成揭露與審查。
+4. 對齊 Data safety、dataSync declaration、政策及影片，保存該 AAB 核對結果。
 
 官方參考：[SAF](https://developer.android.com/training/data-storage/shared/documents-files)、[套件可見性](https://developer.android.com/training/package-visibility/declaring)、[allowBackup](https://developer.android.com/guide/topics/manifest/application-element)、[前景服務逾時](https://developer.android.com/develop/background-work/services/fgs/timeout)。
 

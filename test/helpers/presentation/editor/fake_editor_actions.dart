@@ -85,7 +85,9 @@ class FakeEditorActions implements EditorActionPort {
   Future<void> clearAllMaterializedPendingFiles() async {}
 
   @override
-  Future<void> deleteDraft(String draftKey) async {}
+  Future<void> deleteDraft(String draftKey) async {
+    draft = null;
+  }
 
   @override
   Future<void> deleteEntry(
@@ -176,6 +178,7 @@ class FakeEditorActions implements EditorActionPort {
   ) async {
     writeDraftCount++;
     writtenDraft = record;
+    draft = record;
   }
 }
 

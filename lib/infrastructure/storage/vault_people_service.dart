@@ -615,7 +615,7 @@ class VaultPeopleService {
         try {
           await inFlight;
         } on Object {
-          // 切換 vault 時舊工作取消屬預期行為。
+          // 切換日記庫時舊工作取消屬預期行為。
         }
       }
       if (_peopleAnalyticsRebuildInFlight != null) {

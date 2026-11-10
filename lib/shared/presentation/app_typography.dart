@@ -7,7 +7,6 @@ abstract final class AppTypography {
   static const String interFamily = 'Inter';
   static const String notoSansTcFamily = 'NotoSansTC';
 
-  /// 套用 Inter + Noto Sans TC 堆疊與預設色。
   static TextTheme textTheme(TextTheme base, {required Color defaultColor}) {
     final TextTheme themed = base.apply(
       bodyColor: defaultColor,

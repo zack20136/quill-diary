@@ -39,7 +39,7 @@ void main() {
     addTearDown(container.dispose);
     var decideRestoreCalls = 0;
 
-    // EditorPage 的 salvageToken 路徑會把 decideRestore 直接回傳 true。
+    // 對應 EditorPage 的 salvage 與聊天草稿路徑：decideRestore 直接回傳 true，不跳出一般草稿確認。
     final EditorDraftRestoreDecision decision = await container
         .read(editorFlowControllerProvider)
         .restoreDraftIfNeeded(

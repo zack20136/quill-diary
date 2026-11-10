@@ -1,14 +1,18 @@
 /// 本機資料格式與持久化內容的目前版本；App 發行版本由 pubspec.yaml 管理。
 ///
 /// 各欄位獨立升版，避免單一格式變更連帶使其他資料失效。
+/// 只有不相容的結構、型別或語意變更才升格式版；提示詞、UI、模型目錄、
+/// 預設值與有預設值的可選欄位不升版，不另設提示詞版本或 AI 總版本。
 abstract final class DataVersions {
   static const int encryptedDocument = 1;
   static const int recoveryMetadata = 1;
   static const int wrappedRecoveryKey = 1;
   static const int peopleCatalog = 1;
-  static const int aiSettings = 1;
+  static const int aiSettings = 2;
   static const int pinnedEntries = 1;
   static const int chatDiary = 1;
+  static const int persona = 1;
+  static const int personaImport = 1;
   static const int diaryOrganization = 1;
   static const int indexDatabase = 1;
   static const int entryIndexGeneration = 1;

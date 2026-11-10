@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
@@ -46,13 +47,10 @@ organizationVisibleText(
 }
 
 Map<String, List<String>> _surfaceMap(Object? raw) {
-  if (raw is! Map) return const {};
+  if (raw == null) return const {};
   return {
-    for (final entry in raw.entries)
-      if (entry.value is List)
-        entry.key as String: [
-          for (final item in entry.value as List) item as String,
-        ],
+    for (final entry in (raw as Map).entries)
+      entry.key as String: (entry.value as List).cast<String>(),
   };
 }
 
@@ -184,139 +182,6 @@ class DiaryOrganization {
     stage = OrganizationStage.chat;
   }
 
-  /// 舊草稿把同一人物拆成多個代號；讀回時合併，並保留每次出現的原文。
-  void classifyPersonTokens(List<PersonTextRange> personRanges) {
-    if (protectedSource.isEmpty || personRanges.isEmpty) return;
-    final visible = organizationVisibleText(
-      protectedSource,
-      originals,
-      surfaces: tokenSurfaces,
-    );
-    final renamed = <String, String>{};
-    final collected = <String, List<String>>{};
-    for (var i = 0; i < visible.tokens.length; i++) {
-      final token = visible.tokens[i];
-      final range = visible.ranges[i];
-      PersonTextRange? person;
-      for (final candidate in personRanges) {
-        if (candidate.start == range.start && candidate.end == range.end) {
-          person = candidate;
-          break;
-        }
-      }
-      if (person == null) continue;
-      final surface = visible.text.substring(range.start, range.end);
-      final known = personTokenById[person.personId];
-      final String desired;
-      if (known != null &&
-          (originals.containsKey(known) || renamed.containsValue(known))) {
-        desired = known;
-      } else if (token.startsWith('⟦P') && !renamed.containsKey(token)) {
-        desired = token;
-      } else {
-        if (known != null) personTokenById.remove(person.personId);
-        desired = privacyTokenForPerson(
-          personId: person.personId,
-          surface: surface,
-          tokenByPersonId: personTokenById,
-          originals: originals,
-          reservedText: source.markdownBody,
-        );
-      }
-      personTokenById[person.personId] = desired;
-      collected.putIfAbsent(desired, () => []).add(surface);
-      if (token != desired) renamed[token] = desired;
-    }
-    if (renamed.isNotEmpty) {
-      for (var i = 0; i < turns.length; i++) {
-        final turn = turns[i];
-        final pending = {
-          for (final entry in turn.surfaces.entries)
-            entry.key: List<String>.of(entry.value),
-        };
-        final lists = <String, List<String>>{};
-        for (final match in privacyTokenPattern.allMatches(turn.user)) {
-          final token = match[0]!;
-          final desired = renamed[token] ?? token;
-          if (!collected.containsKey(desired)) continue;
-          final queue = pending[token];
-          final surface = queue != null && queue.isNotEmpty
-              ? queue.removeAt(0)
-              : originals[token];
-          if (surface == null) continue;
-          lists.putIfAbsent(desired, () => []).add(surface);
-        }
-        final canonical = {
-          for (final entry in collected.entries) entry.key: entry.value.first,
-        };
-        turns[i] = OrganizationTurn(
-          user: turn.user,
-          reply: turn.reply,
-          interrupted: turn.interrupted,
-          parentIndex: turn.parentIndex,
-          surfaces: {
-            for (final entry in lists.entries)
-              if (entry.value.any((item) => item != canonical[entry.key]))
-                entry.key: entry.value,
-          },
-        );
-      }
-    }
-    _renameTokens(renamed);
-    for (final entry in collected.entries) {
-      originals[entry.key] = entry.value.first;
-      if (entry.value.every((item) => item == entry.value.first)) {
-        tokenSurfaces.remove(entry.key);
-      } else {
-        tokenSurfaces[entry.key] = List.of(entry.value);
-      }
-    }
-    for (final token in renamed.keys) {
-      originals.remove(token);
-      tokenSurfaces.remove(token);
-    }
-  }
-
-  void _renameTokens(Map<String, String> renamed) {
-    if (renamed.isEmpty) return;
-    final pattern = RegExp(renamed.keys.map(RegExp.escape).join('|'));
-    String replace(String text) =>
-        text.replaceAllMapped(pattern, (match) => renamed[match[0]]!);
-    protectedSource = replace(protectedSource);
-    if (organizedBody != null) organizedBody = replace(organizedBody!);
-    for (var i = 0; i < turns.length; i++) {
-      final turn = turns[i];
-      turns[i] = OrganizationTurn(
-        user: replace(turn.user),
-        reply: replace(turn.reply),
-        interrupted: turn.interrupted,
-        parentIndex: turn.parentIndex,
-        surfaces: {
-          for (final entry in turn.surfaces.entries)
-            renamed[entry.key] ?? entry.key: entry.value,
-        },
-      );
-    }
-    final updated = {
-      for (final entry in originals.entries)
-        renamed[entry.key] ?? entry.key: entry.value,
-    };
-    originals
-      ..clear()
-      ..addAll(updated);
-    final updatedSurfaces = {
-      for (final entry in tokenSurfaces.entries)
-        renamed[entry.key] ?? entry.key: entry.value,
-    };
-    tokenSurfaces
-      ..clear()
-      ..addAll(updatedSurfaces);
-    for (final entry in personTokenById.entries.toList()) {
-      final next = renamed[entry.value];
-      if (next != null) personTokenById[entry.key] = next;
-    }
-  }
-
   void validateBody(String body) {
     final expected = privacyTokenPattern
         .allMatches(protectedSource)
@@ -360,7 +225,7 @@ class DiaryOrganization {
       'body': source.markdownBody,
       'attachments': source.attachmentIds,
     },
-    'connection': connection.toJson(),
+    'connection': connection.toSnapshotJson(),
     'stage': stage.name,
     'ranges': hiddenRanges.map((r) => r.toJson()).toList(),
     'originals': originals,
@@ -382,7 +247,8 @@ class DiaryOrganization {
   };
 
   factory DiaryOrganization.fromJson(Map<String, dynamic> json) {
-    if (json['version'] != DataVersions.diaryOrganization) {
+    if (json['version'] is! int ||
+        json['version'] != DataVersions.diaryOrganization) {
       throw const FormatException('無法讀取整理草稿版本');
     }
     final source = json['source'] as Map<String, dynamic>;
@@ -398,7 +264,7 @@ class DiaryOrganization {
         markdownBody: source['body'] as String,
         attachmentIds: (source['attachments'] as List).cast<String>(),
       ),
-      connection: AiConnectionConfig.fromJson(
+      connection: AiConnectionConfig.fromSnapshotJson(
         json['connection'] as Map<String, dynamic>,
       ),
     );
@@ -410,30 +276,14 @@ class DiaryOrganization {
         .toList();
     final originals = Map<String, String>.from(json['originals'] as Map);
     result.originals.addAll(originals);
-    if (json['person_tokens'] is Map) {
-      result.personTokenById.addAll(
-        Map<String, String>.from(json['person_tokens'] as Map),
-      );
-    }
+    result.personTokenById.addAll(
+      Map<String, String>.from(json['person_tokens'] as Map? ?? const {}),
+    );
     result.tokenSurfaces.addAll(_surfaceMap(json['token_surfaces']));
-    final used = originals.keys
-        .where((token) => privacyTokenPattern.stringMatch(token) == token)
-        .toSet();
-    final renamed = <String, String>{};
-    final longTokenPattern = RegExp(r'^⟦Q[0-9A-HJKMNP-TV-Z]+_[0-9]+⟧$');
-    for (final entry in originals.entries) {
-      var token = entry.key;
-      if (!used.contains(token)) {
-        if (!longTokenPattern.hasMatch(token)) {
-          throw const FormatException('整理草稿的保護代號無效');
-        }
-        token = nextPrivacyToken(
-          used,
-          reservedText: result.source.markdownBody,
-        );
-        used.add(token);
-        renamed[entry.key] = token;
-      }
+    if (originals.keys.any(
+      (token) => privacyTokenPattern.stringMatch(token) != token,
+    )) {
+      throw const FormatException('整理草稿的保護代號無效');
     }
     result.protectedSource = json['protected_source'] as String;
     for (final raw in json['turns'] as List) {
@@ -454,7 +304,7 @@ class DiaryOrganization {
           entry.value as int;
     }
     result.editingTurn = json['editing_turn'] as int?;
-    if (json['composer_backup'] is Map) {
+    if (json['composer_backup'] != null) {
       result.composerBackup = AiComposerSnapshot.fromJson(
         Map<String, dynamic>.from(json['composer_backup'] as Map),
       );
@@ -467,8 +317,22 @@ class DiaryOrganization {
           (r) => PrivateTextRange.fromJson(Map<String, dynamic>.from(r as Map)),
         )
         .toList();
+    validatePrivateRanges(result.source.markdownBody, result.hiddenRanges);
+    validatePrivateRanges(result.composer, result.composerRanges);
+    if (result.composerBackup case final backup?) {
+      validatePrivateRanges(backup.text, backup.ranges);
+    }
     result.persisted = true;
-    result._renameTokens(renamed);
+    result.validateBody(result.protectedSource);
+    if (result.personTokenById.values.any(
+          (token) =>
+              !token.startsWith('⟦P') || !result.originals.containsKey(token),
+        ) ||
+        result.tokenSurfaces.keys.any(
+          (token) => !result.originals.containsKey(token),
+        )) {
+      throw const FormatException('整理草稿的隱私對照不完整');
+    }
     if (result.organizedBody != null) {
       result.validateBody(result.organizedBody!);
     }

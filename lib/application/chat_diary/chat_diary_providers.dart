@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/diary/diary_entry_providers.dart';
+import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
@@ -14,7 +16,7 @@ final chatDiaryStoreProvider = Provider<ChatDiaryStore>(
     editorDraftStore: ref.watch(editorDraftStoreProvider),
   ),
 );
-final chatDiarySessionsProvider = FutureProvider<List<ChatDiarySession>>((
+final chatDiaryDraftsProvider = FutureProvider<List<ChatDiaryDraftItem>>((
   ref,
 ) async {
   ref.watch(diaryRevisionProvider);
@@ -22,8 +24,8 @@ final chatDiarySessionsProvider = FutureProvider<List<ChatDiarySession>>((
   if (session == null) {
     return const [];
   }
-  return ref.read(chatDiaryStoreProvider).list(session);
-});
+  return ref.read(chatDiaryStoreProvider).listDrafts(session);
+}, retry: (_, _) => null);
 final chatDiaryForEntryProvider = FutureProvider.autoDispose
     .family<ChatDiarySession?, String>((ref, entryId) async {
       final session = await ref.watch(activeVaultSessionProvider.future);
@@ -35,8 +37,16 @@ final chatDiaryForEntryProvider = FutureProvider.autoDispose
 final chatDiaryControllerProvider = Provider.autoDispose
     .family<ChatDiaryController, String>((ref, id) {
       final controller = ChatDiaryController(ref);
+      ref.listen(personaDeletionsProvider, (previous, next) {
+        for (final e in next.entries) {
+          if (previous?[e.key] != e.value) controller.personaDeleted(e.key);
+        }
+      });
       ref.listen(appSessionProvider, (_, next) {
         controller.syncVaultSession(next.isUnlocked ? next.session : null);
+      });
+      ref.listen(aiEnabledProvider, (_, enabled) {
+        if (!enabled && controller.busy) controller.stop();
       });
       ref.onDispose(controller.dispose);
       return controller;

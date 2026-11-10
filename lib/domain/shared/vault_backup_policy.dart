@@ -36,7 +36,6 @@ abstract final class VaultBackupPolicy {
         '${two(timestamp.hour)}-${two(timestamp.minute)}-${two(timestamp.second)}';
   }
 
-  /// 檢查路徑是否為 vault 備份 zip 檔。
   static bool hasVaultBackupExtension(String path) {
     return p.extension(path).toLowerCase() == '.$fileExtension';
   }

@@ -2,7 +2,6 @@
 final class ActivePersonMentionQuery {
   const ActivePersonMentionQuery({required this.atIndex, required this.query});
 
-  /// `@` 在整段文字中的位置。
   final int atIndex;
 
   /// `@` 之後、游標之前的查詢字串（不含 `@`）。

@@ -25,9 +25,9 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 /// 供測試與平台專用 Easy Diary 匯入接線使用的工廠掛鉤。
 typedef EasyDiaryBackupImporterFactory = EasyDiaryBackupImporter Function();
 
-/// 匯入可攜式 Markdown／HTML 文件與委派的第三方備份。
+/// 匯入可攜式 Markdown／HTML 檔案與委派的第三方備份。
 ///
-/// 匯入器將散落的使用者文件正規化為 [DiaryEntry] 模型，
+/// 匯入器將散落的使用者檔案正規化為 [DiaryEntry] 模型，
 /// 並由 [VaultRepository] 處理加密與索引同步。
 class PortableImportIo {
   PortableImportIo({

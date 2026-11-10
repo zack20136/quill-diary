@@ -11,8 +11,67 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
-/// 建立或編輯標籤名稱與強調色的對話框。
+Future<String?> showTagAccentComposerDialog({
+  required BuildContext context,
+  AppDialogSize? width,
+  String? titleText,
+  String? initialDisplayLabel,
+  UnlockedVaultSession? sessionForRename,
+  int? initialAccentArgb,
+  bool? initialAccentIsCustom,
+  String? primaryButtonLabel,
+  Future<void> Function()? onDelete,
+}) {
+  final Color barrierColor = context.appColors.scrim;
+  Widget builder(BuildContext dialogContext) {
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        left: 22,
+        right: 22,
+        top: 26,
+        bottom: 26 + MediaQuery.viewInsetsOf(dialogContext).bottom,
+      ),
+      child: Align(
+        alignment: Alignment.center,
+        child: Material(
+          color: Colors.transparent,
+          child: TagAccentComposerDialog(
+            titleText: titleText,
+            initialDisplayLabel: initialDisplayLabel,
+            sessionForRename: sessionForRename,
+            initialAccentArgb: initialAccentArgb,
+            initialAccentIsCustom: initialAccentIsCustom,
+            primaryButtonLabel:
+                primaryButtonLabel ??
+                dialogContext.l10n.editorTagsStudioAddButton,
+            onDelete: onDelete,
+          ),
+        ),
+      ),
+    );
+  }
+
+  if (width != null) {
+    return showAppDialog<String>(
+      context: context,
+      size: width,
+      barrierDismissible: true,
+      barrierColor: barrierColor,
+      builder: builder,
+    );
+  }
+  return showDialog<String>(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: barrierColor,
+    builder: builder,
+  );
+}
+
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
   const TagAccentComposerDialog({
     super.key,

@@ -24,6 +24,15 @@ String generateBackupId() => 'bkp_${Ulid().toBase32()}';
 
 String generatePersonId() => 'per_${Ulid().toBase32()}';
 
+String generatePersonaId() => 'prs_${Ulid().toBase32()}';
+
+String generatePersonaImportId() => 'pim_${Ulid().toBase32()}';
+
+String generatePersonaContentId() => 'pco_${Ulid().toBase32()}';
+
+bool isPrefixedId(String value, String prefix) =>
+    RegExp('^${prefix}_[0-9A-HJKMNP-TV-Z]{26}\$').hasMatch(value);
+
 String normalizeText(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 

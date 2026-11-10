@@ -25,6 +25,166 @@ import '../../helpers/vault/manifest_write_test_crypto_service.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
+  for (final operation in ['append', 'scan', 'unfinished']) {
+    test('只有 tmp 的遠端清理紀錄：$operation 保留完整清理及未完成聊天邊界', () async {
+      final harness = await VaultTestHarness.create();
+      addTearDown(harness.dispose);
+      final setup = await harness.repository.setupRecoveryKey();
+      final crypto = LocalCryptoService();
+      final deleted = <String>[];
+      final store = ChatDiaryStore(
+        paths: harness.pathStrategy,
+        crypto: crypto,
+        repository: harness.repository,
+        editorDraftStore: EditorDraftStore(
+          pathStrategy: harness.pathStrategy,
+          cryptoService: crypto,
+        ),
+        clientFactory: (config, _) =>
+            FakeAiClient(config)
+              ..onDeleteFile = (file) async {
+                deleted.add(file.id);
+              },
+      );
+      final chat = testChatDiarySession(vaultId: setup.session.vaultId)
+        ..composerText = '未完成的輸入';
+      await store.trackRemoteFile(
+        chat,
+        const AiRemoteFile(id: 'first', uri: ''),
+        setup.session,
+      );
+      final root = Directory(
+        '${(await harness.pathStrategy.vaultRootDirectory()).path}/chat_diary_remote_cleanup',
+      );
+      final file = root.listSync().whereType<File>().single;
+      await file.rename('${file.path}.tmp');
+      if (operation == 'append') {
+        await store.trackRemoteFile(
+          chat,
+          const AiRemoteFile(id: 'second', uri: ''),
+          setup.session,
+        );
+      } else if (operation == 'unfinished') {
+        await store.save(chat, setup.session);
+        final draft = File(
+          '${(await store.draftDirectory(chat.id)).path}/session.json.enc',
+        );
+        await draft.rename('${draft.path}.tmp');
+        expect(
+          await store.cleanupRemoteFiles(setup.session, (_) async => 'key'),
+          isTrue,
+        );
+        expect(deleted, isEmpty);
+        expect(File('${file.path}.tmp').existsSync(), isTrue);
+        return;
+      }
+      expect(
+        await store.cleanupRemoteFiles(setup.session, (_) async => 'key'),
+        isTrue,
+      );
+      expect(deleted, operation == 'append' ? ['first', 'second'] : ['first']);
+      expect(root.listSync(), isEmpty);
+    });
+  }
+
+  test('不可讀草稿仍在清單中，保留檔案並可明確刪除', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final store = ChatDiaryStore(
+      paths: harness.pathStrategy,
+      crypto: LocalCryptoService(),
+      repository: harness.repository,
+      editorDraftStore: EditorDraftStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+      ),
+    );
+    final chat = testChatDiarySession(vaultId: setup.session.vaultId)
+      ..composerText = '合法草稿';
+    await store.save(chat, setup.session);
+    final file = File(
+      '${(await store.draftDirectory(chat.id)).path}/session.json.enc',
+    );
+    await file.writeAsBytes([1, 2]);
+    final items = await store.listDrafts(setup.session);
+    expect(items.single.id, chat.id);
+    expect(items.single.chat, isNull);
+    expect(items.single.error, AiErrorCode.unreadable);
+    expect(await file.readAsBytes(), [1, 2]);
+    await store.delete(chat.id);
+    expect(await store.listDrafts(setup.session), isEmpty);
+  });
+
+  test('聊天儲存排隊時凍結內容與完成狀態，不被後續記憶體修改改變路徑', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final store = ChatDiaryStore(
+      paths: harness.pathStrategy,
+      crypto: LocalCryptoService(),
+      repository: harness.repository,
+      editorDraftStore: EditorDraftStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+      ),
+    );
+    final chat = testChatDiarySession(vaultId: setup.session.vaultId)
+      ..composerText = '排隊前的內容';
+    final gate = Completer<void>();
+    final blocker = harness.repository.runVaultMutation(() => gate.future);
+    final saving = store.save(chat, setup.session);
+    chat.composerText = '等待期間的新內容';
+    chat.finished = true;
+    gate.complete();
+    await blocker;
+    await saving;
+    final saved = (await store.load(chat.id, setup.session))!;
+    expect(saved.composerText, '排隊前的內容');
+    expect(saved.finished, isFalse);
+  });
+
+  test('交換同日記庫聊天的密文時保留原檔與副本，不誤讀其他聊天或自動恢復', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final store = ChatDiaryStore(
+      paths: harness.pathStrategy,
+      crypto: LocalCryptoService(),
+      repository: harness.repository,
+      editorDraftStore: EditorDraftStore(
+        pathStrategy: harness.pathStrategy,
+        cryptoService: LocalCryptoService(),
+      ),
+    );
+    final first = testChatDiarySession(vaultId: setup.session.vaultId)
+      ..composerText = '第一則';
+    final second = testChatDiarySession(vaultId: setup.session.vaultId)
+      ..composerText = '第二則';
+    await store.save(first, setup.session);
+    await store.save(second, setup.session);
+    final firstFile = File(
+      p.join((await store.draftDirectory(first.id)).path, 'session.json.enc'),
+    );
+    final secondFile = File(
+      p.join((await store.draftDirectory(second.id)).path, 'session.json.enc'),
+    );
+    final original = await secondFile.readAsBytes();
+    await File('${secondFile.path}.previous').writeAsBytes(original);
+    final swapped = await firstFile.readAsBytes();
+    await secondFile.writeAsBytes(swapped);
+    await expectLater(
+      store.load(second.id, setup.session),
+      throwsA(isA<AiFailure>()),
+    );
+    await expectLater(
+      store.save(second, setup.session),
+      throwsA(isA<AiFailure>()),
+    );
+    expect(await secondFile.readAsBytes(), swapped);
+    expect(await File('${secondFile.path}.previous').readAsBytes(), original);
+  });
+
   test('永久刪除無法讀取的日記也移除相鄰聊天與恢復檔', () async {
     final harness = await VaultTestHarness.create();
     addTearDown(harness.dispose);
@@ -296,7 +456,7 @@ void main() {
     }
     expect(providers, {'openai', 'claude'});
   });
-  test('同網址同模型的遠端檔案依連線帳號清理，舊目的地也保留原金鑰', () async {
+  test('同網址同模型的遠端檔案依連線帳戶清理，舊目的地也保留原金鑰', () async {
     FlutterSecureStorage.setMockInitialValues({});
     final harness = await VaultTestHarness.create();
     addTearDown(harness.dispose);
@@ -471,7 +631,7 @@ void main() {
       expect((await store.draftDirectory(chat.id)).existsSync(), isFalse);
     }
     expect(chats.map((chat) => chat.id).toSet(), hasLength(3));
-    expect(await store.list(setup.session), isEmpty);
+    expect(await store.listDrafts(setup.session), isEmpty);
     chats.first.composerText = '只屬於第一份的文字';
     await store.save(chats.first, setup.session);
     expect(
@@ -479,7 +639,7 @@ void main() {
       '只屬於第一份的文字',
     );
     expect(await store.load(chats.last.id, setup.session), isNull);
-    expect((await store.list(setup.session)).single.id, chats.first.id);
+    expect((await store.listDrafts(setup.session)).single.id, chats.first.id);
   });
 
   test('不存在的草稿回傳空值，損壞草稿保留原檔並拋出錯誤', () async {
@@ -506,7 +666,7 @@ void main() {
     await file.writeAsBytes([0, 1, 2]);
     await expectLater(
       store.load(chat.id, setup.session),
-      throwsFormatException,
+      throwsA(isA<AiFailure>()),
     );
     expect(await file.readAsBytes(), [0, 1, 2]);
   });
@@ -620,7 +780,7 @@ void main() {
       testAiPng,
     );
     expect(await store.readImage(restored, image.id, restoredSession), isNull);
-    expect(await store.list(restoredSession), isEmpty);
+    expect(await store.listDrafts(restoredSession), isEmpty);
   });
 
   test('金鑰輪替同時涵蓋未完成聊天與其編輯草稿路徑', () async {
@@ -716,7 +876,7 @@ void main() {
       ..composerText = '尚未完成的輸入';
     await store.save(kept, setup.session);
     await store.save(pending, setup.session);
-    final list = await store.list(setup.session);
+    final list = await store.listDrafts(setup.session);
     expect(list.map((chat) => chat.id), [pending.id]);
     final attached = await store.loadForEntry(entryId, setup.session);
     expect(attached!.id, kept.id);

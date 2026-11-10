@@ -65,7 +65,6 @@ Future<Person?> showPersonComposerDialog(
   return Navigator.of(context, rootNavigator: true).push(route);
 }
 
-/// 新增／編輯人物；外殼與標籤 Composer 相同。
 class PersonComposerDialog extends ConsumerStatefulWidget {
   const PersonComposerDialog({this.personId, this.initialName = '', super.key});
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
@@ -21,6 +22,63 @@ DiaryOrganization _draft(String body) => DiaryOrganization(
 );
 
 void main() {
+  test('上線版第一版整理保留原文與代號，不補歷史 Thinking 或人物對照', () {
+    final draft = DiaryOrganization.fromJson({
+      'version': 1,
+      'source': {
+        'id': generateEntryId(),
+        'vault': 'vault',
+        'title': null,
+        'date': '2026-11-03',
+        'created': '2026-11-03T09:00:00.000',
+        'updated': '2026-11-03T09:00:00.000',
+        'tags': [],
+        'body': '原始日記',
+        'attachments': [],
+      },
+      'connection': {'provider': 'openai', 'default_model': 'gpt-5'},
+      'stage': 'chat',
+      'ranges': [],
+      'originals': {},
+      'protected_source': '原始日記',
+      'turns': [],
+      'root_turn': null,
+      'selected_children': {},
+      'generation_interrupted': false,
+      'composer': '',
+      'composer_ranges': [],
+    });
+    expect(draft.source.markdownBody, '原始日記');
+    expect(draft.protectedSource, '原始日記');
+    expect(draft.personTokenById, isEmpty);
+    expect(draft.tokenSurfaces, isEmpty);
+    expect(draft.connection.hasCompleteRequestSnapshot, isFalse);
+    final loaded = DiaryOrganization.fromJson(
+      jsonDecode(jsonEncode(draft.toJson())) as Map<String, dynamic>,
+    );
+    expect(loaded.toJson(), draft.toJson());
+  });
+
+  test('已提供的編輯備份型別錯誤時拒讀，不當成缺省', () {
+    final data =
+        jsonDecode(jsonEncode(_draft('原文').toJson())) as Map<String, dynamic>;
+    data['composer_backup'] = '損壞的備份';
+    expect(() => DiaryOrganization.fromJson(data), throwsA(isA<TypeError>()));
+  });
+
+  test('隱私對照缺項與舊長代號拒讀，不修改代號或猜測缺失原文', () {
+    final draft = _draft('私密原文')..hiddenRanges = [const PrivateTextRange(0, 2)];
+    draft.prepare();
+    final missing =
+        jsonDecode(jsonEncode(draft.toJson())) as Map<String, dynamic>;
+    missing['originals'] = <String, String>{};
+    expect(() => DiaryOrganization.fromJson(missing), throwsFormatException);
+    final long = jsonDecode(
+      jsonEncode(draft.toJson()).replaceAll('⟦S01⟧', '⟦QABC_0⟧'),
+    ) as Map<String, dynamic>;
+    expect(() => DiaryOrganization.fromJson(long), throwsFormatException);
+  });
+
   test('只隱藏選取的姓名位置，其他相同原文仍可見', () {
     final draft = _draft('小明與小明聊天')
       ..hiddenRanges = [const PrivateTextRange(0, 2)];
@@ -141,59 +199,11 @@ void main() {
     expect(others.protectedSource, '⟦P01⟧與⟦P02⟧');
   });
 
-  test('舊草稿裡同一人物的多個代號會合併，並保留各自原文', () {
-    final draft = _draft('小明與王小明');
-    draft.protectedSource = '⟦P01⟧與⟦P02⟧';
-    draft.originals.addAll({'⟦P01⟧': '小明', '⟦P02⟧': '王小明'});
-    draft.appendTurn(
-      OrganizationTurn(user: '提到⟦P02⟧', reply: '知道⟦P02⟧', interrupted: false),
-    );
-    draft.classifyPersonTokens(const [
-      PersonTextRange(0, 2, 'ming'),
-      PersonTextRange(3, 6, 'ming'),
-    ]);
-    expect(draft.protectedSource, '⟦P01⟧與⟦P01⟧');
-    expect(draft.originals.containsKey('⟦P02⟧'), isFalse);
-    expect(draft.restore(draft.protectedSource), '小明與王小明');
-    expect(draft.turns.single.user, '提到⟦P01⟧');
-    expect(draft.turns.single.reply, '知道⟦P01⟧');
-    expect(
-      organizationVisibleText(
-        draft.turns.single.user,
-        draft.originals,
-        surfaces: draft.turns.single.surfaces,
-      ).text,
-      '提到王小明',
-    );
-  });
-
   test('日記原本含有代號文字時保留原文，避免與隱藏代號衝突', () {
     final draft = _draft('原文有⟦S01⟧')..prepare();
     expect(draft.protectedSource, '原文有⟦S02⟧');
     expect(draft.restore(draft.protectedSource), draft.source.markdownBody);
     draft.validateBody(draft.protectedSource);
-  });
-
-  test('既有長代號暫存讀取為短代號，保留聊天、目前稿及未送出文字', () {
-    final draft = _draft('甲與乙')..hiddenRanges = [const PrivateTextRange(0, 1)];
-    draft.prepare();
-    draft.replaceBody('⟦S01⟧和乙');
-    draft.appendTurn(
-      OrganizationTurn(user: '保留⟦S01⟧', reply: '會保留⟦S01⟧', interrupted: false),
-    );
-    draft.composer = '尚未送出的甲';
-    const longToken = '⟦QABC_0⟧';
-    final json = jsonDecode(
-      jsonEncode(draft.toJson()).replaceAll('⟦S01⟧', longToken),
-    ) as Map<String, dynamic>;
-    final loaded = DiaryOrganization.fromJson(json);
-    expect(loaded.protectedSource, '⟦S01⟧與乙');
-    expect(loaded.restoredBody, '甲和乙');
-    expect(loaded.turns.single.user, '保留⟦S01⟧');
-    expect(loaded.turns.single.reply, '會保留⟦S01⟧');
-    expect(loaded.composer, '尚未送出的甲');
-    expect(loaded.toJson()['version'], 1);
-    expect(jsonEncode(loaded.toJson()), isNot(contains(longToken)));
   });
 
   test('只保存一份目前稿，空的隱藏清單與輸入可以完整還原', () {

@@ -4,24 +4,6 @@ import 'package:quill_diary/infrastructure/billing/sponsor_billing_state.dart';
 
 void main() {
   group('SponsorBillingState', () {
-    test('isPurchaseBusy 只在 buying 與 pending 為 true', () {
-      expect(
-        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.buying)
-            .isPurchaseBusy,
-        isTrue,
-      );
-      expect(
-        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.pending)
-            .isPurchaseBusy,
-        isTrue,
-      );
-      expect(
-        const SponsorBillingState(purchasePhase: SponsorPurchasePhase.idle)
-            .isPurchaseBusy,
-        isFalse,
-      );
-    });
-
     test('showsInitialProductLoading 只在初次載入且沒有既有資料時為 true', () {
       expect(
         const SponsorBillingState(

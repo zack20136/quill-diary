@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -49,5 +50,36 @@ void main() {
     expect(await target.readAsBytes(), <int>[3]);
     expect(File('${target.path}.previous').existsSync(), isFalse);
     expect(File('${target.path}.tmp').existsSync(), isFalse);
+  });
+
+  test('暫存讀回驗證失敗不替換有效主檔', () async {
+    await target.writeAsString('原始內容');
+    await expectLater(
+      replaceFileBytesRecoverably(
+        target,
+        utf8.encode('新內容'),
+        validateTemporary: (_) async => throw const FormatException('驗證失敗'),
+      ),
+      throwsFormatException,
+    );
+    expect(await target.readAsString(), '原始內容');
+    expect(File('${target.path}.tmp').existsSync(), isFalse);
+  });
+
+  test('恢復候選驗證失敗時不搬移也不清除其他副本', () async {
+    await File('${target.path}.previous').writeAsBytes([1]);
+    await File('${target.path}.tmp').writeAsBytes([2]);
+    await expectLater(
+      recoverFileReplacement(
+        target,
+        validate: (_) async {
+          throw const FormatException('無法解讀候選檔');
+        },
+      ),
+      throwsFormatException,
+    );
+    expect(target.existsSync(), isFalse);
+    expect(await File('${target.path}.previous').readAsBytes(), [1]);
+    expect(await File('${target.path}.tmp').readAsBytes(), [2]);
   });
 }

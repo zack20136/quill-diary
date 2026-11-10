@@ -2,46 +2,58 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
-  test('聊天提示詞依語言使用完整預設，自訂內容不隨語言改寫', () {
+  final zh = lookupAppLocalizations(AppLanguage.zh.materialLocale);
+  final en = lookupAppLocalizations(AppLanguage.en.materialLocale);
+
+  test('聊天提示詞依語言使用內建，自訂內容不隨語言改寫', () {
+    const defaults = ChatDiaryPromptSettings();
     final zhChat = resolveChatDiaryPrompt(
       ChatDiaryPromptPurpose.conversation,
       AppLanguage.zh,
-      const AiPromptOverrides(),
+      defaults,
     );
     final enChat = resolveChatDiaryPrompt(
       ChatDiaryPromptPurpose.conversation,
       AppLanguage.en,
-      const AiPromptOverrides(),
+      defaults,
     );
-    final zhDiary = resolveChatDiaryPrompt(
-      ChatDiaryPromptPurpose.generation,
-      AppLanguage.zh,
-      const AiPromptOverrides(),
-    );
-    final enDiary = resolveChatDiaryPrompt(
-      ChatDiaryPromptPurpose.generation,
-      AppLanguage.en,
-      const AiPromptOverrides(),
-    );
-    expect(zhChat, contains('預設使用繁體中文、台灣常用詞與自然標點'));
-    expect(
-      enChat,
-      contains('By default use natural English and ordinary punctuation'),
-    );
-    expect(zhDiary, contains('預設使用繁體中文與台灣自然語法'));
-    expect(
-      enDiary,
-      contains(
-        'By default use natural English. Switch only when the user explicitly specifies the language for this entry.',
-      ),
-    );
-    expect(enChat, isNot(contains('【')));
-    expect(enDiary, isNot(contains('【')));
 
-    const custom = AiPromptOverrides(
-      conversationOverride: '自訂聊天',
+    expect(zhChat, startsWith(zh.chatDiaryConversationRoleLine));
+    expect(zhChat, contains(zh.chatDiaryConversationRulesPrompt));
+    expect(enChat, startsWith(en.chatDiaryConversationRoleLine));
+    expect(enChat, contains(en.chatDiaryConversationRulesPrompt));
+    expect(enChat, isNot(contains(zh.chatDiaryConversationRulesPrompt)));
+    expect(enChat, isNot(contains('【')));
+    expect(
+      resolveChatDiaryPrompt(
+        ChatDiaryPromptPurpose.generation,
+        AppLanguage.zh,
+        defaults,
+      ),
+      zh.chatDiaryGenerationDefaultSystemPrompt,
+    );
+    expect(
+      resolveChatDiaryPrompt(
+        ChatDiaryPromptPurpose.generation,
+        AppLanguage.en,
+        defaults,
+      ),
+      en.chatDiaryGenerationDefaultSystemPrompt,
+    );
+    expect(
+      resolveChatDiaryPrompt(
+        ChatDiaryPromptPurpose.rules,
+        AppLanguage.zh,
+        defaults,
+      ),
+      startsWith(zh.chatDiaryConversationRoleLine),
+    );
+
+    const custom = ChatDiaryPromptSettings(
+      personalityOverride: '自訂聊天',
       generationOverride: 'Custom diary',
     );
     for (final language in AppLanguage.values) {
@@ -51,7 +63,7 @@ void main() {
           language,
           custom,
         ),
-        '自訂聊天',
+        contains('自訂聊天'),
       );
       expect(
         resolveChatDiaryPrompt(
@@ -62,14 +74,14 @@ void main() {
         'Custom diary',
       );
     }
-    const generationOnly = AiPromptOverrides(generationOverride: '自訂日記');
+    const generationOnly = ChatDiaryPromptSettings(generationOverride: '自訂日記');
     expect(
       resolveChatDiaryPrompt(
         ChatDiaryPromptPurpose.conversation,
         AppLanguage.en,
         generationOnly,
       ),
-      contains('natural English'),
+      contains(en.chatDiaryConversationGuidancePrompt),
     );
     expect(
       resolveChatDiaryPrompt(
@@ -82,67 +94,75 @@ void main() {
   });
 
   test('整理提示詞依語言使用內建，自訂內容不隨語言改寫', () {
-    final zhChat = resolveDiaryOrganizationPrompt(
+    const defaults = DiaryOrganizationPromptSettings();
+    final zhChat = resolveDiaryOrganizationInstructions(
       generate: false,
       language: AppLanguage.zh,
-      settings: const AiPromptOverrides(),
+      settings: defaults,
     );
-    final enChat = resolveDiaryOrganizationPrompt(
+    final enChat = resolveDiaryOrganizationInstructions(
       generate: false,
       language: AppLanguage.en,
-      settings: const AiPromptOverrides(),
+      settings: defaults,
     );
-    final zhDraft = resolveDiaryOrganizationPrompt(
+    final zhDraft = resolveDiaryOrganizationInstructions(
       generate: true,
       language: AppLanguage.zh,
-      settings: const AiPromptOverrides(),
+      settings: defaults,
     );
-    final enDraft = resolveDiaryOrganizationPrompt(
+    final enDraft = resolveDiaryOrganizationInstructions(
       generate: true,
       language: AppLanguage.en,
-      settings: const AiPromptOverrides(),
+      settings: defaults,
     );
-    expect(zhChat, contains('日記整理夥伴'));
-    expect(zhChat, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
-    expect(enChat, contains("Quill Diary's diary organization companion"));
-    expect(enChat, contains('The same ⟦P…⟧ token means the same person'));
-    expect(zhDraft, contains('只輸出一個有效的 JSON 物件'));
-    expect(zhDraft, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
-    expect(enDraft, contains('Output only one valid JSON object'));
-    expect(enDraft, contains('The same ⟦P…⟧ token means the same person'));
-    expect(zhChat, isNot(contains('diary organization companion')));
-    expect(enDraft, isNot(contains('只輸出')));
 
-    const custom = AiPromptOverrides(
+    // 隱私代號規則是安全不變量，即使文案改寫也必須保留。
+    expect(zhChat, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
+    expect(zhDraft, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
+    expect(enChat, contains('The same ⟦P…⟧ token means the same person'));
+    expect(enDraft, contains('The same ⟦P…⟧ token means the same person'));
+
+    expect(zhChat, contains(zh.organizationConversationPrompt));
+    expect(enChat, contains(en.organizationConversationPrompt));
+    expect(zhDraft, contains(zh.organizationGenerationPrompt));
+    expect(enDraft, contains(en.organizationGenerationPrompt));
+    expect(zhChat, isNot(contains(en.organizationConversationPrompt)));
+    expect(enDraft, isNot(contains(zh.organizationGenerationPrompt)));
+
+    const custom = DiaryOrganizationPromptSettings(
       conversationOverride: '自訂需求',
       generationOverride: 'Custom draft',
     );
     for (final language in AppLanguage.values) {
+      final l10n = lookupAppLocalizations(language.materialLocale);
       expect(
-        resolveDiaryOrganizationPrompt(
+        resolveDiaryOrganizationInstructions(
           generate: false,
           language: language,
           settings: custom,
         ),
-        '自訂需求',
+        allOf(contains('自訂需求'), contains(l10n.organizationRulesPrompt)),
       );
       expect(
-        resolveDiaryOrganizationPrompt(
+        resolveDiaryOrganizationInstructions(
           generate: true,
           language: language,
           settings: custom,
         ),
-        'Custom draft',
+        allOf(contains('Custom draft'), contains(l10n.organizationRulesPrompt)),
       );
     }
-    const generationOnly = AiPromptOverrides(generationOverride: '只改生成');
+
+    const generationOnly = DiaryOrganizationPromptSettings(
+      generationOverride: '只改生成',
+    );
     expect(
       resolveDiaryOrganizationPrompt(
         generate: false,
         language: AppLanguage.en,
         settings: generationOnly,
       ),
-      contains("Quill Diary's diary organization companion"),
+      en.organizationConversationPrompt,
     );
     expect(
       resolveDiaryOrganizationPrompt(

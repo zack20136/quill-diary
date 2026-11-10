@@ -143,7 +143,7 @@ void main() {
       expect(bounds?.latest.value, '2035-06-01');
     });
 
-    test('月份查詢使用畫面六週的起訖日期', () async {
+    test('月份查詢送出畫面六週的起訖日期', () async {
       final FakeEntryIndexVaultRepository repository =
           FakeEntryIndexVaultRepository();
       final ProviderContainer container = buildUnlockedHomeContainer(
@@ -157,8 +157,15 @@ void main() {
       await container.read(calendarGridEntriesProvider.future);
 
       expect(repository.listEntryDateRanges, hasLength(1));
-      expect(repository.listEntryDateRanges.single.first.value, '2026-07-26');
-      expect(repository.listEntryDateRanges.single.last.value, '2026-09-05');
+      final range = calendarGridDateRange(DateTime(2026, 8));
+      expect(
+        repository.listEntryDateRanges.single.first.value,
+        range.first.value,
+      );
+      expect(
+        repository.listEntryDateRanges.single.last.value,
+        range.last.value,
+      );
     });
   });
 }

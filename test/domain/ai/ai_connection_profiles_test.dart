@@ -83,7 +83,7 @@ void main() {
     expect(menu.currentIsExtra, isTrue);
   });
 
-  test('連線集合往返，舊自訂保留識別且舊封存項目不再列入', () {
+  test('連線集合往返保留穩定識別與名稱', () {
     final settings = AiConnectionSettings(
       activeConnectionId: b.connectionId,
       connections: {a.connectionId: a, b.connectionId: b},
@@ -91,28 +91,22 @@ void main() {
     final restored = AiConnectionSettings.fromJson(settings.toJson());
     expect(restored.activeConfig.connectionId, b.connectionId);
     expect(restored.connectionFor(a.connectionId).displayName, a.displayName);
-    final withoutRemoved = AiConnectionSettings.fromJson({
-      'active_connection_id': a.connectionId,
-      'connections': {
-        a.connectionId: {...a.toStoredJson(), 'archived': true},
-        b.connectionId: b.toStoredJson(),
+  });
+
+  test('thinking 欄位不同時不是同一個請求客戶端', () {
+    final override = AiModelThinkingOverride(
+      defaultLevel: AiThinkingLevel.low,
+      levels: {
+        AiThinkingLevel.low: {'think': 'low'},
+        AiThinkingLevel.high: {'think': 'high'},
       },
-    });
-    expect(withoutRemoved.connections.containsKey(a.connectionId), isFalse);
-    expect(withoutRemoved.activeConfig.connectionId, b.connectionId);
-    final legacy = AiConnectionSettings.fromJson({
-      'provider': 'custom',
-      'configs': {
-        'custom': {
-          'provider': 'custom',
-          'model': 'old',
-          'base_url': 'https://old.example/v1',
-        },
-      },
-    });
-    expect(legacy.activeConfig.connectionId, 'custom');
-    expect(legacy.activeConfig.credentialId, 'custom:https://old.example/v1');
-    expect(legacy.toJson().containsKey('configs'), isFalse);
+    );
+    final current = a.copyWith(thinkingOverrides: {a.model: override});
+    final next = setThinkingLevel(current, a.model, AiThinkingLevel.high);
+    expect(sameAiClient(current, current), isTrue);
+    expect(sameAiClient(null, current), isFalse);
+    expect(sameAiTarget(current, next), isTrue);
+    expect(sameAiClient(current, next), isFalse);
   });
 
   test('Thinking 對照保留 JSON 型別、巢狀合併與獨立快照', () {
@@ -149,7 +143,9 @@ void main() {
       'temperature': 0.5,
       'thinkingConfig': {'budget': 1024},
     });
-    final snapshot = AiConnectionConfig.fromJson(config.toJson());
+    final snapshot = AiConnectionConfig.fromSnapshotJson(
+      config.toSnapshotJson(),
+    );
     expect(snapshot.thinkingOverrides.keys, [a.model]);
     expect(thinkingRequestFields(snapshot), thinkingRequestFields(config));
   });

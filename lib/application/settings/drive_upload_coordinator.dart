@@ -382,7 +382,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         ref.read(driveUploadCompletionPruneTimeoutProvider),
       );
     } on Object {
-      // best-effort；多餘舊檔留給下一次可執行的自動 prune。
+      // 最佳努力；多餘舊檔留給下一次可執行的自動 prune。
     }
   }
 

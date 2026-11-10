@@ -22,6 +22,9 @@ abstract final class AppScrollbarMetrics {
   static const double minHitTargetWidth = 12;
   static const double mainAxisMarginStart = 12;
   static const double mainAxisMarginEnd = 32;
+
+  /// 外框軌道模式上下共用的留白，與 [mainAxisMarginStart] 同值以保持上下對稱。
+  static const double frameMainAxisInset = 12;
   static const double nestedMainAxisMarginStart = 6;
   static const double nestedMainAxisMarginEnd = 8;
   static const double minThumbLength = 32;
@@ -56,12 +59,19 @@ class _AppScrollbarGeometry {
   final double thumbOffset;
 }
 
+/// thumb 軌道沿用的高度來源。
+///
+/// - [viewport]：捲動區本身的高度（頁面、列表）。
+/// - [frame]：外框高度（TextField 的 outline 等），上下各留 [AppScrollbarMetrics.frameMainAxisInset]。
+enum AppScrollbarTrack { viewport, frame }
+
 class AppScrollbar extends StatefulWidget {
   const AppScrollbar({
     required this.child,
     this.controller,
     this.nested = false,
     this.trailingGutter = false,
+    this.track = AppScrollbarTrack.viewport,
     this.onThumbDragChanged,
     this.crossAxisEdgeInset = AppScrollbarMetrics.homeCrossAxisEdgeInset,
     super.key,
@@ -72,6 +82,7 @@ class AppScrollbar extends StatefulWidget {
   final Widget child;
   final bool nested;
   final bool trailingGutter;
+  final AppScrollbarTrack track;
   final double crossAxisEdgeInset;
 
   @override
@@ -94,6 +105,9 @@ class _AppScrollbarState extends State<AppScrollbar>
   int? _activeThumbPointer;
   ScrollHoldController? _scrollHold;
 
+  /// 外框模式下最近一次量到的外框高度；頁面模式不使用。
+  double? _frameExtent;
+
   double get _thickness => widget.nested
       ? AppScrollbarMetrics.nestedThickness
       : AppScrollbarMetrics.thickness;
@@ -102,13 +116,31 @@ class _AppScrollbarState extends State<AppScrollbar>
       ? AppScrollbarMetrics.nestedRadius
       : AppScrollbarMetrics.radius;
 
-  double get _mainAxisMarginStart => widget.nested
-      ? AppScrollbarMetrics.nestedMainAxisMarginStart
-      : AppScrollbarMetrics.mainAxisMarginStart;
+  double get _mainAxisMarginStart {
+    if (widget.track == AppScrollbarTrack.frame) {
+      return AppScrollbarMetrics.frameMainAxisInset;
+    }
+    return widget.nested
+        ? AppScrollbarMetrics.nestedMainAxisMarginStart
+        : AppScrollbarMetrics.mainAxisMarginStart;
+  }
 
-  double get _mainAxisMarginEnd => widget.nested
-      ? AppScrollbarMetrics.nestedMainAxisMarginEnd
-      : AppScrollbarMetrics.mainAxisMarginEnd;
+  double get _mainAxisMarginEnd {
+    if (widget.track == AppScrollbarTrack.frame) {
+      return AppScrollbarMetrics.frameMainAxisInset;
+    }
+    return widget.nested
+        ? AppScrollbarMetrics.nestedMainAxisMarginEnd
+        : AppScrollbarMetrics.mainAxisMarginEnd;
+  }
+
+  /// thumb 可移動的軌道長度；所有幾何計算都從這裡取值，確保兩種軌道模式共用同一套公式。
+  double _trackLength(ScrollMetrics metrics) {
+    final double extent = widget.track == AppScrollbarTrack.frame
+        ? (_frameExtent ?? 0)
+        : metrics.viewportDimension;
+    return extent - _mainAxisMarginStart - _mainAxisMarginEnd;
+  }
 
   @override
   void initState() {
@@ -240,9 +272,8 @@ class _AppScrollbarState extends State<AppScrollbar>
   }
 
   double _naturalThumbExtent(ScrollMetrics metrics) {
-    final double trackLength =
-        metrics.viewportDimension - _mainAxisMarginStart - _mainAxisMarginEnd;
-    if (trackLength <= 0) {
+    final double trackLength = _trackLength(metrics);
+    if (trackLength < AppScrollbarMetrics.minThumbLength) {
       return 0;
     }
 
@@ -261,9 +292,8 @@ class _AppScrollbarState extends State<AppScrollbar>
     ScrollMetrics metrics,
     double thumbExtent,
   ) {
-    final double trackLength =
-        metrics.viewportDimension - _mainAxisMarginStart - _mainAxisMarginEnd;
-    if (trackLength <= 0) {
+    final double trackLength = _trackLength(metrics);
+    if (trackLength < AppScrollbarMetrics.minThumbLength) {
       return const _AppScrollbarGeometry(
         show: false,
         thumbExtent: 0,
@@ -302,8 +332,7 @@ class _AppScrollbarState extends State<AppScrollbar>
       return;
     }
 
-    final double trackLength =
-        metrics.viewportDimension - _mainAxisMarginStart - _mainAxisMarginEnd;
+    final double trackLength = _trackLength(metrics);
     final double maxScroll = _scrollExtent(metrics);
     final double scrollableTrack = trackLength - _displayedThumbExtent;
     if (scrollableTrack <= 0 || maxScroll <= 0) {
@@ -377,6 +406,7 @@ class _AppScrollbarState extends State<AppScrollbar>
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
+        key: const ValueKey<String>('app-scrollbar-thumb'),
         width: _thickness,
         height: _displayedThumbExtent,
         child: DecoratedBox(
@@ -482,12 +512,34 @@ class _AppScrollbarState extends State<AppScrollbar>
     );
   }
 
+  /// 外框模式：量測外框高度供軌道計算，並關閉內容自帶的 Material scrollbar 避免重複。
+  Widget _buildFrameScrollable(BuildContext context, Widget child) {
+    final ScrollBehavior behavior = ScrollConfiguration.of(
+      context,
+    ).copyWith(scrollbars: false);
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double? extent = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : null;
+        if (_frameExtent != extent) {
+          _frameExtent = extent;
+          _scheduleMetricsSync();
+        }
+        return ScrollConfiguration(behavior: behavior, child: child);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Widget scrollable = NotificationListener<ScrollNotification>(
+    final Widget notifier = NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: widget.child,
     );
+    final Widget scrollable = widget.track == AppScrollbarTrack.frame
+        ? _buildFrameScrollable(context, notifier)
+        : notifier;
 
     if (widget.trailingGutter) {
       return Row(

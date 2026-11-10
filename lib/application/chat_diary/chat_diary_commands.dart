@@ -6,6 +6,7 @@ import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 
@@ -22,7 +23,11 @@ Future<bool> hasReadyChatDiaryConnection(
           (await settingsStore.readApiKey(connection)).isEmpty)) {
     return false;
   }
-  validateAiEndpoint(connection);
+  try {
+    validateAiEndpoint(connection);
+  } on AiFailure {
+    return false;
+  }
   return true;
 }
 
@@ -70,7 +75,7 @@ Future<bool> completeChatDiaryAfterEntrySave(
     ref
         .read(chatDiaryGenerationsProvider.notifier)
         .forget(session.vaultId, chatId);
-    ref.invalidate(chatDiarySessionsProvider);
+    ref.invalidate(chatDiaryDraftsProvider);
   }
   return completed;
 }

@@ -81,7 +81,7 @@ void main() {
     );
   });
 
-  test('Drive 上傳成功但無帳號時不寫入帳號標籤', () async {
+  test('Drive 上傳成功但無帳戶時不寫入帳戶標籤', () async {
     await store.recordDriveUploadSuccess();
     final BackupStatusSnapshot snapshot = await store.read();
 

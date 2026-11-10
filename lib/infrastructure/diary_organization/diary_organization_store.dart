@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -27,26 +28,21 @@ class DiaryOrganizationStore {
       repository.runVaultMutation(() async {
         await repository.validateRecoverySession(session);
         final file = await _file(id);
-        await recoverFileReplacement(file);
-        if (!file.existsSync()) return null;
-        final parsed = crypto.parseFileBytes(await file.readAsBytes());
-        if (parsed.header.vaultId != session.vaultId) {
-          throw const FormatException('日記庫不符');
-        }
-        final bytes = await crypto.decryptBytes(
-          headerBytes: parsed.headerBytes,
-          ciphertextBytes: parsed.ciphertextBytes,
-          context: DecryptionContext(
-            vaultId: session.vaultId,
-            trustedDevice: session.trustedDevice,
-            recoveryWrapKey: session.recoveryWrapKey,
-            deviceSlotId: session.deviceSlotId,
-          ),
-        );
-        final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
-        final draft = DiaryOrganization.fromJson(json);
-        if (draft.source.id != id || draft.source.vaultId != session.vaultId) {
-          throw const FormatException('整理草稿來源不符');
+        final DiaryOrganization draft;
+        try {
+          await recoverFileReplacement(
+            file,
+            validate: (candidate) async {
+              await _decode(candidate, id, session);
+            },
+          );
+          if (!file.existsSync()) return null;
+          draft = await _decode(file, id, session);
+        } on Object catch (error) {
+          if (isUnreadableContentError(error)) {
+            throw const AiFailure(AiErrorCode.unreadable);
+          }
+          rethrow;
         }
         final current = await repository.loadEntry(session, id);
         if (current == null ||
@@ -65,6 +61,20 @@ class DiaryOrganizationStore {
         return draft;
       });
 
+  Future<DiaryOrganization> _decode(
+    File file,
+    String id,
+    UnlockedVaultSession session,
+  ) async {
+    final draft = DiaryOrganization.fromJson(
+      await readVaultJson(file, crypto, session, identity: id),
+    );
+    if (draft.source.id != id || draft.source.vaultId != session.vaultId) {
+      throw const FormatException('整理草稿來源不符');
+    }
+    return draft;
+  }
+
   Future<void> save(
     DiaryOrganization draft,
     UnlockedVaultSession session, {
@@ -77,6 +87,13 @@ class DiaryOrganizationStore {
       if (await repository.loadEntry(session, draft.source.id) == null) {
         throw const FormatException('日記已刪除');
       }
+      final file = await _file(draft.source.id);
+      await recoverFileReplacement(
+        file,
+        validate: (candidate) async {
+          await _decode(candidate, draft.source.id, session);
+        },
+      );
       final metadata = await repository.readRecoveryMetadata();
       if (metadata == null ||
           metadata.vaultId != session.vaultId ||
@@ -84,20 +101,25 @@ class DiaryOrganizationStore {
         throw const FormatException('日記庫已變更');
       }
       final now = DateTime.now();
-      final encrypted = await crypto.encryptBytes(
+      if (isCurrent != null && !isCurrent()) return;
+      await writeEncryptedVaultJson(
+        file: file,
+        crypto: crypto,
+        session: session,
+        metadata: metadata,
         documentId: draft.source.id,
-        vaultId: session.vaultId,
         plaintextBytes: bytes,
-        contentType: 'application/json',
-        recoveryWrapKey: session.recoveryWrapKey!,
-        recoverySlotKdf: metadata.kdf,
         createdAt: draft.source.createdAt,
         updatedAt: now,
-      );
-      if (isCurrent != null && !isCurrent()) return;
-      await replaceFileBytesRecoverably(
-        await _file(draft.source.id),
-        encrypted.toFileBytes(),
+        commitWhen: isCurrent,
+        validateTemporary: (temporary) async {
+          await _decode(temporary, draft.source.id, session);
+        },
+        beforeCommit: () {
+          if (isCurrent != null && !isCurrent()) {
+            throw const FormatException('整理工作已失效');
+          }
+        },
       );
       draft.persisted = true;
     });

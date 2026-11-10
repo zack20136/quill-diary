@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/diary/editor_draft.dart';
@@ -61,9 +60,6 @@ class EditorDraftStore {
     void Function()? onCommitted,
   }) async {
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
-    final List<int> recoveryWrapKey =
-        session.recoveryWrapKey ??
-        (throw StateError('目前 session 缺少 recovery wrap key。'));
     final Directory draftDir = await _pathStrategy.editorDraftDirectory(
       draftKey,
     );
@@ -71,22 +67,15 @@ class EditorDraftStore {
     await (await _pathStrategy.editorDraftPendingDirectory(draftKey))
         .create(recursive: true);
 
-    final Uint8List plainBytes = Uint8List.fromList(
-      utf8.encode(jsonEncode(record.toJson())),
-    );
-    final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+    await writeEncryptedVaultJson(
+      file: File(await _pathStrategy.editorDraftFilePath(draftKey)),
+      crypto: _cryptoService,
+      session: session,
+      metadata: metadata,
       documentId: 'draft_$draftKey',
-      vaultId: metadata.vaultId,
-      plaintextBytes: plainBytes,
-      contentType: 'application/json',
-      recoveryWrapKey: recoveryWrapKey,
-      recoverySlotKdf: metadata.kdf,
+      plaintextBytes: utf8.encode(jsonEncode(record.toJson())),
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-    );
-    await replaceFileBytesRecoverably(
-      File(await _pathStrategy.editorDraftFilePath(draftKey)),
-      encrypted.toFileBytes(),
       beforeCommit: beforeCommit,
       onCommitted: onCommitted,
     );
@@ -124,9 +113,7 @@ class EditorDraftStore {
     UnlockedVaultSession session,
   ) async {
     final metadata = await _requireMetadataForSession(session);
-    final recoveryWrapKey =
-        session.recoveryWrapKey ??
-        (throw StateError('目前 session 缺少 recovery wrap key。'));
+    final recoveryWrapKey = requireRecoveryWrapKey(session);
     final directory = await _pathStrategy.editorDraftPendingDirectory(draftKey);
     await directory.create(recursive: true);
     final storedName =

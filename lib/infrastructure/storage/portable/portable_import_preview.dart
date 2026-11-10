@@ -2,7 +2,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
 
-/// 匯入預覽清單中的單篇摘要（選取用暫時索引，不是 vault entry.id）。
+/// 匯入預覽清單中的單篇摘要（選取用暫時索引，不是日記庫條目的 id）。
 class PortableImportPreviewEntry {
   const PortableImportPreviewEntry({
     required this.previewIndex,
@@ -54,7 +54,6 @@ class PortableImportPreview {
   }
 }
 
-/// 使用者對匯入預覽的確認結果。
 class PortableImportConfirmResult {
   const PortableImportConfirmResult({
     required this.confirmed,

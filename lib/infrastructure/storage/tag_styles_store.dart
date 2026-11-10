@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 /// 在 [vault/tag_styles.json] 持久化標籤目錄，使預設與未使用標籤在備份／還原後保留。
@@ -19,44 +20,32 @@ class TagStylesStore {
     }
     try {
       final Object? decoded = jsonDecode(await file.readAsString());
-      if (decoded is! List<Object?>) {
-        await _deleteCatalogFile(file);
-        return const <TagCatalogItem>[];
-      }
-
-      final List<TagCatalogItem> items = _normalizeItems(
+      if (decoded is! List<Object?>) return const <TagCatalogItem>[];
+      return _normalizeItems(
         decoded
             .map(TagCatalogItem.fromJson)
             .whereType<TagCatalogItem>()
             .toList(growable: false),
       );
-      if (items.isEmpty) {
-        await _deleteCatalogFile(file);
-        return const <TagCatalogItem>[];
-      }
-      return items;
     } on Object {
-      await _deleteCatalogFile(file);
+      // 保留損毀檔案供手動復原；讀取失敗時降級為空目錄。
       return const <TagCatalogItem>[];
-    }
-  }
-
-  Future<void> _deleteCatalogFile(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
     }
   }
 
   Future<void> write(List<TagCatalogItem> items) async {
     final File file = File(await _pathStrategy.tagStylesPath());
-    await file.parent.create(recursive: true);
     final List<TagCatalogItem> normalized = _normalizeItems(items);
+    if (normalized.isEmpty) {
+      if (file.existsSync()) await file.delete();
+      return;
+    }
     final List<Map<String, Object?>> payload = normalized
         .map((TagCatalogItem item) => item.toJson())
         .toList(growable: false);
-    await file.writeAsString(
+    await atomicWriteString(
+      file,
       const JsonEncoder.withIndent('  ').convert(payload),
-      flush: true,
     );
   }
 

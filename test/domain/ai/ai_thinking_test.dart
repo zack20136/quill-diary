@@ -3,25 +3,100 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 
 void main() {
-  test('目錄預設屬於允許的思考強度，固定模型不顯示選單', () {
+  test('擷取當時強度及完整參數對照，序列化不改動原設定', () {
+    final original = defaultConnection(AiProvider.openai);
+    final snapshot = original.captureRequestSnapshot();
+    expect(original.thinkingOverrides, isEmpty);
+    expect(snapshot.hasCompleteRequestSnapshot, isTrue);
+    expect(snapshot.thinkingLevels[snapshot.model], AiThinkingLevel.off);
+    for (final level in thinkingChoicesFor(original, original.model)) {
+      expect(
+        thinkingRequestFields(
+          setThinkingLevel(snapshot, snapshot.model, level),
+        ),
+        thinkingRequestFields(
+          setThinkingLevel(original, original.model, level),
+        ),
+      );
+    }
+    final restored = AiConnectionConfig.fromSnapshotJson(
+      snapshot.toSnapshotJson(),
+    );
+    expect(restored.hasCompleteRequestSnapshot, isTrue);
+    expect(thinkingRequestFields(restored), thinkingRequestFields(snapshot));
+  });
+
+  test('保存的 Thinking 參數不被目錄預設或 profile 重新解讀', () {
+    final snapshot = AiConnectionConfig.fromSnapshotJson({
+      'provider': AiProvider.claude.name,
+      'default_model': 'claude-opus-5-5',
+      'thinking_levels': {'claude-opus-5-5': 'off'},
+      'thinking_overrides': {
+        'claude-opus-5-5': {
+          'default_level': 'off',
+          'levels': {
+            'off': {'saved_parameter': 7},
+          },
+        },
+      },
+    });
+    expect(resolvedThinkingLevel(snapshot), AiThinkingLevel.off);
+    expect(thinkingRequestFields(snapshot), {'saved_parameter': 7});
+    expect(snapshot.toSnapshotJson()['thinking_overrides'], isNotNull);
+  });
+
+  for (final bad in [
+    {
+      'default_level': 'high',
+      'levels': {'off': {}},
+    },
+    {
+      'default_level': 'off',
+      'levels': {'unknown': {}},
+    },
+    {
+      'default_level': 'off',
+      'levels': {
+        'off': {'messages': []},
+      },
+    },
+  ]) {
+    test('快照損壞 Thinking 對照 $bad 拒讀，不回退目錄', () {
+      expect(
+        () => AiConnectionConfig.fromSnapshotJson({
+          'provider': 'openai',
+          'default_model': 'gpt-6.1-terra',
+          'thinking_overrides': {'gpt-6.1-terra': bad},
+        }),
+        throwsA(anyOf(isA<FormatException>(), isA<ArgumentError>())),
+      );
+    });
+  }
+
+  test('舊快照解碼不擷取或回填目錄資訊', () {
+    final old = AiConnectionConfig.fromSnapshotJson({
+      'provider': 'openai',
+      'default_model': 'gpt-6.1-terra',
+    });
+    expect(old.hasCompleteRequestSnapshot, isFalse);
+    expect(old.toSnapshotJson().containsKey('thinking_overrides'), isFalse);
+  });
+
+  test('目錄預設屬於允許的思考強度', () {
     for (final provider in aiCatalogProviders) {
       for (final model
           in aiModelCatalog[provider] ?? const <AiCatalogModel>[]) {
         final config = AiConnectionConfig(provider: provider, model: model.id);
         expect(resolvedThinkingLevel(config), model.defaultThinking);
-        if (model.thinkingFixed) {
-          expect(thinkingChoicesFor(config, model.id), isEmpty);
-        } else {
-          expect(
-            thinkingChoicesFor(config, model.id),
-            contains(model.defaultThinking),
-          );
-        }
+        expect(
+          thinkingChoicesFor(config, model.id),
+          contains(model.defaultThinking),
+        );
       }
     }
   });
 
-  test('各模型套用自己的思考欄位，固定非推理模型省略參數', () {
+  test('各供應商的思考欄位對應到該家 API 格式', () {
     final examples = [
       (
         provider: AiProvider.openai,
@@ -32,37 +107,12 @@ void main() {
         },
       ),
       (
-        provider: AiProvider.openai,
-        model: 'gpt-6.1-sol',
-        level: AiThinkingLevel.off,
-        fields: <String, Object?>{
-          'reasoning': {'effort': 'low'},
-        },
-      ),
-      (
         provider: AiProvider.claude,
         model: 'claude-sonnet-5-5',
         level: AiThinkingLevel.high,
         fields: <String, Object?>{
           'thinking': {'type': 'between_tools'},
           'output_config': {'effort': 'high'},
-        },
-      ),
-      (
-        provider: AiProvider.claude,
-        model: 'claude-haiku-5-5',
-        level: AiThinkingLevel.off,
-        fields: <String, Object?>{
-          'thinking': {'type': 'disabled'},
-          'output_config': {'effort': 'low'},
-        },
-      ),
-      (
-        provider: AiProvider.claude,
-        model: 'claude-opus-5-5',
-        level: AiThinkingLevel.medium,
-        fields: <String, Object?>{
-          'output_config': {'effort': 'medium'},
         },
       ),
       (
@@ -76,32 +126,10 @@ void main() {
         },
       ),
       (
-        provider: AiProvider.gemini,
-        model: 'gemini-3.5-flash-lite',
-        level: AiThinkingLevel.off,
-        fields: <String, Object?>{
-          'generationConfig': {
-            'thinkingConfig': {'thinkingLevel': 'minimal'},
-          },
-        },
-      ),
-      (
         provider: AiProvider.xai,
         model: 'grok-4.3',
         level: AiThinkingLevel.high,
         fields: <String, Object?>{'reasoning_effort': 'high'},
-      ),
-      (
-        provider: AiProvider.xai,
-        model: 'grok-4.7',
-        level: AiThinkingLevel.off,
-        fields: <String, Object?>{'reasoning_effort': 'low'},
-      ),
-      (
-        provider: AiProvider.xai,
-        model: 'grok-4.20-non-reasoning',
-        level: AiThinkingLevel.high,
-        fields: <String, Object?>{},
       ),
     ];
     for (final example in examples) {
@@ -125,10 +153,11 @@ void main() {
       original.model,
       AiThinkingLevel.high,
     );
-    final restored = AiConnectionConfig.fromJson(changed.toStoredJson());
+    final restored = AiConnectionConfig.fromStoredJson(changed.toStoredJson());
     expect(restored.thinkingLevels, {original.model: AiThinkingLevel.high});
     expect(
-      AiConnectionConfig.fromJson(changed.toJson()).thinkingLevels,
+      AiConnectionConfig.fromSnapshotJson(changed.toSnapshotJson())
+          .thinkingLevels,
       restored.thinkingLevels,
     );
     expect(
@@ -143,25 +172,16 @@ void main() {
       setThinkingLevel(changed, 'gpt-6.1-sol', AiThinkingLevel.off),
       same(changed),
     );
-    final fixed = defaultConnection(AiProvider.xai)
-        .copyWith(model: 'grok-4.20-non-reasoning');
-    expect(
-      setThinkingLevel(fixed, fixed.model, AiThinkingLevel.high),
-      same(fixed),
-    );
   });
 
-  test('舊資料缺少思考設定時使用預設，未知值與無模型引用會略過', () {
-    final restored = AiConnectionConfig.fromJson({
-      'provider': 'openai',
-      'model': 'gpt-6.1-terra',
-      'thinking_levels': {
-        'gpt-6.1-terra': 'unknown',
-        'removed': 'high',
-        '': 'low',
-      },
-    });
-    expect(restored.thinkingLevels, isEmpty);
-    expect(resolvedThinkingLevel(restored), AiThinkingLevel.off);
+  test('快照讀取不更新模型目錄，未知思考檔位拒讀', () {
+    expect(
+      () => AiConnectionConfig.fromSnapshotJson({
+        'provider': 'openai',
+        'default_model': 'gpt-6.1-terra',
+        'thinking_levels': {'gpt-6.1-terra': 'unknown'},
+      }),
+      throwsArgumentError,
+    );
   });
 }

@@ -12,6 +12,7 @@ import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
+import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -69,13 +70,16 @@ class _RecoveryRotationPending {
   factory _RecoveryRotationPending.fromJson(Map<String, Object?> json) {
     final Object? old = json['old_metadata'];
     final Object? next = json['new_metadata'];
-    if (old is! Map<String, Object?> || next is! Map<String, Object?>) {
+    if (old is! Map<String, Object?> ||
+        next is! Map<String, Object?> ||
+        json['new_recovery_key'] is! String ||
+        (json['new_recovery_key'] as String).trim().isEmpty) {
       throw const FormatException('Recovery Key 輪替續跑資料格式不正確。');
     }
     return _RecoveryRotationPending(
       oldMetadata: RecoveryMetadata.fromJson(old),
       newMetadata: RecoveryMetadata.fromJson(next),
-      newRecoveryKey: (json['new_recovery_key'] ?? '').toString(),
+      newRecoveryKey: json['new_recovery_key'] as String,
     );
   }
 }
@@ -104,6 +108,8 @@ class TrustedSessionException implements Exception {
   final TrustedSessionFailure failure;
 }
 
+/// 加密日記庫的主要入口：Recovery Key 建立與解鎖、可信裝置 session 還原、
+/// 加密條目與附件的讀寫，以及索引同步。
 class VaultRepository {
   VaultRepository({
     required this._pathStrategy,
@@ -162,7 +168,11 @@ class VaultRepository {
     if (metadata == null) {
       return false;
     }
-    return _deviceKeyManager.hasTrustedKey(metadata.vaultId);
+    try {
+      return await _deviceKeyManager.hasTrustedKey(metadata.vaultId);
+    } on DeviceKeyUnsupportedFormatException {
+      return false;
+    }
   }
 
   Future<bool> hasVault() async {
@@ -359,7 +369,7 @@ class VaultRepository {
     return session;
   }
 
-  /// 還原同 vault 後沿用還原前 session 的包裝金鑰，不再觸發裝置驗證。
+  /// 還原同一日記庫後沿用還原前 session 的包裝金鑰，不再觸發裝置驗證。
   Future<UnlockedVaultSession> resumeUnlockedSessionAfterRestore(
     UnlockedVaultSession priorSession,
   ) async {
@@ -415,7 +425,7 @@ class VaultRepository {
     return session;
   }
 
-  /// 在從備份還原並覆寫 vault 目錄後呼叫，避免仍沿用記憶體內舊的復原中繼資料。
+  /// 在從備份還原並覆寫日記庫目錄後呼叫，避免仍沿用記憶體內舊的復原中繼資料。
   void clearRecoveryMetadataCache() {
     _cachedRecoveryMetadata = null;
   }
@@ -494,7 +504,7 @@ class VaultRepository {
     return RecoverySetupResult(recoveryKey: recoveryKey, session: session);
   }
 
-  /// 輪替復原金鑰：先建立可用舊金鑰還原的續跑資料，再更新 vault。
+  /// 輪替復原金鑰：先建立可用舊金鑰還原的續跑資料，再更新日記庫。
   Future<RecoverySetupResult> rotateRecoveryKey(UnlockedVaultSession session) =>
       runVaultMutation(() => _rotateRecoveryKey(session));
 
@@ -505,8 +515,10 @@ class VaultRepository {
       session,
     );
     final List<int> oldWrapKey = requireRecoveryWrapKey(session);
+    await _verifyRecoveryKey(oldMetadata, oldWrapKey);
     final KeystoreAuthKind authKind = await _requireCurrentKeystoreAuthKind();
 
+    await _validatePersonaReplacementState();
     await _openIndexForSession(session);
     await _setRewrapState(inProgress: true);
     try {
@@ -573,7 +585,7 @@ class VaultRepository {
     }
   }
 
-  /// 還原前驗證復原金鑰能否解密備份內的加密檔（不寫入本機 vault）。
+  /// 還原前驗證復原金鑰能否解密備份內的加密檔（不寫入本機日記庫）。
   Future<void> verifyRecoveryKeyAgainstBackupBytes({
     required RecoveryMetadata metadata,
     required String recoveryKey,
@@ -625,6 +637,17 @@ class VaultRepository {
         );
     if (wrapFailure != null) {
       throw UnlockModeCapabilityException(wrapFailure);
+    }
+    try {
+      await _validatePersonaReplacementState();
+    } on PersonaRecoveryRequiredException {
+      final recoverySession = UnlockedVaultSession(
+        vaultId: metadata.vaultId,
+        trustedDevice: false,
+        recoveryWrapKey: recoveryWrapKey,
+      );
+      await _openIndexForSession(recoverySession);
+      return recoverySession;
     }
     final KeystoreAuthKind authKind = keystoreAuthFor(unlockMode);
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager
@@ -973,7 +996,7 @@ class VaultRepository {
   Future<void> _applyTagCatalogFromVaultToIndex() =>
       TagStylesStore(_pathStrategy).applyToIndex(_requireOpenIndex());
 
-  /// 重建或還原後保持 vault 檔案與索引同步。
+  /// 重建或還原後保持日記庫檔案與索引同步。
   Future<void> syncTagStylesBetweenVaultAndIndex() async {
     await _applyTagCatalogFromVaultToIndex();
   }
@@ -1254,7 +1277,7 @@ class VaultRepository {
 
   /// 永久刪除異常 finding 對應的正式檔案，並從最近檢查／修復摘要移除這些項。
   ///
-  /// 回傳成功刪除的檔案數。僅允許刪除 vault 內 `entries/`、`assets/` 路徑。
+  /// 回傳成功刪除的檔案數。僅允許刪除日記庫內 `entries/`、`assets/` 路徑。
   Future<int> permanentlyDeleteAbnormalFindings(
     UnlockedVaultSession session, {
     required List<VaultFinding> findings,
@@ -1312,7 +1335,7 @@ class VaultRepository {
     return true;
   }
 
-  /// 讀取並解密 vault 資產（磁碟上的 `.enc`）供記憶體內預覽，例如列表縮圖。
+  /// 讀取並解密日記庫附件（磁碟上的 `.enc`）供記憶體內預覽，例如列表縮圖。
   Future<Uint8List?> readDecryptedAssetBytes(
     UnlockedVaultSession session,
     String encryptedAbsolutePath, {
@@ -1715,6 +1738,7 @@ class VaultRepository {
       ],
       targetRecoveryWrapKey: oldRecoveryWrapKey,
       targetMetadata: pending.oldMetadata,
+      resumeInterruptedOperation: true,
     );
     if (!_sameRecoveryMetadata(metadata, pending.oldMetadata)) {
       await atomicWriteString(
@@ -1736,6 +1760,12 @@ class VaultRepository {
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
   }) async {
+    if (parsed.header.vaultId != vaultId ||
+        parsed.header.fileId != 'recovery_rotation_pending' ||
+        parsed.header.contentType !=
+            'application/vnd.quill-diary.recovery-rotation') {
+      throw const FormatException('復原金鑰輪替續跑檔案身分不符');
+    }
     try {
       final List<int> bytes = await _cryptoService.decryptBytes(
         headerBytes: parsed.headerBytes,
@@ -1787,8 +1817,13 @@ class VaultRepository {
     required List<List<int>> sourceRecoveryWrapKeys,
     required List<int> targetRecoveryWrapKey,
     required RecoveryMetadata targetMetadata,
+    bool resumeInterruptedOperation = false,
   }) async {
-    final List<File> files = await _allEncryptedFiles();
+    if (!resumeInterruptedOperation) await _validatePersonaReplacementState();
+    final List<File> files = await _allEncryptedFiles(
+      vaultId: vaultId,
+      recoveryWrapKeys: sourceRecoveryWrapKeys,
+    );
     for (final File file in files) {
       final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
         await file.readAsBytes(),
@@ -1809,23 +1844,52 @@ class VaultRepository {
         updatedAt: DateTime.now(),
       );
       await atomicWriteBytes(file, encryption.toFileBytes());
+      // 金鑰操作不能完成後仍遺留只受舊金鑰保護的副本。
+      if (File('${file.path}.previous').existsSync() ||
+          File('${file.path}.tmp').existsSync()) {
+        throw const FileSystemException('金鑰維護的替換副本尚未完成清理');
+      }
     }
   }
 
   Future<void> _rewrapVaultForTrustedDevice(
     UnlockedVaultSession session,
-    RecoveryMetadata metadata,
-  ) async {
+    RecoveryMetadata metadata, {
+    bool resumeInterruptedOperation = false,
+  }) async {
     final List<int> recoveryWrapKey = requireRecoveryWrapKey(session);
     await _rewrapVaultFiles(
       vaultId: session.vaultId,
       sourceRecoveryWrapKeys: <List<int>>[recoveryWrapKey],
       targetRecoveryWrapKey: recoveryWrapKey,
       targetMetadata: metadata,
+      resumeInterruptedOperation: resumeInterruptedOperation,
     );
   }
 
-  Future<List<File>> _allEncryptedFiles() async {
+  Future<void> _validatePersonaReplacementState() async {
+    final root = Directory(
+      p.join((await _pathStrategy.vaultRootDirectory()).path, 'personas'),
+    );
+    if (!root.existsSync()) return;
+    await for (final item in root.list(recursive: true, followLinks: false)) {
+      if (item is! File) continue;
+      final primary = item.path.replaceFirst(
+        RegExp(r'\.(?:previous|tmp)$'),
+        '',
+      );
+      if (primary != item.path &&
+          primary.endsWith('.enc') &&
+          !File(primary).existsSync()) {
+        throw const PersonaRecoveryRequiredException();
+      }
+    }
+  }
+
+  Future<List<File>> _allEncryptedFiles({
+    required String vaultId,
+    required List<List<int>> recoveryWrapKeys,
+  }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final File manifest = File(await _pathStrategy.manifestPath());
     final Set<String> primaryPaths = <String>{
@@ -1841,15 +1905,63 @@ class VaultRepository {
       }
       if (entity.path.endsWith('.enc')) {
         primaryPaths.add(entity.path);
-      } else if (entity.path.endsWith('.enc.previous')) {
+      } else if (entity.path.endsWith('.enc.previous') ||
+          entity.path.endsWith('.enc.tmp')) {
         primaryPaths.add(
-          entity.path.substring(0, entity.path.length - '.previous'.length),
+          entity.path.replaceFirst(RegExp(r'\.(?:previous|tmp)$'), ''),
         );
       }
     }
     for (final String path in primaryPaths) {
       final File file = File(path);
-      await recoverFileReplacement(file);
+      await recoverFileReplacement(
+        file,
+        validate: (candidate) async {
+          final parsed = _cryptoService.parseFileBytes(
+            await candidate.readAsBytes(),
+          );
+          if (parsed.header.vaultId != vaultId) {
+            throw const FormatException('金鑰維護檔案所屬日記庫不符');
+          }
+          final relative = p.split(p.relative(path, from: vaultRoot.path));
+          String? identity;
+          if (relative.first == 'personas') {
+            if (relative.length == 3 && relative.last == 'state.json.enc') {
+              identity = personaStateIdentity(relative[1]);
+            } else if (relative.length == 4 &&
+                relative[2] == 'pending_imports') {
+              final ids = relative.last.split('.');
+              if (ids.length == 4 &&
+                  isPrefixedId(ids[0], 'pim') &&
+                  isPrefixedId(ids[1], 'pco')) {
+                identity = personaImportIdentity(relative[1], ids[0], ids[1]);
+              }
+            }
+            if (identity == null) throw const FormatException('無效的分身加密路徑');
+          } else if (relative.last == 'ai_settings.json.enc') {
+            identity = 'ai_settings';
+          } else if (relative.first == 'diary_organization_drafts' &&
+              relative.length == 3) {
+            identity = relative[1];
+          } else if (relative.first == 'chat_diary_remote_cleanup' ||
+              relative.first == 'chat_diary_drafts' &&
+                  relative.last == 'session.json.enc' ||
+              relative.first == 'entries' &&
+                  relative.last.endsWith('.chat.json.enc')) {
+            identity = relative.last;
+          }
+          if (identity != null &&
+              (parsed.header.fileId != identity ||
+                  parsed.header.contentType != 'application/json')) {
+            throw const FormatException('金鑰維護的 AI 檔案身分不符');
+          }
+          await _decryptWithRecoveryWrapKeys(
+            parsed: parsed,
+            vaultId: vaultId,
+            recoveryWrapKeys: recoveryWrapKeys,
+          );
+        },
+      );
       if (file.existsSync()) files.add(file);
     }
     return files;
@@ -1919,7 +2031,11 @@ class VaultRepository {
     if (await _requireOpenIndex().getAppValue(kRewrapInProgressKey) != 'true') {
       return;
     }
-    await _rewrapVaultForTrustedDevice(session, metadata);
+    await _rewrapVaultForTrustedDevice(
+      session,
+      metadata,
+      resumeInterruptedOperation: true,
+    );
     await _setRewrapState(inProgress: false);
     await rebuildIndex(session);
   }
@@ -2059,7 +2175,7 @@ class VaultRepository {
       try {
         await previous;
       } on Object {
-        // 前一項錯誤已交還原呼叫端，不阻斷後續 vault 寫入。
+        // 前一項錯誤已交還原呼叫端，不阻斷後續日記庫寫入。
       }
       try {
         completer.complete(await operation());
@@ -2130,6 +2246,15 @@ class VaultRepository {
     UnlockedVaultSession session, {
     AppUnlockMode? targetMode,
   }) async {
+    if (!session.trustedDevice && session.canUseRecovery) {
+      try {
+        await _validatePersonaReplacementState();
+      } on PersonaRecoveryRequiredException {
+        if (targetMode != null) rethrow;
+        return session;
+      }
+    }
+
     if (targetMode != null) {
       final UnlockModeCapabilityFailure? failure =
           await precheckUnlockModeChange(
@@ -2189,6 +2314,7 @@ class VaultRepository {
     UnlockedVaultSession session, {
     required KeystoreAuthKind authKind,
   }) async {
+    await validateRecoverySession(session);
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final TrustedDeviceInfo deviceInfo = await _deviceKeyManager
         .ensureDeviceKey(metadata.vaultId, authKind: authKind);
@@ -2197,12 +2323,15 @@ class VaultRepository {
       recoveryWrapKey: requireRecoveryWrapKey(session),
       authKind: authKind,
     );
-    return session.copyWith(deviceSlotId: deviceInfo.slotId);
+    return session.copyWith(
+      trustedDevice: true,
+      deviceSlotId: deviceInfo.slotId,
+    );
   }
 
   /// 解鎖後 attach 搜尋索引：開啟連線、必要時重建不相容 schema、同步標籤樣式。
   ///
-  /// schema 正常時不會全量 [rebuildIndex]；只有不相容時才從正式 vault 重建。
+  /// schema 正常時不會全量 [rebuildIndex]；只有不相容時才從正式日記庫重建。
   /// 人物：只確保 analytics 表存在，不解密名冊、不背景全量 rebuild。
   Future<void> ensureIndexReady(UnlockedVaultSession session) async {
     await _openIndexForSession(session);
@@ -2249,14 +2378,12 @@ class VaultRepository {
   Future<void> deletePerson(UnlockedVaultSession session, PersonId id) =>
       _people.deletePerson(session, id);
 
-  /// 新增自訂關係類型；[label] 寫入當前語系，另一語拷貝同一字串。
   Future<RelationshipType> addRelationshipType(
     UnlockedVaultSession session, {
     required String label,
     required bool preferZh,
   }) => _people.addRelationshipType(session, label: label, preferZh: preferZh);
 
-  /// 只改當前語系對應的 label；另一語不變。
   Future<RelationshipType> renameRelationshipType(
     UnlockedVaultSession session, {
     required String id,
@@ -2269,17 +2396,14 @@ class VaultRepository {
     preferZh: preferZh,
   );
 
-  /// 刪除類型，並從所有人物 relationships 清掉該 id。回傳受影響人數。
   Future<int> deleteRelationshipType(UnlockedVaultSession session, String id) =>
       _people.deleteRelationshipType(session, id);
 
-  /// 依 [orderedIds] 重排關係類型；必須剛好涵蓋現行全部 id。
   Future<void> reorderRelationshipTypes(
     UnlockedVaultSession session,
     List<String> orderedIds,
   ) => _people.reorderRelationshipTypes(session, orderedIds);
 
-  /// 統計過期或尚未建立時自動全量重建；並行呼叫會共用同一個 in-flight Future。
   Future<void> ensurePeopleAnalyticsReady(UnlockedVaultSession session) =>
       _people.ensurePeopleAnalyticsReady(session);
 

@@ -5,6 +5,7 @@ import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
@@ -80,7 +81,9 @@ String localBackupSectionDescription(
   VaultTransferCapabilities transferCapabilities,
 ) {
   if (transferCapabilities.canBackup) {
-    return l10n.settingsLocalBackupSectionDescriptionEnabled;
+    return l10n.settingsLocalBackupSectionDescriptionEnabled(
+      VaultBackupPolicy.retainCount,
+    );
   }
   return l10n.vaultTransferLocalSectionDescriptionBackupLocked;
 }
@@ -236,7 +239,7 @@ String settingsFindingDateLabel(AppLocalizations l10n, VaultFinding finding) {
   return DisplayFormat.formatDateOnly(l10n, date);
 }
 
-/// 舊版呼叫端仍使用的「上次修復紀錄」行。
+/// Drive 還原成功時併入備份名稱；沒有備份名稱時只顯示鎖定狀態提示。
 String driveAwarePostRestoreSnackBarMessage({
   required AppLocalizations l10n,
   required AppLockStatus status,

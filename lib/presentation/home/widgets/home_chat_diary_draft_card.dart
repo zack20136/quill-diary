@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -23,13 +23,46 @@ import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 class HomeChatDiaryDraftCard extends ConsumerWidget {
   const HomeChatDiaryDraftCard({
     super.key,
-    required this.chat,
+    required this.draft,
     required this.entryDisplayOrder,
   });
-  final ChatDiarySession chat;
+  final ChatDiaryDraftItem draft;
   final List<EntryId> entryDisplayOrder;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final chat = draft.chat;
+    final selection = ref.watch(homeEntrySelectionProvider);
+    final selected = selection.selectedChatIds.contains(draft.id);
+    void toggleSelection() => ref
+        .read(homeEntrySelectionProvider.notifier)
+        .toggleChat(draft.id, displayOrder: entryDisplayOrder);
+    if (chat == null) {
+      return HomeTimelineEntryShell(
+        selected: selection.isActive && selected,
+        child: ListTile(
+          selected: selection.isActive && selected,
+          onLongPress: toggleSelection,
+          leading: Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(context.l10n.chatDiaryDraftNeedsAttention),
+          subtitle: Text(
+            draft.error == AiErrorCode.storage
+                ? context.l10n.chatDiaryDraftReadError
+                : context.l10n.aiErrorUnreadable,
+          ),
+          onTap: () async {
+            if (selection.isActive) {
+              toggleSelection();
+              return;
+            }
+            await context.push(AppRoutes.chatDiaryLocation(draft.id));
+            if (context.mounted) ref.invalidate(chatDiaryDraftsProvider);
+          },
+        ),
+      );
+    }
     final first = chat.activeMessages
         .where((message) => message.isUser && message.text.trim().isNotEmpty)
         .firstOrNull
@@ -42,8 +75,6 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
             : chat.composerText.trim());
     final theme = Theme.of(context);
     final typography = watchPersonalizationPreferences(ref).typography;
-    final selection = ref.watch(homeEntrySelectionProvider);
-    final selected = selection.selectedChatIds.contains(chat.id);
     final l10n = context.l10n;
     final generation = ref.watch(
       chatDiaryGenerationsProvider.select(
@@ -51,9 +82,6 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
       ),
     );
     final active = generation?.phase.isActive == true;
-    void toggleSelection() => ref
-        .read(homeEntrySelectionProvider.notifier)
-        .toggleChat(chat.id, displayOrder: entryDisplayOrder);
     return HomeTimelineEntryShell(
       selected: selection.isActive && selected,
       child: InkWell(
@@ -65,7 +93,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
             return;
           }
           await context.push(AppRoutes.chatDiaryLocation(chat.id));
-          if (context.mounted) ref.invalidate(chatDiarySessionsProvider);
+          if (context.mounted) ref.invalidate(chatDiaryDraftsProvider);
         },
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),

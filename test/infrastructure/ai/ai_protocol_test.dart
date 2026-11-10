@@ -262,7 +262,8 @@ void main() {
       customProtocol: AiApiProtocol.claudeMessages,
     );
     expect(
-      AiConnectionConfig.fromJson(connectionConfig.toJson()).protocol,
+      AiConnectionConfig.fromSnapshotJson(connectionConfig.toSnapshotJson())
+          .protocol,
       AiApiProtocol.claudeMessages,
     );
   });

@@ -66,31 +66,9 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
   }
 
   Future<void> _openTagAccentComposer() async {
-    final String? createdTag = await showDialog<String>(
+    final String? createdTag = await showTagAccentComposerDialog(
       context: context,
-      barrierDismissible: true,
-      barrierColor: context.appColors.scrim,
-      builder: (BuildContext dialogContext) {
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(
-            left: 22,
-            right: 22,
-            top: 26,
-            bottom: 26 + MediaQuery.viewInsetsOf(dialogContext).bottom,
-          ),
-          child: Align(
-            alignment: Alignment.center,
-            child: Material(
-              color: Colors.transparent,
-              child: TagAccentComposerDialog(
-                primaryButtonLabel: context.l10n.editorTagsStudioAddButton,
-              ),
-            ),
-          ),
-        );
-      },
+      primaryButtonLabel: context.l10n.editorTagsStudioAddButton,
     );
     if (!mounted || createdTag == null || createdTag.trim().isEmpty) {
       return;

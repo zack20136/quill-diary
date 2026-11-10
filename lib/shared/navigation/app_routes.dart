@@ -21,6 +21,8 @@ abstract final class AppRoutes {
   static const String editorRoute = '/editor';
   static const String editorDetailRoute = '/editor/:entryId';
   static const String personDetailRoute = '/people/:id';
+  static const String personaRoute = '/persona/:personId';
+  static String personaLocation(String personId) => '/persona/$personId';
   static const String settingsRoute = '/settings';
   static const String aboutRoute = '/settings/about';
   static const String personalizationRoute = '/settings/personalization';

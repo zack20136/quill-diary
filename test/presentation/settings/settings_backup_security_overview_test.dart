@@ -91,7 +91,7 @@ void main() {
       expect(item.message, l10n.settingsSecurityOverviewDriveBackupNever);
     });
 
-    test('有帳號時顯示上傳時間與帳號', () {
+    test('有帳戶時顯示上傳時間與帳戶', () {
       final DateTime uploadedAt = DateTime(2026, 7, 3, 8, 53);
       final SecurityOverviewItem item = settingsDriveBackupSecurityOverview(
         l10n,

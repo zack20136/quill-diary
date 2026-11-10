@@ -6,6 +6,7 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 class IndexDatabaseManager {
@@ -39,9 +40,7 @@ class IndexDatabaseManager {
     await _closeNow();
 
     final List<int> keyBytes = await deriveIndexDatabaseKey(
-      recoveryWrapKey:
-          session.recoveryWrapKey ??
-          (throw StateError('目前 session 沒有可用的 Recovery wrapping key。')),
+      recoveryWrapKey: requireRecoveryWrapKey(session),
       vaultId: session.vaultId,
     );
     try {

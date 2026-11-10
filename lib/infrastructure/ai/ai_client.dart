@@ -487,13 +487,20 @@ abstract class AiClient {
           yield (jsonDecode(line) as Map).cast<String, dynamic>();
         }
       } else if (line.startsWith('data:')) {
-        data.add(line.substring(5).trimLeft());
+        final value = line.substring(5).trimLeft();
+        if (value == '[DONE]') {
+          if (data.isNotEmpty) {
+            yield (jsonDecode(data.join('\n')) as Map).cast<String, dynamic>();
+            data.clear();
+          }
+          return;
+        }
+        data.add(value);
       } else if (line.isEmpty && data.isNotEmpty) {
         final value = data.join('\n');
         data.clear();
-        if (value != '[DONE]') {
-          yield (jsonDecode(value) as Map).cast<String, dynamic>();
-        }
+        if (value == '[DONE]') return;
+        yield (jsonDecode(value) as Map).cast<String, dynamic>();
       }
     }
     if (data.isNotEmpty && data.join('\n') != '[DONE]') {
@@ -502,7 +509,7 @@ abstract class AiClient {
   }
 }
 
-/// Chat Completions 相容格式；Base URL 包含服務要求的 API 路徑前綴。
+/// OpenAI Chat Completions 相容格式；Base URL 包含服務要求的 API 路徑前綴。
 class OpenAiCompatibleClient extends AiClient {
   OpenAiCompatibleClient(
     super.connectionConfig,
@@ -546,6 +553,7 @@ class OpenAiCompatibleClient extends AiClient {
       ],
     })) {
       checkAiResponseError(event);
+      var stop = false;
       for (final choice in event['choices'] as List? ?? []) {
         final item = choice as Map;
         final text = (item['delta'] as Map?)?['content'];
@@ -555,10 +563,12 @@ class OpenAiCompatibleClient extends AiClient {
         final reason = item['finish_reason'];
         if (reason == 'stop') {
           complete = true;
+          stop = true;
         } else if (reason != null) {
           throw const AiFailure(AiErrorCode.response);
         }
       }
+      if (stop) break;
     }
     if (!complete) {
       throw const AiFailure(AiErrorCode.response);
@@ -616,11 +626,14 @@ class OpenAiClient extends AiClient {
       if (event['type'] == 'response.output_text.delta') {
         yield event['delta'] as String;
       }
-      if (event['type'] == 'response.completed') complete = true;
       if (event['type'] == 'error' ||
           event['type'] == 'response.failed' ||
           event['type'] == 'response.incomplete') {
         throw const AiFailure(AiErrorCode.response);
+      }
+      if (event['type'] == 'response.completed') {
+        complete = true;
+        break;
       }
     }
     if (!complete) throw const AiFailure(AiErrorCode.response);
@@ -709,8 +722,11 @@ class ClaudeAiClient extends AiClient {
       if (event['type'] == 'message_delta') {
         truncated = (event['delta'] as Map)['stop_reason'] == 'max_tokens';
       }
-      if (event['type'] == 'message_stop') complete = true;
       if (event['type'] == 'error') throw const AiFailure(AiErrorCode.response);
+      if (event['type'] == 'message_stop') {
+        complete = true;
+        break;
+      }
     }
     if (!complete || truncated) throw const AiFailure(AiErrorCode.response);
   }
@@ -772,6 +788,7 @@ class GeminiAiClient extends AiClient {
     }
     var complete = false;
     final model = connectionConfig.model.replaceFirst('models/', '');
+    var stop = false;
     await for (final event in events(
       '/v1beta/models/${Uri.encodeComponent(model)}:streamGenerateContent?alt=sse',
       {
@@ -791,12 +808,16 @@ class GeminiAiClient extends AiClient {
             yield part['text'] as String;
           }
         }
-        if (candidateData['finishReason'] == 'STOP') complete = true;
+        if (candidateData['finishReason'] == 'STOP') {
+          complete = true;
+          stop = true;
+        }
         if (candidateData['finishReason'] != null &&
             candidateData['finishReason'] != 'STOP') {
           throw const AiFailure(AiErrorCode.response);
         }
       }
+      if (stop) break;
     }
     if (!complete) throw const AiFailure(AiErrorCode.response);
   }
@@ -853,7 +874,10 @@ class OllamaAiClient extends AiClient {
       if (event['error'] != null) throw const AiFailure(AiErrorCode.request);
       final text = (event['message'] as Map?)?['content'];
       if (text is String) yield text;
-      if (event['done'] == true) complete = event['done_reason'] != 'length';
+      if (event['done'] == true) {
+        complete = event['done_reason'] != 'length';
+        break;
+      }
     }
     if (!complete) throw const AiFailure(AiErrorCode.response);
   }

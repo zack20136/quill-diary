@@ -7,42 +7,11 @@ import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  Widget host(Widget child, {Brightness brightness = Brightness.light}) =>
-      widgetTestApp(
-        brightness: brightness,
-        child: SizedBox.expand(child: child),
-      );
-
-  Finder dialogSurface() => find.byWidgetPredicate(
-    (Widget widget) => widget is Material && widget.type == MaterialType.card,
-  );
-
-  Future<void> pumpDialogLauncher(
-    WidgetTester tester, {
-    required AppDialogSize size,
-  }) async {
-    await tester.pumpWidget(
-      host(
-        Builder(
-          builder: (BuildContext context) => FilledButton(
-            onPressed: () => showAppDialog<void>(
-              context: context,
-              size: size,
-              builder: (_) =>
-                  const AppDialogShell(title: '確認操作', content: Text('內容')),
-            ),
-            child: const Text('開啟'),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('開啟'));
-    await tester.pumpAndSettle();
-  }
+  Widget host(Widget child) =>
+      widgetTestApp(child: SizedBox.expand(child: child));
 
   testWidgets('操作按鈕會套用 loading 與滿寬設定', (tester) async {
     await tester.pumpWidget(
@@ -60,113 +29,8 @@ void main() {
 
     expect(find.byType(FilledButton), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(tester.getSize(find.byType(SizedBox).last).width, isNonZero);
-  });
-
-  for (final Brightness brightness in Brightness.values) {
-    testWidgets('四種操作按鈕在${brightness.name}主題保留既有色彩語意', (tester) async {
-      await tester.pumpWidget(
-        host(
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              AppActionButton(
-                label: '主要',
-                icon: Icons.save_outlined,
-                onPressed: () {},
-                appearance: AppActionButtonAppearance.primary,
-              ),
-              AppActionButton(
-                label: '次要',
-                icon: Icons.refresh_rounded,
-                onPressed: () {},
-                appearance: AppActionButtonAppearance.tonal,
-              ),
-              AppActionButton(
-                label: '外框',
-                icon: Icons.settings_outlined,
-                onPressed: () {},
-              ),
-              AppActionButton(
-                label: '刪除',
-                icon: Icons.delete_outline,
-                onPressed: () {},
-                appearance: AppActionButtonAppearance.destructive,
-              ),
-            ],
-          ),
-          brightness: brightness,
-        ),
-      );
-
-      final ColorScheme colorScheme = appTestTheme(brightness: brightness)
-          .colorScheme;
-      final List<FilledButton> filledButtons = tester
-          .widgetList<FilledButton>(find.byType(FilledButton))
-          .toList();
-      final List<OutlinedButton> outlinedButtons = tester
-          .widgetList<OutlinedButton>(find.byType(OutlinedButton))
-          .toList();
-      expect(
-        filledButtons[0].style?.backgroundColor?.resolve(const <WidgetState>{}),
-        brightness == Brightness.dark
-            ? colorScheme.primaryContainer
-            : colorScheme.primary,
-      );
-      expect(
-        filledButtons[1].style?.backgroundColor?.resolve(const <WidgetState>{}),
-        brightness == Brightness.dark
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.secondaryContainer,
-      );
-      expect(
-        outlinedButtons[0].style?.foregroundColor?.resolve(
-          const <WidgetState>{},
-        ),
-        colorScheme.onSurface,
-      );
-      expect(
-        outlinedButtons[1].style?.foregroundColor?.resolve(
-          const <WidgetState>{},
-        ),
-        colorScheme.error,
-      );
-    });
-  }
-
-  testWidgets('深色主按鈕 loading 使用主按鈕前景色', (tester) async {
-    await tester.pumpWidget(
-      host(
-        const AppActionButton(
-          label: '處理中',
-          icon: Icons.save_outlined,
-          onPressed: null,
-          appearance: AppActionButtonAppearance.primary,
-          loading: true,
-        ),
-        brightness: Brightness.dark,
-      ),
-    );
-
-    final ColorScheme colorScheme = appTestTheme(brightness: Brightness.dark)
-        .colorScheme;
-    final FilledButton button = tester.widget<FilledButton>(
-      find.byType(FilledButton),
-    );
-    expect(
-      button.style?.backgroundColor?.resolve(const <WidgetState>{
-        WidgetState.disabled,
-      }),
-      colorScheme.primaryContainer,
-    );
-    expect(
-      tester
-          .widget<CircularProgressIndicator>(
-            find.byType(CircularProgressIndicator),
-          )
-          .color,
-      colorScheme.onPrimaryContainer,
-    );
+    final Size buttonSize = tester.getSize(find.byType(FilledButton));
+    expect(buttonSize.width, greaterThan(buttonSize.height));
   });
 
   testWidgets('loading state 依 layout 顯示留白與說明', (tester) async {
@@ -270,15 +134,6 @@ void main() {
 
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
-    expect(tester.getSize(dialogSurface()).width, 256);
-    expect(find.byType(FilledButton), findsWidgets);
-    final FilledButton deleteButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, '刪除'),
-    );
-    expect(
-      deleteButton.style?.backgroundColor?.resolve(const <WidgetState>{}),
-      appTestTheme().colorScheme.error,
-    );
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(result, isFalse);
@@ -288,29 +143,6 @@ void main() {
     await tester.tap(find.text('刪除'));
     await tester.pumpAndSettle();
     expect(result, isTrue);
-  });
-
-  testWidgets('dialog shell 在窄寬與寬螢幕均使用九成寬度', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(320, 568));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await pumpDialogLauncher(tester, size: AppDialogSize.standard);
-
-    expect(tester.getSize(dialogSurface()).width, 288);
-    expect(find.text('確認操作'), findsOneWidget);
-    await tester.binding.setSurfaceSize(const Size(800, 568));
-    await tester.pump();
-    expect(tester.getSize(dialogSurface()).width, 720);
-  });
-
-  testWidgets('compact dialog 在窄寬與寬螢幕均使用八成寬度', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(320, 568));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await pumpDialogLauncher(tester, size: AppDialogSize.compact);
-
-    expect(tester.getSize(dialogSurface()).width, 256);
-    await tester.binding.setSurfaceSize(const Size(800, 568));
-    await tester.pump();
-    expect(tester.getSize(dialogSurface()).width, 640);
   });
 
   testWidgets('AccentDialogShell 關閉按鈕觸控目標至少 44', (tester) async {

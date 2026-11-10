@@ -2,6 +2,7 @@ import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 
 String aiErrorText(AppLocalizations l10n, AiErrorCode code) => switch (code) {
+  AiErrorCode.settings => l10n.aiErrorSettings,
   AiErrorCode.configuration => l10n.aiErrorConfiguration,
   AiErrorCode.endpoint => l10n.aiErrorEndpoint,
   AiErrorCode.authentication => l10n.aiErrorAuthentication,

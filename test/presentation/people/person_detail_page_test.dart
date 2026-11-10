@@ -223,6 +223,8 @@ void main() {
   testWidgets('無相關日記時匯出回顧停用', (WidgetTester tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+    await tester.pumpAndSettle();
 
     final Finder exportButton = find.byKey(
       const ValueKey<String>('person-export-recap'),
@@ -235,6 +237,8 @@ void main() {
     await tester.pumpWidget(
       testApp(relatedEntries: <DiaryEntrySummary>[buildDiaryEntrySummary()]),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
 
     final Finder exportButton = find.byKey(
@@ -249,6 +253,8 @@ void main() {
     await tester.pumpWidget(
       testApp(relatedEntries: <DiaryEntrySummary>[buildDiaryEntrySummary()]),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
 
     final double titleCenterY = tester.getCenter(find.text('相關日記')).dy;

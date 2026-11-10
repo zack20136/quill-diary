@@ -7,18 +7,44 @@ import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 
 /// 按實際行高繪製隱藏底色，避免混合字型的字面高度不同。
 class PrivateText extends SingleChildRenderObjectWidget {
-  PrivateText({super.key, required this.text, required this.ranges, this.style})
-    : super(
-        child: Text.rich(TextSpan(text: text), style: style),
-      );
+  PrivateText({
+    super.key,
+    required this.text,
+    required this.ranges,
+    this.style,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
+  }) : super(
+         child: Text.rich(
+           TextSpan(text: text),
+           style: style,
+           maxLines: maxLines,
+           overflow: overflow,
+         ),
+       );
 
-  PrivateText.rich(TextSpan span, {super.key, required this.ranges, this.style})
-    : text = span.toPlainText(),
-      super(child: Text.rich(span, style: style));
+  PrivateText.rich(
+    TextSpan span, {
+    super.key,
+    required this.ranges,
+    this.style,
+    this.maxLines,
+    this.overflow = TextOverflow.clip,
+  }) : text = span.toPlainText(),
+       super(
+         child: Text.rich(
+           span,
+           style: style,
+           maxLines: maxLines,
+           overflow: overflow,
+         ),
+       );
 
   final String text;
   final List<PrivateTextRange> ranges;
   final TextStyle? style;
+  final int? maxLines;
+  final TextOverflow overflow;
 
   @override
   RenderObject createRenderObject(BuildContext context) => RenderPrivateText(

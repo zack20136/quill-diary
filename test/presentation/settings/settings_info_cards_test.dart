@@ -1,49 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_info_cards.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  testWidgets('事實 chip 使用繁中冒號分隔標籤與數值', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      widgetTestApp(
-        child: const SettingsFactChip(label: '提示', value: 'ABCD'),
-      ),
-    );
-
-    expect(find.text('提示：ABCD'), findsOneWidget);
-    expect(find.textContaining('嚗'), findsNothing);
-  });
-
-  testWidgets('Hero 標題接在 icon 右側並垂直置中', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      widgetTestApp(
-        center: false,
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: SettingsGradientHeroCard(
-            icon: Icons.edit_note_rounded,
-            title: '寫作、暫存與正式保存各走自己的路',
-            body: '說明文字',
-            chips: <String>['可匯出 Markdown', '自動草稿'],
-          ),
-        ),
-      ),
-    );
-
-    final Offset iconCenter = tester.getCenter(
-      find.byIcon(Icons.edit_note_rounded),
-    );
-    final Offset titleCenter = tester.getCenter(find.text('寫作、暫存與正式保存各走自己的路'));
-
-    expect(titleCenter.dx, greaterThan(iconCenter.dx));
-    expect((titleCenter.dy - iconCenter.dy).abs(), lessThan(8));
-    expect(find.text('可匯出 Markdown'), findsOneWidget);
-    expect(find.text('自動草稿'), findsOneWidget);
-  });
-
   testWidgets('Hero chips 單列可橫向捲動並顯示指示條', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));

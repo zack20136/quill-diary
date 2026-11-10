@@ -8,28 +8,39 @@ import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/application/ai/ai_request_preview.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
+import 'package:quill_diary/application/persona/persona_prompts.dart';
+import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
-import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/ai/ai_image_preparer.dart';
 import 'package:quill_diary/infrastructure/chat_diary/chat_diary_store.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 enum ChatDiaryLoadResult { loaded, missing, cancelled, failed }
 
 enum ChatDiaryGenerationResult { generated, empty, notGenerated }
+
+class _LoadedPersona {
+  const _LoadedPersona({this.record, this.failed = false});
+
+  final PersonaRecord? record;
+  final bool failed;
+}
 
 class ChatDiaryController extends ChangeNotifier {
   ChatDiaryController(this.ref) : _chatStore = ref.read(chatDiaryStoreProvider);
@@ -37,8 +48,6 @@ class ChatDiaryController extends ChangeNotifier {
   final ChatDiaryStore _chatStore;
   ChatDiarySession? chat;
   UnlockedVaultSession? _vaultSession;
-  List<Person> _people = const [];
-  int _peopleEpoch = 0;
   AiClient? _client;
   String? _clientApiKey;
   AiConnectionConfig? _clientConfig;
@@ -47,6 +56,7 @@ class ChatDiaryController extends ChangeNotifier {
   bool _disposed = false;
   bool _handedOff = false;
   bool busy = false;
+  bool personaUnavailable = false;
   ChatDiaryGeneration? _generation;
   AiErrorCode? _error;
   String? _errorMessageId;
@@ -128,7 +138,6 @@ class ChatDiaryController extends ChangeNotifier {
     final operationVersion = _operationVersion;
     _vaultSession = vaultSession;
     chat = null;
-    _people = const [];
     _setError(null);
     _handedOff = false;
     final settingsStore = ref.read(aiSettingsStoreProvider);
@@ -139,16 +148,8 @@ class ChatDiaryController extends ChangeNotifier {
       if (chatSession == null && newChatId != null) {
         final stored = await settingsStore.read(vaultSession);
         if (cancelled()) return ChatDiaryLoadResult.cancelled;
-        final connectionConfig = stored.connection.activeConfig;
-        validateAiEndpoint(connectionConfig);
-        if (!connectionConfig.isConfigured) {
-          throw const AiFailure(AiErrorCode.configuration);
-        }
-        if (connectionConfig.provider.requiresApiKey) {
-          final apiKey = await settingsStore.readApiKey(connectionConfig);
-          if (cancelled()) return ChatDiaryLoadResult.cancelled;
-          if (apiKey.isEmpty) throw const AiFailure(AiErrorCode.configuration);
-        }
+        final connectionConfig = stored.connection.activeConfig
+            .captureRequestSnapshot();
         final now = DateTime.now();
         chatSession = ChatDiarySession(
           id: newChatId,
@@ -165,6 +166,10 @@ class ChatDiaryController extends ChangeNotifier {
         return ChatDiaryLoadResult.missing;
       }
       chat = chatSession;
+      if (chatSession.selectedPersona != null) {
+        await _loadReplyPersona(chatSession.selectedPersona, operationVersion);
+        if (cancelled()) return ChatDiaryLoadResult.cancelled;
+      }
       var needsSave = false;
       for (final message in chatSession.messages) {
         if (message.status == ChatDiaryMessageStatus.pending) {
@@ -398,8 +403,6 @@ class ChatDiaryController extends ChangeNotifier {
       return null;
     }
     final operationVersion = _operationVersion;
-    final settingsStore = ref.read(aiSettingsStoreProvider);
-    final preferences = ref.read(userPreferencesProvider);
     try {
       final history = generate
           ? chatSession.activeMessages
@@ -407,22 +410,28 @@ class ChatDiaryController extends ChangeNotifier {
       final pending = chatSession.composer;
       final privacy = await _createPrivacyProcessor(history);
       _ensureOperationIsCurrent(operationVersion);
-      final prompts = (await settingsStore.read(_vaultSession!))
-          .chatDiaryPrompts;
-      _ensureOperationIsCurrent(operationVersion);
-      final language = await preferences.appLocale;
-      _ensureOperationIsCurrent(operationVersion);
       final composer = generate
           ? ''
           : privacy.protect(pending.text, pending.ranges, false);
-      final prompt = privacy.protectPrompt(
-        resolveChatDiaryPrompt(
-          generate
-              ? ChatDiaryPromptPurpose.generation
-              : ChatDiaryPromptPurpose.conversation,
-          language,
-          prompts,
-        ),
+      final loadedPersona = generate
+          ? null
+          : await _loadReplyPersona(
+              chatSession.selectedPersona,
+              operationVersion,
+            );
+      _ensureOperationIsCurrent(operationVersion);
+      final replyPersona = loadedPersona?.record;
+      final missingPersonaName = lookupAppLocalizations(
+        (await ref.read(userPreferencesProvider).appLocale).materialLocale,
+      ).personaRoleFriend;
+      _ensureOperationIsCurrent(operationVersion);
+      final prompt = await _resolveRequestPrompt(
+        generate
+            ? ChatDiaryPromptPurpose.generation
+            : ChatDiaryPromptPurpose.conversation,
+        privacy,
+        operationVersion,
+        replyPersona: replyPersona,
       );
       final turns = <AiPreviewTurn>[
         for (final message in history)
@@ -430,7 +439,15 @@ class ChatDiaryController extends ChangeNotifier {
               message.status == ChatDiaryMessageStatus.complete)
             AiPreviewTurn(
               isUser: message.isUser,
-              text: _protectedMessageText(privacy, message),
+              text: generate
+                  ? _protectedMessageText(privacy, message)
+                  : _conversationMessageText(
+                      privacy,
+                      message,
+                      history,
+                      forceAttribution: replyPersona != null,
+                      missingPersonaName: missingPersonaName,
+                    ),
               imageIds: List.of(message.imageIds),
             ),
         if (!generate && (composer.isNotEmpty || pending.imageIds.isNotEmpty))
@@ -450,13 +467,11 @@ class ChatDiaryController extends ChangeNotifier {
             ? [
                 AiPreviewTurn(
                   isUser: true,
-                  text: jsonEncode([
-                    for (final turn in turns)
-                      {
-                        'role': turn.isUser ? 'user' : 'assistant',
-                        'text': turn.text,
-                      },
-                  ]),
+                  text: _generationData(
+                    privacy,
+                    history,
+                    missingPersonaName: missingPersonaName,
+                  ),
                   imageIds: [for (final turn in turns) ...turn.imageIds],
                 ),
               ]
@@ -484,10 +499,9 @@ class ChatDiaryController extends ChangeNotifier {
       return;
     }
     _cancelOperation(
-      closeClient:
-          busy || !_sameClientConnection(_clientConfig, connectionConfig),
+      closeClient: busy || !sameAiClient(_clientConfig, connectionConfig),
     );
-    chatSession.connectionConfig = connectionConfig;
+    chatSession.connectionConfig = connectionConfig.captureRequestSnapshot();
     chatSession.hidePersonNames = hidePersonNames;
     _setError(null);
     await persist(throwOnError: true);
@@ -532,59 +546,20 @@ class ChatDiaryController extends ChangeNotifier {
     await store.updateActiveConnection(session, next);
   }
 
-  bool _sameClientConnection(
-    AiConnectionConfig? current,
-    AiConnectionConfig next,
-  ) =>
-      current != null &&
-      current.connectionId == next.connectionId &&
-      current.provider == next.provider &&
-      current.model == next.model &&
-      current.protocol == next.protocol &&
-      current.effectiveBaseUrl == next.effectiveBaseUrl &&
-      current.workspaceId == next.workspaceId &&
-      resolvedThinkingLevel(current) == resolvedThinkingLevel(next) &&
-      aiJsonEquals(thinkingRequestFields(current), thinkingRequestFields(next));
-
-  Future<void> _refreshPeople() async {
-    final epoch = ++_peopleEpoch;
-    final chatSession = chat;
-    final vaultSession = _vaultSession;
-    if (chatSession == null ||
-        vaultSession == null ||
-        !chatSession.hidePersonNames) {
-      if (epoch == _peopleEpoch) _people = const [];
-      return;
-    }
-    bool current() =>
-        epoch == _peopleEpoch &&
-        !_disposed &&
-        chat == chatSession &&
-        _vaultSession == vaultSession &&
-        chatSession.hidePersonNames;
-    try {
-      final people = await ref
-          .read(vaultRepositoryProvider)
-          .listPeople(vaultSession);
-      if (!current()) return;
-      _people = people;
-    } on Object {
-      if (!current()) return;
-      _people = const [];
-    }
-  }
-
   Future<ChatDiaryPrivacyProcessor> _createPrivacyProcessor([
     Iterable<ChatDiaryMessage>? messages,
   ]) async {
-    await _refreshPeople();
     final chatSession = chat;
-    if (chatSession == null) throw const AiFailure(AiErrorCode.network);
-    return ChatDiaryPrivacyProcessor(
-      chatSession,
-      chatSession.hidePersonNames ? _people : const <Person>[],
-      messages: messages,
-    );
+    final vaultSession = _vaultSession;
+    final version = _operationVersion;
+    if (chatSession == null || vaultSession == null) {
+      throw const AiFailure(AiErrorCode.network);
+    }
+    final people = chatSession.hidePersonNames
+        ? await ref.read(vaultRepositoryProvider).listPeople(vaultSession)
+        : const <Person>[];
+    _ensureOperationIsCurrent(version);
+    return ChatDiaryPrivacyProcessor(chatSession, people, messages: messages);
   }
 
   void _ensureOperationIsCurrent(int operationVersion) {
@@ -599,17 +574,16 @@ class ChatDiaryController extends ChangeNotifier {
   Future<AiClient> _clientForOperation(int operationVersion) async {
     _ensureOperationIsCurrent(operationVersion);
     final connectionConfig = chat!.connectionConfig;
-    final key = await ref
-        .read(aiSettingsStoreProvider)
-        .readApiKey(connectionConfig);
+    final key = await requireAiRequestKey(
+      enabled: ref.read(aiEnabledProvider),
+      connection: connectionConfig,
+      readApiKey: () =>
+          ref.read(aiSettingsStoreProvider).readApiKey(connectionConfig),
+    );
     _ensureOperationIsCurrent(operationVersion);
-    if (!connectionConfig.isConfigured ||
-        (key.isEmpty && connectionConfig.provider.requiresApiKey)) {
-      throw const AiFailure(AiErrorCode.configuration);
-    }
     if (_client == null ||
         key != _clientApiKey ||
-        !_sameClientConnection(_clientConfig, connectionConfig)) {
+        !sameAiClient(_clientConfig, connectionConfig)) {
       _client?.close();
       _client = ref.read(aiClientFactoryProvider)(connectionConfig, key);
       _clientApiKey = key;
@@ -635,7 +609,7 @@ class ChatDiaryController extends ChangeNotifier {
             message.text,
             message.privateRanges,
             true,
-            message.personRanges ?? const [],
+            message.personRanges,
           )
         : privacy.protect(message.outboundText);
     if (message.isUser && message.outboundText != text) {
@@ -648,11 +622,18 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryPrivacyProcessor privacy,
     int operationVersion, {
     bool diary = false,
+    List<ChatDiaryMessage>? history,
+    bool personaReply = false,
   }) async {
     final chatSession = chat!;
     final vaultSession = _vaultSession!;
     final result = <AiInputMessage>[];
-    for (final message in chatSession.activeMessages) {
+    final selectedHistory = history ?? chatSession.activeMessages;
+    final missingPersonaName = lookupAppLocalizations(
+      (await ref.read(userPreferencesProvider).appLocale).materialLocale,
+    ).personaRoleFriend;
+    _ensureOperationIsCurrent(operationVersion);
+    for (final message in selectedHistory) {
       if (!message.isUser &&
           message.status != ChatDiaryMessageStatus.complete) {
         continue;
@@ -670,7 +651,15 @@ class ChatDiaryController extends ChangeNotifier {
       result.add(
         AiInputMessage(
           isUser: message.isUser,
-          text: _protectedMessageText(privacy, message),
+          text: diary
+              ? _protectedMessageText(privacy, message)
+              : _conversationMessageText(
+                  privacy,
+                  message,
+                  selectedHistory,
+                  forceAttribution: personaReply,
+                  missingPersonaName: missingPersonaName,
+                ),
           images: images,
         ),
       );
@@ -679,13 +668,11 @@ class ChatDiaryController extends ChangeNotifier {
     return [
       AiInputMessage(
         isUser: true,
-        text: jsonEncode([
-          for (final message in result)
-            {
-              'role': message.isUser ? 'user' : 'assistant',
-              'text': message.text,
-            },
-        ]),
+        text: _generationData(
+          privacy,
+          selectedHistory,
+          missingPersonaName: missingPersonaName,
+        ),
         images: [for (final message in result) ...message.images],
       ),
     ];
@@ -694,20 +681,201 @@ class ChatDiaryController extends ChangeNotifier {
   Future<String> _resolveRequestPrompt(
     ChatDiaryPromptPurpose purpose,
     ChatDiaryPrivacyProcessor privacy,
-    int operationVersion,
-  ) async {
+    int operationVersion, {
+    PersonaRecord? replyPersona,
+  }) async {
     final settingsStore = ref.read(aiSettingsStoreProvider);
     final preferences = ref.read(userPreferencesProvider);
     final prompts = (await settingsStore.read(_vaultSession!)).chatDiaryPrompts;
     _ensureOperationIsCurrent(operationVersion);
     final language = await preferences.appLocale;
     _ensureOperationIsCurrent(operationVersion);
-    return privacy.protectPrompt(
-      resolveChatDiaryPrompt(purpose, language, prompts),
+    final l10n = lookupAppLocalizations(language.materialLocale);
+    if (purpose == ChatDiaryPromptPurpose.conversation &&
+        replyPersona != null) {
+      final people = await ref
+          .read(vaultRepositoryProvider)
+          .listPeople(_vaultSession!);
+      _ensureOperationIsCurrent(operationVersion);
+      return buildPersonaConversationPrompt(
+        personId: replyPersona.personId,
+        personaId: replyPersona.personaId,
+        cards: replyPersona.cards!,
+        people: people,
+        privacy: privacy,
+        l10n: l10n,
+        guidance: prompts.guidanceOverride,
+      );
+    }
+    var prompt = resolveChatDiaryPrompt(purpose, language, prompts);
+    if (purpose == ChatDiaryPromptPurpose.generation &&
+        chat!.activeMessages.any((m) => m.persona != null)) {
+      prompt = '${l10n.personaDiarySourcePrompt}\n\n$prompt';
+    }
+    return privacy.protectPrompt(prompt);
+  }
+
+  Map<String, String> _speaker(
+    ChatDiaryPrivacyProcessor privacy,
+    ChatDiaryMessage message, {
+    required String missingPersonaName,
+  }) {
+    if (message.isUser) return const {'kind': 'user'};
+    final persona = message.persona;
+    if (persona == null) return const {'kind': 'ai_default'};
+    return {
+      'kind': 'ai_persona',
+      'person': privacy.personaPersonToken(
+        persona.personId,
+        chat!.personaParticipants[persona.personaId]?.name ??
+            missingPersonaName,
+      ),
+    };
+  }
+
+  String _conversationMessageText(
+    ChatDiaryPrivacyProcessor privacy,
+    ChatDiaryMessage message,
+    List<ChatDiaryMessage> history, {
+    bool forceAttribution = false,
+    required String missingPersonaName,
+  }) {
+    final text = _protectedMessageText(privacy, message);
+    if (message.isUser ||
+        !forceAttribution && !history.any((m) => m.persona != null)) {
+      return text;
+    }
+    return jsonEncode({
+      'speaker': _speaker(
+        privacy,
+        message,
+        missingPersonaName: missingPersonaName,
+      ),
+      'text': text,
+    });
+  }
+
+  String _generationData(
+    ChatDiaryPrivacyProcessor privacy,
+    List<ChatDiaryMessage> history, {
+    required String missingPersonaName,
+  }) {
+    final attributed = history.any((m) => m.persona != null);
+    return jsonEncode([
+      for (final message in history)
+        if (message.isUser || message.status == ChatDiaryMessageStatus.complete)
+          {
+            'role': message.isUser ? 'user' : 'assistant',
+            if (attributed)
+              'speaker': _speaker(
+                privacy,
+                message,
+                missingPersonaName: missingPersonaName,
+              ),
+            'text': _protectedMessageText(privacy, message),
+          },
+    ]);
+  }
+
+  Future<_LoadedPersona> _loadReplyPersona(
+    PersonaReference? identity,
+    int version,
+  ) async {
+    if (identity == null || _vaultSession == null) {
+      return const _LoadedPersona();
+    }
+    PersonaRecord? record;
+    try {
+      record = await ref
+          .read(personaStoreProvider)
+          .load(identity.personId, _vaultSession!);
+    } on Object {
+      _ensureOperationIsCurrent(version);
+      return const _LoadedPersona(failed: true);
+    }
+    _ensureOperationIsCurrent(version);
+    if (!identity.matches(record)) {
+      _forgetCurrentPersona(identity);
+      return const _LoadedPersona();
+    }
+    final people = await ref
+        .read(vaultRepositoryProvider)
+        .listPeople(_vaultSession!);
+    _ensureOperationIsCurrent(version);
+    final person = people.where((p) => p.id == identity.personId).firstOrNull;
+    if (person == null) {
+      _forgetCurrentPersona(identity);
+      return const _LoadedPersona();
+    }
+    chat!.personaParticipants.putIfAbsent(
+      identity.personaId,
+      () =>
+          PersonaParticipant(name: person.name, accentArgb: person.accentArgb),
     );
+    return _LoadedPersona(record: record);
+  }
+
+  void _forgetCurrentPersona(PersonaReference identity) {
+    final selected = chat?.selectedPersona;
+    if (selected?.personId != identity.personId ||
+        selected?.personaId != identity.personaId) {
+      return;
+    }
+    chat!.selectedPersona = null;
+    personaUnavailable = true;
+    notifyListeners();
+  }
+
+  Future<void> selectPersona(PersonaRecord? record) async {
+    if (chat == null ||
+        busy ||
+        chat!.finished ||
+        _handedOff ||
+        _vaultSession == null) {
+      return;
+    }
+    final previous = chat!.selectedPersona;
+    final unavailable = personaUnavailable;
+    final version = _operationVersion;
+    if (record == null) {
+      chat!.selectedPersona = null;
+      personaUnavailable = false;
+    } else {
+      final identity = PersonaReference(
+        personId: record.personId,
+        personaId: record.personaId,
+      );
+      final resolved = await _loadReplyPersona(identity, version);
+      _ensureOperationIsCurrent(version);
+      if (resolved.failed || resolved.record == null) {
+        if (chat!.selectedPersona != previous ||
+            personaUnavailable != unavailable) {
+          try {
+            await persist(throwOnError: true);
+          } on Object {
+            chat!.selectedPersona = previous;
+            personaUnavailable = unavailable;
+            rethrow;
+          }
+        }
+        notifyListeners();
+        return;
+      }
+      chat!.selectedPersona = identity;
+      personaUnavailable = false;
+    }
+    try {
+      await persist(throwOnError: true);
+    } on Object {
+      chat!.selectedPersona = previous;
+      personaUnavailable = unavailable;
+      rethrow;
+    }
+    notifyListeners();
   }
 
   bool get canSend =>
+      ref.read(aiEnabledProvider) &&
       !busy &&
       chat != null &&
       !chat!.finished &&
@@ -715,6 +883,7 @@ class ChatDiaryController extends ChangeNotifier {
       (chat!.composerText.trim().isNotEmpty ||
           chat!.pendingImageIds.isNotEmpty);
   bool get canGenerate =>
+      ref.read(aiEnabledProvider) &&
       !busy &&
       !_handedOff &&
       chat != null &&
@@ -796,10 +965,15 @@ class ChatDiaryController extends ChangeNotifier {
     }
     final chatSession = chat!;
     final parentId = conversationHistory.lastOrNull?.id;
-    await _requestReply(parentId: parentId, newComposer: chatSession.composer);
+    await _requestReply(
+      parentId: parentId,
+      newComposer: chatSession.composer,
+      replyAs: chatSession.selectedPersona,
+    );
   }
 
   Future<void> regenerateReply(String messageId) async {
+    if (!ref.read(aiEnabledProvider)) return;
     final chatSession = chat;
     if (chatSession == null ||
         busy ||
@@ -815,12 +989,13 @@ class ChatDiaryController extends ChangeNotifier {
     if (message == null || message.parentId == null) {
       return;
     }
-    await _requestReply(parentId: message.parentId);
+    await _requestReply(parentId: message.parentId, replyAs: message.persona);
   }
 
   Future<void> _requestReply({
     required String? parentId,
     AiComposerSnapshot? newComposer,
+    PersonaReference? replyAs,
   }) async {
     final chatSession = chat!;
     final keepAlive = ref.keepAlive();
@@ -833,6 +1008,12 @@ class ChatDiaryController extends ChangeNotifier {
       final history = chatSession.pathTo(parentId);
       final privacy = await _createPrivacyProcessor(history);
       _ensureOperationIsCurrent(operationVersion);
+      final loadedPersona = await _loadReplyPersona(replyAs, operationVersion);
+      _ensureOperationIsCurrent(operationVersion);
+      if (replyAs != null && loadedPersona.failed) {
+        throw const AiFailure(AiErrorCode.unavailable);
+      }
+      final replyPersona = loadedPersona.record;
       var replyParent = parentId;
       if (newComposer != null) {
         final protected = privacy.protect(newComposer.text, newComposer.ranges);
@@ -862,19 +1043,35 @@ class ChatDiaryController extends ChangeNotifier {
         outboundText: '',
         parentId: replyParent,
         status: ChatDiaryMessageStatus.pending,
-        connectionSnapshot: chatSession.connectionConfig,
+        connectionSnapshot: AiConnectionConfig.fromSnapshotJson(
+          chatSession.connectionConfig.toSnapshotJson(),
+        ),
+        persona: replyPersona == null
+            ? null
+            : PersonaReference(
+                personId: replyPersona.personId,
+                personaId: replyPersona.personaId,
+              ),
       );
       chatSession.appendMessage(assistantMessage);
       final prompt = await _resolveRequestPrompt(
         ChatDiaryPromptPurpose.conversation,
         privacy,
         operationVersion,
+        replyPersona: replyPersona,
       );
-      assistantMessage.systemPromptSnapshot = prompt;
+      if (assistantMessage.persona == null) {
+        assistantMessage.systemPromptSnapshot = prompt;
+      }
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
-      ref.invalidate(chatDiarySessionsProvider);
-      final messages = await _buildRequestMessages(privacy, operationVersion);
+      ref.invalidate(chatDiaryDraftsProvider);
+      final messages = await _buildRequestMessages(
+        privacy,
+        operationVersion,
+        history: chatSession.pathTo(replyParent),
+        personaReply: replyPersona != null,
+      );
       final client = await _clientForOperation(operationVersion);
       _ensureOperationIsCurrent(operationVersion);
       await for (final delta in client.reply(prompt, messages)) {
@@ -909,7 +1106,7 @@ class ChatDiaryController extends ChangeNotifier {
         await persist();
         if (operationVersion == _operationVersion) {
           busy = false;
-          ref.invalidate(chatDiarySessionsProvider);
+          ref.invalidate(chatDiaryDraftsProvider);
           notifyListeners();
         }
       }
@@ -973,7 +1170,7 @@ class ChatDiaryController extends ChangeNotifier {
       );
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
-      ref.invalidate(chatDiarySessionsProvider);
+      ref.invalidate(chatDiaryDraftsProvider);
       final client = await _clientForOperation(operationVersion);
       generations.update(generation, ChatDiaryGenerationPhase.waiting);
       final output = StringBuffer();
@@ -1019,7 +1216,7 @@ class ChatDiaryController extends ChangeNotifier {
       if (operationVersion == _operationVersion) {
         _finishGeneration(phase, error: _error);
         busy = false;
-        ref.invalidate(chatDiarySessionsProvider);
+        ref.invalidate(chatDiaryDraftsProvider);
         notifyListeners();
       }
       keepAlive.close();
@@ -1060,13 +1257,30 @@ class ChatDiaryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void personaDeleted(String personId) {
+    final value = chat;
+    if (value == null) return;
+    if (value.activeMessages.any(
+      (m) =>
+          m.status == ChatDiaryMessageStatus.pending &&
+          m.persona?.personId == personId,
+    )) {
+      _cancelOperation();
+    }
+    if (value.selectedPersona?.personId == personId) {
+      value.selectedPersona = null;
+      personaUnavailable = true;
+    }
+    unawaited(persist());
+    notifyListeners();
+  }
+
   void lock() {
     _cancelOperation();
     unawaited(persist());
     _saveTimer?.cancel();
     chat = null;
     _vaultSession = null;
-    _people = const [];
     notifyListeners();
   }
 

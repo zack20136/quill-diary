@@ -99,27 +99,36 @@ class _AiConnectionSettingsDialogState
   String? _expandedCustomId;
   String? _invalidNameId;
   _AiConnectionDraft? _snapshotDraft;
+  AiSettingsInspection? _inspection;
   bool _initialTargetMatches = false;
   bool _settingsLoaded = false;
   String? _testingConnectionId;
   bool get _isTestingConnection => _testingConnectionId != null;
   int _connectionTestVersion = 0;
-  String? _conversationOverride, _generationOverride;
+  String? _personalityOverride, _guidanceOverride, _generationOverride;
   String? _organizationConversationOverride, _organizationGenerationOverride;
+  bool _aiEnabled = true;
   bool _hidePersonNames = true;
   bool _isLoadingSettings = true;
   bool _isSavingSettings = false;
+  bool _isConfirmingReset = false;
   bool _isBackgrounded = false;
   bool _settingsScrollLocked = false;
   final _settingsScroll = ScrollController();
   List<({String connectionId, String model})> _modelOrder = const [];
-  bool get _isBusy => _isTestingConnection || _isSavingSettings;
+  bool get _isBusy =>
+      _isTestingConnection || _isSavingSettings || _isConfirmingReset;
   AiClient? _connectionTestClient;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ref.listenManual(aiEnabledProvider, (_, enabled) {
+      if (!enabled && _testingConnectionId != null && mounted) {
+        setState(_cancelConnectionTest);
+      }
+    });
     ref.listenManual(appSessionProvider, (_, next) {
       if (next.status == AppLockStatus.locked ||
           next.status == AppLockStatus.recoveryRequired) {
@@ -150,8 +159,18 @@ class _AiConnectionSettingsDialogState
       final session = ref.read(appSessionProvider).session;
       if (session == null) throw StateError('尚未解鎖');
       final store = ref.read(aiSettingsStoreProvider);
+      final inspection = await store.inspect(session);
+      if (!mounted || ref.read(appSessionProvider).session != session) return;
+      _inspection = inspection;
+      if (inspection.status == AiSettingsStatus.unreadable) {
+        setState(() {
+          _isLoadingSettings = false;
+          _settingsLoaded = false;
+        });
+        return;
+      }
       final stored = await store.read(session);
-      if (!mounted) return;
+      if (!mounted || ref.read(appSessionProvider).session != session) return;
       var index = 1;
       for (var config in stored.connection.orderedConnections) {
         if (config.provider == AiProvider.custom &&
@@ -196,12 +215,14 @@ class _AiConnectionSettingsDialogState
           .firstOrNull
           ?.config
           .connectionId;
-      _conversationOverride = stored.chatDiaryPrompts.conversationOverride;
+      _personalityOverride = stored.chatDiaryPrompts.personalityOverride;
+      _guidanceOverride = stored.chatDiaryPrompts.guidanceOverride;
       _generationOverride = stored.chatDiaryPrompts.generationOverride;
       _organizationConversationOverride =
           stored.organizationPrompts.conversationOverride;
       _organizationGenerationOverride =
           stored.organizationPrompts.generationOverride;
+      _aiEnabled = stored.aiEnabled;
       _hidePersonNames =
           widget.initialHidePersonNames ?? stored.hidePersonNames;
       _refreshModelOrder();
@@ -218,6 +239,62 @@ class _AiConnectionSettingsDialogState
   }
 
   AiConnectionConfig _edited(String id) => _drafts[id]!.edited;
+
+  Future<void> _resetSettings() async {
+    final session = ref.read(appSessionProvider).session;
+    final inspection = _inspection;
+    if (session == null ||
+        _isLoadingSettings ||
+        _isConfirmingReset ||
+        inspection == null ||
+        inspection.status != AiSettingsStatus.unreadable) {
+      return;
+    }
+    setState(() => _isConfirmingReset = true);
+    bool accepted;
+    try {
+      accepted = await showAppConfirmDialog(
+        context: context,
+        title: context.l10n.aiSettingsReset,
+        content: Text(context.l10n.aiSettingsResetConfirm),
+        cancelLabel: context.l10n.commonActionCancel,
+        confirmLabel: context.l10n.aiSettingsReset,
+        confirmStyle: AppConfirmStyle.destructive,
+      );
+    } finally {
+      if (mounted) setState(() => _isConfirmingReset = false);
+    }
+    if (!accepted ||
+        !mounted ||
+        ref.read(appSessionProvider).session != session) {
+      return;
+    }
+    setState(() => _isLoadingSettings = true);
+    try {
+      await ref
+          .read(aiSettingsStoreProvider)
+          .replaceUnreadableWithDefaults(session, expected: inspection);
+      if (!mounted || ref.read(appSessionProvider).session != session) return;
+      for (final draft in _drafts.values) {
+        draft.dispose();
+      }
+      _drafts.clear();
+      _credentials.clear();
+      _credentialsPendingDeletion.clear();
+      ref.invalidate(aiConnectionReadyProvider);
+      ref.invalidate(aiEnabledProvider);
+      _removedConnectionIds.clear();
+      _snapshotDraft?.dispose();
+      _snapshotDraft = null;
+      _initialTargetMatches = false;
+      await _load();
+    } on Object {
+      if (mounted && ref.read(appSessionProvider).session == session) {
+        await _load();
+        if (mounted) _showError(AiErrorCode.storage);
+      }
+    }
+  }
 
   void _replaceConnection(String id, AiConnectionConfig config) {
     _drafts[id]!.config = config;
@@ -388,12 +465,19 @@ class _AiConnectionSettingsDialogState
       ModalRoute.of(context)?.isCurrent == true;
 
   Future<void> _testConnection(String id) async {
-    if (_isBusy || !_drafts[id]!.keyLoaded) return;
+    if (_isBusy || !_drafts[id]!.keyLoaded || !ref.read(aiEnabledProvider)) {
+      return;
+    }
     final version = ++_connectionTestVersion;
     FocusScope.of(context).unfocus();
     setState(() => _testingConnectionId = id);
     AiClient? client;
     try {
+      if (!mounted ||
+          !ref.read(aiEnabledProvider) ||
+          !_connectionIsCurrent(version)) {
+        return;
+      }
       _capture(id);
       final AiConnectionConfig connectionConfig = _edited(id);
       validateAiEndpoint(connectionConfig);
@@ -471,11 +555,13 @@ class _AiConnectionSettingsDialogState
     required String Function(AppLocalizations l10n) help,
     required String Function(AppLanguage language) defaultPrompt,
     required Key fieldKey,
-    required void Function(String? customText) apply,
+    void Function(String? customText)? apply,
+    bool readOnly = false,
   }) async {
     final result = await _withoutOuterScroll(
       () => showAiPromptDialog(
         context,
+        readOnly: readOnly,
         title: title,
         help: help,
         defaultPrompt: defaultPrompt,
@@ -483,7 +569,9 @@ class _AiConnectionSettingsDialogState
         customText: customText,
       ),
     );
-    if (mounted && result != null) setState(() => apply(result.customText));
+    if (mounted && result != null && apply != null && !readOnly) {
+      setState(() => apply(result.customText));
+    }
   }
 
   AiConnectionSettings _settings() => AiConnectionSettings(
@@ -603,12 +691,14 @@ class _AiConnectionSettingsDialogState
         session,
         AiStoredSettings(
           connection: _settings(),
+          aiEnabled: _aiEnabled,
           hidePersonNames: _hidePersonNames,
-          chatDiaryPrompts: AiPromptOverrides(
-            conversationOverride: _conversationOverride,
+          chatDiaryPrompts: ChatDiaryPromptSettings(
+            personalityOverride: _personalityOverride,
+            guidanceOverride: _guidanceOverride,
             generationOverride: _generationOverride,
           ),
-          organizationPrompts: AiPromptOverrides(
+          organizationPrompts: DiaryOrganizationPromptSettings(
             conversationOverride: _organizationConversationOverride,
             generationOverride: _organizationGenerationOverride,
           ),
@@ -625,6 +715,8 @@ class _AiConnectionSettingsDialogState
           : _drafts[initial.connectionId]?.edited;
       final chatConnection = initial == null
           ? null
+          : !initial.isConfigured
+          ? _settings().activeConfig
           : _initialTargetMatches &&
                 current != null &&
                 current.catalog.contains(initial.model)
@@ -647,9 +739,10 @@ class _AiConnectionSettingsDialogState
 
   Widget _promptTile({
     required String title,
-    required String? custom,
     required IconData icon,
     required VoidCallback onTap,
+    String? custom,
+    bool showStatus = true,
   }) {
     final l10n = context.l10n;
     return ListTile(
@@ -661,9 +754,9 @@ class _AiConnectionSettingsDialogState
       subtitleTextStyle: Theme.of(context).textTheme.bodySmall
           ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       title: Text(title),
-      subtitle: Text(
-        custom == null ? l10n.aiPromptBuiltIn : l10n.aiPromptCustom,
-      ),
+      subtitle: showStatus
+          ? Text(custom == null ? l10n.aiPromptBuiltIn : l10n.aiPromptCustom)
+          : null,
       trailing: const Icon(Icons.chevron_right),
       onTap: _isBusy ? null : onTap,
     );
@@ -963,7 +1056,9 @@ class _AiConnectionSettingsDialogState
               icon: Icons.wifi_tethering,
               appearance: AppActionButtonAppearance.outlined,
               loading: _testingConnectionId == id,
-              onPressed: _isBusy ? null : () => _testConnection(id),
+              onPressed: _isBusy || !ref.watch(aiEnabledProvider)
+                  ? null
+                  : () => _testConnection(id),
             ),
             if (custom)
               TextButton.icon(
@@ -1050,7 +1145,28 @@ class _AiConnectionSettingsDialogState
             child: _isLoadingSettings
                 ? const Center(child: CircularProgressIndicator())
                 : !_settingsLoaded
-                ? const SizedBox.shrink()
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(l10n.aiSettingsResetHint),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _isConfirmingReset
+                            ? null
+                            : () => unawaited(
+                                _inspection?.status ==
+                                        AiSettingsStatus.unreadable
+                                    ? _resetSettings()
+                                    : _load(),
+                              ),
+                        child: Text(
+                          _inspection?.status == AiSettingsStatus.unreadable
+                              ? l10n.aiSettingsReset
+                              : l10n.commonActionRetry,
+                        ),
+                      ),
+                    ],
+                  )
                 : SingleChildScrollView(
                     key: const ValueKey('ai-settings-scroll'),
                     controller: _settingsScroll,
@@ -1069,41 +1185,81 @@ class _AiConnectionSettingsDialogState
                           children: [
                             _promptGroup([
                               _promptTile(
-                                title: l10n.chatDiaryConversationPrompt,
-                                custom: _conversationOverride,
-                                icon: Icons.forum_outlined,
+                                title: l10n.chatDiaryRulesLabel,
+                                showStatus: false,
+                                icon: Icons.shield_outlined,
                                 onTap: () => _editPrompt(
-                                  customText: _conversationOverride,
-                                  title: (l10n) =>
-                                      l10n.chatDiaryConversationPrompt,
-                                  help: (l10n) => l10n.chatDiaryPromptHelp,
+                                  customText: null,
+                                  readOnly: true,
+                                  title: (l10n) => l10n.chatDiaryRulesLabel,
+                                  help: (l10n) => l10n.chatDiaryRulesHelp,
                                   defaultPrompt: (language) =>
                                       resolveChatDiaryPrompt(
-                                        ChatDiaryPromptPurpose.conversation,
+                                        ChatDiaryPromptPurpose.rules,
                                         language,
-                                        const AiPromptOverrides(),
+                                        const ChatDiaryPromptSettings(),
                                       ),
                                   fieldKey: const ValueKey(
-                                    ChatDiaryPromptPurpose.conversation,
+                                    ChatDiaryPromptPurpose.rules,
                                   ),
-                                  apply: (value) =>
-                                      _conversationOverride = value,
                                 ),
                               ),
                               _promptTile(
-                                title: l10n.chatDiaryGenerationPrompt,
+                                title: l10n.chatDiaryGuidanceLabel,
+                                custom: _guidanceOverride,
+                                icon: Icons.route_outlined,
+                                onTap: () => _editPrompt(
+                                  customText: _guidanceOverride,
+                                  title: (l10n) => l10n.chatDiaryGuidanceLabel,
+                                  help: (l10n) => l10n.chatDiaryGuidanceHelp,
+                                  defaultPrompt: (language) =>
+                                      resolveChatDiaryPrompt(
+                                        ChatDiaryPromptPurpose.guidance,
+                                        language,
+                                        const ChatDiaryPromptSettings(),
+                                      ),
+                                  fieldKey: const ValueKey(
+                                    ChatDiaryPromptPurpose.guidance,
+                                  ),
+                                  apply: (value) => _guidanceOverride = value,
+                                ),
+                              ),
+                              _promptTile(
+                                title: l10n.chatDiaryPersonalityLabel,
+                                custom: _personalityOverride,
+                                icon: Icons.forum_outlined,
+                                onTap: () => _editPrompt(
+                                  customText: _personalityOverride,
+                                  title: (l10n) =>
+                                      l10n.chatDiaryPersonalityLabel,
+                                  help: (l10n) => l10n.chatDiaryPersonalityHelp,
+                                  defaultPrompt: (language) =>
+                                      resolveChatDiaryPrompt(
+                                        ChatDiaryPromptPurpose.personality,
+                                        language,
+                                        const ChatDiaryPromptSettings(),
+                                      ),
+                                  fieldKey: const ValueKey(
+                                    ChatDiaryPromptPurpose.personality,
+                                  ),
+                                  apply: (value) =>
+                                      _personalityOverride = value,
+                                ),
+                              ),
+                              _promptTile(
+                                title: l10n.chatDiaryGenerationLabel,
                                 custom: _generationOverride,
                                 icon: Icons.article_outlined,
                                 onTap: () => _editPrompt(
                                   customText: _generationOverride,
                                   title: (l10n) =>
-                                      l10n.chatDiaryGenerationPrompt,
-                                  help: (l10n) => l10n.chatDiaryPromptHelp,
+                                      l10n.chatDiaryGenerationLabel,
+                                  help: (l10n) => l10n.chatDiaryGenerationHelp,
                                   defaultPrompt: (language) =>
                                       resolveChatDiaryPrompt(
                                         ChatDiaryPromptPurpose.generation,
                                         language,
-                                        const AiPromptOverrides(),
+                                        const ChatDiaryPromptSettings(),
                                       ),
                                   fieldKey: const ValueKey(
                                     ChatDiaryPromptPurpose.generation,
@@ -1121,19 +1277,39 @@ class _AiConnectionSettingsDialogState
                           children: [
                             _promptGroup([
                               _promptTile(
-                                title: l10n.organizationConversationPromptLabel,
+                                title: l10n.chatDiaryRulesLabel,
+                                showStatus: false,
+                                icon: Icons.shield_outlined,
+                                onTap: () => _editPrompt(
+                                  customText: null,
+                                  readOnly: true,
+                                  title: (l10n) => l10n.chatDiaryRulesLabel,
+                                  help: (l10n) => l10n.organizationRulesHelp,
+                                  defaultPrompt: (language) =>
+                                      lookupAppLocalizations(
+                                        language.materialLocale,
+                                      ).organizationRulesPrompt,
+                                  fieldKey: const ValueKey(
+                                    'organization-rules-prompt',
+                                  ),
+                                ),
+                              ),
+                              _promptTile(
+                                title: l10n.organizationConversationLabel,
                                 custom: _organizationConversationOverride,
                                 icon: Icons.forum_outlined,
                                 onTap: () => _editPrompt(
                                   customText: _organizationConversationOverride,
                                   title: (l10n) =>
-                                      l10n.organizationConversationPromptLabel,
-                                  help: (l10n) => l10n.organizationPromptHelp,
+                                      l10n.organizationConversationLabel,
+                                  help: (l10n) =>
+                                      l10n.organizationConversationHelp,
                                   defaultPrompt: (language) =>
                                       resolveDiaryOrganizationPrompt(
                                         generate: false,
                                         language: language,
-                                        settings: const AiPromptOverrides(),
+                                        settings:
+                                            const DiaryOrganizationPromptSettings(),
                                       ),
                                   fieldKey: const ValueKey(
                                     'organization-conversation-prompt',
@@ -1143,19 +1319,21 @@ class _AiConnectionSettingsDialogState
                                 ),
                               ),
                               _promptTile(
-                                title: l10n.organizationGenerationPromptLabel,
+                                title: l10n.organizationGenerationLabel,
                                 custom: _organizationGenerationOverride,
                                 icon: Icons.edit_note_outlined,
                                 onTap: () => _editPrompt(
                                   customText: _organizationGenerationOverride,
                                   title: (l10n) =>
-                                      l10n.organizationGenerationPromptLabel,
-                                  help: (l10n) => l10n.organizationPromptHelp,
+                                      l10n.organizationGenerationLabel,
+                                  help: (l10n) =>
+                                      l10n.organizationGenerationHelp,
                                   defaultPrompt: (language) =>
                                       resolveDiaryOrganizationPrompt(
                                         generate: true,
                                         language: language,
-                                        settings: const AiPromptOverrides(),
+                                        settings:
+                                            const DiaryOrganizationPromptSettings(),
                                       ),
                                   fieldKey: const ValueKey(
                                     'organization-generation-prompt',
@@ -1251,7 +1429,6 @@ class _AiConnectionSettingsDialogState
   }
 
   Widget _hidePeopleCard(AppLocalizations l10n) {
-    final Color hintColor = Theme.of(context).colorScheme.onSurfaceVariant;
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(16),
@@ -1261,28 +1438,17 @@ class _AiConnectionSettingsDialogState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.person_off_outlined, size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    l10n.chatDiaryHidePeople,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Switch(
-                  value: _hidePersonNames,
-                  onChanged: _isBusy
-                      ? null
-                      : (value) => setState(() => _hidePersonNames = value),
-                ),
-              ],
-            ),
-            Text(
-              l10n.chatDiaryHidePeopleHint,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: hintColor),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.chatDiaryHidePeople),
+              subtitle: Text(
+                l10n.chatDiaryHidePeopleHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              value: _hidePersonNames,
+              onChanged: _isBusy
+                  ? null
+                  : (value) => setState(() => _hidePersonNames = value),
             ),
           ],
         ),

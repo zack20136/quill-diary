@@ -108,7 +108,60 @@ void main() {
     await harness.dispose();
   });
 
+  test('模型與網址留空時仍可建立並重載離線草稿，不建立 AI 客戶端', () async {
+    settings.settings = const AiConnectionSettings(
+      activeConnectionId: 'custom',
+      connections: {'custom': AiConnectionConfig(provider: AiProvider.custom)},
+    );
+    final id = generateChatDiaryId();
+    expect(
+      await controller.start(id, setup.session, openingMessage: '開始'),
+      ChatDiaryLoadResult.loaded,
+    );
+    controller.updateComposer('尚未設定也能保存', []);
+    await controller.persist(throwOnError: true);
+    final loaded = await store.load(id, setup.session);
+    expect(loaded!.composerText, '尚未設定也能保存');
+    expect(loaded.connectionConfig.isConfigured, isFalse);
+    expect(clientConfigs, isEmpty);
+  });
+
   group('生成與鎖定', () {
+    test('關閉 AI 立即停止生成並保留聊天，重新開啟不自動重送', () async {
+      chat.appendMessage(
+        ChatDiaryMessage(
+          id: 'user',
+          isUser: true,
+          text: '準備中的日記',
+          outboundText: '準備中的日記',
+        ),
+      );
+      final stream = StreamController<String>();
+      final started = Completer<void>();
+      client.response = () {
+        started.complete();
+        return stream.stream;
+      };
+      final generating = controller.generate(testZhL10n);
+      await started.future;
+      await container.read(aiEnabledProvider.notifier).setEnabled(false);
+      await container.pump();
+      expect(controller.busy, isFalse);
+      expect(client.closed, isTrue);
+      expect(controller.chat, same(chat));
+      expect(controller.canGenerate, isFalse);
+      stream.add('# 晚到結果\n\n不應套用');
+      await stream.close();
+      expect(await generating, ChatDiaryGenerationResult.notGenerated);
+      expect(
+        (await store.load(chat.id, setup.session))!.generatedEntryId,
+        isNull,
+      );
+      await container.read(aiEnabledProvider.notifier).setEnabled(true);
+      expect(clientConfigs, hasLength(1));
+      expect(controller.busy, isFalse);
+    });
+
     test('生成離頁後持續工作、暫緩自動鎖定，完成後保留草稿且不重送', () async {
       chat.appendMessage(
         ChatDiaryMessage(
@@ -125,7 +178,10 @@ void main() {
         return stream.stream;
       };
       final phases = <ChatDiaryGenerationPhase>[];
-      final watching = container.listen(chatDiaryGenerationsProvider, (_, jobs) {
+      final watching = container.listen(chatDiaryGenerationsProvider, (
+        _,
+        jobs,
+      ) {
         phases.add(jobs[(chat.vaultId, chat.id)]!.phase);
       });
       final generating = controller.generate(testZhL10n);
@@ -315,7 +371,9 @@ void main() {
         final stored = (await store.load(chat.id, setup.session))!;
         expect(
           stored.messages.last.status,
-          fails ? ChatDiaryMessageStatus.failed : ChatDiaryMessageStatus.complete,
+          fails
+              ? ChatDiaryMessageStatus.failed
+              : ChatDiaryMessageStatus.complete,
         );
         expect(stored.messages.last.text, fails ? '' : '完整的合成回覆');
       });
@@ -570,7 +628,7 @@ void main() {
         await store.flush();
         if (clearInput) {
           expect((await store.draftDirectory(chat.id)).existsSync(), isFalse);
-          expect(await store.list(setup.session), isEmpty);
+          expect(await store.listDrafts(setup.session), isEmpty);
         } else {
           expect(
             ((await store.load(chat.id, setup.session))!).composerText,
@@ -582,6 +640,52 @@ void main() {
   });
 
   group('隱私與預覽', () {
+    test('送出與預覽同時讀取名冊時，各自使用已讀取的名冊遮蔽姓名', () async {
+      await harness.repository.createPerson(
+        setup.session,
+        PersonDraft(name: '王小明'),
+      );
+      controller.updateComposer('和王小明碰面', []);
+      final sending = controller.send();
+      final previewing = controller.previewRequest();
+      await sending;
+      final preview = await previewing;
+      expect(client.calls.single.messages.single.text, isNot(contains('王小明')));
+      expect(
+        preview!.turns.where((t) => t.isUser).first.text,
+        isNot(contains('王小明')),
+      );
+    });
+
+    test('名冊讀取失敗時停止預覽與外送，保留輸入供修復後重試', () async {
+      await harness.repository.createPerson(
+        setup.session,
+        PersonDraft(name: '王小明'),
+      );
+      final file = File(await harness.pathStrategy.peopleCatalogPath());
+      final original = await file.readAsBytes();
+      await file.writeAsString('損毀的名冊');
+      await harness.repository.closeUnlockedResources();
+      await harness.repository.ensureIndexReady(setup.session);
+      const text = '和王小明去旅行';
+      controller.updateComposer(text, []);
+
+      await expectLater(controller.previewRequest(), throwsFormatException);
+      await controller.send();
+
+      expect(client.calls, isEmpty);
+      expect(clientConfigs, isEmpty);
+      expect(controller.unexpectedError, isTrue);
+      expect(controller.chat!.messages, isEmpty);
+      expect(controller.chat!.composerText, text);
+      expect(controller.busy, isFalse);
+
+      await file.writeAsBytes(original);
+      await controller.send();
+      expect(controller.unexpectedError, isFalse);
+      expect(client.calls.single.messages.single.text, isNot(contains('王小明')));
+    });
+
     test('送出前隱藏人物與反白內容且原文只留在加密聊天', () async {
       await harness.repository.createPerson(
         setup.session,
@@ -622,31 +726,36 @@ void main() {
     test('下一次請求使用新語系與完整自訂提示詞', () async {
       controller.updateComposer('第一則', []);
       await controller.send();
-      expect(client.calls.last.prompt, contains('預設使用繁體中文'));
+      expect(
+        client.calls.last.prompt,
+        contains(testZhL10n.chatDiaryConversationRulesPrompt),
+      );
       await preferences.setAppLocale(AppLanguage.en);
       controller.updateComposer('第二則', []);
       await controller.send();
       expect(
         client.calls.last.prompt,
-        contains('By default use natural English'),
+        contains(testEnL10n.chatDiaryConversationRulesPrompt),
       );
-      settings.chatDiaryPrompts = const AiPromptOverrides(
-        conversationOverride: '只有這一段自訂提示詞',
+      settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        personalityOverride: '只有這一段自訂提示詞',
       );
       controller.updateComposer('第三則', []);
       await controller.send();
-      expect(client.calls.last.prompt, '只有這一段自訂提示詞');
+      expect(client.calls.last.prompt, contains('只有這一段自訂提示詞'));
     });
     test('反白只隱藏標記區間，較早訊息保留原文，提示詞仍隱藏同一段', () async {
-      settings.chatDiaryPrompts = const AiPromptOverrides(
-        conversationOverride: '我的住址是秘密地址',
+      settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        personalityOverride: '我的住址是秘密地址',
         generationOverride: '整理秘密地址的故事',
       );
       controller.updateComposer('先前提過秘密地址', []);
       await controller.send();
       controller.updateComposer('秘密地址再提一次秘密地址', [const PrivateTextRange(0, 4)]);
       final beforeSend = (await controller.previewRequest())!;
-      final pendingTurns = beforeSend.turns.where((turn) => turn.isUser).toList();
+      final pendingTurns = beforeSend.turns
+          .where((turn) => turn.isUser)
+          .toList();
       expect(pendingTurns.first.text, '先前提過秘密地址');
       expect(pendingTurns.last.text, '⟦S01⟧再提一次秘密地址');
       expect(beforeSend.systemPrompt, isNot(contains('秘密地址')));
@@ -699,8 +808,8 @@ void main() {
       expect(draft.markdownBody, isNot(contains('私密補記')));
     });
     test('生成預覽與實際提示詞、對話 JSON 及圖片相同，不含待送內容', () async {
-      settings.chatDiaryPrompts = const AiPromptOverrides(
-        conversationOverride: '需求對話提示詞',
+      settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        personalityOverride: '需求對話提示詞',
         generationOverride: '生成提示詞與秘密',
       );
       await controller.addImage(testAiPng);
@@ -725,9 +834,10 @@ void main() {
         client.calls.last.messages.single.text,
         generation.turns.single.text,
       );
-      expect(client.calls.last.messages.single.images.map((image) => image.id), [
-        sentImage,
-      ]);
+      expect(
+        client.calls.last.messages.single.images.map((image) => image.id),
+        [sentImage],
+      );
       expect(chat.pendingImageIds, [unsentImage]);
     });
     test('歡迎訊息只保存於本機，續聊不重加且不進入聊天或生成請求', () async {
@@ -742,7 +852,10 @@ void main() {
       await controller.send();
       expect(client.calls.single.messages.single.text, '真的想記住的事情');
       await controller.load(chat.id, setup.session, openingMessage: '另一種語言的開場');
-      expect(controller.chat!.openingMessage, testZhL10n.chatDiaryWelcomeMessage);
+      expect(
+        controller.chat!.openingMessage,
+        testZhL10n.chatDiaryWelcomeMessage,
+      );
       client.output = '# 記錄\n\n真的想記住的事情';
       await controller.generate(testZhL10n);
       expect(
@@ -771,7 +884,10 @@ void main() {
       controller.updateComposer('今天去了秘密地點', [const PrivateTextRange(4, 8)]);
       await controller.send();
       expect(client.calls.single.messages.single.images, hasLength(1));
-      expect(client.calls.single.messages.single.images.single.bytes, testAiPng);
+      expect(
+        client.calls.single.messages.single.images.single.bytes,
+        testAiPng,
+      );
       client.output = '# 今天的小事\n\n今天留下了一段回憶。';
       expect(
         await controller.generate(testZhL10n),
@@ -858,7 +974,10 @@ void main() {
         expect(draft.markdownBody, example.body);
         final history =
             jsonDecode(client.calls.last.messages.single.text) as List;
-        expect(history.map((message) => message['role']), ['user', 'assistant']);
+        expect(history.map((message) => message['role']), [
+          'user',
+          'assistant',
+        ]);
         expect(history.first['text'], example.body);
         expect(history.last['text'], '回覆');
       });
@@ -886,7 +1005,10 @@ void main() {
       await controller.addImage(original);
       controller.updateComposer('照片', []);
       await controller.send();
-      expect(client.calls.single.messages.single.images.single.bytes, testAiPng);
+      expect(
+        client.calls.single.messages.single.images.single.bytes,
+        testAiPng,
+      );
       client.output = '# 照片\n\n留下一張照片';
       await controller.generate(testZhL10n);
       final draftStore = container.read(editorDraftStoreProvider);
@@ -1021,7 +1143,9 @@ void main() {
       });
       await gatedDrafts.write(key, edited, setup.session);
       final signature = controller.chat!.generatedDraftSignature;
-      final pending = await harness.pathStrategy.editorDraftPendingDirectory(key);
+      final pending = await harness.pathStrategy.editorDraftPendingDirectory(
+        key,
+      );
       final files = pending.listSync().map((file) => file.path).toSet();
       final gate = Completer<void>();
       gatedDrafts.writeStarted = Completer<void>();
@@ -1046,7 +1170,8 @@ void main() {
       final editor = await harness.pathStrategy.editorDraftDirectory(key);
       expect(
         editor.listSync().where(
-          (file) => file.path.endsWith('.tmp') || file.path.endsWith('.previous'),
+          (file) =>
+              file.path.endsWith('.tmp') || file.path.endsWith('.previous'),
         ),
         isEmpty,
       );
@@ -1064,7 +1189,9 @@ void main() {
       await controller.resumeAfterEditor(chat.id, setup.session);
       final key = ChatDiarySession.draftKeyFor(chat.id);
       final previous = (await gatedDrafts.read(key, setup.session))!;
-      final pending = await harness.pathStrategy.editorDraftPendingDirectory(key);
+      final pending = await harness.pathStrategy.editorDraftPendingDirectory(
+        key,
+      );
       final files = pending.listSync().map((file) => file.path).toSet();
       final gate = Completer<void>();
       gatedDrafts.stageStarted = Completer<void>();
@@ -1215,8 +1342,8 @@ void main() {
       final started = Completer<void>();
       final finish = Completer<void>();
       settings.keys[chat.connectionConfig.credentialId] = 'first-key';
-      settings.chatDiaryPrompts = const AiPromptOverrides(
-        conversationOverride: '原始完整提示詞',
+      settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        personalityOverride: '原始完整提示詞',
       );
       client.response = () async* {
         started.complete();
@@ -1231,17 +1358,17 @@ void main() {
       settings.settings = const AiConnectionSettings(
         activeConnectionId: 'openai',
       );
-      settings.chatDiaryPrompts = const AiPromptOverrides(
-        conversationOverride: '更新後完整提示詞',
+      settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        personalityOverride: '更新後完整提示詞',
       );
       finish.complete();
       await sending;
-      expect(client.calls.single.prompt, '原始完整提示詞');
+      expect(client.calls.single.prompt, contains('原始完整提示詞'));
       client.response = null;
       controller.updateComposer('再補一段', []);
       await controller.send();
       expect(clientKeys, ['first-key', 'rotated-key']);
-      expect(client.calls.last.prompt, '更新後完整提示詞');
+      expect(client.calls.last.prompt, contains('更新後完整提示詞'));
       expect(
         controller.chat!.connectionConfig.protocol,
         AiApiProtocol.ollamaChat,
@@ -1262,13 +1389,15 @@ void main() {
       expect(clientConfigs, hasLength(2));
       expect(resolvedThinkingLevel(clientConfigs.first), AiThinkingLevel.off);
       expect(resolvedThinkingLevel(clientConfigs.last), AiThinkingLevel.high);
-      expect(original.connectionSnapshot!.thinkingLevels, isEmpty);
+      expect(original.connectionSnapshot!.thinkingLevels, {
+        before.model: AiThinkingLevel.off,
+      });
       expect(
         controller.chat!.activeMessages.last.connectionSnapshot!.thinkingLevels,
         {before.model: AiThinkingLevel.high},
       );
     });
-    test('同網址同模型切換帳號會更換金鑰與連線，舊回覆保留原帳號', () async {
+    test('同網址同模型切換帳戶會更換金鑰與連線，舊回覆保留原帳戶', () async {
       final a = chat.connectionConfig.copyWith(
         customConnectionId: 'aic_a',
         displayName: '工作',
@@ -1283,11 +1412,11 @@ void main() {
       settings.keys[a.credentialId] = 'key-a';
       settings.keys[b.credentialId] = 'key-b';
       await controller.applySettings(a, false);
-      controller.updateComposer('第一組帳號', []);
+      controller.updateComposer('第一組帳戶', []);
       await controller.send();
       final original = controller.chat!.activeMessages.last;
       await controller.selectModel(ChatModelOption(connectionConfig: b));
-      controller.updateComposer('第二組帳號', []);
+      controller.updateComposer('第二組帳戶', []);
       await controller.send();
       expect(clientKeys, ['key-a', 'key-b']);
       expect(clientConfigs.map((c) => c.connectionId), ['aic_a', 'aic_b']);
@@ -1348,7 +1477,9 @@ void main() {
       controller.updateComposer('自訂設定', []);
       await controller.send();
       expect(clientConfigs, hasLength(2));
-      expect(original.connectionSnapshot!.thinkingOverrides, isEmpty);
+      expect(thinkingRequestFields(original.connectionSnapshot!), {
+        'think': false,
+      });
       await controller.applySettings(
         withFields({
           'custom': {'budget': 1024},
@@ -1381,7 +1512,10 @@ void main() {
       final message = controller.chat!.activeMessages.last;
       expect(message.status, ChatDiaryMessageStatus.interrupted);
       expect(message.text, isNot(contains('不能追加')));
-      expect(message.connectionSnapshot!.toJson(), oldConfig.toJson());
+      expect(
+        message.connectionSnapshot!.toSnapshotJson(),
+        oldConfig.toSnapshotJson(),
+      );
       expect(controller.chat!.connectionConfig.model, 'new-model');
       expect(client.calls, hasLength(1));
     });
@@ -1435,13 +1569,19 @@ void main() {
       await controller.applySettings(connectionConfig, false);
       expect(controller.chat!.connectionConfig.model, 'new-model');
       expect(controller.chat!.hidePersonNames, isFalse);
-      expect(previous.connectionSnapshot!.toJson(), oldConfig.toJson());
+      expect(
+        previous.connectionSnapshot!.toSnapshotJson(),
+        oldConfig.toSnapshotJson(),
+      );
       final saved = (await store.load(chat.id, setup.session))!;
       expect(saved.connectionConfig.protocol, AiApiProtocol.claudeMessages);
       expect(saved.hidePersonNames, isFalse);
       controller.updateComposer('下一段合成內容', []);
       await controller.send();
-      expect(clientConfigs.last.toJson(), connectionConfig.toJson());
+      expect(
+        clientConfigs.last.toSnapshotJson(),
+        connectionConfig.captureRequestSnapshot().toSnapshotJson(),
+      );
       expect(clientKeys.last, 'new-synthetic-key');
       expect(
         controller.chat!.activeMessages.last.connectionSnapshot!.model,
@@ -1482,13 +1622,14 @@ void main() {
       store.failDeletes = false;
       await controller.delete(chat.id, setup.session);
       expect(controller.chat, isNull);
-      expect(await store.list(setup.session), isEmpty);
+      expect(await store.listDrafts(setup.session), isEmpty);
     });
     test('成功失敗及中斷回覆皆保留版本，串流與編輯期間不切換分支', () async {
       controller.updateComposer('第一則', []);
       await controller.send();
       final original = controller.chat!.activeMessages.last;
-      client.response = () => Stream.error(const AiFailure(AiErrorCode.network));
+      client.response = () =>
+          Stream.error(const AiFailure(AiErrorCode.network));
       await controller.regenerateReply(original.id);
       final failed = controller.chat!.activeMessages.last;
       expect(failed.status, ChatDiaryMessageStatus.failed);
@@ -1525,7 +1666,10 @@ void main() {
       client.failure = const AiFailure(AiErrorCode.network);
       controller.updateComposer('可以生成的片段', []);
       await controller.send();
-      expect(controller.errorMessageId, controller.chat!.activeMessages.last.id);
+      expect(
+        controller.errorMessageId,
+        controller.chat!.activeMessages.last.id,
+      );
       expect(
         await controller.generate(testZhL10n),
         ChatDiaryGenerationResult.notGenerated,

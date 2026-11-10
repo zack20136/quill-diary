@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/diary_organization/diary_organization_controller.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
@@ -15,15 +16,27 @@ import 'package:quill_diary/shared/presentation/widgets/app_choice_card.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/shared/test_l10n.dart';
+
+class _FixedAiEnabled extends AiEnabledController {
+  _FixedAiEnabled(this._value);
+
+  final bool _value;
+
+  @override
+  bool build() => _value;
+}
 
 Widget _app({
   required ChatDiarySession? chat,
   required GoRouter router,
   Future<ChatDiarySession?> Function()? loadChat,
   double textScale = 1,
+  bool aiEnabled = true,
 }) {
   return ProviderScope(
     overrides: [
+      aiEnabledProvider.overrideWith(() => _FixedAiEnabled(aiEnabled)),
       organizationDraftProvider.overrideWith((ref, id) async => null),
       chatDiaryForEntryProvider.overrideWith(
         (ref, id) => loadChat != null ? loadChat() : Future.value(chat),
@@ -75,6 +88,23 @@ GoRouter _router(String entryId) => GoRouter(
 );
 
 void main() {
+  testWidgets('AI 關閉時保留日記 AI 按鈕並呈現停用狀態', (tester) async {
+    final id = generateEntryId();
+    final router = _router(id);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_app(chat: null, router: router, aiEnabled: false));
+    await tester.pumpAndSettle();
+    final button = find.widgetWithText(IconButton, testL10n.chatDiaryAiIcon);
+    expect(tester.widget<IconButton>(button).onPressed, isNull);
+    final label = tester.widget<Text>(find.text(testL10n.chatDiaryAiIcon));
+    expect(
+      label.style!.color,
+      Theme.of(tester.element(button)).colorScheme.onSurface
+          .withValues(alpha: 0.38),
+    );
+    expect(router.routeInformationProvider.value.uri.path, '/editor/$id');
+  });
+
   testWidgets('沒有聊天紀錄時仍可打開 AI 選單且檢視聊天停用', (tester) async {
     final entryId = generateEntryId();
     final router = _router(entryId);
@@ -96,6 +126,41 @@ void main() {
     );
     expect(find.text('日記整理'), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, '/editor/$entryId');
+  });
+
+  testWidgets('AI 關閉時仍可打開已保存的聊天，但整理選項停用', (tester) async {
+    final entryId = generateEntryId();
+    final chat = testChatDiarySession()
+      ..finished = true
+      ..generatedEntryId = entryId;
+    final router = _router(entryId);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_app(chat: chat, router: router, aiEnabled: false));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byTooltip('日記 AI 功能'),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(find.byTooltip('日記 AI 功能'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AppChoiceCard>(
+            find.byKey(const ValueKey('entry-ai-organize')),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const ValueKey('entry-ai-conversation')));
+    await tester.pumpAndSettle();
+    expect(find.text('聊天室'), findsOneWidget);
   });
 
   testWidgets('日記旁邊有聊天時，檢視頁可以開啟聊天室', (tester) async {
@@ -142,7 +207,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(button);
     await tester.pumpAndSettle();
-    expect(find.text('無法保存進度，請確認儲存空間後重試。'), findsOneWidget);
+    expect(find.text(testL10n.aiErrorStorage), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('entry-ai-conversation')));
     await tester.pumpAndSettle();
     expect(reads, 2);

@@ -69,7 +69,11 @@ class AppInsetPanel extends StatelessWidget {
       color: backgroundColor ?? context.appColors.sectionInset,
       borderRadius: BorderRadius.circular(radius),
     ),
-    child: Padding(padding: padding, child: child),
+    // 透明 Material 讓內部 ListTile 的 ink 畫在背景之上，而不是被背景色的 DecoratedBox 遮住。
+    child: Material(
+      type: MaterialType.transparency,
+      child: Padding(padding: padding, child: child),
+    ),
   );
 }
 

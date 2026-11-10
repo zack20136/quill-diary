@@ -17,7 +17,6 @@ class PortableImportResult {
     this.failureMessage,
   });
 
-  /// 成功寫入日記庫的篇數。
   final int importedEntries;
 
   /// 整份檔案無法解析、空白略過、或加密日記略過的次數。
@@ -26,7 +25,6 @@ class PortableImportResult {
   /// 附件參考無法解碼或找不到本機檔案的次數。
   final int skippedAttachments;
 
-  /// 匯入失敗或無法完成時的穩定識別碼。
   final String? failureCode;
 
   /// 過渡用完整訊息；新程式碼應優先使用 [failureCode]。

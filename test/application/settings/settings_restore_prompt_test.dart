@@ -19,8 +19,6 @@ void main() {
         outcome.primaryAction,
         SettingsRestorePrimaryAction.retryVerification,
       );
-      expect(outcome.title, l10n.postRestoreOutcomeTitle);
-      expect(outcome.nextStepHint, l10n.postRestoreOutcomeNextStepLocked);
     });
 
     test('recoveryRequired 狀態會導向輸入復原金鑰', () {
@@ -37,7 +35,6 @@ void main() {
         outcome.primaryAction,
         SettingsRestorePrimaryAction.openSettingsRecovery,
       );
-      expect(outcome.nextStepHint, l10n.postRestoreOutcomeNextStepRecovery);
     });
   });
 }

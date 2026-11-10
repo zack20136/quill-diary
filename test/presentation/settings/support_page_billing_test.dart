@@ -10,6 +10,7 @@ import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 import '../../helpers/shared/fake_in_app_purchase_platform.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -62,8 +63,6 @@ void main() {
     expect(find.text('title-sponsor_coffee'), findsOneWidget);
     expect(find.text('desc-sponsor_coffee'), findsOneWidget);
     expect(find.text('title-sponsor_super'), findsOneWidget);
-    expect(find.text('即將支援更多贊助方案'), findsNothing);
-    expect(find.text('感謝你支持 Quill Diary 的持續開發與維護'), findsNothing);
   });
 
   testWidgets('成功購買後會被 listener 收回', (WidgetTester tester) async {
@@ -104,7 +103,7 @@ void main() {
     expect(fakeAndroidAddition.consumePurchaseCalled, isTrue);
     expect(fakeInAppPurchase.completePurchaseCalled, isTrue);
     expect(service.state.purchasePhase, SponsorPurchasePhase.idle);
-    expect(find.text('謝謝您的支持，這對開發很有幫助。'), findsOneWidget);
+    expect(find.text(testL10n.settingsSupportThanksMessage), findsOneWidget);
     expect(find.byType(AppFeedbackBanner), findsNothing);
   });
 }

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
 
 enum VaultBackupIssue {
@@ -90,6 +91,15 @@ VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
 
   for (final String rawName in rawNames) {
     final String normalized = p.posix.normalize(rawName.replaceAll('\\', '/'));
+    final segments = p.posix.split(normalized);
+    if (segments.isNotEmpty && segments.first.toLowerCase() == 'personas') {
+      if (segments.first != 'personas' ||
+          segments.length > 3 ||
+          segments.length >= 2 && !isPrefixedId(segments[1], 'per') ||
+          segments.length == 3 && segments[2] != 'state.json.enc') {
+        safePaths = false;
+      }
+    }
     if (_isPortableMarkdownExportPath(normalized)) {
       hasMarkdownPortableLayout = true;
     }

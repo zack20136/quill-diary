@@ -5,7 +5,6 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
-/// 設定頁變更解鎖方式的結果。
 sealed class UnlockModeChangeOutcome {
   const UnlockModeChangeOutcome();
 }

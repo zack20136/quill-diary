@@ -4,7 +4,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 
 /// 儲存在日記條目旁的加密附件中繼資料。
 ///
-/// 實際位元組位於 vault `assets/` 樹下；此模型為 UI、備份與還原流程
+/// 實際位元組位於日記庫 `assets/` 樹下；此模型為 UI、備份與還原流程
 /// 使用的索引／前置資訊視圖。
 class AssetAttachment {
   const AssetAttachment({

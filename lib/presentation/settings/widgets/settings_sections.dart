@@ -16,6 +16,7 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_segmented_choice_bar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -95,7 +96,7 @@ class SettingsStatusPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Center(child: CircularProgressIndicator()),
+          const AppLoadingState(layout: AppLoadingStateLayout.section),
           if (onCancelUnlock != null) ...<Widget>[
             const SizedBox(height: 14),
             AppActionButton(
@@ -568,6 +569,7 @@ class _SecurityOverviewTile extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Expanded(
+                          flex: 2,
                           child: Text(
                             item.title,
                             style: theme.textTheme.titleSmall?.copyWith(
@@ -576,15 +578,22 @@ class _SecurityOverviewTile extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Icon(statusIcon, size: 16, color: foreground),
-                        const SizedBox(width: 4),
                         Flexible(
-                          child: Text(
-                            statusLabel,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: foreground,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              Icon(statusIcon, size: 16, color: foreground),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  statusLabel,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: foreground,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -633,13 +642,11 @@ class SettingsBlockingProgressOverlay extends StatelessWidget {
     super.key,
   });
 
-  /// 目前階段說明（例如「正在檢查附件」）。
   final String message;
 
   /// 卡片標題；未提供時使用預設「正在處理」。
   final String? title;
 
-  /// 次要提示（例如「請保持 App 開啟」）。
   final String? hint;
 
   /// `null` 表示尚無法估算，顯示 indeterminate 線性條。

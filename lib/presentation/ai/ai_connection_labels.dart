@@ -2,7 +2,7 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
-/// 提供商名稱除「自訂」外是專有名詞，中英相同。
+/// 供應商名稱除「自訂」外是專有名詞，中英相同。
 String aiProviderLabel(AppLocalizations l10n, AiProvider provider) =>
     switch (provider) {
       AiProvider.openai => 'OpenAI',

@@ -63,7 +63,7 @@ void main() {
     );
   }
 
-  testWidgets('帳號與備份操作會套用存取權限', (WidgetTester tester) async {
+  testWidgets('帳戶與備份操作會套用存取權限', (WidgetTester tester) async {
     const DriveConnectionState connectedState = DriveConnectionState(
       isConnected: true,
       email: 'writer@example.com',

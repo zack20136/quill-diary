@@ -4,45 +4,6 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 
 void main() {
-  test('舊設定只有模型名稱時，把它當成唯一打開的預設', () {
-    final AiConnectionConfig builtin = AiConnectionConfig.fromJson({
-      'provider': 'openai',
-      'model': 'gpt-6.1-terra',
-      'base_url': '',
-      'workspace_id': '',
-      'custom_protocol': 'chatCompletions',
-    });
-    expect(builtin.model, 'gpt-6.1-terra');
-    expect(builtin.addedModels, isEmpty);
-    expect(builtin.enabledModels, ['gpt-6.1-terra']);
-
-    final AiConnectionConfig manual = AiConnectionConfig.fromJson({
-      'provider': 'openai',
-      'model': 'gpt-4.1',
-    });
-    expect(manual.model, 'gpt-4.1');
-    expect(manual.addedModels, ['gpt-4.1']);
-    expect(manual.enabledModels, ['gpt-4.1']);
-  });
-
-  test('舊清單裡的寫死名稱只記成打開，不放進手動加入', () {
-    final AiConnectionConfig config = AiConnectionConfig.fromJson({
-      'provider': 'openai',
-      'model': 'gpt-6.1-sol',
-      'listed_models': ['gpt-6.1-terra', 'gpt-6.1-sol', 'kept-model'],
-      'enabled_models': ['gpt-6.1-sol', 'kept-model'],
-      'custom_protocol': 'responses',
-    });
-
-    expect(config.model, 'gpt-6.1-sol');
-    expect(config.addedModels, ['kept-model']);
-    expect(config.enabledModels, ['gpt-6.1-sol', 'kept-model']);
-    expect(config.catalog, [
-      ...builtinModelsFor(AiProvider.openai),
-      'kept-model',
-    ]);
-  });
-
   test('設定檔只寫有意義的欄位，聊天快照不帶清單', () {
     const AiConnectionConfig official = AiConnectionConfig(
       provider: AiProvider.claude,
@@ -54,9 +15,9 @@ void main() {
       'default_model': 'claude-opus-5-5',
       'enabled_models': ['claude-opus-5-5'],
       'added_models': <String>[],
-      'known_builtin_models': builtinModelsFor(AiProvider.claude),
+      'known_builtin_models': [],
     });
-    expect(official.toJson().keys, ['provider', 'default_model']);
+    expect(official.toSnapshotJson().keys, ['provider', 'default_model']);
 
     const AiConnectionConfig custom = AiConnectionConfig(
       provider: AiProvider.custom,
@@ -69,16 +30,17 @@ void main() {
     );
     expect(custom.toStoredJson().containsKey('workspace_id'), isFalse);
     expect(custom.toStoredJson()['known_builtin_models'], isEmpty);
-    expect(custom.toJson(), {
+    expect(custom.toSnapshotJson(), {
       'provider': 'custom',
       'connection_id': 'custom',
       'default_model': 'google/gemma-4-26b',
       'base_url': 'https://openrouter.ai/api/v1',
       'protocol': 'chatCompletions',
     });
-    expect(AiConnectionConfig.fromJson(custom.toStoredJson()).addedModels, [
-      'google/gemma-4-26b',
-    ]);
+    expect(
+      AiConnectionConfig.fromStoredJson(custom.toStoredJson()).addedModels,
+      ['google/gemma-4-26b'],
+    );
   });
 
   test('新增自訂模型預設不傳 Thinking，重複加入保留已選的格式', () {
@@ -219,15 +181,7 @@ void main() {
     expect(menu.currentIsExtra, isTrue);
   });
 
-  test('還沒存過才套預設開啟，存過且全關就維持關閉', () {
-    expect(defaultConnection(AiProvider.openai).enabledModels, [
-      'gpt-6.1-terra',
-    ]);
-    expect(defaultConnection(AiProvider.claude).model, 'claude-sonnet-5-5');
-    expect(defaultConnection(AiProvider.xai).model, 'grok-4.3');
-    expect(defaultConnection(AiProvider.gemini).model, 'gemini-3.8-flash');
-    expect(defaultConnection(AiProvider.custom).enabledModels, isEmpty);
-
+  test('存過且全關就維持關閉，不因目錄預設重新開啟', () {
     const AiConnectionConfig saved = AiConnectionConfig(
       provider: AiProvider.openai,
     );
@@ -235,7 +189,7 @@ void main() {
     expect(normalizeModelCatalog(saved).model, isEmpty);
   });
 
-  test('舊檔沒有 known 時開關不變，新的預設開啟 id 才打開', () {
+  test('未儲存設定初始化保留開關，後續新增目錄項目才套預設', () {
     const AiConnectionConfig unseen = AiConnectionConfig(
       provider: AiProvider.openai,
       model: 'gpt-6.1-sol',
@@ -325,16 +279,6 @@ void main() {
     expect(next.model, isEmpty);
   });
 
-  test('舊名稱沒有官方來源記錄時保留為手動模型', () {
-    final restored = AiConnectionConfig.fromJson({
-      'provider': 'openai',
-      'model': 'gpt-5.6-sol',
-    });
-    expect(restored.model, 'gpt-5.6-sol');
-    expect(restored.addedModels, ['gpt-5.6-sol']);
-    expect(adoptCatalogModels(restored).enabledModels, ['gpt-5.6-sol']);
-  });
-
   test('清除失去模型引用的思考設定時會回寫且只做一次', () {
     final current = defaultConnection(
       AiProvider.openai,
@@ -357,7 +301,7 @@ void main() {
 
     expect(menu.models, hasLength(1));
     expect(menu.models.single.connectionConfig.provider, AiProvider.openai);
-    expect(menu.models.single.modelId, 'gpt-6.1-terra');
+    expect(menu.models.single.modelId, openai.model);
     expect(menu.currentIsExtra, isFalse);
   });
 }

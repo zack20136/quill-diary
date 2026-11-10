@@ -88,41 +88,20 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     if (!mounted) {
       return;
     }
-    final Color dialogBarrierColor = context.appColors.scrim;
-    final String? savedLabel = await showAppDialog<String>(
+    final String? savedLabel = await showTagAccentComposerDialog(
       context: context,
-      barrierDismissible: true,
-      barrierColor: dialogBarrierColor,
-      builder: (BuildContext ctx) {
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(
-            left: 22,
-            right: 22,
-            top: 26,
-            bottom: 26 + MediaQuery.viewInsetsOf(ctx).bottom,
-          ),
-          child: Align(
-            child: Material(
-              color: Colors.transparent,
-              child: TagAccentComposerDialog(
-                titleText: existingLabel == null
-                    ? ctx.l10n.tagAddTitle
-                    : ctx.l10n.tagEditTitle,
-                initialDisplayLabel: existingLabel,
-                sessionForRename: existingLabel == null ? null : session,
-                initialAccentArgb: initialArgb,
-                initialAccentIsCustom: initialAccentIsCustom,
-                primaryButtonLabel: ctx.l10n.tagSaveButton,
-                onDelete: existingLabel == null || session == null
-                    ? null
-                    : () => _deleteTag(existingLabel, session: session),
-              ),
-            ),
-          ),
-        );
-      },
+      width: AppDialogSize.standard,
+      titleText: existingLabel == null
+          ? context.l10n.tagAddTitle
+          : context.l10n.tagEditTitle,
+      initialDisplayLabel: existingLabel,
+      sessionForRename: existingLabel == null ? null : session,
+      initialAccentArgb: initialArgb,
+      initialAccentIsCustom: initialAccentIsCustom,
+      primaryButtonLabel: context.l10n.tagSaveButton,
+      onDelete: existingLabel == null || session == null
+          ? null
+          : () => _deleteTag(existingLabel, session: session),
     );
     if (!mounted || savedLabel == null) {
       return;

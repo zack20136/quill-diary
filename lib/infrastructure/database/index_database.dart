@@ -41,8 +41,6 @@ const String _kFileAttachmentCountSelect = '''
       AND a.mime_type NOT LIKE 'image/%'
   ) AS file_attachment_count''';
 
-/// 人物提及篇數統計（近 30 天窗口以呼叫時的 [now] 計算）。
-/// 範圍內提及排序列（總覽 Top N）。
 /// 人物姓名分析所需的輕量索引列，不含人物關聯。
 class PeopleAnalysisSourceDocument {
   const PeopleAnalysisSourceDocument({

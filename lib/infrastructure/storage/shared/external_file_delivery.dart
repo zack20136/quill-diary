@@ -8,7 +8,6 @@ import 'package:quill_diary/infrastructure/storage/shared/android_saf_file_copy.
 import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
 import 'package:quill_diary/infrastructure/storage/shared/external_directory_picker.dart';
 
-/// 將暫存檔交付至使用者選擇的外部資料夾。
 Future<String?> deliverToExternalDirectory({
   required String dialogTitle,
   required String fileName,

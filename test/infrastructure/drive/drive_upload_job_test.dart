@@ -117,7 +117,7 @@ void main() {
       expect(job.needsCompletionHandling, isFalse);
     });
 
-    test('CANCEL_CLEANUP_PENDING 授權錯誤需要帳號復原', () {
+    test('CANCEL_CLEANUP_PENDING 授權錯誤需要帳戶復原', () {
       final DriveUploadJobSnapshot job = DriveUploadJobSnapshot.fromMap(
         <Object?, Object?>{
           'jobId': '11111111-1111-1111-1111-111111111111',

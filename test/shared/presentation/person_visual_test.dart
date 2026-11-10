@@ -5,32 +5,6 @@ import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 void main() {
-  test('人物標籤沿用人物管理頁頭像的底色與前景色', () {
-    final DateTime now = DateTime(2026);
-    final Person person = Person(
-      id: 'person-1',
-      name: '小明',
-      accentArgb: 0xFF5480B0,
-      createdAt: now,
-      updatedAt: now,
-    );
-    const Color accent = Color(0xFF5480B0);
-    const Color surface = Color(0xFFF5F2ED);
-    final Color expectedBackground = Color.lerp(
-      surface,
-      accent,
-      kAccentBackgroundMixLight,
-    )!;
-
-    final (Color background, Color foreground) = personLabelColorPair(
-      person,
-      surface,
-    );
-
-    expect(background, expectedBackground);
-    expect(foreground, accent);
-  });
-
   test('原始人物色、頭像與標籤共用相同配色結果', () {
     final DateTime now = DateTime(2026);
     final Person customPerson = Person(

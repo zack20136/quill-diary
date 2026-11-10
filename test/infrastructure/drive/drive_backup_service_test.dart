@@ -139,7 +139,7 @@ void main() {
   });
 
   group('GoogleDriveBackupService 連線狀態', () {
-    test('getConnectionState 會在已有授權時回傳已連結帳號資訊', () async {
+    test('getConnectionState 會在已有授權時回傳已連結帳戶資訊', () async {
       final FakeGoogleDriveSignInClient signInClient =
           FakeGoogleDriveSignInClient(
             lightweightAccount: FakeGoogleDriveSignedInAccount(
@@ -181,7 +181,7 @@ void main() {
       expect(signInClient.initializeCalls, 0);
     });
 
-    test('getConnectionState 使用 Android 快照回傳已連結帳號', () async {
+    test('getConnectionState 使用 Android 快照回傳已連結帳戶', () async {
       final FakeGoogleDriveSignInClient signInClient =
           FakeGoogleDriveSignInClient();
       final GoogleDriveBackupService service = GoogleDriveBackupService(
@@ -202,7 +202,7 @@ void main() {
       expect(signInClient.lightweightCalls, 0);
     });
 
-    test('getConnectionState 會在帳號沒有 Drive 授權時回傳未連結', () async {
+    test('getConnectionState 會在帳戶沒有 Drive 授權時回傳未連結', () async {
       final FakeGoogleDriveSignInClient signInClient =
           FakeGoogleDriveSignInClient(
             lightweightAccount: FakeGoogleDriveSignedInAccount(
@@ -221,7 +221,7 @@ void main() {
       expect(state.displayName, isNull);
     });
 
-    test('switchAccount 會重置 session 並回傳最新帳號資訊', () async {
+    test('switchAccount 會重置 session 並回傳最新帳戶資訊', () async {
       final FakeGoogleDriveSignedInAccount reconnectedAccount =
           FakeGoogleDriveSignedInAccount(
             email: 'after@example.com',
@@ -284,7 +284,7 @@ void main() {
       expect(state.displayName, 'Writer');
     });
 
-    test('connect 在取消回呼後會改以恢復的帳號完成授權', () async {
+    test('connect 在取消回呼後會改以恢復的帳戶完成授權', () async {
       final FakeGoogleDriveSignedInAccount recoveredAccount =
           FakeGoogleDriveSignedInAccount(
             email: 'writer@example.com',

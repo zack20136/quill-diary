@@ -15,6 +15,7 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/ai/ai_chat_input_panel.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_request_preview_dialog.dart';
 import 'package:quill_diary/presentation/diary_organization/diary_organization_page.dart';
@@ -120,6 +121,25 @@ void main() {
         );
         await tester.pump(const Duration(seconds: 1));
         expect(find.byType(AiConnectionSettingsDialog), findsNothing);
+        await tester.runAsync(scope.controller.startChat);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('organization-composer')),
+          '先準備整理需求',
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<AiChatInputPanel>(find.byType(AiChatInputPanel))
+              .canSend,
+          isFalse,
+        );
+        final quickActions = tester.widgetList<OrganizationQuickActions>(
+          find.byType(OrganizationQuickActions),
+        );
+        expect(quickActions.every((actions) => !actions.enabled), isTrue);
+        expect(scope.controller.draft!.composer, '先準備整理需求');
+        expect(scope.client.calls, isEmpty);
       });
     }
     testWidgets('設定補齊後更新整理連線，尚未送出 AI 請求', (tester) async {
@@ -175,7 +195,9 @@ void main() {
       expect(
         tester.getRect(bar).bottom,
         lessThanOrEqualTo(
-          tester.getRect(find.byKey(const ValueKey('organization-generate'))).top,
+          tester
+              .getRect(find.byKey(const ValueKey('organization-generate')))
+              .top,
         ),
       );
       expect(scope.controller.draft!.composer, '未送出秘密');
@@ -302,7 +324,10 @@ void main() {
       );
       final controller = field.controller! as PrivateTextController;
       expect(controller.privateRanges, hasLength(2));
-      controller.selection = const TextSelection(baseOffset: 3, extentOffset: 6);
+      controller.selection = const TextSelection(
+        baseOffset: 3,
+        extentOffset: 6,
+      );
       await tester.pump();
       await tester.tap(find.byIcon(Icons.visibility_outlined));
       await tester.pump();
@@ -363,7 +388,11 @@ void main() {
         await _drainStorage(tester, scope.dispose());
       });
       await tester.pumpWidget(
-        _app(scope, DiaryOrganizationPage(entryId: scope.entry.id), textScale: 2),
+        _app(
+          scope,
+          DiaryOrganizationPage(entryId: scope.entry.id),
+          textScale: 2,
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('開始整理'), findsOneWidget);
@@ -378,7 +407,7 @@ void main() {
   });
 
   group('預覽與編輯', () {
-    testWidgets('預覽可切換兩種請求，生成使用底部進度面板，查看修改沒有頂部操作', (tester) async {
+    testWidgets('預覽同時列出兩種系統提示詞，生成使用底部進度面板，查看修改沒有頂部操作', (tester) async {
       final scope = (await tester.runAsync(
         () => OrganizationTestScope.create(),
       ))!;
@@ -396,6 +425,10 @@ void main() {
       expect(find.byTooltip('刪除整理對話'), findsOneWidget);
       scope.controller.updateComposer('私人需求', [const PrivateTextRange(0, 2)]);
       await tester.tap(find.byTooltip('查看送給 AI 的內容'));
+      await _waitForUi(
+        tester,
+        () => find.byType(AiRequestPreviewDialog).evaluate().isNotEmpty,
+      );
       await tester.pumpAndSettle();
       expect(
         tester.getSize(find.byType(AlertDialog)).width,
@@ -407,23 +440,15 @@ void main() {
         find.byKey(const ValueKey('ai-request-instructions')),
         findsOneWidget,
       );
-      var preview = tester
-          .widget<AiRequestPreviewDialog>(find.byType(AiRequestPreviewDialog))
-          .preview;
-      expect(preview.turns.single.pending, isTrue);
-      expect(preview.turns.single.text, isNot(contains('私人')));
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AiRequestPreviewDialog),
-          matching: find.text('整理日記'),
-        ),
+      final dialog = tester.widget<AiRequestPreviewDialog>(
+        find.byType(AiRequestPreviewDialog),
       );
-      await tester.pumpAndSettle();
-      preview = tester
-          .widget<AiRequestPreviewDialog>(find.byType(AiRequestPreviewDialog))
-          .generationPreview!;
-      expect(preview.turns, isEmpty);
-      expect(find.text('尚未送出'), findsNothing);
+      expect(find.text('聊天系統提示詞'), findsOneWidget);
+      expect(find.text('整理日記系統提示詞'), findsOneWidget);
+      expect(dialog.preview.turns.single.pending, isTrue);
+      expect(dialog.preview.turns.single.text, isNot(contains('私人')));
+      expect(dialog.generationPreview!.turns, isEmpty);
+      expect(find.text('尚未送出'), findsOneWidget);
       expect(scope.client.calls, isEmpty);
       await tester.tap(find.widgetWithText(TextButton, '關閉'));
       await tester.pumpAndSettle();
@@ -477,7 +502,11 @@ void main() {
         ..replaceBody('整理後的內容')
         ..stage = OrganizationStage.review;
       await tester.pumpWidget(
-        _app(scope, DiaryOrganizationPage(entryId: scope.entry.id), textScale: 2),
+        _app(
+          scope,
+          DiaryOrganizationPage(entryId: scope.entry.id),
+          textScale: 2,
+        ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('手動編輯'));
@@ -575,7 +604,11 @@ void main() {
       draft.replaceBody('今天一起去散步，天氣非常舒服。' * 20);
       draft.stage = OrganizationStage.review;
       await tester.pumpWidget(
-        _app(scope, DiaryOrganizationPage(entryId: scope.entry.id), textScale: 2),
+        _app(
+          scope,
+          DiaryOrganizationPage(entryId: scope.entry.id),
+          textScale: 2,
+        ),
       );
       await tester.pumpAndSettle();
       final buttons = find.byType(OutlinedButton);
@@ -645,7 +678,9 @@ void main() {
           overrides: [
             entryProvider.overrideWith((ref, id) async {
               ref.watch(diaryRevisionProvider);
-              final session = await ref.watch(activeVaultSessionProvider.future);
+              final session = await ref.watch(
+                activeVaultSessionProvider.future,
+              );
               if (session == null) return null;
               await readGate?.future;
               return ref.read(vaultRepositoryProvider).loadEntry(session, id);
@@ -657,7 +692,10 @@ void main() {
         await scope.controller.startChat();
         scope.controller.updateComposer('修順語句', []);
         await scope.controller.sendMessage();
-        scope.client.output = jsonEncode({'reply': '完成', 'body': '這是整理後的日記內容。'});
+        scope.client.output = jsonEncode({
+          'reply': '完成',
+          'body': '這是整理後的日記內容。',
+        });
         await scope.controller.generateDraft().timeout(
           const Duration(seconds: 8),
         );

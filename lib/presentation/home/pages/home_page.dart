@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
@@ -40,7 +41,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (initialState?.isUnlocked != true || session == null) return;
     _openingWritingFlow = true;
     try {
-      final mode = await showEntryWritingModePicker(context, session: session);
+      if (!mounted ||
+          ref.read(effectiveAppSessionProvider).value?.session != session) {
+        return;
+      }
+      final mode = ref.read(aiEnabledProvider)
+          ? await showEntryWritingModePicker(context, session: session)
+          : EntryWritingMode.direct;
       if (!mounted || mode == null) return;
       final current = ref.read(effectiveAppSessionProvider);
       final lifecycle = WidgetsBinding.instance.lifecycleState;
@@ -50,7 +57,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
         return;
       }
-      switch (mode) {
+      switch (ref.read(aiEnabledProvider) ? mode : EntryWritingMode.direct) {
         case EntryWritingMode.direct:
           unawaited(context.push<void>(AppRoutes.editorRoute));
         case EntryWritingMode.chat:

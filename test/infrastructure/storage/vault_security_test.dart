@@ -1,11 +1,16 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
 
 import '../../helpers/vault/fake_device_key_manager.dart';
 import '../../helpers/vault/manifest_write_test_crypto_service.dart';
@@ -21,6 +26,102 @@ void main() {
   tearDown(() async {
     await harness.dispose();
   });
+
+  for (final corruptInfo in [false, true]) {
+    test('裝置${corruptInfo ? '槽位資訊' : '包裝記錄'}損壞仍可用正確復原金鑰重建且保留日記', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      final entryId = await harness.saveSimpleEntry(
+        setup,
+        markdownBody: '保留的正式日記',
+      );
+      harness.deviceKeyManager.rejectStoredRecord = !corruptInfo;
+      harness.deviceKeyManager.rejectStoredDeviceInfo = corruptInfo;
+      await expectLater(
+        harness.repository.openTrustedSession(),
+        throwsA(isA<DeviceKeyUnsupportedFormatException>()),
+      );
+      final recovered = await harness.repository.unlockWithRecoveryKey(
+        setup.recoveryKey,
+      );
+      expect(
+        (await harness.repository.loadEntry(recovered, entryId))!.markdownBody,
+        '保留的正式日記',
+      );
+      expect(harness.deviceKeyManager.rejectStoredRecord, isFalse);
+      expect(harness.deviceKeyManager.rejectStoredDeviceInfo, isFalse);
+    });
+  }
+
+  test('錯誤 session 金鑰的新輪替不寫 pending 或進行中旗標', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    final before = (await harness.repository.readRecoveryMetadata())!.toJson();
+    await expectLater(
+      harness.repository.rotateRecoveryKey(
+        setup.session.copyWith(recoveryWrapKey: List.filled(32, 0)),
+      ),
+      throwsA(isA<SecretBoxAuthenticationError>()),
+    );
+    expect(
+      File(await harness.pathStrategy.recoveryRotationPendingPath())
+          .existsSync(),
+      isFalse,
+    );
+    expect(
+      await harness.indexDatabaseManager.requireOpen().getAppValue(
+        kRewrapInProgressKey,
+      ),
+      isNot('true'),
+    );
+    expect((await harness.repository.readRecoveryMetadata())!.toJson(), before);
+  });
+
+  for (final invalid in ['identity', 'contentType', 'vault']) {
+    test('輪替 pending 的 $invalid 不符時保留現場，不當作 stale 清除', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      final metadata = (await harness.repository.readRecoveryMetadata())!;
+      final crypto = LocalCryptoService();
+      final encrypted = await crypto.encryptBytes(
+        documentId: invalid == 'identity'
+            ? 'other'
+            : 'recovery_rotation_pending',
+        vaultId: invalid == 'vault' ? generateVaultId() : metadata.vaultId,
+        plaintextBytes: utf8.encode(
+          jsonEncode({
+            'old_metadata': metadata.toJson(),
+            'new_metadata': metadata.toJson(),
+            'new_recovery_key': setup.recoveryKey,
+          }),
+        ),
+        contentType: invalid == 'contentType'
+            ? 'application/json'
+            : 'application/vnd.quill-diary.recovery-rotation',
+        recoveryWrapKey: setup.session.recoveryWrapKey!,
+        recoverySlotKdf: metadata.kdf,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final file = File(
+        await harness.pathStrategy.recoveryRotationPendingPath(),
+      );
+      final bytes = encrypted.toFileBytes();
+      await file.writeAsBytes(bytes);
+      await expectLater(
+        harness.repository.unlockWithRecoveryKey(setup.recoveryKey),
+        throwsFormatException,
+      );
+      expect(await file.readAsBytes(), bytes);
+      expect(
+        (await harness.repository.readRecoveryMetadata())!.toJson(),
+        metadata.toJson(),
+      );
+      expect(
+        await harness.indexDatabaseManager.requireOpen().getAppValue(
+          kRewrapInProgressKey,
+        ),
+        isNot('true'),
+      );
+    });
+  }
 
   group('setupRecoveryKey', () {
     test('會寫入 metadata 並建立 trusted device', () async {

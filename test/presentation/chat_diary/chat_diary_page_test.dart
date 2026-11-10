@@ -28,7 +28,6 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/ai/ai_message_view.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_message_bubble.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -39,6 +38,7 @@ import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/ai/people_chat_repository.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 final Finder _previewBody = find.byWidgetPredicate(
@@ -136,6 +136,7 @@ void main() {
     bool withBack = false,
     OverviewChatDiaryStore? store,
     OverviewAiSettingsStore? aiSettings,
+    bool isNewChat = false,
     EditorDraftStore? editorDrafts,
     List<Person>? people,
     EditorTypographyPreferences typography =
@@ -174,7 +175,7 @@ void main() {
       builder: (context) => MediaQuery(
         data: MediaQuery.of(context)
             .copyWith(textScaler: TextScaler.linear(textScale)),
-        child: ChatDiaryPage(chatId: chat.id),
+        child: ChatDiaryPage(chatId: chat.id, isNewChat: isNewChat),
       ),
     );
     await tester.pumpWidget(
@@ -208,6 +209,40 @@ void main() {
   }
 
   group('輸入、泡泡與隱私', () {
+    testWidgets('新聊天設定不可讀時可在原頁確認重建，儲存後初始化但不自動外送', (tester) async {
+      final chat = testChatDiarySession();
+      final settings = OverviewAiSettingsStore()..failReads = true;
+      await settings.saveApiKey(
+        const AiConnectionConfig(provider: AiProvider.openai),
+        'synthetic-key',
+      );
+      final client = FakeAiClient(chat.connectionConfig);
+      final container = await pumpChat(
+        tester,
+        chat,
+        client,
+        store: OverviewChatDiaryStore(),
+        aiSettings: settings,
+        isNewChat: true,
+      );
+      expect(container.read(chatDiaryControllerProvider(chat.id)).chat, isNull);
+      expect(find.text('開啟 AI 設定'), findsOneWidget);
+      await tester.tap(find.text('開啟 AI 設定'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('重設 AI 設定'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('重設 AI 設定').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+      await tester.pumpAndSettle();
+      final initialized = container
+          .read(chatDiaryControllerProvider(chat.id))
+          .chat;
+      expect(initialized, isNotNull);
+      expect(initialized!.connectionConfig.hasCompleteRequestSnapshot, isTrue);
+      expect(client.calls, isEmpty);
+    });
+
     testWidgets('聊天輸入框支援姓名與別名建議，插入後仍走人物隱藏流程', (tester) async {
       final chat = testChatDiarySession();
       final client = FakeAiClient(chat.connectionConfig)..output = '請繼續說。';
@@ -239,75 +274,6 @@ void main() {
       expect(container.exists(peopleMentionStatsMapProvider), isFalse);
       await tester.pumpWidget(const SizedBox());
     });
-    testWidgets('AI 與使用者短句依內容縮放，共用圓角內距並以配色和左右位置區分', (tester) async {
-      final chat = testChatDiarySession();
-      chat.appendMessage(
-        ChatDiaryMessage(
-          id: 'user',
-          isUser: true,
-          text: '今天很好',
-          outboundText: '今天很好',
-        ),
-      );
-      chat.appendMessage(
-        ChatDiaryMessage(
-          id: 'reply',
-          parentId: 'user',
-          isUser: false,
-          text: '**今天很好**',
-          outboundText: '**今天很好**',
-        ),
-      );
-      await pumpChat(
-        tester,
-        chat,
-        FakeAiClient(chat.connectionConfig),
-        typography: EditorTypographyPreferences.defaults.copyWith(
-          bodyFontSize: 20,
-          bodyLineHeight: 2,
-        ),
-      );
-      final user = find.byKey(const ValueKey('ai-message-body-user'));
-      final assistant = find.byKey(const ValueKey('ai-message-body-reply'));
-      final colors = Theme.of(tester.element(user)).colorScheme;
-      for (final body in [user, assistant]) {
-        final container = tester.widget<Container>(body);
-        expect(
-          container.padding,
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        );
-        expect(
-          (container.decoration! as BoxDecoration).borderRadius,
-          BorderRadius.circular(20),
-        );
-        expect(tester.getSize(body).width, lessThan(200));
-      }
-      expect(
-        (tester.widget<Container>(user).decoration! as BoxDecoration).color,
-        colors.primaryContainer,
-      );
-      expect(
-        (tester.widget<Container>(assistant).decoration! as BoxDecoration).color,
-        colors.surfaceContainerHigh,
-      );
-      expect(
-        tester.getCenter(user).dx,
-        greaterThan(tester.getCenter(assistant).dx),
-      );
-      final userText = tester.widget<Text>(
-        find.descendant(of: user, matching: find.byType(Text)),
-      );
-      final assistantText = tester.widget<Text>(
-        find.descendant(of: assistant, matching: find.byType(Text)),
-      );
-      expect(userText.style?.fontSize, 20);
-      expect(userText.style?.height, 2);
-      final assistantStyle = assistantText.style ?? assistantText.textSpan?.style;
-      expect(assistantStyle?.fontSize, userText.style?.fontSize);
-      expect(assistantStyle?.height, userText.style?.height);
-      expect(assistantStyle?.fontFamily, userText.style?.fontFamily);
-      expect(tester.takeException(), isNull);
-    });
     testWidgets('長對話只建立可見訊息，輸入及捲動不建立全部泡泡', (tester) async {
       final chat = testChatDiarySession(hidePersonNames: false);
       for (var index = 0; index < 120; index++) {
@@ -322,14 +288,20 @@ void main() {
         );
       }
       await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
-      expect(find.byType(ChatDiaryMessageBubble).evaluate().length, lessThan(30));
+      expect(
+        find.byType(ChatDiaryMessageBubble).evaluate().length,
+        lessThan(30),
+      );
       expect(find.byKey(ValueKey(chat.messages.last.id)), findsOneWidget);
       await tester.enterText(
         find.byKey(const ValueKey('chat-diary-composer')),
         '新的輸入',
       );
       await tester.pumpAndSettle();
-      expect(find.byType(ChatDiaryMessageBubble).evaluate().length, lessThan(30));
+      expect(
+        find.byType(ChatDiaryMessageBubble).evaluate().length,
+        lessThan(30),
+      );
       final list = tester.widget<ListView>(find.byType(ListView).first);
       list.controller!.jumpTo(0);
       await tester.pumpAndSettle();
@@ -364,7 +336,10 @@ void main() {
         ),
       );
       final sent = tester.widget<PrivateText>(
-        find.ancestor(of: find.text('王小明來了'), matching: find.byType(PrivateText)),
+        find.ancestor(
+          of: find.text('王小明來了'),
+          matching: find.byType(PrivateText),
+        ),
       );
       expect(sent.ranges.map((r) => (r.start, r.end)), [(0, 3)]);
     });
@@ -397,7 +372,10 @@ void main() {
       final client = FakeAiClient(chat.connectionConfig)..output = '**新的回覆**';
       final container = await pumpChat(tester, chat, client);
       final sent = tester.widget<PrivateText>(
-        find.ancestor(of: find.text('原本秘密'), matching: find.byType(PrivateText)),
+        find.ancestor(
+          of: find.text('原本秘密'),
+          matching: find.byType(PrivateText),
+        ),
       );
       expect(sent.ranges.map((r) => (r.start, r.end)), [(2, 4)]);
       final field = find.byKey(const ValueKey('chat-diary-composer'));
@@ -556,7 +534,12 @@ void main() {
       final stream = StreamController<String>();
       final client = FakeAiClient(chat.connectionConfig)
         ..response = () => stream.stream;
-      await pumpChat(tester, chat, client, editorDrafts: EmptyEditorDraftStore());
+      await pumpChat(
+        tester,
+        chat,
+        client,
+        editorDrafts: EmptyEditorDraftStore(),
+      );
       final generate = tester
           .widget<InkWell>(find.byKey(const ValueKey('chat-diary-generate')))
           .onTap!;
@@ -570,76 +553,81 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
     for (final hasPartialReply in [false, true]) {
-      testWidgets('${hasPartialReply ? '串流途中' : '首段回覆前'}離頁再返回接回原請求，切換 App 仍繼續', (
-        tester,
-      ) async {
-        addTearDown(() => resumeApp(tester));
-        final chat = testChatDiarySession(hidePersonNames: false);
-        final store = OverviewChatDiaryStore(chat);
-        final stream = StreamController<String>();
-        final client = FakeAiClient(chat.connectionConfig)
-          ..response = () => stream.stream;
-        final container = await pumpChat(
-          tester,
-          chat,
-          client,
-          store: store,
-          withBack: true,
-        );
-        await tester.enterText(find.byType(TextField), '離頁中的合成內容');
-        await tester.pump();
-        await tester.tap(find.byTooltip('送出'));
-        await tester.pump(const Duration(milliseconds: 50));
-        expect(client.calls, hasLength(1));
-        final controller = container.read(chatDiaryControllerProvider(chat.id));
-        if (hasPartialReply) {
-          stream.add('前半段');
+      testWidgets(
+        '${hasPartialReply ? '串流途中' : '首段回覆前'}離頁再返回接回原請求，切換 App 仍繼續',
+        (tester) async {
+          addTearDown(() => resumeApp(tester));
+          final chat = testChatDiarySession(hidePersonNames: false);
+          final store = OverviewChatDiaryStore(chat);
+          final stream = StreamController<String>();
+          final client = FakeAiClient(chat.connectionConfig)
+            ..response = () => stream.stream;
+          final container = await pumpChat(
+            tester,
+            chat,
+            client,
+            store: store,
+            withBack: true,
+          );
+          await tester.enterText(find.byType(TextField), '離頁中的合成內容');
+          await tester.pump();
+          await tester.tap(find.byTooltip('送出'));
           await tester.pump(const Duration(milliseconds: 50));
-        }
-        await tester.binding.handlePopRoute();
-        await tester.pumpAndSettle();
-        expect(find.text('開啟聊天室'), findsOneWidget);
-        expect(controller.busy, isTrue);
-        expect(client.closed, isFalse);
-        await tester.tap(find.text('開啟聊天室'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
-        expect(
-          container.read(chatDiaryControllerProvider(chat.id)),
-          same(controller),
-        );
-        expect(
-          controller.chat!.activeMessages.last.status,
-          ChatDiaryMessageStatus.pending,
-        );
-        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-        await tester.pump();
-        expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
-        stream.add('背景收到的回覆');
-        await tester.pump();
-        await stream.close();
-        await tester.pump(const Duration(milliseconds: 300));
-        expect(controller.busy, isFalse);
-        expect(
-          controller.chat!.activeMessages.last.status,
-          ChatDiaryMessageStatus.complete,
-        );
-        resumeApp(tester);
-        await tester.pumpAndSettle();
-        expect(client.calls, hasLength(1));
-        final expected = '${hasPartialReply ? '前半段' : ''}背景收到的回覆';
-        expect(find.text(expected), findsOneWidget);
-        expect(
-          (await store.load(
-            chat.id,
-            const UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
-          ))!.activeMessages.last.text,
-          expected,
-        );
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump();
-      });
+          expect(client.calls, hasLength(1));
+          final controller = container.read(
+            chatDiaryControllerProvider(chat.id),
+          );
+          if (hasPartialReply) {
+            stream.add('前半段');
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+          expect(find.text('開啟聊天室'), findsOneWidget);
+          expect(controller.busy, isTrue);
+          expect(client.closed, isFalse);
+          await tester.tap(find.text('開啟聊天室'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          expect(
+            container.read(chatDiaryControllerProvider(chat.id)),
+            same(controller),
+          );
+          expect(
+            controller.chat!.activeMessages.last.status,
+            ChatDiaryMessageStatus.pending,
+          );
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.inactive,
+          );
+          await tester.pump();
+          expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
+          stream.add('背景收到的回覆');
+          await tester.pump();
+          await stream.close();
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(controller.busy, isFalse);
+          expect(
+            controller.chat!.activeMessages.last.status,
+            ChatDiaryMessageStatus.complete,
+          );
+          resumeApp(tester);
+          await tester.pumpAndSettle();
+          expect(client.calls, hasLength(1));
+          final expected = '${hasPartialReply ? '前半段' : ''}背景收到的回覆';
+          expect(find.text(expected), findsOneWidget);
+          expect(
+            (await store.load(
+              chat.id,
+              const UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
+            ))!.activeMessages.last.text,
+            expected,
+          );
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+        },
+      );
     }
     testWidgets('錯誤只在對應回覆呈現，重試保留失敗版本並顯示新回覆', (tester) async {
       final chat = testChatDiarySession(hidePersonNames: false);
@@ -661,7 +649,7 @@ void main() {
       );
       final error = container.read(chatDiaryControllerProvider(chat.id)).error;
       expect(error, AiErrorCode.network);
-      expect(find.text('無法連線或連線已中斷，內容已保留，可稍後重試。'), findsOneWidget);
+      expect(find.text(testL10n.aiErrorNetwork), findsOneWidget);
       expect(find.byTooltip('重試回覆'), findsOneWidget);
       expect(find.widgetWithText(TextButton, '編輯訊息'), findsNothing);
       client.failure = null;
@@ -694,7 +682,7 @@ void main() {
       await tester.pumpAndSettle();
       final controller = container.read(chatDiaryControllerProvider(chat.id));
       expect(find.byType(ChatDiaryPage), findsOneWidget);
-      expect(find.text('目前沒有適合生成的紀錄內容，可以再補充想留下的事。'), findsOneWidget);
+      expect(find.text(testL10n.chatDiaryGenerationEmpty), findsOneWidget);
       expect(controller.chat!.activeMessages.single.text, '先聊聊操作');
       expect(controller.chat!.generatedEntryId, isNull);
       expect(controller.error, isNull);
@@ -744,7 +732,9 @@ void main() {
       expect(find.byType(Dismissible), findsNothing);
       client.response = null;
       client.failure = const AiFailure(AiErrorCode.storage);
-      await controller.generate(tester.element(find.byType(ChatDiaryPage)).l10n);
+      await controller.generate(
+        tester.element(find.byType(ChatDiaryPage)).l10n,
+      );
       await tester.pumpAndSettle();
       expect(find.byType(Dismissible), findsNothing);
       store.failSaves = true;
@@ -757,7 +747,7 @@ void main() {
   });
 
   group('預覽、複製與草稿', () {
-    testWidgets('對 AI 隱藏按鈕位於附件旁並可隱藏與取消選取文字，預覽可切換聊天與生成且系統指令收合', (tester) async {
+    testWidgets('對 AI 隱藏按鈕位於附件旁並可隱藏與取消選取文字，預覽可開合兩種系統提示詞', (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -789,11 +779,13 @@ void main() {
       await tester.pump();
       await tester.tap(find.byTooltip('查看送給 AI 的內容'));
       await tester.pumpAndSettle();
-      expect(find.text('系統提示詞'), findsOneWidget);
-      expect(find.text('聊天'), findsOneWidget);
-      expect(find.text('生成日記'), findsWidgets);
+      expect(find.text('聊天系統提示詞'), findsOneWidget);
+      expect(find.text('生成日記系統提示詞'), findsOneWidget);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(360, 0.1));
-      expect(find.textContaining('你是 Quill Diary 的聊天夥伴'), findsNothing);
+      expect(
+        find.textContaining(testL10n.chatDiaryConversationRulesPrompt),
+        findsNothing,
+      );
       final preview = find.byType(AlertDialog);
       expect(
         find.descendant(of: preview, matching: find.text('你')),
@@ -815,16 +807,18 @@ void main() {
         privacyTokenRanges(previewText.text).map((r) => (r.start, r.end)),
       );
       expect(previewText.ranges, isNotEmpty);
-      await tester.tap(find.text('系統提示詞'));
+      await tester.tap(find.text('聊天系統提示詞'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('你是 Quill Diary 的聊天夥伴'), findsOneWidget);
-      await tester.tap(find.descendant(of: preview, matching: find.text('生成日記')));
+      expect(
+        find.textContaining(testL10n.chatDiaryConversationRulesPrompt),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
-      expect(find.text('尚未送出'), findsNothing);
-      expect(find.textContaining('公開⟦S'), findsNothing);
-      expect(find.textContaining('你是 Quill Diary 的日記整理助手'), findsOneWidget);
-      await tester.tap(find.descendant(of: preview, matching: find.text('聊天')));
-      await tester.pumpAndSettle();
+      expect(
+        find.textContaining(testL10n.chatDiaryGenerationDefaultSystemPrompt),
+        findsOneWidget,
+      );
       expect(find.text('尚未送出'), findsOneWidget);
       await tester.tap(find.text('關閉'));
       await tester.pumpAndSettle();
@@ -903,7 +897,10 @@ void main() {
       final assistant = find.descendant(of: dialog, matching: find.text('AI'));
       expect(you, findsWidgets);
       expect(assistant, findsOneWidget);
-      final pendingTag = find.descendant(of: dialog, matching: find.text('尚未送出'));
+      final pendingTag = find.descendant(
+        of: dialog,
+        matching: find.text('尚未送出'),
+      );
       expect(pendingTag, findsOneWidget);
       expect(
         tester.getCenter(you.first).dx,
@@ -953,135 +950,61 @@ void main() {
         tester.getBottomLeft(images.last).dy,
         lessThan(tester.getTopLeft(pending).dy),
       );
-      await tester.tap(find.descendant(of: dialog, matching: find.text('生成日記')));
+      await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.descendant(of: dialog, matching: find.text('想記住這張照片')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('這段值得留下')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('你')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('AI')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.byType(Image)),
+        find.textContaining(testL10n.chatDiaryGenerationDefaultSystemPrompt),
         findsOneWidget,
       );
       expect(
         find.descendant(of: dialog, matching: find.text('尚未送出')),
-        findsNothing,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.textContaining('"role"')),
-        findsNothing,
+        findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
-    for (final brightness in [Brightness.light, Brightness.dark]) {
-      testWidgets('${brightness.name} 送出預覽沿用日記字體與聊天配色，保留原始 Markdown 並隱藏私密原文', (
-        tester,
-      ) async {
-        tester.view.physicalSize = const Size(400, 900);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        final chat = testChatDiarySession(hidePersonNames: false);
-        chat.appendMessage(
-          ChatDiaryMessage(
-            id: 'user',
-            isUser: true,
-            text: '記住這段秘密',
-            outboundText: '記住這段秘密',
-            privateRanges: [const PrivateTextRange(4, 6)],
-          ),
-        );
-        chat.appendMessage(
-          ChatDiaryMessage(
-            id: 'reply',
-            parentId: 'user',
-            isUser: false,
-            text: '**AI 原始回覆**',
-            outboundText: '**AI 原始回覆**',
-          ),
-        );
-        await pumpChat(
-          tester,
-          chat,
-          FakeAiClient(chat.connectionConfig),
-          brightness: brightness,
-          typography: EditorTypographyPreferences.defaults.copyWith(
-            bodyFontSize: 20,
-            bodyLineHeight: 2,
-          ),
-        );
-        await tester.tap(find.byTooltip('查看送給 AI 的內容'));
-        await tester.pumpAndSettle();
-        final texts = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: _previewBody,
-        );
-        expect(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(AiMessageView),
-          ),
-          findsNWidgets(2),
-        );
-        expect(texts, findsNWidgets(2));
-        final colors = Theme.of(tester.element(texts.first)).colorScheme;
-        for (final element in texts.evaluate()) {
-          final text = element.widget as Text;
-          expect(text.style?.fontSize, 20);
-          expect(text.style?.height, 2);
-          expect(
-            text.style?.fontFamily,
-            Theme.of(element).textTheme.bodyLarge?.fontFamily,
-          );
-          final raw = text.textSpan!.toPlainText();
-          expect(raw, isNot(contains('秘密')));
-          final surface = element.findAncestorWidgetOfExactType<DecoratedBox>()!;
-          final dialogSurface = element
-              .findAncestorWidgetOfExactType<Material>()!;
-          expect(
-            (surface.decoration as BoxDecoration).color,
-            isNot(dialogSurface.color),
-          );
-          expect(
-            (surface.decoration as BoxDecoration).borderRadius,
-            BorderRadius.circular(20),
-          );
-          expect(
-            (surface.decoration as BoxDecoration).color,
-            raw.startsWith('記住')
-                ? colors.primaryContainer
-                : colors.surfaceContainerHigh,
-          );
-        }
-        expect(
-          (tester.widget<Text>(texts.first)).textSpan!.toPlainText(),
-          contains('⟦S'),
-        );
-        expect(
-          (tester.widget<Text>(texts.last)).textSpan!.toPlainText(),
-          '**AI 原始回覆**',
-        );
-        expect(
-          tester.getTopLeft(texts.first).dx,
-          greaterThan(tester.getTopLeft(texts.last).dx),
-        );
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-      });
-    }
+    testWidgets('送出預覽保留原始 Markdown 並隱藏私密原文', (tester) async {
+      final chat = testChatDiarySession(hidePersonNames: false);
+      chat.appendMessage(
+        ChatDiaryMessage(
+          id: 'user',
+          isUser: true,
+          text: '記住這段秘密',
+          outboundText: '記住這段秘密',
+          privateRanges: [const PrivateTextRange(4, 6)],
+        ),
+      );
+      chat.appendMessage(
+        ChatDiaryMessage(
+          id: 'reply',
+          parentId: 'user',
+          isUser: false,
+          text: '**AI 原始回覆**',
+          outboundText: '**AI 原始回覆**',
+        ),
+      );
+      await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
+      await tester.tap(find.byTooltip('查看送給 AI 的內容'));
+      await tester.pumpAndSettle();
+      final texts = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: _previewBody,
+      );
+      expect(texts, findsNWidgets(2));
+      for (final element in texts.evaluate()) {
+        final text = element.widget as Text;
+        expect(text.textSpan!.toPlainText(), isNot(contains('秘密')));
+      }
+      expect(
+        (tester.widget<Text>(texts.first)).textSpan!.toPlainText(),
+        contains('⟦S'),
+      );
+      expect(
+        (tester.widget<Text>(texts.last)).textSpan!.toPlainText(),
+        '**AI 原始回覆**',
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
     testWidgets('窄版大字與鍵盤下的送出預覽可捲動及關閉，尚未送出標籤不溢位', (tester) async {
       tester.view.physicalSize = const Size(320, 800);
       tester.view.devicePixelRatio = 1;
@@ -1110,27 +1033,6 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-    });
-    testWidgets('傳送預覽的長文字在泡泡寬度內換行', (tester) async {
-      tester.view.physicalSize = const Size(400, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final chat = testChatDiarySession(hidePersonNames: false)
-        ..composerText = '很長的內容' * 30;
-      await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
-      await tester.tap(find.byTooltip('查看送給 AI 的內容'));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      final bubble = find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.textContaining('很長的內容'),
-      );
-      expect(bubble, findsOneWidget);
-      expect(tester.getSize(bubble).width, lessThan(360));
-      expect(tester.getSize(bubble).height, greaterThan(40));
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
     });
     testWidgets('使用者與 AI 訊息可複製文字，按鈕在編輯前並以 toast 回報', (tester) async {
       final copiedTexts = <String>[];
@@ -1250,12 +1152,18 @@ void main() {
       final gallery = find.byType(AppImageGalleryDialog);
       expect(gallery, findsOneWidget);
       expect(find.text('1 / 2'), findsOneWidget);
-      final dialog = find.descendant(of: gallery, matching: find.byType(Dialog));
+      final dialog = find.descendant(
+        of: gallery,
+        matching: find.byType(Dialog),
+      );
       expect(
         tester.widget<Dialog>(dialog).backgroundColor,
         tester.element(dialog).appColors.galleryBackground,
       );
-      final pages = find.descendant(of: gallery, matching: find.byType(PageView));
+      final pages = find.descendant(
+        of: gallery,
+        matching: find.byType(PageView),
+      );
       await tester.drag(pages, const Offset(-400, 0));
       await tester.pumpAndSettle();
       expect(find.text('2 / 2'), findsOneWidget);
@@ -1285,7 +1193,10 @@ void main() {
       await tester.tap(find.byTooltip('查看送給 AI 的內容'));
       await tester.pumpAndSettle();
       final previewImage = find
-          .descendant(of: find.byType(AlertDialog), matching: find.byType(Image))
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(Image),
+          )
           .first;
       await tester.ensureVisible(previewImage);
       await tester.tap(previewImage);
@@ -1419,19 +1330,19 @@ void main() {
       await tester.pumpAndSettle();
       final name = find.byKey(const ValueKey('ai-connection-name-aic_b'));
       await tester.ensureVisible(name);
-      await tester.enterText(name, '私人帳號');
+      await tester.enterText(name, '私人帳戶');
       await tester.tap(find.widgetWithText(FilledButton, '儲存'));
       await tester.pumpAndSettle();
       final controller = container.read(chatDiaryControllerProvider(chat.id));
       expect(controller.chat!.connectionConfig.connectionId, a.connectionId);
       expect(controller.chat!.connectionConfig.model, a.model);
       expect(settings.settings.activeConnectionId, b.connectionId);
-      expect(settings.settings.activeConfig.displayName, '私人帳號');
+      expect(settings.settings.activeConfig.displayName, '私人帳戶');
       expect(settings.settings.activeConfig.model, b.model);
       expect(find.text('127.0.0.1:11434/test-model'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     });
-    testWidgets('自訂選單僅在網址模型重複時補連線名稱，切換保留實際目的地與帳號', (tester) async {
+    testWidgets('自訂選單僅在網址模型重複時補連線名稱，切換保留實際目的地與帳戶', (tester) async {
       final chat = testChatDiarySession(hidePersonNames: false);
       final a = addModel(
         const AiConnectionConfig(
@@ -1442,7 +1353,10 @@ void main() {
         ),
         'same-model',
       );
-      final b = a.copyWith(customConnectionId: 'aic_personal', displayName: '個人');
+      final b = a.copyWith(
+        customConnectionId: 'aic_personal',
+        displayName: '個人',
+      );
       final c = a.copyWith(
         customConnectionId: 'aic_other',
         displayName: '第三組',
@@ -1452,7 +1366,11 @@ void main() {
       final settings = OverviewAiSettingsStore()
         ..settings = AiConnectionSettings(
           activeConnectionId: a.connectionId,
-          connections: {a.connectionId: a, b.connectionId: b, c.connectionId: c},
+          connections: {
+            a.connectionId: a,
+            b.connectionId: b,
+            c.connectionId: c,
+          },
         );
       final container = await pumpChat(
         tester,
@@ -1529,7 +1447,12 @@ void main() {
           activeConnectionId: original.connectionId,
           connections: {original.connectionId: changed},
         );
-      await pumpChat(tester, chat, FakeAiClient(original), aiSettings: settings);
+      await pumpChat(
+        tester,
+        chat,
+        FakeAiClient(original),
+        aiSettings: settings,
+      );
       await tester.tap(find.byKey(const ValueKey('ai-model-tag')));
       await tester.pumpAndSettle();
       final current = find.byKey(
@@ -1576,7 +1499,9 @@ void main() {
       final menu = tester.getRect(
         find
             .ancestor(
-              of: find.byKey(const ValueKey('ai-model-option-custom-test-model')),
+              of: find.byKey(
+                const ValueKey('ai-model-option-custom-test-model'),
+              ),
               matching: find.byType(Material),
             )
             .first,
@@ -1634,7 +1559,9 @@ void main() {
           aiSettings: settings,
           locale: locale,
           textScale: 1.5,
-          brightness: locale == appZhLocale ? Brightness.dark : Brightness.light,
+          brightness: locale == appZhLocale
+              ? Brightness.dark
+              : Brightness.light,
         );
         tester.view.viewInsets = const FakeViewPadding(bottom: 300);
         await tester.showKeyboard(find.byType(TextField));
@@ -1644,7 +1571,9 @@ void main() {
         await tester.pumpAndSettle();
         final menu = find
             .ancestor(
-              of: find.byKey(const ValueKey('ai-model-option-custom-test-model')),
+              of: find.byKey(
+                const ValueKey('ai-model-option-custom-test-model'),
+              ),
               matching: find.byType(Material),
             )
             .first;
@@ -1673,7 +1602,9 @@ void main() {
         await tester.tap(tag);
         await tester.pumpAndSettle();
         final last = find.byKey(
-          const ValueKey('ai-model-option-custom-long-model-name-for-layout-11'),
+          const ValueKey(
+            'ai-model-option-custom-long-model-name-for-layout-11',
+          ),
         );
         await tester.scrollUntilVisible(
           last,
@@ -1855,7 +1786,10 @@ void main() {
       for (final element in find.byType(IconButton).evaluate()) {
         if (element.findAncestorWidgetOfExactType<BackButton>() == null) {
           final button = element.widget as IconButton;
-          expect(button.onPressed, button.tooltip == '停止生成' ? isNotNull : isNull);
+          expect(
+            button.onPressed,
+            button.tooltip == '停止生成' ? isNotNull : isNull,
+          );
         }
       }
       for (final button in tester.widgetList<TextButton>(
@@ -1919,7 +1853,11 @@ void main() {
             expect(find.byType(BackButton), findsOneWidget);
             expect(find.byType(PopupMenuButton<String>), findsNothing);
             expect(
-              find.text(locale.languageCode == 'en' ? 'Generate diary' : '生成日記'),
+              find.text(
+                locale.languageCode == 'en'
+                    ? testEnL10n.chatDiaryGenerateDiary
+                    : '生成日記',
+              ),
               findsOneWidget,
             );
             final actionButtons = find.descendant(

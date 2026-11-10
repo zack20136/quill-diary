@@ -18,16 +18,19 @@ import 'package:quill_diary/presentation/ai/ai_chat_model_picker.dart';
 import 'package:quill_diary/presentation/ai/ai_chat_scaffold.dart';
 import 'package:quill_diary/presentation/ai/ai_composer_actions.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
+import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
+import 'package:quill_diary/presentation/ai/ai_feature_error_panel.dart';
 import 'package:quill_diary/presentation/ai/ai_generation_card.dart';
 import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
+import 'package:quill_diary/presentation/ai/ai_message_version_switcher.dart';
 import 'package:quill_diary/presentation/ai/ai_request_preview_dialog.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_draft_editor.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_quick_actions.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
-import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 
 class DiaryOrganizationPage extends ConsumerStatefulWidget {
   const DiaryOrganizationPage({super.key, required this.entryId});
@@ -101,23 +104,37 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   Future<void> _settings() async {
     final controller = _controller;
     final current = controller.draft;
+    final openingSession = controller.vault;
+    if (openingSession == null) return;
     final result = await _dialog<AiConnectionSettingsResult>(
       AiConnectionSettingsDialog(initialConnection: current?.connection),
     );
     if (!mounted ||
         result == null ||
         current != controller.draft ||
-        controller.vault == null) {
+        controller.vault != openingSession) {
       return;
     }
     final stored = await ref
         .read(aiSettingsStoreProvider)
         .read(controller.vault!);
-    if (!mounted || current != controller.draft) return;
+    if (!mounted ||
+        current != controller.draft ||
+        controller.vault != openingSession) {
+      return;
+    }
+    if (current == null) {
+      await _load(controller.vault!);
+      return;
+    }
     await controller.changeConnection(
       result.chatConnection ?? stored.connection.activeConfig,
     );
-    if (!mounted || current != controller.draft) return;
+    if (!mounted ||
+        current != controller.draft ||
+        controller.vault != openingSession) {
+      return;
+    }
     await controller.refreshPrivacyPreset();
   }
 
@@ -181,42 +198,32 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       await action();
     } on Object catch (error) {
       if (mounted && _controller.vault == session) {
-        showAppFeedbackToast(
-          context,
-          aiErrorText(
-            context.l10n,
-            error is AiFailure ? error.code : AiErrorCode.storage,
-          ),
-          tone: AppFeedbackTone.error,
-        );
+        reportAiError(context, error);
       }
     }
   }
 
   Future<void> _discard(bool restart) async {
     final l10n = context.l10n;
+    final openingSession = _controller.vault;
+    if (openingSession == null) return;
+    // 共用確認框，並留在頁面追蹤的 route，鎖定時才能關掉。
     final confirmed = await _dialog<bool>(
-      AlertDialog(
-        title: Text(
-          restart ? l10n.organizationRestart : l10n.organizationDelete,
-        ),
+      AppConfirmDialog(
+        title: restart ? l10n.organizationRestart : l10n.organizationDelete,
         content: Text(l10n.organizationDiscardBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.commonActionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              restart ? l10n.commonActionConfirm : l10n.commonActionDelete,
-            ),
-          ),
-        ],
+        cancelLabel: l10n.commonActionCancel,
+        confirmLabel: restart
+            ? l10n.commonActionConfirm
+            : l10n.commonActionDelete,
+        confirmStyle: restart
+            ? AppConfirmStyle.primary
+            : AppConfirmStyle.destructive,
       ),
     );
     if (confirmed != true ||
         !mounted ||
+        _controller.vault != openingSession ||
         _controller.busy &&
             _controller.draft?.stage == OrganizationStage.applying) {
       return;
@@ -342,7 +349,8 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                   const Spacer(),
                   FilledButton(
                     key: const ValueKey('organization-start'),
-                    onPressed: controller.canStart
+                    onPressed:
+                        controller.canStart && ref.watch(aiEnabledProvider)
                         ? () => _run(controller.startChat)
                         : null,
                     child: Text(l10n.organizationStart),
@@ -378,31 +386,12 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     final versions = draft.versionsOf(index);
     if (versions.length < 2) return const SizedBox.shrink();
     final selected = versions.indexOf(index);
-    final enabled = !controller.busy && draft.editingTurn == null;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: context.l10n.chatDiaryPreviousVersion,
-          icon: const Icon(Icons.chevron_left, size: 18),
-          onPressed: enabled && selected > 0
-              ? () => controller.selectTurn(versions[selected - 1])
-              : null,
-        ),
-        Text(
-          '${selected + 1} / ${versions.length}',
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: context.l10n.chatDiaryNextVersion,
-          icon: const Icon(Icons.chevron_right, size: 18),
-          onPressed: enabled && selected < versions.length - 1
-              ? () => controller.selectTurn(versions[selected + 1])
-              : null,
-        ),
-      ],
+    return AiMessageVersionSwitcher(
+      index: selected,
+      count: versions.length,
+      enabled: !controller.busy && draft.editingTurn == null,
+      onPrevious: () => controller.selectTurn(versions[selected - 1]),
+      onNext: () => controller.selectTurn(versions[selected + 1]),
     );
   }
 
@@ -438,13 +427,20 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
               if (mounted) _composerFocus.requestFocus();
             }
           : null,
-      onRetry: !user ? () => _send(turn: turn) : null,
+      onRetry:
+          !user &&
+              ref.watch(aiConnectionReadyProvider(draft.connection)).value ==
+                  true
+          ? () => _send(turn: turn)
+          : null,
       retryFailed: failed,
     );
   }
 
   Widget _chat(DiaryOrganizationController controller) {
     final draft = controller.draft!;
+    final connectionReady =
+        ref.watch(aiConnectionReadyProvider(draft.connection)).value == true;
     final l10n = context.l10n;
     final canInteract =
         !controller.busy &&
@@ -472,10 +468,19 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                   vertical: 12,
                 ),
                 children: [
+                  AiConnectionSetupNotice(
+                    connection: draft.connection,
+                    onOpenSettings: controller.busy
+                        ? null
+                        : () => _run(_settings),
+                  ),
                   _notices(controller),
                   if (!hasMessages)
                     OrganizationQuickActions(
-                      enabled: canInteract && draft.editingTurn == null,
+                      enabled:
+                          connectionReady &&
+                          canInteract &&
+                          draft.editingTurn == null,
                       onSelected: (message) => _send(message: message),
                     ),
                   if (draft.generationInterrupted && !controller.generating)
@@ -529,7 +534,10 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                       if (hasMessages)
                         OrganizationQuickActions(
                           compact: true,
-                          enabled: canInteract && draft.editingTurn == null,
+                          enabled:
+                              connectionReady &&
+                              canInteract &&
+                              draft.editingTurn == null,
                           onSelected: (message) => _send(message: message),
                         ),
                       AiComposerActions(
@@ -542,10 +550,12 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                         actionKey: const ValueKey('organization-generate'),
                         model: AiChatModelPicker(
                           current: draft.connection,
-                          enabled: canInteract,
+                          enabled: canInteract && ref.watch(aiEnabledProvider),
                           onSelected: controller.selectModel,
                         ),
-                        onAction: controller.canGenerate ? _generate : null,
+                        onAction: connectionReady && controller.canGenerate
+                            ? _generate
+                            : null,
                       ),
                       AiChatInputPanel(
                         key: ObjectKey(draft),
@@ -553,7 +563,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                         onCancelEditing: controller.cancelEditing,
                         isBusy: controller.busy,
                         canSend:
-                            canInteract && _composer.text.trim().isNotEmpty,
+                            connectionReady &&
+                            canInteract &&
+                            _composer.text.trim().isNotEmpty,
                         composerController: _composer,
                         composerFocusNode: _composerFocus,
                         composerKey: const ValueKey('organization-composer'),
@@ -613,7 +625,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     if (session == null || !session.isUnlocked || session.session == null) {
       return Scaffold(
         body: session == null
-            ? const Center(child: CircularProgressIndicator())
+            ? const AppLoadingState(layout: AppLoadingStateLayout.page)
             : SessionBlockedPane(sessionState: session),
       );
     }
@@ -636,20 +648,23 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
         if (draft == null) {
           return Scaffold(
             appBar: AppBar(title: Text(context.l10n.organizationTitle)),
-            body: Center(
-              child: controller.loading || controller.error == null
-                  ? const CircularProgressIndicator()
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(aiErrorText(context.l10n, controller.error!)),
-                        TextButton(
-                          onPressed: () => controller.load(session.session!),
-                          child: Text(context.l10n.chatDiaryRetry),
-                        ),
-                      ],
+            body: controller.loading || controller.error == null
+                ? const AppLoadingState(layout: AppLoadingStateLayout.page)
+                : Center(
+                    child: AiFeatureErrorPanel(
+                      message: aiErrorText(context.l10n, controller.error!),
+                      onRetry: () => controller.load(session.session!),
+                      retryLabel: context.l10n.commonActionRetry,
+                      onOpenSettings: controller.error == AiErrorCode.settings
+                          ? () => _run(_settings)
+                          : null,
+                      openSettingsLabel: context.l10n.aiOpenSettings,
+                      onDelete: controller.error == AiErrorCode.unreadable
+                          ? () => _run(() => _discard(false))
+                          : null,
+                      deleteLabel: context.l10n.organizationDelete,
                     ),
-            ),
+                  ),
           );
         }
         _syncing = true;
@@ -700,7 +715,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
               : AiChatScaffold(
                   title: context.l10n.organizationTitle,
                   leading: CloseButton(onPressed: _close),
-                  onPreview: controller.busy ? null : () => _run(_preview),
+                  onPreview: controller.busy || !ref.watch(aiEnabledProvider)
+                      ? null
+                      : () => _run(_preview),
                   onDelete: controller.busy
                       ? null
                       : () => _run(() => _discard(false)),

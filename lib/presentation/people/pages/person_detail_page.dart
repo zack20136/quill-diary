@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
+import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
@@ -16,6 +17,8 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_export_actions.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
+import 'package:quill_diary/presentation/people/widgets/person_detail_section_card.dart';
+import 'package:quill_diary/presentation/persona/persona_summary_section.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -57,6 +60,10 @@ class PersonDetailPage extends ConsumerWidget {
       return;
     }
     try {
+      ref.read(personaDeletionsProvider.notifier).mark(personId);
+      await ref.read(personaStoreProvider).delete(personId, session);
+      ref.invalidate(savedPersonasProvider);
+      ref.invalidate(personaRecordProvider(personId));
       await ref.read(vaultRepositoryProvider).deletePerson(session, personId);
       ref.invalidate(peopleCatalogProvider);
       if (context.mounted) {
@@ -300,7 +307,7 @@ class PersonDetailPage extends ConsumerWidget {
                                   ),
                                   if (summaryItems.isNotEmpty) ...<Widget>[
                                     const SizedBox(height: 14),
-                                    _PersonDetailSectionCard(
+                                    PersonDetailSectionCard(
                                       key: const ValueKey<String>(
                                         'person-mention-overview-card',
                                       ),
@@ -327,6 +334,8 @@ class PersonDetailPage extends ConsumerWidget {
                                   ],
                                   const SizedBox(height: 16),
                                   _PersonProfileBodyCard(person: person),
+                                  const SizedBox(height: 16),
+                                  PersonaSummarySection(personId: personId),
                                   const SizedBox(height: 16),
                                 ],
                               ),
@@ -455,45 +464,7 @@ class _PersonRelationChip extends StatelessWidget {
   }
 }
 
-class _PersonDetailSectionCard extends StatelessWidget {
-  const _PersonDetailSectionCard({
-    required this.title,
-    required this.child,
-    super.key,
-  });
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final AppColors colors = context.appColors;
-    return AppCard(
-      radius: PageStyle.radiusPanel,
-      backgroundColor: theme.brightness == Brightness.dark
-          ? colors.sectionCard
-          : colors.previewPanel,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-/// 對齊日記 preview 的白底內容卡。
+/// 對齊日記預覽的白底內容卡。
 class _PersonProfileBodyCard extends ConsumerWidget {
   const _PersonProfileBodyCard({required this.person});
 
@@ -517,7 +488,7 @@ class _PersonProfileBodyCard extends ConsumerWidget {
         if (person.relationships.contains(type.id)) type,
     ];
 
-    return _PersonDetailSectionCard(
+    return PersonDetailSectionCard(
       key: const ValueKey<String>('person-profile-details-card'),
       title: l10n.peopleProfileDetailsTitle,
       child: Column(

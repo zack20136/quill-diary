@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/diary_organization/diary_organization_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
@@ -8,9 +9,8 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/adaptive_panel.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_choice_card.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_layout.dart';
 
 class DiaryAiActionsButton extends ConsumerWidget {
   const DiaryAiActionsButton({
@@ -24,6 +24,10 @@ class DiaryAiActionsButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chat = ref.watch(chatDiaryForEntryProvider(entryId));
+    // AI 關閉時仍可開啟已保存的聊天，只停用整理。
+    final enabled =
+        !chat.isLoading && (ref.watch(aiEnabledProvider) || chat.value != null);
+    final colors = Theme.of(context).colorScheme;
     return IconButton(
       tooltip: context.l10n.organizationAiActions,
       style: IconButton.styleFrom(
@@ -33,48 +37,19 @@ class DiaryAiActionsButton extends ConsumerWidget {
         foregroundColor: Theme.of(context).colorScheme.primary,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      onPressed: chat.isLoading
+      onPressed: !enabled
           ? null
           : () async {
-              final wide = MediaQuery.sizeOf(context).width >= 600;
-              final picker = _EntryAiActionPicker(entryId: entryId, wide: wide);
-              final colors = Theme.of(context).colorScheme;
-              final organize = wide
-                  ? await showDialog<bool>(
-                      context: context,
-                      builder: (_) => Center(
-                        child: AppResponsiveWidth(
-                          maxWidth: 480,
-                          child: Dialog(
-                            insetPadding: EdgeInsets.zero,
-                            backgroundColor: colors.surfaceContainerHigh,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                PageStyle.radiusCard,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: picker,
-                          ),
-                        ),
-                      ),
-                    )
-                  : await showModalBottomSheet<bool>(
-                      context: context,
-                      useRootNavigator: true,
-                      useSafeArea: true,
-                      isScrollControlled: true,
-                      showDragHandle: false,
-                      backgroundColor: colors.surfaceContainerHigh,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(PageStyle.radiusCard),
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      builder: (_) => picker,
-                    );
-              if (!context.mounted || organize == null) return;
+              final picker = _EntryAiActionPicker(entryId: entryId);
+              final organize = await showAdaptivePanel<bool>(
+                context: context,
+                builder: (_) => picker,
+              );
+              if (!context.mounted ||
+                  organize == null ||
+                  (organize && !ref.read(aiEnabledProvider))) {
+                return;
+              }
               if (organize) {
                 final saved = await context.push<DiaryEntry>(
                   AppRoutes.diaryOrganizationLocation(entryId),
@@ -94,16 +69,21 @@ class DiaryAiActionsButton extends ConsumerWidget {
             },
       icon: Text(
         context.l10n.chatDiaryAiIcon,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: enabled
+              ? colors.primary
+              : colors.onSurface.withValues(alpha: 0.38),
+        ),
       ),
     );
   }
 }
 
 class _EntryAiActionPicker extends ConsumerStatefulWidget {
-  const _EntryAiActionPicker({required this.entryId, required this.wide});
+  const _EntryAiActionPicker({required this.entryId});
   final String entryId;
-  final bool wide;
   @override
   ConsumerState<_EntryAiActionPicker> createState() =>
       _EntryAiActionPickerState();
@@ -142,6 +122,7 @@ class _EntryAiActionPickerState extends ConsumerState<_EntryAiActionPicker>
     final l10n = context.l10n;
     final chat = ref.watch(chatDiaryForEntryProvider(widget.entryId));
     final saved = ref.watch(organizationDraftProvider(widget.entryId));
+    final aiEnabled = ref.watch(aiEnabledProvider);
     final controller = ref.watch(
       diaryOrganizationControllerProvider(widget.entryId),
     );
@@ -150,120 +131,67 @@ class _EntryAiActionPickerState extends ConsumerState<_EntryAiActionPicker>
       builder: (context, _) {
         final hasDraft =
             saved.value != null || controller.draft?.persisted == true;
-        return LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.8),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(20, widget.wide ? 16 : 12, 20, 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (!widget.wide) ...[
-                      Center(
-                        child: Container(
-                          width: 32,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            borderRadius: BorderRadius.circular(
-                              PageStyle.radiusPanel,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l10n.organizationAiActions,
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          tooltip: l10n.commonCloseTooltip,
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            AppChoiceCard(
-                              key: const ValueKey('entry-ai-conversation'),
-                              icon: Icons.chat_bubble_outline,
-                              title: l10n.chatDiaryViewSavedConversation,
-                              description: chat.hasError
-                                  ? l10n.aiErrorStorage
-                                  : chat.value == null
-                                  ? l10n.organizationNoConversation
-                                  : l10n.organizationConversationDescription,
-                              onPressed:
-                                  chat.isLoading ||
-                                      !chat.hasError && chat.value == null
-                                  ? null
-                                  : () {
-                                      if (chat.hasError) {
-                                        ref.invalidate(
-                                          chatDiaryForEntryProvider(
-                                            widget.entryId,
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      Navigator.pop(context, false);
-                                    },
-                            ),
-                            const SizedBox(height: 12),
-                            AppChoiceCard(
-                              key: const ValueKey('entry-ai-organize'),
-                              icon: Icons.auto_fix_high_outlined,
-                              title: hasDraft || controller.busy
-                                  ? l10n.organizationResume
-                                  : l10n.organizationTitle,
-                              description: controller.busy
-                                  ? l10n.organizationWorking
-                                  : saved.hasError
-                                  ? l10n.aiErrorStorage
-                                  : hasDraft
-                                  ? l10n.organizationPending
-                                  : l10n.organizationDescription,
-                              onPressed: saved.isLoading
-                                  ? null
-                                  : () {
-                                      if (saved.hasError) {
-                                        showAppFeedbackToast(
-                                          context,
-                                          l10n.aiErrorStorage,
-                                          tone: AppFeedbackTone.error,
-                                        );
-                                        ref.invalidate(
-                                          organizationDraftProvider(
-                                            widget.entryId,
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      Navigator.pop(context, true);
-                                    },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        return AdaptiveChoicePanel(
+          title: l10n.organizationAiActions,
+          onClose: () => Navigator.pop(context),
+          child: Column(
+            children: [
+              AppChoiceCard(
+                key: const ValueKey('entry-ai-conversation'),
+                icon: Icons.chat_bubble_outline,
+                title: l10n.chatDiaryViewSavedConversation,
+                description: chat.hasError
+                    ? l10n.aiErrorStorage
+                    : chat.value == null
+                    ? l10n.organizationNoConversation
+                    : l10n.organizationConversationDescription,
+                onPressed:
+                    chat.isLoading || !chat.hasError && chat.value == null
+                    ? null
+                    : () {
+                        if (chat.hasError) {
+                          ref.invalidate(
+                            chatDiaryForEntryProvider(widget.entryId),
+                          );
+                          return;
+                        }
+                        Navigator.pop(context, false);
+                      },
               ),
-            ),
+              const SizedBox(height: 12),
+              AppChoiceCard(
+                key: const ValueKey('entry-ai-organize'),
+                icon: Icons.auto_fix_high_outlined,
+                title: hasDraft || controller.busy
+                    ? l10n.organizationResume
+                    : l10n.organizationTitle,
+                description: !aiEnabled
+                    ? l10n.aiFeaturesDisabledHint
+                    : controller.busy
+                    ? l10n.organizationWorking
+                    : saved.hasError
+                    ? l10n.aiErrorStorage
+                    : hasDraft
+                    ? l10n.organizationPending
+                    : l10n.organizationDescription,
+                onPressed: !aiEnabled || saved.isLoading
+                    ? null
+                    : () {
+                        if (saved.hasError) {
+                          showAppFeedbackToast(
+                            context,
+                            l10n.aiErrorStorage,
+                            tone: AppFeedbackTone.error,
+                          );
+                          ref.invalidate(
+                            organizationDraftProvider(widget.entryId),
+                          );
+                          return;
+                        }
+                        Navigator.pop(context, true);
+                      },
+              ),
+            ],
           ),
         );
       },

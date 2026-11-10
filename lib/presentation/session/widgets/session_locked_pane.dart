@@ -33,7 +33,7 @@ bool sessionBlockedOffersSettingsNavigation(AppSessionState sessionState) {
       sessionState.session == null;
 }
 
-/// Session 鎖定／阻擋狀態的共用內容（不含外層卡片）。
+/// 工作階段鎖定／阻擋狀態的共用內容（不含外層卡片）。
 class SessionBlockedContent extends StatelessWidget {
   const SessionBlockedContent({
     required this.sessionState,
@@ -173,7 +173,7 @@ class SessionRetryVerificationButton extends StatelessWidget {
   );
 }
 
-/// 編輯器等 inline 版面使用的 session 阻擋畫面。
+/// 編輯器等內嵌版面使用的工作階段阻擋畫面。
 class SessionBlockedPane extends ConsumerWidget {
   const SessionBlockedPane({required this.sessionState, super.key});
 

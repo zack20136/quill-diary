@@ -79,6 +79,7 @@ class OrganizationTestScope {
     scope.container
         .read(appSessionProvider.notifier)
         .activateSession(scope.setup.session);
+    await scope.container.read(personalizationPreferencesProvider.future);
     scope.subscription = scope.container.listen(
       diaryOrganizationControllerProvider(id),
       (_, _) {},

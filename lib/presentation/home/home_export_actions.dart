@@ -173,7 +173,7 @@ Future<void> deleteSelectedHomeItems(
         ref.read(diaryRevisionProvider.notifier).bump();
       }
       if (deletion.chatIds.isNotEmpty) {
-        ref.invalidate(chatDiarySessionsProvider);
+        ref.invalidate(chatDiaryDraftsProvider);
       }
     }
   }

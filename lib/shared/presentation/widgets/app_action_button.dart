@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 /// 共用操作按鈕的視覺層級。
 enum AppActionButtonAppearance { primary, tonal, outlined, destructive }
 
-/// 以一致的外觀與 loading 狀態呈現可點擊操作。
 class AppActionButton extends StatelessWidget {
   const AppActionButton({
     required this.label,

@@ -11,6 +11,7 @@ import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
@@ -46,6 +47,9 @@ final diaryOrganizationControllerProvider = Provider.autoDispose
         }
       });
       ref.onDispose(controller.dispose);
+      ref.listen(aiEnabledProvider, (_, enabled) {
+        if (!enabled && controller.busy) controller.stop();
+      });
       ref.listen(diaryRevisionProvider, (_, _) {
         if (controller.draft != null &&
             controller.draft!.stage != OrganizationStage.applying &&
@@ -84,7 +88,8 @@ class DiaryOrganizationController extends ChangeNotifier {
   bool get canGenerate {
     final current = draft;
     final last = current?.activeTurnIndices.lastOrNull;
-    return canInteract &&
+    return ref.read(aiEnabledProvider) &&
+        canInteract &&
         current!.stage == OrganizationStage.chat &&
         current.editingTurn == null &&
         current.composer.trim().isEmpty &&
@@ -126,7 +131,6 @@ class DiaryOrganizationController extends ChangeNotifier {
         hidePersonNames: settings.hidePersonNames,
       );
       if (saved != null) {
-        saved.classifyPersonTokens(_personRanges(saved.source.markdownBody));
         if (saved.stage == OrganizationStage.chat) saved.organizedBody = null;
         _privacyConfirmed = true;
         draft = saved;
@@ -139,7 +143,7 @@ class DiaryOrganizationController extends ChangeNotifier {
         _privacyConfirmed = false;
         draft = DiaryOrganization(
           source: entry,
-          connection: settings.connection.activeConfig,
+          connection: settings.connection.activeConfig.captureRequestSnapshot(),
         )..hiddenRanges = _presetRanges(entry.markdownBody);
       }
       await refreshConflict();
@@ -322,7 +326,7 @@ class DiaryOrganizationController extends ChangeNotifier {
 
   Future<void> changeConnection(AiConnectionConfig connection) async {
     if (busy || draft == null) return;
-    draft!.connection = connection;
+    draft!.connection = connection.captureRequestSnapshot();
     error = null;
     if (draft!.persisted) await persist();
     notifyListeners();
@@ -381,7 +385,7 @@ class DiaryOrganizationController extends ChangeNotifier {
       version,
       hidePersonNames: stored.hidePersonNames,
     );
-    return resolveDiaryOrganizationPrompt(
+    return resolveDiaryOrganizationInstructions(
       generate: generate,
       language: language,
       settings: stored.organizationPrompts,
@@ -415,7 +419,7 @@ class DiaryOrganizationController extends ChangeNotifier {
     final key = jsonEncode([
       generate,
       prompt,
-      current.connection.toJson(),
+      current.connection.toSnapshotJson(),
       current.protectedSource,
       current.personTokenById,
       [for (final index in path) current.turns[index].toJson()],
@@ -472,6 +476,7 @@ class DiaryOrganizationController extends ChangeNotifier {
   }
 
   Future<void> sendMessage({String? message, int? retryTurn}) async {
+    if (!ref.read(aiEnabledProvider)) return;
     if (!canInteract || draft!.stage != OrganizationStage.chat) return;
     if (message != null && draft!.editingTurn != null) return;
     if (retryTurn == null && (message ?? draft!.composer).trim().isEmpty) {
@@ -507,21 +512,18 @@ class DiaryOrganizationController extends ChangeNotifier {
         : OrganizationGenerationPhase.idle;
     notifyListeners();
     try {
+      _ensure(version);
       await refreshConflict();
       _ensure(version);
       if (conflict || editorDraftExists) return;
       final connection = current.connection;
-      if (!connection.isConfigured) {
-        throw const AiFailure(AiErrorCode.configuration);
-      }
-      validateAiEndpoint(connection);
-      final key = await ref
-          .read(aiSettingsStoreProvider)
-          .readApiKey(connection);
+      final key = await requireAiRequestKey(
+        enabled: ref.read(aiEnabledProvider),
+        connection: connection,
+        readApiKey: () =>
+            ref.read(aiSettingsStoreProvider).readApiKey(connection),
+      );
       _ensure(version);
-      if (connection.provider.requiresApiKey && key.isEmpty) {
-        throw const AiFailure(AiErrorCode.configuration);
-      }
       final prompt = await _prepareRequestContext(session, generate);
       _ensure(version);
       final request = _buildRequest(

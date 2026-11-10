@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
@@ -50,6 +51,7 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/external_url.dart';
@@ -305,8 +307,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     icon: Icons.chat_bubble_outline,
                     title: l10n.aiSettings,
                     description: l10n.aiSettingsSectionDescription,
-                    child: AppActionGroup(
-                      actions: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppActionGroup(
+                          actions: [
+                            SwitchListTile.adaptive(
+                              key: const ValueKey('ai-enabled-switch'),
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(l10n.aiFeaturesEnabled),
+                              subtitle: Text(
+                                l10n.aiFeaturesEnabledHint,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              value: ref.watch(aiEnabledProvider),
+                              onChanged: _busy || !pageAccess.hasUnlockedSession
+                                  ? null
+                                  : (enabled) =>
+                                        unawaited(_setAiEnabled(enabled)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         AppActionButton(
                           label: l10n.aiOpenSettings,
                           icon: Icons.tune_rounded,
@@ -878,26 +900,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _cancelDriveUpload() async {
     final AppLocalizations l10n = context.l10n;
-    final bool? confirmed = await showDialog<bool>(
+    final bool confirmed = await showAppConfirmDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(l10n.driveUploadCancelConfirmTitle),
-          content: Text(l10n.driveUploadCancelConfirmBody),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(l10n.commonActionCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.driveUploadCancelButton),
-            ),
-          ],
-        );
-      },
+      title: l10n.driveUploadCancelConfirmTitle,
+      content: Text(l10n.driveUploadCancelConfirmBody),
+      cancelLabel: l10n.commonActionCancel,
+      confirmLabel: l10n.driveUploadCancelButton,
     );
-    if (confirmed != true) {
+    if (!confirmed) {
       return;
     }
     await ref.read(driveUploadCoordinatorProvider.notifier).cancelUpload();
@@ -1308,6 +1318,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _applyUnlockMode(AppUnlockMode mode) async {
     final AppLocalizations l10n = context.l10n;
     _showFeedback(await _settingsFlow.applyUnlockMode(l10n, mode));
+  }
+
+  /// 不走 [_runBusy]，避免切換時跳出阻擋遮罩造成設定頁閃爍。
+  Future<void> _setAiEnabled(bool enabled) async {
+    try {
+      await ref.read(aiEnabledProvider.notifier).setEnabled(enabled);
+    } catch (error) {
+      if (!mounted) return;
+      _showFeedback(
+        SettingsFlowFeedback(
+          userFacingErrorMessage(error, l10n: context.l10n),
+          tone: SettingsFlowFeedbackTone.error,
+        ),
+      );
+    }
   }
 
   Future<void> _rotateRecoveryKey() async {

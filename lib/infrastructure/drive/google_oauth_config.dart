@@ -42,7 +42,6 @@ class OAuthConfig {
       isAndroid: !kIsWeb && Platform.isAndroid,
       androidResolver: () =>
           _androidOAuthChannel.invokeMethod<String>('getServerClientId'),
-      reportFallbackError: true,
     );
   }
 
@@ -52,13 +51,11 @@ class OAuthConfig {
     required String envServerClientId,
     bool isAndroid = false,
     Future<String?> Function()? androidResolver,
-    bool reportFallbackError = false,
   }) {
     return _resolveServerClientId(
       envServerClientId: envServerClientId,
       isAndroid: isAndroid,
       androidResolver: androidResolver,
-      reportFallbackError: reportFallbackError,
     );
   }
 
@@ -66,7 +63,6 @@ class OAuthConfig {
     required String envServerClientId,
     required bool isAndroid,
     Future<String?> Function()? androidResolver,
-    required bool reportFallbackError,
   }) async {
     final String fromEnv = envServerClientId.trim();
     if (fromEnv.isNotEmpty) {
@@ -80,16 +76,7 @@ class OAuthConfig {
                 _androidOAuthChannel.invokeMethod<String>('getServerClientId');
         final String? fromXml = await resolver();
         return fromXml?.trim() ?? '';
-      } on Object catch (error, stackTrace) {
-        if (reportFallbackError) {
-          debugPrint(
-            'OAuthConfig.resolveServerClientId fallback failed: $error',
-          );
-          debugPrintStack(
-            stackTrace: stackTrace,
-            label: 'OAuthConfig.resolveServerClientId',
-          );
-        }
+      } on Object {
         return '';
       }
     }

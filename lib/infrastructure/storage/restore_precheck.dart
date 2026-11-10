@@ -1,7 +1,7 @@
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 
-/// 完整 vault 備份 zip 內復原中繼資料的預覽。
+/// 完整日記庫備份 zip 內復原中繼資料的預覽。
 ///
 /// 可進入還原流程時一定具備可解析的 [metadata]；缺少或無效時應在
 /// [prepareRestorePreview] 等上游驗證階段直接失敗。
@@ -40,7 +40,7 @@ class RestorePrecheck {
       localRecoverySaltBase64 != null &&
       backupRecoverySaltBase64 == localRecoverySaltBase64;
 
-  /// 同 vault 但本機曾更新過復原金鑰（舊備份需舊金鑰）。
+  /// 同一日記庫但本機曾更新過復原金鑰（舊備份需舊金鑰）。
   bool get recoveryKeyRotatedSinceBackup =>
       sameVaultId && localRecoverySaltBase64 != null && !sameRecoveryGeneration;
 
@@ -49,7 +49,7 @@ class RestorePrecheck {
 
   bool get expectsRecoveryKeyAfterRestore => !expectsTrustedUnlockAfterRestore;
 
-  /// 同 vault 還原後能否沿用還原前已解鎖 session（免再次裝置驗證）。
+  /// 同一日記庫還原後能否沿用還原前已解鎖 session（免再次裝置驗證）。
   bool canResumeTrustedSession(UnlockedVaultSession? priorSession) =>
       expectsTrustedUnlockAfterRestore &&
       priorSession?.canUseRecovery == true &&

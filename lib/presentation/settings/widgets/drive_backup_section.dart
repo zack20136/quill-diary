@@ -5,6 +5,7 @@ import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
+import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -51,7 +52,9 @@ class DriveBackupSection extends ConsumerWidget {
         .job;
     final String description = isGoogleDriveConfigured
         ? (access.canBackup
-              ? l10n.settingsDriveBackupSectionDescriptionEnabled
+              ? l10n.settingsDriveBackupSectionDescriptionEnabled(
+                  VaultBackupPolicy.retainCount,
+                )
               : l10n.vaultTransferDriveSectionDescriptionBackupLocked)
         : l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured;
 
@@ -226,7 +229,7 @@ class _DriveBackupContent extends StatelessWidget {
     final bool cleanupPending = uploadJob?.isCancelCleanupPending ?? false;
     final bool cleanupRecovery =
         uploadJob?.needsCancelCleanupAccountRecovery ?? false;
-    // 取消清理中：未連線或授權錯誤時允許重連原帳號；其餘仍鎖住切換／中斷。
+    // 取消清理中：未連線或授權錯誤時允許重連原帳戶；其餘仍鎖住切換／中斷。
     final bool accountActionsUnlocked =
         !uploadBusy || cleanupRecovery || (cleanupPending && !isConnected);
     final bool canUseAccountActions =
@@ -285,7 +288,7 @@ class _DriveBackupContent extends StatelessWidget {
                 icon: Icons.swap_horiz_rounded,
                 appearance: AppActionButtonAppearance.outlined,
                 fullWidth: true,
-                // 帳號不符時允許切回原帳；一般上傳／清理中仍鎖住。
+                // 帳戶不符時允許切回原帳；一般上傳／清理中仍鎖住。
                 onPressed:
                     canUseAccountActions && (!uploadBusy || cleanupRecovery)
                     ? onSwitchAccount

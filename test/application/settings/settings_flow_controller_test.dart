@@ -498,7 +498,7 @@ void main() {
     });
 
     group('importDocuments', () {
-      test('成功時回傳 success', () async {
+      test('匯入文件成功時回傳 success', () async {
         final ProviderContainer container = ProviderContainer(
           overrides: [
             portableTransferServiceProvider.overrideWithValue(
@@ -572,7 +572,7 @@ void main() {
     });
 
     group('exportMarkdown', () {
-      test('成功時回傳 success', () async {
+      test('匯出 Markdown 成功時回傳 success', () async {
         final ProviderContainer container = ProviderContainer(
           overrides: [
             portableTransferServiceProvider.overrideWithValue(
@@ -598,7 +598,7 @@ void main() {
     });
 
     group('createRecoveryKey', () {
-      test('成功時回傳金鑰與 success feedback', () async {
+      test('建立復原金鑰成功時回傳金鑰與 success feedback', () async {
         final _RecoverySessionVaultRepository repository =
             _RecoverySessionVaultRepository(
               setupRecoveryKeyResult: const RecoverySetupResult(
@@ -738,7 +738,7 @@ void main() {
     });
 
     group('rotateRecoveryKey', () {
-      test('成功時回傳金鑰與 success feedback', () async {
+      test('輪替復原金鑰成功時回傳金鑰與 success feedback', () async {
         final _RecoverySessionVaultRepository repository =
             _RecoverySessionVaultRepository(
               rotateRecoveryKeyResult: const RecoverySetupResult(

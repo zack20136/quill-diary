@@ -268,6 +268,89 @@ void main() {
     );
   });
 
+  test('結束事件之後不再等待連線關閉', () async {
+    const lines = <AiApiProtocol, List<String>>{
+      AiApiProtocol.chatCompletions: [
+        'data: {"choices":[{"delta":{"content":"日記"},"finish_reason":"stop"}]}',
+        '',
+        ': keep-alive',
+      ],
+      AiApiProtocol.responses: [
+        'data: {"type":"response.output_text.delta","delta":"日記"}',
+        '',
+        'data: {"type":"response.completed"}',
+        '',
+        ': keep-alive',
+      ],
+      AiApiProtocol.claudeMessages: [
+        'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"日記"}}',
+        '',
+        'data: {"type":"message_stop"}',
+        '',
+        ': keep-alive',
+      ],
+      AiApiProtocol.geminiContent: [
+        'data: {"candidates":[{"content":{"parts":[{"text":"日記"}]},"finishReason":"STOP"}]}',
+        '',
+        ': keep-alive',
+      ],
+      AiApiProtocol.ollamaChat: ['{"message":{"content":"日記"},"done":true}'],
+    };
+    for (final protocol in AiApiProtocol.values) {
+      final wire = RecordingAiTransport()
+        ..hang = true
+        ..lines = lines[protocol]!;
+      final client = AiClient(
+        AiConnectionConfig(
+          provider: AiProvider.custom,
+          customConnectionId: 'aic_a',
+          baseUrl: 'https://synthetic.example',
+          model: 'model',
+          customProtocol: protocol,
+        ),
+        'key',
+        transport: wire,
+      );
+      expect(
+        await client
+            .reply('prompt', const [])
+            .join()
+            .timeout(const Duration(seconds: 2)),
+        '日記',
+      );
+      client.close();
+    }
+  });
+
+  test('收到 [DONE] 後不再等待未關閉的連線', () async {
+    final wire = RecordingAiTransport()
+      ..hang = true
+      ..lines = [
+        'data: {"choices":[{"delta":{"content":"一半"},"finish_reason":null}]}',
+        '',
+        'data: [DONE]',
+        '',
+      ];
+    final client = AiClient(
+      AiConnectionConfig(
+        provider: AiProvider.custom,
+        customConnectionId: 'aic_a',
+        baseUrl: 'https://synthetic.example',
+        model: 'model',
+        customProtocol: AiApiProtocol.chatCompletions,
+      ),
+      'key',
+      transport: wire,
+    );
+    await expectLater(
+      client
+          .reply('prompt', const [])
+          .join()
+          .timeout(const Duration(seconds: 2)),
+      throwsA(isA<AiFailure>()),
+    );
+  });
+
   test('圖片檔案參照會重用且可刪除', () async {
     final wire = RecordingAiTransport()
       ..respond({'id': 'file-example'})

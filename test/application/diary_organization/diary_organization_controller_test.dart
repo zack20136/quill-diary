@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/diary_organization/diary_organization_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
@@ -15,6 +16,7 @@ import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
 import '../../helpers/diary_organization/failing_organization_store.dart';
 import '../../helpers/diary_organization/organization_test_scope.dart';
+import '../../helpers/shared/test_l10n.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +37,20 @@ void main() {
   }
 
   group('進入與隱私', () {
+    test('AI 關閉時保留整理輸入與隱藏標記，不送出需求或生成', () async {
+      final controller = scope.controller;
+      await controller.startChat();
+      controller.updateComposer('私人整理需求', [const PrivateTextRange(0, 2)]);
+      await scope.container.read(aiEnabledProvider.notifier).setEnabled(false);
+      await controller.sendMessage();
+      await controller.generateDraft();
+      expect(controller.draft!.composer, '私人整理需求');
+      expect(controller.draft!.composerRanges.single.end, 2);
+      expect(scope.client.calls, isEmpty);
+      await scope.container.read(aiEnabledProvider.notifier).setEnabled(true);
+      expect(scope.client.calls, isEmpty);
+    });
+
     test('標記完成僅進入聊天室，不檢查連線或呼叫 AI', () async {
       final controller = scope.controller;
       controller.updatePrivacy([const PrivateTextRange(3, 6)]);
@@ -250,15 +266,28 @@ void main() {
       expect(loaded.versionsOf(1), [1, 2, 3]);
     });
     test('送出與生成使用最新提示詞覆寫，未覆寫的用途維持內建', () async {
-      scope.settings.organizationPrompts = const AiPromptOverrides(
-        conversationOverride: '自訂需求對話',
-      );
+      scope.settings.organizationPrompts =
+          const DiaryOrganizationPromptSettings(conversationOverride: '自訂需求對話');
       await send('修順');
       expect(scope.client.calls.single.prompt, contains('自訂需求對話'));
-      expect(scope.client.calls.single.prompt, isNot(contains('日記整理夥伴')));
+      expect(
+        scope.client.calls.single.prompt,
+        contains(testL10n.organizationRulesPrompt),
+      );
+      expect(
+        scope.client.calls.single.prompt,
+        contains(testL10n.organizationConversationLabel),
+      );
+      expect(
+        scope.client.calls.single.prompt,
+        isNot(contains(testL10n.organizationConversationPrompt)),
+      );
       scope.client.output = jsonEncode({'reply': '完成', 'body': '整理稿'});
       await scope.controller.generateDraft();
-      expect(scope.client.calls.last.prompt, contains('日記文字整理助手'));
+      expect(
+        scope.client.calls.last.prompt,
+        contains(testL10n.organizationGenerationPrompt),
+      );
       expect(scope.client.calls.last.prompt, isNot(contains('自訂需求對話')));
     });
     test('聊天室選擇模型同步工作與 AI 設定', () async {
@@ -267,9 +296,8 @@ void main() {
         addedModels: [...connection.addedModels, 'another-model'],
         enabledModels: [connection.model, 'another-model'],
       );
-      scope.settings.organizationPrompts = const AiPromptOverrides(
-        conversationOverride: '保留覆寫',
-      );
+      scope.settings.organizationPrompts =
+          const DiaryOrganizationPromptSettings(conversationOverride: '保留覆寫');
       scope.settings.settings = AiConnectionSettings(
         activeConnectionId: updated.connectionId,
         connections: {updated.connectionId: updated},

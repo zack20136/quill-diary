@@ -20,7 +20,14 @@ class AiChatModelPicker extends ConsumerStatefulWidget {
     required this.current,
     required this.enabled,
     required this.onSelected,
-  });
+  }) : _field = false;
+  const AiChatModelPicker.field({
+    super.key,
+    required this.current,
+    required this.enabled,
+    required this.onSelected,
+  }) : _field = true;
+  final bool _field;
   final AiConnectionConfig current;
   final bool enabled;
   final Future<void> Function(ChatModelOption) onSelected;
@@ -214,26 +221,42 @@ class _AiChatModelPickerState extends ConsumerState<AiChatModelPicker>
       consumeOutsideTaps: true,
       overlayBuilder: (context, info) {
         const gap = 6.0;
-        final menuWidth = (info.overlaySize.width - 48).clamp(0.0, 320.0);
-        final maxHeight =
-            (info.anchorRect.top - MediaQuery.paddingOf(context).top - gap - 8)
-                .clamp(0.0, 320.0);
+        final menuWidth = widget._field
+            ? info.anchorRect.width
+            : (info.overlaySize.width - 48).clamp(0.0, 320.0);
+        final padding = MediaQuery.paddingOf(context);
+        final above = info.anchorRect.top - padding.top - gap - 8;
+        final below =
+            info.overlaySize.height -
+            info.anchorRect.bottom -
+            padding.bottom -
+            MediaQuery.viewInsetsOf(context).bottom -
+            gap -
+            8;
+        final openBelow = below > above;
+        final maxHeight = (openBelow ? below : above).clamp(0.0, 320.0);
         final maxLeft = (info.overlaySize.width - menuWidth - 12).clamp(
           0.0,
           double.infinity,
         );
         return Positioned(
           left: info.anchorRect.left.clamp(0.0, maxLeft),
-          bottom: info.overlaySize.height - info.anchorRect.top + gap,
+          top: openBelow ? info.anchorRect.bottom + gap : null,
+          bottom: openBelow
+              ? null
+              : info.overlaySize.height - info.anchorRect.top + gap,
           child: TapRegion(
             groupId: info.tapRegionGroupId,
             consumeOutsideTaps: true,
             onTapOutside: (_) => _closeModelMenu(),
-            child: AppMenuPanel(
-              key: const ValueKey('ai-model-menu'),
-              width: menuWidth,
-              maxHeight: maxHeight,
-              children: menuItems,
+            child: SizedBox(
+              width: widget._field ? menuWidth : null,
+              child: AppMenuPanel(
+                key: const ValueKey('ai-model-menu'),
+                width: menuWidth,
+                maxHeight: maxHeight,
+                children: menuItems,
+              ),
             ),
           ),
         );
@@ -242,41 +265,63 @@ class _AiChatModelPickerState extends ConsumerState<AiChatModelPicker>
         constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width - 32,
         ),
-        child: Material(
-          color: colors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(999),
-          clipBehavior: Clip.antiAlias,
-          child: Tooltip(
-            message: l10n.aiSwitchModel,
-            child: InkWell(
-              key: const ValueKey('ai-model-tag'),
-              focusNode: _modelTagFocusNode,
-              onTap: canSwitch ? () => unawaited(_openModelMenu()) : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        aiChatModelLabel(l10n, current),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(color: colors.onSurfaceVariant),
+        child: widget._field
+            ? InkWell(
+                key: const ValueKey('ai-model-field'),
+                focusNode: _modelTagFocusNode,
+                borderRadius: BorderRadius.circular(16),
+                onTap: canSwitch ? () => unawaited(_openModelMenu()) : null,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: l10n.aiModel,
+                    enabled: canSwitch,
+                    suffixIcon: const Icon(Icons.arrow_drop_down),
+                  ),
+                  child: Text(
+                    aiChatModelLabel(l10n, current),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+            : Material(
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(999),
+                clipBehavior: Clip.antiAlias,
+                child: Tooltip(
+                  message: l10n.aiSwitchModel,
+                  child: InkWell(
+                    key: const ValueKey('ai-model-tag'),
+                    focusNode: _modelTagFocusNode,
+                    onTap: canSwitch ? () => unawaited(_openModelMenu()) : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              aiChatModelLabel(l10n, current),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: colors.onSurfaceVariant),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ],
                       ),
                     ),
-                    Icon(
-                      Icons.arrow_drop_down,
-                      size: 18,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

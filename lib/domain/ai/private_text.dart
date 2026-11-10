@@ -33,38 +33,6 @@ class PersonTextRange {
       );
 }
 
-/// 未送出或編輯前的輸入。圖片只存在聊天；空的 imageIds 不寫入。
-class AiComposerSnapshot {
-  AiComposerSnapshot({
-    required this.text,
-    required this.ranges,
-    required this.imageIds,
-  });
-
-  final String text;
-  final List<PrivateTextRange> ranges;
-  final List<String> imageIds;
-
-  Map<String, Object?> toJson() => {
-    'text': text,
-    'ranges': ranges.map((range) => range.toJson()).toList(),
-    if (imageIds.isNotEmpty) 'image_ids': imageIds,
-  };
-
-  factory AiComposerSnapshot.fromJson(
-    Map<String, dynamic> json,
-  ) => AiComposerSnapshot(
-    text: json['text'] as String,
-    ranges: (json['ranges'] as List)
-        .map(
-          (range) =>
-              PrivateTextRange.fromJson((range as Map).cast<String, dynamic>()),
-        )
-        .toList(),
-    imageIds: (json['image_ids'] as List? ?? const <String>[]).cast<String>(),
-  );
-}
-
 List<PrivateTextRange> mergePrivateRanges(
   List<PrivateTextRange> ranges,
   int length,
@@ -145,4 +113,15 @@ List<PrivateTextRange> updatePrivateRanges(
           range.end + delta > newEnd ? range.end + delta : newEnd,
         ),
   ], newText.length);
+}
+
+/// 驗證保存的 UTF-16 座標，不裁切或重新推算損毀區間。
+void validatePrivateRanges(String text, Iterable<PrivateTextRange> ranges) {
+  for (final range in ranges) {
+    if (range.start < 0 ||
+        range.end <= range.start ||
+        range.end > text.length) {
+      throw const FormatException('隱藏區間超出正文');
+    }
+  }
 }

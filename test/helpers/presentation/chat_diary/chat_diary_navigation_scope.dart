@@ -8,6 +8,7 @@ import 'package:quill_diary/application/home/home_entry_query_providers.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -16,6 +17,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../ai/ai_test_helpers.dart';
 import '../../app_test_theme.dart';
+import '../../preferences/in_memory_user_preferences.dart';
 
 class ChatDiaryNavigationSession extends AppSessionController {
   ChatDiaryNavigationSession({
@@ -39,6 +41,7 @@ Widget chatDiaryNavigationApp({
   AiClient Function(AiConnectionConfig, String)? clientFactory,
 }) => ProviderScope(
   overrides: [
+    userPreferencesProvider.overrideWithValue(InMemoryUserPreferences()),
     effectiveAppSessionProvider.overrideWith(
       (_) async => const AppSessionState(
         status: AppLockStatus.unlocked,
