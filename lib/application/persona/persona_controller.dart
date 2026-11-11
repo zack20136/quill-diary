@@ -25,7 +25,9 @@ import 'package:quill_diary/l10n/app_localizations.dart';
 class PersonaGenerationContext {
   PersonaGenerationContext({
     required this.personaId,
-    required this.target,
+    required this.updateTarget,
+    required this.modelTarget,
+    required Map<PersonaCardKind, PersonaCandidate> fallbackCards,
     required Map<PersonaCardKind, DateTime?> baseUpdatedAt,
     required this.session,
     required this.connection,
@@ -38,12 +40,15 @@ class PersonaGenerationContext {
     required this.selectionSignature,
   }) : baseUpdatedAt = Map.unmodifiable(baseUpdatedAt),
        blocks = List.unmodifiable(blocks),
-       baseline = Map.unmodifiable(baseline);
+       baseline = Map.unmodifiable(baseline),
+       fallbackCards = Map.unmodifiable(fallbackCards);
   final String personaId;
-  final PersonaUpdateTarget target;
+  final PersonaUpdateTarget updateTarget;
+  final PersonaUpdateTarget? modelTarget;
+  final Map<PersonaCardKind, PersonaCandidate> fallbackCards;
   final Map<PersonaCardKind, DateTime?> baseUpdatedAt;
   final UnlockedVaultSession session;
-  final AiConnectionConfig connection;
+  final AiConnectionConfig? connection;
   final String instructions;
   final String extractionInstructions;
   final PersonaTokenRegistry registry;
@@ -56,15 +61,16 @@ class PersonaGenerationContext {
       blocks.map((block) => block.toRequestJson()).toList();
 
   bool get requiresBatching =>
+      modelTarget != null &&
       personaRequestLength(
-        instructions,
-        personaGenerationData(
-          subject: subject,
-          baseline: baseline,
-          materials: requestMaterials,
-        ),
-      ) >
-      PersonaLimits.requestCodeUnits;
+            instructions,
+            personaGenerationData(
+              subject: subject,
+              baseline: baseline,
+              materials: requestMaterials,
+            ),
+          ) >
+          PersonaLimits.requestCodeUnits;
 }
 
 bool personaSourceHasVisibleText(String text, List<PrivateTextRange> ranges) {
@@ -146,6 +152,10 @@ class PersonaController extends ChangeNotifier {
   bool get canSaveCandidate =>
       draft?.target.kinds.every(isCandidateValid) == true;
   bool get hasMaterials =>
+      draft?.includeCurrent.entries.any(
+            (entry) => entry.value && record?.cards?[entry.key] != null,
+          ) ==
+          true ||
       draft?.diaries.any((d) {
             final body = entries[d.entryId]?.markdownBody;
             return body != null &&
@@ -349,6 +359,18 @@ class PersonaController extends ChangeNotifier {
     draft!.step = PersonaStep.materials;
     _invalidate();
     schedulePersist();
+  }
+
+  void setIncludeCurrent(PersonaCardKind kind, bool include) {
+    if (busy ||
+        draft == null ||
+        !draft!.target.kinds.contains(kind) ||
+        record?.cards?[kind] == null ||
+        (draft!.includeCurrent[kind] ?? false) == include) {
+      return;
+    }
+    draft!.includeCurrent[kind] = include;
+    resetToMaterials();
   }
 
   void schedulePersist() {
@@ -572,8 +594,7 @@ class PersonaController extends ChangeNotifier {
     }
     final people = await ref.read(vaultRepositoryProvider).listPeople(session!);
     _ensure(epoch);
-    final connection = await selectedConnection();
-    _ensure(epoch);
+    final selectionSignature = _selectionSignature(draft!);
     final registry = PersonaTokenRegistry(
       people,
       hideNames: draft!.hidePersonNames,
@@ -584,18 +605,11 @@ class PersonaController extends ChangeNotifier {
           for (final m in i.messages) m.text,
       ].join('\n'),
     );
-    final baseline = <String, String>{};
-    for (final kind in draft!.target.kinds) {
-      final card = record!.cards?[kind];
-      baseline[kind.name] = card == null
-          ? ''
-          : registry.protect(
-              card.text,
-              scope: 'card:${kind.name}',
-              tokens: card.tokens,
-              ranges: draft!.cardHiddenRanges[kind] ?? [],
-            );
-    }
+    final includedCards = {
+      for (final kind in draft!.target.kinds)
+        if (draft!.includeCurrent[kind] == true && record!.cards?[kind] != null)
+          kind: record!.cards![kind]!,
+    };
     draft!.validate();
     final blocks = <PersonaMaterial>[];
     for (final source in draft!.diaries) {
@@ -652,44 +666,88 @@ class PersonaController extends ChangeNotifier {
         );
       }
     }
-    if (blocks.isEmpty) throw const FormatException('沒有可用材料');
+    if (blocks.isEmpty && includedCards.isEmpty) {
+      throw const FormatException('沒有可用材料');
+    }
+    final needsMemory =
+        blocks.isNotEmpty &&
+        draft!.target.kinds.contains(PersonaCardKind.memory);
+    final needsTone =
+        blocks.isNotEmpty &&
+        draft!.target.kinds.contains(PersonaCardKind.tone) &&
+        (draft!.target == PersonaUpdateTarget.tone ||
+            blocks.any((block) => block.hasToneEvidence));
+    final modelTarget = switch ((needsMemory, needsTone)) {
+      (true, true) => PersonaUpdateTarget.both,
+      (true, false) => PersonaUpdateTarget.memory,
+      (false, true) => PersonaUpdateTarget.tone,
+      (false, false) => null,
+    };
+    final connection = modelTarget == null ? null : await selectedConnection();
+    _ensure(epoch);
+    if (_selectionSignature(draft!) != selectionSignature) {
+      throw const FormatException('分身材料或設定已變更，請重新確認');
+    }
+    final fallbackCards = {
+      for (final kind in draft!.target.kinds)
+        kind: PersonaCandidate(
+          text:
+              includedCards[kind]?.text ??
+              (kind == PersonaCardKind.memory
+                  ? l10n.personaNeutralMemory
+                  : l10n.personaNeutralTone),
+          tokens: includedCards[kind]?.tokens,
+        ),
+    };
+    final baseline = {
+      for (final kind in modelTarget?.kinds ?? <PersonaCardKind>[])
+        if (includedCards[kind] case final card?)
+          kind.name: registry.protect(
+            card.text,
+            scope: 'card:${kind.name}',
+            tokens: card.tokens,
+            ranges: draft!.cardHiddenRanges[kind] ?? [],
+          ),
+    };
     final instructions = [
-      if (draft!.target.kinds.contains(PersonaCardKind.memory))
-        l10n.personaMemoryUpdatePrompt,
-      if (draft!.target.kinds.contains(PersonaCardKind.tone))
-        l10n.personaToneUpdatePrompt,
-      'target: ${draft!.target.name}',
-      l10n.personaOutputPrompt(
-        PersonaLimits.memoryCodeUnits,
-        PersonaLimits.toneCodeUnits,
-        personaHiddenText,
-      ),
+      if (modelTarget != null) ...[
+        if (needsMemory) l10n.personaMemoryUpdatePrompt,
+        if (needsTone) l10n.personaToneUpdatePrompt,
+        'target: ${modelTarget.name}',
+        l10n.personaOutputPrompt(
+          PersonaLimits.memoryCodeUnits,
+          PersonaLimits.toneCodeUnits,
+          personaHiddenText,
+        ),
+      ],
     ].join('\n\n');
     final subject = registry.protect(
       people.firstWhere((p) => p.id == personId).name,
       scope: 'subject',
     );
-    _ensure(epoch);
     preview = PersonaGenerationContext(
       personaId: record!.personaId,
-      target: draft!.target,
+      updateTarget: draft!.target,
+      modelTarget: modelTarget,
+      fallbackCards: fallbackCards,
       baseUpdatedAt: draft!.baseUpdatedAt,
       session: session!,
       connection: connection,
       instructions: instructions,
-      extractionInstructions:
-          '${l10n.personaExtractionPrompt(personaHiddenText)}\ntarget: ${draft!.target.name}',
+      extractionInstructions: modelTarget == null
+          ? ''
+          : '${l10n.personaExtractionPrompt(personaHiddenText)}\ntarget: ${modelTarget.name}',
       registry: registry,
       blocks: blocks,
       baseline: baseline,
       subject: subject,
-      selectionSignature: _selectionSignature(draft!),
+      selectionSignature: selectionSignature,
     );
-    _responses.clear();
     completedRequests = 0;
     totalRequests = 0;
     draft!.step = PersonaStep.confirmation;
     await persist();
+    _ensure(epoch);
     notifyListeners();
   }
 
@@ -698,8 +756,7 @@ class PersonaController extends ChangeNotifier {
     if (!identical(session, context.session) ||
         record?.personaId != context.personaId ||
         !identical(preview, context) ||
-        draft?.target != context.target ||
-        draft == null) {
+        draft?.target != context.updateTarget) {
       throw const FormatException('分身工作已失效');
     }
   }
@@ -781,94 +838,115 @@ class PersonaController extends ChangeNotifier {
     notifyListeners();
     try {
       _ensureJob(context, epoch);
-      if (personaRequestLength(
-            context.instructions,
-            personaGenerationData(
-              subject: context.subject,
-              baseline: context.baseline,
-              materials: const [],
-            ),
-          ) >=
-          PersonaLimits.requestCodeUnits) {
-        throw const FormatException('分身固定內容已無法容納材料');
-      }
-      final key = await requireAiRequestKey(
-        enabled: ref.read(aiEnabledProvider),
-        connection: context.connection,
-        readApiKey: () =>
-            ref.read(aiSettingsStoreProvider).readApiKey(context.connection),
-      );
-      client = ref.read(aiClientFactoryProvider)(context.connection, key);
+      final current = await store.load(personId, context.session);
       _ensureJob(context, epoch);
-      _client = client;
-      var materials = context.requestMaterials.cast<Object?>().toList();
-      for (
-        var level = 0;
-        personaRequestLength(
+      if (!_diskMatches(current, context)) {
+        throw const FormatException('分身或基準已變更');
+      }
+      final candidate = {
+        for (final entry in context.fallbackCards.entries)
+          entry.key: PersonaCandidate(
+            text: entry.value.text,
+            tokens: entry.value.tokens,
+          ),
+      };
+      final modelTarget = context.modelTarget;
+      if (modelTarget != null) {
+        final connection = context.connection!;
+        if (personaRequestLength(
               context.instructions,
               personaGenerationData(
                 subject: context.subject,
                 baseline: context.baseline,
-                materials: materials,
+                materials: const [],
               ),
-            ) >
-            PersonaLimits.requestCodeUnits;
-        level++
-      ) {
-        if (level >= 4) throw const FormatException('材料仍過長，請減少材料');
-        final pieces = [
-          for (final material in materials)
-            ...personaBatchPieces(
-              material,
-              subject: context.subject,
-              instructions: context.extractionInstructions,
-            ),
-        ];
-        final summaries = <String>[];
-        for (final piece in pieces) {
-          summaries.add(
-            await _request(
-              context,
-              epoch,
-              context.extractionInstructions,
-              personaExtractionData(subject: context.subject, fragment: piece),
-            ),
-          );
+            ) >=
+            PersonaLimits.requestCodeUnits) {
+          throw const FormatException('分身固定內容已無法容納材料');
         }
-        if (jsonEncode(summaries).length >= jsonEncode(materials).length) {
-          throw const FormatException('中間證據未縮短，請減少材料或調整模型');
+        final key = await requireAiRequestKey(
+          enabled: ref.read(aiEnabledProvider),
+          connection: connection,
+          readApiKey: () =>
+              ref.read(aiSettingsStoreProvider).readApiKey(connection),
+        );
+        client = ref.read(aiClientFactoryProvider)(connection, key);
+        _ensureJob(context, epoch);
+        _client = client;
+        var materials = context.requestMaterials.cast<Object?>().toList();
+        for (
+          var level = 0;
+          personaRequestLength(
+                context.instructions,
+                personaGenerationData(
+                  subject: context.subject,
+                  baseline: context.baseline,
+                  materials: materials,
+                ),
+              ) >
+              PersonaLimits.requestCodeUnits;
+          level++
+        ) {
+          if (level >= 4) throw const FormatException('材料仍過長，請減少材料');
+          final pieces = [
+            for (final material in materials)
+              ...personaBatchPieces(
+                material,
+                subject: context.subject,
+                instructions: context.extractionInstructions,
+              ),
+          ];
+          final summaries = <String>[];
+          for (final piece in pieces) {
+            summaries.add(
+              await _request(
+                context,
+                epoch,
+                context.extractionInstructions,
+                personaExtractionData(
+                  subject: context.subject,
+                  fragment: piece,
+                ),
+              ),
+            );
+          }
+          if (jsonEncode(summaries).length >= jsonEncode(materials).length) {
+            throw const FormatException('中間證據未縮短，請減少材料或調整模型');
+          }
+          materials = summaries;
         }
-        materials = summaries;
+        final data = personaGenerationData(
+          subject: context.subject,
+          baseline: context.baseline,
+          materials: materials,
+        );
+        final output = await _request(
+          context,
+          epoch,
+          context.instructions,
+          data,
+          cacheResult: false,
+        );
+        final decoded = jsonDecode(output);
+        final expected = modelTarget.kinds.map((k) => k.name).toSet();
+        if (decoded is! Map ||
+            decoded.length != expected.length ||
+            !decoded.keys.every(expected.contains) ||
+            decoded.values.any((v) => v is! String)) {
+          throw const FormatException('模型輸出欄位不正確');
+        }
+        for (final kind in modelTarget.kinds) {
+          final text = decoded[kind.name] as String;
+          if (text.trim().isNotEmpty) {
+            candidate[kind] = context.registry.candidate(
+              text,
+              kind,
+              record!.cards?[kind],
+              requestData: data,
+            );
+          }
+        }
       }
-      final data = personaGenerationData(
-        subject: context.subject,
-        baseline: context.baseline,
-        materials: materials,
-      );
-      final output = await _request(
-        context,
-        epoch,
-        context.instructions,
-        data,
-        cacheResult: false,
-      );
-      final decoded = jsonDecode(output);
-      final expected = context.target.kinds.map((k) => k.name).toSet();
-      if (decoded is! Map ||
-          decoded.length != expected.length ||
-          !decoded.keys.every(expected.contains) ||
-          decoded.values.any((v) => v is! String)) {
-        throw const FormatException('模型輸出欄位不正確');
-      }
-      final candidate = {
-        for (final kind in context.target.kinds)
-          kind: context.registry.candidate(
-            decoded[kind.name] as String,
-            kind,
-            record!.cards?[kind],
-            requestData: data,
-          ),
-      };
       _ensureJob(context, epoch);
       draft!.candidate = candidate;
       draft!.step = PersonaStep.review;

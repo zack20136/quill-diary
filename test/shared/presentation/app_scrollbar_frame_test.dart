@@ -40,7 +40,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final Rect box = tester.getRect(find.byType(AppScrollbar));
-    final thumbFinder = find.byKey(const ValueKey<String>('app-scrollbar-thumb'));
+    final thumbFinder = find.byKey(
+      const ValueKey<String>('app-scrollbar-thumb'),
+    );
     Rect thumb() => tester.getRect(thumbFinder);
 
     final double topGap = thumb().top - box.top;

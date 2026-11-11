@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -53,7 +54,7 @@ class RecoveryKeySaveDialog extends StatelessWidget {
 
     return AppDialogShell(
       title: title,
-      content: SingleChildScrollView(
+      content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,

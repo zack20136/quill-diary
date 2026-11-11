@@ -12,6 +12,7 @@ import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dar
 import 'package:quill_diary/presentation/settings/vault_finding_presentation.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -33,7 +34,7 @@ Future<bool> showInspectVaultConfirmDialog(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.sizeOf(context).height * 0.7,
               ),
-              child: SingleChildScrollView(
+              child: AppScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,9 +101,7 @@ Future<void> showRepairDetailDialog(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.7,
           ),
-          child: SingleChildScrollView(
-            child: _RepairDetailContent(summary: summary),
-          ),
+          child: AppScrollView(child: _RepairDetailContent(summary: summary)),
         ),
       ),
       actions: <Widget>[
@@ -398,7 +397,7 @@ Future<bool?> showInspectVaultResultDialog(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.7,
           ),
-          child: SingleChildScrollView(
+          child: AppScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -584,7 +583,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * .7,
           ),
-          child: SingleChildScrollView(
+          child: AppScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -846,7 +845,7 @@ class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
       title: widget.driveBackupName == null
           ? l10n.settingsRestoreDialogConfirmLocalTitle
           : l10n.settingsRestoreDialogConfirmDriveTitle,
-      content: SingleChildScrollView(
+      content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

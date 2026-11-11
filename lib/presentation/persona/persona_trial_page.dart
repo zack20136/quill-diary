@@ -20,6 +20,7 @@ import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_message_view.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
 class PersonaTrialPage extends ConsumerStatefulWidget {
@@ -53,6 +54,8 @@ class _TrialMessage {
 class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     with WidgetsBindingObserver {
   final input = TextEditingController();
+  final _inputScroll = ScrollController();
+  final _messagesScroll = ScrollController();
   late AiConnectionConfig _connection = widget.connection;
   final messages = <_TrialMessage>[];
   ChatDiarySession? chat;
@@ -105,6 +108,8 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     messages.clear();
     chat = null;
     input.dispose();
+    _inputScroll.dispose();
+    _messagesScroll.dispose();
     super.dispose();
   }
 
@@ -239,20 +244,24 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                   Expanded(
                     child: messages.isEmpty
                         ? _emptyState(l, theme)
-                        : ListView.builder(
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                            itemCount: messages.length,
-                            itemBuilder: (_, index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: AiMessageView(
-                                text: messages[index].visible,
-                                isUser: messages[index].user,
-                                format: messages[index].user
-                                    ? AiMessageFormat.plainText
-                                    : AiMessageFormat.markdown,
+                        : AppScrollbar(
+                            controller: _messagesScroll,
+                            child: ListView.builder(
+                              controller: _messagesScroll,
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
+                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                              itemCount: messages.length,
+                              itemBuilder: (_, index) => Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: AiMessageView(
+                                  text: messages[index].visible,
+                                  isUser: messages[index].user,
+                                  format: messages[index].user
+                                      ? AiMessageFormat.plainText
+                                      : AiMessageFormat.markdown,
+                                ),
                               ),
                             ),
                           ),
@@ -378,26 +387,30 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: input,
-                      style: bodyStyle,
-                      enabled: !busy,
-                      maxLines: 4,
-                      minLines: 1,
-                      decoration: InputDecoration(
-                        hintText: l.personaTrialInput,
-                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        filled: false,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.fromLTRB(
-                          16,
-                          14,
-                          8,
-                          14,
+                    child: AppScrollbar(
+                      controller: _inputScroll,
+                      child: TextField(
+                        controller: input,
+                        scrollController: _inputScroll,
+                        style: bodyStyle,
+                        enabled: !busy,
+                        maxLines: 4,
+                        minLines: 1,
+                        decoration: InputDecoration(
+                          hintText: l.personaTrialInput,
+                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            14,
+                            8,
+                            14,
+                          ),
                         ),
                       ),
                     ),

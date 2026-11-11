@@ -7,6 +7,7 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/diary_organization/organization_diff.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_segmented_choice_bar.dart';
@@ -19,12 +20,14 @@ class OrganizationReview extends ConsumerStatefulWidget {
     required this.onBack,
     required this.onEdit,
     required this.onApply,
+    this.onShowReply,
   });
   final DiaryOrganizationController controller;
   final Widget notices;
   final VoidCallback onBack;
   final VoidCallback onEdit;
   final VoidCallback onApply;
+  final VoidCallback? onShowReply;
 
   @override
   ConsumerState<OrganizationReview> createState() => _OrganizationReviewState();
@@ -40,6 +43,25 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final draft = controller.draft!;
+    final l10n = context.l10n;
+    if (draft.hasUnsafeCandidate) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.organizationUnsafeCandidate),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: controller.busy ? null : widget.onBack,
+                child: Text(l10n.organizationBack),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final original = draft.source.markdownBody;
     final revised = draft.restoredBody;
     if (original != _original || revised != _revised) {
@@ -47,7 +69,6 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
       _revised = revised;
       _lines = organizationDiffLines(original, revised);
     }
-    final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     final typography = watchPersonalizationPreferences(ref).typography;
     final canModify =
@@ -65,6 +86,27 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               widget.notices,
+              if (draft.generationReply case final reply?)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l10n.organizationReplyTitle,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(reply, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: widget.onShowReply,
+                          child: Text(l10n.organizationShowReply),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: AppSegmentedChoiceBar<bool>(
@@ -101,7 +143,7 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
                     borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
                     child: _fullText
                         ? SelectionArea(
-                            child: SingleChildScrollView(
+                            child: AppScrollView(
                               key: const ValueKey('organization-full-text'),
                               padding: const EdgeInsets.all(16),
                               child: EditorMarkdownPreview(
@@ -164,92 +206,97 @@ class OrganizationDiffView extends StatelessWidget {
     final gutterWidth =
         MediaQuery.textScalerOf(context).scale(textStyle.fontSize ?? 16) + 16;
     return SelectionArea(
-      child: ListView.builder(
-        key: const ValueKey('organization-diff-view'),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: lines.length,
-        itemBuilder: (context, index) {
-          final line = lines[index];
-          if (line.kind == OrganizationDiffKind.same &&
-              line.text.trim().isEmpty) {
-            return const SizedBox(height: 8);
-          }
-          final color = switch (line.kind) {
-            OrganizationDiffKind.same => colors.onSurface,
-            OrganizationDiffKind.removed => removed,
-            OrganizationDiffKind.added => added,
-          };
-          final changed = line.kind != OrganizationDiffKind.same;
-          return Semantics(
-            label: switch (line.kind) {
-              OrganizationDiffKind.same => null,
-              OrganizationDiffKind.removed => context.l10n.organizationRemoved,
-              OrganizationDiffKind.added => context.l10n.organizationAdded,
-            },
-            child: ColoredBox(
-              key: ValueKey('organization-diff-line-$index'),
-              color: changed
-                  ? color.withValues(alpha: dark ? 0.09 : 0.07)
-                  : Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SelectionContainer.disabled(
-                      child: ExcludeSemantics(
-                        child: SizedBox(
-                          width: gutterWidth,
-                          child: Text(
-                            switch (line.kind) {
-                              OrganizationDiffKind.same => '',
-                              OrganizationDiffKind.removed => '−',
-                              OrganizationDiffKind.added => '+',
-                            },
-                            textAlign: TextAlign.center,
-                            style: textStyle.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w600,
+      child: AppScrollableContent(
+        builder: (_, controller) => ListView.builder(
+          controller: controller,
+          key: const ValueKey('organization-diff-view'),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: lines.length,
+          itemBuilder: (context, index) {
+            final line = lines[index];
+            if (line.kind == OrganizationDiffKind.same &&
+                line.text.trim().isEmpty) {
+              return const SizedBox(height: 8);
+            }
+            final color = switch (line.kind) {
+              OrganizationDiffKind.same => colors.onSurface,
+              OrganizationDiffKind.removed => removed,
+              OrganizationDiffKind.added => added,
+            };
+            final changed = line.kind != OrganizationDiffKind.same;
+            return Semantics(
+              label: switch (line.kind) {
+                OrganizationDiffKind.same => null,
+                OrganizationDiffKind.removed =>
+                  context.l10n.organizationRemoved,
+                OrganizationDiffKind.added => context.l10n.organizationAdded,
+              },
+              child: ColoredBox(
+                key: ValueKey('organization-diff-line-$index'),
+                color: changed
+                    ? color.withValues(alpha: dark ? 0.09 : 0.07)
+                    : Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SelectionContainer.disabled(
+                        child: ExcludeSemantics(
+                          child: SizedBox(
+                            width: gutterWidth,
+                            child: Text(
+                              switch (line.kind) {
+                                OrganizationDiffKind.same => '',
+                                OrganizationDiffKind.removed => '−',
+                                OrganizationDiffKind.added => '+',
+                              },
+                              textAlign: TextAlign.center,
+                              style: textStyle.copyWith(
+                                color: color,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            for (final span in line.spans)
-                              TextSpan(
-                                text: span.text.replaceAll(
-                                  RegExp(r'[\r\n]'),
-                                  '',
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              for (final span in line.spans)
+                                TextSpan(
+                                  text: span.text.replaceAll(
+                                    RegExp(r'[\r\n]'),
+                                    '',
+                                  ),
+                                  style: TextStyle(
+                                    backgroundColor:
+                                        span.kind == OrganizationDiffKind.same
+                                        ? null
+                                        : color.withValues(
+                                            alpha: dark ? 0.22 : 0.16,
+                                          ),
+                                  ),
                                 ),
-                                style: TextStyle(
-                                  backgroundColor:
-                                      span.kind == OrganizationDiffKind.same
-                                      ? null
-                                      : color.withValues(
-                                          alpha: dark ? 0.22 : 0.16,
-                                        ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        style: textStyle.copyWith(
-                          color: color,
-                          decoration: line.kind == OrganizationDiffKind.removed
-                              ? TextDecoration.lineThrough
-                              : null,
+                            ],
+                          ),
+                          style: textStyle.copyWith(
+                            color: color,
+                            decoration:
+                                line.kind == OrganizationDiffKind.removed
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

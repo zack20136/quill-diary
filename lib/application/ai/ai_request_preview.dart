@@ -31,6 +31,7 @@ class AiRequestPreview {
     required this.turns,
     this.diaryContext,
     this.conversationTurns,
+    this.hasLocalPrivateNotes = false,
   });
 
   final String instructions;
@@ -39,6 +40,7 @@ class AiRequestPreview {
 
   /// 生成會將對話打包為 JSON，預覽仍依原訊息排列。
   final List<AiPreviewTurn>? conversationTurns;
+  final bool hasLocalPrivateNotes;
 
   String get systemPrompt => diaryContext == null
       ? instructions

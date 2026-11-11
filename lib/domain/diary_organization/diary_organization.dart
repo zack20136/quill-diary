@@ -105,6 +105,7 @@ class DiaryOrganization {
   int? editingTurn;
   AiComposerSnapshot? composerBackup;
   String? organizedBody;
+  String? generationReply;
   bool generationInterrupted = false;
   String composer = '';
   List<PrivateTextRange> composerRanges = [];
@@ -128,20 +129,11 @@ class DiaryOrganization {
   ];
 
   void selectTurn(int index) {
-    final path = <int>[];
-    int? cursor = index;
-    while (cursor != null &&
-        cursor >= 0 &&
-        cursor < turns.length &&
-        !path.contains(cursor)) {
-      path.add(cursor);
-      cursor = turns[cursor].parentIndex;
-    }
+    final path = _pathToTurn(index);
     if (path.isEmpty) return;
-    final ordered = path.reversed.toList();
-    rootTurn = ordered.first;
-    for (var i = 1; i < ordered.length; i++) {
-      selectedChildren[ordered[i - 1]] = ordered[i];
+    rootTurn = path.first;
+    for (var i = 1; i < path.length; i++) {
+      selectedChildren[path[i - 1]] = path[i];
     }
   }
 
@@ -151,10 +143,75 @@ class DiaryOrganization {
   }
 
   String get currentBody => organizedBody ?? protectedSource;
-  String get restoredBody => restore(currentBody);
+  String get restoredBody {
+    if (organizedBody case final body?) validateBody(body);
+    return restore(currentBody);
+  }
+
+  List<int> _pathToTurn(int index) {
+    final path = <int>[];
+    int? cursor = index;
+    while (cursor != null &&
+        cursor >= 0 &&
+        cursor < turns.length &&
+        !path.contains(cursor)) {
+      path.add(cursor);
+      cursor = turns[cursor].parentIndex;
+    }
+    return path.reversed.toList();
+  }
+
+  Map<String, String> originalsForTurns(Iterable<int> path) {
+    final sourceTokens = privacyTokenPattern
+        .allMatches(protectedSource)
+        .map((m) => m[0]!)
+        .toSet();
+    final scoped = {for (final token in sourceTokens) token: originals[token]!};
+    for (final index in path) {
+      final turn = turns[index];
+      for (final match in privacyTokenPattern.allMatches(turn.user)) {
+        final token = match[0]!;
+        final original = originals[token];
+        if (original != null) {
+          scoped.putIfAbsent(
+            token,
+            () => turn.surfaces[token]?.firstOrNull ?? original,
+          );
+        }
+      }
+    }
+    return scoped;
+  }
+
+  bool replyIsInScope(int index, {String? text}) {
+    final allowed = originalsForTurns(_pathToTurn(index));
+    return privacyTokenPattern
+        .allMatches(text ?? turns[index].reply)
+        .every((m) => allowed.containsKey(m[0]));
+  }
+
+  ({String text, List<PrivateTextRange> ranges, List<String> tokens})
+  visibleText(
+    String text, {
+    int? turn,
+    Map<String, List<String>> surfaces = const {},
+  }) => organizationVisibleText(
+    text,
+    originalsForTurns(turn == null ? activeTurnIndices : _pathToTurn(turn)),
+    surfaces: surfaces,
+  );
+
+  bool get hasUnsafeCandidate {
+    final body = organizedBody;
+    if (body == null) return false;
+    final allowed = originalsForTurns(activeTurnIndices);
+    return privacyTokenPattern
+        .allMatches(body)
+        .any((m) => !allowed.containsKey(m[0]));
+  }
 
   String restore(String text) =>
-      organizationVisibleText(text, originals, surfaces: tokenSurfaces).text;
+      visibleText(text, surfaces: tokenSurfaces).text;
 
   void prepare({List<PersonTextRange> personRanges = const []}) {
     if (protectedSource.isNotEmpty) {
@@ -182,7 +239,18 @@ class DiaryOrganization {
     stage = OrganizationStage.chat;
   }
 
-  void validateBody(String body) {
+  void validateBody(String body, {Set<String>? allowedTokens}) {
+    _validateBodyStructure(body);
+    final allowed =
+        allowedTokens ?? originalsForTurns(activeTurnIndices).keys.toSet();
+    if (privacyTokenPattern
+        .allMatches(body)
+        .any((m) => !allowed.contains(m[0]))) {
+      throw const FormatException('整理稿包含本次未提供的保護代號');
+    }
+  }
+
+  void _validateBodyStructure(String body) {
     final expected = privacyTokenPattern
         .allMatches(protectedSource)
         .map((m) => m[0]!)
@@ -207,8 +275,8 @@ class DiaryOrganization {
     }
   }
 
-  void replaceBody(String body) {
-    validateBody(body);
+  void replaceBody(String body, {Set<String>? allowedTokens}) {
+    validateBody(body, allowedTokens: allowedTokens);
     organizedBody = body;
   }
 
@@ -241,6 +309,7 @@ class DiaryOrganization {
     'editing_turn': editingTurn,
     'composer_backup': composerBackup?.toJson(),
     'organized_body': organizedBody,
+    if (generationReply != null) 'generation_reply': generationReply,
     'generation_interrupted': generationInterrupted,
     'composer': composer,
     'composer_ranges': composerRanges.map((r) => r.toJson()).toList(),
@@ -310,6 +379,7 @@ class DiaryOrganization {
       );
     }
     result.organizedBody = json['organized_body'] as String?;
+    result.generationReply = json['generation_reply'] as String?;
     result.generationInterrupted = json['generation_interrupted'] as bool;
     result.composer = json['composer'] as String;
     result.composerRanges = (json['composer_ranges'] as List)
@@ -334,7 +404,8 @@ class DiaryOrganization {
       throw const FormatException('整理草稿的隱私對照不完整');
     }
     if (result.organizedBody != null) {
-      result.validateBody(result.organizedBody!);
+      // 舊候選可保留供返回對話；採用時另驗證目前分支，不能因此丟掉整份進度。
+      result._validateBodyStructure(result.organizedBody!);
     }
     return result;
   }

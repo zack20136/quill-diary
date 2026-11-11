@@ -17,6 +17,15 @@ Color personAvatarBackgroundColor(Person person, Color surface) =>
 (Color, Color) personLabelColorPair(Person person, Color surface) =>
     accentColorPair(personAccentColor(person), surface);
 
+(Color, Color) personAccentPairFor({
+  required String personId,
+  required Color surface,
+  int? accentArgb,
+}) => accentColorPair(
+  accentArgb == null ? defaultPersonAccentColor(personId) : Color(accentArgb),
+  surface,
+);
+
 /// 依人物 ID 穩定選色，確保未自訂顏色的人物每次顯示一致。
 Color defaultPersonAccentColor(PersonId personId) {
   return accentColorForStableKey(personId);

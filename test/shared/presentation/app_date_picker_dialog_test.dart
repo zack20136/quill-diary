@@ -369,10 +369,6 @@ void main() {
       isA<RoundedRectangleBorder>(),
     );
 
-    final ScrollbarTheme monthScrollbar = tester.widget(
-      find.byKey(const Key('app-date-picker-month-scrollbar-theme')),
-    );
-    expect(monthScrollbar.data.mainAxisMargin, 0);
     final SingleChildScrollView monthView = tester.widget(
       find.byKey(const Key('app-date-picker-month-view')),
     );
@@ -407,15 +403,6 @@ void main() {
     expect(
       find.byKey(ValueKey<String>('app-date-picker-year-$lastYear')),
       findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<ScrollbarTheme>(
-            find.byKey(const Key('app-date-picker-year-scrollbar-theme')),
-          )
-          .data
-          .mainAxisMargin,
-      0,
     );
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();

@@ -35,11 +35,13 @@ import 'package:quill_diary/presentation/persona/persona_labels.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_trial_page.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
+import 'package:quill_diary/shared/presentation/widgets/adaptive_panel.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -59,6 +61,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   final _search = TextEditingController();
   final _dialogs = <Route<dynamic>>{};
   final _scroll = ScrollController();
+  final _materialsScroll = ScrollController();
+  final _reviewScroll = ScrollController();
+  final _savedScroll = ScrollController();
   Future<List<DiaryEntrySummary>>? _results;
   Timer? _searchTimer;
   bool _backgrounded = false;
@@ -151,6 +156,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     _searchTimer?.cancel();
     _search.dispose();
     _scroll.dispose();
+    _materialsScroll.dispose();
+    _reviewScroll.dispose();
+    _savedScroll.dispose();
     super.dispose();
   }
 
@@ -218,15 +226,23 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     }
   }
 
-  Future<T?> _dialog<T>(Widget child) => showDialog<T>(
-    context: context,
-    useSafeArea: false,
-    builder: (context) {
-      final route = ModalRoute.of(context);
-      if (route != null) _dialogs.add(route);
-      return child;
-    },
-  ).whenComplete(() => _dialogs.removeWhere((r) => !r.isActive));
+  Future<T?> _dialog<T>(Widget child) async {
+    final session = _controller.session;
+    if (session == null || _backgrounded) return null;
+    final route = appDialogRoute<T>(
+      context: context,
+      useSafeArea: false,
+      builder: (_) => identical(session, _controller.session) && !_backgrounded
+          ? child
+          : const SizedBox.shrink(),
+    );
+    _dialogs.add(route);
+    try {
+      return await Navigator.of(context, rootNavigator: true).push(route);
+    } finally {
+      _dialogs.remove(route);
+    }
+  }
 
   Future<bool> _confirm(String title, String body) => showAppConfirmDialog(
     context: context,
@@ -314,120 +330,136 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     await _controller.attachImport(parsed);
   }
 
-  Widget _section(String title, List<Widget> children, {Widget? trailing}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-        child: AppSectionCard(
-          title: title,
-          trailing: trailing,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                children[i],
-              ],
-            ],
-          ),
-        ),
-      );
+  Widget _section(String title, List<Widget> children) => Padding(
+    padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+    child: AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSectionHeader(title: title),
+          const SizedBox(height: 12),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            children[i],
+          ],
+        ],
+      ),
+    ),
+  );
 
   Widget _ready() {
     final l = context.l10n;
-    return ListView(
-      key: const ValueKey('persona-saved'),
-      padding: const EdgeInsets.all(16),
-      children: [
-        _replyRules(),
-        Text(l.personaUsageHint, style: _hintStyle),
-        const SizedBox(height: PageStyle.sectionGap),
-        for (final kind in _cardOrder)
+    return AppScrollbar(
+      controller: _savedScroll,
+      child: ListView(
+        controller: _savedScroll,
+        key: const ValueKey('persona-saved'),
+        padding: const EdgeInsets.fromLTRB(
+          PageStyle.pageHorizontalPadding,
+          PageStyle.pageTopPadding,
+          PageStyle.pageHorizontalPadding,
+          PageStyle.pageBottomPadding,
+        ),
+        children: [
+          _replyRules(),
+          AppInsetPanel(
+            child: Text(
+              l.personaUsageHint,
+              style: _hintStyle?.copyWith(height: 1.45),
+            ),
+          ),
+          const SizedBox(height: PageStyle.sectionGap),
+          for (final kind in _cardOrder) ...[
+            _savedCard(kind),
+            const SizedBox(height: PageStyle.sectionGap),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () =>
+                  _run(() => _controller.begin(PersonaUpdateTarget.both)),
+              child: Text(l.personaUpdateBoth),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _cardIcon(PersonaCardKind kind) => kind == PersonaCardKind.tone
+      ? Icons.forum_outlined
+      : Icons.history_rounded;
+
+  Widget _savedCard(PersonaCardKind kind) {
+    final l = context.l10n;
+    final card = _controller.record!.cards![kind]!;
+    final content = _content(card);
+    final target = kind == PersonaCardKind.memory
+        ? PersonaUpdateTarget.memory
+        : PersonaUpdateTarget.tone;
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AiPreviewTextSection(
+                AppSectionHeader(
                   title: personaCardLabel(l, kind),
-                  text: _content(_controller.record!.cards![kind]!).text,
-                  initiallyExpanded: true,
+                  description: _cardDescription(l, kind),
+                  icon: _cardIcon(kind),
                 ),
-                const SizedBox(height: 8),
-                ..._cardNotes(
-                  kind,
-                  unresolved: _content(_controller.record!.cards![kind]!)
-                      .hasUnresolvedReferences,
-                ),
+                const SizedBox(height: 12),
+                _SavedPersonaText(text: content.text, style: _bodyStyle),
+                if (content.hasUnresolvedReferences) ...[
+                  const SizedBox(height: 10),
+                  Text(l.personaUnresolvedReferenceHint, style: _hintStyle),
+                ],
+                const SizedBox(height: 12),
                 Text(
                   l.personaUpdatedAt(
                     DisplayFormat.formatDateTimeWithoutWeekday(
                       l,
-                      _controller.record!.cards![kind]!.updatedAt,
+                      card.updatedAt,
                     ),
                   ),
                   style: _hintStyle,
                 ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    TextButton(
-                      onPressed: () => _run(
-                        () => _controller.begin(
-                          kind == PersonaCardKind.memory
-                              ? PersonaUpdateTarget.memory
-                              : PersonaUpdateTarget.tone,
-                          edit: true,
-                        ),
-                      ),
-                      child: Text(l.personaEdit),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => _run(
-                        () => _controller.begin(
-                          kind == PersonaCardKind.memory
-                              ? PersonaUpdateTarget.memory
-                              : PersonaUpdateTarget.tone,
-                        ),
-                      ),
-                      child: Text(l.personaUpdateContent),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
-        TextButton(
-          onPressed: () =>
-              _run(() => _controller.begin(PersonaUpdateTarget.both)),
-          child: Text(l.personaUpdateBoth),
-        ),
-      ],
+          const Divider(height: 1),
+          _SavedPersonaActions(
+            editLabel: l.personaEdit,
+            updateLabel: l.personaUpdateContent,
+            onEdit: () => _run(() => _controller.begin(target, edit: true)),
+            onUpdate: () => _run(() => _controller.begin(target)),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _replyRules() => Padding(
     padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-    child: AiPreviewTextSection(
+    child: _CollapsibleCard(
       title: context.l10n.personaBaseLabel,
       text: personaFixedInstructions(
         l10n: context.l10n,
         guidance: _guidanceOverride,
       ),
+      style: _bodyStyle,
     ),
   );
 
-  List<Widget> _cardNotes(PersonaCardKind kind, {required bool unresolved}) {
-    final l = context.l10n;
-    return [
-      Text(
-        kind == PersonaCardKind.memory
-            ? l.personaMemoryDescription
-            : l.personaToneDescription,
-        style: _hintStyle,
-      ),
-      if (unresolved) Text(l.personaUnresolvedReferenceHint, style: _hintStyle),
-    ];
-  }
+  String _cardDescription(AppLocalizations l, PersonaCardKind kind) =>
+      kind == PersonaCardKind.memory
+      ? l.personaMemoryDescription
+      : l.personaToneDescription;
 
   Widget _privacySettings() {
     final l = context.l10n;
@@ -448,6 +480,8 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       ),
       Text(l.personaHideHint, style: _hintStyle),
       if (_controller.record?.cards != null)
+        Text(l.personaIncludeCurrentHint, style: _hintStyle),
+      if (_controller.record?.cards != null)
         Material(
           color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
@@ -459,13 +493,23 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                   const Divider(height: 1, indent: 12, endIndent: 12),
                 ListTile(
                   dense: true,
-                  leading: Icon(
-                    kinds[index] == PersonaCardKind.tone
-                        ? Icons.forum_outlined
-                        : Icons.history_rounded,
-                    size: 20,
+                  leading: Checkbox(
+                    key: ValueKey(
+                      'persona-include-current-${kinds[index].name}',
+                    ),
+                    value: draft.includeCurrent[kinds[index]] ?? false,
+                    onChanged: _acting || _controller.busy
+                        ? null
+                        : (value) => _controller.setIncludeCurrent(
+                            kinds[index],
+                            value ?? false,
+                          ),
                   ),
-                  title: Text(personaCardLabel(l, kinds[index])),
+                  title: Text(
+                    kinds[index] == PersonaCardKind.memory
+                        ? l.personaIncludeCurrentMemory
+                        : l.personaIncludeCurrentTone,
+                  ),
                   subtitle: Text(
                     l.personaHiddenCount(
                       draft.cardHiddenRanges[kinds[index]]?.length ?? 0,
@@ -521,138 +565,134 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
             const SliverToBoxAdapter(child: LinearProgressIndicator()),
       );
     }
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          sliver: SliverMainAxisGroup(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(l.personaSourcesHint, style: _hintStyle),
-                ),
-              ),
-              if (_controller.missingDiaries)
+    return AppScrollbar(
+      controller: _materialsScroll,
+      child: CustomScrollView(
+        controller: _materialsScroll,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            sliver: SliverMainAxisGroup(
+              slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(l.personaMissingDiaries),
-                  ),
-                ),
-              if (needReview)
-                SliverToBoxAdapter(
-                  child: AppInsetPanel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.personaSourceChangedHint),
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _selectedOnly = true;
-                            _searchTimer?.cancel();
-                            _search.clear();
-                            _results = null;
-                          }),
-                          child: Text(l.personaSelectedOnly),
-                        ),
-                      ],
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: AppInsetPanel(
+                      child: Text(l.personaPrivacyHint, style: _hintStyle),
                     ),
                   ),
                 ),
-              SliverToBoxAdapter(child: _privacySettings()),
-              AppSliverSectionCard(
-                title: l.personaDiaries,
-                slivers: [
+                if (_controller.missingDiaries)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        l.personaDiarySelectionHint,
-                        style: _hintStyle,
+                      child: Text(l.personaMissingDiaries),
+                    ),
+                  ),
+                if (needReview)
+                  SliverToBoxAdapter(
+                    child: AppInsetPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l.personaSourceChangedHint),
+                          TextButton(
+                            onPressed: () => setState(() {
+                              _selectedOnly = true;
+                              _searchTimer?.cancel();
+                              _search.clear();
+                              _results = null;
+                            }),
+                            child: Text(l.personaSelectedOnly),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: TextField(
-                      controller: _search,
-                      decoration: InputDecoration(
-                        labelText: l.personaSearch,
-                        prefixIcon: const Icon(Icons.search),
-                      ),
-                      onChanged: (query) {
-                        _searchTimer?.cancel();
-                        _searchTimer = Timer(
-                          const Duration(milliseconds: 300),
-                          () {
-                            if (!mounted || _controller.session == null) return;
-                            setState(
-                              () => _results = query.trim().isEmpty
-                                  ? null
-                                  : ref
-                                        .read(vaultRepositoryProvider)
-                                        .searchEntries(query.trim()),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  SliverToBoxAdapter(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: FilterChip(
-                        label: Text(
-                          '${l.personaSelectedOnly} (${d.diaries.length})',
+                SliverToBoxAdapter(child: _privacySettings()),
+                SliverToBoxAdapter(
+                  child: _section(l.personaChats, [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _run(() => _pasteOrPick(true)),
+                          icon: const Icon(Icons.upload_file),
+                          label: Text(l.personaChooseFile),
                         ),
-                        selected: _selectedOnly,
-                        onSelected: (value) =>
-                            setState(() => _selectedOnly = value),
+                        OutlinedButton.icon(
+                          onPressed: () => _run(() => _pasteOrPick(false)),
+                          icon: const Icon(Icons.paste),
+                          label: Text(l.personaPaste),
+                        ),
+                      ],
+                    ),
+                    Text(l.personaStorageHint, style: _hintStyle),
+                    for (final source in d.chats) _chatMaterial(source),
+                  ]),
+                ),
+                AppSliverSectionCard(
+                  title: l.personaDiaries,
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          l.personaDiarySelectionHint,
+                          style: _hintStyle,
+                        ),
                       ),
                     ),
-                  ),
-                  entries,
-                ],
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              SliverToBoxAdapter(
-                child: _section(l.personaChats, [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => _run(() => _pasteOrPick(true)),
-                        icon: const Icon(Icons.upload_file),
-                        label: Text(l.personaChooseFile),
+                    SliverToBoxAdapter(
+                      child: TextField(
+                        controller: _search,
+                        decoration: InputDecoration(
+                          labelText: l.personaSearch,
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                        onChanged: (query) {
+                          _searchTimer?.cancel();
+                          _searchTimer = Timer(
+                            const Duration(milliseconds: 300),
+                            () {
+                              if (!mounted || _controller.session == null) {
+                                return;
+                              }
+                              setState(
+                                () => _results = query.trim().isEmpty
+                                    ? null
+                                    : ref
+                                          .read(vaultRepositoryProvider)
+                                          .searchEntries(query.trim()),
+                              );
+                            },
+                          );
+                        },
                       ),
-                      OutlinedButton.icon(
-                        onPressed: () => _run(() => _pasteOrPick(false)),
-                        icon: const Icon(Icons.paste),
-                        label: Text(l.personaPaste),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    SliverToBoxAdapter(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilterChip(
+                          label: Text(
+                            '${l.personaSelectedOnly} (${d.diaries.length})',
+                          ),
+                          selected: _selectedOnly,
+                          onSelected: (value) =>
+                              setState(() => _selectedOnly = value),
+                        ),
                       ),
-                    ],
-                  ),
-                  for (final source in d.chats) _chatMaterial(source),
-                ]),
-              ),
-              SliverToBoxAdapter(
-                child: AppInsetPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l.personaPrivacyHint, style: _hintStyle),
-                      const SizedBox(height: 8),
-                      Text(l.personaStorageHint, style: _hintStyle),
-                    ],
-                  ),
+                    ),
+                    entries,
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -752,7 +792,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                           ),
                         ),
                         body: SafeArea(
-                          child: SingleChildScrollView(
+                          child: AppScrollView(
                             padding: const EdgeInsets.all(16),
                             child: SelectableText(
                               value.markdownBody,
@@ -969,85 +1009,104 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               material.speakerRole == PersonaSpeakerRole.personaSubject &&
               privacyTokenRanges(material.speaker ?? '').isNotEmpty,
         );
-    return ListView(
-      key: const ValueKey('persona-confirmation'),
+    return AppScrollbar(
       controller: _scroll,
-      padding: const EdgeInsets.all(16),
-      children: [
-        AiConnectionSetupNotice(
-          connection: preview.connection,
-          onOpenSettings: _controller.busy || _acting
-              ? null
-              : () => _run(_recoverAiSettings),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-          child: AiChatModelPicker.field(
-            current: preview.connection,
-            enabled:
-                !_controller.busy && !_acting && ref.watch(aiEnabledProvider),
-            onSelected: (option) => _run(() async {
-              await _controller.selectModel(option);
-              await _controller.prepare(l);
-            }),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-          child: AiPreviewTextSection(
-            title: l.personaGenerationLabel,
-            text:
-                '${preview.instructions}\n\n${l.personaRoleFriend}: ${preview.subject}',
-          ),
-        ),
-        if (preview.requiresBatching)
-          Padding(
-            padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(l.personaBatchHint, style: _hintStyle),
-                const SizedBox(height: 8),
-                AiPreviewTextSection(
-                  title: l.personaBatchInstructions,
-                  text: preview.extractionInstructions,
-                ),
-              ],
+      child: ListView(
+        key: const ValueKey('persona-confirmation'),
+        controller: _scroll,
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (preview.connection case final connection?) ...[
+            AiConnectionSetupNotice(
+              connection: connection,
+              onOpenSettings: _controller.busy || _acting
+                  ? null
+                  : () => _run(_recoverAiSettings),
             ),
-          ),
-        for (final kind in _cardOrder.where(
-          _controller.draft!.target.kinds.contains,
-        ))
-          if (preview.baseline[kind.name]?.isNotEmpty == true)
             Padding(
               padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-              child: AiPreviewTextSection(
-                title: l.personaCurrentContentTitle(personaCardLabel(l, kind)),
-                text: preview.baseline[kind.name]!,
-                initiallyExpanded: true,
+              child: AiChatModelPicker.field(
+                current: connection,
+                enabled:
+                    !_controller.busy &&
+                    !_acting &&
+                    ref.watch(aiEnabledProvider),
+                onSelected: (option) => _run(() async {
+                  await _controller.selectModel(option);
+                  await _controller.prepare(l);
+                }),
               ),
             ),
-        if (_controller.draft!.target.kinds.contains(PersonaCardKind.tone) &&
-            !preview.blocks.any((m) => m.hasToneEvidence))
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: AppInsetPanel(
-              child: Text(l.personaNoToneEvidence, style: _hintStyle),
+          ],
+          if (preview.modelTarget != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+              child: _CollapsibleCard(
+                key: const ValueKey('persona-system-prompt'),
+                title: l.personaSystemPrompt,
+                text: preview.instructions,
+                style: _bodyStyle,
+              ),
             ),
-          ),
-        if (showsSubjectName)
-          Padding(
-            padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-            child: Text(l.personaSpeakerNamePreviewHint, style: _hintStyle),
-          ),
-        ..._materialPreviews(preview.blocks, subjectName: subjectName),
-        if (_controller.failed)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(l.personaRetryHint),
-          ),
-      ],
+          if (preview.requiresBatching) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(l.personaBatchHint, style: _hintStyle),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+              child: _CollapsibleCard(
+                key: const ValueKey('persona-batch-system-prompt'),
+                title: l.personaBatchSystemPrompt,
+                text: preview.extractionInstructions,
+                style: _bodyStyle,
+              ),
+            ),
+          ],
+          ..._cardPreviews(preview, l),
+          if (showsSubjectName)
+            Padding(
+              padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+              child: Text(l.personaSpeakerNamePreviewHint, style: _hintStyle),
+            ),
+          ..._materialPreviews(preview.blocks, subjectName: subjectName),
+          if (_controller.failed)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(l.personaRetryHint),
+            ),
+        ],
+      ),
     );
+  }
+
+  Iterable<Widget> _cardPreviews(
+    PersonaGenerationContext preview,
+    AppLocalizations l,
+  ) sync* {
+    for (final kind in _cardOrder.where(
+      _controller.draft!.target.kinds.contains,
+    )) {
+      if (_controller.draft!.includeCurrent[kind] != true ||
+          _controller.record!.cards?[kind] == null) {
+        continue;
+      }
+      final text =
+          preview.baseline[kind.name] ??
+          _content(preview.fallbackCards[kind]!).text;
+      yield _section(
+        preview.baseline.containsKey(kind.name)
+            ? l.personaIncludedContentTitle(personaCardLabel(l, kind))
+            : l.personaRetainedContentTitle(personaCardLabel(l, kind)),
+        [
+          PrivateText(
+            text: text,
+            ranges: privacyTokenRanges(text),
+            style: _bodyStyle,
+          ),
+        ],
+      );
+    }
   }
 
   Iterable<Widget> _materialPreviews(
@@ -1055,17 +1114,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     required String? subjectName,
   }) sync* {
     final chatsByDate = <String, List<PersonaMaterial>>{};
-    for (final material in materials) {
-      if (material.isDiary) {
-        yield _section(material.label, [
-          Text(material.date, style: _hintStyle),
-          _materialText(material),
-        ]);
-      } else {
-        chatsByDate
-            .putIfAbsent(material.date.split('T').first, () => [])
-            .add(material);
-      }
+    for (final material in materials.where((material) => !material.isDiary)) {
+      chatsByDate
+          .putIfAbsent(material.date.split('T').first, () => [])
+          .add(material);
     }
     final dates = chatsByDate.keys.toList()..sort();
     for (final date in dates) {
@@ -1090,6 +1142,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               _materialText(item.$2),
             ],
           ),
+      ]);
+    }
+    for (final material in materials.where((material) => material.isDiary)) {
+      yield _section(material.label, [
+        Text(material.date, style: _hintStyle),
+        _materialText(material),
       ]);
     }
   }
@@ -1155,60 +1213,158 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
 
   Widget _review() {
     final l = context.l10n;
-    return ListView(
-      key: const ValueKey('persona-review'),
-      padding: const EdgeInsets.all(16),
-      children: [
-        _replyRules(),
-        Text(l.personaReviewHint, style: _hintStyle),
-        const SizedBox(height: 8),
-        Text(l.personaSaveHint, style: _hintStyle),
-        const SizedBox(height: PageStyle.sectionGap),
-        for (final kind in _cardOrder.where(
-          _controller.draft!.target.kinds.contains,
-        ))
-          _section(personaCardLabel(l, kind), [
-            ..._cardNotes(
-              kind,
-              unresolved: _content(_controller.draft!.candidate![kind]!)
-                  .hasUnresolvedReferences,
+    final draft = _controller.draft!;
+    return AppScrollbar(
+      controller: _reviewScroll,
+      child: ListView(
+        controller: _reviewScroll,
+        key: const ValueKey('persona-review'),
+        padding: const EdgeInsets.all(16),
+        children: [
+          _replyRules(),
+          AppInsetPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.personaReviewHint, style: _hintStyle),
+                const SizedBox(height: 8),
+                Text(l.personaSaveHint, style: _hintStyle),
+              ],
             ),
-            PersonaContentEditor(
-              key: ValueKey(
-                'persona-edit-${kind.name}-${_controller.record!.personaId}-$_editorVersion',
-              ),
-              card: _controller.draft!.candidate![kind]!,
-              kind: kind,
-              names: _personNames,
-              style: _bodyStyle,
-              valid: _controller.isCandidateValid(kind),
-              onChanged: (text) => _controller.editCandidate(kind, text),
-            ),
-            if (_controller.record!.cards?[kind] != null)
-              ExpansionTile(
-                title: Text(l.personaCompare),
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      final card = _controller.record!.cards![kind]!;
-                      _controller.draft!.candidate![kind] = PersonaCandidate(
-                        text: card.text,
-                        tokens: card.tokens,
-                      );
-                      _controller.schedulePersist();
-                      setState(() => _editorVersion++);
-                    },
-                    child: Text(l.personaRetainCurrent),
-                  ),
-                  AiPreviewTextSection(
-                    title: personaCardLabel(l, kind),
-                    text: _content(_controller.record!.cards![kind]!).text,
-                  ),
-                ],
-              ),
-          ]),
-      ],
+          ),
+          const SizedBox(height: PageStyle.sectionGap),
+          for (final kind in _cardOrder.where(draft.target.kinds.contains)) ...[
+            _reviewCard(kind),
+            const SizedBox(height: PageStyle.sectionGap),
+          ],
+        ],
+      ),
     );
+  }
+
+  Widget _reviewCard(PersonaCardKind kind) {
+    final l = context.l10n;
+    final candidate = _controller.draft!.candidate![kind]!;
+    final saved = _controller.record!.cards?[kind];
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppSectionHeader(
+                  title: personaCardLabel(l, kind),
+                  description: _cardDescription(l, kind),
+                  icon: _cardIcon(kind),
+                ),
+                const SizedBox(height: 12),
+                if (_content(candidate).hasUnresolvedReferences) ...[
+                  Text(l.personaUnresolvedReferenceHint, style: _hintStyle),
+                  const SizedBox(height: 8),
+                ],
+                PersonaContentEditor(
+                  key: ValueKey(
+                    'persona-edit-${kind.name}-${_controller.record!.personaId}-$_editorVersion',
+                  ),
+                  card: candidate,
+                  kind: kind,
+                  names: _personNames,
+                  style: _bodyStyle,
+                  valid: _controller.isCandidateValid(kind),
+                  onChanged: (text) => _controller.editCandidate(kind, text),
+                ),
+              ],
+            ),
+          ),
+          if (saved != null) ...[
+            const Divider(height: 1),
+            InkWell(
+              onTap: () => _showSavedCompare(kind, saved),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.compare_arrows_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        l.personaCompareWithCurrent,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSavedCompare(PersonaCardKind kind, PersonaCandidate saved) {
+    final l = context.l10n;
+    final session = _controller.session;
+    if (session == null || _backgrounded) return Future.value();
+    return showAdaptivePanel<void>(
+      context: context,
+      builder: (sheetContext) {
+        final route = ModalRoute.of(sheetContext);
+        if (route != null) _dialogs.add(route);
+        if (_backgrounded || !identical(session, _controller.session)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (route != null && route.isActive) {
+              route.navigator?.removeRoute(route);
+            }
+          });
+          return const SizedBox.shrink();
+        }
+        return AdaptiveChoicePanel(
+          title: '${personaCardLabel(l, kind)} · ${l.personaCompare}',
+          onClose: () => Navigator.pop(sheetContext),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SavedPersonaText(text: _content(saved).text, style: _bodyStyle),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  if (identical(session, _controller.session)) {
+                    _restoreCard(kind, saved);
+                  }
+                },
+                child: Text(l.personaRetainCurrent),
+              ),
+            ],
+          ),
+        );
+      },
+    ).whenComplete(() => _dialogs.removeWhere((route) => !route.isActive));
+  }
+
+  void _restoreCard(PersonaCardKind kind, PersonaCandidate saved) {
+    _controller.draft!.candidate![kind] = PersonaCandidate(
+      text: saved.text,
+      tokens: saved.tokens,
+    );
+    _controller.schedulePersist();
+    setState(() => _editorVersion++);
   }
 
   @override
@@ -1227,14 +1383,15 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
             (d?.step == PersonaStep.review || ref.watch(aiEnabledProvider)) &&
             (d?.step != PersonaStep.confirmation ||
                 controller.preview != null &&
-                    ref
-                            .watch(
-                              aiConnectionReadyProvider(
-                                controller.preview!.connection,
-                              ),
-                            )
-                            .value ==
-                        true) &&
+                    (controller.preview!.modelTarget == null ||
+                        ref
+                                .watch(
+                                  aiConnectionReadyProvider(
+                                    controller.preview!.connection!,
+                                  ),
+                                )
+                                .value ==
+                            true)) &&
             (d?.step != PersonaStep.materials ||
                 controller.hasMaterials && !controller.materialsNeedReview) &&
             (d?.step != PersonaStep.review || controller.canSaveCandidate);
@@ -1328,13 +1485,21 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       children: [
                         if (d != null)
                           Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(
-                              l.personaWizardStep(
-                                d.step.index + 1,
-                                PersonaStep.values.length,
-                                personaStepLabel(l, d.step),
-                              ),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  l.personaWizardStep(
+                                    d.step.index + 1,
+                                    PersonaStep.values.length,
+                                    personaStepLabel(l, d.step),
+                                  ),
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                _stepProgress(d.step),
+                              ],
                             ),
                           ),
                         if (controller.failed)
@@ -1369,22 +1534,19 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                             onStop: controller.stop,
                           )
                         else if (d != null)
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: d.step == PersonaStep.review
-                                ? _reviewActions(
-                                    d,
-                                    l,
-                                    disabled: disabled,
-                                    canSave: canAdvance,
-                                  )
-                                : _stepActions(
-                                    d,
-                                    l,
-                                    disabled: disabled,
-                                    canAdvance: canAdvance,
-                                  ),
-                          ),
+                          d.step == PersonaStep.review
+                              ? _reviewActions(
+                                  d,
+                                  l,
+                                  disabled: disabled,
+                                  canSave: canAdvance,
+                                )
+                              : _stepActions(
+                                  d,
+                                  l,
+                                  disabled: disabled,
+                                  canAdvance: canAdvance,
+                                ),
                       ],
                     ),
                   ),
@@ -1425,60 +1587,79 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       icon: const Icon(Icons.chat_outlined),
       label: Text(l.personaTrial),
     );
-    final endActions = Row(
-      mainAxisSize: MainAxisSize.min,
+    final save = FilledButton(
+      key: const ValueKey('persona-primary'),
+      onPressed: canSave ? () => _run(_controller.save) : null,
+      child: Text(l.personaSave),
+    );
+    return _wizardActionBar(
+      leading: discard
+          ? TextButton(
+              key: const ValueKey('persona-discard-result'),
+              onPressed: disabled
+                  ? null
+                  : () => _run(_controller.discardResult),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: Text(l.personaDiscardResult),
+            )
+          : null,
+      actions: [trial, save],
+    );
+  }
+
+  Widget _stepProgress(PersonaStep step) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
       children: [
-        if (discard) ...[
-          TextButton(
-            key: const ValueKey('persona-discard-result'),
-            onPressed: disabled ? null : () => _run(_controller.discardResult),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+        for (final item in PersonaStep.values) ...[
+          if (item.index > 0) const SizedBox(width: 6),
+          Expanded(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: item.index <= step.index
+                    ? colors.primary
+                    : colors.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: const SizedBox(height: 4),
             ),
-            child: Text(l.personaDiscardResult),
           ),
-          const SizedBox(width: 12),
         ],
-        FilledButton(
-          key: const ValueKey('persona-primary'),
-          onPressed: canSave ? () => _run(_controller.save) : null,
-          child: Text(l.personaSave),
-        ),
       ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final style = Theme.of(context).textTheme.labelLarge;
-        final textScaler = MediaQuery.textScalerOf(context);
-        double buttonWidth(String label, {bool icon = false}) {
-          final painter = TextPainter(
-            text: TextSpan(text: label, style: style),
-            textDirection: Directionality.of(context),
-            textScaler: textScaler,
-          )..layout();
-          final width = painter.width + 32 + (icon ? 26 : 0);
-          painter.dispose();
-          return width < 64 ? 64 : width;
-        }
+  }
 
-        final endWidth =
-            buttonWidth(l.personaSave) +
-            (discard ? buttonWidth(l.personaDiscardResult) + 12 : 0);
-        final fitsInline =
-            buttonWidth(l.personaTrial, icon: true) + 12 + endWidth <=
-            constraints.maxWidth;
-        if (fitsInline) {
-          return Row(children: [trial, const Spacer(), endActions]);
-        }
-        return Column(
+  /// 次要操作獨立一列，避免窄螢幕擠壓主要按鈕。
+  Widget _wizardActionBar({Widget? leading, required List<Widget> actions}) {
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(alignment: Alignment.centerLeft, child: trial),
-            const SizedBox(height: 8),
-            Align(alignment: Alignment.centerRight, child: endActions),
+            if (leading != null) ...[
+              Align(alignment: Alignment.centerLeft, child: leading),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                for (var i = 0; i < actions.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  Expanded(child: actions[i]),
+                ],
+              ],
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -1500,42 +1681,154 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               }
             }),
       child: Text(
-        draft.step == PersonaStep.materials
-            ? l.personaConfirmation
-            : l.personaGenerate,
+        draft.step == PersonaStep.materials ? l.personaNext : l.personaGenerate,
       ),
     );
     if (draft.step != PersonaStep.confirmation) {
-      return Align(alignment: Alignment.centerRight, child: advance);
+      return _wizardActionBar(actions: [advance]);
     }
-    final back = TextButton(
-      onPressed: disabled ? null : _controller.resetToMaterials,
-      child: Text(l.personaBackMaterials),
+    return _wizardActionBar(
+      actions: [
+        OutlinedButton(
+          onPressed: disabled ? null : _controller.resetToMaterials,
+          child: Text(l.personaBackMaterials),
+        ),
+        advance,
+      ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final painter = TextPainter(
-          text: TextSpan(
-            text: '${l.personaBackMaterials}${l.personaGenerate}',
-            style: Theme.of(context).textTheme.labelLarge,
+  }
+}
+
+class _CollapsibleCard extends StatelessWidget {
+  const _CollapsibleCard({
+    super.key,
+    required this.title,
+    required this.text,
+    required this.style,
+  });
+
+  final String title;
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    padding: EdgeInsets.zero,
+    child: ExpansionTile(
+      shape: const Border(),
+      collapsedShape: const Border(),
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      childrenPadding: const EdgeInsets.all(12),
+      children: [_SavedPersonaText(text: text, style: style)],
+    ),
+  );
+}
+
+class _SavedPersonaText extends StatefulWidget {
+  const _SavedPersonaText({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_SavedPersonaText> createState() => _SavedPersonaTextState();
+}
+
+class _SavedPersonaTextState extends State<_SavedPersonaText> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppInsetPanel(
+      padding: EdgeInsets.zero,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxHeight: AiPreviewTextSection.bodyMaxHeight,
+        ),
+        child: AppScrollbar(
+          controller: _scroll,
+          track: AppScrollbarTrack.frame,
+          child: SingleChildScrollView(
+            controller: _scroll,
+            primary: false,
+            padding: const EdgeInsets.all(12),
+            child: SelectionArea(
+              child: PrivateText(
+                text: widget.text,
+                ranges: privacyTokenRanges(widget.text),
+                style: widget.style,
+              ),
+            ),
           ),
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout();
-        final fitsInline = painter.width + 2 * 48 + 12 <= constraints.maxWidth;
-        painter.dispose();
-        if (fitsInline) {
-          return Row(children: [back, const Spacer(), advance]);
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(alignment: Alignment.centerLeft, child: back),
-            const SizedBox(height: 8),
-            Align(alignment: Alignment.centerRight, child: advance),
-          ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedPersonaActions extends StatelessWidget {
+  const _SavedPersonaActions({
+    required this.editLabel,
+    required this.updateLabel,
+    required this.onEdit,
+    required this.onUpdate,
+  });
+
+  final String editLabel;
+  final String updateLabel;
+  final VoidCallback onEdit;
+  final VoidCallback onUpdate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.primary;
+    Widget action(IconData icon, String label, VoidCallback onPressed) {
+      return InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(color: color),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: action(Icons.edit_outlined, editLabel, onEdit)),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: theme.colorScheme.outlineVariant,
+          ),
+          Expanded(
+            child: action(Icons.auto_awesome_outlined, updateLabel, onUpdate),
+          ),
+        ],
+      ),
     );
   }
 }

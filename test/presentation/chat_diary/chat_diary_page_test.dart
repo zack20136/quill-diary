@@ -781,6 +781,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('聊天系統提示詞'), findsOneWidget);
       expect(find.text('生成日記系統提示詞'), findsOneWidget);
+      expect(find.text(testL10n.chatDiaryPrivateNotesHint), findsNothing);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(360, 0.1));
       expect(
         find.textContaining(testL10n.chatDiaryConversationRulesPrompt),
@@ -984,8 +985,16 @@ void main() {
         ),
       );
       await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
+      expect(find.text(testL10n.chatDiaryPrivateNotesHint), findsOneWidget);
       await tester.tap(find.byTooltip('查看送給 AI 的內容'));
       await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text(testL10n.chatDiaryPrivateNotesHint),
+        ),
+        findsOneWidget,
+      );
       final texts = find.descendant(
         of: find.byType(AlertDialog),
         matching: _previewBody,
@@ -1769,7 +1778,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
-    testWidgets('傳送中可停止或返回，其他聊天室功能停用', (tester) async {
+    testWidgets('傳送中可停止、查看送給 AI 的內容或返回，其他功能停用', (tester) async {
       final chat = testChatDiarySession(hidePersonNames: false);
       final stream = StreamController<String>();
       final client = FakeAiClient(chat.connectionConfig)
@@ -1783,21 +1792,50 @@ void main() {
       }
       final controller = container.read(chatDiaryControllerProvider(chat.id));
       expect(controller.busy, isTrue);
+      final l10n = tester.element(find.byType(ChatDiaryPage)).l10n;
       for (final element in find.byType(IconButton).evaluate()) {
         if (element.findAncestorWidgetOfExactType<BackButton>() == null) {
           final button = element.widget as IconButton;
-          expect(
-            button.onPressed,
-            button.tooltip == '停止生成' ? isNotNull : isNull,
-          );
+          final allowed =
+              button.tooltip == l10n.aiStopGeneration ||
+              button.tooltip == l10n.aiPreviewRequest;
+          expect(button.onPressed, allowed ? isNotNull : isNull);
         }
       }
+      await tester.tap(find.byTooltip(l10n.aiPreviewRequest));
+      for (
+        var i = 0;
+        i < 40 && find.byType(AlertDialog).evaluate().isEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('合成訊息'),
+        ),
+        findsOneWidget,
+      );
+      expect(controller.busy, isTrue);
+      expect(client.calls, hasLength(1));
+      await tester.tap(find.text(l10n.commonActionClose));
+      for (
+        var i = 0;
+        i < 40 && find.byType(AlertDialog).evaluate().isNotEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(find.byType(AlertDialog), findsNothing);
       for (final button in tester.widgetList<TextButton>(
         find.byType(TextButton),
       )) {
         expect(button.onPressed, isNull);
       }
-      expect(find.bySemanticsLabel('正在等候回覆'), findsOneWidget);
+      // 語意標籤可能與相鄰的預設夥伴標題合併，因此以包含文字比對。
+      expect(find.bySemanticsLabel(RegExp('正在等候回覆')), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
       expect(find.byTooltip('停止生成'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);

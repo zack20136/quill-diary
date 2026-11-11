@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 typedef AppMonthDay = ({int month, int day});
 
@@ -113,7 +115,7 @@ Future<T?> _showAppDatePicker<T>({
   required BuildContext context,
   required _AppDatePickerConfig<T> config,
 }) {
-  return showDialog<T>(
+  return showAppDialog<T>(
     context: context,
     builder: (BuildContext context) => _AppDatePickerDialog<T>(config: config),
   );
@@ -506,24 +508,6 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     );
   }
 
-  Widget _scrollbar({
-    required Key key,
-    required ScrollController controller,
-    required Widget child,
-  }) {
-    return ScrollbarTheme(
-      key: key,
-      data: ScrollbarTheme.of(context).copyWith(mainAxisMargin: 0),
-      child: Scrollbar(
-        controller: controller,
-        thumbVisibility: true,
-        trackVisibility: true,
-        interactive: true,
-        child: child,
-      ),
-    );
-  }
-
   int get _monthColumnCount {
     final double textScale = MediaQuery.textScalerOf(context).scale(1);
     if (textScale >= 1.5) {
@@ -619,8 +603,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
   }
 
   Widget _buildMonthView() {
-    return _scrollbar(
-      key: const Key('app-date-picker-month-scrollbar-theme'),
+    return AppScrollbar(
+      key: const Key('app-date-picker-month-scrollbar'),
       controller: _monthScrollController,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-month-view'),
@@ -695,8 +679,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           ),
         const SizedBox(height: 8),
         Expanded(
-          child: _scrollbar(
-            key: const Key('app-date-picker-year-scrollbar-theme'),
+          child: AppScrollbar(
+            key: const Key('app-date-picker-year-scrollbar'),
             controller: _yearScrollController,
             child: GridView.builder(
               key: const Key('app-date-picker-year-grid'),
@@ -753,8 +737,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           )
         : context.l10n.datePickerMonthOption(_selectedMonth);
     final List<String> weekdayLabels = _weekdayLabels();
-    final Widget dayView = _scrollbar(
-      key: const Key('app-date-picker-day-scrollbar-theme'),
+    final Widget dayView = AppScrollbar(
+      key: const Key('app-date-picker-day-scrollbar'),
       controller: _dayScrollController,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-day-view'),
@@ -908,22 +892,10 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     final double contentHeight = (MediaQuery.sizeOf(context).height - 220)
         .clamp(280, 420)
         .toDouble();
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      title: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              widget.config.title,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          if (widget.config.kind == _AppDatePickerKind.date)
-            TextButton(
+    return AppDialogShell(
+      title: widget.config.title,
+      titleTrailing: widget.config.kind == _AppDatePickerKind.date
+          ? TextButton(
               key: const Key('app-date-picker-today'),
               onPressed: _canSelectToday ? _selectToday : null,
               style: TextButton.styleFrom(
@@ -936,15 +908,16 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),
               child: Text(context.l10n.commonRelativeToday),
-            ),
-        ],
-      ),
-      content: SizedBox(
-        width: 340,
-        height: contentHeight,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: KeyedSubtree(key: ValueKey(_view), child: _buildContent()),
+            )
+          : null,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: contentHeight),
+        child: SizedBox(
+          width: 340,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: KeyedSubtree(key: ValueKey(_view), child: _buildContent()),
+          ),
         ),
       ),
       actions: <Widget>[

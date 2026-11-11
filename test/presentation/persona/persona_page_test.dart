@@ -22,6 +22,7 @@ import 'package:quill_diary/domain/persona/persona_privacy.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_page.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
@@ -34,6 +35,218 @@ import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
+  for (final (hasRequest, includeTone) in [
+    (false, true),
+    (true, true),
+    (true, false),
+  ]) {
+    testWidgets(
+      '${hasRequest ? '記憶外送' : '全本機保留'}時確認頁顯示勾選舊卡，風格${includeTone ? '納入' : '排除'}',
+      (tester) async {
+        tester.view.physicalSize = const Size(520, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final person = personaPerson('小明');
+        final peer = personaPerson('小華');
+        const memory = '既有記憶與秘密資料';
+        final cards = {
+          PersonaCardKind.memory: PersonaCard(
+            text: memory,
+            updatedAt: DateTime.utc(2026),
+            selectedDiaryIds: [],
+          ),
+          PersonaCardKind.tone: PersonaCard(
+            text: '會用⟦P01⟧的稱呼',
+            tokens: {'⟦P01⟧': peer.id},
+            updatedAt: DateTime.utc(2026),
+            selectedDiaryIds: [],
+          ),
+        };
+        final record = PersonaRecord(
+          vaultId: 'vault',
+          personId: person.id,
+          personaId: generatePersonaId(),
+          cards: cards,
+          draft: PersonaDraft(
+            target: PersonaUpdateTarget.both,
+            step: PersonaStep.confirmation,
+            baseUpdatedAt: {
+              for (final card in cards.entries) card.key: card.value.updatedAt,
+            },
+            includeCurrent: {
+              PersonaCardKind.memory: true,
+              PersonaCardKind.tone: includeTone,
+            },
+            cardHiddenRanges: {
+              PersonaCardKind.memory: [const PrivateTextRange(5, 9)],
+            },
+          ),
+        );
+        const session = UnlockedVaultSession(
+          vaultId: 'vault',
+          trustedDevice: true,
+        );
+        final preview = PersonaGenerationContext(
+          personaId: record.personaId,
+          updateTarget: PersonaUpdateTarget.both,
+          modelTarget: hasRequest ? PersonaUpdateTarget.memory : null,
+          fallbackCards: {
+            for (final card in cards.entries)
+              card.key: PersonaCandidate(
+                text: card.key == PersonaCardKind.tone && !includeTone
+                    ? testL10n.personaNeutralTone
+                    : card.value.text,
+                tokens: card.value.tokens,
+              ),
+          },
+          baseUpdatedAt: record.draft!.baseUpdatedAt,
+          session: session,
+          connection: hasRequest
+              ? testChatDiarySession().connectionConfig
+              : null,
+          instructions: hasRequest ? '本次只整理記憶' : '',
+          extractionInstructions: '',
+          registry: PersonaTokenRegistry([person, peer], hideNames: true),
+          blocks: const [],
+          baseline: hasRequest ? {'memory': '既有記憶與$personaHiddenText'} : {},
+          subject: '⟦P02⟧',
+          selectionSignature: 'fixture',
+        );
+        final baseline = jsonEncode(preview.baseline);
+        await tester.pumpWidget(
+          widgetTestApp(
+            center: false,
+            wrapScaffold: false,
+            overrides: [
+              effectiveAppSessionProvider.overrideWith(
+                (_) async => const AppSessionState(
+                  status: AppLockStatus.unlocked,
+                  session: session,
+                ),
+              ),
+              peopleListProvider.overrideWith((_) => AsyncData([person, peer])),
+              personDetailProvider(person.id).overrideWith((_) async => person),
+              personaControllerProvider(person.id).overrideWith((ref) {
+                final controller = PersonaTestController(ref, person.id, record)
+                  ..preview = preview;
+                ref.onDispose(controller.dispose);
+                return controller;
+              }),
+            ],
+            child: PersonaPage(personId: person.id),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            hasRequest
+                ? testL10n.personaIncludedContentTitle(testL10n.personaMemory)
+                : testL10n.personaRetainedContentTitle(testL10n.personaMemory),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(testL10n.personaRetainedContentTitle(testL10n.personaTone)),
+          includeTone ? findsOneWidget : findsNothing,
+        );
+        final visible = tester
+            .widgetList<PrivateText>(find.byType(PrivateText))
+            .map((widget) => widget.text)
+            .toList();
+        expect(
+          visible,
+          contains(hasRequest ? '既有記憶與$personaHiddenText' : memory),
+        );
+        expect(visible.contains('會用小華的稱呼'), includeTone);
+        if (hasRequest) {
+          expect(visible.any((text) => text.contains('秘密資料')), isFalse);
+        } else {
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.inactive,
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(PrivateText), findsNothing);
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.resumed,
+          );
+          await tester.pumpAndSettle();
+          expect(find.text(memory), findsOneWidget);
+        }
+        expect(jsonEncode(preview.baseline), baseline);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+
+  testWidgets('帶入舊記憶預設未勾，勾選可作為本次材料並保存選擇', (tester) async {
+    final person = personaPerson('小明');
+    final cards = {
+      for (final kind in PersonaCardKind.values)
+        kind: PersonaCard(
+          text: '本機舊內容',
+          updatedAt: DateTime.utc(2026),
+          selectedDiaryIds: [],
+        ),
+    };
+    final record = PersonaRecord(
+      vaultId: 'vault',
+      personId: person.id,
+      personaId: generatePersonaId(),
+      cards: cards,
+      draft: PersonaDraft(
+        target: PersonaUpdateTarget.memory,
+        baseUpdatedAt: {
+          PersonaCardKind.memory: cards[PersonaCardKind.memory]!.updatedAt,
+        },
+      ),
+    );
+    late PersonaTestController controller;
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        wrapScaffold: false,
+        overrides: [
+          effectiveAppSessionProvider.overrideWith(
+            (ref) async => const AppSessionState(
+              status: AppLockStatus.unlocked,
+              session: UnlockedVaultSession(
+                vaultId: 'vault',
+                trustedDevice: true,
+              ),
+            ),
+          ),
+          personDetailProvider(person.id).overrideWith((ref) async => person),
+          personRelatedEntriesProvider(person.id)
+              .overrideWith((ref) async => []),
+          personaControllerProvider(person.id).overrideWith((ref) {
+            controller = PersonaTestController(ref, person.id, record);
+            ref.onDispose(controller.dispose);
+            return controller;
+          }),
+        ],
+        child: PersonaPage(personId: person.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final checkbox = find.byKey(
+      const ValueKey('persona-include-current-memory'),
+    );
+    await tester.ensureVisible(checkbox);
+    expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+    expect(controller.hasMaterials, isFalse);
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(checkbox).value, isTrue);
+    expect(controller.hasMaterials, isTrue);
+    expect(controller.draft!.toJson()['include_current'], {'memory': true});
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+    expect(controller.hasMaterials, isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('分身初始化遇到不可讀 AI 設定時可開啟設定重建，再回到原草稿', (tester) async {
     final person = personaPerson('測試人物');
     final settings = OverviewAiSettingsStore()..failReads = true;
@@ -98,7 +311,9 @@ void main() {
     (appZhLocale, 520.0, 1.0),
     (appEnLocale, 320.0, 2.0),
   ]) {
-    testWidgets('${locale.languageCode} 確認頁姓名保留底色與代號邊界，返回不清材料', (tester) async {
+    testWidgets('${locale.languageCode} 確認頁提示詞可收合、姓名保留代號邊界，返回不清材料', (
+      tester,
+    ) async {
       tester.view.physicalSize = Size(width, scale == 1 ? 1200 : 2000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -122,7 +337,9 @@ void main() {
       );
       final preview = PersonaGenerationContext(
         personaId: record.personaId,
-        target: PersonaUpdateTarget.both,
+        updateTarget: PersonaUpdateTarget.both,
+        modelTarget: PersonaUpdateTarget.both,
+        fallbackCards: personaCandidates(),
         baseUpdatedAt: record.draft!.baseUpdatedAt,
         session: session,
         connection: const AiConnectionConfig(
@@ -133,6 +350,11 @@ void main() {
         extractionInstructions: '測試分批指示',
         registry: PersonaTokenRegistry([person], hideNames: true),
         blocks: const [
+          PersonaMaterial.diary(
+            label: '日記範例',
+            date: '2026-11-07',
+            text: '日記中的合成內容',
+          ),
           PersonaMaterial.chat(
             label: '匯入的聊天 1',
             date: '2026-11-09T08:00:00',
@@ -208,6 +430,18 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      final prompt = find.byKey(const ValueKey('persona-system-prompt'));
+      final promptText = find.descendant(
+        of: prompt,
+        matching: find.byType(PrivateText),
+      );
+      expect(promptText, findsNothing);
+      await tester.tap(find.text(l10n.personaSystemPrompt));
+      await tester.pumpAndSettle();
+      expect(tester.widget<PrivateText>(promptText).text, preview.instructions);
+      await tester.tap(find.text(l10n.personaSystemPrompt));
+      await tester.pumpAndSettle();
+      expect(promptText, findsNothing);
       expect(find.text(l10n.personaSpeakerNamePreviewHint), findsNothing);
       expect(
         find.textContaining('${l10n.personaRoleFriend} · ⟦P07⟧'),
@@ -243,11 +477,9 @@ void main() {
       );
       expect(find.text('和⟦P07⟧碰面'), findsOneWidget);
       expect(find.text('2026-11-08'), findsOneWidget);
-      expect(find.text('2026-11-09'), findsOneWidget);
-      expect(find.byType(AppSectionCard), findsNWidgets(2));
       final day = find.ancestor(
         of: find.text('2026-11-08'),
-        matching: find.byType(AppSectionCard),
+        matching: find.byType(AppCard),
       );
       expect(
         find.descendant(of: day, matching: find.text('早安')),
@@ -261,23 +493,47 @@ void main() {
         tester.getTopLeft(find.text('早安')).dy,
         lessThan(tester.getTopLeft(find.text('晚點$personaHiddenText')).dy),
       );
-      expect(
-        tester.getTopLeft(find.text('2026-11-08')).dy,
-        lessThan(tester.getTopLeft(find.text('2026-11-09')).dy),
-      );
       expect(find.textContaining('09:12'), findsOneWidget);
       final hidden = tester
           .widgetList<PrivateText>(find.byType(PrivateText))
           .singleWhere((widget) => widget.text == '晚點$personaHiddenText');
       expect(hidden.ranges, isNotEmpty);
+      await tester.scrollUntilVisible(
+        find.text('2026-11-09'),
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('persona-confirmation')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text('2026-11-09'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('日記範例'),
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('persona-confirmation')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(
+        tester.getTopLeft(find.text('2026-11-09')).dy,
+        lessThan(tester.getTopLeft(find.text('日記範例')).dy),
+      );
       expect(jsonEncode(preview.requestMaterials), request);
       expect(preview.subject, '⟦P07⟧');
-      final back = find.widgetWithText(TextButton, l10n.personaBackMaterials);
+      final back = find.widgetWithText(
+        OutlinedButton,
+        l10n.personaBackMaterials,
+      );
       final advance = find.byKey(const ValueKey('persona-primary'));
       expect(tester.widget<FilledButton>(advance).onPressed, isNull);
       settings.keys['openai'] = 'synthetic-key';
       ProviderScope.containerOf(tester.element(find.byType(PersonaPage)))
-          .invalidate(aiConnectionReadyProvider(preview.connection));
+          .invalidate(aiConnectionReadyProvider(preview.connection!));
       await tester.pumpAndSettle();
       expect(tester.widget<FilledButton>(advance).onPressed, isNotNull);
       expect(tester.getRect(back).left, closeTo(16, 0.1));
@@ -285,6 +541,10 @@ void main() {
       await tester.tap(back);
       await tester.pumpAndSettle();
       expect(record.draft!.step, PersonaStep.materials);
+      expect(
+        find.descendant(of: advance, matching: find.text(l10n.personaNext)),
+        findsOneWidget,
+      );
       expect(record.draft!.chats.single, same(source));
       expect(source.hidden['message']!.single.start, 0);
       expect(source.hidden['message']!.single.end, 2);
@@ -355,7 +615,10 @@ void main() {
     expect(find.text(testL10n.personaChecked), findsNothing);
     await tester.tap(find.byTooltip(testL10n.commonActionDelete).first);
     await tester.pumpAndSettle();
-    final fields = find.byType(TextField);
+    final fields = find.descendant(
+      of: find.byType(PersonaChatDateEditorDialog),
+      matching: find.byType(TextField),
+    );
     await tester.enterText(fields.first, ' \n ');
     await tester.enterText(fields.last, '> 原文\n自己的話');
     FocusManager.instance.primaryFocus?.unfocus();
@@ -485,7 +748,22 @@ void main() {
     expect(controller.record!.cards![PersonaCardKind.tone]!.text, '目前語氣');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    final compare = find.text(testL10n.personaCompare);
+    final compare = find.text(testL10n.personaCompareWithCurrent);
+    await tester.ensureVisible(compare);
+    await tester.drag(
+      find.byKey(const ValueKey('persona-review')),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(compare);
+    await tester.pumpAndSettle();
+    expect(find.text('目前記憶'), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pumpAndSettle();
+    expect(find.text('目前記憶'), findsNothing);
+    expect(find.text(testL10n.personaRetainCurrent), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
     await tester.ensureVisible(compare);
     await tester.drag(
       find.byKey(const ValueKey('persona-review')),

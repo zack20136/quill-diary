@@ -8,6 +8,7 @@ import 'package:quill_diary/presentation/editor/widgets/editor_keyboard_chrome.d
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
 import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -203,7 +204,7 @@ class EditorBodySection extends StatelessWidget {
         ? ValueListenableBuilder<TextEditingValue>(
             valueListenable: bodyController,
             builder: (context, value, _) => SelectionArea(
-              child: SingleChildScrollView(
+              child: AppScrollView(
                 child: value.text.isEmpty
                     ? Text(
                         context.l10n.editorBodyEmptyPreview,

@@ -1456,39 +1456,22 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
 
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       barrierColor: context.appColors.scrim,
-      builder: (BuildContext dialogContext) {
-        return AnimatedPadding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: 24 + MediaQuery.viewInsetsOf(dialogContext).bottom,
-          ),
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          child: Align(
-            child: Material(
-              color: Colors.transparent,
-              child: TagPickerDialog(
-                initialCsv: _tagsController.text,
-                suggestions: sorted,
-                onDismiss: () => Navigator.of(dialogContext).pop(),
-                onApply: (String csv) {
-                  Navigator.of(dialogContext).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      _applyTagsCsv(csv);
-                    }
-                  });
-                },
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (BuildContext dialogContext) => TagPickerDialog(
+        initialCsv: _tagsController.text,
+        suggestions: sorted,
+        onDismiss: () => Navigator.of(dialogContext).pop(),
+        onApply: (String csv) {
+          Navigator.of(dialogContext).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _applyTagsCsv(csv);
+            }
+          });
+        },
+      ),
     );
   }
 

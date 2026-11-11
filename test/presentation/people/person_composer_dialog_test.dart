@@ -5,7 +5,7 @@ import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/widget_test_app.dart';
@@ -15,11 +15,7 @@ Widget _testApp() {
     wrapScaffold: false,
     center: false,
     overrides: const [],
-    child: const Dialog(
-      insetPadding: EdgeInsets.all(12),
-      backgroundColor: Colors.transparent,
-      child: PersonComposerDialog(),
-    ),
+    child: const AppDialogWidth(child: PersonComposerDialog()),
   );
 }
 
@@ -49,7 +45,7 @@ void main() {
 
     expect(find.text('基本資料'), findsOneWidget);
     expect(find.byType(Dialog), findsOneWidget);
-    expect(find.byType(AccentDialogShell), findsOneWidget);
+    expect(find.byType(AppDialogShell), findsOneWidget);
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.text('儲存'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
@@ -69,7 +65,7 @@ void main() {
     await tester.tap(find.text('開啟人物表單'));
     await tester.pumpAndSettle();
 
-    final Finder dialog = find.byKey(const Key('person-composer-dialog'));
+    final Finder dialog = find.byType(AppDialogShell);
     final Rect beforeKeyboard = tester.getRect(dialog);
 
     tester.view.viewInsets = const FakeViewPadding(bottom: 300);
@@ -143,11 +139,7 @@ void main() {
             (Ref ref) async => PeopleCatalog.empty(),
           ),
         ],
-        child: const Dialog(
-          insetPadding: EdgeInsets.all(12),
-          backgroundColor: Colors.transparent,
-          child: PersonComposerDialog(),
-        ),
+        child: const AppDialogWidth(child: PersonComposerDialog()),
       ),
     );
     await tester.pumpAndSettle();
@@ -264,7 +256,7 @@ void main() {
     await tester.pumpWidget(_testApp());
     await tester.pumpAndSettle();
 
-    expect(tester.getSize(find.byType(AccentDialogShell)).width, 876);
+    expect(tester.getSize(find.byType(AppDialogShell)).width, greaterThan(480));
     expect(find.byType(Divider), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });

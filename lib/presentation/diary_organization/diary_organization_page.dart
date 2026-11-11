@@ -28,6 +28,7 @@ import 'package:quill_diary/presentation/diary_organization/organization_draft_e
 import 'package:quill_diary/presentation/diary_organization/organization_quick_actions.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
@@ -49,6 +50,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   bool _followTail = true;
   UnlockedVaultSession? _loaded;
   bool _syncing = false;
+  bool _backgrounded = false;
   final _dialogs = <Route<dynamic>>[];
   DiaryOrganizationController get _controller =>
       ref.read(diaryOrganizationControllerProvider(widget.entryId));
@@ -79,7 +81,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     if (state != AppLifecycleState.resumed) {
       _dismissDialogs();
     }
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() => _backgrounded = state != AppLifecycleState.resumed);
+    }
   }
 
   void _dismissDialogs() {
@@ -89,10 +93,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   }
 
   Future<T?> _dialog<T>(Widget child) async {
-    final route = DialogRoute<T>(
-      context: context,
-      builder: (_) => AppDialogWidth(child: child),
-    );
+    final route = appDialogRoute<T>(context: context, builder: (_) => child);
     _dialogs.add(route);
     try {
       return await Navigator.of(context).push(route);
@@ -234,10 +235,11 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
 
   Future<void> _edit() async {
     final draft = _controller.draft!;
+    if (draft.hasUnsafeCandidate) return;
     final edited = await _dialog<String>(
       OrganizationDraftEditor(
         body: draft.currentBody,
-        originals: draft.originals,
+        originals: draft.originalsForTurns(draft.activeTurnIndices),
         surfaces: draft.tokenSurfaces,
       ),
     );
@@ -399,9 +401,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     final controller = _controller;
     final draft = controller.draft!;
     final current = draft.turns[turn];
-    final visible = organizationVisibleText(
+    final visible = draft.visibleText(
       text,
-      draft.originals,
+      turn: turn,
       surfaces: user ? current.surfaces : const {},
     );
     final pending =
@@ -410,7 +412,10 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
         !controller.generating &&
         current.interrupted &&
         turn == draft.activeTurnIndices.lastOrNull;
-    final failed = !user && current.interrupted && !pending;
+    final failed =
+        !user &&
+        !pending &&
+        (current.interrupted || !draft.replyIsInScope(turn));
     final canAct = !controller.busy && draft.editingTurn == null;
     return AiMessageBubble(
       id: 'organization-${user ? 'user' : 'assistant'}-$turn',
@@ -461,47 +466,51 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
         return Column(
           children: [
             Expanded(
-              child: ListView(
+              child: AppScrollbar(
                 controller: _scroll,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                children: [
-                  AiConnectionSetupNotice(
-                    connection: draft.connection,
-                    onOpenSettings: controller.busy
-                        ? null
-                        : () => _run(_settings),
+                child: ListView(
+                  key: const ValueKey('organization-conversation'),
+                  controller: _scroll,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
                   ),
-                  _notices(controller),
-                  if (!hasMessages)
-                    OrganizationQuickActions(
-                      enabled:
-                          connectionReady &&
-                          canInteract &&
-                          draft.editingTurn == null,
-                      onSelected: (message) => _send(message: message),
+                  children: [
+                    AiConnectionSetupNotice(
+                      connection: draft.connection,
+                      onOpenSettings: controller.busy
+                          ? null
+                          : () => _run(_settings),
                     ),
-                  if (draft.generationInterrupted && !controller.generating)
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(l10n.organizationInterrupted),
-                    ),
-                  for (final index in draft.activeTurnIndices) ...[
-                    if (draft.turns[index].user.isNotEmpty)
+                    _notices(controller),
+                    if (!hasMessages)
+                      OrganizationQuickActions(
+                        enabled:
+                            connectionReady &&
+                            canInteract &&
+                            draft.editingTurn == null,
+                        onSelected: (message) => _send(message: message),
+                      ),
+                    if (draft.generationInterrupted && !controller.generating)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(l10n.organizationInterrupted),
+                      ),
+                    for (final index in draft.activeTurnIndices) ...[
+                      if (draft.turns[index].user.isNotEmpty)
+                        _message(
+                          draft.turns[index].user,
+                          user: true,
+                          turn: index,
+                        ),
                       _message(
-                        draft.turns[index].user,
-                        user: true,
+                        draft.turns[index].reply,
+                        user: false,
                         turn: index,
                       ),
-                    _message(
-                      draft.turns[index].reply,
-                      user: false,
-                      turn: index,
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             if (controller.generating)
@@ -527,7 +536,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                 constraints: BoxConstraints(
                   maxHeight: constraints.maxHeight * 0.75,
                 ),
-                child: SingleChildScrollView(
+                child: AppScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -588,6 +597,25 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   Widget _review(DiaryOrganizationController controller) => OrganizationReview(
     controller: controller,
     notices: _notices(controller),
+    onShowReply: () => _run(
+      () => _dialog<void>(
+        AppDialogShell(
+          title: context.l10n.organizationReplyTitle,
+          content: SizedBox(
+            width: 560,
+            child: SelectionArea(
+              child: Text(controller.draft?.generationReply ?? ''),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+              child: Text(context.l10n.commonActionClose),
+            ),
+          ],
+        ),
+      ),
+    ),
     onBack: () {
       _followTail = true;
       unawaited(_run(controller.returnToChat));
@@ -604,7 +632,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
         _controller.draft?.stage == OrganizationStage.applying) {
       return;
     }
-    await _controller.persist(rethrowError: true);
+    if (_controller.draft?.hasUnsafeCandidate != true) {
+      await _controller.persist(rethrowError: true);
+    }
     if (mounted) context.pop();
   });
 
@@ -622,6 +652,16 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     final controller = ref.watch(
       diaryOrganizationControllerProvider(widget.entryId),
     );
+    if (_backgrounded) {
+      return Scaffold(
+        body: Center(
+          child: Semantics(
+            label: context.l10n.aiContentHidden,
+            child: const Icon(Icons.lock_outline),
+          ),
+        ),
+      );
+    }
     if (session == null || !session.isUnlocked || session.session == null) {
       return Scaffold(
         body: session == null
@@ -715,9 +755,9 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
               : AiChatScaffold(
                   title: context.l10n.organizationTitle,
                   leading: CloseButton(onPressed: _close),
-                  onPreview: controller.busy || !ref.watch(aiEnabledProvider)
-                      ? null
-                      : () => _run(_preview),
+                  onPreview: ref.watch(aiEnabledProvider)
+                      ? () => _run(_preview)
+                      : null,
                   onDelete: controller.busy
                       ? null
                       : () => _run(() => _discard(false)),

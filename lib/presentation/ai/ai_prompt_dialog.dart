@@ -136,18 +136,35 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                               }),
                         decoration: InputDecoration(
                           border: const OutlineInputBorder(),
+                          enabledBorder: _invalid ? _errorBorder(1) : null,
+                          focusedBorder: _invalid ? _errorBorder(2) : null,
                           contentPadding: const EdgeInsets.all(12),
-                          errorText: _invalid ? l10n.aiPromptRequired : null,
                         ),
                       ),
                     ),
                   ),
+                  if (_invalid) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.aiPromptRequired,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
                 ],
               ),
       ),
       actions: _actions(l10n),
     );
   }
+
+  OutlineInputBorder _errorBorder(double width) => OutlineInputBorder(
+    borderSide: BorderSide(
+      color: Theme.of(context).colorScheme.error,
+      width: width,
+    ),
+  );
 
   List<Widget> _actions(AppLocalizations l10n) {
     final cancel = TextButton(

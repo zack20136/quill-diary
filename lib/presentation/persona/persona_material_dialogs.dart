@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -34,6 +35,7 @@ class PersonaMaskDialog extends ConsumerStatefulWidget {
 
 class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
   final controller = PrivateTextController();
+  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
   @override
   void dispose() {
     controller.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -59,15 +62,20 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: controller,
-                style: watchPersonalizationPreferences(ref).typography
-                    .bodyTextStyle(Theme.of(context).textTheme),
-                readOnly: true,
-                expands: true,
-                minLines: null,
-                maxLines: null,
-                textAlignVertical: TextAlignVertical.top,
+              child: AppScrollbar(
+                controller: _scroll,
+                track: AppScrollbarTrack.frame,
+                child: TextField(
+                  controller: controller,
+                  scrollController: _scroll,
+                  style: watchPersonalizationPreferences(ref).typography
+                      .bodyTextStyle(Theme.of(context).textTheme),
+                  readOnly: true,
+                  expands: true,
+                  minLines: null,
+                  maxLines: null,
+                  textAlignVertical: TextAlignVertical.top,
+                ),
               ),
             ),
           ),
@@ -180,6 +188,7 @@ class PersonaChatDateEditorDialog extends StatefulWidget {
 class _PersonaChatDateEditorDialogState
     extends State<PersonaChatDateEditorDialog> {
   final _controllers = <String, PrivateTextController>{};
+  final _scroll = ScrollController();
   final _deletedMessageIds = <String>{};
   String? _activeMessageId;
 
@@ -251,6 +260,7 @@ class _PersonaChatDateEditorDialogState
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -277,76 +287,82 @@ class _PersonaChatDateEditorDialogState
             Expanded(
               child: messages.isEmpty
                   ? Center(child: Text(context.l10n.personaNoChatMessages))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        return AppCard(
-                          key: ValueKey(message.messageId),
-                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: message.speaker,
-                                            style: TextStyle(
+                  : AppScrollbar(
+                      controller: _scroll,
+                      child: ListView.separated(
+                        controller: _scroll,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          return AppCard(
+                            key: ValueKey(message.messageId),
+                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: message.speaker,
+                                              style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text:
+                                                  ' · ${_messageTime(message.sentAtLocal)}',
+                                            ),
+                                          ],
+                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
                                               color: Theme.of(context)
                                                   .colorScheme
-                                                  .primary,
+                                                  .onSurfaceVariant,
                                             ),
-                                          ),
-                                          TextSpan(
-                                            text:
-                                                ' · ${_messageTime(message.sentAtLocal)}',
-                                          ),
-                                        ],
                                       ),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    tooltip: context.l10n.commonActionDelete,
-                                    color: Theme.of(context).colorScheme.error,
-                                    iconSize: 20,
-                                    onPressed: () =>
-                                        _deleteMessage(message.messageId),
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              TextField(
-                                controller: _controllers[message.messageId]!,
-                                minLines: 1,
-                                maxLines: null,
-                                textAlignVertical: TextAlignVertical.top,
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
+                                    IconButton(
+                                      tooltip: context.l10n.commonActionDelete,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                      iconSize: 20,
+                                      onPressed: () =>
+                                          _deleteMessage(message.messageId),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: _controllers[message.messageId]!,
+                                  minLines: 1,
+                                  maxLines: null,
+                                  textAlignVertical: TextAlignVertical.top,
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
             ),
             Padding(
@@ -393,10 +409,12 @@ class PersonaPasteDialog extends StatefulWidget {
 
 class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
   final text = TextEditingController();
+  final _scroll = ScrollController();
 
   @override
   void dispose() {
     text.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -416,12 +434,17 @@ class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: text,
-                maxLines: null,
-                minLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
+              child: AppScrollbar(
+                controller: _scroll,
+                track: AppScrollbarTrack.frame,
+                child: TextField(
+                  controller: text,
+                  scrollController: _scroll,
+                  maxLines: null,
+                  minLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                ),
               ),
             ),
           ),
@@ -448,6 +471,14 @@ class PersonaRolesDialog extends StatefulWidget {
 }
 
 class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -463,29 +494,33 @@ class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                children: [
-                  AppInsetPanel(
-                    child: Text(
-                      l.personaRolesHint,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        height: 1.4,
+              child: AppScrollbar(
+                controller: _scroll,
+                child: ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  children: [
+                    AppInsetPanel(
+                      child: Text(
+                        l.personaRolesHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  for (final speaker in widget.chat.speakers)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _SpeakerRoleCard(
-                        speaker: speaker,
-                        onChanged: (role) =>
-                            setState(() => speaker.role = role),
+                    const SizedBox(height: 16),
+                    for (final speaker in widget.chat.speakers)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _SpeakerRoleCard(
+                          speaker: speaker,
+                          onChanged: (role) =>
+                              setState(() => speaker.role = role),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -538,6 +573,14 @@ class PersonaChatMaterialPage extends StatefulWidget {
 }
 
 class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -562,123 +605,127 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
         leading: CloseButton(onPressed: () => Navigator.pop(context)),
       ),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: AppCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.12),
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .primary,
-                            child: const Icon(Icons.forum_outlined, size: 20),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              l.personaIncludedCount(includedCount),
-                              style: Theme.of(context).textTheme.titleSmall,
+        child: AppScrollbar(
+          controller: _scroll,
+          child: CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: AppCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.12),
+                              foregroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .primary,
+                              child: const Icon(Icons.forum_outlined, size: 20),
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              await widget.onEditRoles();
-                              if (mounted) setState(() {});
-                            },
-                            icon: const Icon(Icons.people_outline, size: 18),
-                            label: Text(l.personaRoles),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DateFilterCard(
-                              label: l.personaFromDate,
-                              value: source.fromDate ?? l.personaAllDates,
-                              clearable: source.fromDate != null,
-                              onClear: () {
-                                widget.onClearDate(true);
-                                setState(() {});
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                l.personaIncludedCount(includedCount),
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                await widget.onEditRoles();
+                                if (mounted) setState(() {});
                               },
-                              onTap: chat.messages.isEmpty
-                                  ? null
-                                  : () async {
-                                      await widget.onPickDate(true);
-                                      if (mounted) setState(() {});
-                                    },
+                              icon: const Icon(Icons.people_outline, size: 18),
+                              label: Text(l.personaRoles),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _DateFilterCard(
-                              label: l.personaToDate,
-                              value: source.toDate ?? l.personaAllDates,
-                              clearable: source.toDate != null,
-                              onClear: () {
-                                widget.onClearDate(false);
-                                setState(() {});
-                              },
-                              onTap: chat.messages.isEmpty
-                                  ? null
-                                  : () async {
-                                      await widget.onPickDate(false);
-                                      if (mounted) setState(() {});
-                                    },
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DateFilterCard(
+                                label: l.personaFromDate,
+                                value: source.fromDate ?? l.personaAllDates,
+                                clearable: source.fromDate != null,
+                                onClear: () {
+                                  widget.onClearDate(true);
+                                  setState(() {});
+                                },
+                                onTap: chat.messages.isEmpty
+                                    ? null
+                                    : () async {
+                                        await widget.onPickDate(true);
+                                        if (mounted) setState(() {});
+                                      },
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DateFilterCard(
+                                label: l.personaToDate,
+                                value: source.toDate ?? l.personaAllDates,
+                                clearable: source.toDate != null,
+                                onClear: () {
+                                  widget.onClearDate(false);
+                                  setState(() {});
+                                },
+                                onTap: chat.messages.isEmpty
+                                    ? null
+                                    : () async {
+                                        await widget.onPickDate(false);
+                                        if (mounted) setState(() {});
+                                      },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (messages.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(l.personaNoChatMessages),
+              if (messages.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(l.personaNoChatMessages),
+                  ),
+                ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                sliver: SliverList.builder(
+                  itemCount: dateGroups.length,
+                  itemBuilder: (_, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _ChatDateGroupSection(
+                        group: dateGroups[index],
+                        speakers: speakers,
+                        source: source,
+                        bodyStyle: widget.bodyStyle,
+                        onIncludedChanged: (messages, included) {
+                          widget.onToggleDate(messages, included);
+                          setState(() {});
+                        },
+                        onEdit: (date, messages) async {
+                          await widget.onEditDate(date, messages);
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                    );
+                  },
                 ),
               ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              sliver: SliverList.builder(
-                itemCount: dateGroups.length,
-                itemBuilder: (_, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _ChatDateGroupSection(
-                      group: dateGroups[index],
-                      speakers: speakers,
-                      source: source,
-                      bodyStyle: widget.bodyStyle,
-                      onIncludedChanged: (messages, included) {
-                        widget.onToggleDate(messages, included);
-                        setState(() {});
-                      },
-                      onEdit: (date, messages) async {
-                        await widget.onEditDate(date, messages);
-                        if (mounted) setState(() {});
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

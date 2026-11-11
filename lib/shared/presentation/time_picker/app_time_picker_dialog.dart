@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -122,14 +123,9 @@ class _AppTimePickerDialogState extends State<_AppTimePickerDialog> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
-    return AlertDialog(
-      insetPadding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: double.infinity),
-      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      actionsPadding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
-      title: Text(widget.title),
-      content: SingleChildScrollView(
+    return AppDialogShell(
+      title: widget.title,
+      content: AppScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[

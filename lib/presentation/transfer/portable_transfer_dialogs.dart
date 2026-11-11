@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class PortableEntryOption<T> {
@@ -76,41 +77,44 @@ Future<Set<T>?> showPortableEntrySelectionDialog<T>({
                   child: Material(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(12),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: entries.length,
-                      separatorBuilder: (BuildContext context, int index) =>
-                          Divider(
-                            height: 1,
-                            color: cs.outlineVariant.withValues(alpha: 0.35),
-                          ),
-                      itemBuilder: (BuildContext context, int index) {
-                        final PortableEntryOption<T> entry = entries[index];
-                        final String title =
-                            (entry.title?.trim().isNotEmpty ?? false)
-                            ? entry.title!.trim()
-                            : l10n.editorUntitledDraft;
-                        final bool selected = draft.contains(entry.id);
-                        return CheckboxListTile(
-                          value: selected,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                draft.add(entry.id);
-                              } else {
-                                draft.remove(entry.id);
-                              }
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(entry.subtitle),
-                        );
-                      },
+                    child: AppScrollableContent(
+                      builder: (_, controller) => ListView.separated(
+                        controller: controller,
+                        shrinkWrap: true,
+                        itemCount: entries.length,
+                        separatorBuilder: (BuildContext context, int index) =>
+                            Divider(
+                              height: 1,
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                        itemBuilder: (BuildContext context, int index) {
+                          final PortableEntryOption<T> entry = entries[index];
+                          final String title =
+                              (entry.title?.trim().isNotEmpty ?? false)
+                              ? entry.title!.trim()
+                              : l10n.editorUntitledDraft;
+                          final bool selected = draft.contains(entry.id);
+                          return CheckboxListTile(
+                            value: selected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  draft.add(entry.id);
+                                } else {
+                                  draft.remove(entry.id);
+                                }
+                              });
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(entry.subtitle),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -261,7 +265,7 @@ Future<bool> showPortableTransferConfirmDialog({
           final AppLocalizations l10n = context.l10n;
           return AppDialogShell(
             title: title,
-            content: SingleChildScrollView(child: body(context, setState)),
+            content: AppScrollView(child: body(context, setState)),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),

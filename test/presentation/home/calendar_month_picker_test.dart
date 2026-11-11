@@ -73,10 +73,6 @@ void main() {
     expect(find.text('選擇年月'), findsOneWidget);
     expect(find.byType(DropdownButton<int>), findsNothing);
     expect(find.byKey(const Key('app-date-picker-month-view')), findsOneWidget);
-    final ScrollbarTheme monthScrollbarTheme = tester.widget(
-      find.byKey(const Key('app-date-picker-month-scrollbar-theme')),
-    );
-    expect(monthScrollbarTheme.data.mainAxisMargin, 0);
     expect(
       tester
           .getSize(find.byKey(const ValueKey('app-date-picker-month-1')))
@@ -101,10 +97,6 @@ void main() {
     await tester.tap(find.byKey(const Key('app-date-picker-year-chooser')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('app-date-picker-year-view')), findsOneWidget);
-    final ScrollbarTheme yearScrollbarTheme = tester.widget(
-      find.byKey(const Key('app-date-picker-year-scrollbar-theme')),
-    );
-    expect(yearScrollbarTheme.data.mainAxisMargin, 0);
     final GridView yearGrid = tester.widget(
       find.byKey(const Key('app-date-picker-year-grid')),
     );

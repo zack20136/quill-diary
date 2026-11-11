@@ -57,8 +57,7 @@ void main() {
         activeConnectionId: config.connectionId,
         connections: {config.connectionId: config},
       );
-    client = FakeAiClient(config)
-      ..output = jsonEncode({'memory': '一起去海邊', 'tone': '簡短自然'});
+    client = FakeAiClient(config)..output = jsonEncode({'memory': '一起去海邊'});
     store = GatedPersonaStore(
       paths: harness.pathStrategy,
       crypto: LocalCryptoService(),
@@ -97,6 +96,163 @@ void main() {
     await controller.save();
   }
 
+  test('舊卡預設不帶入，空生成使用中性候選且儲存前不改正式內容', () async {
+    client.output = jsonEncode({'memory': '舊卡獨有的記憶'});
+    await create();
+    await controller.begin(PersonaUpdateTarget.both);
+    expect(
+      controller.draft!.includeCurrent.values.any((value) => value),
+      isFalse,
+    );
+    await controller.prepare(testL10n);
+    expect(controller.preview!.baseline, isEmpty);
+    expect(controller.preview!.modelTarget, PersonaUpdateTarget.memory);
+    client.output = jsonEncode({'memory': ''});
+    await controller.generate();
+    expect(controller.failed, isFalse);
+    expect(
+      controller.draft!.candidate![PersonaCardKind.memory]!.text,
+      testL10n.personaNeutralMemory,
+    );
+    expect(
+      controller.draft!.candidate![PersonaCardKind.tone]!.text,
+      testL10n.personaNeutralTone,
+    );
+    expect(controller.record!.cards![PersonaCardKind.memory]!.text, '舊卡獨有的記憶');
+    expect(
+      (jsonDecode(client.calls.last.messages.single.text)
+          as Map)['current_cards'],
+      isEmpty,
+    );
+  });
+
+  test('只勾選舊卡且全部隱藏時由本機保留，不讀金鑰也不呼叫模型', () async {
+    await create();
+    await controller.begin(PersonaUpdateTarget.both);
+    await controller.selectDiary(entryId, false);
+    for (final kind in PersonaCardKind.values) {
+      controller.setIncludeCurrent(kind, true);
+      controller.draft!.cardHiddenRanges[kind] = [
+        PrivateTextRange(0, controller.record!.cards![kind]!.text.length),
+      ];
+    }
+    final calls = client.calls.length;
+    final keyReads = settings.keyReads;
+    await controller.prepare(testL10n);
+    expect(controller.preview!.modelTarget, isNull);
+    expect(controller.preview!.connection, isNull);
+    await controller.generate();
+    expect(controller.failed, isFalse);
+    expect(client.calls, hasLength(calls));
+    expect(settings.keyReads, keyReads);
+    for (final kind in PersonaCardKind.values) {
+      expect(controller.draft!.candidate![kind]!.toJson(), {
+        'text': controller.record!.cards![kind]!.text,
+        'person_tokens': controller.record!.cards![kind]!.tokens,
+      });
+    }
+    expect(
+      (await store.load(person.id, setup.session))!.draft!.includeCurrent,
+      controller.draft!.includeCurrent,
+    );
+  });
+
+  test('只有風格且沒有原話時，仍由模型產生風格候選', () async {
+    await create();
+    await controller.begin(PersonaUpdateTarget.tone);
+    client.output = jsonEncode({'tone': '自然輕鬆的語氣'});
+    await controller.prepare(testL10n);
+    expect(controller.preview!.modelTarget, PersonaUpdateTarget.tone);
+    expect(controller.preview!.connection, isNotNull);
+    await controller.generate();
+    expect(controller.failed, isFalse);
+    expect(controller.draft!.candidate!.keys, [PersonaCardKind.tone]);
+    expect(
+      controller.draft!.candidate![PersonaCardKind.tone]!.text,
+      '自然輕鬆的語氣',
+    );
+  });
+
+  test('同時更新但沒有原話時，只請求記憶並在本機保留已勾選的風格', () async {
+    await create();
+    await controller.begin(PersonaUpdateTarget.both);
+    controller.setIncludeCurrent(PersonaCardKind.tone, true);
+    final oldTone = controller.record!.cards![PersonaCardKind.tone]!;
+    controller.draft!.cardHiddenRanges[PersonaCardKind.tone] = [
+      PrivateTextRange(0, oldTone.text.length),
+    ];
+    await controller.prepare(testL10n);
+    expect(controller.preview!.modelTarget, PersonaUpdateTarget.memory);
+    expect(controller.preview!.baseline, isEmpty);
+    client.output = jsonEncode({'memory': '新的事件記憶'});
+    await controller.generate();
+    expect(controller.failed, isFalse);
+    expect(
+      controller.draft!.candidate![PersonaCardKind.memory]!.text,
+      '新的事件記憶',
+    );
+    expect(controller.draft!.candidate![PersonaCardKind.tone]!.toJson(), {
+      'text': oldTone.text,
+      'person_tokens': oldTone.tokens,
+    });
+    expect(
+      (jsonDecode(client.calls.last.messages.single.text)
+          as Map)['current_cards'],
+      isEmpty,
+    );
+  });
+
+  test('帶入選項異動清除候選與確認快照，但保留隱藏設定', () async {
+    await create();
+    await controller.begin(PersonaUpdateTarget.memory);
+    controller.draft!.cardHiddenRanges[PersonaCardKind.memory] = [
+      const PrivateTextRange(0, 1),
+    ];
+    await controller.prepare(testL10n);
+    await controller.generate();
+    controller.setIncludeCurrent(PersonaCardKind.memory, true);
+    expect(controller.preview, isNull);
+    expect(controller.draft!.candidate, isNull);
+    expect(controller.draft!.step, PersonaStep.materials);
+    expect(controller.draft!.cardHiddenRanges[PersonaCardKind.memory], [
+      const PrivateTextRange(0, 1),
+    ]);
+    await controller.prepare(testL10n);
+    expect(
+      controller.preview!.baseline['memory'],
+      startsWith(personaHiddenText),
+    );
+  });
+
+  test('準備確認頁等候連線時改變隱藏設定，舊預覽失效且重新準備只外送遮罩內容', () async {
+    controller.draft!.hidePersonNames = false;
+    controller.resetToMaterials();
+    final release = Completer<void>();
+    final started = Completer<void>();
+    settings.readGate = release.future;
+    settings.readStarted = started;
+    final preparing = controller.prepare(testL10n);
+    await started.future;
+    controller.draft!.hidePersonNames = true;
+    controller.resetToMaterials();
+    final rejected = expectLater(preparing, throwsFormatException);
+    release.complete();
+    await rejected;
+    expect(controller.preview, isNull);
+    expect(controller.draft!.step, PersonaStep.materials);
+    expect(client.calls, isEmpty);
+
+    settings.readGate = null;
+    settings.readStarted = null;
+    await controller.prepare(testL10n);
+    await controller.generate();
+    expect(controller.failed, isFalse);
+    expect(
+      client.calls.single.messages.single.text,
+      isNot(contains(person.name)),
+    );
+  });
+
   void replacePreview({
     String? instructions,
     String? extractionInstructions,
@@ -105,7 +261,9 @@ void main() {
     final current = controller.preview!;
     controller.preview = PersonaGenerationContext(
       personaId: current.personaId,
-      target: current.target,
+      updateTarget: current.updateTarget,
+      modelTarget: current.modelTarget,
+      fallbackCards: current.fallbackCards,
       baseUpdatedAt: current.baseUpdatedAt,
       session: current.session,
       connection: current.connection,
@@ -142,7 +300,7 @@ void main() {
           yield '精簡證據';
         }
       } else {
-        yield jsonEncode({'memory': '新的記憶', 'tone': '自然'});
+        yield jsonEncode({'memory': '新的記憶'});
       }
     };
     await controller.generate();
@@ -439,10 +597,7 @@ void main() {
       expect(preview.blocks.single.text, startsWith(personaHiddenText));
       expect(preview.instructions, contains(personaHiddenText));
       expect(preview.extractionInstructions, contains(personaHiddenText));
-      client.output = jsonEncode({
-        'memory': '旅行$personaHiddenText',
-        'tone': '自然',
-      });
+      client.output = jsonEncode({'memory': '旅行$personaHiddenText'});
 
       await controller.generate();
 
@@ -458,7 +613,7 @@ void main() {
         isNull,
       );
 
-      client.output = jsonEncode({'memory': '去海邊', 'tone': '自然'});
+      client.output = jsonEncode({'memory': '去海邊'});
       await controller.generate();
       expect(controller.failed, isFalse);
       expect(controller.draft!.candidate![PersonaCardKind.memory]!.text, '去海邊');
@@ -484,7 +639,7 @@ void main() {
     expect(controller.draft!.step, PersonaStep.confirmation);
     expect(controller.preview!.blocks, hasLength(2));
     expect(
-      controller.preview!.connection.model,
+      controller.preview!.connection!.model,
       settings.settings.activeConfig.model,
     );
     expect(client.calls, isEmpty);
@@ -509,6 +664,7 @@ void main() {
   });
 
   test('修改聊天會清除舊候選並儲存原文與隱藏範圍，預覽只使用最新內容', () async {
+    client.output = jsonEncode({'memory': '一起去海邊', 'tone': '簡短自然'});
     final chat = parsePersonaLineChat(
       '2026/11/08\n09:14\t小明\t想去北海道旅行',
       vaultId: setup.session.vaultId,
@@ -589,6 +745,7 @@ void main() {
     await controller.save();
     final tone = controller.record!.cards![PersonaCardKind.tone]!.toJson();
     await controller.begin(PersonaUpdateTarget.memory);
+    controller.setIncludeCurrent(PersonaCardKind.memory, true);
     await controller.prepare(testL10n);
     expect(controller.preview!.baseline.keys, ['memory']);
     client.output = jsonEncode({'memory': '更新後的海邊記憶'});
@@ -672,11 +829,11 @@ void main() {
     expect(controller.failed, isTrue);
     expect(controller.draft!.candidate, isNull);
     expect((await store.load(person.id, setup.session))!.cards, isNull);
-    client.output = jsonEncode({'memory': '與 P01 去散步', 'tone': '簡短自然'});
+    client.output = jsonEncode({'memory': '與 P01 去散步'});
     await controller.generate();
     expect(controller.failed, isTrue);
     expect(controller.draft!.candidate, isNull);
-    client.output = jsonEncode({'memory': '重試後記憶', 'tone': '重試後語氣'});
+    client.output = jsonEncode({'memory': '重試後記憶'});
     await controller.generate();
     expect(client.calls, hasLength(3));
     expect(controller.failed, isFalse);
@@ -760,7 +917,7 @@ void main() {
       )) {
         yield '精簡的中間證據';
       } else {
-        yield jsonEncode({'memory': '長材料記憶', 'tone': '自然'});
+        yield jsonEncode({'memory': '長材料記憶'});
       }
     };
     await controller.generate();
@@ -787,7 +944,7 @@ void main() {
       final first = client.calls.length == 1;
       (first ? oldStarted : newStarted).complete();
       await (first ? oldReply : newReply).future;
-      yield jsonEncode({'memory': first ? '停止的舊記憶' : '有效的新記憶', 'tone': '自然'});
+      yield jsonEncode({'memory': first ? '停止的舊記憶' : '有效的新記憶'});
     };
     final oldWork = controller.generate();
     await oldStarted.future;
@@ -964,7 +1121,7 @@ void main() {
     expect(chat.chat!.selectedPersona, isNull);
   });
 
-  test('同場分身保留 assistant 角色與不同來源，重新回覆使用原人物而新聊天回到預設', () async {
+  test('同場分身區分來源，重新回覆跟隨目前夥伴且保留舊版本身分', () async {
     settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
       personalityOverride: '預設專屬個性',
       guidanceOverride: '本次共通引導',
@@ -1006,18 +1163,73 @@ void main() {
     await chat.send();
     final messages = client.calls.last.messages;
     expect(messages.map((m) => m.isUser), [true, false, true, false, true]);
-    final speakers = messages
+    final replies = messages
         .where((m) => !m.isUser)
-        .map((m) => (jsonDecode(m.text) as Map)['speaker'] as Map)
+        .map((m) => m.text)
         .toList();
-    expect(speakers.every((s) => s['kind'] == 'ai_persona'), isTrue);
-    expect(speakers[0]['person'], isNot(speakers[1]['person']));
+    expect(
+      replies.every(
+        (text) => text.startsWith('${testL10n.personaSubjectHeading}\n'),
+      ),
+      isTrue,
+    );
+    expect(replies.every((text) => text.contains('ai_persona')), isFalse);
+    expect(replies[0].split('\n')[1], isNot(replies[1].split('\n')[1]));
     await chat.selectPersona(second);
+    final preview = await chat.previewRequest();
+    expect(preview!.systemPrompt, contains('喜歡登山'));
     await chat.regenerateReply(firstReplyId);
+    expect(client.calls.last.prompt, contains('喜歡登山'));
+    expect(client.calls.last.prompt, isNot(contains('一起去海邊')));
+    final secondReply = chat.chat!.activeMessages.last;
+    expect(secondReply.persona!.personaId, second.personaId);
+    final firstReply = chat.chat!.messages.singleWhere(
+      (m) => m.id == firstReplyId,
+    );
+    expect(firstReply.persona!.personaId, first.personaId);
+    expect(secondReply.parentId, firstReply.parentId);
+    expect(chat.chat!.selectedPersona!.personaId, second.personaId);
+
+    await chat.selectPersona(null);
+    await chat.regenerateReply(secondReply.id);
+    final defaultReply = chat.chat!.activeMessages.last;
+    expect(defaultReply.persona, isNull);
+    expect(client.calls.last.prompt, contains('預設專屬個性'));
+    expect(client.calls.last.prompt, isNot(contains('喜歡登山')));
+    expect(client.calls.last.prompt, isNot(contains('一起去海邊')));
+    expect(secondReply.persona!.personaId, second.personaId);
+
+    await chat.selectPersona(first);
+    await chat.regenerateReply(defaultReply.id);
+    final regenerated = chat.chat!.activeMessages.last;
+    expect(regenerated.persona!.personaId, first.personaId);
     expect(client.calls.last.prompt, contains('一起去海邊'));
     expect(client.calls.last.prompt, isNot(contains('喜歡登山')));
-    expect(chat.chat!.activeMessages.last.persona!.personaId, first.personaId);
-    expect(chat.chat!.selectedPersona!.personaId, second.personaId);
+    expect(client.calls.last.prompt, isNot(contains('預設專屬個性')));
+    expect(defaultReply.persona, isNull);
+    final savedChat = (await container
+        .read(chatDiaryStoreProvider)
+        .load(id, setup.session))!;
+    expect(savedChat.activeMessages.last.persona!.personaId, first.personaId);
+    expect(
+      savedChat.messages
+          .singleWhere((m) => m.id == firstReplyId)
+          .persona!
+          .personaId,
+      first.personaId,
+    );
+    expect(
+      savedChat.messages
+          .singleWhere((m) => m.id == secondReply.id)
+          .persona!
+          .personaId,
+      second.personaId,
+    );
+    expect(
+      savedChat.messages.singleWhere((m) => m.id == defaultReply.id).persona,
+      isNull,
+    );
+
     final newId = generateChatDiaryId();
     container.listen(chatDiaryControllerProvider(newId), (_, _) {});
     final newChat = container.read(chatDiaryControllerProvider(newId));

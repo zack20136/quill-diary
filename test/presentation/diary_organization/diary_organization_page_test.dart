@@ -85,6 +85,80 @@ Future<void> _waitForUi(WidgetTester tester, bool Function() ready) async {
 }
 
 void main() {
+  testWidgets('越界舊候選不顯示內容，返回聊天後保留需求並清除候選', (tester) async {
+    final scope = (await tester.runAsync(
+      () => OrganizationTestScope.create(),
+    ))!;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      await _drainStorage(tester, scope.dispose());
+    });
+    final draft = scope.controller.draft!..prepare();
+    draft.originals['⟦S01⟧'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.appendTurn(OrganizationTurn(user: '目前需求'));
+    draft.organizedBody = '${draft.protectedSource} ⟦S01⟧';
+    draft.generationReply = '不能沿用的舊說明';
+    draft.stage = OrganizationStage.review;
+    scope.settings.keys[draft.connection.credentialId] = 'synthetic-key';
+    await tester.pumpWidget(
+      _app(scope, DiaryOrganizationPage(entryId: scope.entry.id)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(testL10n.organizationUnsafeCandidate), findsOneWidget);
+    expect(find.textContaining('其他分支的秘密'), findsNothing);
+    expect(find.text(draft.generationReply!), findsNothing);
+    expect(find.text(testL10n.organizationApply), findsNothing);
+    await tester.tap(find.text(testL10n.organizationBack));
+    await _waitForUi(
+      tester,
+      () => scope.controller.draft!.organizedBody == null,
+    );
+    expect(scope.controller.draft!.generationReply, isNull);
+    expect(scope.controller.draft!.turns, hasLength(2));
+    expect(scope.controller.draft!.stage, OrganizationStage.chat);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('整理說明可展開，切到背景與鎖定會關閉並遮蔽內容', (tester) async {
+    final scope = (await tester.runAsync(
+      () => OrganizationTestScope.create(),
+    ))!;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      await _drainStorage(tester, scope.dispose());
+    });
+    final draft = scope.controller.draft!..prepare();
+    draft.replaceBody(draft.protectedSource);
+    draft.generationReply = '受保護內容必須保持順序，因此保留原文。';
+    draft.stage = OrganizationStage.review;
+    scope.settings.keys[draft.connection.credentialId] = 'synthetic-key';
+    await tester.pumpWidget(
+      _app(scope, DiaryOrganizationPage(entryId: scope.entry.id)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(testL10n.organizationReplyTitle), findsOneWidget);
+    await tester.tap(find.text(testL10n.organizationShowReply));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppDialogShell), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pumpAndSettle();
+    expect(find.byType(AppDialogShell), findsNothing);
+    expect(find.text(draft.generationReply!), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(testL10n.organizationShowReply));
+    await tester.pumpAndSettle();
+    await _drainStorage(
+      tester,
+      scope.container.read(appSessionProvider.notifier).lock(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AppDialogShell), findsNothing);
+    expect(find.text(draft.generationReply!), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   group('連線與輸入', () {
     for (final missingKey in [false, true]) {
       testWidgets('進入整理時${missingKey ? '缺少 API Key' : '缺少模型'}會開啟設定，取消後不重複跳出', (
@@ -467,6 +541,34 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('organization-composer')), findsNothing);
+      IconButton buttonOf(String tooltip) => tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byTooltip(tooltip),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(buttonOf('查看送給 AI 的內容').onPressed, isNotNull);
+      expect(buttonOf('刪除整理對話').onPressed, isNull);
+      await tester.tap(find.byTooltip('查看送給 AI 的內容'));
+      await _waitForUi(
+        tester,
+        () => find.byType(AiRequestPreviewDialog).evaluate().isNotEmpty,
+      );
+      final sendingPreview = tester.widget<AiRequestPreviewDialog>(
+        find.byType(AiRequestPreviewDialog),
+      );
+      expect(sendingPreview.preview.turns, isNotEmpty);
+      expect(
+        sendingPreview.preview.turns.every((turn) => !turn.pending),
+        isTrue,
+      );
+      expect(scope.controller.busy, isTrue);
+      expect(scope.client.calls, hasLength(2));
+      await tester.tap(find.widgetWithText(TextButton, '關閉'));
+      await _waitForUi(
+        tester,
+        () => find.byType(AiRequestPreviewDialog).evaluate().isEmpty,
+      );
       await tester.tap(find.text('停止生成'));
       await tester.pumpAndSettle();
       stream.add(jsonEncode({'reply': '晚到', 'body': '不應採用'}));
@@ -497,10 +599,19 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         await _drainStorage(tester, scope.dispose());
       });
-      final draft = scope.controller.draft!
-        ..prepare()
-        ..replaceBody('整理後的內容')
-        ..stage = OrganizationStage.review;
+      final draft = scope.controller.draft!..prepare();
+      draft.originals['⟦P01⟧'] = '其他分支的稱呼';
+      draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦P01⟧'));
+      draft.appendTurn(
+        OrganizationTurn(
+          user: '新需求 ⟦P01⟧',
+          surfaces: {
+            '⟦P01⟧': ['目前稱呼'],
+          },
+        ),
+      );
+      draft.replaceBody('整理後的內容 ⟦P01⟧');
+      draft.stage = OrganizationStage.review;
       await tester.pumpWidget(
         _app(
           scope,
@@ -514,10 +625,19 @@ void main() {
       expect(find.byType(AppDialogShell), findsOneWidget);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(288, 0.1));
+      expect(
+        tester
+            .widget<TextField>(
+              find.byKey(const ValueKey('organization-draft-editor')),
+            )
+            .controller!
+            .text,
+        '整理後的內容 目前稱呼',
+      );
       tester.view.viewInsets = const FakeViewPadding(bottom: 220);
       await tester.enterText(
         find.byKey(const ValueKey('organization-draft-editor')),
-        '手動修改的候選內容',
+        '手動修改的候選內容 目前稱呼',
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -525,7 +645,7 @@ void main() {
       await _waitForUi(tester, () => !scope.controller.busy);
       tester.view.resetViewInsets();
       await tester.pumpAndSettle();
-      expect(scope.controller.draft!.organizedBody, '手動修改的候選內容');
+      expect(scope.controller.draft!.organizedBody, '手動修改的候選內容 ⟦P01⟧');
       await tester.tap(find.text('返回聊天'));
       await _waitForUi(tester, () => !scope.controller.busy);
       await tester.pumpAndSettle();

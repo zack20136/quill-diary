@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/persona/persona_prompts.dart';
+import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
+import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+
+import '../../helpers/ai/ai_test_helpers.dart';
 
 void main() {
   final l10n = lookupAppLocalizations(AppLanguage.zh.materialLocale);
@@ -19,5 +24,49 @@ void main() {
       overridden,
       isNot(contains(l10n.chatDiaryConversationGuidancePrompt)),
     );
+  });
+
+  test('聊天提示詞以標示段落附上指定人物、人物記憶與聊天風格', () {
+    final person = Person(
+      id: 'person-1',
+      name: '王小明',
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
+    final privacy = ChatDiaryPrivacyProcessor(testChatDiarySession(), [person]);
+    final prompt = buildPersonaConversationPrompt(
+      personId: person.id,
+      personaId: 'persona-1',
+      cards: {
+        PersonaCardKind.memory: PersonaCandidate(text: '2026-04-02｜一起吃晚餐'),
+        PersonaCardKind.tone: PersonaCandidate(text: '句子偏短'),
+      },
+      people: [person],
+      privacy: privacy,
+      l10n: l10n,
+    );
+    expect(prompt, startsWith(l10n.personaIdentityPrompt));
+    expect(prompt, contains('${l10n.personaSubjectHeading}\n⟦P01⟧'));
+    expect(prompt, contains('${l10n.personaMemory}\n2026-04-02｜一起吃晚餐'));
+    expect(prompt, contains('${l10n.personaTone}\n句子偏短'));
+    expect(prompt, isNot(contains('王小明')));
+    expect(prompt, isNot(contains('current_ai_persona')));
+  });
+
+  test('有分身的歷史回覆以指定人物或預設夥伴標示，不用 JSON', () {
+    final persona = personaAttributedMessage(
+      l10n: l10n,
+      text: '今天好累',
+      persona: true,
+      personToken: '⟦P01⟧',
+    );
+    final fallback = personaAttributedMessage(
+      l10n: l10n,
+      text: '今天好累',
+      persona: false,
+    );
+    expect(persona, '${l10n.personaSubjectHeading}\n⟦P01⟧\n\n今天好累');
+    expect(fallback, '${l10n.personaDefaultName}\n\n今天好累');
+    expect(persona, isNot(contains('ai_persona')));
   });
 }

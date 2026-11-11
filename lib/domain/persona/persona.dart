@@ -197,12 +197,14 @@ class PersonaDraft {
     List<PersonaDiarySource>? diaries,
     List<PersonaChatSource>? chats,
     Map<PersonaCardKind, List<PrivateTextRange>>? cardHiddenRanges,
+    Map<PersonaCardKind, bool>? includeCurrent,
     this.candidate,
     this.manualEdit = false,
   }) : baseUpdatedAt = Map.of(baseUpdatedAt),
        diaries = List.of(diaries ?? []),
        chats = List.of(chats ?? []),
-       cardHiddenRanges = Map.of(cardHiddenRanges ?? {});
+       cardHiddenRanges = Map.of(cardHiddenRanges ?? {}),
+       includeCurrent = Map.of(includeCurrent ?? {});
   final PersonaUpdateTarget target;
   final bool manualEdit;
   final Map<PersonaCardKind, DateTime?> baseUpdatedAt;
@@ -213,9 +215,13 @@ class PersonaDraft {
   final List<PersonaDiarySource> diaries;
   final List<PersonaChatSource> chats;
   final Map<PersonaCardKind, List<PrivateTextRange>> cardHiddenRanges;
+  final Map<PersonaCardKind, bool> includeCurrent;
   Map<PersonaCardKind, PersonaCandidate>? candidate;
 
   void validate() {
+    if (includeCurrent.keys.any((kind) => !target.kinds.contains(kind))) {
+      throw const FormatException('帶入舊卡的選項不屬於本次更新');
+    }
     if (manualEdit &&
         (step != PersonaStep.review ||
             diaries.isNotEmpty ||
@@ -281,6 +287,9 @@ class PersonaDraft {
     'card_hidden_ranges': cardHiddenRanges.map(
       (k, v) => MapEntry(k.name, v.map((r) => r.toJson()).toList()),
     ),
+    'include_current': includeCurrent.map(
+      (kind, include) => MapEntry(kind.name, include),
+    ),
     'candidate': candidate?.map((k, v) => MapEntry(k.name, v.toJson())),
   };
   factory PersonaDraft.fromJson(Map<String, dynamic> json) => PersonaDraft(
@@ -296,6 +305,12 @@ class PersonaDraft {
     hidePersonNames: json['hide_people'] as bool,
     connectionId: json['connection_id'] as String?,
     model: json['model'] as String?,
+    includeCurrent: (json['include_current'] as Map? ?? const {}).map(
+      (kind, include) => MapEntry(
+        PersonaCardKind.values.byName(kind as String),
+        include as bool,
+      ),
+    ),
     diaries: (json['diaries'] as List)
         .map(
           (v) =>

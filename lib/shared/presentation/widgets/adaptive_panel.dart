@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_layout.dart';
 
 /// 寬螢幕用置中對話框，窄螢幕用 bottom sheet。內容由 [builder] 提供。
@@ -11,10 +13,11 @@ Future<T?> showAdaptivePanel<T>({
   final colors = Theme.of(context).colorScheme;
   final wide = MediaQuery.sizeOf(context).width >= PageStyle.wideBreakpoint;
   if (wide) {
-    return showDialog<T>(
+    return showAppDialog<T>(
       context: context,
       builder: (dialogContext) => Center(
         child: AppResponsiveWidth(
+          widthFactor: 1,
           maxWidth: 480,
           child: Dialog(
             insetPadding: EdgeInsets.zero,
@@ -74,7 +77,12 @@ class AdaptiveChoicePanel extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, wide ? 16 : 12, 20, 20),
+            padding: EdgeInsets.fromLTRB(
+              AppDialogInsets.horizontal,
+              wide ? 16 : 12,
+              AppDialogInsets.horizontal,
+              20,
+            ),
             child: Column(
               key: panelKey,
               mainAxisSize: MainAxisSize.min,
@@ -115,7 +123,7 @@ class AdaptiveChoicePanel extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Flexible(child: SingleChildScrollView(child: child)),
+                Flexible(child: AppScrollView(child: child)),
               ],
             ),
           ),

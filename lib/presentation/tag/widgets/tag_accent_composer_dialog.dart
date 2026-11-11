@@ -10,12 +10,10 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<String?> showTagAccentComposerDialog({
   required BuildContext context,
-  AppDialogSize? width,
   String? titleText,
   String? initialDisplayLabel,
   UnlockedVaultSession? sessionForRename,
@@ -23,54 +21,20 @@ Future<String?> showTagAccentComposerDialog({
   bool? initialAccentIsCustom,
   String? primaryButtonLabel,
   Future<void> Function()? onDelete,
-}) {
-  final Color barrierColor = context.appColors.scrim;
-  Widget builder(BuildContext dialogContext) {
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(
-        left: 22,
-        right: 22,
-        top: 26,
-        bottom: 26 + MediaQuery.viewInsetsOf(dialogContext).bottom,
-      ),
-      child: Align(
-        alignment: Alignment.center,
-        child: Material(
-          color: Colors.transparent,
-          child: TagAccentComposerDialog(
-            titleText: titleText,
-            initialDisplayLabel: initialDisplayLabel,
-            sessionForRename: sessionForRename,
-            initialAccentArgb: initialAccentArgb,
-            initialAccentIsCustom: initialAccentIsCustom,
-            primaryButtonLabel:
-                primaryButtonLabel ??
-                dialogContext.l10n.editorTagsStudioAddButton,
-            onDelete: onDelete,
-          ),
-        ),
-      ),
-    );
-  }
-
-  if (width != null) {
-    return showAppDialog<String>(
-      context: context,
-      size: width,
-      barrierDismissible: true,
-      barrierColor: barrierColor,
-      builder: builder,
-    );
-  }
-  return showDialog<String>(
-    context: context,
-    barrierDismissible: true,
-    barrierColor: barrierColor,
-    builder: builder,
-  );
-}
+}) => showAppDialog<String>(
+  context: context,
+  barrierColor: context.appColors.scrim,
+  builder: (BuildContext dialogContext) => TagAccentComposerDialog(
+    titleText: titleText,
+    initialDisplayLabel: initialDisplayLabel,
+    sessionForRename: sessionForRename,
+    initialAccentArgb: initialAccentArgb,
+    initialAccentIsCustom: initialAccentIsCustom,
+    primaryButtonLabel:
+        primaryButtonLabel ?? dialogContext.l10n.editorTagsStudioAddButton,
+    onDelete: onDelete,
+  ),
+);
 
 class TagAccentComposerDialog extends ConsumerStatefulWidget {
   const TagAccentComposerDialog({
@@ -286,70 +250,58 @@ class _TagAccentComposerDialogState
     final bool busy = _deleting || _saving;
     final bool customSelected = _isCustom;
 
-    return AccentDialogShell(
-      icon: Icons.color_lens_rounded,
+    return AppDialogShell(
+      accent: true,
+      icon: const Icon(Icons.color_lens_rounded),
       title: widget.titleText ?? l10n.tagAddTitle,
-      closeEnabled: !busy,
-      onClose: () => Navigator.of(context).pop(),
-      footer: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          const SizedBox(height: 22),
-          Row(
-            children: <Widget>[
-              if (canDelete)
-                TextButton.icon(
-                  onPressed: busy ? null : _delete,
-                  icon: _deleting
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: cs.error,
-                          ),
-                        )
-                      : Icon(Icons.delete_outline_rounded, color: cs.error),
-                  label: Text(
-                    l10n.tagDeleteLabel,
-                    style: TextStyle(color: cs.error),
+      titleTrailing: IconButton(
+        tooltip: l10n.commonCloseTooltip,
+        onPressed: busy ? null : () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.close_rounded),
+      ),
+      actions: <Widget>[
+        if (canDelete)
+          TextButton.icon(
+            onPressed: busy ? null : _delete,
+            icon: _deleting
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: cs.error,
+                    ),
+                  )
+                : Icon(Icons.delete_outline_rounded, color: cs.error),
+            label: Text(l10n.tagDeleteLabel, style: TextStyle(color: cs.error)),
+          )
+        else
+          TextButton(
+            onPressed: busy ? null : () => Navigator.of(context).pop(),
+            child: Text(
+              l10n.commonActionCancel,
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+          ),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+          icon: _saving
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cs.onPrimary,
                   ),
                 )
-              else
-                TextButton(
-                  onPressed: busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(
-                    l10n.commonActionCancel,
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              const Spacer(),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
-                icon: _saving
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.onPrimary,
-                        ),
-                      )
-                    : const Icon(Icons.check_rounded, size: 20),
-                onPressed: busy ? null : _save,
-                label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
-              ),
-            ],
-          ),
-        ],
-      ),
-      child: Column(
+              : const Icon(Icons.check_rounded, size: 20),
+          onPressed: busy ? null : _save,
+          label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
+        ),
+      ],
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[

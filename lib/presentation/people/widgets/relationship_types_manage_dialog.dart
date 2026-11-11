@@ -14,8 +14,8 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -23,27 +23,12 @@ import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 const IconData kPeopleRelationshipsIcon = Icons.diversity_3_rounded;
 
 /// 管理關係類型：依目前語系單欄新增／改名／刪除，立刻寫入 catalog。
-Future<void> showRelationshipTypesManageDialog(BuildContext context) async {
-  final Color barrierColor = context.appColors.scrim;
-  await showDialog<void>(
-    context: context,
-    barrierColor: barrierColor,
-    builder: (BuildContext ctx) {
-      final bool compact = MediaQuery.sizeOf(ctx).width < 600;
-      return SafeArea(
-        child: Dialog(
-          key: const Key('relationship-types-manage-dialog'),
-          insetPadding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 24,
-            vertical: compact ? 12 : 24,
-          ),
-          backgroundColor: Colors.transparent,
-          child: const _RelationshipTypesManageDialog(),
-        ),
-      );
-    },
-  );
-}
+Future<void> showRelationshipTypesManageDialog(BuildContext context) =>
+    showAppDialog<void>(
+      context: context,
+      barrierColor: context.appColors.scrim,
+      builder: (_) => const _RelationshipTypesManageDialog(),
+    );
 
 class _RelationshipTypesManageDialog extends ConsumerStatefulWidget {
   const _RelationshipTypesManageDialog();
@@ -60,6 +45,7 @@ class _RelationshipTypesManageDialogState
   final TextEditingController _renameCtrl = TextEditingController();
   bool _busy = false;
   List<RelationshipType>? _localTypes;
+  final ScrollController _scroll = ScrollController();
 
   @override
   void initState() {
@@ -71,6 +57,7 @@ class _RelationshipTypesManageDialogState
   void dispose() {
     _addCtrl.dispose();
     _renameCtrl.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -435,24 +422,24 @@ class _RelationshipTypesManageDialogState
     }
     final bool canReorder = !_busy && _renamingId == null && types.length > 1;
 
-    return AccentDialogShell(
-      icon: kPeopleRelationshipsIcon,
+    return AppDialogShell(
+      accent: true,
+      icon: const Icon(kPeopleRelationshipsIcon),
       title: l10n.peopleManageRelationshipsTitle,
-      onClose: _busy ? null : () => Navigator.of(context).pop(),
-      closeEnabled: !_busy,
-      footer: Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: AppActionButton(
-            label: l10n.commonActionClose,
-            icon: Icons.check_rounded,
-            appearance: AppActionButtonAppearance.primary,
-            onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          ),
-        ),
+      titleTrailing: IconButton(
+        tooltip: l10n.commonCloseTooltip,
+        onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.close_rounded),
       ),
-      child: Column(
+      actions: <Widget>[
+        AppActionButton(
+          label: l10n.commonActionClose,
+          icon: Icons.check_rounded,
+          appearance: AppActionButtonAppearance.primary,
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        ),
+      ],
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -486,12 +473,12 @@ class _RelationshipTypesManageDialogState
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(context).height * 0.42,
             ),
-            child: Material(
-              color: cs.surface.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(18),
-              clipBehavior: Clip.antiAlias,
-              child: types.isEmpty
-                  ? Padding(
+            child: types.isEmpty
+                ? Material(
+                    color: cs.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 28,
@@ -503,55 +490,66 @@ class _RelationshipTypesManageDialogState
                           color: cs.outline,
                         ),
                       ),
-                    )
-                  : ReorderableListView.builder(
-                      shrinkWrap: true,
-                      buildDefaultDragHandles: false,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: types.length,
-                      onReorderStart: (_) {
-                        unawaited(HapticFeedback.selectionClick());
-                      },
-                      onReorderItem: (int oldIndex, int newIndex) {
-                        unawaited(_reorderTypes(types, oldIndex, newIndex));
-                      },
-                      proxyDecorator:
-                          (
-                            Widget child,
-                            int index,
-                            Animation<double> animation,
-                          ) {
-                            return AnimatedBuilder(
-                              animation: animation,
-                              builder: (BuildContext context, Widget? child) {
-                                final double t = Curves.easeInOut.transform(
-                                  animation.value,
-                                );
-                                return Material(
-                                  elevation: 2 + 4 * t,
-                                  borderRadius: BorderRadius.circular(14),
-                                  color: cs.surface,
-                                  shadowColor: theme.shadowColor.withValues(
-                                    alpha: 0.18,
-                                  ),
-                                  child: child,
-                                );
-                              },
-                              child: child,
-                            );
-                          },
-                      itemBuilder: (BuildContext context, int index) {
-                        return _typeRow(
-                          l10n: l10n,
-                          cs: cs,
-                          theme: theme,
-                          type: types[index],
-                          index: index,
-                          canReorder: canReorder,
-                        );
-                      },
                     ),
-            ),
+                  )
+                : AppScrollbar(
+                    controller: _scroll,
+                    nested: true,
+                    reserveGutter: true,
+                    child: Material(
+                      color: cs.surface.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
+                      clipBehavior: Clip.antiAlias,
+                      child: ReorderableListView.builder(
+                        scrollController: _scroll,
+                        shrinkWrap: true,
+                        buildDefaultDragHandles: false,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: types.length,
+                        onReorderStart: (_) {
+                          unawaited(HapticFeedback.selectionClick());
+                        },
+                        onReorderItem: (int oldIndex, int newIndex) {
+                          unawaited(_reorderTypes(types, oldIndex, newIndex));
+                        },
+                        proxyDecorator:
+                            (
+                              Widget child,
+                              int index,
+                              Animation<double> animation,
+                            ) {
+                              return AnimatedBuilder(
+                                animation: animation,
+                                builder: (BuildContext context, Widget? child) {
+                                  final double t = Curves.easeInOut.transform(
+                                    animation.value,
+                                  );
+                                  return Material(
+                                    elevation: 2 + 4 * t,
+                                    borderRadius: BorderRadius.circular(14),
+                                    color: cs.surface,
+                                    shadowColor: theme.shadowColor.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                    child: child,
+                                  );
+                                },
+                                child: child,
+                              );
+                            },
+                        itemBuilder: (BuildContext context, int index) {
+                          return _typeRow(
+                            l10n: l10n,
+                            cs: cs,
+                            theme: theme,
+                            type: types[index],
+                            index: index,
+                            canReorder: canReorder,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),

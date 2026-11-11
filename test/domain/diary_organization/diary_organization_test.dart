@@ -22,6 +22,52 @@ DiaryOrganization _draft(String body) => DiaryOrganization(
 );
 
 void main() {
+  test('其他分支的代號不還原也不能加入候選，目前分支補充仍可使用', () {
+    final draft = _draft('公開原文')..prepare();
+    draft.originals.addAll({'⟦S01⟧': '舊分支秘密', '⟦S02⟧': '目前補充'});
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.appendTurn(OrganizationTurn(user: '新需求 ⟦S02⟧'));
+
+    expect(draft.restore('⟦S01⟧／⟦S02⟧'), '⟦S01⟧／目前補充');
+    expect(() => draft.replaceBody('公開原文 ⟦S01⟧'), throwsFormatException);
+    draft.replaceBody('公開原文 ⟦S02⟧');
+    expect(draft.restoredBody, '公開原文 目前補充');
+  });
+
+  test('回覆還原只使用該回合的祖先需求，不取後續代號或其他分支姓名寫法', () {
+    final draft = _draft('公開原文')..prepare();
+    draft.originals.addAll({'⟦P01⟧': '別的分支稱呼', '⟦S01⟧': '後續秘密'});
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦P01⟧'));
+    draft.appendTurn(
+      OrganizationTurn(
+        user: '新需求 ⟦P01⟧',
+        surfaces: {
+          '⟦P01⟧': ['目前稱呼'],
+        },
+      ),
+    );
+    draft.appendTurn(OrganizationTurn(user: '補充 ⟦S01⟧', parentIndex: 1));
+    expect(draft.visibleText('⟦P01⟧ ⟦S01⟧', turn: 1).text, '目前稱呼 ⟦S01⟧');
+    expect(draft.replyIsInScope(1, text: '⟦S01⟧'), isFalse);
+    expect(draft.visibleText('⟦P01⟧', turn: 0).text, '別的分支稱呼');
+  });
+
+  test('舊候選範圍不符時保留對話可讀，但不得還原或套用', () {
+    final draft = _draft('原文')..prepare();
+    draft.originals['⟦S01⟧'] = '已離開分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.appendTurn(OrganizationTurn(user: '目前需求'));
+    final loaded = DiaryOrganization.fromJson({
+      ...draft.toJson(),
+      'organized_body': '原文 ⟦S01⟧',
+      'stage': 'review',
+    });
+    expect(loaded.hasUnsafeCandidate, isTrue);
+    expect(loaded.turns, hasLength(2));
+    expect(() => loaded.restoredBody, throwsFormatException);
+    expect(loaded.restore('⟦S01⟧'), '⟦S01⟧');
+  });
+
   test('上線版第一版整理保留原文與代號，不補歷史 Thinking 或人物對照', () {
     final draft = DiaryOrganization.fromJson({
       'version': 1,

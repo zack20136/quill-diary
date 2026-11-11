@@ -90,7 +90,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     }
     final String? savedLabel = await showTagAccentComposerDialog(
       context: context,
-      width: AppDialogSize.standard,
       titleText: existingLabel == null
           ? context.l10n.tagAddTitle
           : context.l10n.tagEditTitle,

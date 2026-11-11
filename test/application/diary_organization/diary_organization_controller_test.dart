@@ -36,6 +36,107 @@ void main() {
     await scope.controller.sendMessage();
   }
 
+  test('另一個需求版本的私密代號不能出現在生成結果', () async {
+    final controller = scope.controller;
+    await controller.startChat();
+    controller.updateComposer('舊秘密', [const PrivateTextRange(0, 3)]);
+    await controller.sendMessage();
+    final token = controller.draft!.originals.keys.last;
+    await controller.beginEditing(0);
+    controller.updateComposer('目前的整理需求', []);
+    await controller.sendMessage();
+    scope.client.output = jsonEncode({
+      'reply': '修改說明',
+      'body': '${controller.draft!.protectedSource} $token',
+    });
+    await controller.generateDraft();
+    expect(controller.error, AiErrorCode.response);
+    expect(controller.draft!.organizedBody, isNull);
+    expect(controller.draft!.turns, hasLength(2));
+    expect(controller.draft!.restore(token), token);
+  });
+
+  test('串流回覆引用其他版本代號時不還原，完成後標示失敗', () async {
+    final controller = scope.controller;
+    await controller.startChat();
+    controller.updateComposer('舊秘密', [const PrivateTextRange(0, 3)]);
+    await controller.sendMessage();
+    final token = controller.draft!.originals.keys.last;
+    await controller.beginEditing(0);
+    controller.updateComposer('目前需求', []);
+    final entered = Completer<void>();
+    final release = Completer<void>();
+    scope.client.response = () async* {
+      yield token;
+      entered.complete();
+      await release.future;
+    };
+    final sending = controller.sendMessage();
+    await entered.future;
+    final index = controller.draft!.activeTurnIndices.last;
+    expect(
+      controller.draft!
+          .visibleText(controller.draft!.turns[index].reply, turn: index)
+          .text,
+      token,
+    );
+    release.complete();
+    await sending;
+    expect(controller.error, AiErrorCode.response);
+    expect(controller.draft!.turns[index].interrupted, isTrue);
+    expect(controller.canGenerate, isFalse);
+  });
+
+  test('生成說明與候選一起保存，修改內文及返回聊天清除說明', () async {
+    await send('只修順語句');
+    scope.client.output = jsonEncode({'reply': '保留原意並修順語句。', 'body': '修順後的內文'});
+    await scope.controller.generateDraft();
+    expect(scope.controller.draft!.generationReply, '保留原意並修順語句。');
+    expect(
+      (await scope.container
+              .read(diaryOrganizationStoreProvider)
+              .load(scope.entry.id, scope.setup.session))!
+          .generationReply,
+      '保留原意並修順語句。',
+    );
+    await scope.controller.editBody('手動修改後');
+    expect(scope.controller.draft!.generationReply, isNull);
+    await scope.controller.returnToChat();
+    expect(scope.controller.draft!.organizedBody, isNull);
+  });
+
+  test('生成說明含代號時只替換說明，有效內文仍保留', () async {
+    await send('修順');
+    scope.client.output = jsonEncode({'reply': '限制 ⟦SFF⟧', 'body': '合法整理稿'});
+    await scope.controller.generateDraft();
+    expect(scope.controller.error, isNull);
+    expect(scope.controller.draft!.organizedBody, '合法整理稿');
+    expect(
+      scope.controller.draft!.generationReply,
+      testL10n.organizationReplyUnavailable,
+    );
+  });
+
+  test('越界舊候選收尾保存被拒絕時，鎖定仍立即清除畫面資料', () async {
+    final controller = scope.controller;
+    await controller.startChat();
+    final draft = controller.draft!;
+    draft.originals['⟦S01⟧'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.appendTurn(OrganizationTurn(user: '目前需求'));
+    draft.organizedBody = '${draft.protectedSource} ⟦S01⟧';
+    draft.stage = OrganizationStage.review;
+    expect(controller.lock, returnsNormally);
+    expect(controller.draft, isNull);
+    expect(controller.vault, isNull);
+    expect(controller.busy, isFalse);
+    expect(controller.loading, isFalse);
+    final saved = await scope.container
+        .read(diaryOrganizationStoreProvider)
+        .load(scope.entry.id, scope.setup.session);
+    expect(saved!.organizedBody, isNull);
+  });
+
   group('進入與隱私', () {
     test('AI 關閉時保留整理輸入與隱藏標記，不送出需求或生成', () async {
       final controller = scope.controller;
@@ -210,6 +311,35 @@ void main() {
       scope.client.output = '會保留你的語氣。';
       await controller.sendMessage();
       expect(scope.client.calls.last.prompt, followup.systemPrompt);
+    });
+    test('生成途中可預覽本次請求，停止後晚到的預覽不回傳也不報錯', () async {
+      await send('修順');
+      final controller = scope.controller;
+      final stream = StreamController<String>();
+      final started = Completer<void>();
+      scope.client.response = () {
+        started.complete();
+        return stream.stream;
+      };
+      final generating = controller.generateDraft();
+      await started.future;
+      final during = await controller.previewRequest();
+      expect(during, isNotNull);
+      expect(during!.turns, isNotEmpty);
+      expect(controller.busy, isTrue);
+      expect(scope.client.calls, hasLength(2));
+      final gate = Completer<void>();
+      scope.settings.readGate = gate.future;
+      scope.settings.readStarted = Completer<void>();
+      final latePreview = controller.previewRequest();
+      await scope.settings.readStarted!.future;
+      controller.stop();
+      gate.complete();
+      expect(await latePreview, isNull);
+      expect(controller.error, isNull);
+      await stream.close();
+      await generating;
+      expect(controller.draft!.organizedBody, isNull);
     });
     test('輸入與模型改變時重建預覽，日記資料只使用原文', () async {
       await send('修順');

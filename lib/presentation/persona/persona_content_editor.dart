@@ -4,7 +4,9 @@ import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_content.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/ai/ai_preview_text_section.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+
+const _editorHeight = 260.0;
 
 class PersonaContentEditor extends StatefulWidget {
   const PersonaContentEditor({
@@ -29,6 +31,7 @@ class PersonaContentEditor extends StatefulWidget {
 
 class _PersonaContentEditorState extends State<PersonaContentEditor> {
   final _controller = PersonaContentController();
+  final _scroll = ScrollController();
   String? _locale;
 
   @override
@@ -61,27 +64,68 @@ class _PersonaContentEditorState extends State<PersonaContentEditor> {
   @override
   void dispose() {
     _controller.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: AiPreviewTextSection.bodyMaxHeight,
-    child: TextFormField(
-      controller: _controller,
-      style: widget.style,
-      textAlignVertical: TextAlignVertical.top,
-      expands: true,
-      minLines: null,
-      maxLines: null,
-      decoration: InputDecoration(
-        counterText:
-            '${widget.card.text.length} / ${PersonaLimits.card(widget.kind)}',
-        errorText: widget.valid ? null : context.l10n.personaInvalidCard,
-      ),
-      onChanged: (_) => widget.onChanged(_controller.protectedText),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final invalidBorder = OutlineInputBorder(
+      borderSide: BorderSide(color: colors.error),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: _editorHeight,
+          child: AppScrollbar(
+            controller: _scroll,
+            track: AppScrollbarTrack.frame,
+            child: TextFormField(
+              controller: _controller,
+              scrollController: _scroll,
+              style: widget.style,
+              textAlignVertical: TextAlignVertical.top,
+              expands: true,
+              minLines: null,
+              maxLines: null,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                enabledBorder: widget.valid ? null : invalidBorder,
+                focusedBorder: widget.valid
+                    ? null
+                    : OutlineInputBorder(
+                        borderSide: BorderSide(color: colors.error, width: 2),
+                      ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+              onChanged: (_) => widget.onChanged(_controller.protectedText),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                widget.valid ? '' : l10n.personaInvalidCard,
+                style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
+              ),
+            ),
+            Text(
+              '${widget.card.text.length} / ${PersonaLimits.card(widget.kind)}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 /// 編輯未碰到的姓名仍保留人物識別；改動該姓名時，僅該處改為一般文字。

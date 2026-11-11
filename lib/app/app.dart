@@ -17,6 +17,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_theme.dart';
 import 'package:quill_diary/shared/presentation/personalization_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class QuillDiaryApp extends ConsumerStatefulWidget {
   const QuillDiaryApp({super.key});
@@ -108,15 +109,15 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
         _showingDriveFailureDialog = false;
         return;
       }
-      await showDialog<void>(
+      await showAppDialog<void>(
         context: context,
         builder: (BuildContext dialogContext) {
           final AppLocalizations dialogL10n = dialogContext.l10n;
           final String body = failure.message.trim().isNotEmpty
               ? failure.message.trim()
               : dialogL10n.driveUploadAbandonedFailureBody;
-          return AlertDialog(
-            title: Text(dialogL10n.driveUploadAbandonedFailureTitle),
+          return AppDialogShell(
+            title: dialogL10n.driveUploadAbandonedFailureTitle,
             content: Text(body),
             actions: <Widget>[
               TextButton(

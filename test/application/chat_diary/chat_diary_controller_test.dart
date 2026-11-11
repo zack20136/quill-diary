@@ -822,6 +822,7 @@ void main() {
       final conversation = (await controller.previewRequest())!;
       expect(conversation.turns.last.pending, isTrue);
       final generation = (await controller.previewRequest(generate: true))!;
+      expect(generation.hasLocalPrivateNotes, isTrue);
       expect(generation.systemPrompt, '生成提示詞與⟦S01⟧');
       expect(generation.turns.single.pending, isFalse);
       expect(generation.turns.single.imageIds, [sentImage]);
@@ -875,6 +876,14 @@ void main() {
         setup.session,
       );
       expect(await controller.hasEditedDiaryDraft(), isTrue);
+    });
+    test('只有未送出的私密輸入時，生成預覽不提示補入私密補記', () async {
+      controller.updateComposer('公開散步', []);
+      await controller.send();
+      controller.updateComposer('未送出秘密', [const PrivateTextRange(0, 5)]);
+      final preview = (await controller.previewRequest(generate: true))!;
+      expect(preview.hasLocalPrivateNotes, isFalse);
+      expect(controller.hasPrivateNotes, isFalse);
     });
   });
 

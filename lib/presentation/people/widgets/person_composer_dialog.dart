@@ -14,12 +14,12 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -30,36 +30,12 @@ Future<Person?> showPersonComposerDialog(
   String initialName = '',
   ValueChanged<Route<Person>>? onRouteCreated,
 }) async {
-  final Color barrierColor = context.appColors.scrim;
-  final route = DialogRoute<Person>(
+  final route = appDialogRoute<Person>(
     context: context,
     barrierDismissible: false,
-    barrierColor: barrierColor,
-    useSafeArea: false,
-    builder: (BuildContext ctx) {
-      final bool compact = MediaQuery.sizeOf(ctx).width < 600;
-      return SafeArea(
-        maintainBottomViewPadding: true,
-        child: Builder(
-          builder: (BuildContext safeContext) => MediaQuery.removeViewInsets(
-            context: safeContext,
-            removeBottom: true,
-            child: Dialog(
-              key: const Key('person-composer-dialog'),
-              insetPadding: EdgeInsets.symmetric(
-                horizontal: compact ? 12 : 24,
-                vertical: compact ? 12 : 24,
-              ),
-              backgroundColor: Colors.transparent,
-              child: PersonComposerDialog(
-                personId: personId,
-                initialName: initialName,
-              ),
-            ),
-          ),
-        ),
-      );
-    },
+    barrierColor: context.appColors.scrim,
+    builder: (BuildContext ctx) =>
+        PersonComposerDialog(personId: personId, initialName: initialName),
   );
   onRouteCreated?.call(route);
   return Navigator.of(context, rootNavigator: true).push(route);
@@ -871,122 +847,137 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     required String acquaintanceText,
     required List<RelationshipType> relationshipTypes,
   }) {
-    return CustomScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      slivers: <Widget>[
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          sliver: SliverList.list(
-            children: <Widget>[
-              _formSection(
-                title: l10n.peopleSectionBasic,
+    return AppScrollableContent(
+      builder: (BuildContext context, ScrollController controller) =>
+          CustomScrollView(
+            controller: controller,
+            shrinkWrap: true,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: <Widget>[
+              SliverList.list(
                 children: <Widget>[
-                  TextField(
-                    controller: _nameCtrl,
-                    enabled: !_saving,
-                    autofocus: !widget.isEditing && widget.initialName.isEmpty,
-                    textInputAction: TextInputAction.next,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _fieldDecoration(
-                      labelText: l10n.peopleFieldName,
-                    ),
-                    onChanged: (_) => setState(() {}),
+                  _formSection(
+                    title: l10n.peopleSectionBasic,
+                    children: <Widget>[
+                      TextField(
+                        controller: _nameCtrl,
+                        enabled: !_saving,
+                        autofocus:
+                            !widget.isEditing && widget.initialName.isEmpty,
+                        textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: _fieldDecoration(
+                          labelText: l10n.peopleFieldName,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 12),
+                      _aliasesEditor(l10n),
+                      _mentionNamePicker(l10n),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _aliasesEditor(l10n),
-                  _mentionNamePicker(l10n),
-                ],
-              ),
-              _sectionDivider(),
-              _formSection(
-                title: l10n.peopleSectionRelationship,
-                children: <Widget>[
-                  _relationshipsEditor(relationshipTypes),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _relationshipDescCtrl,
-                    enabled: !_saving,
-                    minLines: 1,
-                    maxLines: null,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    decoration: _expandingTextFieldDecoration(
-                      l10n.peopleFieldRelationshipDescription,
-                    ),
+                  _sectionDivider(),
+                  _formSection(
+                    title: l10n.peopleSectionRelationship,
+                    children: <Widget>[
+                      _relationshipsEditor(relationshipTypes),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _relationshipDescCtrl,
+                        enabled: !_saving,
+                        minLines: 1,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: _expandingTextFieldDecoration(
+                          l10n.peopleFieldRelationshipDescription,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _friendlinessSlider(l10n, cs),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _friendlinessSlider(l10n, cs),
-                ],
-              ),
-              _sectionDivider(),
-              _formSection(
-                title: l10n.peopleSectionOther,
-                children: <Widget>[
-                  _dateField(
-                    label: l10n.peopleFieldAcquaintanceYear,
-                    valueText: acquaintanceText,
-                    hasValue: _acquaintanceYear != null,
-                    clearTooltip: l10n.peopleClearAcquaintanceYear,
-                    onPick: () => unawaited(_pickAcquaintanceYear()),
-                    onClear: () => setState(() => _acquaintanceYear = null),
+                  _sectionDivider(),
+                  _formSection(
+                    title: l10n.peopleSectionOther,
+                    children: <Widget>[
+                      _dateField(
+                        label: l10n.peopleFieldAcquaintanceYear,
+                        valueText: acquaintanceText,
+                        hasValue: _acquaintanceYear != null,
+                        clearTooltip: l10n.peopleClearAcquaintanceYear,
+                        onPick: () => unawaited(_pickAcquaintanceYear()),
+                        onClear: () => setState(() => _acquaintanceYear = null),
+                      ),
+                      const SizedBox(height: 12),
+                      _dateField(
+                        label: l10n.peopleFieldBirthday,
+                        valueText: birthdayText,
+                        hasValue: _birthday != null,
+                        clearTooltip: l10n.peopleClearBirthday,
+                        onPick: () => unawaited(_pickBirthday()),
+                        onClear: () => setState(() => _birthday = null),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _notesCtrl,
+                        enabled: !_saving,
+                        minLines: 1,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        decoration: _expandingTextFieldDecoration(
+                          l10n.peopleFieldNotes,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _colorEditor(l10n, cs),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _dateField(
-                    label: l10n.peopleFieldBirthday,
-                    valueText: birthdayText,
-                    hasValue: _birthday != null,
-                    clearTooltip: l10n.peopleClearBirthday,
-                    onPick: () => unawaited(_pickBirthday()),
-                    onClear: () => setState(() => _birthday = null),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _notesCtrl,
-                    enabled: !_saving,
-                    minLines: 1,
-                    maxLines: null,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    decoration: _expandingTextFieldDecoration(
-                      l10n.peopleFieldNotes,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _colorEditor(l10n, cs),
                 ],
               ),
             ],
           ),
-        ),
-      ],
     );
   }
 
-  Widget _footer(AppLocalizations l10n, ColorScheme cs) {
-    return Material(
-      color: cs.surface,
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        child: Row(
-          children: <Widget>[
-            TextButton(
-              onPressed: _saving ? null : () => unawaited(_requestClose()),
-              child: Text(l10n.commonActionCancel),
-            ),
-            const Spacer(),
-            AppActionButton(
-              label: l10n.peopleSaveAction,
-              icon: Icons.check_rounded,
-              appearance: AppActionButtonAppearance.primary,
-              loading: _saving,
-              onPressed: _saving ? null : () => unawaited(_save()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  static const Widget _loadingIndicator = Padding(
+    padding: EdgeInsets.symmetric(vertical: 48),
+    child: Center(child: CircularProgressIndicator()),
+  );
+
+  List<Widget> _actions(AppLocalizations l10n) => <Widget>[
+    TextButton(
+      onPressed: _saving ? null : () => unawaited(_requestClose()),
+      child: Text(l10n.commonActionCancel),
+    ),
+    AppActionButton(
+      label: l10n.peopleSaveAction,
+      icon: Icons.check_rounded,
+      appearance: AppActionButtonAppearance.primary,
+      loading: _saving,
+      onPressed: _saving ? null : () => unawaited(_save()),
+    ),
+  ];
+
+  Widget _shell(
+    BuildContext context, {
+    required Widget content,
+    List<Widget> actions = const <Widget>[],
+  }) => AppDialogShell(
+    accent: true,
+    icon: const Icon(Icons.person_rounded),
+    title: widget.isEditing
+        ? context.l10n.peopleEditTitle
+        : context.l10n.peopleCreateTitle,
+    titleTrailing: IconButton(
+      tooltip: context.l10n.commonCloseTooltip,
+      onPressed: _saving ? null : () => unawaited(_requestClose()),
+      icon: const Icon(Icons.close_rounded),
+    ),
+    content: content,
+    actions: actions,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -995,15 +986,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         personDetailProvider(widget.personId!),
       );
       if (personAsync.isLoading) {
-        return AccentDialogShell(
-          icon: Icons.person_rounded,
-          title: context.l10n.peopleEditTitle,
-          onClose: () => unawaited(_requestClose()),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 48),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        );
+        return _shell(context, content: _loadingIndicator);
       }
       final Person? person = personAsync.asData?.value;
       if (person == null) {
@@ -1015,30 +998,14 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
             }
           });
         }
-        return AccentDialogShell(
-          icon: Icons.person_rounded,
-          title: context.l10n.peopleEditTitle,
-          onClose: () => unawaited(_requestClose()),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text(context.l10n.peopleEmptyTitle),
-          ),
-        );
+        return _shell(context, content: Text(context.l10n.peopleEmptyTitle));
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_hydrated) {
           setState(() => _hydrate(person));
         }
       });
-      return AccentDialogShell(
-        icon: Icons.person_rounded,
-        title: context.l10n.peopleEditTitle,
-        onClose: () => unawaited(_requestClose()),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 48),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
+      return _shell(context, content: _loadingIndicator);
     }
 
     final AppLocalizations l10n = context.l10n;
@@ -1058,9 +1025,6 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         ? ''
         : DisplayFormat.formatYear(l10n, _acquaintanceYear!);
 
-    final String title = widget.isEditing
-        ? l10n.peopleEditTitle
-        : l10n.peopleCreateTitle;
     final Widget body = _formBody(
       l10n,
       cs,
@@ -1068,22 +1032,9 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       acquaintanceText: acquaintanceText,
       relationshipTypes: relationshipTypes,
     );
-    final Widget shell = LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double availableHeight = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : MediaQuery.sizeOf(context).height -
-                  MediaQuery.viewInsetsOf(context).bottom;
-        final double bodyHeight = (availableHeight - 166).clamp(80.0, 680.0);
-        return AccentDialogShell(
-          icon: Icons.person_rounded,
-          title: title,
-          closeEnabled: !_saving,
-          onClose: () => unawaited(_requestClose()),
-          footer: _footer(l10n, cs),
-          child: SizedBox(height: bodyHeight, child: body),
-        );
-      },
+    final double bodyHeight = (MediaQuery.sizeOf(context).height - 200).clamp(
+      140.0,
+      640.0,
     );
     return PopScope(
       canPop: !_hasUnsavedChanges && !_saving,
@@ -1092,7 +1043,18 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
           unawaited(_requestClose());
         }
       },
-      child: shell,
+      child: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: _shell(
+          context,
+            content: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: bodyHeight),
+              child: body,
+            ),
+          actions: _actions(l10n),
+        ),
+      ),
     );
   }
 }

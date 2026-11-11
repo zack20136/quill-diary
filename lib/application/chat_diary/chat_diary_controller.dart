@@ -421,9 +421,10 @@ class ChatDiaryController extends ChangeNotifier {
             );
       _ensureOperationIsCurrent(operationVersion);
       final replyPersona = loadedPersona?.record;
-      final missingPersonaName = lookupAppLocalizations(
+      final l10n = lookupAppLocalizations(
         (await ref.read(userPreferencesProvider).appLocale).materialLocale,
-      ).personaRoleFriend;
+      );
+      final missingPersonaName = l10n.personaRoleFriend;
       _ensureOperationIsCurrent(operationVersion);
       final prompt = await _resolveRequestPrompt(
         generate
@@ -445,6 +446,7 @@ class ChatDiaryController extends ChangeNotifier {
                       privacy,
                       message,
                       history,
+                      l10n: l10n,
                       forceAttribution: replyPersona != null,
                       missingPersonaName: missingPersonaName,
                     ),
@@ -462,6 +464,7 @@ class ChatDiaryController extends ChangeNotifier {
       _ensureOperationIsCurrent(operationVersion);
       return AiRequestPreview(
         instructions: prompt,
+        hasLocalPrivateNotes: generate && hasPrivateNotes,
         conversationTurns: generate ? turns : null,
         turns: generate
             ? [
@@ -629,9 +632,10 @@ class ChatDiaryController extends ChangeNotifier {
     final vaultSession = _vaultSession!;
     final result = <AiInputMessage>[];
     final selectedHistory = history ?? chatSession.activeMessages;
-    final missingPersonaName = lookupAppLocalizations(
+    final l10n = lookupAppLocalizations(
       (await ref.read(userPreferencesProvider).appLocale).materialLocale,
-    ).personaRoleFriend;
+    );
+    final missingPersonaName = l10n.personaRoleFriend;
     _ensureOperationIsCurrent(operationVersion);
     for (final message in selectedHistory) {
       if (!message.isUser &&
@@ -657,6 +661,7 @@ class ChatDiaryController extends ChangeNotifier {
                   privacy,
                   message,
                   selectedHistory,
+                  l10n: l10n,
                   forceAttribution: personaReply,
                   missingPersonaName: missingPersonaName,
                 ),
@@ -737,6 +742,7 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryPrivacyProcessor privacy,
     ChatDiaryMessage message,
     List<ChatDiaryMessage> history, {
+    required AppLocalizations l10n,
     bool forceAttribution = false,
     required String missingPersonaName,
   }) {
@@ -745,14 +751,17 @@ class ChatDiaryController extends ChangeNotifier {
         !forceAttribution && !history.any((m) => m.persona != null)) {
       return text;
     }
-    return jsonEncode({
-      'speaker': _speaker(
-        privacy,
-        message,
-        missingPersonaName: missingPersonaName,
-      ),
-      'text': text,
-    });
+    final speaker = _speaker(
+      privacy,
+      message,
+      missingPersonaName: missingPersonaName,
+    );
+    return personaAttributedMessage(
+      l10n: l10n,
+      text: text,
+      persona: speaker['kind'] == 'ai_persona',
+      personToken: speaker['person'],
+    );
   }
 
   String _generationData(
@@ -895,6 +904,15 @@ class ChatDiaryController extends ChangeNotifier {
             (message.text.trim().isNotEmpty || message.imageIds.isNotEmpty),
       );
 
+  bool get hasPrivateNotes =>
+      chat?.activeMessages.any(
+        (message) =>
+            message.isUser &&
+            (message.privateRanges.isNotEmpty ||
+                message.privateTokenIds.isNotEmpty),
+      ) ==
+      true;
+
   void beginEditing(String messageId) {
     final chatSession = chat;
     if (chatSession == null ||
@@ -965,11 +983,7 @@ class ChatDiaryController extends ChangeNotifier {
     }
     final chatSession = chat!;
     final parentId = conversationHistory.lastOrNull?.id;
-    await _requestReply(
-      parentId: parentId,
-      newComposer: chatSession.composer,
-      replyAs: chatSession.selectedPersona,
-    );
+    await _requestReply(parentId: parentId, newComposer: chatSession.composer);
   }
 
   Future<void> regenerateReply(String messageId) async {
@@ -989,15 +1003,15 @@ class ChatDiaryController extends ChangeNotifier {
     if (message == null || message.parentId == null) {
       return;
     }
-    await _requestReply(parentId: message.parentId, replyAs: message.persona);
+    await _requestReply(parentId: message.parentId);
   }
 
   Future<void> _requestReply({
     required String? parentId,
     AiComposerSnapshot? newComposer,
-    PersonaReference? replyAs,
   }) async {
     final chatSession = chat!;
+    final replyAs = chatSession.selectedPersona;
     final keepAlive = ref.keepAlive();
     busy = true;
     _setError(null);

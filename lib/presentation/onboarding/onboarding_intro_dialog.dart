@@ -7,6 +7,7 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -165,7 +166,7 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
                       onPageChanged: (int index) =>
                           setState(() => _page = index),
                       itemBuilder: (BuildContext context, int index) =>
-                          SingleChildScrollView(
+                          AppScrollView(
                             child: _OnboardingPagePanel(page: pages[index]),
                           ),
                     ),

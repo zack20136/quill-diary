@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
@@ -143,22 +142,5 @@ void main() {
     await tester.tap(find.text('刪除'));
     await tester.pumpAndSettle();
     expect(result, isTrue);
-  });
-
-  testWidgets('AccentDialogShell 關閉按鈕觸控目標至少 44', (tester) async {
-    await tester.pumpWidget(
-      host(
-        AccentDialogShell(
-          icon: Icons.palette_outlined,
-          title: '標題',
-          onClose: () {},
-          child: const SizedBox(height: 40),
-        ),
-      ),
-    );
-
-    final Size size = tester.getSize(find.byType(IconButton));
-    expect(size.width, greaterThanOrEqualTo(44));
-    expect(size.height, greaterThanOrEqualTo(44));
   });
 }

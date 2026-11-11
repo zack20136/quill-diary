@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 /// Dialog 的可見寬度尺寸。
 enum AppDialogSize { standard, compact }
@@ -26,7 +27,31 @@ class AppDialogWidth extends StatelessWidget {
   );
 }
 
-/// 以一致的寬度規則建立 Material dialog route。
+/// 以一致的寬度規則建立 dialog route；需要持有 route 的呼叫端使用此函式。
+DialogRoute<T> appDialogRoute<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  AppDialogSize size = AppDialogSize.standard,
+  bool barrierDismissible = true,
+  Color? barrierColor,
+  bool useSafeArea = true,
+}) {
+  final Color resolvedBarrier =
+      barrierColor ??
+      DialogTheme.of(context).barrierColor ??
+      Theme.of(context).dialogTheme.barrierColor ??
+      Colors.black54;
+  return DialogRoute<T>(
+    context: context,
+    builder: (BuildContext dialogContext) =>
+        AppDialogWidth(size: size, child: builder(dialogContext)),
+    barrierDismissible: barrierDismissible,
+    barrierColor: resolvedBarrier,
+    useSafeArea: useSafeArea,
+  );
+}
+
+/// 顯示統一寬度規則的 dialog，行為與 [showDialog] 相同。
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -34,16 +59,52 @@ Future<T?> showAppDialog<T>({
   bool barrierDismissible = true,
   Color? barrierColor,
   bool useSafeArea = true,
-}) => showDialog<T>(
-  context: context,
-  builder: (BuildContext dialogContext) =>
-      AppDialogWidth(size: size, child: builder(dialogContext)),
-  barrierDismissible: barrierDismissible,
-  barrierColor: barrierColor,
-  useSafeArea: useSafeArea,
+}) => Navigator.of(context, rootNavigator: true).push(
+  appDialogRoute<T>(
+    context: context,
+    builder: builder,
+    size: size,
+    barrierDismissible: barrierDismissible,
+    barrierColor: barrierColor,
+    useSafeArea: useSafeArea,
+  ),
 );
 
+/// 所有 dialog 共用的留白：左右 [horizontal]，上下依區塊分別設定。
+abstract final class AppDialogInsets {
+  static const double horizontal = 20;
+
+  static const EdgeInsets title = EdgeInsets.fromLTRB(
+    horizontal,
+    20,
+    horizontal,
+    0,
+  );
+  static const EdgeInsets content = EdgeInsets.fromLTRB(
+    horizontal,
+    12,
+    horizontal,
+    12,
+  );
+  static const EdgeInsets actions = EdgeInsets.fromLTRB(
+    horizontal,
+    0,
+    horizontal,
+    12,
+  );
+}
+
+/// 標記 dialog 內容範圍，供捲軸把右側留白當作自己的欄位使用。
+class AppDialogScope extends InheritedWidget {
+  const AppDialogScope({required super.child, super.key});
+
+  @override
+  bool updateShouldNotify(AppDialogScope oldWidget) => false;
+}
+
 /// 提供一致標題、圖示、內容與操作列的標準 dialog 外殼。
+///
+/// [accent] 為選色、人物、標籤等表單使用的漸層底色與邊框。
 class AppDialogShell extends StatelessWidget {
   const AppDialogShell({
     required this.title,
@@ -51,6 +112,8 @@ class AppDialogShell extends StatelessWidget {
     this.icon,
     this.titleTrailing,
     this.actions = const <Widget>[],
+    this.actionsAlignment,
+    this.accent = false,
     super.key,
   });
 
@@ -59,12 +122,12 @@ class AppDialogShell extends StatelessWidget {
   final Widget? icon;
   final Widget? titleTrailing;
   final List<Widget> actions;
+  final MainAxisAlignment? actionsAlignment;
+  final bool accent;
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    insetPadding: EdgeInsets.zero,
-    constraints: const BoxConstraints(minWidth: double.infinity),
-    title: Row(
+  Widget build(BuildContext context) {
+    final Widget titleRow = Row(
       children: <Widget>[
         if (icon != null) ...<Widget>[icon!, const SizedBox(width: 12)],
         Expanded(child: Text(title)),
@@ -73,10 +136,80 @@ class AppDialogShell extends StatelessWidget {
           titleTrailing!,
         ],
       ],
-    ),
-    content: content,
-    actions: actions,
-  );
+    );
+    if (!accent) {
+      return AlertDialog(
+        insetPadding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: double.infinity),
+        titlePadding: AppDialogInsets.title,
+        contentPadding: AppDialogInsets.content,
+        actionsPadding: AppDialogInsets.actions,
+        title: titleRow,
+        content: AppDialogScope(child: content),
+        actions: actions,
+        actionsAlignment: actionsAlignment,
+      );
+    }
+    // Dialog 的外層會撐滿路由。漸層必須畫在卡片內容上，否則短內容也會鋪滿螢幕。
+    final colors = context.appColors;
+    final TextStyle titleStyle =
+        DialogTheme.of(context).titleTextStyle ??
+        Theme.of(context).textTheme.titleLarge!;
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: double.infinity),
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      elevation: 0,
+      clipBehavior: Clip.none,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              colors.accentDialogGradientStart,
+              colors.accentDialogGradientEnd,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colors.accentDialogBorder),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.12),
+              blurRadius: 28,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: AppDialogInsets.title,
+              child: DefaultTextStyle(style: titleStyle, child: titleRow),
+            ),
+            Padding(
+              padding: AppDialogInsets.content,
+              child: AppDialogScope(child: content),
+            ),
+            if (actions.isNotEmpty)
+              Padding(
+                padding: AppDialogInsets.actions,
+                child: OverflowBar(
+                  alignment: actionsAlignment ?? MainAxisAlignment.end,
+                  spacing: 8,
+                  overflowAlignment: OverflowBarAlignment.end,
+                  children: actions,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// 二元確認操作的按鈕語意。

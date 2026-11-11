@@ -6,7 +6,10 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/adaptive_panel.dart';
 
@@ -120,11 +123,16 @@ class _ChatDiaryCompanionBarState extends ConsumerState<ChatDiaryCompanionBar>
     final name = widget.current == null
         ? l.personaDefaultName
         : widget.name ?? person?.name ?? l.personaRoleFriend;
-    final color = widget.accentArgb != null
-        ? Color(widget.accentArgb!)
-        : person == null
-        ? Theme.of(context).colorScheme.primary
-        : personAccentColor(person);
+    final surface = context.appColors.sectionInset;
+    final (background, accent) = person != null
+        ? personLabelColorPair(person, surface)
+        : widget.current == null
+        ? accentColorPair(Theme.of(context).colorScheme.primary, surface)
+        : personAccentPairFor(
+            personId: widget.current!.personId,
+            surface: surface,
+            accentArgb: widget.accentArgb,
+          );
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -136,14 +144,13 @@ class _ChatDiaryCompanionBarState extends ConsumerState<ChatDiaryCompanionBar>
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: color.withValues(alpha: 0.12),
-                foregroundColor: color,
-                child: widget.current == null
-                    ? const Icon(Icons.forum_outlined, size: 16)
-                    : Text(
-                        personInitials(name),
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
+                backgroundColor: background,
+                foregroundColor: accent,
+                child: Text(
+                  personInitials(name),
+                  style: Theme.of(context).textTheme.labelMedium
+                      ?.copyWith(color: accent, fontWeight: FontWeight.w700),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -154,14 +161,6 @@ class _ChatDiaryCompanionBarState extends ConsumerState<ChatDiaryCompanionBar>
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
-              if (widget.current != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    l.personaTitle,
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ),
               if (widget.enabled) const Icon(Icons.expand_more),
             ],
           ),
@@ -204,13 +203,27 @@ class _CompanionChoices extends ConsumerWidget {
               ),
             ),
             Flexible(
-              child: SingleChildScrollView(
+              child: AppScrollView(
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.forum_outlined),
+                      leading: CircleAvatar(
+                        radius: 17,
+                        backgroundColor: accentColorPair(
+                          Theme.of(context).colorScheme.primary,
+                          context.appColors.sectionInset,
+                        ).$1,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        child: Text(
+                          personInitials(l.personaDefaultName),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
                       title: Text(l.personaDefaultName),
-                      subtitle: Text(l.personaDefaultHint),
                       trailing: current == null
                           ? const Icon(Icons.check)
                           : null,
@@ -222,21 +235,31 @@ class _CompanionChoices extends ConsumerWidget {
                           final person = people
                               .where((p) => p.id == record.personId)
                               .firstOrNull;
+                          final surface = context.appColors.sectionInset;
+                          final (background, accent) = person == null
+                              ? personAccentPairFor(
+                                  personId: record.personId,
+                                  surface: surface,
+                                )
+                              : personLabelColorPair(person, surface);
+                          final label = person?.name ?? l.personaRoleFriend;
                           return ListTile(
                             leading: CircleAvatar(
                               radius: 17,
-                              backgroundColor: person == null
-                                  ? null
-                                  : personAccentColor(person)
-                                        .withValues(alpha: 0.12),
+                              backgroundColor: background,
+                              foregroundColor: accent,
                               child: Text(
                                 person == null
                                     ? l.chatDiaryAiIcon
-                                    : personInitials(person.name),
+                                    : personInitials(label),
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      color: accent,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
                             ),
-                            title: Text(person?.name ?? l.personaRoleFriend),
-                            subtitle: Text(l.personaTitle),
+                            title: Text(label),
                             trailing: current?.personaId == record.personaId
                                 ? const Icon(Icons.check)
                                 : null,

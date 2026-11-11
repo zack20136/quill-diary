@@ -48,6 +48,7 @@ class DiaryOrganizationStore {
         if (current == null ||
             draft.stage == OrganizationStage.applied ||
             (draft.stage == OrganizationStage.applying &&
+                !draft.hasUnsafeCandidate &&
                 organizationEntrySignature(current) ==
                     organizationEntrySignature(
                       draft.source.copyWith(markdownBody: draft.restoredBody),
@@ -80,6 +81,7 @@ class DiaryOrganizationStore {
     UnlockedVaultSession session, {
     bool Function()? isCurrent,
   }) {
+    if (draft.organizedBody case final body?) draft.validateBody(body);
     final bytes = utf8.encode(jsonEncode(draft.toJson()));
     return repository.runVaultMutation(() async {
       if (isCurrent != null && !isCurrent()) return;
@@ -138,6 +140,7 @@ class DiaryOrganizationStore {
     UnlockedVaultSession session, {
     void Function()? ensureCurrent,
   }) async {
+    draft.validateBody(draft.currentBody);
     draft.stage = OrganizationStage.applying;
     await save(draft, session);
     ensureCurrent?.call();

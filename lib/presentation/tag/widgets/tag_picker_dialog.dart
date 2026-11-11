@@ -13,6 +13,7 @@ import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class TagPickerDialog extends ConsumerStatefulWidget {
   const TagPickerDialog({
@@ -171,192 +172,156 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
           (qlow.isEmpty || item.label.toLowerCase().contains(qlow)),
     );
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: const Alignment(0.15, 0.45),
-              colors: <Color>[
-                colors.accentDialogGradientStart,
-                colors.accentDialogGradientEnd,
-              ],
-            ),
-            border: Border.all(color: colors.accentDialogBorder, width: 1.1),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: theme.shadowColor.withValues(alpha: 0.17),
-                blurRadius: 24,
-                offset: const Offset(0, 14),
-              ),
-            ],
+    return AppDialogShell(
+      accent: true,
+      icon: const Icon(Icons.label_rounded),
+      title: context.l10n.editorTagsStudioTitle,
+      titleTrailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+            tooltip: context.l10n.editorTagAddTooltip,
+            visualDensity: VisualDensity.compact,
+            onPressed: _openTagAccentComposer,
+            icon: const Icon(Icons.add_rounded),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 16, 12, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.label_rounded,
-                      color: theme.colorScheme.onSurface,
+          IconButton(
+            tooltip: context.l10n.commonCloseTooltip,
+            visualDensity: VisualDensity.compact,
+            onPressed: widget.onDismiss,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: widget.onDismiss,
+          child: Text(context.l10n.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: () => widget.onApply(_chosenByNorm.values.join(',')),
+          child: Text(context.l10n.commonActionApply),
+        ),
+      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            context.l10n.editorTagsStudioGuide,
+            style: theme.textTheme.bodySmall?.copyWith(
+              height: 1.4,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_chosenByNorm.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                context.l10n.editorTagsStudioEmptyChosen,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: math.min(
+                MediaQuery.sizeOf(context).height * 0.18,
+                108,
+              ),
+            ),
+            child: AppScrollView(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final String t in _chosenByNorm.values)
+                    _chosenTagChip(t, theme, accentArgbByNorm, colors),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _filterCtrl,
+            decoration: InputDecoration(
+              hintText: context.l10n.editorTagSearchHint,
+              prefixIcon: const Icon(Icons.search_rounded, size: 22),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerLow.withValues(
+                alpha: 0.75,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              suffixIcon: _filterCtrl.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: context.l10n.commonClearSearchTooltip,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _filterCtrl.clear(),
+                      icon: const Icon(Icons.clear_rounded),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        context.l10n.editorTagsStudioTitle,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.l10n.editorTagLibraryHint,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: math.min(
+                MediaQuery.sizeOf(context).height * 0.34,
+                240,
+              ),
+            ),
+            child: AppScrollbar(
+              controller: _tagPoolScrollController,
+              nested: true,
+              reserveGutter: true,
+              child: SingleChildScrollView(
+                controller: _tagPoolScrollController,
+                padding: const EdgeInsets.only(right: 8, bottom: 2),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.start,
+                  children: <Widget>[
+                    if (pool.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        child: Text(
+                          qlow.isEmpty
+                              ? context.l10n.editorTagPoolEmpty
+                              : context.l10n.commonNoTagSearchResults,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: theme.colorScheme.outline,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: context.l10n.editorTagAddTooltip,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _openTagAccentComposer,
-                      icon: const Icon(Icons.add_rounded),
-                    ),
-                    IconButton(
-                      tooltip: context.l10n.commonCloseTooltip,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: widget.onDismiss,
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-                Text(
-                  context.l10n.editorTagsStudioGuide,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    height: 1.4,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (_chosenByNorm.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      context.l10n.editorTagsStudioEmptyChosen,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: theme.colorScheme.outline,
+                    for (final TagCatalogUsageItem item in pool.take(60))
+                      _suggestionChip(
+                        item.label,
+                        theme,
+                        accentArgbByNorm,
+                        colors,
                       ),
-                    ),
-                  ),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: math.min(
-                      MediaQuery.sizeOf(context).height * 0.18,
-                      108,
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        for (final String t in _chosenByNorm.values)
-                          _chosenTagChip(t, theme, accentArgbByNorm, colors),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _filterCtrl,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.editorTagSearchHint,
-                    prefixIcon: const Icon(Icons.search_rounded, size: 22),
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerLow.withValues(
-                      alpha: 0.75,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: _filterCtrl.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: context.l10n.commonClearSearchTooltip,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _filterCtrl.clear(),
-                            icon: const Icon(Icons.clear_rounded),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  context.l10n.editorTagLibraryHint,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: math.min(
-                      MediaQuery.sizeOf(context).height * 0.34,
-                      240,
-                    ),
-                  ),
-                  child: NestedPanelScrollbar(
-                    controller: _tagPoolScrollController,
-                    contentPadding: const EdgeInsets.only(right: 8, bottom: 2),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.start,
-                      children: <Widget>[
-                        if (pool.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Text(
-                              qlow.isEmpty
-                                  ? context.l10n.editorTagPoolEmpty
-                                  : context.l10n.commonNoTagSearchResults,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontStyle: FontStyle.italic,
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                        for (final TagCatalogUsageItem item in pool.take(60))
-                          _suggestionChip(
-                            item.label,
-                            theme,
-                            accentArgbByNorm,
-                            colors,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: <Widget>[
-                    TextButton(
-                      onPressed: widget.onDismiss,
-                      child: Text(context.l10n.commonActionCancel),
-                    ),
-                    const Spacer(),
-                    FilledButton(
-                      onPressed: () =>
-                          widget.onApply(_chosenByNorm.values.join(',')),
-                      child: Text(context.l10n.commonActionApply),
-                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

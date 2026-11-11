@@ -19,8 +19,10 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/people/person_name_matcher.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/diary_organization/diary_organization_store.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 final diaryOrganizationStoreProvider = Provider<DiaryOrganizationStore>(
   (ref) => DiaryOrganizationStore(
@@ -98,7 +100,8 @@ class DiaryOrganizationController extends ChangeNotifier {
         ) &&
         last != null &&
         !current.turns[last].interrupted &&
-        current.turns[last].reply.isNotEmpty;
+        current.turns[last].reply.isNotEmpty &&
+        current.replyIsInScope(last);
   }
 
   PersonNameMatcher? _personMatcher;
@@ -363,14 +366,24 @@ class DiaryOrganizationController extends ChangeNotifier {
     final session = vault;
     if (current == null || session == null || _disposed) return null;
     final version = _version;
-    final prompt = await _prepareRequestContext(session, generate);
-    if (_disposed ||
-        version != _version ||
-        draft != current ||
-        vault != session) {
-      return null;
+    try {
+      final prompt = await _prepareRequestContext(session, generate);
+      if (_disposed ||
+          version != _version ||
+          draft != current ||
+          vault != session) {
+        return null;
+      }
+      return _buildRequest(prompt, generate: generate).preview;
+    } on Object {
+      if (_disposed ||
+          version != _version ||
+          draft != current ||
+          vault != session) {
+        return null;
+      }
+      rethrow;
     }
-    return _buildRequest(prompt, generate: generate).preview;
   }
 
   Future<String> _prepareRequestContext(
@@ -453,6 +466,7 @@ class DiaryOrganizationController extends ChangeNotifier {
         if (current.turns[index].user.isNotEmpty)
           AiInputMessage(isUser: true, text: current.turns[index].user),
         if (!current.turns[index].interrupted &&
+            current.replyIsInScope(index) &&
             current.turns[index].reply.isNotEmpty)
           AiInputMessage(isUser: false, text: current.turns[index].reply),
       ],
@@ -590,7 +604,25 @@ class DiaryOrganizationController extends ChangeNotifier {
         final next = DiaryOrganization.fromJson(current.toJson());
         final body = response['body'] as String;
         if (body.trim().isEmpty) throw const FormatException('整理稿不可空白');
-        next.replaceBody(body);
+        final allowed = privacyTokenPattern
+            .allMatches(request.diaryContext.originalBody)
+            .map((m) => m[0]!)
+            .toSet();
+        for (final message in request.messages.where((m) => m.isUser)) {
+          allowed.addAll(
+            privacyTokenPattern.allMatches(message.text).map((m) => m[0]!),
+          );
+        }
+        next.replaceBody(body, allowedTokens: allowed);
+        final reply = (response['reply'] as String).trim();
+        final language = await ref.read(userPreferencesProvider).appLocale;
+        _ensure(version);
+        next.generationReply = privacyTokenPattern.hasMatch(reply)
+            ? lookupAppLocalizations(language.materialLocale)
+                  .organizationReplyUnavailable
+            : reply.isEmpty
+            ? null
+            : reply;
         next.generationInterrupted = false;
         next.stage = OrganizationStage.review;
         _setGenerationPhase(OrganizationGenerationPhase.saving);
@@ -608,7 +640,10 @@ class DiaryOrganizationController extends ChangeNotifier {
         savedResult = true;
         ref.invalidate(organizationDraftProvider(entryId));
       } else {
-        turn!.reply = text;
+        if (!current.replyIsInScope(current.turns.indexOf(turn!), text: text)) {
+          throw const AiFailure(AiErrorCode.response);
+        }
+        turn.reply = text;
         turn.interrupted = false;
       }
     } on Object catch (failure) {
@@ -636,9 +671,9 @@ class DiaryOrganizationController extends ChangeNotifier {
       ranges: List.of(current.composerRanges),
       imageIds: [],
     );
-    final visible = organizationVisibleText(
+    final visible = current.visibleText(
       current.turns[index].user,
-      current.originals,
+      turn: index,
       surfaces: current.turns[index].surfaces,
     );
     current.editingTurn = index;
@@ -696,6 +731,7 @@ class DiaryOrganizationController extends ChangeNotifier {
     try {
       final next = DiaryOrganization.fromJson(draft!.toJson());
       next.replaceBody(body);
+      next.generationReply = null;
       await _store.save(next, vault!, isCurrent: () => version == _version);
       _ensure(version);
       draft = next;
@@ -719,6 +755,7 @@ class DiaryOrganizationController extends ChangeNotifier {
     try {
       final next = DiaryOrganization.fromJson(draft!.toJson())
         ..organizedBody = null
+        ..generationReply = null
         ..generationInterrupted = false
         ..stage = OrganizationStage.chat;
       await _store.save(next, vault!, isCurrent: () => version == _version);
@@ -739,7 +776,8 @@ class DiaryOrganizationController extends ChangeNotifier {
     if (busy ||
         draft == null ||
         vault == null ||
-        draft!.organizedBody == null) {
+        draft!.organizedBody == null ||
+        draft!.hasUnsafeCandidate) {
       return null;
     }
     busy = true;
@@ -829,7 +867,10 @@ class DiaryOrganizationController extends ChangeNotifier {
     final current = draft;
     final session = vault;
     if (current != null && session != null && (current.persisted || _dirty)) {
-      unawaited(_store.save(current, session).catchError((Object _) {}));
+      unawaited(
+        Future<void>.sync(() => _store.save(current, session))
+            .catchError((Object _) {}),
+      );
     }
     draft = null;
     _personMatcher = null;

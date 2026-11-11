@@ -58,6 +58,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/appli
 4. 是否使用現有的 helper（`editorTestApp`、`appTestTheme`、`FakeEditorActions` 等），而不是再造一份新的 fake 或 `_wrap`。
 5. 是否真的需要新增測試；若只是重複驗證同一條規則，應刪除或合併（例如兩個 widget 測試都只驗證「backspace 刪除空任務項目」時，保留涵蓋範圍較完整的那一個）。
 6. 這個測試會在哪個行為被改壞？若答案只是某個預設值、文案、清單或常數的內容，就不要寫。
+7. 量測對話框或捲軸時，以使用者看得到的表面為準（例如外層 Dialog 或可見的 thumb），不要只量內層透明元件。
 
 ## 不寫的測試
 

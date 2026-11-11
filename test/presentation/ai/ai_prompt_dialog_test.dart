@@ -133,10 +133,7 @@ void main() {
     expect(find.byType(RawScrollbar), findsNothing);
     final field = tester.widget<TextField>(find.byKey(_field));
     expect(field.scrollController!.position.maxScrollExtent, greaterThan(0));
-    expect(
-      find.byKey(const ValueKey('app-scrollbar-thumb')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('app-scrollbar-thumb')), findsOneWidget);
     final before = field.scrollController!.offset;
     await tester.drag(find.byKey(_field), const Offset(0, -160));
     await tester.pumpAndSettle();

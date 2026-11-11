@@ -33,6 +33,7 @@ void main() {
     );
     draft.prepare();
     draft.replaceBody('整理後的內文');
+    draft.generationReply = '本次只修順語句。';
     draft.stage = OrganizationStage.review;
     await store.save(draft, setup.session);
     final directory = await harness.pathStrategy.organizationDraftDirectory(id);
@@ -43,6 +44,7 @@ void main() {
       (await store.load(id, setup.session))!.stage,
       OrganizationStage.review,
     );
+    expect((await store.load(id, setup.session))!.generationReply, '本次只修順語句。');
     final backup = await harness.createTransferIo().backup.writeBackupZip(
       File('${harness.tempDir.path}/backup.zip'),
     );
@@ -96,6 +98,39 @@ void main() {
     expect(
       (await harness.pathStrategy.organizationDraftDirectory(id)).existsSync(),
       isFalse,
+    );
+  });
+
+  test('越界候選不能保存或套用，磁碟仍保留最後有效草稿與正式日記', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final id = await harness.saveSimpleEntry(setup, markdownBody: '原始內文');
+    final source = (await harness.repository.loadEntry(setup.session, id))!;
+    final store = DiaryOrganizationStore(
+      paths: harness.pathStrategy,
+      crypto: LocalCryptoService(),
+      repository: harness.repository,
+    );
+    final draft = DiaryOrganization(
+      source: source,
+      connection: testChatDiarySession().connectionConfig,
+    )..prepare();
+    draft.originals['⟦S01⟧'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.appendTurn(OrganizationTurn(user: '目前需求'));
+    draft.replaceBody('有效整理稿');
+    draft.stage = OrganizationStage.review;
+    await store.save(draft, setup.session);
+
+    draft.organizedBody = '越界整理稿 ⟦S01⟧';
+    expect(() => store.save(draft, setup.session), throwsFormatException);
+    await expectLater(store.apply(draft, setup.session), throwsFormatException);
+    expect(draft.stage, OrganizationStage.review);
+    expect((await store.load(id, setup.session))!.organizedBody, '有效整理稿');
+    expect(
+      (await harness.repository.loadEntry(setup.session, id))!.markdownBody,
+      source.markdownBody,
     );
   });
 

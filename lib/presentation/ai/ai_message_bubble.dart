@@ -17,6 +17,7 @@ class AiMessageBubble extends StatelessWidget {
     this.failureText,
     this.canAct = true,
     this.leadingActions,
+    this.header,
     this.onEdit,
     this.onRetry,
     this.retryFailed = false,
@@ -30,6 +31,7 @@ class AiMessageBubble extends StatelessWidget {
   final String? failureText;
   final bool canAct;
   final Widget? leadingActions;
+  final Widget? header;
   final VoidCallback? onEdit;
   final VoidCallback? onRetry;
   final bool retryFailed;
@@ -57,6 +59,7 @@ class AiMessageBubble extends StatelessWidget {
         privateRanges: privateRanges,
         images: images,
         bodyKey: ValueKey('ai-message-body-$id'),
+        header: header,
         bubbleFooter: pending ? const _ReplyPendingIndicator() : null,
         footer: Column(
           crossAxisAlignment: isUser

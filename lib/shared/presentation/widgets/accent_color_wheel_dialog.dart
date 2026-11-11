@@ -1,11 +1,12 @@
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
-import 'package:quill_diary/shared/presentation/widgets/accent_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<Color?> showAccentColorWheelDialog(
   BuildContext context, {
@@ -17,21 +18,18 @@ Future<Color?> showAccentColorWheelDialog(
   required String cancelLabel,
   required String saveLabel,
 }) {
-  return showDialog<Color>(
+  return showAppDialog<Color>(
     context: context,
-    barrierDismissible: true,
     barrierColor: context.appColors.scrim,
-    builder: (BuildContext dialogContext) {
-      return AccentColorWheelDialog(
-        initialColor: initialColor,
-        title: title,
-        previewLabel: previewLabel,
-        previewText: previewText,
-        copiedMessage: copiedMessage,
-        cancelLabel: cancelLabel,
-        saveLabel: saveLabel,
-      );
-    },
+    builder: (BuildContext dialogContext) => AccentColorWheelDialog(
+      initialColor: initialColor,
+      title: title,
+      previewLabel: previewLabel,
+      previewText: previewText,
+      copiedMessage: copiedMessage,
+      cancelLabel: cancelLabel,
+      saveLabel: saveLabel,
+    ),
   );
 }
 
@@ -120,107 +118,94 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
       appColors.sectionInset,
     );
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
-      child: AccentDialogShell(
-        icon: Icons.palette_outlined,
-        title: widget.title,
-        onClose: () => Navigator.of(context).pop(),
-        footer: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            const SizedBox(height: 20),
-            Row(
-              children: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    widget.cancelLabel,
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                  icon: const Icon(Icons.check_rounded, size: 20),
-                  onPressed: () => Navigator.of(context).pop(_picked),
-                  label: Text(widget.saveLabel),
-                ),
-              ],
-            ),
-          ],
+    return AppDialogShell(
+      accent: true,
+      icon: const Icon(Icons.palette_outlined),
+      title: widget.title,
+      titleTrailing: IconButton(
+        tooltip: context.l10n.commonCloseTooltip,
+        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.close_rounded),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            widget.cancelLabel,
+            style: TextStyle(color: cs.onSurfaceVariant),
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            const SizedBox(height: 16),
-            Center(
-              child: SizedBox(
-                width: 180,
-                height: 180,
-                child: ColorWheelPicker(
-                  color: _picked,
-                  wheelWidth: 14,
-                  onChanged: (Color color) {
-                    setState(() => _picked = color.withValues(alpha: 1.0));
-                  },
-                  onWheel: (_) {},
-                ),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+          icon: const Icon(Icons.check_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(_picked),
+          label: Text(widget.saveLabel),
+        ),
+      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const SizedBox(height: 16),
+          Center(
+            child: SizedBox(
+              width: 180,
+              height: 180,
+              child: ColorWheelPicker(
+                color: _picked,
+                wheelWidth: 14,
+                onChanged: (Color color) {
+                  setState(() => _picked = color.withValues(alpha: 1.0));
+                },
+                onWheel: (_) {},
               ),
             ),
-            const SizedBox(height: 16),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.35),
-                ),
+          ),
+          const SizedBox(height: 16),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.35),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        '0x${_picked.hexAlpha}',
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontFeatures: const <FontFeature>[
-                            FontFeature.tabularFigures(),
-                          ],
-                          letterSpacing: 0.4,
-                        ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      '0x${_picked.hexAlpha}',
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontFeatures: const <FontFeature>[
+                          FontFeature.tabularFigures(),
+                        ],
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    IconButton(
-                      tooltip: MaterialLocalizations.of(context)
-                          .copyButtonLabel,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _copyColorCode,
-                      icon: Icon(
-                        Icons.copy_rounded,
-                        size: 20,
-                        color: cs.onSurfaceVariant,
-                      ),
+                  ),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context).copyButtonLabel,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _copyColorCode,
+                    icon: Icon(
+                      Icons.copy_rounded,
+                      size: 20,
+                      color: cs.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            _previewPanel(theme, cs, (previewBg, previewFg)),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          _previewPanel(theme, cs, (previewBg, previewFg)),
+        ],
       ),
     );
   }

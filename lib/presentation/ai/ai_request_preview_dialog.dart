@@ -5,6 +5,7 @@ import 'package:quill_diary/application/ai/ai_request_preview.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_message_view.dart';
 import 'package:quill_diary/presentation/ai/ai_preview_text_section.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -40,6 +41,8 @@ class AiRequestPreviewDialog extends StatelessWidget {
     final generation = generationPreview;
     final sections = <Widget>[
       Text(l10n.chatDiaryRequestPreviewHint, style: muted),
+      if ((generation ?? preview).hasLocalPrivateNotes)
+        Text(l10n.chatDiaryPrivateNotesHint, style: muted),
       if (generation == null)
         AiPreviewTextSection(
           key: const ValueKey('ai-request-instructions'),
@@ -93,23 +96,28 @@ class AiRequestPreviewDialog extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 height: maxHeight,
-                child: ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  itemCount:
-                      sections.length + (turns.isEmpty ? 1 : turns.length),
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, itemIndex) {
-                    if (itemIndex < sections.length) return sections[itemIndex];
-                    final index = itemIndex - sections.length;
-                    if (turns.isEmpty) {
-                      return Text(l10n.chatDiaryPreviewEmpty, style: muted);
-                    }
-                    return _PreviewTurnCard(
-                      turn: turns[index],
-                      galleryImageIds: galleryImageIds,
-                      imageBuilder: imageBuilder,
-                    );
-                  },
+                child: AppScrollableContent(
+                  builder: (_, controller) => ListView.separated(
+                    controller: controller,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    itemCount:
+                        sections.length + (turns.isEmpty ? 1 : turns.length),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, itemIndex) {
+                      if (itemIndex < sections.length) {
+                        return sections[itemIndex];
+                      }
+                      final index = itemIndex - sections.length;
+                      if (turns.isEmpty) {
+                        return Text(l10n.chatDiaryPreviewEmpty, style: muted);
+                      }
+                      return _PreviewTurnCard(
+                        turn: turns[index],
+                        galleryImageIds: galleryImageIds,
+                        imageBuilder: imageBuilder,
+                      );
+                    },
+                  ),
                 ),
               ),
             );

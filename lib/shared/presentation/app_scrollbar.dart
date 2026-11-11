@@ -2,9 +2,11 @@ import 'dart:async' show unawaited;
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 全站 scrollbar 尺寸常數。
 abstract final class AppScrollbarMetrics {
@@ -17,6 +19,9 @@ abstract final class AppScrollbarMetrics {
 
   /// 嵌套列表右側 gutter；thumb 畫在欄內，避免與內容重疊或被卡片裁切。
   static const double nestedScrollbarGutter = 10;
+
+  static const double reservedGutter =
+      minHitTargetWidth + homeCrossAxisEdgeInset;
   static const double nestedCrossAxisEdgeInset = 0;
 
   static const double minHitTargetWidth = 12;
@@ -74,6 +79,7 @@ class AppScrollbar extends StatefulWidget {
     this.track = AppScrollbarTrack.viewport,
     this.onThumbDragChanged,
     this.crossAxisEdgeInset = AppScrollbarMetrics.homeCrossAxisEdgeInset,
+    this.reserveGutter = false,
     super.key,
   });
 
@@ -84,6 +90,8 @@ class AppScrollbar extends StatefulWidget {
   final bool trailingGutter;
   final AppScrollbarTrack track;
   final double crossAxisEdgeInset;
+
+  final bool reserveGutter;
 
   @override
   State<AppScrollbar> createState() => _AppScrollbarState();
@@ -108,6 +116,8 @@ class _AppScrollbarState extends State<AppScrollbar>
   /// 外框模式下最近一次量到的外框高度；頁面模式不使用。
   double? _frameExtent;
 
+  bool _inDialog = false;
+
   double get _thickness => widget.nested
       ? AppScrollbarMetrics.nestedThickness
       : AppScrollbarMetrics.thickness;
@@ -129,8 +139,12 @@ class _AppScrollbarState extends State<AppScrollbar>
     if (widget.track == AppScrollbarTrack.frame) {
       return AppScrollbarMetrics.frameMainAxisInset;
     }
-    return widget.nested
-        ? AppScrollbarMetrics.nestedMainAxisMarginEnd
+    if (widget.nested) {
+      return AppScrollbarMetrics.nestedMainAxisMarginEnd;
+    }
+    // dialog 的底部內距在捲動區外側，thumb 需扣掉它才會與頁面底端對齊。
+    return _inDialog
+        ? AppScrollbarMetrics.mainAxisMarginEnd - AppDialogInsets.content.bottom
         : AppScrollbarMetrics.mainAxisMarginEnd;
   }
 
@@ -162,6 +176,13 @@ class _AppScrollbarState extends State<AppScrollbar>
         _scheduleMetricsSync(remainingFrames: remainingFrames - 1);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _inDialog =
+        context.dependOnInheritedWidgetOfExactType<AppDialogScope>() != null;
   }
 
   @override
@@ -447,7 +468,7 @@ class _AppScrollbarState extends State<AppScrollbar>
 
     return Positioned(
       top: geometry.thumbOffset,
-      right: widget.crossAxisEdgeInset,
+      right: _thumbRight,
       width: _hitTargetWidth,
       height: _displayedThumbExtent,
       child: hitTarget,
@@ -512,11 +533,32 @@ class _AppScrollbarState extends State<AppScrollbar>
     );
   }
 
+  bool get _overlaysDialogMargin => widget.reserveGutter && _inDialog;
+
+  double get _thumbRight => _overlaysDialogMargin
+      ? -(AppDialogInsets.horizontal + AppScrollbarMetrics.thickness) / 2
+      : widget.crossAxisEdgeInset;
+
+  Widget _buildDialogOverlayGutter(Widget body) => LayoutBuilder(
+    builder: (BuildContext context, BoxConstraints constraints) {
+      final double width = constraints.maxWidth + AppDialogInsets.horizontal;
+      return OverflowBox(
+        alignment: AlignmentDirectional.topStart,
+        fit: OverflowBoxFit.deferToChild,
+        minWidth: width,
+        maxWidth: width,
+        child: Padding(
+          padding: const EdgeInsets.only(right: AppDialogInsets.horizontal),
+          child: body,
+        ),
+      );
+    },
+  );
+
   /// 外框模式：量測外框高度供軌道計算，並關閉內容自帶的 Material scrollbar 避免重複。
   Widget _buildFrameScrollable(BuildContext context, Widget child) {
-    final ScrollBehavior behavior = ScrollConfiguration.of(
-      context,
-    ).copyWith(scrollbars: false);
+    final ScrollBehavior behavior = ScrollConfiguration.of(context)
+        .copyWith(scrollbars: false);
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double? extent = constraints.hasBoundedHeight
@@ -537,9 +579,19 @@ class _AppScrollbarState extends State<AppScrollbar>
       onNotification: _handleScrollNotification,
       child: widget.child,
     );
-    final Widget scrollable = widget.track == AppScrollbarTrack.frame
+    final Widget body = widget.track == AppScrollbarTrack.frame
         ? _buildFrameScrollable(context, notifier)
         : notifier;
+    final Widget scrollable = !widget.reserveGutter
+        ? body
+        : _overlaysDialogMargin
+        ? _buildDialogOverlayGutter(body)
+        : Padding(
+            padding: const EdgeInsets.only(
+              right: AppScrollbarMetrics.reservedGutter,
+            ),
+            child: body,
+          );
 
     if (widget.trailingGutter) {
       return Row(
@@ -624,6 +676,57 @@ class _AppScrollablePageBodyState extends State<AppScrollablePageBody> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 高度受限的對話框、sheet 內容的垂直捲動區：等同 [SingleChildScrollView] 並顯示 [AppScrollbar]。
+class AppScrollView extends StatelessWidget {
+  const AppScrollView({required this.child, this.padding, super.key});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScrollableContent(
+      builder: (context, controller) => SingleChildScrollView(
+        controller: controller,
+        padding: padding,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// 需要自帶捲動元件（如 [ListView]）時使用：自持 [ScrollController]，外層顯示 [AppScrollbar]。
+///
+/// [builder] 會收到同一個 controller，交給捲動元件綁定。
+class AppScrollableContent extends StatefulWidget {
+  const AppScrollableContent({required this.builder, super.key});
+
+  final Widget Function(BuildContext context, ScrollController controller)
+  builder;
+
+  @override
+  State<AppScrollableContent> createState() => _AppScrollableContentState();
+}
+
+class _AppScrollableContentState extends State<AppScrollableContent> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScrollbar(
+      controller: _controller,
+      reserveGutter: true,
+      child: widget.builder(context, _controller),
     );
   }
 }

@@ -26,6 +26,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/presentation/ai/ai_message_view.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
+import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_page.dart';
 import 'package:quill_diary/presentation/persona/persona_summary_section.dart';
 import 'package:quill_diary/presentation/persona/persona_trial_page.dart';
@@ -45,6 +46,21 @@ class _Preferences extends UserPreferences {
   @override
   Future<PersonalizationPreferences> loadPersonalizationPreferences() async =>
       PersonalizationPreferences.defaults;
+}
+
+/// 從列表左側內距拖曳，避開內嵌原文框攔截置中的拖曳手勢。
+Future<void> _dragListFromEdge(
+  WidgetTester tester,
+  Finder list,
+  double dy,
+) async {
+  final rect = tester.getRect(list);
+  final gesture = await tester.startGesture(
+    Offset(rect.left + 4, rect.center.dy),
+  );
+  await gesture.moveBy(Offset(0, dy));
+  await gesture.up();
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -171,6 +187,10 @@ void main() {
         150,
         scrollable: find.byType(Scrollable).first,
       );
+      expect(
+        tester.getTopLeft(find.text(testL10n.personaChooseFile)).dy,
+        lessThan(tester.getTopLeft(find.byType(TextField)).dy),
+      );
       await tester.tap(find.byType(FilterChip));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
@@ -182,7 +202,9 @@ void main() {
       controller.draft!.step = PersonaStep.confirmation;
       controller.preview = PersonaGenerationContext(
         personaId: record.personaId,
-        target: PersonaUpdateTarget.both,
+        updateTarget: PersonaUpdateTarget.both,
+        modelTarget: PersonaUpdateTarget.memory,
+        fallbackCards: personaCandidates(),
         baseUpdatedAt: controller.draft!.baseUpdatedAt,
         session: session,
         connection: config,
@@ -207,9 +229,27 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('"source"'), findsNothing);
       expect(find.text(config.effectiveBaseUrl), findsNothing);
+      // 內嵌原文框會攔截置中拖曳，直接捲到底部讓日記段落建立。
+      final confirmationScroll = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('persona-confirmation')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      confirmationScroll.position.jumpTo(
+        confirmationScroll.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('日記 1'), findsOneWidget);
       final maskedMaterial = tester
           .widgetList<PrivateText>(find.byType(PrivateText))
-          .firstWhere((text) => text.text.contains('⟦P01⟧'));
+          .firstWhere(
+            (text) =>
+                text.text.contains('⟦P01⟧') &&
+                text.text.contains(personaHiddenText),
+          );
       expect(
         maskedMaterial.ranges.map((range) => (range.start, range.end)).toList(),
         [
@@ -221,6 +261,8 @@ void main() {
           ),
         ],
       );
+      confirmationScroll.position.jumpTo(0);
+      await tester.pumpAndSettle();
       final modelTag = find.byKey(const ValueKey('ai-model-field'));
       await tester.tap(modelTag);
       await tester.pumpAndSettle();
@@ -243,11 +285,15 @@ void main() {
       );
       controller.notifyListeners();
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text(testL10n.personaMemory),
-        150,
-        scrollable: find.byType(Scrollable).first,
-      );
+      final reviewList = find.byKey(const ValueKey('persona-review'));
+      for (
+        var i = 0;
+        i < 40 && find.text(testL10n.personaMemory).evaluate().isEmpty;
+        i++
+      ) {
+        await _dragListFromEdge(tester, reviewList, -150);
+      }
+      expect(find.text(testL10n.personaMemory), findsOneWidget);
       final memoryEditor = tester.widget<TextFormField>(
         find.byType(TextFormField).last,
       );
@@ -295,15 +341,27 @@ void main() {
       );
       controller.notifyListeners();
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text(testL10n.personaMemory),
-        120,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.text(testL10n.personaMemory));
+      final materialsList = find.byType(CustomScrollView);
+      for (
+        var i = 0;
+        i < 40 &&
+            tester
+                    .getRect(find.text(testL10n.personaIncludeCurrentMemory))
+                    .bottom >
+                tester.getRect(materialsList).bottom;
+        i++
+      ) {
+        await _dragListFromEdge(tester, materialsList, -200);
+      }
+      await tester.tap(find.text(testL10n.personaIncludeCurrentMemory));
       await tester.pumpAndSettle();
       final mask = tester
-          .widget<TextField>(find.byType(TextField).last)
+          .widget<TextField>(
+            find.descendant(
+              of: find.byType(PersonaMaskDialog),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!;
       final visibleName = mask.text.indexOf('阿華');
       expect(visibleName, isNonNegative);

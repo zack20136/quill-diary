@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 
@@ -70,7 +71,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
 
     return AppDialogShell(
       title: l10n.settingsRestoreDialogRecoveryKeyTitle,
-      content: SingleChildScrollView(
+      content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
