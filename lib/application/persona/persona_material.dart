@@ -1,5 +1,6 @@
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/persona/persona_privacy.dart';
+
 /// 閱讀預覽與請求序列化共用已遮罩文字，不保存另一份原文。
 class PersonaMaterial {
   const PersonaMaterial.diary({
@@ -28,9 +29,10 @@ class PersonaMaterial {
   final String? speaker;
   final String? styleText;
 
-  bool get hasToneEvidence =>
-      speakerRole == PersonaSpeakerRole.personaSubject &&
-      personaHasVisibleText(styleText ?? '');
+  bool get hasToneEvidence => isDiary
+      ? personaHasVisibleText(text)
+      : speakerRole == PersonaSpeakerRole.personaSubject &&
+            personaHasVisibleText(styleText ?? '');
 
   Map<String, Object?> toRequestJson() => isDiary
       ? {'source': 'diary', 'author_role': 'user', 'date': date, 'text': text}

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/application/restore/vault_restore_service.dart';
 import 'package:quill_diary/application/session/app_session_controller.dart';
@@ -41,6 +40,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/session/fake_app_lock_service.dart';
 import '../../helpers/session/fake_session_vault_repository.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/vault/test_vault_path_strategy.dart';
 
 class _FlowBackupService extends VaultBackupService {
@@ -326,9 +326,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('SettingsFlowController', () {
-    final AppLocalizations l10n = lookupAppLocalizations(
-      const Locale('zh', 'TW'),
-    );
+    final AppLocalizations l10n = testZhL10n;
 
     group('prepareDriveRestore', () {
       test('precheck 失敗時會清理暫存檔', () async {
@@ -437,7 +435,7 @@ void main() {
 
         final SettingsFlowFeedback? feedback = await controller
             .recordBackupPersistResult(
-              l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
+              l10n: testZhL10n,
               result: const BackupPersistResult(
                 status: BackupPersistStatus.success,
                 savedPath: 'C:/backup/local.zip',
@@ -476,9 +474,10 @@ void main() {
           settingsFlowControllerProvider,
         );
 
+        final AppLocalizations zh = testZhL10n;
         final SettingsFlowFeedback? feedback = await controller
             .recordBackupPersistResult(
-              l10n: lookupAppLocalizations(const Locale('zh', 'TW')),
+              l10n: zh,
               result: const BackupPersistResult(
                 status: BackupPersistStatus.inspectFailed,
                 message: 'zip corrupt',
@@ -493,7 +492,10 @@ void main() {
         );
         expect(feedback?.tone, SettingsFlowFeedbackTone.error);
         expect(snapshot.lastFailure?.action, BackupStatusAction.driveUpload);
-        expect(snapshot.lastFailure?.message, 'zip corrupt');
+        expect(
+          snapshot.lastFailure?.message,
+          zh.settingsBackupInspectUnrecognizedDetail,
+        );
       });
     });
 

@@ -16,6 +16,44 @@ void main() {
         child: child,
       );
 
+  for (final fail in [false, true]) {
+    testWidgets('刪除${fail ? '拋出錯誤' : '回傳 false'}時保留編輯內容，成功才關閉視窗', (tester) async {
+      var deleted = false;
+      await tester.pumpWidget(
+        host(
+          brightness: Brightness.light,
+          child: Builder(
+            builder: (context) => FilledButton(
+              onPressed: () => showTagAccentComposerDialog(
+                context: context,
+                initialDisplayLabel: '原標籤',
+                onDelete: () async {
+                  if (fail && !deleted) throw StateError('寫入失敗');
+                  return deleted;
+                },
+              ),
+              child: const Text('開啟測試編輯'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('開啟測試編輯'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '未存修改');
+      await tester.tap(find.byTooltip(testL10n.commonActionDelete));
+      await tester.pumpAndSettle();
+      expect(find.byType(TagAccentComposerDialog), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '未存修改',
+      );
+      deleted = true;
+      await tester.tap(find.byTooltip(testL10n.commonActionDelete));
+      await tester.pumpAndSettle();
+      expect(find.byType(TagAccentComposerDialog), findsNothing);
+    });
+  }
+
   testWidgets('暗色模式下色盤與預覽使用相同 Accent，而非混色背景', (WidgetTester tester) async {
     const Color accent = Color(0xFF62A87C);
     await tester.pumpWidget(

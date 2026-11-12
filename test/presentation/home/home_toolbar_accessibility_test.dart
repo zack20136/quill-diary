@@ -15,6 +15,35 @@ import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
+  testWidgets('選取工具列停用時一併停用退出、全選、釘選及其他操作', (tester) async {
+    await tester.pumpWidget(
+      widgetTestApp(
+        child: HomeSelectionToolbar(
+          selectedCount: 1,
+          allSelected: false,
+          enabled: false,
+          onCancel: () => fail('停用時不可退出'),
+          onSelectAll: () => fail('停用時不可全選'),
+          onTogglePin: () => fail('停用時不可釘選'),
+          pinToggleEnabled: true,
+          actions: [
+            HomeSelectionAction(
+              tooltip: testL10n.commonActionDelete,
+              icon: Icons.delete_outline_rounded,
+              onPressed: () => fail('停用時不可刪除'),
+            ),
+          ],
+        ),
+      ),
+    );
+    expect(
+      tester
+          .widgetList<IconButton>(find.byType(IconButton))
+          .every((button) => button.onPressed == null),
+      isTrue,
+    );
+  });
+
   Widget host(Widget child, {Size size = const Size(390, 800)}) {
     return widgetTestApp(
       center: false,

@@ -12,6 +12,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_generation_label.dart';
 import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
@@ -106,15 +107,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
                   if (selection.isActive) ...[
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Icon(
-                        selected
-                            ? Icons.check_circle_rounded
-                            : Icons.radio_button_unchecked_rounded,
-                        color: selected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                        size: 22,
-                      ),
+                      child: HomeSelectionIndicator(selected: selected),
                     ),
                     const SizedBox(width: 12),
                   ],

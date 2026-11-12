@@ -383,29 +383,13 @@ Future<void> confirmAndResetTypography({
   required BuildContext context,
   required PersonalizationPreferencesController controller,
 }) async {
-  final bool confirmed =
-      await showAppDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => AppDialogShell(
-          title: dialogContext.l10n.personalizationTypographyResetConfirmTitle,
-          content: Text(
-            dialogContext.l10n.personalizationTypographyResetConfirmBody,
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(dialogContext.l10n.commonActionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(
-                dialogContext.l10n.personalizationTypographyResetConfirmAction,
-              ),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  final bool confirmed = await showAppConfirmDialog(
+    context: context,
+    title: context.l10n.personalizationTypographyResetConfirmTitle,
+    content: Text(context.l10n.personalizationTypographyResetConfirmBody),
+    cancelLabel: context.l10n.commonActionCancel,
+    confirmLabel: context.l10n.personalizationTypographyResetConfirmAction,
+  );
   if (!confirmed || !context.mounted) {
     return;
   }

@@ -24,6 +24,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_page.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -35,13 +36,15 @@ import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
-  for (final (hasRequest, includeTone) in [
-    (false, true),
-    (true, true),
-    (true, false),
+  for (final (hasRequest, includeTone, target) in [
+    (false, true, PersonaUpdateTarget.both),
+    (true, true, PersonaUpdateTarget.both),
+    (true, false, PersonaUpdateTarget.both),
+    (false, true, PersonaUpdateTarget.tone),
+    (false, false, PersonaUpdateTarget.tone),
   ]) {
     testWidgets(
-      '${hasRequest ? '記憶外送' : '全本機保留'}時確認頁顯示勾選舊卡，風格${includeTone ? '納入' : '排除'}',
+      '${target == PersonaUpdateTarget.tone ? '只更新風格' : '更新兩張卡'}${hasRequest ? '外送' : '本機處理'}，${includeTone ? '風格納入' : '風格排除'}時確認頁對應勾選舊卡與實際外送內容',
       (tester) async {
         tester.view.physicalSize = const Size(520, 1000);
         tester.view.devicePixelRatio = 1;
@@ -69,13 +72,14 @@ void main() {
           personaId: generatePersonaId(),
           cards: cards,
           draft: PersonaDraft(
-            target: PersonaUpdateTarget.both,
+            target: target,
             step: PersonaStep.confirmation,
             baseUpdatedAt: {
               for (final card in cards.entries) card.key: card.value.updatedAt,
             },
             includeCurrent: {
-              PersonaCardKind.memory: true,
+              if (target != PersonaUpdateTarget.tone)
+                PersonaCardKind.memory: true,
               PersonaCardKind.tone: includeTone,
             },
             cardHiddenRanges: {
@@ -89,7 +93,7 @@ void main() {
         );
         final preview = PersonaGenerationContext(
           personaId: record.personaId,
-          updateTarget: PersonaUpdateTarget.both,
+          updateTarget: target,
           modelTarget: hasRequest ? PersonaUpdateTarget.memory : null,
           fallbackCards: {
             for (final card in cards.entries)
@@ -108,7 +112,15 @@ void main() {
           instructions: hasRequest ? '本次只整理記憶' : '',
           extractionInstructions: '',
           registry: PersonaTokenRegistry([person, peer], hideNames: true),
-          blocks: const [],
+          blocks: target == PersonaUpdateTarget.tone
+              ? const [
+                  PersonaMaterial.diary(
+                    label: '本機來源',
+                    date: '2026-11-07',
+                    text: '沒有本人原話的日記內容',
+                  ),
+                ]
+              : const [],
           baseline: hasRequest ? {'memory': '既有記憶與$personaHiddenText'} : {},
           subject: '⟦P02⟧',
           selectionSignature: 'fixture',
@@ -144,8 +156,23 @@ void main() {
                 ? testL10n.personaIncludedContentTitle(testL10n.personaMemory)
                 : testL10n.personaRetainedContentTitle(testL10n.personaMemory),
           ),
-          findsOneWidget,
+          target == PersonaUpdateTarget.tone ? findsNothing : findsOneWidget,
         );
+        if (target == PersonaUpdateTarget.tone) {
+          expect(
+            find.text(
+              includeTone
+                  ? testL10n.personaToneLocalRetainedHint
+                  : testL10n.personaToneLocalNeutralHint,
+            ),
+            findsOneWidget,
+          );
+          expect(find.text('沒有本人原話的日記內容'), findsNothing);
+          expect(
+            find.byKey(const ValueKey('persona-system-prompt')),
+            findsNothing,
+          );
+        }
         expect(
           find.text(testL10n.personaRetainedContentTitle(testL10n.personaTone)),
           includeTone ? findsOneWidget : findsNothing,
@@ -154,10 +181,12 @@ void main() {
             .widgetList<PrivateText>(find.byType(PrivateText))
             .map((widget) => widget.text)
             .toList();
-        expect(
-          visible,
-          contains(hasRequest ? '既有記憶與$personaHiddenText' : memory),
-        );
+        if (target != PersonaUpdateTarget.tone) {
+          expect(
+            visible,
+            contains(hasRequest ? '既有記憶與$personaHiddenText' : memory),
+          );
+        }
         expect(visible.contains('會用小華的稱呼'), includeTone);
         if (hasRequest) {
           expect(visible.any((text) => text.contains('秘密資料')), isFalse);
@@ -171,7 +200,10 @@ void main() {
             AppLifecycleState.resumed,
           );
           await tester.pumpAndSettle();
-          expect(find.text(memory), findsOneWidget);
+          expect(
+            find.text(memory),
+            target == PersonaUpdateTarget.tone ? findsNothing : findsOneWidget,
+          );
         }
         expect(jsonEncode(preview.baseline), baseline);
         expect(tester.takeException(), isNull);
@@ -761,7 +793,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pumpAndSettle();
     expect(find.text('目前記憶'), findsNothing);
-    expect(find.text(testL10n.personaRetainCurrent), findsNothing);
+    expect(find.text(testL10n.personaRestore), findsNothing);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     await tester.ensureVisible(compare);
@@ -772,8 +804,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(compare);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text(testL10n.personaRetainCurrent));
-    await tester.tap(find.text(testL10n.personaRetainCurrent));
+    await tester.ensureVisible(find.text(testL10n.personaRestore));
+    await tester.tap(
+      find.widgetWithText(FilledButton, testL10n.personaRestore),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppConfirmDialog),
+        matching: find.widgetWithText(FilledButton, testL10n.personaRestore),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(controller.draft!.candidate![PersonaCardKind.memory]!.text, '目前記憶');
     expect(

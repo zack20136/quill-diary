@@ -8,11 +8,13 @@ import 'package:quill_diary/domain/persona/persona_privacy.dart';
 
 void main() {
   test('長材料的正文與風格各自成段，不會按編號配在一起', () {
-    final pieces = personaBatchPieces(
-      {'source': 'line', 'text': '正' * 8000, 'style_text': '風' * 3000},
+    final pieces = personaExtractionBatches(
+      [
+        {'source': 'line', 'text': '正' * 8000, 'style_text': '風' * 3000},
+      ],
       subject: '主題',
       instructions: '提取證據',
-    ).cast<Map>();
+    ).expand((batch) => batch).cast<Map>();
     expect(pieces.length, greaterThan(1));
     expect(
       pieces.every((piece) => piece['text'] == '' || piece['style_text'] == ''),
@@ -27,12 +29,15 @@ void main() {
       const unit = '"\\\n\t👩🏽‍💻é⟦P01⟧́$personaHiddenText';
       final text = unit * 1000;
       final instructions = '提取' * 5000;
-      final pieces = personaBatchPieces(
-        map ? {'source': 'diary', 'text': text} : text,
+      final batches = personaExtractionBatches(
+        [
+          map ? {'source': 'diary', 'text': text} : text,
+        ],
         subject: '測試"主題',
         instructions: instructions,
       );
-      expect(pieces.length, greaterThan(1));
+      expect(batches.length, greaterThan(1));
+      final pieces = batches.expand((batch) => batch).toList();
       final boundaries = <int>{0};
       var offset = 0;
       for (final character in text.characters) {
@@ -51,14 +56,16 @@ void main() {
             isTrue,
           );
         }
+      }
+      for (final batch in batches) {
         expect(
-          jsonEncode(piece).length,
+          jsonEncode(batch).length,
           lessThanOrEqualTo(PersonaLimits.pieceCodeUnits),
         );
         expect(
           personaRequestLength(
             instructions,
-            personaExtractionData(subject: '測試"主題', fragment: piece),
+            personaExtractionData(subject: '測試"主題', fragment: batch),
           ),
           lessThanOrEqualTo(PersonaLimits.requestCodeUnits),
         );
@@ -74,25 +81,64 @@ void main() {
         PersonaLimits.requestCodeUnits -
         personaRequestLength(
           instructions,
-          personaExtractionData(subject: subject, fragment: ''),
-        );
+          personaExtractionData(subject: subject, fragment: const []),
+        ) -
+        2;
     final exact = '文' * budget;
     expect(
-      personaBatchPieces(exact, subject: subject, instructions: instructions),
-      [exact],
+      personaExtractionBatches(
+        [exact],
+        subject: subject,
+        instructions: instructions,
+      ),
+      [
+        [exact],
+      ],
     );
-    final pieces = personaBatchPieces(
-      '$exact文',
+    final batches = personaExtractionBatches(
+      ['$exact文'],
       subject: subject,
       instructions: instructions,
     );
-    expect(pieces, [exact, '文']);
+    expect(batches, [
+      [exact],
+      ['文'],
+    ]);
+  });
+
+  test('相鄰片段依序合批，陣列括號與逗號剛好達上限時仍可送出', () {
+    const subject = '測試主題';
+    final instructions =
+        '指' *
+        (PersonaLimits.requestCodeUnits -
+            personaExtractionData(
+              subject: subject,
+              fragment: ['甲', '乙'],
+            ).length);
+    final batches = personaExtractionBatches(
+      ['甲', '乙', '丙'],
+      subject: subject,
+      instructions: instructions,
+    );
+    expect(batches, [
+      ['甲', '乙'],
+      ['丙'],
+    ]);
+    expect(
+      personaRequestLength(
+        instructions,
+        personaExtractionData(subject: subject, fragment: batches.first),
+      ),
+      PersonaLimits.requestCodeUnits,
+    );
   });
 
   test('固定欄位或單一完整標記無法容納時拒絕拆段，不截斷內容', () {
     expect(
-      () => personaBatchPieces(
-        {'text': '正文', 'source': '欄位' * PersonaLimits.requestCodeUnits},
+      () => personaExtractionBatches(
+        [
+          {'text': '正文', 'source': '欄位' * PersonaLimits.requestCodeUnits},
+        ],
         subject: '主題',
         instructions: '指令',
       ),
@@ -101,11 +147,11 @@ void main() {
     final instructions =
         '指' *
         (PersonaLimits.requestCodeUnits -
-            personaExtractionData(subject: '主題', fragment: '').length -
-            1);
+            personaExtractionData(subject: '主題', fragment: const []).length -
+            3);
     expect(
-      () => personaBatchPieces(
-        '⟦P01⟧',
+      () => personaExtractionBatches(
+        ['⟦P01⟧'],
         subject: '主題',
         instructions: instructions,
       ),

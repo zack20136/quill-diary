@@ -12,6 +12,7 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
@@ -531,7 +532,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('套用'), findsNothing);
       expect(find.text('還原預設'), findsNothing);
-      final rules = find.byKey(const ValueKey(ChatDiaryPromptPurpose.rules));
+      final rules = find.byKey(
+        const ValueKey(ChatDiaryPromptPurpose.conversationRules),
+      );
       expect(
         tester.widget<TextField>(rules).controller!.text,
         contains(testL10n.chatDiaryConversationRulesPrompt),
@@ -558,34 +561,51 @@ void main() {
         tester.widget<TextField>(conversation).controller!.text,
         '我的自訂聊天指示',
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.tap(
+        find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
+      );
       await tester.pumpAndSettle();
       expect(find.text(testEnL10n.aiPromptCustom), findsOneWidget);
       expect(find.text(testEnL10n.aiPromptBuiltIn), findsNWidgets(4));
       await prompt(tester, 'Conversation guidance');
       final guidance = find.byKey(
-        const ValueKey(ChatDiaryPromptPurpose.guidance),
+        const ValueKey(ChatDiaryPromptPurpose.conversationGuidance),
       );
       await tester.enterText(guidance, 'Shared guidance');
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.tap(
+        find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
+      );
       await tester.pumpAndSettle();
-      await prompt(tester, 'Diary generation');
+      await prompt(tester, testEnL10n.chatDiaryGenerationRulesLabel);
+      final generationRules = find.byKey(
+        const ValueKey(ChatDiaryPromptPurpose.generationRules),
+      );
+      expect(tester.widget<TextField>(generationRules).readOnly, isTrue);
+      expect(
+        tester.widget<TextField>(generationRules).controller!.text,
+        testEnL10n.chatDiaryGenerationRulesPrompt,
+      );
+      await tester.tap(find.text(testEnL10n.commonActionClose).last);
+      await tester.pumpAndSettle();
+      await prompt(tester, testEnL10n.chatDiaryGenerationGuidanceLabel);
       final generation = find.byKey(
-        const ValueKey(ChatDiaryPromptPurpose.generation),
+        const ValueKey(ChatDiaryPromptPurpose.generationGuidance),
       );
       expect(
         tester.widget<TextField>(generation).controller!.text,
-        contains(testEnL10n.chatDiaryGenerationDefaultSystemPrompt),
+        testEnL10n.chatDiaryGenerationGuidancePrompt,
       );
       await tester.enterText(generation, 'My diary override');
       await tester.pump();
-      await tester.tap(find.text('Restore default'));
+      await tester.tap(find.text(testEnL10n.aiPromptRestoreDefault));
       await tester.pumpAndSettle();
       expect(
         tester.widget<TextField>(generation).controller!.text,
-        contains(testEnL10n.chatDiaryGenerationDefaultSystemPrompt),
+        testEnL10n.chatDiaryGenerationGuidancePrompt,
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
+      await tester.tap(
+        find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
+      );
       await tester.pumpAndSettle();
       final Finder englishKey = find.byKey(const ValueKey('ai-api-key-openai'));
       await tester.ensureVisible(englishKey);
@@ -596,6 +616,32 @@ void main() {
       expect(store.chatDiaryPrompts.guidanceOverride, 'Shared guidance');
       expect(store.chatDiaryPrompts.generationOverride, isNull);
       expect(store.organizationPrompts.conversationOverride, isNull);
+      expect(networkCalls, 0);
+    });
+    testWidgets('既有完整生成提示詞作為引導，切換語言及儲存仍保留原文', (tester) async {
+      const legacy = '  既有自訂提示詞，請用 JSON 輸出。\n保留這些換行與空白。  ';
+      store.chatDiaryPrompts = const ChatDiaryPromptSettings(
+        generationOverride: legacy,
+      );
+      await open(tester);
+      await prompt(tester, testL10n.chatDiaryGenerationGuidanceLabel);
+      final generation = find.byKey(
+        const ValueKey(ChatDiaryPromptPurpose.generationGuidance),
+      );
+      expect(tester.widget<TextField>(generation).controller!.text, legacy);
+      locale.value = appEnLocale;
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(generation).controller!.text, legacy);
+      await tester.tap(
+        find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
+      );
+      await tester.pumpAndSettle();
+      final key = find.byKey(const ValueKey('ai-api-key-openai'));
+      await tester.ensureVisible(key);
+      await tester.enterText(key, 'synthetic-key');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(store.chatDiaryPrompts.generationOverride, legacy);
       expect(networkCalls, 0);
     });
     testWidgets('日記整理提示詞可自訂，還原後恢復內建', (tester) async {

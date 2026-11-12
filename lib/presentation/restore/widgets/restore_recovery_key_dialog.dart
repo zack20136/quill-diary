@@ -71,6 +71,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
 
     return AppDialogShell(
       title: l10n.settingsRestoreDialogRecoveryKeyTitle,
+      showClose: false,
       content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

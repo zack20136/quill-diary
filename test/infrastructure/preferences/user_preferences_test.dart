@@ -12,7 +12,7 @@ void main() {
     addTearDown(() => directory.delete(recursive: true));
     final file = File('${directory.path}/preferences.json');
     final preferences = UserPreferences(storageFile: file);
-    await preferences.setOnboardingIntroVersion(7);
+    await preferences.markOnboardingIntroSeen();
     await Future.wait([
       preferences.setAppLocale(AppLanguage.en),
       preferences.setThemeMode(AppThemeModePreference.dark),
@@ -21,6 +21,6 @@ void main() {
     final restored = UserPreferences(storageFile: file);
     expect(await restored.appLocale, AppLanguage.zh);
     expect(await restored.themeMode, AppThemeModePreference.dark);
-    expect(await restored.onboardingIntroVersion, 7);
+    expect(await restored.hasSeenOnboardingIntro, isTrue);
   });
 }

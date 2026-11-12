@@ -4,9 +4,11 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 enum ChatDiaryPromptPurpose {
   conversation,
-  rules,
+  conversationRules,
   personality,
-  guidance,
+  conversationGuidance,
+  generationRules,
+  generationGuidance,
   generation,
 }
 
@@ -16,22 +18,26 @@ String resolveChatDiaryPrompt(
   ChatDiaryPromptSettings settings,
 ) {
   final l10n = lookupAppLocalizations(language.materialLocale);
-  final rules =
+  final conversationRules =
       '${l10n.chatDiaryConversationRoleLine}\n\n'
       '${l10n.chatDiaryConversationRulesPrompt}';
+  final generationGuidance =
+      settings.generationOverride ?? l10n.chatDiaryGenerationGuidancePrompt;
   return switch (purpose) {
     ChatDiaryPromptPurpose.conversation =>
-      '$rules\n\n'
+      '$conversationRules\n\n'
           '${settings.guidanceOverride ?? l10n.chatDiaryConversationGuidancePrompt}\n\n'
           '${settings.personalityOverride ?? l10n.chatDiaryDefaultPersonalityPrompt}',
-    ChatDiaryPromptPurpose.rules => rules,
+    ChatDiaryPromptPurpose.conversationRules => conversationRules,
     ChatDiaryPromptPurpose.personality =>
       settings.personalityOverride ?? l10n.chatDiaryDefaultPersonalityPrompt,
-    ChatDiaryPromptPurpose.guidance =>
+    ChatDiaryPromptPurpose.conversationGuidance =>
       settings.guidanceOverride ?? l10n.chatDiaryConversationGuidancePrompt,
+    ChatDiaryPromptPurpose.generationRules =>
+      l10n.chatDiaryGenerationRulesPrompt,
+    ChatDiaryPromptPurpose.generationGuidance => generationGuidance,
     ChatDiaryPromptPurpose.generation =>
-      settings.generationOverride ??
-          l10n.chatDiaryGenerationDefaultSystemPrompt,
+      '${l10n.chatDiaryGenerationRulesPrompt}\n\n$generationGuidance',
   };
 }
 

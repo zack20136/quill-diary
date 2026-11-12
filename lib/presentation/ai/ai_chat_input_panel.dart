@@ -287,7 +287,7 @@ class _AiChatInputPanelState extends ConsumerState<AiChatInputPanel>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 6, 6),
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
                   child: Row(
                     children: [
                       IconButton(

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
@@ -79,8 +80,10 @@ class EasyDiaryBackupImporter {
         realmEntry: realmEntry,
         importedPhotoKeys: resolved.importedPhotoKeys,
       );
-      if ((entry.title?.trim().isEmpty ?? true) &&
-          entry.markdownBody.trim().isEmpty) {
+      final bool noText =
+          (entry.title?.trim().isEmpty ?? true) &&
+          entry.markdownBody.trim().isEmpty;
+      if (noText && realmEntry.photos.isEmpty) {
         skippedFiles++;
         continue;
       }
@@ -94,27 +97,20 @@ class EasyDiaryBackupImporter {
       );
     }
 
-    if (parsedEntries.isEmpty && realmEntries.isEmpty) {
+    if (parsedEntries.isEmpty) {
+      final bool allEncrypted =
+          realmEntries.isNotEmpty &&
+          realmEntries.every((EasyDiaryRealmEntry entry) => entry.isEncrypt);
       return AnalyzedPortableImport(
         parsedEntries: const <ParsedImportEntry>[],
         preview: PortableImportPreview(
           entries: const <PortableImportPreviewEntry>[],
-          skippedFiles: skippedFiles == 0 ? 1 : skippedFiles,
+          skippedFiles: math.max(skippedFiles, 1),
           skippedAttachments: skippedAttachments,
         ),
-        failureCode: PortableImportFailureCode.easyDiaryEmptyBackup,
-      );
-    }
-
-    if (parsedEntries.isEmpty && skippedFiles > 0) {
-      return AnalyzedPortableImport(
-        parsedEntries: const <ParsedImportEntry>[],
-        preview: PortableImportPreview(
-          entries: const <PortableImportPreviewEntry>[],
-          skippedFiles: skippedFiles,
-          skippedAttachments: skippedAttachments,
-        ),
-        failureCode: PortableImportFailureCode.easyDiaryAllEncrypted,
+        failureCode: allEncrypted
+            ? PortableImportFailureCode.easyDiaryAllEncrypted
+            : PortableImportFailureCode.easyDiaryEmptyBackup,
       );
     }
 
@@ -245,7 +241,7 @@ class EasyDiaryBackupImporter {
     return DiaryEntry(
       id: generateEntryId(),
       vaultId: session.vaultId,
-      title: title.isEmpty ? '匯入的日記' : title,
+      title: title.isEmpty ? null : title,
       date: entryDate,
       createdAt: timestamp,
       updatedAt: timestamp,

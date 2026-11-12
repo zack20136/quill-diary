@@ -29,23 +29,7 @@ void main() {
     expect(enChat, isNot(contains('【')));
     expect(
       resolveChatDiaryPrompt(
-        ChatDiaryPromptPurpose.generation,
-        AppLanguage.zh,
-        defaults,
-      ),
-      zh.chatDiaryGenerationDefaultSystemPrompt,
-    );
-    expect(
-      resolveChatDiaryPrompt(
-        ChatDiaryPromptPurpose.generation,
-        AppLanguage.en,
-        defaults,
-      ),
-      en.chatDiaryGenerationDefaultSystemPrompt,
-    );
-    expect(
-      resolveChatDiaryPrompt(
-        ChatDiaryPromptPurpose.rules,
+        ChatDiaryPromptPurpose.conversationRules,
         AppLanguage.zh,
         defaults,
       ),
@@ -54,24 +38,22 @@ void main() {
 
     const custom = ChatDiaryPromptSettings(
       personalityOverride: '自訂聊天',
-      generationOverride: 'Custom diary',
+      guidanceOverride: '自訂接話方式',
     );
     for (final language in AppLanguage.values) {
-      expect(
-        resolveChatDiaryPrompt(
-          ChatDiaryPromptPurpose.conversation,
-          language,
-          custom,
-        ),
-        contains('自訂聊天'),
+      final l10n = lookupAppLocalizations(language.materialLocale);
+      final conversation = resolveChatDiaryPrompt(
+        ChatDiaryPromptPurpose.conversation,
+        language,
+        custom,
       );
+      expect(conversation, startsWith(l10n.chatDiaryConversationRoleLine));
+      expect(conversation, contains(l10n.chatDiaryConversationRulesPrompt));
+      expect(conversation, contains('自訂接話方式'));
+      expect(conversation, contains('自訂聊天'));
       expect(
-        resolveChatDiaryPrompt(
-          ChatDiaryPromptPurpose.generation,
-          language,
-          custom,
-        ),
-        'Custom diary',
+        conversation,
+        isNot(contains(l10n.chatDiaryConversationGuidancePrompt)),
       );
     }
     const generationOnly = ChatDiaryPromptSettings(generationOverride: '自訂日記');
@@ -83,14 +65,47 @@ void main() {
       ),
       contains(en.chatDiaryConversationGuidancePrompt),
     );
-    expect(
-      resolveChatDiaryPrompt(
+  });
+
+  test('生成規則保留於內建與自訂引導之前，既有自訂文字不改寫', () {
+    const legacy = '  請用 JSON 輸出，並保留我的原始寫法。\n自訂內容不自動刪改。  ';
+    const custom = ChatDiaryPromptSettings(generationOverride: legacy);
+    for (final language in AppLanguage.values) {
+      final l10n = lookupAppLocalizations(language.materialLocale);
+      final defaults = resolveChatDiaryPrompt(
         ChatDiaryPromptPurpose.generation,
-        AppLanguage.en,
-        generationOnly,
-      ),
-      '自訂日記',
-    );
+        language,
+        const ChatDiaryPromptSettings(),
+      );
+      expect(defaults, startsWith(l10n.chatDiaryGenerationRulesPrompt));
+      expect(defaults, endsWith(l10n.chatDiaryGenerationGuidancePrompt));
+      final generated = resolveChatDiaryPrompt(
+        ChatDiaryPromptPurpose.generation,
+        language,
+        custom,
+      );
+      expect(generated, '${l10n.chatDiaryGenerationRulesPrompt}\n\n$legacy');
+      expect(
+        generated,
+        isNot(contains(l10n.chatDiaryGenerationGuidancePrompt)),
+      );
+      expect(
+        resolveChatDiaryPrompt(
+          ChatDiaryPromptPurpose.generationRules,
+          language,
+          custom,
+        ),
+        l10n.chatDiaryGenerationRulesPrompt,
+      );
+      expect(
+        resolveChatDiaryPrompt(
+          ChatDiaryPromptPurpose.generationGuidance,
+          language,
+          custom,
+        ),
+        legacy,
+      );
+    }
   });
 
   test('整理提示詞依語言使用內建，自訂內容不隨語言改寫', () {

@@ -7,11 +7,11 @@
 | 架構 | [系統架構](架構/系統架構.md)、[模組參考](架構/模組參考.md) |
 | 安全 | [解鎖與會話](安全/解鎖與會話.md)、[加密格式](安全/加密格式.md) |
 | 資料 | [本機儲存](資料/本機儲存.md)、[索引資料庫](資料/索引資料庫.md) |
-| 功能 | [首次啟動](功能/首次啟動.md)、[日記編輯器](功能/日記編輯器.md)、[AI](功能/AI.md)、[人物與姓名查詢](功能/人物與姓名查詢.md)、[個人化設定](功能/個人化設定.md) |
+| 功能 | [首次啟動](功能/首次啟動.md)、[日記編輯器](功能/日記編輯器.md)、[AI](功能/AI.md)、[AI 提示詞評估](功能/AI提示詞評估.md)、[人物與姓名查詢](功能/人物與姓名查詢.md)、[個人化設定](功能/個人化設定.md) |
 | 資料轉移與維護 | [備份與還原](功能/備份與還原.md)、[日記庫檢查與修復](功能/日記庫檢查與修復.md) |
 | Google 與發布 | [Android 權限與資料揭露](google/Android-權限與資料揭露.md)、[Google Drive OAuth 設定](google/Google-Drive-OAuth-設定.md)、[Google Play 上架](google/Google-Play-上架.md)、[Google Play Billing](google/Google-Play-Billing.md) |
 
-專案規範見 [AGENTS.md](../../AGENTS.md)，測試分層與執行方式見[測試手則](../../test/test-handbook.md)。Codex 執行 Flutter 必須使用 `tool/flutter-safe.ps1`。
+專案規範見 [AGENTS.md](../../AGENTS.md)，測試分層與執行方式見[測試手則](../../test/test-handbook.md)。
 
 開發文件保留資料格式、狀態轉換、失敗清理與程式入口；Google 文件另外提供設定步驟、實機驗收、Console 填寫依據及審查說明。上架總入口是 [Google Play 上架](google/Google-Play-上架.md)，其中也列出尚需完成的送審條件；文件底稿不代表 Console 或實機驗證已完成。
 

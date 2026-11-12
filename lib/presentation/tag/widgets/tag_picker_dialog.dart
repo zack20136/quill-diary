@@ -176,22 +176,12 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
       accent: true,
       icon: const Icon(Icons.label_rounded),
       title: context.l10n.editorTagsStudioTitle,
-      titleTrailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          IconButton(
-            tooltip: context.l10n.editorTagAddTooltip,
-            visualDensity: VisualDensity.compact,
-            onPressed: _openTagAccentComposer,
-            icon: const Icon(Icons.add_rounded),
-          ),
-          IconButton(
-            tooltip: context.l10n.commonCloseTooltip,
-            visualDensity: VisualDensity.compact,
-            onPressed: widget.onDismiss,
-            icon: const Icon(Icons.close_rounded),
-          ),
-        ],
+      onClose: widget.onDismiss,
+      titleTrailing: IconButton(
+        tooltip: context.l10n.editorTagAddTooltip,
+        visualDensity: VisualDensity.compact,
+        onPressed: _openTagAccentComposer,
+        icon: const Icon(Icons.add_rounded),
       ),
       actions: <Widget>[
         TextButton(

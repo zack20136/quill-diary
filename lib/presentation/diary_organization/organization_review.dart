@@ -10,7 +10,9 @@ import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_segmented_choice_bar.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 class OrganizationReview extends ConsumerStatefulWidget {
   const OrganizationReview({
@@ -69,7 +71,7 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
       _revised = revised;
       _lines = organizationDiffLines(original, revised);
     }
-    final colors = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final typography = watchPersonalizationPreferences(ref).typography;
     final canModify =
         !controller.busy &&
@@ -135,9 +137,9 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
               Expanded(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: colors.surface,
+                    color: cs.surface,
                     borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                    border: Border.all(color: colors.outlineVariant),
+                    border: Border.all(color: cs.outlineVariant),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
@@ -193,111 +195,198 @@ class OrganizationDiffView extends StatelessWidget {
     super.key,
     required this.lines,
     required this.textStyle,
+    this.panel = false,
   });
   final List<OrganizationDiffLine> lines;
   final TextStyle textStyle;
 
+  /// 嵌在有圓角的區塊裡時，捲軸畫在區塊內，並留出左右間距。
+  final bool panel;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final dark = colors.brightness == Brightness.dark;
+    final list = _DiffLineList(lines: lines, textStyle: textStyle);
+    if (panel) return _DiffPanel(child: list);
+    return SelectionArea(
+      child: AppScrollableContent(
+        builder: (_, controller) => list.build(
+          context,
+          controller: controller,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiffPanel extends StatefulWidget {
+  const _DiffPanel({required this.child});
+  final _DiffLineList child;
+
+  @override
+  State<_DiffPanel> createState() => _DiffPanelState();
+}
+
+class _DiffPanelState extends State<_DiffPanel> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectionArea(
+      child: AppScrollbar(
+        controller: _scroll,
+        track: AppScrollbarTrack.frame,
+        child: widget.child.build(
+          context,
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
+          primary: false,
+          physics: const ClampingScrollPhysics(),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiffLineList {
+  const _DiffLineList({required this.lines, required this.textStyle});
+  final List<OrganizationDiffLine> lines;
+  final TextStyle textStyle;
+
+  Widget build(
+    BuildContext context, {
+    required ScrollController controller,
+    required EdgeInsets padding,
+    bool? primary,
+    ScrollPhysics? physics,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final dark = cs.brightness == Brightness.dark;
     final added = dark ? const Color(0xff7ee2a8) : const Color(0xff196c3b);
     final removed = dark ? const Color(0xffffa7a7) : const Color(0xffa83038);
     final gutterWidth =
         MediaQuery.textScalerOf(context).scale(textStyle.fontSize ?? 16) + 16;
-    return SelectionArea(
-      child: AppScrollableContent(
-        builder: (_, controller) => ListView.builder(
-          controller: controller,
-          key: const ValueKey('organization-diff-view'),
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          itemCount: lines.length,
-          itemBuilder: (context, index) {
-            final line = lines[index];
-            if (line.kind == OrganizationDiffKind.same &&
-                line.text.trim().isEmpty) {
-              return const SizedBox(height: 8);
-            }
-            final color = switch (line.kind) {
-              OrganizationDiffKind.same => colors.onSurface,
-              OrganizationDiffKind.removed => removed,
-              OrganizationDiffKind.added => added,
-            };
-            final changed = line.kind != OrganizationDiffKind.same;
-            return Semantics(
-              label: switch (line.kind) {
-                OrganizationDiffKind.same => null,
-                OrganizationDiffKind.removed =>
-                  context.l10n.organizationRemoved,
-                OrganizationDiffKind.added => context.l10n.organizationAdded,
-              },
-              child: ColoredBox(
-                key: ValueKey('organization-diff-line-$index'),
-                color: changed
-                    ? color.withValues(alpha: dark ? 0.09 : 0.07)
-                    : Colors.transparent,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SelectionContainer.disabled(
-                        child: ExcludeSemantics(
-                          child: SizedBox(
-                            width: gutterWidth,
-                            child: Text(
-                              switch (line.kind) {
-                                OrganizationDiffKind.same => '',
-                                OrganizationDiffKind.removed => '−',
-                                OrganizationDiffKind.added => '+',
-                              },
-                              textAlign: TextAlign.center,
-                              style: textStyle.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              for (final span in line.spans)
-                                TextSpan(
-                                  text: span.text.replaceAll(
-                                    RegExp(r'[\r\n]'),
-                                    '',
-                                  ),
-                                  style: TextStyle(
-                                    backgroundColor:
-                                        span.kind == OrganizationDiffKind.same
-                                        ? null
-                                        : color.withValues(
-                                            alpha: dark ? 0.22 : 0.16,
-                                          ),
-                                  ),
-                                ),
-                            ],
-                          ),
+    return ListView.builder(
+      controller: controller,
+      primary: primary,
+      physics: physics,
+      key: const ValueKey('organization-diff-view'),
+      padding: padding,
+      itemCount: lines.length,
+      itemBuilder: (context, index) {
+        final line = lines[index];
+        if (line.kind == OrganizationDiffKind.same &&
+            line.text.trim().isEmpty) {
+          return const SizedBox(height: 8);
+        }
+        final color = switch (line.kind) {
+          OrganizationDiffKind.same => cs.onSurface,
+          OrganizationDiffKind.removed => removed,
+          OrganizationDiffKind.added => added,
+        };
+        final changed = line.kind != OrganizationDiffKind.same;
+        return Semantics(
+          label: switch (line.kind) {
+            OrganizationDiffKind.same => null,
+            OrganizationDiffKind.removed => context.l10n.organizationRemoved,
+            OrganizationDiffKind.added => context.l10n.organizationAdded,
+          },
+          child: ColoredBox(
+            key: ValueKey('organization-diff-line-$index'),
+            color: changed
+                ? color.withValues(alpha: dark ? 0.09 : 0.07)
+                : Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 2, 12, 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectionContainer.disabled(
+                    child: ExcludeSemantics(
+                      child: SizedBox(
+                        width: gutterWidth,
+                        child: Text(
+                          switch (line.kind) {
+                            OrganizationDiffKind.same => '',
+                            OrganizationDiffKind.removed => '−',
+                            OrganizationDiffKind.added => '+',
+                          },
+                          textAlign: TextAlign.center,
                           style: textStyle.copyWith(
                             color: color,
-                            decoration:
-                                line.kind == OrganizationDiffKind.removed
-                                ? TextDecoration.lineThrough
-                                : null,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: _DiffLineText(
+                      line: line,
+                      color: color,
+                      emphasize: dark ? 0.22 : 0.16,
+                      style: textStyle.copyWith(
+                        color: color,
+                        decoration: line.kind == OrganizationDiffKind.removed
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DiffLineText extends StatelessWidget {
+  const _DiffLineText({
+    required this.line,
+    required this.color,
+    required this.emphasize,
+    required this.style,
+  });
+
+  static final RegExp _lineBreak = RegExp(r'[\r\n]');
+
+  final OrganizationDiffLine line;
+  final Color color;
+  final double emphasize;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = <TextSpan>[];
+    final displayed = StringBuffer();
+    for (final span in line.spans) {
+      final text = span.text.replaceAll(_lineBreak, '');
+      displayed.write(text);
+      parts.add(
+        TextSpan(
+          text: text,
+          style: TextStyle(
+            backgroundColor: span.kind == OrganizationDiffKind.same
+                ? null
+                : color.withValues(alpha: emphasize),
+          ),
         ),
-      ),
+      );
+    }
+    final text = displayed.toString();
+    return PrivateText.rich(
+      TextSpan(children: parts),
+      ranges: privacyTokenRanges(text),
+      style: style,
     );
   }
 }
@@ -315,7 +404,7 @@ class _ReviewActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final cs = theme.colorScheme;
     final labels = [
       context.l10n.organizationBack,
       context.l10n.organizationEditDraft,
@@ -330,11 +419,11 @@ class _ReviewActions extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(0, 48),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            foregroundColor: i == 2 ? colors.primary : colors.onSurface,
+            foregroundColor: i == 2 ? cs.primary : cs.onSurface,
             side: BorderSide(
               color: i == 2 && onApply != null
-                  ? colors.primary
-                  : colors.outlineVariant,
+                  ? cs.primary
+                  : cs.outlineVariant,
             ),
           ),
           child: Text(labels[i]),

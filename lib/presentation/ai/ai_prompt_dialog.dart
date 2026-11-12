@@ -155,6 +155,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                 ],
               ),
       ),
+      leading: widget.readOnly ? null : _restoreButton(l10n),
       actions: _actions(l10n),
     );
   }
@@ -166,6 +167,17 @@ class _AiPromptDialogState extends State<AiPromptDialog>
     ),
   );
 
+  Widget _restoreButton(AppLocalizations l10n) => TextButton(
+    onPressed: _controller.text == _defaultPrompt()
+        ? null
+        : () => setState(() {
+            _custom = false;
+            _invalid = false;
+            _controller.text = _defaultPrompt();
+          }),
+    child: Text(l10n.aiPromptRestoreDefault),
+  );
+
   List<Widget> _actions(AppLocalizations l10n) {
     final cancel = TextButton(
       onPressed: () => Navigator.pop(context),
@@ -174,16 +186,6 @@ class _AiPromptDialogState extends State<AiPromptDialog>
       ),
     );
     if (widget.readOnly) return [cancel];
-    final restore = TextButton(
-      onPressed: _controller.text == _defaultPrompt()
-          ? null
-          : () => setState(() {
-              _custom = false;
-              _invalid = false;
-              _controller.text = _defaultPrompt();
-            }),
-      child: Text(l10n.aiPromptRestoreDefault),
-    );
     final apply = FilledButton(
       onPressed: () {
         if (_controller.text.trim().isEmpty) {
@@ -199,57 +201,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
       },
       child: Text(l10n.aiPromptApply),
     );
-    return [
-      SizedBox(
-        width: double.infinity,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final style = Theme.of(context).textTheme.labelLarge;
-            final scaler = MediaQuery.textScalerOf(context);
-            double buttonWidth(String label) {
-              final painter = TextPainter(
-                text: TextSpan(text: label, style: style),
-                textDirection: Directionality.of(context),
-                textScaler: scaler,
-              )..layout();
-              final width = painter.width + 48;
-              painter.dispose();
-              return width < 64 ? 64 : width;
-            }
-
-            final endActions = OverflowBar(
-              spacing: 8,
-              overflowSpacing: 8,
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              children: [cancel, apply],
-            );
-            final endWidth =
-                buttonWidth(l10n.commonActionCancel) +
-                buttonWidth(l10n.aiPromptApply) +
-                8;
-            if (buttonWidth(l10n.aiPromptRestoreDefault) + 12 + endWidth <=
-                constraints.maxWidth) {
-              return Row(
-                children: [
-                  restore,
-                  const Spacer(),
-                  SizedBox(width: endWidth, child: endActions),
-                ],
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(alignment: Alignment.centerLeft, child: restore),
-                const SizedBox(height: 8),
-                endActions,
-              ],
-            );
-          },
-        ),
-      ),
-    ];
+    return [cancel, apply];
   }
 
   @override

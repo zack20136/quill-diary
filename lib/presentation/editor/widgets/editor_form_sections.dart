@@ -204,7 +204,8 @@ class EditorBodySection extends StatelessWidget {
         ? ValueListenableBuilder<TextEditingValue>(
             valueListenable: bodyController,
             builder: (context, value, _) => SelectionArea(
-              child: AppScrollView(
+              child: SingleChildScrollView(
+                physics: appBouncingScrollPhysics,
                 child: value.text.isEmpty
                     ? Text(
                         context.l10n.editorBodyEmptyPreview,

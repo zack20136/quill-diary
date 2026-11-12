@@ -7,23 +7,35 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
+import '../../helpers/shared/test_l10n.dart';
 
 void main() {
-  final l10n = lookupAppLocalizations(AppLanguage.zh.materialLocale);
+  final l10n = testZhL10n;
 
   test('分身固定指令以身分句開頭，並使用目前生效的對話引導', () {
-    final defaults = personaFixedInstructions(l10n: l10n);
-    expect(defaults, startsWith(l10n.personaIdentityPrompt));
-    expect(defaults, contains(l10n.chatDiaryConversationRulesPrompt));
-    expect(defaults, endsWith(l10n.chatDiaryConversationGuidancePrompt));
-    expect(defaults, isNot(contains(l10n.chatDiaryConversationRoleLine)));
+    for (final language in AppLanguage.values) {
+      final localized = lookupAppLocalizations(language.materialLocale);
+      final defaults = personaFixedInstructions(l10n: localized);
+      expect(defaults, startsWith(localized.personaIdentityPrompt));
+      expect(defaults, contains(localized.chatDiaryConversationRulesPrompt));
+      expect(defaults, endsWith(localized.chatDiaryConversationGuidancePrompt));
+      expect(
+        defaults,
+        isNot(contains(localized.chatDiaryConversationRoleLine)),
+      );
 
-    final overridden = personaFixedInstructions(l10n: l10n, guidance: '本次共通引導');
-    expect(overridden, endsWith('本次共通引導'));
-    expect(
-      overridden,
-      isNot(contains(l10n.chatDiaryConversationGuidancePrompt)),
-    );
+      final overridden = personaFixedInstructions(
+        l10n: localized,
+        guidance: '本次共通引導',
+      );
+      expect(overridden, startsWith(localized.personaIdentityPrompt));
+      expect(overridden, contains(localized.chatDiaryConversationRulesPrompt));
+      expect(overridden, endsWith('本次共通引導'));
+      expect(
+        overridden,
+        isNot(contains(localized.chatDiaryConversationGuidancePrompt)),
+      );
+    }
   });
 
   test('聊天提示詞以標示段落附上指定人物、人物記憶與聊天風格', () {

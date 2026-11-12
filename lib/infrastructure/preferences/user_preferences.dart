@@ -15,7 +15,7 @@ class UserPreferences {
   static const String _sessionTimeoutKey = 'session_background_timeout_minutes';
   static const String _themeModeKey = 'theme_mode';
   static const String _appLocaleKey = 'app_locale';
-  static const String _onboardingIntroVersionKey = 'onboarding_intro_version';
+  static const String _onboardingIntroSeenKey = 'onboarding_intro_seen';
   static const String _editorTitleFontSizeKey = 'editor_title_font_size';
   static const String _editorTitleLineHeightKey = 'editor_title_line_height';
   static const String _editorBodyFontSizeKey = 'editor_body_font_size';
@@ -82,13 +82,13 @@ class UserPreferences {
     await _writeValue(_appLocaleKey, value.storageValue);
   }
 
-  Future<int> get onboardingIntroVersion async {
-    final String? raw = await _readValue(_onboardingIntroVersionKey);
-    return int.tryParse(raw?.trim() ?? '') ?? 0;
+  Future<bool> get hasSeenOnboardingIntro async {
+    final String? raw = await _readValue(_onboardingIntroSeenKey);
+    return raw?.trim() == 'true';
   }
 
-  Future<void> setOnboardingIntroVersion(int value) async {
-    await _writeValue(_onboardingIntroVersionKey, value.toString());
+  Future<void> markOnboardingIntroSeen() async {
+    await _writeValue(_onboardingIntroSeenKey, 'true');
   }
 
   Future<PersonalizationPreferences> loadPersonalizationPreferences() async {

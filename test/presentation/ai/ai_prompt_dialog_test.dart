@@ -61,11 +61,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  for (final (locale, width, scale) in [
-    (appZhLocale, 520.0, 1.0),
-    (appEnLocale, 320.0, 2.0),
+  // 英文窄寬加大字級時還原預設與按鈕放不下同列，改為換行，只檢查還原在上、按鈕在下。
+  for (final (locale, width, scale, sameRow) in [
+    (appZhLocale, 520.0, 1.0, true),
+    (appEnLocale, 320.0, 2.0, false),
   ]) {
-    testWidgets('${locale.languageCode} 提示詞操作靠兩側，還原狀態隨內容更新且預設不存覆寫', (
+    testWidgets('${locale.languageCode} 提示詞還原與取消、套用同列（放不下時換行），還原狀態隨內容更新且預設不存覆寫', (
       tester,
     ) async {
       tester.view.physicalSize = Size(width, 800);
@@ -80,21 +81,33 @@ void main() {
       final restore = find.widgetWithText(TextButton, l.aiPromptRestoreDefault);
       final cancel = find.widgetWithText(TextButton, l.commonActionCancel);
       final apply = find.widgetWithText(FilledButton, l.aiPromptApply);
-      final actions = find
-          .ancestor(of: restore, matching: find.byType(LayoutBuilder))
-          .first;
-      expect(
-        tester.getRect(restore).left,
-        closeTo(tester.getRect(actions).left, 0.1),
-      );
-      expect(
-        tester.getRect(apply).right,
-        closeTo(tester.getRect(actions).right, 0.1),
-      );
-      expect(
-        tester.getRect(cancel).bottom,
-        lessThanOrEqualTo(tester.getRect(apply).bottom),
-      );
+      if (sameRow) {
+        expect(
+          tester.getRect(restore).left,
+          closeTo(tester.getRect(find.byKey(_field)).left, 0.5),
+        );
+        expect(
+          tester.getRect(restore).right,
+          lessThanOrEqualTo(tester.getRect(cancel).left),
+        );
+        expect(
+          tester.getRect(restore).center.dy,
+          closeTo(tester.getRect(cancel).center.dy, 0.5),
+        );
+        expect(
+          tester.getRect(cancel).right,
+          lessThanOrEqualTo(tester.getRect(apply).left),
+        );
+        expect(
+          tester.getRect(apply).center.dy,
+          closeTo(tester.getRect(cancel).center.dy, 0.5),
+        );
+      } else {
+        expect(
+          tester.getRect(restore).bottom,
+          lessThanOrEqualTo(tester.getRect(cancel).top),
+        );
+      }
       expect(tester.widget<TextButton>(restore).onPressed, isNull);
 
       await tester.enterText(find.byKey(_field), '自訂內容');

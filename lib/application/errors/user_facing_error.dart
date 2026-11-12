@@ -56,12 +56,16 @@ String vaultBackupIssueMessage(AppLocalizations l10n, VaultBackupIssue issue) {
   };
 }
 
-/// 備份檢查失敗會把 [VaultBackupIssue] 名稱存進狀態；舊紀錄仍可能是中文句子。
-String localizedBackupPersistDetail(AppLocalizations l10n, String raw) {
+/// 備份檢查失敗帶的是 [VaultBackupIssue] 名稱；無法對應的名稱改用通用訊息。
+String localizedBackupInspectDetail(AppLocalizations l10n, String raw) {
+  final String trimmed = raw.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
   for (final VaultBackupIssue issue in VaultBackupIssue.values) {
-    if (issue.name == raw) {
+    if (issue.name == trimmed) {
       return vaultBackupIssueMessage(l10n, issue);
     }
   }
-  return raw;
+  return l10n.settingsBackupInspectUnrecognizedDetail;
 }

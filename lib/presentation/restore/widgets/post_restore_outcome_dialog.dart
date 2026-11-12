@@ -1,8 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/settings_flow_controller.dart';
-import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<bool> showPostRestoreOutcomeDialog(
@@ -15,6 +14,7 @@ Future<bool> showPostRestoreOutcomeDialog(
     builder: (BuildContext dialogContext) {
       final ThemeData theme = Theme.of(dialogContext);
       return AppDialogShell(
+        showClose: false,
         icon: Icon(
           outcome.isError
               ? Icons.error_outline_rounded
@@ -44,17 +44,11 @@ Future<bool> showPostRestoreOutcomeDialog(
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+            child: Text(dialogContext.l10n.commonActionClose),
           ),
-          AppActionButton(
+          FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon:
-                outcome.primaryAction ==
-                    SettingsRestorePrimaryAction.retryVerification
-                ? kSessionRetryVerificationIcon
-                : Icons.key_outlined,
-            label: outcome.primaryActionLabel,
-            appearance: AppActionButtonAppearance.primary,
+            child: Text(outcome.primaryActionLabel),
           ),
         ],
       );

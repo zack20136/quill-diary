@@ -241,6 +241,11 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
       includeImages: includeImages,
       hidePersonNames: hidePersonNames,
       useEnglishPersonLabels: useEnglishPersonLabels,
+      documentTitle: l10n.portableExportHtmlDocumentTitle,
+      untitledEntryTitle: l10n.editorUntitledDraft,
+      unembeddedAttachmentsHeading:
+          l10n.portableExportUnembeddedAttachmentsHeading,
+      htmlLang: useEnglishPersonLabels ? 'en' : 'zh-Hant',
     ),
     selectedEntryIds: Set<EntryId>.from(selectedEntryIds),
   );

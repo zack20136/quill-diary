@@ -90,7 +90,7 @@ void main() {
     expect(result, const TimeOfDay(hour: 13, minute: 15));
   });
 
-  testWidgets('底部只有確定，沒有取消與鐘面提示', (WidgetTester tester) async {
+  testWidgets('底部有取消與確定，切到分鐘模式後仍保留', (WidgetTester tester) async {
     await tester.pumpWidget(
       _pickerApp(
         initialTime: const TimeOfDay(hour: 8, minute: 15),
@@ -100,10 +100,23 @@ void main() {
     await _open(tester);
     await tester.tap(find.byKey(const Key('app-time-picker-minute')));
     await tester.pump();
-    expect(find.byKey(const Key('app-time-picker-cancel')), findsNothing);
-    expect(find.text('取消'), findsNothing);
+    expect(find.byKey(const Key('app-time-picker-cancel')), findsOneWidget);
+    expect(find.text('取消'), findsOneWidget);
     expect(find.text('確定'), findsOneWidget);
-    expect(find.text('點選以 5 分鐘調整，拖曳可精確到 1 分鐘'), findsNothing);
+  });
+
+  testWidgets('點取消會關閉並回傳 null', (WidgetTester tester) async {
+    TimeOfDay? result = const TimeOfDay(hour: 9, minute: 30);
+    await tester.pumpWidget(
+      _pickerApp(
+        initialTime: const TimeOfDay(hour: 8, minute: 15),
+        onResult: (TimeOfDay? value) => result = value,
+      ),
+    );
+    await _open(tester);
+    await tester.tap(find.byKey(const Key('app-time-picker-cancel')));
+    await tester.pumpAndSettle();
+    expect(result, isNull);
   });
 
   testWidgets('點擊背景會關閉並回傳 null', (WidgetTester tester) async {
@@ -178,38 +191,5 @@ void main() {
     await tester.tapAt(center - Offset(0, radius));
     await tester.pump();
     expect(_valueText('app-time-picker-minute', '00'), findsOneWidget);
-  });
-
-  testWidgets('鍵盤模式驗證範圍並正確回傳 PM 時間', (WidgetTester tester) async {
-    TimeOfDay? result;
-    await tester.pumpWidget(
-      _pickerApp(
-        initialTime: const TimeOfDay(hour: 8, minute: 0),
-        onResult: (TimeOfDay? value) => result = value,
-      ),
-    );
-    await _open(tester);
-    await tester.tap(find.byKey(const Key('app-time-picker-entry-mode')));
-    await tester.pump();
-    final Finder fields = find.byType(TextField);
-    expect(fields, findsNWidgets(2));
-    await tester.enterText(fields.first, '13');
-    await tester.pump();
-    expect(find.byKey(const Key('app-time-picker-error')), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('app-time-picker-confirm')),
-          )
-          .onPressed,
-      isNull,
-    );
-    await tester.enterText(fields.first, '11');
-    await tester.enterText(fields.last, '59');
-    await tester.tap(find.byKey(const Key('app-time-picker-pm')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('app-time-picker-confirm')));
-    await tester.pumpAndSettle();
-    expect(result, const TimeOfDay(hour: 23, minute: 59));
   });
 }

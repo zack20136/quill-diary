@@ -42,6 +42,11 @@ abstract final class AppScrollbarMetrics {
   static const int initialMetricsSyncFrames = 3;
 }
 
+/// 瀏覽用直向捲動：拉過盡頭再彈回。內容比畫面短時也拉得動。
+const ScrollPhysics appBouncingScrollPhysics = BouncingScrollPhysics(
+  parent: AlwaysScrollableScrollPhysics(),
+);
+
 const ScrollbarThemeData kPrimaryScrollbarTheme = ScrollbarThemeData(
   thumbVisibility: WidgetStatePropertyAll<bool>(true),
   interactive: true,
@@ -667,6 +672,7 @@ class _AppScrollablePageBodyState extends State<AppScrollablePageBody> {
             crossAxisEdgeInset: AppScrollbarMetrics.settingsCrossAxisEdgeInset,
             child: ListView(
               controller: _controller,
+              physics: appBouncingScrollPhysics,
               padding: EdgeInsets.only(
                 right: resolved.right,
                 bottom: resolved.bottom,

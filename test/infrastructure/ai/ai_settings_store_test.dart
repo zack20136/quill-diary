@@ -11,7 +11,9 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
@@ -229,6 +231,59 @@ void main() {
     expect(result.hidePersonNames, isFalse);
     expect(result.chatDiaryPrompts.guidanceOverride, '保留引導');
     expect(result.connection.connections.keys, contains(first.connectionId));
+  });
+
+  test('更新記住的夥伴只改這個欄位，改回預設後不再寫出', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    final setup = await harness.repository.setupRecoveryKey();
+    final store = AiSettingsStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: LocalCryptoService(),
+      repository: harness.repository,
+    );
+    final persona = PersonaReference(
+      personId: generatePersonId(),
+      personaId: generatePersonaId(),
+    );
+    await store.save(
+      setup.session,
+      AiStoredSettings(
+        connection: AiConnectionSettings(
+          connections: {first.connectionId: first},
+        ),
+        hidePersonNames: false,
+        chatDiaryPrompts: const ChatDiaryPromptSettings(
+          guidanceOverride: '保留引導',
+        ),
+      ),
+    );
+
+    await store.updateSelectedPersona(setup.session, persona);
+
+    final remembered = await store.read(setup.session);
+    expect(remembered.aiEnabled, isTrue);
+    expect(remembered.hidePersonNames, isFalse);
+    expect(remembered.chatDiaryPrompts.guidanceOverride, '保留引導');
+    expect(
+      remembered.chatDiaryPrompts.selectedPersona?.personaId,
+      persona.personaId,
+    );
+    expect(
+      remembered.connection.connections.keys,
+      contains(first.connectionId),
+    );
+    expect(remembered.toJson()['version'], DataVersions.aiSettings);
+
+    await store.updateSelectedPersona(setup.session, null);
+
+    final cleared = await store.read(setup.session);
+    expect(cleared.chatDiaryPrompts.selectedPersona, isNull);
+    expect(cleared.chatDiaryPrompts.guidanceOverride, '保留引導');
+    expect(
+      (cleared.toJson()['chat_diary'] as Map).containsKey('selected_persona'),
+      isFalse,
+    );
   });
 
   test('模型目錄更新由儲存入口明確回寫一次，重新讀取不再改寫', () async {

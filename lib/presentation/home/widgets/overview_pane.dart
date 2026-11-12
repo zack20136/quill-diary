@@ -24,6 +24,7 @@ import 'package:quill_diary/presentation/home/widgets/overview_presentation.dart
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -247,6 +248,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                 },
                 child: CustomScrollView(
                   controller: _scrollController,
+                  physics: appBouncingScrollPhysics,
                   scrollCacheExtent: HomeLayout.entryListCacheExtent,
                   slivers: <Widget>[
                     SliverToBoxAdapter(
@@ -452,6 +454,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
               },
               child: CustomScrollView(
                 controller: _scrollController,
+                physics: appBouncingScrollPhysics,
                 scrollCacheExtent: HomeLayout.entryListCacheExtent,
                 slivers: <Widget>[
                   SliverToBoxAdapter(
@@ -491,6 +494,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
               },
               child: CustomScrollView(
                 controller: _scrollController,
+                physics: appBouncingScrollPhysics,
                 scrollCacheExtent: HomeLayout.entryListCacheExtent,
                 slivers: <Widget>[
                   SliverToBoxAdapter(

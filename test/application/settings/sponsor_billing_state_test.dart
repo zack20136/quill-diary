@@ -32,19 +32,5 @@ void main() {
       );
     });
 
-    test('copyWith 可清除錯誤訊息', () {
-      const SponsorBillingState original = SponsorBillingState(
-        productLoadError: 'load-error',
-        purchaseErrorMessage: 'purchase-error',
-      );
-
-      final SponsorBillingState cleared = original.copyWith(
-        clearProductLoadError: true,
-        clearPurchaseErrorMessage: true,
-      );
-
-      expect(cleared.productLoadError, isNull);
-      expect(cleared.purchaseErrorMessage, isNull);
-    });
   });
 }

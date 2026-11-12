@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -14,7 +13,6 @@ Future<TimeOfDay?> showAppTimePickerDialog({
   String? title,
 }) => showAppDialog<TimeOfDay>(
   context: context,
-  size: AppDialogSize.standard,
   builder: (_) => _AppTimePickerDialog(
     initialTime: initialTime,
     title: title ?? context.l10n.timePickerChooseTime,
@@ -22,6 +20,8 @@ Future<TimeOfDay?> showAppTimePickerDialog({
 );
 
 enum _TimePickerField { hour, minute }
+
+String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
 class _AppTimePickerDialog extends StatefulWidget {
   const _AppTimePickerDialog({required this.initialTime, required this.title});
@@ -36,15 +36,7 @@ class _AppTimePickerDialog extends StatefulWidget {
 class _AppTimePickerDialogState extends State<_AppTimePickerDialog> {
   late int _hour24 = widget.initialTime.hour;
   late int _minute = widget.initialTime.minute;
-  late final TextEditingController _hourController = TextEditingController(
-    text: '$_hour12',
-  );
-  late final TextEditingController _minuteController = TextEditingController(
-    text: _twoDigits(_minute),
-  );
   _TimePickerField _field = _TimePickerField.hour;
-  bool _inputMode = false;
-  bool _inputValid = true;
 
   bool get _isPm => _hour24 >= 12;
   int get _hour12 {
@@ -52,77 +44,24 @@ class _AppTimePickerDialogState extends State<_AppTimePickerDialog> {
     return value == 0 ? 12 : value;
   }
 
-  static String _twoDigits(int value) => value.toString().padLeft(2, '0');
-
-  @override
-  void dispose() {
-    _hourController.dispose();
-    _minuteController.dispose();
-    super.dispose();
-  }
-
   void _setPeriod(bool pm) {
-    setState(() {
-      _hour24 = (_hour12 % 12) + (pm ? 12 : 0);
-      if (!_inputMode) _syncInputText();
-    });
+    setState(() => _hour24 = (_hour12 % 12) + (pm ? 12 : 0));
   }
 
   void _setHour12(int hour) {
-    setState(() {
-      _hour24 = (hour % 12) + (_isPm ? 12 : 0);
-      _hourController.text = '$hour';
-    });
+    setState(() => _hour24 = (hour % 12) + (_isPm ? 12 : 0));
   }
 
   void _setMinute(int minute) {
-    setState(() {
-      _minute = minute;
-      _minuteController.text = _twoDigits(minute);
-    });
-  }
-
-  void _syncInputText() {
-    _hourController.text = '$_hour12';
-    _minuteController.text = _twoDigits(_minute);
-    _inputValid = true;
-  }
-
-  void _toggleInputMode() {
-    setState(() {
-      _inputMode = !_inputMode;
-      _syncInputText();
-    });
-  }
-
-  void _validateInput() {
-    final int? hour = int.tryParse(_hourController.text);
-    final int? minute = int.tryParse(_minuteController.text);
-    setState(() {
-      _inputValid =
-          hour != null &&
-          hour >= 1 &&
-          hour <= 12 &&
-          minute != null &&
-          minute >= 0 &&
-          minute <= 59;
-      if (_inputValid) {
-        _hour24 = (hour! % 12) + (_isPm ? 12 : 0);
-        _minute = minute!;
-      }
-    });
+    setState(() => _minute = minute);
   }
 
   void _apply() {
-    if (_inputMode) _validateInput();
-    if (!_inputValid) return;
     Navigator.of(context).pop(TimeOfDay(hour: _hour24, minute: _minute));
   }
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme colors = theme.colorScheme;
     return AppDialogShell(
       title: widget.title,
       content: AppScrollView(
@@ -134,82 +73,46 @@ class _AppTimePickerDialogState extends State<_AppTimePickerDialog> {
               minute: _minute,
               isPm: _isPm,
               field: _field,
-              inputMode: _inputMode,
-              inputValid: _inputValid,
-              hourController: _hourController,
-              minuteController: _minuteController,
               onPeriodChanged: _setPeriod,
               onFieldChanged: (_TimePickerField value) {
                 setState(() => _field = value);
               },
-              onInputChanged: _validateInput,
             ),
-            if (_inputMode && !_inputValid) ...<Widget>[
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.timePickerInvalidTime,
-                key: const Key('app-time-picker-error'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            if (!_inputMode) ...<Widget>[
-              const SizedBox(height: 28),
-              LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final double dialSize = math.min(
-                    constraints.maxWidth,
-                    MediaQuery.sizeOf(context).height < 600 ? 218 : 252,
-                  );
-                  return _TimeDial(
-                    key: const Key('app-time-picker-dial'),
-                    size: dialSize,
-                    field: _field,
-                    hour: _hour12,
-                    minute: _minute,
-                    onHourChanged: _setHour12,
-                    onHourSelectionComplete: () {
-                      setState(() => _field = _TimePickerField.minute);
-                    },
-                    onMinuteChanged: _setMinute,
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-            ] else ...<Widget>[
-              const SizedBox(height: 12),
-              Text(
-                context.l10n.timePickerInputHint,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-            ],
+            const SizedBox(height: 28),
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double dialSize = math.min(
+                  constraints.maxWidth,
+                  MediaQuery.sizeOf(context).height < 600 ? 218 : 252,
+                );
+                return _TimeDial(
+                  key: const Key('app-time-picker-dial'),
+                  size: dialSize,
+                  field: _field,
+                  hour: _hour12,
+                  minute: _minute,
+                  onHourChanged: _setHour12,
+                  onHourSelectionComplete: () {
+                    setState(() => _field = _TimePickerField.minute);
+                  },
+                  onMinuteChanged: _setMinute,
+                );
+              },
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
-      actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: <Widget>[
-        IconButton(
-          key: const Key('app-time-picker-entry-mode'),
-          tooltip: _inputMode
-              ? context.l10n.timePickerSwitchToDial
-              : context.l10n.timePickerSwitchToInput,
-          onPressed: _toggleInputMode,
-          color: colors.onSurfaceVariant,
-          icon: Icon(
-            _inputMode ? Icons.schedule_rounded : Icons.keyboard_outlined,
-          ),
+        TextButton(
+          key: const Key('app-time-picker-cancel'),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.commonActionCancel),
         ),
-        FilledButton.icon(
+        FilledButton(
           key: const Key('app-time-picker-confirm'),
-          onPressed: _inputValid ? _apply : null,
-          icon: const Icon(Icons.check_rounded),
-          label: Text(context.l10n.commonActionConfirm),
+          onPressed: _apply,
+          child: Text(context.l10n.commonActionConfirm),
         ),
       ],
     );
@@ -222,26 +125,16 @@ class _TimeHeader extends StatelessWidget {
     required this.minute,
     required this.isPm,
     required this.field,
-    required this.inputMode,
-    required this.inputValid,
-    required this.hourController,
-    required this.minuteController,
     required this.onPeriodChanged,
     required this.onFieldChanged,
-    required this.onInputChanged,
   });
 
   final int hour;
   final int minute;
   final bool isPm;
   final _TimePickerField field;
-  final bool inputMode;
-  final bool inputValid;
-  final TextEditingController hourController;
-  final TextEditingController minuteController;
   final ValueChanged<bool> onPeriodChanged;
   final ValueChanged<_TimePickerField> onFieldChanged;
-  final VoidCallback onInputChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -255,13 +148,9 @@ class _TimeHeader extends StatelessWidget {
           child: _TimeValueControl(
             key: const Key('app-time-picker-hour'),
             selected: field == _TimePickerField.hour,
-            inputMode: inputMode,
-            controller: hourController,
-            value: hour.toString().padLeft(2, '0'),
+            value: _twoDigits(hour),
             semanticLabel: context.l10n.timePickerHourLabel,
-            error: !inputValid,
             onTap: () => onFieldChanged(_TimePickerField.hour),
-            onChanged: (_) => onInputChanged(),
           ),
         ),
         Padding(
@@ -277,13 +166,9 @@ class _TimeHeader extends StatelessWidget {
           child: _TimeValueControl(
             key: const Key('app-time-picker-minute'),
             selected: field == _TimePickerField.minute,
-            inputMode: inputMode,
-            controller: minuteController,
-            value: minute.toString().padLeft(2, '0'),
+            value: _twoDigits(minute),
             semanticLabel: context.l10n.timePickerMinuteLabel,
-            error: !inputValid,
             onTap: () => onFieldChanged(_TimePickerField.minute),
-            onChanged: (_) => onInputChanged(),
           ),
         ),
       ],
@@ -352,24 +237,16 @@ class _PeriodSelector extends StatelessWidget {
 class _TimeValueControl extends StatelessWidget {
   const _TimeValueControl({
     required this.selected,
-    required this.inputMode,
-    required this.controller,
     required this.value,
     required this.semanticLabel,
-    required this.error,
     required this.onTap,
-    required this.onChanged,
     super.key,
   });
 
   final bool selected;
-  final bool inputMode;
-  final TextEditingController controller;
   final String value;
   final String semanticLabel;
-  final bool error;
   final VoidCallback onTap;
-  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -385,45 +262,23 @@ class _TimeValueControl extends StatelessWidget {
 
     return Semantics(
       label: semanticLabel,
-      button: !inputMode,
-      textField: inputMode,
+      button: true,
       selected: selected,
       child: SizedBox(
         height: 80,
         child: Material(
-          color: error ? colors.errorContainer : background,
+          color: background,
           borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
           clipBehavior: Clip.antiAlias,
-          child: inputMode
-              ? TextField(
-                  controller: controller,
-                  autofocus: selected,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  textAlign: TextAlign.center,
-                  style: textStyle,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    contentPadding: EdgeInsets.symmetric(vertical: 17),
-                  ),
-                  onTap: onTap,
-                  onChanged: onChanged,
-                )
-              : InkWell(
-                  onTap: onTap,
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(value, style: textStyle),
-                    ),
-                  ),
-                ),
+          child: InkWell(
+            onTap: onTap,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value, style: textStyle),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -489,28 +344,26 @@ class _TimeDial extends StatelessWidget {
         : List<int>.generate(12, (int index) => index * 5);
     final double labelRadius = size / 2 - 25;
 
+    void completeHourSelection() {
+      if (field == _TimePickerField.hour) onHourSelectionComplete();
+    }
+
     return Semantics(
       label: context.l10n.timePickerDialSemantics,
       value: field == _TimePickerField.hour
           ? '$hour'
-          : minute.toString().padLeft(2, '0'),
+          : _twoDigits(minute),
       child: SizedBox.square(
         dimension: size,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapUp: (TapUpDetails details) {
             _updateFromTap(details.localPosition);
-            if (field == _TimePickerField.hour) {
-              onHourSelectionComplete();
-            }
+            completeHourSelection();
           },
           onPanUpdate: (DragUpdateDetails details) =>
               _updateFromDrag(details.localPosition),
-          onPanEnd: (_) {
-            if (field == _TimePickerField.hour) {
-              onHourSelectionComplete();
-            }
-          },
+          onPanEnd: (_) => completeHourSelection(),
           child: Stack(
             children: <Widget>[
               CustomPaint(
@@ -539,7 +392,7 @@ class _TimeDial extends StatelessWidget {
                     child: Center(
                       child: Text(
                         field == _TimePickerField.minute
-                            ? labels[index].toString().padLeft(2, '0')
+                            ? _twoDigits(labels[index])
                             : '${labels[index]}',
                         style: theme.textTheme.labelLarge?.copyWith(
                           color:

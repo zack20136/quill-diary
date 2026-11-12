@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 
 /// 本機尚無可用日記庫：已進入 unlocked，但還沒有 session／復原資訊。
 bool isAwaitingVaultSetup(AppSessionState sessionState) {
@@ -30,11 +29,10 @@ AppLanguage resolveAppLanguage({
   return fallbackLanguage;
 }
 
-/// 僅在空日記庫且尚未看過目前版本介紹時顯示 Dialog。
+/// 僅在空日記庫且尚未看過安裝介紹時顯示 Dialog。
 bool shouldShowOnboardingIntro({
   required AppSessionState sessionState,
-  required int storedVersion,
+  required bool hasSeen,
 }) {
-  return isAwaitingVaultSetup(sessionState) &&
-      storedVersion < DataVersions.onboardingIntro;
+  return isAwaitingVaultSetup(sessionState) && !hasSeen;
 }

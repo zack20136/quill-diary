@@ -158,17 +158,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(testL10n.settingsRepairDetailButton), findsOneWidget);
-    final Finder dialogSurfaces = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is Material && widget.type == MaterialType.card,
-      ),
-    );
-    expect(tester.getSize(dialogSurfaces).width, 720);
     await tester.tap(find.text(testL10n.settingsRepairDetailButton));
     await tester.pumpAndSettle();
-    expect(tester.getSize(dialogSurfaces.last).width, 640);
     expect(find.text(testL10n.settingsRepairDetailUnresolved), findsOneWidget);
     expect(find.text('仍需處理的日記'), findsOneWidget);
   });

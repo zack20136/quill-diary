@@ -811,7 +811,7 @@ class MainActivity : FlutterFragmentActivity() {
             )
         val promptBuilder =
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Quill Diary")
+                .setTitle(getString(R.string.app_name))
                 .setSubtitle(reason)
                 .setAllowedAuthenticators(authenticators)
         prompt.authenticate(

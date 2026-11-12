@@ -105,7 +105,7 @@ Future<void> showRepairDetailDialog(
         ),
       ),
       actions: <Widget>[
-        FilledButton(
+        TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: Text(l10n.commonActionClose),
         ),
@@ -446,7 +446,7 @@ Future<bool?> showInspectVaultResultDialog(
       ),
       actions: <Widget>[
         if (groups.isEmpty)
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(l10n.commonActionClose),
           )
@@ -455,7 +455,7 @@ Future<bool?> showInspectVaultResultDialog(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(l10n.settingsInspectVaultHandleLaterButton),
           ),
-          FilledButton.tonal(
+          FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(l10n.settingsInspectVaultRepairAfterBackupButton),
           ),
@@ -641,7 +641,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
         ),
       ),
       actions: <Widget>[
-        FilledButton(
+        TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.commonActionClose),
         ),

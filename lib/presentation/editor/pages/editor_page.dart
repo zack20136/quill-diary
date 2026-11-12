@@ -1565,6 +1565,7 @@ class _RestoreDraftDialog extends StatelessWidget {
     );
     return AppDialogShell(
       title: context.l10n.editorRestoreDraftTitle,
+      showClose: false,
       content: Text(
         hasExistingEntry
             ? context.l10n.editorRestoreDraftOverwrite(titleText, updatedAtText)

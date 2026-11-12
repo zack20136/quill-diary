@@ -153,7 +153,7 @@ class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.commonActionCancel),
       ),
-      TextButton(
+      FilledButton(
         onPressed: () => Navigator.pop(context, _controller.protectedBody),
         child: Text(context.l10n.commonActionConfirm),
       ),

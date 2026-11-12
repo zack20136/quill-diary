@@ -13,7 +13,6 @@ import 'package:quill_diary/presentation/home/widgets/home_circle_action_button.
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -23,16 +22,16 @@ import '../../helpers/shared/widget_test_app.dart';
 
 class _CompletedOnboardingIntroController extends OnboardingIntroController {
   @override
-  Future<int> build() async => DataVersions.onboardingIntro;
+  Future<bool> build() async => true;
 }
 
 class _PendingOnboardingIntroController extends OnboardingIntroController {
   @override
-  Future<int> build() async => 0;
+  Future<bool> build() async => false;
 
   @override
   Future<void> markCompleted() async {
-    state = const AsyncData<int>(DataVersions.onboardingIntro);
+    state = const AsyncData<bool>(true);
   }
 }
 
@@ -69,7 +68,7 @@ List _emptyVaultOverrides({
   required OnboardingIntroController Function() intro,
 }) {
   return [
-    onboardingIntroVersionProvider.overrideWith(intro),
+    hasSeenOnboardingIntroProvider.overrideWith(intro),
     personalizationPreferencesProvider.overrideWith(
       _NoopPersonalizationController.new,
     ),
@@ -165,7 +164,7 @@ void main() {
     _seedAttempts = 0;
     final ProviderContainer container = ProviderContainer(
       overrides: [
-        onboardingIntroVersionProvider.overrideWith(
+        hasSeenOnboardingIntroProvider.overrideWith(
           _CompletedOnboardingIntroController.new,
         ),
         personalizationPreferencesProvider.overrideWith(

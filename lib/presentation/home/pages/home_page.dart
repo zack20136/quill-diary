@@ -101,13 +101,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         return;
       }
 
-      final int version = await ref.read(onboardingIntroVersionProvider.future);
+      final bool hasSeen = await ref.read(
+        hasSeenOnboardingIntroProvider.future,
+      );
       if (!mounted) {
         return;
       }
       if (!shouldShowOnboardingIntro(
         sessionState: latest,
-        storedVersion: version,
+        hasSeen: hasSeen,
       )) {
         setState(() => _introFlowDone = true);
         return;

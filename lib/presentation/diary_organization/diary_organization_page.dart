@@ -44,6 +44,7 @@ class DiaryOrganizationPage extends ConsumerStatefulWidget {
 class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     with WidgetsBindingObserver {
   final _privacy = PrivateTextController();
+  final _privacyScroll = ScrollController();
   final _composer = PrivateTextController();
   final _composerFocus = FocusNode();
   final _scroll = ScrollController();
@@ -321,16 +322,23 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  key: const ValueKey('organization-privacy-text'),
-                  controller: _privacy,
-                  readOnly: true,
-                  expands: true,
-                  minLines: null,
-                  maxLines: null,
-                  textAlignVertical: TextAlignVertical.top,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                child: AppScrollbar(
+                  controller: _privacyScroll,
+                  track: AppScrollbarTrack.frame,
+                  child: TextField(
+                    key: const ValueKey('organization-privacy-text'),
+                    controller: _privacy,
+                    scrollController: _privacyScroll,
+                    readOnly: true,
+                    expands: true,
+                    minLines: null,
+                    maxLines: null,
+                    textAlignVertical: TextAlignVertical.top,
+                    keyboardType: TextInputType.multiline,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.all(12),
+                    ),
                   ),
                 ),
               ),
@@ -471,6 +479,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                 child: ListView(
                   key: const ValueKey('organization-conversation'),
                   controller: _scroll,
+                  physics: appBouncingScrollPhysics,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 12,
@@ -536,7 +545,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                 constraints: BoxConstraints(
                   maxHeight: constraints.maxHeight * 0.75,
                 ),
-                child: AppScrollView(
+                child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -773,6 +782,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _privacy.dispose();
+    _privacyScroll.dispose();
     _composer.dispose();
     _composerFocus.dispose();
     _scroll.dispose();

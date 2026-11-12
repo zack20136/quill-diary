@@ -16,7 +16,6 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 人物頁頂列與管理 dialog 共用的關係圖示。
@@ -426,17 +425,11 @@ class _RelationshipTypesManageDialogState
       accent: true,
       icon: const Icon(kPeopleRelationshipsIcon),
       title: l10n.peopleManageRelationshipsTitle,
-      titleTrailing: IconButton(
-        tooltip: l10n.commonCloseTooltip,
-        onPressed: _busy ? null : () => Navigator.of(context).pop(),
-        icon: const Icon(Icons.close_rounded),
-      ),
+      closeEnabled: !_busy,
       actions: <Widget>[
-        AppActionButton(
-          label: l10n.commonActionClose,
-          icon: Icons.check_rounded,
-          appearance: AppActionButtonAppearance.primary,
+        TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.commonActionClose),
         ),
       ],
       content: Column(

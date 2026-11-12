@@ -1,22 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 
-class OnboardingIntroController extends AsyncNotifier<int> {
+class OnboardingIntroController extends AsyncNotifier<bool> {
   @override
-  Future<int> build() {
-    return ref.read(userPreferencesProvider).onboardingIntroVersion;
+  Future<bool> build() {
+    return ref.read(userPreferencesProvider).hasSeenOnboardingIntro;
   }
 
   Future<void> markCompleted() async {
-    await ref
-        .read(userPreferencesProvider)
-        .setOnboardingIntroVersion(DataVersions.onboardingIntro);
-    state = const AsyncData<int>(DataVersions.onboardingIntro);
+    await ref.read(userPreferencesProvider).markOnboardingIntroSeen();
+    state = const AsyncData<bool>(true);
   }
 }
 
-final onboardingIntroVersionProvider =
-    AsyncNotifierProvider<OnboardingIntroController, int>(
+final hasSeenOnboardingIntroProvider =
+    AsyncNotifierProvider<OnboardingIntroController, bool>(
       OnboardingIntroController.new,
     );

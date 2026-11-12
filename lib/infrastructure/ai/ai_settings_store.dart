@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -79,6 +80,29 @@ class AiSettingsStore {
     return _vault.runVaultMutation(() async {
       final current = await _readFile(session);
       await _writeFile(session, current.copyWith(aiEnabled: enabled));
+    });
+  }
+
+  /// 只更新下一則新聊天的夥伴，保留提示詞覆寫與連線。
+  Future<void> updateSelectedPersona(
+    UnlockedVaultSession session,
+    PersonaReference? persona,
+  ) {
+    final snapshot = persona == null
+        ? null
+        : PersonaReference.fromJson(
+            jsonDecode(jsonEncode(persona.toJson())) as Map<String, dynamic>,
+          );
+    return _vault.runVaultMutation(() async {
+      final current = await _readFile(session);
+      await _writeFile(
+        session,
+        current.copyWith(
+          chatDiaryPrompts: current.chatDiaryPrompts.withSelectedPersona(
+            snapshot,
+          ),
+        ),
+      );
     });
   }
 

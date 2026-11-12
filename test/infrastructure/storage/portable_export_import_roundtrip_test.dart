@@ -317,7 +317,6 @@ void main() {
       expect(html, isNot(contains('class="embedded-images"')));
       expect(html, isNot(contains('class="attachment-list"')));
       expect(html, isNot(contains('data:image')));
-      expect(html, isNot(contains('未內嵌附件')));
       expect(html, isNot(contains('note.txt')));
       expect(html, isNot(contains('photo.png')));
       expect(html, contains('純文字'));

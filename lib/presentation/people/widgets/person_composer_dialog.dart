@@ -20,7 +20,6 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
@@ -951,12 +950,18 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       onPressed: _saving ? null : () => unawaited(_requestClose()),
       child: Text(l10n.commonActionCancel),
     ),
-    AppActionButton(
-      label: l10n.peopleSaveAction,
-      icon: Icons.check_rounded,
-      appearance: AppActionButtonAppearance.primary,
-      loading: _saving,
+    FilledButton(
       onPressed: _saving ? null : () => unawaited(_save()),
+      child: _saving
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            )
+          : Text(l10n.peopleSaveAction),
     ),
   ];
 
@@ -970,11 +975,8 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     title: widget.isEditing
         ? context.l10n.peopleEditTitle
         : context.l10n.peopleCreateTitle,
-    titleTrailing: IconButton(
-      tooltip: context.l10n.commonCloseTooltip,
-      onPressed: _saving ? null : () => unawaited(_requestClose()),
-      icon: const Icon(Icons.close_rounded),
-    ),
+    onClose: () => unawaited(_requestClose()),
+    closeEnabled: !_saving,
     content: content,
     actions: actions,
   );
@@ -1048,10 +1050,10 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
         removeBottom: true,
         child: _shell(
           context,
-            content: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: bodyHeight),
-              child: body,
-            ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: bodyHeight),
+            child: body,
+          ),
           actions: _actions(l10n),
         ),
       ),

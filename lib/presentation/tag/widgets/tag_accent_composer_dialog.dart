@@ -20,7 +20,7 @@ Future<String?> showTagAccentComposerDialog({
   int? initialAccentArgb,
   bool? initialAccentIsCustom,
   String? primaryButtonLabel,
-  Future<void> Function()? onDelete,
+  Future<bool> Function()? onDelete,
 }) => showAppDialog<String>(
   context: context,
   barrierColor: context.appColors.scrim,
@@ -56,7 +56,7 @@ class TagAccentComposerDialog extends ConsumerStatefulWidget {
   final String? titleText;
   final String? descriptionText;
   final String? primaryButtonLabel;
-  final Future<void> Function()? onDelete;
+  final Future<bool> Function()? onDelete;
 
   @override
   ConsumerState<TagAccentComposerDialog> createState() =>
@@ -175,8 +175,8 @@ class _TagAccentComposerDialogState
     }
     setState(() => _deleting = true);
     try {
-      await widget.onDelete!();
-      if (mounted) {
+      final deleted = await widget.onDelete!();
+      if (mounted && deleted) {
         Navigator.of(context).pop();
       }
     } catch (error) {
@@ -254,40 +254,29 @@ class _TagAccentComposerDialogState
       accent: true,
       icon: const Icon(Icons.color_lens_rounded),
       title: widget.titleText ?? l10n.tagAddTitle,
-      titleTrailing: IconButton(
-        tooltip: l10n.commonCloseTooltip,
-        onPressed: busy ? null : () => Navigator.of(context).pop(),
-        icon: const Icon(Icons.close_rounded),
-      ),
+      closeEnabled: !busy,
+      leading: canDelete
+          ? IconButton(
+              tooltip: l10n.commonActionDelete,
+              onPressed: busy ? null : _delete,
+              style: IconButton.styleFrom(foregroundColor: cs.error),
+              icon: _deleting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_outline_rounded),
+            )
+          : null,
       actions: <Widget>[
-        if (canDelete)
-          TextButton.icon(
-            onPressed: busy ? null : _delete,
-            icon: _deleting
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: cs.error,
-                    ),
-                  )
-                : Icon(Icons.delete_outline_rounded, color: cs.error),
-            label: Text(l10n.tagDeleteLabel, style: TextStyle(color: cs.error)),
-          )
-        else
-          TextButton(
-            onPressed: busy ? null : () => Navigator.of(context).pop(),
-            child: Text(
-              l10n.commonActionCancel,
-              style: TextStyle(color: cs.onSurfaceVariant),
-            ),
-          ),
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-          icon: _saving
+        TextButton(
+          onPressed: busy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: busy ? null : _save,
+          child: _saving
               ? SizedBox(
                   width: 18,
                   height: 18,
@@ -296,9 +285,7 @@ class _TagAccentComposerDialogState
                     color: cs.onPrimary,
                   ),
                 )
-              : const Icon(Icons.check_rounded, size: 20),
-          onPressed: busy ? null : _save,
-          label: Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
+              : Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
         ),
       ],
       content: Column(

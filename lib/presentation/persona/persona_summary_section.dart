@@ -31,6 +31,18 @@ class PersonaSummarySection extends ConsumerWidget {
             : null;
         return PersonDetailSectionCard(
           title: l.personaTitle,
+          trailing: TextButton.icon(
+            onPressed: !ref.watch(aiEnabledProvider)
+                ? null
+                : () => context.push(AppRoutes.personaLocation(personId)),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ),
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: Text(l.personaManage),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -46,18 +58,20 @@ class PersonaSummarySection extends ConsumerWidget {
               if (saved.hasError) Text(l.personaNeedsRecovery),
               if (record?.available == true) ...[
                 Text(l.personaSummaryReady),
-                const SizedBox(height: 6),
-                Text(
-                  l.personaUpdatedAt(
-                    DisplayFormat.formatDateTimeWithoutWeekday(l, updatedAt!),
+                if (record?.draft == null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    l.personaUpdatedAt(
+                      DisplayFormat.formatDateTimeWithoutWeekday(l, updatedAt!),
+                    ),
+                    style: detailStyle,
                   ),
-                  style: detailStyle,
-                ),
+                ],
               ] else if (record?.draft == null && !saved.hasError) ...[
                 Text(l.personaSummaryCreate),
               ],
               if (record?.draft != null) ...[
-                if (record?.available == true) const SizedBox(height: 12),
+                if (record?.available == true) const SizedBox(height: 6),
                 Text(
                   l.personaDraftProgress(
                     record?.available == true
@@ -67,13 +81,6 @@ class PersonaSummarySection extends ConsumerWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: !ref.watch(aiEnabledProvider)
-                    ? null
-                    : () => context.push(AppRoutes.personaLocation(personId)),
-                child: Text(l.personaManage),
-              ),
             ],
           ),
         );

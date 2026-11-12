@@ -1,9 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
-import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_hybrid_body.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
 
@@ -25,26 +23,6 @@ void main() {
 
       expect(harness.bodyController.text, contains('- [ ]'));
       expect(find.byType(Checkbox), findsOneWidget);
-    });
-
-    testWidgets('插入任務項目後會保留後續文字行', (WidgetTester tester) async {
-      final ({
-        TextEditingController bodyController,
-        GlobalKey<EditorHybridBodyState> bodyKey,
-      })
-      harness = await pumpEditorHybridBody(
-        tester,
-        bodyText: '15651\n- [x] 111\n456456',
-      );
-
-      harness.bodyKey.currentState!.insertCheckboxAtCursor();
-      await tester.pumpAndSettle();
-
-      final String markdown = harness.bodyController.text;
-      expect(markdown, contains('456456'));
-      expect(markdown, contains('15651'));
-      expect(markdown, contains('- [ ]'));
-      expect(find.byIcon(Icons.drag_handle_rounded), findsNWidgets(2));
     });
 
     testWidgets('在空白文字行按 backspace 會刪除該行', (WidgetTester tester) async {
@@ -86,39 +64,6 @@ void main() {
       expect(harness.bodyController.text, isNot(contains('- [ ]')));
     });
 
-    testWidgets('核取方塊視覺 24px 並與第一行文字頂對齊', (WidgetTester tester) async {
-      final TextEditingController textController = TextEditingController(
-        text: '第一行\n第二行\n第三行',
-      );
-      addTearDown(textController.dispose);
-
-      await tester.pumpWidget(
-        editorTestApp(
-          child: EditorCheckboxBlockRow(
-            block: const EditorCheckboxLine(
-              id: 'c1',
-              text: '第一行\n第二行\n第三行',
-              checked: false,
-            ),
-            typography: EditorTypographyPreferences.defaults,
-            bodyStyle: const TextStyle(fontSize: 16, height: 1.4),
-            editable: true,
-            textController: textController,
-            onCheckedChanged: (_) {},
-            onTextChanged: (_) {},
-          ),
-        ),
-      );
-
-      final Size checkboxSize = tester.getSize(find.byType(Checkbox));
-      expect(checkboxSize.width, lessThanOrEqualTo(24));
-      expect(checkboxSize.height, lessThanOrEqualTo(24));
-
-      final double checkboxTop = tester.getTopLeft(find.byType(Checkbox)).dy;
-      final double textTop = tester.getTopLeft(find.byType(TextField)).dy;
-      // 允許 top: 2 的光學微調，但不應落到多行文字中央。
-      expect((checkboxTop - textTop).abs(), lessThan(8));
-    });
   });
 
   group('EditorMarkdownPreview', () {

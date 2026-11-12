@@ -817,7 +817,7 @@ void main() {
       await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining(testL10n.chatDiaryGenerationDefaultSystemPrompt),
+        find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
         findsOneWidget,
       );
       expect(find.text('尚未送出'), findsOneWidget);
@@ -954,7 +954,7 @@ void main() {
       await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining(testL10n.chatDiaryGenerationDefaultSystemPrompt),
+        find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
         findsOneWidget,
       );
       expect(

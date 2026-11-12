@@ -10,6 +10,7 @@ import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/editor/editor_flow_controller.dart';
+import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
@@ -23,6 +24,8 @@ import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -30,6 +33,7 @@ import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
+import '../../helpers/persona/persona_fixtures.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
@@ -823,7 +827,15 @@ void main() {
       expect(conversation.turns.last.pending, isTrue);
       final generation = (await controller.previewRequest(generate: true))!;
       expect(generation.hasLocalPrivateNotes, isTrue);
-      expect(generation.systemPrompt, '生成提示詞與⟦S01⟧');
+      expect(
+        generation.systemPrompt,
+        startsWith(testZhL10n.chatDiaryGenerationRulesPrompt),
+      );
+      expect(generation.systemPrompt, endsWith('生成提示詞與⟦S01⟧'));
+      expect(
+        generation.systemPrompt,
+        isNot(contains(testZhL10n.chatDiaryGenerationGuidancePrompt)),
+      );
       expect(generation.turns.single.pending, isFalse);
       expect(generation.turns.single.imageIds, [sentImage]);
       expect(generation.turns.single.text, isNot(contains('未送出')));
@@ -1764,6 +1776,106 @@ void main() {
         ).existsSync(),
         isFalse,
       );
+    });
+  });
+
+  group('聊天夥伴', () {
+    Future<PersonaRecord> publishCompanion(String name) async {
+      final person = await harness.repository.createPerson(
+        setup.session,
+        PersonDraft(name: name),
+      );
+      final personas = container.read(personaStoreProvider);
+      final record = personaDraftRecord(setup.session.vaultId, person.id);
+      await personas.saveDraft(record, setup.session, create: true);
+      record.draft!.candidate = personaCandidates();
+      record.draft!.step = PersonaStep.review;
+      await personas.saveDraft(record, setup.session);
+      return personas.publish(record.personId, record.personaId, setup.session);
+    }
+
+    Future<ChatDiaryController> startChat(String id) async {
+      container.listen(chatDiaryControllerProvider(id), (_, _) {});
+      final next = container.read(chatDiaryControllerProvider(id));
+      await next.start(id, setup.session, openingMessage: '');
+      return next;
+    }
+
+    test('選分身後，下一則新聊天沿用，原本那則也保留', () async {
+      final record = await publishCompanion('沿用的朋友');
+      await controller.selectPersona(record);
+      expect(controller.chat!.selectedPersona?.personaId, record.personaId);
+      expect(
+        settings.chatDiaryPrompts.selectedPersona?.personaId,
+        record.personaId,
+      );
+
+      final next = await startChat(generateChatDiaryId());
+      expect(next.chat!.selectedPersona?.personaId, record.personaId);
+      expect(controller.chat!.selectedPersona?.personaId, record.personaId);
+    });
+
+    test('改回預設夥伴後，下一則新聊天回到預設', () async {
+      final record = await publishCompanion('改回前的朋友');
+      await controller.selectPersona(record);
+      await controller.selectPersona(null);
+      expect(controller.chat!.selectedPersona, isNull);
+      expect(settings.chatDiaryPrompts.selectedPersona, isNull);
+
+      final next = await startChat(generateChatDiaryId());
+      expect(next.chat!.selectedPersona, isNull);
+      expect(next.personaUnavailable, isFalse);
+    });
+
+    test('記住的分身已不存在時，新聊天回到預設並清掉選擇', () async {
+      settings.chatDiaryPrompts = ChatDiaryPromptSettings(
+        selectedPersona: PersonaReference(
+          personId: generatePersonId(),
+          personaId: generatePersonaId(),
+        ),
+      );
+      final next = await startChat(generateChatDiaryId());
+      expect(next.chat!.selectedPersona, isNull);
+      expect(next.personaUnavailable, isTrue);
+      expect(settings.chatDiaryPrompts.selectedPersona, isNull);
+    });
+
+    test('刪除已選分身後，下一則新聊天回到預設且不再提示', () async {
+      final record = await publishCompanion('即將刪除的朋友');
+      await controller.selectPersona(record);
+      controller.personaDeleted(record.personId);
+      await pumpEventQueue();
+      expect(controller.chat!.selectedPersona, isNull);
+      expect(controller.personaUnavailable, isTrue);
+      expect(settings.chatDiaryPrompts.selectedPersona, isNull);
+
+      final next = await startChat(generateChatDiaryId());
+      expect(next.chat!.selectedPersona, isNull);
+      expect(next.personaUnavailable, isFalse);
+    });
+
+    test('只載入另一則舊聊天不會改掉記住的夥伴', () async {
+      final kept = await publishCompanion('要留下的朋友');
+      final other = await publishCompanion('舊聊天的朋友');
+      await controller.selectPersona(kept);
+      final old = testChatDiarySession(vaultId: setup.session.vaultId)
+        ..composerText = '舊聊天'
+        ..selectedPersona = PersonaReference(
+          personId: other.personId,
+          personaId: other.personaId,
+        );
+      await store.save(old, setup.session);
+
+      final loaded = await startChat(old.id);
+      expect(loaded.chat!.selectedPersona?.personaId, other.personaId);
+      expect(
+        settings.chatDiaryPrompts.selectedPersona?.personaId,
+        kept.personaId,
+      );
+      expect(controller.chat!.selectedPersona?.personaId, kept.personaId);
+
+      final next = await startChat(generateChatDiaryId());
+      expect(next.chat!.selectedPersona?.personaId, kept.personaId);
     });
   });
 }

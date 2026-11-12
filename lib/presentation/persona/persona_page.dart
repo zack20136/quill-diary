@@ -17,6 +17,7 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
+import 'package:quill_diary/domain/diary_organization/organization_diff.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/persona/persona_content.dart';
@@ -30,10 +31,12 @@ import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_generation_card.dart';
 import 'package:quill_diary/presentation/ai/ai_preview_text_section.dart';
+import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
 import 'package:quill_diary/presentation/persona/persona_content_editor.dart';
 import 'package:quill_diary/presentation/persona/persona_labels.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_trial_page.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
@@ -41,7 +44,6 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
-import 'package:quill_diary/shared/presentation/widgets/adaptive_panel.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -354,6 +356,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       controller: _savedScroll,
       child: ListView(
         controller: _savedScroll,
+        physics: appBouncingScrollPhysics,
         key: const ValueKey('persona-saved'),
         padding: const EdgeInsets.fromLTRB(
           PageStyle.pageHorizontalPadding,
@@ -370,10 +373,6 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
             ),
           ),
           const SizedBox(height: PageStyle.sectionGap),
-          for (final kind in _cardOrder) ...[
-            _savedCard(kind),
-            const SizedBox(height: PageStyle.sectionGap),
-          ],
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
@@ -382,6 +381,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               child: Text(l.personaUpdateBoth),
             ),
           ),
+          const SizedBox(height: PageStyle.sectionGap),
+          for (final kind in _cardOrder) ...[
+            _savedCard(kind),
+            const SizedBox(height: PageStyle.sectionGap),
+          ],
         ],
       ),
     );
@@ -569,6 +573,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       controller: _materialsScroll,
       child: CustomScrollView(
         controller: _materialsScroll,
+        physics: appBouncingScrollPhysics,
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -784,22 +789,28 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       return;
                     }
                     await _dialog<void>(
-                      Scaffold(
-                        appBar: AppBar(
-                          title: Text(title),
-                          leading: CloseButton(
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                        body: SafeArea(
-                          child: AppScrollView(
-                            padding: const EdgeInsets.all(16),
-                            child: SelectableText(
-                              value.markdownBody,
-                              style: bodyStyle,
+                      AppDialogShell(
+                        title: title,
+                        content: SizedBox(
+                          width: 560,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: personaDialogBodyHeight(context),
+                            ),
+                            child: AppScrollView(
+                              child: SelectableText(
+                                value.markdownBody,
+                                style: bodyStyle,
+                              ),
                             ),
                           ),
                         ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(context.l10n.commonActionClose),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -1014,6 +1025,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       child: ListView(
         key: const ValueKey('persona-confirmation'),
         controller: _scroll,
+        physics: appBouncingScrollPhysics,
         padding: const EdgeInsets.all(16),
         children: [
           if (preview.connection case final connection?) ...[
@@ -1063,13 +1075,25 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               ),
             ),
           ],
+          if (preview.updateTarget == PersonaUpdateTarget.tone &&
+              preview.modelTarget == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+              child: Text(
+                _controller.draft!.includeCurrent[PersonaCardKind.tone] == true
+                    ? l.personaToneLocalRetainedHint
+                    : l.personaToneLocalNeutralHint,
+                style: _hintStyle,
+              ),
+            ),
           ..._cardPreviews(preview, l),
-          if (showsSubjectName)
+          if (preview.modelTarget != null && showsSubjectName)
             Padding(
               padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
               child: Text(l.personaSpeakerNamePreviewHint, style: _hintStyle),
             ),
-          ..._materialPreviews(preview.blocks, subjectName: subjectName),
+          if (preview.modelTarget != null)
+            ..._materialPreviews(preview.blocks, subjectName: subjectName),
           if (_controller.failed)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -1218,6 +1242,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       controller: _reviewScroll,
       child: ListView(
         controller: _reviewScroll,
+        physics: appBouncingScrollPhysics,
         key: const ValueKey('persona-review'),
         padding: const EdgeInsets.all(16),
         children: [
@@ -1320,42 +1345,35 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   Future<void> _showSavedCompare(PersonaCardKind kind, PersonaCandidate saved) {
     final l = context.l10n;
     final session = _controller.session;
-    if (session == null || _backgrounded) return Future.value();
-    return showAdaptivePanel<void>(
-      context: context,
-      builder: (sheetContext) {
-        final route = ModalRoute.of(sheetContext);
-        if (route != null) _dialogs.add(route);
-        if (_backgrounded || !identical(session, _controller.session)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (route != null && route.isActive) {
-              route.navigator?.removeRoute(route);
-            }
-          });
-          return const SizedBox.shrink();
-        }
-        return AdaptiveChoicePanel(
-          title: '${personaCardLabel(l, kind)} · ${l.personaCompare}',
-          onClose: () => Navigator.pop(sheetContext),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SavedPersonaText(text: _content(saved).text, style: _bodyStyle),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  if (identical(session, _controller.session)) {
-                    _restoreCard(kind, saved);
-                  }
-                },
-                child: Text(l.personaRetainCurrent),
-              ),
-            ],
-          ),
-        );
-      },
-    ).whenComplete(() => _dialogs.removeWhere((route) => !route.isActive));
+    final candidate = _controller.draft?.candidate?[kind];
+    if (session == null || _backgrounded || candidate == null) {
+      return Future.value();
+    }
+    final fontSize = _bodyStyle.fontSize ?? 16;
+    return _dialog<void>(
+      _SavedCompareDialog(
+        title: l.personaCompare,
+        cardLabel: personaCardLabel(l, kind),
+        lines: organizationDiffLines(
+          _content(saved).text,
+          _content(candidate).text,
+        ),
+        style: _bodyStyle.copyWith(
+          fontSize: fontSize > 16 ? 16 : fontSize,
+          height: 1.4,
+        ),
+        closeLabel: l.commonActionClose,
+        restoreLabel: l.personaRestore,
+        confirmTitle: l.personaRestoreTitle,
+        confirmBody: l.personaRestoreBody,
+        cancelLabel: l.commonActionCancel,
+        onRestore: () {
+          if (identical(session, _controller.session)) {
+            _restoreCard(kind, saved);
+          }
+        },
+      ),
+    );
   }
 
   void _restoreCard(PersonaCardKind kind, PersonaCandidate saved) {
@@ -1412,7 +1430,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               actions: [
                 IconButton(
                   tooltip: d == null ? l.personaDelete : l.personaCancelUpdate,
-                  color: d == null ? Theme.of(context).colorScheme.error : null,
+                  color: Theme.of(context).colorScheme.error,
                   icon: Icon(d == null ? Icons.delete_outline : Icons.close),
                   onPressed:
                       disabled ||
@@ -1699,7 +1717,98 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   }
 }
 
-class _CollapsibleCard extends StatelessWidget {
+class _SavedCompareDialog extends StatelessWidget {
+  const _SavedCompareDialog({
+    required this.title,
+    required this.cardLabel,
+    required this.lines,
+    required this.style,
+    required this.closeLabel,
+    required this.restoreLabel,
+    required this.confirmTitle,
+    required this.confirmBody,
+    required this.cancelLabel,
+    required this.onRestore,
+  });
+
+  final String title;
+  final String cardLabel;
+  final List<OrganizationDiffLine> lines;
+  final TextStyle style;
+  final String closeLabel;
+  final String restoreLabel;
+  final String confirmTitle;
+  final String confirmBody;
+  final String cancelLabel;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    return AppDialogShell(
+      icon: Icon(Icons.difference_outlined, color: colors.primary),
+      title: title,
+      content: SizedBox(
+        height: personaDialogBodyHeight(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              cardLabel,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                  child: ColoredBox(
+                    color: colors.surface,
+                    child: OrganizationDiffView(
+                      lines: lines,
+                      textStyle: style,
+                      panel: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(closeLabel),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final bool confirmed = await showAppConfirmDialog(
+              context: context,
+              title: confirmTitle,
+              content: Text(confirmBody),
+              cancelLabel: cancelLabel,
+              confirmLabel: restoreLabel,
+            );
+            if (!confirmed || !context.mounted) return;
+            Navigator.pop(context);
+            onRestore();
+          },
+          child: Text(restoreLabel),
+        ),
+      ],
+    );
+  }
+}
+
+class _CollapsibleCard extends StatefulWidget {
   const _CollapsibleCard({
     super.key,
     required this.title,
@@ -1712,16 +1821,50 @@ class _CollapsibleCard extends StatelessWidget {
   final TextStyle style;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: EdgeInsets.zero,
-    child: ExpansionTile(
-      shape: const Border(),
-      collapsedShape: const Border(),
-      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      childrenPadding: const EdgeInsets.all(12),
-      children: [_SavedPersonaText(text: text, style: style)],
-    ),
-  );
+  State<_CollapsibleCard> createState() => _CollapsibleCardState();
+}
+
+class _CollapsibleCardState extends State<_CollapsibleCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: theme.textTheme.titleMedium?.copyWith(height: 1),
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
+              child: _SavedPersonaText(text: widget.text, style: widget.style),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SavedPersonaText extends StatefulWidget {
@@ -1747,6 +1890,7 @@ class _SavedPersonaTextState extends State<_SavedPersonaText> {
   Widget build(BuildContext context) {
     return AppInsetPanel(
       padding: EdgeInsets.zero,
+      backgroundColor: context.appColors.sectionCard,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           maxHeight: AiPreviewTextSection.bodyMaxHeight,
@@ -1754,17 +1898,21 @@ class _SavedPersonaTextState extends State<_SavedPersonaText> {
         child: AppScrollbar(
           controller: _scroll,
           track: AppScrollbarTrack.frame,
-          child: SingleChildScrollView(
+          child: ListView(
             controller: _scroll,
+            shrinkWrap: true,
             primary: false,
-            padding: const EdgeInsets.all(12),
-            child: SelectionArea(
-              child: PrivateText(
-                text: widget.text,
-                ranges: privacyTokenRanges(widget.text),
-                style: widget.style,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            children: [
+              SelectionArea(
+                child: PrivateText(
+                  text: widget.text,
+                  ranges: privacyTokenRanges(widget.text),
+                  style: widget.style,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

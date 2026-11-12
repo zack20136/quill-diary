@@ -18,7 +18,9 @@ import 'package:quill_diary/presentation/home/home_entry_presenters.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/home_entry_preview_body.dart';
 import 'package:quill_diary/presentation/home/widgets/home_pin_glyph.dart';
+import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -115,6 +117,7 @@ class HomeEntryList extends ConsumerWidget {
       },
       child: ListView.separated(
         controller: controller,
+        physics: appBouncingScrollPhysics,
         primary: controller == null,
         padding: const EdgeInsets.only(bottom: 16),
         scrollCacheExtent: HomeLayout.entryListCacheExtent,
@@ -255,13 +258,7 @@ class HomeEntryCard extends StatelessWidget {
                   leading: selectionActive
                       ? Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Icon(
-                            selected
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: selected ? cs.primary : cs.onSurfaceVariant,
-                            size: 22,
-                          ),
+                          child: HomeSelectionIndicator(selected: selected),
                         )
                       : null,
                   leadingGap: selectionActive ? 12 : 0,

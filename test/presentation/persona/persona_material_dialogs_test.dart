@@ -7,6 +7,7 @@ import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -40,7 +41,7 @@ void main() {
     ],
   );
 
-  testWidgets('確認說話者以角色卡呈現並保留底部確認操作', (tester) async {
+  testWidgets('確認說話者以角色卡呈現，並保留底部確認與取消操作', (tester) async {
     await tester.pumpWidget(
       widgetTestApp(
         center: false,
@@ -59,7 +60,10 @@ void main() {
     expect(find.text('目標對象'), findsWidgets);
     final confirm = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(confirm.onPressed, isNotNull);
-    expect(tester.getSize(find.byType(FilledButton)).width, greaterThan(300));
+    expect(
+      find.text(testL10n.commonActionCancel).hitTestable(),
+      findsOneWidget,
+    );
   });
 
   testWidgets('匯入聊天將角色、日期與訊息納入狀態分卡顯示', (tester) async {
@@ -145,7 +149,10 @@ void main() {
     expect(find.text('自己 · 09:12'), findsOneWidget);
     expect(find.text('小明 · 09:14'), findsOneWidget);
     expect(find.byTooltip('刪除'), findsNWidgets(2));
-    expect(find.text('取消').hitTestable(), findsOneWidget);
+    expect(
+      find.text(testL10n.commonActionCancel).hitTestable(),
+      findsOneWidget,
+    );
     expect(find.text('套用').hitTestable(), findsOneWidget);
     expect(find.text('完成檢查'), findsNothing);
     final textFields = find.byType(TextField);

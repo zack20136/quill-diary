@@ -1051,7 +1051,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           l10n.settingsRepairVaultBackupCancelled,
         BackupPersistStatus.inspectFailed =>
           l10n.settingsRepairVaultBackupInspectFailed(
-            localizedBackupPersistDetail(l10n, error.result.message),
+            localizedBackupInspectDetail(l10n, error.result.message),
           ),
         BackupPersistStatus.success => l10n.settingsRepairVaultBackupFailed,
       };

@@ -248,9 +248,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                             controller: _messagesScroll,
                             child: ListView.builder(
                               controller: _messagesScroll,
-                              physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics(),
-                              ),
+                              physics: appBouncingScrollPhysics,
                               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                               itemCount: messages.length,
                               itemBuilder: (_, index) => Padding(

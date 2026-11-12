@@ -85,10 +85,9 @@ class RecoveryKeySaveDialog extends StatelessWidget {
         ),
       ),
       actions: <Widget>[
-        TextButton.icon(
+        TextButton(
           onPressed: () => _copy(context),
-          icon: const Icon(Icons.content_copy_rounded, size: 18),
-          label: Text(l10n.commonActionCopy),
+          child: Text(l10n.commonActionCopy),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

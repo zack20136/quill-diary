@@ -8,7 +8,6 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/shared/test_l10n.dart';
@@ -16,11 +15,11 @@ import '../../helpers/shared/widget_test_app.dart';
 
 class _InstantOnboardingIntroController extends OnboardingIntroController {
   @override
-  Future<int> build() async => 0;
+  Future<bool> build() async => false;
 
   @override
   Future<void> markCompleted() async {
-    state = const AsyncData<int>(DataVersions.onboardingIntro);
+    state = const AsyncData<bool>(true);
   }
 }
 
@@ -46,7 +45,7 @@ void main() {
       ProviderScope(
         overrides: [
           userPreferencesProvider.overrideWithValue(preferences),
-          onboardingIntroVersionProvider.overrideWith(
+          hasSeenOnboardingIntroProvider.overrideWith(
             _InstantOnboardingIntroController.new,
           ),
         ],
@@ -110,7 +109,7 @@ void main() {
     expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
   });
 
-  testWidgets('Dialog 會依當頁內容調整高度', (WidgetTester tester) async {
+  testWidgets('換頁時對話框高度保持不變', (WidgetTester tester) async {
     await openDialog(tester);
 
     final double firstPageHeight = tester.getSize(find.byType(PageView)).height;
@@ -120,8 +119,7 @@ void main() {
     await tester.tap(find.text(testL10n.onboardingIntroNext));
     await tester.pumpAndSettle();
 
-    final double thirdPageHeight = tester.getSize(find.byType(PageView)).height;
-    expect(thirdPageHeight, greaterThan(firstPageHeight));
+    expect(tester.getSize(find.byType(PageView)).height, firstPageHeight);
   });
 
   testWidgets('切換英文後會寫入語系偏好', (WidgetTester tester) async {

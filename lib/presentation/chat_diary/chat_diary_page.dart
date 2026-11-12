@@ -932,9 +932,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                               controller: _scrollController,
                               child: ListView.builder(
                                 controller: _scrollController,
-                                physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics(),
-                                ),
+                                physics: appBouncingScrollPhysics,
                                 padding: const EdgeInsets.fromLTRB(
                                   20,
                                   4,

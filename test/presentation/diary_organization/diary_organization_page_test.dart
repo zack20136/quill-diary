@@ -186,7 +186,15 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(scope.client.calls, isEmpty);
-        await tester.tap(find.widgetWithText(TextButton, '取消'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AiConnectionSettingsDialog),
+            matching: find.widgetWithText(
+              TextButton,
+              testL10n.commonActionCancel,
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(find.byType(AiConnectionSettingsDialog), findsNothing);
         expect(
@@ -342,6 +350,14 @@ void main() {
         _app(scope, DiaryOrganizationPage(entryId: scope.entry.id)),
       );
       await tester.pumpAndSettle();
+      final surface = tester.getRect(
+        find.byKey(const ValueKey('ai-composer-surface')),
+      );
+      final page = tester.getRect(find.byType(DiaryOrganizationPage));
+      expect(
+        (page.right - surface.right).round(),
+        (surface.left - page.left).round(),
+      );
       final composer = find.byKey(const ValueKey('organization-composer'));
       await tester.enterText(composer, '請保留@小明');
       await tester.pumpAndSettle();
@@ -641,7 +657,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.widgetWithText(TextButton, '確定'));
+      await tester.tap(
+        find.widgetWithText(FilledButton, testL10n.commonActionConfirm),
+      );
       await _waitForUi(tester, () => !scope.controller.busy);
       tester.view.resetViewInsets();
       await tester.pumpAndSettle();

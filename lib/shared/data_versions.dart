@@ -20,8 +20,6 @@ abstract final class DataVersions {
   /// 姓名比對規則變更時遞增，讓衍生統計重新建立。
   static const int peopleAnalyticsGeneration = 1;
 
-  static const int onboardingIntro = 1;
-
   /// 新日記庫的起始值；既有紀錄仍保留各自的金鑰版本。
   static const int initialRecoveryKey = 1;
 }

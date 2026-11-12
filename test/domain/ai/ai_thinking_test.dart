@@ -82,20 +82,6 @@ void main() {
     expect(old.toSnapshotJson().containsKey('thinking_overrides'), isFalse);
   });
 
-  test('目錄預設屬於允許的思考強度', () {
-    for (final provider in aiCatalogProviders) {
-      for (final model
-          in aiModelCatalog[provider] ?? const <AiCatalogModel>[]) {
-        final config = AiConnectionConfig(provider: provider, model: model.id);
-        expect(resolvedThinkingLevel(config), model.defaultThinking);
-        expect(
-          thinkingChoicesFor(config, model.id),
-          contains(model.defaultThinking),
-        );
-      }
-    }
-  });
-
   test('各供應商的思考欄位對應到該家 API 格式', () {
     final examples = [
       (

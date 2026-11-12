@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 
 void main() {
   late Directory tempDir;
@@ -24,23 +23,20 @@ void main() {
     }
   });
 
-  test('完成介紹後會寫入目前版本', () async {
+  test('完成介紹後會寫入已看過', () async {
     final ProviderContainer container = ProviderContainer(
       overrides: [userPreferencesProvider.overrideWithValue(preferences)],
     );
     addTearDown(container.dispose);
 
-    expect(await preferences.onboardingIntroVersion, 0);
+    expect(await preferences.hasSeenOnboardingIntro, isFalse);
     await container
-        .read(onboardingIntroVersionProvider.notifier)
+        .read(hasSeenOnboardingIntroProvider.notifier)
         .markCompleted();
     expect(
-      await container.read(onboardingIntroVersionProvider.future),
-      DataVersions.onboardingIntro,
+      await container.read(hasSeenOnboardingIntroProvider.future),
+      isTrue,
     );
-    expect(
-      await preferences.onboardingIntroVersion,
-      DataVersions.onboardingIntro,
-    );
+    expect(await preferences.hasSeenOnboardingIntro, isTrue);
   });
 }

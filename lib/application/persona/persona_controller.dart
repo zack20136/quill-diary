@@ -57,8 +57,9 @@ class PersonaGenerationContext {
   final String subject;
   final String selectionSignature;
 
-  List<Map<String, Object?>> get requestMaterials =>
-      blocks.map((block) => block.toRequestJson()).toList();
+  List<Map<String, Object?>> get requestMaterials => modelTarget == null
+      ? const []
+      : blocks.map((block) => block.toRequestJson()).toList();
 
   bool get requiresBatching =>
       modelTarget != null &&
@@ -151,32 +152,37 @@ class PersonaController extends ChangeNotifier {
 
   bool get canSaveCandidate =>
       draft?.target.kinds.every(isCandidateValid) == true;
-  bool get hasMaterials =>
-      draft?.includeCurrent.entries.any(
-            (entry) => entry.value && record?.cards?[entry.key] != null,
-          ) ==
-          true ||
-      draft?.diaries.any((d) {
-            final body = entries[d.entryId]?.markdownBody;
-            return body != null &&
-                personaSourceHasVisibleText(body, d.hiddenRanges);
-          }) ==
-          true ||
-      draft?.chats.any((source) {
-            final chat = imports[source.importId];
-            if (chat == null) return false;
-            return chat
-                .messagesInWindow(source)
-                .any(
-                  (m) =>
-                      !source.excluded.contains(m.id) &&
-                      personaSourceHasVisibleText(
-                        m.text,
-                        source.hidden[m.id] ?? const [],
-                      ),
-                );
-          }) ==
-          true;
+  bool get hasMaterials {
+    final toneOnly = draft?.target == PersonaUpdateTarget.tone;
+    return draft?.includeCurrent.entries.any(
+              (entry) => entry.value && record?.cards?[entry.key] != null,
+            ) ==
+            true ||
+        draft?.diaries.any((d) {
+              final body = entries[d.entryId]?.markdownBody;
+              return body != null &&
+                  (toneOnly ||
+                      personaSourceHasVisibleText(body, d.hiddenRanges));
+            }) ==
+            true ||
+        draft?.chats.any((source) {
+              final chat = imports[source.importId];
+              if (chat == null) return false;
+              return chat
+                  .messagesInWindow(source)
+                  .any(
+                    (m) =>
+                        !source.excluded.contains(m.id) &&
+                        (toneOnly ||
+                            personaSourceHasVisibleText(
+                              m.text,
+                              source.hidden[m.id] ?? const [],
+                            )),
+                  );
+            }) ==
+            true;
+  }
+
   PersonaStore get store =>
       _store ??= ref.read<PersonaStore>(personaStoreProvider);
 
@@ -666,17 +672,17 @@ class PersonaController extends ChangeNotifier {
         );
       }
     }
-    if (blocks.isEmpty && includedCards.isEmpty) {
+    if (blocks.isEmpty &&
+        includedCards.isEmpty &&
+        !(draft!.target == PersonaUpdateTarget.tone && hasMaterials)) {
       throw const FormatException('沒有可用材料');
     }
     final needsMemory =
         blocks.isNotEmpty &&
         draft!.target.kinds.contains(PersonaCardKind.memory);
     final needsTone =
-        blocks.isNotEmpty &&
         draft!.target.kinds.contains(PersonaCardKind.tone) &&
-        (draft!.target == PersonaUpdateTarget.tone ||
-            blocks.any((block) => block.hasToneEvidence));
+        blocks.any((block) => block.hasToneEvidence);
     final modelTarget = switch ((needsMemory, needsTone)) {
       (true, true) => PersonaUpdateTarget.both,
       (true, false) => PersonaUpdateTarget.memory,
@@ -888,16 +894,13 @@ class PersonaController extends ChangeNotifier {
           level++
         ) {
           if (level >= 4) throw const FormatException('材料仍過長，請減少材料');
-          final pieces = [
-            for (final material in materials)
-              ...personaBatchPieces(
-                material,
-                subject: context.subject,
-                instructions: context.extractionInstructions,
-              ),
-          ];
+          final batches = personaExtractionBatches(
+            materials,
+            subject: context.subject,
+            instructions: context.extractionInstructions,
+          );
           final summaries = <String>[];
-          for (final piece in pieces) {
+          for (final batch in batches) {
             summaries.add(
               await _request(
                 context,
@@ -905,7 +908,7 @@ class PersonaController extends ChangeNotifier {
                 context.extractionInstructions,
                 personaExtractionData(
                   subject: context.subject,
-                  fragment: piece,
+                  fragment: batch,
                 ),
               ),
             );

@@ -1199,12 +1199,13 @@ class _AiConnectionSettingsDialogState
                                     help: (l10n) => l10n.chatDiaryRulesHelp,
                                     defaultPrompt: (language) =>
                                         resolveChatDiaryPrompt(
-                                          ChatDiaryPromptPurpose.rules,
+                                          ChatDiaryPromptPurpose
+                                              .conversationRules,
                                           language,
                                           const ChatDiaryPromptSettings(),
                                         ),
                                     fieldKey: const ValueKey(
-                                      ChatDiaryPromptPurpose.rules,
+                                      ChatDiaryPromptPurpose.conversationRules,
                                     ),
                                   ),
                                 ),
@@ -1219,12 +1220,14 @@ class _AiConnectionSettingsDialogState
                                     help: (l10n) => l10n.chatDiaryGuidanceHelp,
                                     defaultPrompt: (language) =>
                                         resolveChatDiaryPrompt(
-                                          ChatDiaryPromptPurpose.guidance,
+                                          ChatDiaryPromptPurpose
+                                              .conversationGuidance,
                                           language,
                                           const ChatDiaryPromptSettings(),
                                         ),
                                     fieldKey: const ValueKey(
-                                      ChatDiaryPromptPurpose.guidance,
+                                      ChatDiaryPromptPurpose
+                                          .conversationGuidance,
                                     ),
                                     apply: (value) => _guidanceOverride = value,
                                   ),
@@ -1253,23 +1256,47 @@ class _AiConnectionSettingsDialogState
                                   ),
                                 ),
                                 _promptTile(
-                                  title: l10n.chatDiaryGenerationLabel,
+                                  title: l10n.chatDiaryGenerationRulesLabel,
+                                  showStatus: false,
+                                  icon: Icons.shield_outlined,
+                                  onTap: () => _editPrompt(
+                                    customText: null,
+                                    readOnly: true,
+                                    title: (l10n) =>
+                                        l10n.chatDiaryGenerationRulesLabel,
+                                    help: (l10n) =>
+                                        l10n.chatDiaryGenerationRulesHelp,
+                                    defaultPrompt: (language) =>
+                                        resolveChatDiaryPrompt(
+                                          ChatDiaryPromptPurpose
+                                              .generationRules,
+                                          language,
+                                          const ChatDiaryPromptSettings(),
+                                        ),
+                                    fieldKey: const ValueKey(
+                                      ChatDiaryPromptPurpose.generationRules,
+                                    ),
+                                  ),
+                                ),
+                                _promptTile(
+                                  title: l10n.chatDiaryGenerationGuidanceLabel,
                                   custom: _generationOverride,
                                   icon: Icons.article_outlined,
                                   onTap: () => _editPrompt(
                                     customText: _generationOverride,
                                     title: (l10n) =>
-                                        l10n.chatDiaryGenerationLabel,
+                                        l10n.chatDiaryGenerationGuidanceLabel,
                                     help: (l10n) =>
-                                        l10n.chatDiaryGenerationHelp,
+                                        l10n.chatDiaryGenerationGuidanceHelp,
                                     defaultPrompt: (language) =>
                                         resolveChatDiaryPrompt(
-                                          ChatDiaryPromptPurpose.generation,
+                                          ChatDiaryPromptPurpose
+                                              .generationGuidance,
                                           language,
                                           const ChatDiaryPromptSettings(),
                                         ),
                                     fieldKey: const ValueKey(
-                                      ChatDiaryPromptPurpose.generation,
+                                      ChatDiaryPromptPurpose.generationGuidance,
                                     ),
                                     apply: (value) =>
                                         _generationOverride = value,

@@ -559,7 +559,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('查看與管理'));
+    await tester.ensureVisible(find.text(testL10n.personaManage));
     await tester.pumpAndSettle();
     final summary = find.byType(PersonaSummarySection);
     expect(
@@ -583,6 +583,7 @@ void main() {
     controller.busy = true;
     controller.notifyListeners();
     await tester.pump();
+    expect(find.textContaining('上次更新：'), findsNothing);
     expect(
       find.descendant(of: summary, matching: find.byType(TextButton)),
       findsOneWidget,

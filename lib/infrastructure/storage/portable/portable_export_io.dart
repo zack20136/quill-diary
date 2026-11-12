@@ -25,11 +25,19 @@ class HtmlExportOptions {
     this.includeImages = true,
     this.hidePersonNames = false,
     this.useEnglishPersonLabels = false,
+    this.documentTitle = '',
+    this.untitledEntryTitle = '',
+    this.unembeddedAttachmentsHeading = '',
+    this.htmlLang = '',
   });
 
   final bool includeImages;
   final bool hidePersonNames;
   final bool useEnglishPersonLabels;
+  final String documentTitle;
+  final String untitledEntryTitle;
+  final String unembeddedAttachmentsHeading;
+  final String htmlLang;
 }
 
 class MarkdownExportOptions {
@@ -555,8 +563,14 @@ class PortableExportIo {
     final StringBuffer body = StringBuffer();
     for (final HtmlExportDocument document in documents) {
       final DiaryEntry entry = document.entry!;
-      final String rawTitle = entry.normalizedTitle ?? '未命名日記';
-      final String title = anonymizer?.anonymizePlainText(rawTitle) ?? rawTitle;
+      final String? rawTitle =
+          entry.normalizedTitle ??
+          (options.untitledEntryTitle.trim().isEmpty
+              ? null
+              : options.untitledEntryTitle.trim());
+      final String? title = rawTitle == null
+          ? null
+          : anonymizer?.anonymizePlainText(rawTitle) ?? rawTitle;
       final List<String> tags = entry.tags
           .map((String tag) => anonymizer?.anonymizePlainText(tag) ?? tag)
           .toList(growable: false);
@@ -569,7 +583,9 @@ class PortableExportIo {
       body.writeln(
         '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
-      body.writeln('<h2>${_escapeHtml(title)}</h2>');
+      if (title != null && title.isNotEmpty) {
+        body.writeln('<h2>${_escapeHtml(title)}</h2>');
+      }
       if (tags.isNotEmpty) {
         body.writeln('<ul class="tags">');
         for (final String tag in tags) {
@@ -599,18 +615,24 @@ class PortableExportIo {
             fileOrdinal += 1;
             return label;
           },
+          unembeddedAttachmentsHeading: options.unembeddedAttachmentsHeading,
         ),
       );
       body.writeln('</article>');
     }
 
+    final String htmlLang = _nonBlankOr(options.htmlLang, 'zh-Hant');
+    final String documentTitle = _nonBlankOr(
+      options.documentTitle,
+      'Quill Diary',
+    );
     return '''
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="${_escapeHtmlAttribute(htmlLang)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quill Diary 匯出</title>
+  <title>${_escapeHtml(documentTitle)}</title>
   <style>
     :root {
       color-scheme: light;
@@ -765,6 +787,7 @@ class PortableExportIo {
     required bool includeImages,
     required String Function(AssetAttachment attachment) nextImageLabel,
     required String Function(AssetAttachment attachment) nextFileLabel,
+    required String unembeddedAttachmentsHeading,
   }) async {
     // 關閉「匯出圖片與附件」時略過全部附件。
     if (!includeImages || attachments.isEmpty) {
@@ -811,7 +834,10 @@ class PortableExportIo {
     }
     if (listed.isNotEmpty) {
       html.writeln('<section class="attachment-list">');
-      html.writeln('<h3>未內嵌附件</h3>');
+      final String heading = unembeddedAttachmentsHeading.trim();
+      if (heading.isNotEmpty) {
+        html.writeln('<h3>${_escapeHtml(heading)}</h3>');
+      }
       html.writeln('<ul>');
       for (final ({AssetAttachment attachment, String label}) item in listed) {
         html.writeln(
@@ -829,6 +855,11 @@ class PortableExportIo {
 
   bool _isImageAttachment(AssetAttachment attachment) {
     return attachment.mimeType.toLowerCase().startsWith('image/');
+  }
+
+  String _nonBlankOr(String value, String fallback) {
+    final String trimmed = value.trim();
+    return trimmed.isEmpty ? fallback : trimmed;
   }
 
   String _escapeHtml(String input) {

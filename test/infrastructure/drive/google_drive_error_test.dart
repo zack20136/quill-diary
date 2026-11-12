@@ -25,10 +25,13 @@ void main() {
       totalCount: 5,
     );
 
-    expect(error.localizedMessage(testZhL10n), '部分舊備份刪除失敗（2/5）。');
+    expect(
+      error.localizedMessage(testZhL10n),
+      testZhL10n.driveErrorPruneFailed(2, 5),
+    );
     expect(
       error.localizedMessage(testEnL10n),
-      'Some old backups could not be deleted (2/5).',
+      testEnL10n.driveErrorPruneFailed(2, 5),
     );
   });
 
@@ -50,7 +53,10 @@ void main() {
       message: 'HTTP 503: C:\\private\\backup.zip',
     );
 
-    expect(userFacingErrorMessage(error, l10n: testZhL10n), '操作失敗，請稍後再試。');
+    expect(
+      userFacingErrorMessage(error, l10n: testZhL10n),
+      testZhL10n.userFacingErrorDefaultMessage,
+    );
     expect(
       userFacingErrorMessage(error, l10n: testEnL10n),
       testEnL10n.userFacingErrorDefaultMessage,

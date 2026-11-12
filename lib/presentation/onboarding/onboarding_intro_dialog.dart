@@ -32,8 +32,8 @@ List<_IntroPage> _onboardingIntroPages(AppLocalizations l10n) {
       title: l10n.onboardingIntroPage2Title,
       bullets: <_IntroBullet>[
         (icon: Icons.edit_note_rounded, text: l10n.onboardingIntroPage2Item0),
-        (icon: Icons.checklist_rounded, text: l10n.onboardingIntroPage2Item1),
-        (icon: Icons.attach_file_rounded, text: l10n.onboardingIntroPage2Item2),
+        (icon: Icons.forum_outlined, text: l10n.onboardingIntroPage2Item1),
+        (icon: Icons.outbound_rounded, text: l10n.onboardingIntroPage2Item2),
       ],
     ),
     (
@@ -41,17 +41,19 @@ List<_IntroPage> _onboardingIntroPages(AppLocalizations l10n) {
       bullets: <_IntroBullet>[
         (icon: Icons.sell_outlined, text: l10n.onboardingIntroPage3Item0),
         (icon: Icons.badge_outlined, text: l10n.onboardingIntroPage3Item1),
-        (icon: Icons.search_rounded, text: l10n.onboardingIntroPage3Item2),
-        (icon: Icons.explore_outlined, text: l10n.onboardingIntroPage3Item3),
+        (icon: Icons.explore_outlined, text: l10n.onboardingIntroPage3Item2),
       ],
     ),
     (
       title: l10n.onboardingIntroPage4Title,
       bullets: <_IntroBullet>[
-        (icon: Icons.vpn_key_outlined, text: l10n.onboardingIntroPage4Item0),
-        (icon: Icons.devices_outlined, text: l10n.onboardingIntroPage4Item1),
+        (icon: Icons.folder_zip_outlined, text: l10n.onboardingIntroPage4Item0),
         (
-          icon: Icons.warning_amber_rounded,
+          icon: Icons.file_download_outlined,
+          text: l10n.onboardingIntroPage4Item1,
+        ),
+        (
+          icon: Icons.file_upload_outlined,
           text: l10n.onboardingIntroPage4Item2,
         ),
       ],
@@ -59,15 +61,11 @@ List<_IntroPage> _onboardingIntroPages(AppLocalizations l10n) {
     (
       title: l10n.onboardingIntroPage5Title,
       bullets: <_IntroBullet>[
-        (icon: Icons.folder_zip_outlined, text: l10n.onboardingIntroPage5Item0),
-        (icon: Icons.cloud_sync_outlined, text: l10n.onboardingIntroPage5Item1),
+        (icon: Icons.vpn_key_outlined, text: l10n.onboardingIntroPage5Item0),
+        (icon: Icons.devices_outlined, text: l10n.onboardingIntroPage5Item1),
         (
-          icon: Icons.file_download_outlined,
+          icon: Icons.warning_amber_rounded,
           text: l10n.onboardingIntroPage5Item2,
-        ),
-        (
-          icon: Icons.file_upload_outlined,
-          text: l10n.onboardingIntroPage5Item3,
         ),
       ],
     ),
@@ -110,7 +108,7 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
   }
 
   Future<void> _complete() async {
-    await ref.read(onboardingIntroVersionProvider.notifier).markCompleted();
+    await ref.read(hasSeenOnboardingIntroProvider.notifier).markCompleted();
     if (!mounted) {
       return;
     }
@@ -139,26 +137,24 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
       },
       child: AppDialogShell(
         title: current.title,
+        titleTrailing: const _OnboardingLanguageToggle(),
+        showClose: false,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Align(
-              alignment: Alignment.centerRight,
-              child: _OnboardingLanguageToggle(),
-            ),
-            const SizedBox(height: 10),
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxContentHeight),
               child: Stack(
                 children: <Widget>[
-                  ExcludeSemantics(
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: 0,
-                        child: _OnboardingPagePanel(page: current),
+                  for (final _IntroPage page in pages)
+                    ExcludeSemantics(
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: 0,
+                          child: _OnboardingPagePanel(page: page),
+                        ),
                       ),
                     ),
-                  ),
                   Positioned.fill(
                     child: PageView.builder(
                       controller: _pageController,
@@ -166,8 +162,19 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
                       onPageChanged: (int index) =>
                           setState(() => _page = index),
                       itemBuilder: (BuildContext context, int index) =>
-                          AppScrollView(
-                            child: _OnboardingPagePanel(page: pages[index]),
+                          LayoutBuilder(
+                            builder:
+                                (BuildContext context, BoxConstraints box) =>
+                                    AppScrollView(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minHeight: box.maxHeight,
+                                        ),
+                                        child: _OnboardingPagePanel(
+                                          page: pages[index],
+                                        ),
+                                      ),
+                                    ),
                           ),
                     ),
                   ),
@@ -221,7 +228,7 @@ class _OnboardingPagePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppInsetPanel(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(12),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -246,8 +253,22 @@ class _OnboardingBulletRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Icon(bullet.icon, size: 22, color: colors.onSurfaceVariant),
-        const SizedBox(width: 10),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(
+              bullet.icon,
+              size: 20,
+              color: colors.onPrimaryContainer,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             bullet.text,

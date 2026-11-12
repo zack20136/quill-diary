@@ -5,10 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
-import 'package:quill_diary/application/persona/persona_providers.dart';
+import 'package:quill_diary/application/people/person_deletion.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
-import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
@@ -23,7 +22,6 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
-import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -60,12 +58,7 @@ class PersonDetailPage extends ConsumerWidget {
       return;
     }
     try {
-      ref.read(personaDeletionsProvider.notifier).mark(personId);
-      await ref.read(personaStoreProvider).delete(personId, session);
-      ref.invalidate(savedPersonasProvider);
-      ref.invalidate(personaRecordProvider(personId));
-      await ref.read(vaultRepositoryProvider).deletePerson(session, personId);
-      ref.invalidate(peopleCatalogProvider);
+      await deletePersonWithPersona(ref, session, personId);
       if (context.mounted) {
         context.pop();
       }
@@ -162,8 +155,8 @@ class PersonDetailPage extends ConsumerWidget {
           }
           final Color accent = personAccentColor(person);
           final PersonMentionStats? stats = statsAsync.asData?.value[person.id];
-          final List<Widget> summaryItems = <Widget>[
-            if (stats != null) ...<Widget>[
+          final List<_PersonFactChip> summaryItems = <_PersonFactChip>[
+            if (stats != null) ...<_PersonFactChip>[
               _PersonFactChip(
                 key: const ValueKey<String>('person-last-mention-fact'),
                 icon: Icons.history_rounded,
@@ -314,21 +307,11 @@ class PersonDetailPage extends ConsumerWidget {
                                       title: context
                                           .l10n
                                           .peopleMentionOverviewTitle,
-                                      child: SizedBox(
-                                        height: 64,
-                                        child: ListView.separated(
-                                          key: const ValueKey<String>(
-                                            'person-summary-strip',
-                                          ),
-                                          scrollDirection: Axis.horizontal,
-                                          itemCount: summaryItems.length,
-                                          separatorBuilder: (_, _) =>
-                                              const SizedBox(width: 8),
-                                          itemBuilder: (
-                                            BuildContext context,
-                                            int index,
-                                          ) => summaryItems[index],
+                                      child: _PersonFactStrip(
+                                        key: const ValueKey<String>(
+                                          'person-summary-strip',
                                         ),
+                                        children: summaryItems,
                                       ),
                                     ),
                                   ],
@@ -488,52 +471,43 @@ class _PersonProfileBodyCard extends ConsumerWidget {
         if (person.relationships.contains(type.id)) type,
     ];
 
+    final String description = person.relationshipDescription.trim();
+    final String notes = person.notes.trim();
+
     return PersonDetailSectionCard(
       key: const ValueKey<String>('person-profile-details-card'),
       title: l10n.peopleProfileDetailsTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          SizedBox(
-            height: 64,
-            child: ListView.separated(
-              key: const ValueKey<String>('person-profile-facts-strip'),
-              scrollDirection: Axis.horizontal,
-              itemCount: 3,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (BuildContext context, int index) => switch (index) {
-                0 => _PersonFactChip(
-                  key: const ValueKey<String>('person-friendliness-fact'),
-                  icon: Icons.favorite_outline_rounded,
-                  label: l10n.peopleFieldFriendliness,
-                  value: personFriendlinessLabel(
-                    l10n,
-                    person.friendliness.value,
-                  ),
-                ),
-                1 => _PersonFactChip(
-                  icon: Icons.history_rounded,
-                  label: l10n.peopleFieldAcquaintanceYear,
-                  value: person.acquaintanceYear == null
-                      ? l10n.peopleNoValue
-                      : DisplayFormat.formatYear(
-                          l10n,
-                          person.acquaintanceYear!,
-                        ),
-                ),
-                _ => _PersonFactChip(
-                  icon: Icons.cake_outlined,
-                  label: l10n.peopleFieldBirthday,
-                  value: person.birthday == null
-                      ? l10n.peopleNoValue
-                      : DisplayFormat.formatBirthday(
-                          l10n,
-                          month: person.birthday!.month,
-                          day: person.birthday!.day,
-                        ),
-                ),
-              },
-            ),
+          _PersonFactStrip(
+            key: const ValueKey<String>('person-profile-facts-strip'),
+            children: <_PersonFactChip>[
+              _PersonFactChip(
+                key: const ValueKey<String>('person-friendliness-fact'),
+                icon: Icons.favorite_outline_rounded,
+                label: l10n.peopleFieldFriendliness,
+                value: personFriendlinessLabel(l10n, person.friendliness.value),
+              ),
+              _PersonFactChip(
+                icon: Icons.history_rounded,
+                label: l10n.peopleFieldAcquaintanceYear,
+                value: person.acquaintanceYear == null
+                    ? l10n.peopleNoValue
+                    : DisplayFormat.formatYear(l10n, person.acquaintanceYear!),
+              ),
+              _PersonFactChip(
+                icon: Icons.cake_outlined,
+                label: l10n.peopleFieldBirthday,
+                value: person.birthday == null
+                    ? l10n.peopleNoValue
+                    : DisplayFormat.formatBirthday(
+                        l10n,
+                        month: person.birthday!.month,
+                        day: person.birthday!.day,
+                      ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           Text(
@@ -564,21 +538,17 @@ class _PersonProfileBodyCard extends ConsumerWidget {
                   ),
               ],
             ),
-          const SizedBox(height: 16),
-          _PersonTextFact(
-            label: l10n.peopleFieldRelationshipDescription,
-            value: person.relationshipDescription,
-            emptyValue: l10n.peopleNoValue,
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(height: 1),
-          ),
-          _PersonTextFact(
-            label: l10n.peopleFieldNotes,
-            value: person.notes,
-            emptyValue: l10n.peopleNoValue,
-          ),
+          if (description.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 16),
+            _PersonTextFact(
+              label: l10n.peopleFieldRelationshipDescription,
+              value: description,
+            ),
+          ],
+          if (notes.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 16),
+            _PersonTextFact(label: l10n.peopleFieldNotes, value: notes),
+          ],
         ],
       ),
     );
@@ -586,41 +556,68 @@ class _PersonProfileBodyCard extends ConsumerWidget {
 }
 
 class _PersonTextFact extends StatelessWidget {
-  const _PersonTextFact({
-    required this.label,
-    required this.value,
-    required this.emptyValue,
-  });
+  const _PersonTextFact({required this.label, required this.value});
 
   final String label;
   final String value;
-  final String emptyValue;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final String displayValue = value.trim().isEmpty ? emptyValue : value;
-    final bool isEmpty = value.trim().isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
           label,
           style: theme.textTheme.labelMedium?.copyWith(
-            color: cs.onSurfaceVariant,
+            color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          displayValue,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isEmpty ? cs.onSurfaceVariant : cs.onSurface,
-            height: 1.5,
-          ),
-        ),
+        Text(value, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5)),
       ],
+    );
+  }
+}
+
+class _PersonFactStrip extends StatelessWidget {
+  const _PersonFactStrip({required this.children, super.key});
+
+  static const double _gap = 8;
+
+  final List<_PersonFactChip> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double widest = children.fold<double>(0, (
+          double widest,
+          _PersonFactChip fact,
+        ) {
+          final double width = fact.contentWidth(context);
+          return width > widest ? width : widest;
+        });
+        final double needed =
+            widest * children.length + _gap * (children.length - 1);
+        final List<Widget> row = <Widget>[
+          for (var index = 0; index < children.length; index++) ...<Widget>[
+            if (index > 0) const SizedBox(width: _gap),
+            if (needed <= constraints.maxWidth)
+              Expanded(child: children[index])
+            else
+              children[index],
+          ],
+        ];
+        if (needed <= constraints.maxWidth) {
+          return Row(children: row);
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: row),
+        );
+      },
     );
   }
 }
@@ -637,50 +634,65 @@ class _PersonFactChip extends StatelessWidget {
   final String label;
   final String value;
 
+  double contentWidth(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    final TextDirection direction = Directionality.of(context);
+    double textWidth(String text, TextStyle? style) {
+      final TextPainter painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: direction,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final double width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    final double labelWidth = textWidth(
+      label,
+      theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+    );
+    final double valueWidth = textWidth(
+      value,
+      theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+    );
+    return 18 + 8 + (labelWidth > valueWidth ? labelWidth : valueWidth) + 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final AppColors colors = context.appColors;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark
-            ? colors.sectionInset
-            : cs.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 18, color: cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 18, color: cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            Text(
+              label,
+              maxLines: 1,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

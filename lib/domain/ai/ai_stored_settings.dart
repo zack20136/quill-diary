@@ -1,4 +1,5 @@
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/persona/persona_reference.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
 /// 日記整理的提示詞覆寫。空白欄位代表使用內建提示詞。
@@ -17,17 +18,30 @@ class ChatDiaryPromptSettings {
     this.personalityOverride,
     this.guidanceOverride,
     this.generationOverride,
+    this.selectedPersona,
   });
 
   final String? personalityOverride;
   final String? guidanceOverride;
   final String? generationOverride;
+
+  /// 下一則新聊天沿用的夥伴。沒有代表預設夥伴。
+  final PersonaReference? selectedPersona;
+
+  ChatDiaryPromptSettings withSelectedPersona(PersonaReference? persona) =>
+      ChatDiaryPromptSettings(
+        personalityOverride: personalityOverride,
+        guidanceOverride: guidanceOverride,
+        generationOverride: generationOverride,
+        selectedPersona: persona,
+      );
 }
 
 /// 會隨日記庫備份的 AI 設定。不含 API 金鑰。
 ///
 /// 頂層 `ai_enabled`、`hide_people` 為全域開關。提示詞有覆寫時才寫進
-/// `chat_diary`、`diary_organization`。編解碼不更新模型目錄或改寫檔案。
+/// `chat_diary`、`diary_organization`。`chat_diary` 也可只記住聊天夥伴。
+/// 編解碼不更新模型目錄或改寫檔案。
 class AiStoredSettings {
   const AiStoredSettings({
     this.connection = const AiConnectionSettings(),
@@ -65,6 +79,11 @@ class AiStoredSettings {
         generationOverride: _nonBlank(
           chat['generation_prompt_override'] as String?,
         ),
+        selectedPersona: chat['selected_persona'] == null
+            ? null
+            : PersonaReference.fromJson(
+                Map<String, dynamic>.from(chat['selected_persona'] as Map),
+              ),
       ),
       organizationPrompts: DiaryOrganizationPromptSettings(
         conversationOverride: _nonBlank(
@@ -86,6 +105,8 @@ class AiStoredSettings {
       'generation_prompt_override': ?_nonBlank(
         chatDiaryPrompts.generationOverride,
       ),
+      if (chatDiaryPrompts.selectedPersona != null)
+        'selected_persona': chatDiaryPrompts.selectedPersona!.toJson(),
     };
     final organization = {
       'conversation_prompt_override': ?_nonBlank(

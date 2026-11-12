@@ -132,6 +132,58 @@ void main() {
       'first.png',
     ]);
   });
+
+  test('Easy Diary 只有照片且沒有標題時仍會匯入', () async {
+    final Directory databaseDirectory = Directory(
+      p.join(importRoot.path, 'Backup', 'Database'),
+    )..createSync(recursive: true);
+    final Directory photosDirectory = Directory(
+      p.join(importRoot.path, 'Photos'),
+    )..createSync(recursive: true);
+    File(p.join(importRoot.path, 'preference.json')).writeAsStringSync('{}');
+    File(p.join(databaseDirectory.path, 'diary.realm'))
+        .writeAsBytesSync(<int>[1]);
+    await _writeImage(File(p.join(photosDirectory.path, 'only')));
+
+    const MethodChannel channel = MethodChannel('test.easy_diary.photo_only');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall call) async {
+          return <String, Object?>{
+            'entries': <Object?>[
+              <String, Object?>{
+                'title': '',
+                'contents': '',
+                'dateString': '2026-08-18',
+                'currentTimeMillis': 1787011200000,
+                'isEncrypt': false,
+                'photos': <Object?>[
+                  <String, Object?>{
+                    'photoKey': 'only',
+                    'mimeType': 'image/png',
+                  },
+                ],
+              },
+            ],
+          };
+        });
+
+    try {
+      await EasyDiaryBackupImporter(realmChannel: channel)
+          .tryImportFromExtractedRoot(
+            session: setup.session,
+            repository: harness.repository,
+            extractedRoot: importRoot,
+          );
+    } finally {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    }
+
+    final entries = await harness.repository.listEntries();
+    expect(entries, hasLength(1));
+    expect(entries.single.title?.trim() ?? '', isEmpty);
+    expect(await _importedAttachmentNames(harness), <String>['only.png']);
+  });
 }
 
 PortableImportIo _portableImporter(VaultTestHarness harness) {

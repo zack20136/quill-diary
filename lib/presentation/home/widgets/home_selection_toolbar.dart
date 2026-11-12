@@ -112,6 +112,7 @@ class HomeSelectionToolbar extends StatelessWidget {
     required this.onCancel,
     required this.onSelectAll,
     required this.actions,
+    this.enabled = true,
     this.allPinned = false,
     this.onTogglePin,
     this.pinToggleEnabled = false,
@@ -122,6 +123,7 @@ class HomeSelectionToolbar extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onSelectAll;
   final List<HomeSelectionAction> actions;
+  final bool enabled;
   final bool allPinned;
   final VoidCallback? onTogglePin;
   final bool pinToggleEnabled;
@@ -147,7 +149,7 @@ class HomeSelectionToolbar extends StatelessWidget {
           children: <Widget>[
             _ToolbarPlainIconButton(
               tooltip: context.l10n.homeTooltipDeselectTag,
-              onPressed: onCancel,
+              onPressed: enabled ? onCancel : null,
               icon: Icons.close_rounded,
             ),
             Expanded(
@@ -167,7 +169,7 @@ class HomeSelectionToolbar extends StatelessWidget {
               tooltip: allSelected
                   ? context.l10n.homeSelectionDeselectAll
                   : context.l10n.homeSelectionSelectAll,
-              onPressed: onSelectAll,
+              onPressed: enabled ? onSelectAll : null,
               icon: allSelected
                   ? Icons.check_box_outline_blank_rounded
                   : Icons.check_box_rounded,
@@ -177,7 +179,7 @@ class HomeSelectionToolbar extends StatelessWidget {
                 tooltip: allPinned
                     ? context.l10n.homeTooltipUnpin
                     : context.l10n.homeTooltipPin,
-                onPressed: pinToggleEnabled ? onTogglePin : null,
+                onPressed: enabled && pinToggleEnabled ? onTogglePin : null,
                 icon: allPinned
                     ? Icons.push_pin_outlined
                     : Icons.push_pin_rounded,
@@ -186,7 +188,7 @@ class HomeSelectionToolbar extends StatelessWidget {
                       ? Icons.push_pin_outlined
                       : Icons.push_pin_rounded,
                   size: 22,
-                  color: pinToggleEnabled
+                  color: enabled && pinToggleEnabled
                       ? cs.onSurfaceVariant
                       : cs.onSurfaceVariant.withValues(alpha: 0.38),
                 ),
@@ -194,7 +196,7 @@ class HomeSelectionToolbar extends StatelessWidget {
             for (final HomeSelectionAction action in actions)
               _SelectionToolbarActionButton(
                 tooltip: action.tooltip,
-                onPressed: action.enabled ? action.onPressed : null,
+                onPressed: enabled && action.enabled ? action.onPressed : null,
                 icon: action.icon,
                 iconWidget: action.iconWidget,
                 destructive: action.destructive,
@@ -216,7 +218,7 @@ class _ToolbarPlainIconButton extends StatelessWidget {
 
   final String tooltip;
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +233,13 @@ class _ToolbarPlainIconButton extends StatelessWidget {
         visualDensity: VisualDensity.standard,
         padding: EdgeInsets.zero,
       ),
-      icon: Icon(icon, size: 22, color: cs.onSurfaceVariant),
+      icon: Icon(
+        icon,
+        size: 22,
+        color: onPressed == null
+            ? cs.onSurfaceVariant.withValues(alpha: 0.38)
+            : cs.onSurfaceVariant,
+      ),
     );
   }
 }
@@ -340,6 +348,25 @@ class HomeCircleIconButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 選取模式的勾選指示；首頁、聊天草稿、標籤與人物列共用同一樣式。
+class HomeSelectionIndicator extends StatelessWidget {
+  const HomeSelectionIndicator({required this.selected, super.key});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Icon(
+      selected
+          ? Icons.check_circle_rounded
+          : Icons.radio_button_unchecked_rounded,
+      color: selected ? cs.primary : cs.onSurfaceVariant,
+      size: 22,
     );
   }
 }

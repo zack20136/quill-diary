@@ -10,6 +10,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -51,95 +52,89 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.title),
-      leading: CloseButton(onPressed: () => Navigator.pop(context)),
-    ),
-    body: SafeArea(
-      child: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: AppScrollbar(
-                controller: _scroll,
-                track: AppScrollbarTrack.frame,
-                child: TextField(
-                  controller: controller,
-                  scrollController: _scroll,
-                  style: watchPersonalizationPreferences(ref).typography
-                      .bodyTextStyle(Theme.of(context).textTheme),
-                  readOnly: true,
-                  expands: true,
-                  minLines: null,
-                  maxLines: null,
-                  textAlignVertical: TextAlignVertical.top,
-                ),
-              ),
-            ),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final height = personaDialogBodyHeight(context);
+    return AppDialogShell(
+      title: widget.title,
+      leading: ListenableBuilder(
+        listenable: controller,
+        builder: (_, _) => IconButton(
+          tooltip: controller.selectionIsPrivate
+              ? l10n.aiUnhideSelection
+              : l10n.aiHideSelection,
+          onPressed: controller.selection.isCollapsed
+              ? null
+              : () {
+                  var range = personaSelectionRange(
+                    controller.text,
+                    controller.selection.start,
+                    controller.selection.end,
+                  );
+                  for (final reference in widget.references) {
+                    if (range.start < reference.end &&
+                        range.end > reference.start) {
+                      range = PrivateTextRange(
+                        range.start < reference.start
+                            ? range.start
+                            : reference.start,
+                        range.end > reference.end ? range.end : reference.end,
+                      );
+                    }
+                  }
+                  controller.selection = TextSelection(
+                    baseOffset: range.start,
+                    extentOffset: range.end,
+                  );
+                  if (controller.selectionIsPrivate) {
+                    controller.unhideSelection();
+                  } else {
+                    controller.hideSelection();
+                  }
+                  widget.onChanged(controller.privateRanges);
+                },
+          icon: Icon(
+            controller.selectionIsPrivate
+                ? Icons.visibility
+                : Icons.visibility_off,
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                ListenableBuilder(
-                  listenable: controller,
-                  builder: (_, _) => IconButton(
-                    tooltip: controller.selectionIsPrivate
-                        ? context.l10n.aiUnhideSelection
-                        : context.l10n.aiHideSelection,
-                    onPressed: controller.selection.isCollapsed
-                        ? null
-                        : () {
-                            var range = personaSelectionRange(
-                              controller.text,
-                              controller.selection.start,
-                              controller.selection.end,
-                            );
-                            for (final reference in widget.references) {
-                              if (range.start < reference.end &&
-                                  range.end > reference.start) {
-                                range = PrivateTextRange(
-                                  range.start < reference.start
-                                      ? range.start
-                                      : reference.start,
-                                  range.end > reference.end
-                                      ? range.end
-                                      : reference.end,
-                                );
-                              }
-                            }
-                            controller.selection = TextSelection(
-                              baseOffset: range.start,
-                              extentOffset: range.end,
-                            );
-                            if (controller.selectionIsPrivate) {
-                              controller.unhideSelection();
-                            } else {
-                              controller.hideSelection();
-                            }
-                            widget.onChanged(controller.privateRanges);
-                          },
-                    icon: Icon(
-                      controller.selectionIsPrivate
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text(context.l10n.personaChecked),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+      content: SizedBox(
+        width: 560,
+        height: height,
+        child: AppScrollbar(
+          controller: _scroll,
+          track: AppScrollbarTrack.frame,
+          child: TextField(
+            controller: controller,
+            scrollController: _scroll,
+            style: watchPersonalizationPreferences(ref).typography
+                .bodyTextStyle(Theme.of(context).textTheme),
+            readOnly: true,
+            expands: true,
+            minLines: null,
+            maxLines: null,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.all(12),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(l10n.personaChecked),
+        ),
+      ],
+    );
+  }
 }
 
 class PersonaChatDateEditorMessage {
@@ -211,7 +206,7 @@ class _PersonaChatDateEditorDialogState
     }
   }
 
-  void _toggleSelection() {
+  void _toggleSelectionPrivacy() {
     final messageId = _activeMessageId;
     final controller = messageId == null ? null : _controllers[messageId];
     if (controller == null || controller.selection.isCollapsed) return;
@@ -276,126 +271,112 @@ class _PersonaChatDateEditorDialogState
         active != null &&
         active.selection.isValid &&
         !active.selection.isCollapsed;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        leading: CloseButton(onPressed: () => Navigator.pop(context)),
+    final l10n = context.l10n;
+    final height = personaDialogBodyHeight(context);
+    return AppDialogShell(
+      title: widget.title,
+      leading: IconButton(
+        tooltip: active?.selectionIsPrivate == true
+            ? l10n.aiUnhideSelection
+            : l10n.aiHideSelection,
+        onPressed: canToggle ? _toggleSelectionPrivacy : null,
+        icon: Icon(
+          active?.selectionIsPrivate == true
+              ? Icons.visibility
+              : Icons.visibility_off,
+        ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: messages.isEmpty
-                  ? Center(child: Text(context.l10n.personaNoChatMessages))
-                  : AppScrollbar(
-                      controller: _scroll,
-                      child: ListView.separated(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: messages.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final message = messages[index];
-                          return AppCard(
-                            key: ValueKey(message.messageId),
-                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+      content: SizedBox(
+        width: 560,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: height),
+          child: messages.isEmpty
+              ? Text(l10n.personaNoChatMessages)
+              : AppScrollbar(
+                  controller: _scroll,
+                  reserveGutter: true,
+                  child: ListView.separated(
+                    controller: _scroll,
+                    shrinkWrap: true,
+                    itemCount: messages.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return AppCard(
+                        key: ValueKey(message.messageId),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text.rich(
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
                                         TextSpan(
-                                          children: [
-                                            TextSpan(
-                                              text: message.speaker,
-                                              style: TextStyle(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                              ),
-                                            ),
-                                            TextSpan(
-                                              text:
-                                                  ' · ${_messageTime(message.sentAtLocal)}',
-                                            ),
-                                          ],
+                                          text: message.speaker,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
                                         ),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
-                                      ),
+                                        TextSpan(
+                                          text:
+                                              ' · ${_messageTime(message.sentAtLocal)}',
+                                        ),
+                                      ],
                                     ),
-                                    IconButton(
-                                      tooltip: context.l10n.commonActionDelete,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .error,
-                                      iconSize: 20,
-                                      onPressed: () =>
-                                          _deleteMessage(message.messageId),
-                                      icon: const Icon(Icons.delete_outline),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                TextField(
-                                  controller: _controllers[message.messageId]!,
-                                  minLines: 1,
-                                  maxLines: null,
-                                  textAlignVertical: TextAlignVertical.top,
-                                  decoration: const InputDecoration(
-                                    isDense: true,
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                   ),
+                                ),
+                                IconButton(
+                                  tooltip: context.l10n.commonActionDelete,
+                                  color: Theme.of(context).colorScheme.error,
+                                  iconSize: 20,
+                                  onPressed: () =>
+                                      _deleteMessage(message.messageId),
+                                  icon: const Icon(Icons.delete_outline),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: active?.selectionIsPrivate == true
-                        ? context.l10n.aiUnhideSelection
-                        : context.l10n.aiHideSelection,
-                    onPressed: canToggle ? _toggleSelection : null,
-                    icon: Icon(
-                      active?.selectionIsPrivate == true
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: _controllers[message.messageId]!,
+                              minLines: 1,
+                              maxLines: null,
+                              textAlignVertical: TextAlignVertical.top,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(context.l10n.commonActionCancel),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _apply,
-                    child: Text(context.l10n.commonActionApply),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonActionCancel),
+        ),
+        FilledButton(onPressed: _apply, child: Text(l10n.commonActionApply)),
+      ],
     );
   }
 }
@@ -419,46 +400,51 @@ class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.personaPaste),
-      leading: CloseButton(onPressed: () => Navigator.pop(context)),
-    ),
-    body: SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(context.l10n.personaPrivacyHint),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AppDialogShell(
+      title: l10n.personaPaste,
+      content: SizedBox(
+        width: 560,
+        height: personaDialogBodyHeight(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.personaPrivacyHint),
+            const SizedBox(height: 12),
+            Expanded(
               child: AppScrollbar(
                 controller: _scroll,
                 track: AppScrollbarTrack.frame,
                 child: TextField(
                   controller: text,
                   scrollController: _scroll,
-                  maxLines: null,
-                  minLines: null,
                   expands: true,
+                  minLines: null,
+                  maxLines: null,
                   textAlignVertical: TextAlignVertical.top,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: () => Navigator.pop(context, text.text),
-              child: Text(context.l10n.commonActionConfirm),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, text.text),
+          child: Text(l10n.commonActionConfirm),
+        ),
+      ],
+    );
+  }
 }
 
 class PersonaRolesDialog extends StatefulWidget {
@@ -485,63 +471,63 @@ class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
     final canConfirm = widget.chat.speakers.any(
       (speaker) => speaker.role == PersonaSpeakerRole.personaSubject,
     );
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l.personaRoles),
-        leading: CloseButton(onPressed: () => Navigator.pop(context)),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: AppScrollbar(
-                controller: _scroll,
-                child: ListView(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  children: [
-                    AppInsetPanel(
-                      child: Text(
-                        l.personaRolesHint,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
-                      ),
+    return AppDialogShell(
+      title: l.personaRoles,
+      content: SizedBox(
+        width: 560,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: personaDialogBodyHeight(context),
+          ),
+          child: AppScrollbar(
+            controller: _scroll,
+            reserveGutter: true,
+            child: ListView(
+              controller: _scroll,
+              shrinkWrap: true,
+              children: [
+                AppInsetPanel(
+                  child: Text(
+                    l.personaRolesHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.4,
                     ),
-                    const SizedBox(height: 16),
-                    for (final speaker in widget.chat.speakers)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _SpeakerRoleCard(
-                          speaker: speaker,
-                          onChanged: (role) =>
-                              setState(() => speaker.role = role),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                for (final speaker in widget.chat.speakers)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _SpeakerRoleCard(
+                      speaker: speaker,
+                      onChanged: (role) => setState(() => speaker.role = role),
+                    ),
+                  ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: canConfirm
-                      ? () => Navigator.pop(context, true)
-                      : null,
-                  icon: const Icon(Icons.check),
-                  label: Text(l.commonActionConfirm),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l.commonActionCancel),
+        ),
+        FilledButton(
+          onPressed: canConfirm ? () => Navigator.pop(context, true) : null,
+          child: Text(l.commonActionConfirm),
+        ),
+      ],
     );
   }
 }
+
+double personaDialogBodyHeight(BuildContext context) =>
+    (MediaQuery.sizeOf(context).height -
+            MediaQuery.viewInsetsOf(context).bottom -
+            200)
+        .clamp(140.0, 640.0);
 
 class PersonaChatMaterialPage extends StatefulWidget {
   const PersonaChatMaterialPage({
@@ -609,6 +595,7 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
           controller: _scroll,
           child: CustomScrollView(
             controller: _scroll,
+            physics: appBouncingScrollPhysics,
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(

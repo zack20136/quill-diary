@@ -898,15 +898,6 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
           ? TextButton(
               key: const Key('app-date-picker-today'),
               onPressed: _canSelectToday ? _selectToday : null,
-              style: TextButton.styleFrom(
-                minimumSize: const Size(44, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                disabledForegroundColor: Theme.of(context).colorScheme.onSurface
-                    .withValues(alpha: 0.32),
-                textStyle: Theme.of(context).textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
               child: Text(context.l10n.commonRelativeToday),
             )
           : null,
@@ -924,15 +915,9 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
         TextButton(
           key: const Key('app-date-picker-cancel'),
           onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            minimumSize: const Size(44, 44),
-            foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            textStyle: Theme.of(context).textTheme.labelLarge
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
           child: Text(context.l10n.commonActionCancel),
         ),
-        FilledButton.icon(
+        FilledButton(
           key: const Key('app-date-picker-apply'),
           onPressed: () => Navigator.pop(
             context,
@@ -942,14 +927,7 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
               _selectedDay,
             ),
           ),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(44, 44),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            textStyle: Theme.of(context).textTheme.labelLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          icon: const Icon(Icons.check_rounded, size: 19),
-          label: Text(context.l10n.commonActionApply),
+          child: Text(context.l10n.commonActionApply),
         ),
       ],
     );

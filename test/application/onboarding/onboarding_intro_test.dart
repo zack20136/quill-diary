@@ -4,10 +4,9 @@ import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 
 void main() {
-  test('只有空日記庫且版本較舊時才顯示介紹', () {
+  test('只有空日記庫且尚未看過時才顯示介紹', () {
     const AppSessionState emptyVault = AppSessionState(
       status: AppLockStatus.unlocked,
     );
@@ -22,24 +21,21 @@ void main() {
 
     expect(isAwaitingVaultSetup(emptyVault), isTrue);
     expect(
-      shouldShowOnboardingIntro(sessionState: emptyVault, storedVersion: 0),
+      shouldShowOnboardingIntro(sessionState: emptyVault, hasSeen: false),
       isTrue,
     );
     expect(
-      shouldShowOnboardingIntro(
-        sessionState: emptyVault,
-        storedVersion: DataVersions.onboardingIntro,
-      ),
+      shouldShowOnboardingIntro(sessionState: emptyVault, hasSeen: true),
       isFalse,
     );
     expect(
-      shouldShowOnboardingIntro(sessionState: unlocked, storedVersion: 0),
+      shouldShowOnboardingIntro(sessionState: unlocked, hasSeen: false),
       isFalse,
     );
     expect(
       shouldShowOnboardingIntro(
         sessionState: const AppSessionState(status: AppLockStatus.locked),
-        storedVersion: 0,
+        hasSeen: false,
       ),
       isFalse,
     );
@@ -48,7 +44,7 @@ void main() {
         sessionState: const AppSessionState(
           status: AppLockStatus.recoveryRequired,
         ),
-        storedVersion: 0,
+        hasSeen: false,
       ),
       isFalse,
     );

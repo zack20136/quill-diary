@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 /// Dialog 的可見寬度尺寸。
@@ -105,15 +106,19 @@ class AppDialogScope extends InheritedWidget {
 /// 提供一致標題、圖示、內容與操作列的標準 dialog 外殼。
 ///
 /// [accent] 為選色、人物、標籤等表單使用的漸層底色與邊框。
+/// 標題列右上角預設有關閉 X；[leading] 放在操作列左下角，與取消、確認同列。
 class AppDialogShell extends StatelessWidget {
   const AppDialogShell({
     required this.title,
     required this.content,
     this.icon,
     this.titleTrailing,
+    this.leading,
     this.actions = const <Widget>[],
-    this.actionsAlignment,
     this.accent = false,
+    this.showClose = true,
+    this.onClose,
+    this.closeEnabled = true,
     super.key,
   });
 
@@ -121,12 +126,62 @@ class AppDialogShell extends StatelessWidget {
   final Widget content;
   final Widget? icon;
   final Widget? titleTrailing;
+  final Widget? leading;
   final List<Widget> actions;
-  final MainAxisAlignment? actionsAlignment;
   final bool accent;
+
+  /// 必選或強制流程（例如新手導覽、還原金鑰）設為 false，不提供右上角關閉。
+  final bool showClose;
+
+  /// 關閉 X 的行為；未指定時直接關閉 dialog。
+  final VoidCallback? onClose;
+
+  /// 儲存或刪除中停用 X，避免操作進行到一半被關掉。
+  final bool closeEnabled;
+
+  Widget _actionBar() {
+    if (leading == null) {
+      return OverflowBar(
+        alignment: MainAxisAlignment.end,
+        spacing: 8,
+        overflowSpacing: 8,
+        overflowAlignment: OverflowBarAlignment.end,
+        children: actions,
+      );
+    }
+    // 外層 Wrap 讓 leading 與按鈕組同列；放不下時整組按鈕換到下一行，
+    // 避免 leading 吃掉寬度把按鈕擠扁。內層 Wrap 依內容寬度計算，才能判斷是否放得下。
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.end,
+        spacing: 8,
+        runSpacing: 8,
+        children: <Widget>[
+          leading!,
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: actions,
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final Widget? closeButton = showClose
+        ? IconButton(
+            tooltip: context.l10n.commonCloseTooltip,
+            onPressed: closeEnabled
+                ? (onClose ?? () => Navigator.of(context).pop())
+                : null,
+            icon: const Icon(Icons.close_rounded),
+          )
+        : null;
     final Widget titleRow = Row(
       children: <Widget>[
         if (icon != null) ...<Widget>[icon!, const SizedBox(width: 12)],
@@ -134,6 +189,10 @@ class AppDialogShell extends StatelessWidget {
         if (titleTrailing != null) ...<Widget>[
           const SizedBox(width: 8),
           titleTrailing!,
+        ],
+        if (closeButton != null) ...<Widget>[
+          const SizedBox(width: 8),
+          closeButton,
         ],
       ],
     );
@@ -146,8 +205,7 @@ class AppDialogShell extends StatelessWidget {
         actionsPadding: AppDialogInsets.actions,
         title: titleRow,
         content: AppDialogScope(child: content),
-        actions: actions,
-        actionsAlignment: actionsAlignment,
+        actions: leading == null ? actions : <Widget>[_actionBar()],
       );
     }
     // Dialog 的外層會撐滿路由。漸層必須畫在卡片內容上，否則短內容也會鋪滿螢幕。
@@ -195,16 +253,8 @@ class AppDialogShell extends StatelessWidget {
               padding: AppDialogInsets.content,
               child: AppDialogScope(child: content),
             ),
-            if (actions.isNotEmpty)
-              Padding(
-                padding: AppDialogInsets.actions,
-                child: OverflowBar(
-                  alignment: actionsAlignment ?? MainAxisAlignment.end,
-                  spacing: 8,
-                  overflowAlignment: OverflowBarAlignment.end,
-                  children: actions,
-                ),
-              ),
+            if (actions.isNotEmpty || leading != null)
+              Padding(padding: AppDialogInsets.actions, child: _actionBar()),
           ],
         ),
       ),

@@ -13,6 +13,7 @@ import 'package:quill_diary/shared/presentation/person_visual.dart';
 
 import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -34,7 +35,9 @@ void main() {
     Brightness brightness = Brightness.light,
     Locale locale = appZhLocale,
     List<DiaryEntrySummary> relatedEntries = const <DiaryEntrySummary>[],
+    Person? detail,
   }) {
+    final Person current = detail ?? person;
     return widgetTestApp(
       brightness: brightness,
       locale: locale,
@@ -43,15 +46,16 @@ void main() {
         peopleCatalogProvider.overrideWith(
           (Ref ref) async => PeopleCatalog(
             relationshipTypes: defaultBuiltinRelationshipTypes(),
-            people: <Person>[person],
+            people: <Person>[current],
           ),
         ),
-        personDetailProvider(person.id).overrideWith((Ref ref) async => person),
-        personRelatedEntriesProvider(person.id)
+        personDetailProvider(current.id)
+            .overrideWith((Ref ref) async => current),
+        personRelatedEntriesProvider(current.id)
             .overrideWith((Ref ref) async => relatedEntries),
         peopleMentionStatsMapProvider.overrideWith((Ref ref) async => stats),
       ],
-      child: PersonDetailPage(personId: person.id),
+      child: PersonDetailPage(personId: current.id),
     );
   }
 
@@ -64,7 +68,7 @@ void main() {
     expect(find.byType(PopupMenuButton<Object>), findsNothing);
   });
 
-  testWidgets('人物基本資料維持單一水平列並可左右滑動', (WidgetTester tester) async {
+  testWidgets('人物基本資料維持單一水平列', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -76,27 +80,41 @@ void main() {
     final Finder strip = find.byKey(
       const ValueKey<String>('person-profile-facts-strip'),
     );
+    final Finder friendliness = find.text(testL10n.peopleFieldFriendliness);
+    final Finder year = find.text(testL10n.peopleFieldAcquaintanceYear);
+    final Finder birthday = find.text(testL10n.peopleFieldBirthday);
+
+    expect(tester.getCenter(friendliness).dy, tester.getCenter(year).dy);
+    expect(tester.getCenter(year).dy, tester.getCenter(birthday).dy);
+
     final Finder scrollable = find.descendant(
       of: strip,
       matching: find.byType(Scrollable),
     );
+    if (scrollable.evaluate().isEmpty) {
+      double slotWidth(String label) {
+        final Finder row = find
+            .ancestor(of: find.text(label), matching: find.byType(Row))
+            .first;
+        return tester.getSize(row).width;
+      }
+
+      final double friendlinessWidth = slotWidth(
+        testL10n.peopleFieldFriendliness,
+      );
+      final double yearWidth = slotWidth(testL10n.peopleFieldAcquaintanceYear);
+      final double birthdayWidth = slotWidth(testL10n.peopleFieldBirthday);
+      expect((yearWidth - friendlinessWidth).abs(), lessThan(1));
+      expect((birthdayWidth - yearWidth).abs(), lessThan(1));
+      return;
+    }
+
     final double initialOffset = tester
         .state<ScrollableState>(scrollable)
         .position
         .pixels;
-
-    expect(
-      tester.getCenter(find.text('熟悉程度')).dy,
-      tester.getCenter(find.text('認識年份')).dy,
-    );
-    expect(
-      tester.getCenter(find.text('認識年份')).dy,
-      tester.getCenter(find.text('生日')).dy,
-    );
-
     await tester.drag(strip, const Offset(-180, 0));
     await tester.pumpAndSettle();
-
     expect(
       tester.state<ScrollableState>(scrollable).position.pixels,
       greaterThan(initialOffset),
@@ -131,7 +149,7 @@ void main() {
     expect(find.text('3 entries'), findsOneWidget);
   });
 
-  testWidgets('深色模式下提及概況與人物資料沿用相關日記背景色', (WidgetTester tester) async {
+  testWidgets('人物摘要數字不再另畫內層底色', (WidgetTester tester) async {
     await tester.pumpWidget(
       testApp(
         brightness: Brightness.dark,
@@ -146,49 +164,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final AppColors colors = appTestTheme(brightness: Brightness.dark)
-        .extension<AppColors>()!;
-
-    for (final String key in <String>[
-      'person-mention-overview-card',
-      'person-profile-details-card',
-    ]) {
-      final Finder material = find.descendant(
-        of: find.byKey(ValueKey<String>(key)),
-        matching: find.byType(Material),
-      );
-      expect(tester.widget<Material>(material.first).color, colors.sectionCard);
-    }
-  });
-
-  testWidgets('深色模式下人物摘要小卡沿用單篇相關日記背景色', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      testApp(
-        brightness: Brightness.dark,
-        stats: <PersonId, PersonMentionStats>{
-          person.id: PersonMentionStats(
-            personId: person.id,
-            mentionedEntryCount: 1,
-            recentMentionedEntryCount: 1,
-          ),
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final AppColors colors = appTestTheme(brightness: Brightness.dark)
-        .extension<AppColors>()!;
     for (final String key in <String>[
       'person-last-mention-fact',
       'person-friendliness-fact',
     ]) {
-      final DecoratedBox box = tester.widget<DecoratedBox>(
+      expect(
         find.descendant(
           of: find.byKey(ValueKey<String>(key)),
           matching: find.byType(DecoratedBox),
         ),
+        findsNothing,
       );
-      expect((box.decoration as BoxDecoration).color, colors.sectionInset);
     }
   });
 
@@ -247,6 +233,67 @@ void main() {
     expect(exportButton, findsOneWidget);
     expect(find.text('匯出回顧'), findsOneWidget);
     expect(tester.widget<TextButton>(exportButton).onPressed, isNotNull);
+  });
+
+  testWidgets('空白的關係描述與備註不顯示', (WidgetTester tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    final Finder card = find.byKey(
+      const ValueKey<String>('person-profile-details-card'),
+    );
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(testL10n.peopleFieldRelationshipDescription),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text(testL10n.peopleFieldNotes)),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: card, matching: find.byType(Divider)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('有內容的關係描述與備註顯示在詳情卡內，且不加分隔線', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      testApp(
+        detail: Person(
+          id: person.id,
+          name: person.name,
+          friendliness: person.friendliness,
+          acquaintanceYear: person.acquaintanceYear,
+          birthday: person.birthday,
+          relationships: person.relationships,
+          relationshipDescription: '大學同學',
+          notes: '記得帶書',
+          accentArgb: person.accentArgb,
+          createdAt: person.createdAt,
+          updatedAt: person.updatedAt,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder card = find.byKey(
+      const ValueKey<String>('person-profile-details-card'),
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('大學同學')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('記得帶書')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.byType(Divider)),
+      findsNothing,
+    );
   });
 
   testWidgets('匯出回顧與相關日記標題垂直置中對齊', (WidgetTester tester) async {

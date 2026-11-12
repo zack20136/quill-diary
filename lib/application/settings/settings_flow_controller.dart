@@ -683,7 +683,7 @@ class SettingsFlowController {
         _ref.invalidate(backupStatusProvider);
         break;
       case BackupPersistStatus.inspectFailed:
-        final String detail = localizedBackupPersistDetail(
+        final String detail = localizedBackupInspectDetail(
           l10n,
           result.message.trim(),
         );
@@ -739,7 +739,7 @@ class SettingsFlowController {
                 l10n.settingsLocalBackupBackupInspectFailed(message);
         return SettingsFlowFeedback(
           formatInspectFailed(
-            localizedBackupPersistDetail(l10n, result.message),
+            localizedBackupInspectDetail(l10n, result.message),
           ),
           tone: SettingsFlowFeedbackTone.error,
         );

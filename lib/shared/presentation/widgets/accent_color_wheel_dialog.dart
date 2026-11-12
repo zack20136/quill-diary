@@ -122,26 +122,14 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
       accent: true,
       icon: const Icon(Icons.palette_outlined),
       title: widget.title,
-      titleTrailing: IconButton(
-        tooltip: context.l10n.commonCloseTooltip,
-        onPressed: () => Navigator.of(context).pop(),
-        icon: const Icon(Icons.close_rounded),
-      ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            widget.cancelLabel,
-            style: TextStyle(color: cs.onSurfaceVariant),
-          ),
+          child: Text(widget.cancelLabel),
         ),
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-          icon: const Icon(Icons.check_rounded, size: 20),
+        FilledButton(
           onPressed: () => Navigator.of(context).pop(_picked),
-          label: Text(widget.saveLabel),
+          child: Text(widget.saveLabel),
         ),
       ],
       content: Column(
@@ -190,7 +178,7 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
                     ),
                   ),
                   IconButton(
-                    tooltip: MaterialLocalizations.of(context).copyButtonLabel,
+                    tooltip: context.l10n.commonActionCopy,
                     visualDensity: VisualDensity.compact,
                     onPressed: _copyColorCode,
                     icon: Icon(

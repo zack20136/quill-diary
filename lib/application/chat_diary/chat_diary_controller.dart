@@ -159,6 +159,7 @@ class ChatDiaryController extends ChangeNotifier {
           createdAt: now,
           date: DateOnly.fromDateTime(now).value,
           openingMessage: openingMessage ?? '',
+          selectedPersona: stored.chatDiaryPrompts.selectedPersona,
         );
       }
       if (chatSession == null) {
@@ -805,6 +806,10 @@ class ChatDiaryController extends ChangeNotifier {
     _ensureOperationIsCurrent(version);
     if (!identity.matches(record)) {
       _forgetCurrentPersona(identity);
+      await _clearRememberedCompanion(
+        personId: identity.personId,
+        personaId: identity.personaId,
+      );
       return const _LoadedPersona();
     }
     final people = await ref
@@ -814,6 +819,10 @@ class ChatDiaryController extends ChangeNotifier {
     final person = people.where((p) => p.id == identity.personId).firstOrNull;
     if (person == null) {
       _forgetCurrentPersona(identity);
+      await _clearRememberedCompanion(
+        personId: identity.personId,
+        personaId: identity.personaId,
+      );
       return const _LoadedPersona();
     }
     chat!.personaParticipants.putIfAbsent(
@@ -835,6 +844,22 @@ class ChatDiaryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 記住的夥伴已不可用時清掉。有 [personaId] 時必須連分身識別一起相符。
+  Future<void> _clearRememberedCompanion({
+    required String personId,
+    String? personaId,
+  }) async {
+    final session = _vaultSession;
+    if (session == null || _disposed) return;
+    final store = ref.read(aiSettingsStoreProvider);
+    final stored = await store.read(session);
+    if (_disposed || _vaultSession != session) return;
+    final remembered = stored.chatDiaryPrompts.selectedPersona;
+    if (remembered == null || remembered.personId != personId) return;
+    if (personaId != null && remembered.personaId != personaId) return;
+    await store.updateSelectedPersona(session, null);
+  }
+
   Future<void> selectPersona(PersonaRecord? record) async {
     if (chat == null ||
         busy ||
@@ -846,6 +871,7 @@ class ChatDiaryController extends ChangeNotifier {
     final previous = chat!.selectedPersona;
     final unavailable = personaUnavailable;
     final version = _operationVersion;
+    final session = _vaultSession!;
     if (record == null) {
       chat!.selectedPersona = null;
       personaUnavailable = false;
@@ -873,6 +899,7 @@ class ChatDiaryController extends ChangeNotifier {
       chat!.selectedPersona = identity;
       personaUnavailable = false;
     }
+    final chosen = chat!.selectedPersona;
     try {
       await persist(throwOnError: true);
     } on Object {
@@ -881,6 +908,18 @@ class ChatDiaryController extends ChangeNotifier {
       rethrow;
     }
     notifyListeners();
+    final current = chat?.selectedPersona;
+    if (_disposed ||
+        version != _operationVersion ||
+        _vaultSession != session ||
+        _handedOff ||
+        current?.personId != chosen?.personId ||
+        current?.personaId != chosen?.personaId) {
+      return;
+    }
+    await ref
+        .read(aiSettingsStoreProvider)
+        .updateSelectedPersona(session, chosen);
   }
 
   bool get canSend =>
@@ -1273,20 +1312,22 @@ class ChatDiaryController extends ChangeNotifier {
 
   void personaDeleted(String personId) {
     final value = chat;
-    if (value == null) return;
-    if (value.activeMessages.any(
-      (m) =>
-          m.status == ChatDiaryMessageStatus.pending &&
-          m.persona?.personId == personId,
-    )) {
-      _cancelOperation();
+    if (value != null) {
+      if (value.activeMessages.any(
+        (m) =>
+            m.status == ChatDiaryMessageStatus.pending &&
+            m.persona?.personId == personId,
+      )) {
+        _cancelOperation();
+      }
+      if (value.selectedPersona?.personId == personId) {
+        value.selectedPersona = null;
+        personaUnavailable = true;
+      }
+      unawaited(persist());
+      notifyListeners();
     }
-    if (value.selectedPersona?.personId == personId) {
-      value.selectedPersona = null;
-      personaUnavailable = true;
-    }
-    unawaited(persist());
-    notifyListeners();
+    unawaited(_clearRememberedCompanion(personId: personId));
   }
 
   void lock() {
