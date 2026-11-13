@@ -83,7 +83,10 @@ class AiRequestPreviewDialog extends StatelessWidget {
         content: LayoutBuilder(
           builder: (context, constraints) {
             final screenHeight = MediaQuery.sizeOf(context).height;
-            final desiredMax = screenHeight * 0.82;
+            final desiredMax = math.min(
+              screenHeight * 0.82,
+              personaDialogBodyHeight(context),
+            );
             final maxHeight = constraints.maxHeight.isFinite
                 ? math.min(desiredMax, constraints.maxHeight)
                 : desiredMax;

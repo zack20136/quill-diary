@@ -33,6 +33,7 @@ import 'package:quill_diary/presentation/ai/ai_feature_error_panel.dart';
 import 'package:quill_diary/presentation/ai/ai_generation_card.dart';
 import 'package:quill_diary/presentation/ai/ai_preview_text_section.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
+import 'package:quill_diary/presentation/persona/persona_chat_rule_dialog.dart';
 import 'package:quill_diary/presentation/persona/persona_content_editor.dart';
 import 'package:quill_diary/presentation/persona/persona_labels.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
@@ -46,6 +47,7 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -291,68 +293,123 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   Future<void> _pasteOrPick(bool pick) async {
     final session = _controller.session;
     if (session == null || _controller.record == null) return;
-    String? text;
+    final texts = <String>[];
     if (pick) {
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt'],
+        allowedExtensions: const ['txt', 'json'],
       );
       if (files.isEmpty) return;
-      final file = files.first;
-      final materialized = await PickedFileMaterializer().materialize(
-        file,
-        fallbackBaseName: 'line.txt',
-        alwaysCopyToTemp: false,
-      );
-      try {
-        if (await materialized.file.length() > PersonaLimits.importBytes) {
-          throw const FormatException('匯入檔案過大');
-        }
-        text = utf8.decode(await materialized.file.readAsBytes());
-      } finally {
-        if (materialized.shouldDeleteAfterUse) {
-          await materialized.file.delete();
+      var totalBytes = 0;
+      for (final file in files) {
+        final materialized = await PickedFileMaterializer().materialize(
+          file,
+          fallbackBaseName: 'chat.txt',
+          alwaysCopyToTemp: false,
+        );
+        try {
+          final length = await materialized.file.length();
+          totalBytes += length;
+          if (length > PersonaLimits.importBytes ||
+              totalBytes > PersonaLimits.importBytes) {
+            throw const FormatException('匯入檔案過大');
+          }
+          texts.add(utf8.decode(await materialized.file.readAsBytes()));
+        } finally {
+          if (materialized.shouldDeleteAfterUse) {
+            await materialized.file.delete();
+          }
         }
       }
     } else {
-      text = await _dialog<String>(const PersonaPasteDialog());
+      final text = await _dialog<String>(const PersonaPasteDialog());
+      if (text != null) texts.add(text);
     }
-    if (!mounted || text == null || !identical(session, _controller.session)) {
+    if (!mounted || texts.isEmpty || !identical(session, _controller.session)) {
       return;
     }
-    if (utf8.encode(text).length > PersonaLimits.importBytes) {
+    if (texts.any(
+      (text) => utf8.encode(text).length > PersonaLimits.importBytes,
+    )) {
       throw const FormatException('匯入文字過大');
     }
-    final parsed = parsePersonaLineChat(
-      text,
-      vaultId: session.vaultId,
-      personId: widget.personId,
-      personaId: _controller.record!.personaId,
-    );
-    final roles = await _dialog<bool>(PersonaRolesDialog(chat: parsed));
-    if (!mounted || roles != true || !identical(session, _controller.session)) {
-      return;
+    final reports = <({PersonaChatImport chat, int skippedLines})>[];
+    final raws = <PersonaChatImport>[];
+    for (final text in texts) {
+      if (!mounted || !identical(session, _controller.session)) return;
+      final builtin = tryBuiltinPersonaChat(
+        text,
+        vaultId: session.vaultId,
+        personId: widget.personId,
+        personaId: _controller.record!.personaId,
+      );
+      if (builtin != null) {
+        reports.add(builtin);
+        continue;
+      }
+      final chosen = await _dialog<PersonaChatImport>(
+        PersonaChatRuleDialog(
+          input: text,
+          vaultId: session.vaultId,
+          personId: widget.personId,
+          personaId: _controller.record!.personaId,
+        ),
+      );
+      if (!mounted ||
+          chosen == null ||
+          !identical(session, _controller.session)) {
+        return;
+      }
+      raws.add(chosen);
     }
-    await _controller.attachImport(parsed);
+    if (reports.isNotEmpty) {
+      final report = combinePersonaChatReports(
+        reports,
+        vaultId: session.vaultId,
+        personId: widget.personId,
+        personaId: _controller.record!.personaId,
+      );
+      if (report.skippedLines > 0 &&
+          mounted &&
+          identical(session, _controller.session)) {
+        showAppFeedbackToast(
+          context,
+          context.l10n.personaImportSkippedLines(report.skippedLines),
+          tone: AppFeedbackTone.warning,
+        );
+      }
+      final roles = await _dialog<bool>(PersonaRolesDialog(chat: report.chat));
+      if (!mounted ||
+          roles != true ||
+          !identical(session, _controller.session)) {
+        return;
+      }
+      await _controller.attachImport(report.chat);
+    }
+    for (final raw in raws) {
+      if (!mounted || !identical(session, _controller.session)) return;
+      await _controller.attachImport(raw);
+    }
   }
 
-  Widget _section(String title, List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
-    child: AppCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppSectionHeader(title: title),
-          const SizedBox(height: 12),
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            children[i],
-          ],
-        ],
-      ),
-    ),
-  );
+  Widget _section(String title, List<Widget> children, {Widget? trailing}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
+        child: AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSectionHeader(title: title, trailing: trailing),
+              const SizedBox(height: 12),
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      );
 
   Widget _ready() {
     final l = context.l10n;
@@ -553,33 +610,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   Widget _materials() {
     final l = context.l10n;
     final d = _controller.draft!;
-    final related = ref.watch(personRelatedEntriesProvider(widget.personId));
     final needReview = _controller.materialsNeedReview;
-    Widget entries;
-    if (_results != null) {
-      entries = FutureBuilder<List<DiaryEntrySummary>>(
-        future: _results,
-        builder: (_, snapshot) => snapshot.hasData
-            ? _diaryRows(snapshot.data!)
-            : SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: snapshot.hasError
-                      ? Text(l.personaError)
-                      : const LinearProgressIndicator(),
-                ),
-              ),
-      );
-    } else if (_selectedOnly) {
-      entries = _diaryRows(const []);
-    } else {
-      entries = related.when(
-        data: _diaryRows,
-        error: (_, _) => SliverToBoxAdapter(child: Text(l.personaError)),
-        loading: () =>
-            const SliverToBoxAdapter(child: LinearProgressIndicator()),
-      );
-    }
     return AppScrollbar(
       controller: _materialsScroll,
       child: CustomScrollView(
@@ -626,90 +657,117 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                     ),
                   ),
                 SliverToBoxAdapter(child: _privacySettings()),
-                SliverToBoxAdapter(
-                  child: _section(l.personaChats, [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _run(() => _pasteOrPick(true)),
-                          icon: const Icon(Icons.upload_file),
-                          label: Text(l.personaChooseFile),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => _run(() => _pasteOrPick(false)),
-                          icon: const Icon(Icons.paste),
-                          label: Text(l.personaPaste),
-                        ),
-                      ],
-                    ),
-                    Text(l.personaStorageHint, style: _hintStyle),
-                    for (final source in d.chats) _chatMaterial(source),
-                  ]),
-                ),
-                AppSliverSectionCard(
-                  title: l.personaDiaries,
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          l.personaDiarySelectionHint,
-                          style: _hintStyle,
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: TextField(
-                        controller: _search,
-                        decoration: InputDecoration(
-                          labelText: l.personaSearch,
-                          prefixIcon: const Icon(Icons.search),
-                        ),
-                        onChanged: (query) {
-                          _searchTimer?.cancel();
-                          _searchTimer = Timer(
-                            const Duration(milliseconds: 300),
-                            () {
-                              if (!mounted || _controller.session == null) {
-                                return;
-                              }
-                              setState(
-                                () => _results = query.trim().isEmpty
-                                    ? null
-                                    : ref
-                                          .read(vaultRepositoryProvider)
-                                          .searchEntries(query.trim()),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                    SliverToBoxAdapter(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilterChip(
-                          label: Text(
-                            '${l.personaSelectedOnly} (${d.diaries.length})',
-                          ),
-                          selected: _selectedOnly,
-                          onSelected: (value) =>
-                              setState(() => _selectedOnly = value),
-                        ),
-                      ),
-                    ),
-                    entries,
-                  ],
-                ),
+                SliverToBoxAdapter(child: _chatImportSection(l, d)),
+                _diarySection(l, d),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _chatImportSection(AppLocalizations l, PersonaDraft draft) {
+    return _section(
+      l.personaChats,
+      [
+        AppActionButton(
+          label: l.personaChooseFile,
+          icon: Icons.upload_file,
+          appearance: AppActionButtonAppearance.tonal,
+          fullWidth: true,
+          onPressed: () => _run(() => _pasteOrPick(true)),
+        ),
+        AppActionButton(
+          label: l.personaPaste,
+          icon: Icons.paste,
+          appearance: AppActionButtonAppearance.tonal,
+          fullWidth: true,
+          onPressed: () => _run(() => _pasteOrPick(false)),
+        ),
+        for (final source in draft.chats) _chatMaterial(source),
+      ],
+      trailing: IconButton(
+        tooltip: l.personaChatExportHelp,
+        onPressed: () => _dialog<void>(const PersonaChatExportHelpDialog()),
+        icon: const Icon(Icons.info_outline_rounded),
+      ),
+    );
+  }
+
+  Widget _diarySection(AppLocalizations l, PersonaDraft draft) {
+    return AppSliverSectionCard(
+      title: l.personaDiaries,
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(l.personaDiarySelectionHint, style: _hintStyle),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: TextField(
+            controller: _search,
+            decoration: InputDecoration(
+              labelText: l.personaSearch,
+              prefixIcon: const Icon(Icons.search),
+            ),
+            onChanged: (query) {
+              _searchTimer?.cancel();
+              _searchTimer = Timer(const Duration(milliseconds: 300), () {
+                if (!mounted || _controller.session == null) return;
+                setState(
+                  () => _results = query.trim().isEmpty
+                      ? null
+                      : ref
+                            .read(vaultRepositoryProvider)
+                            .searchEntries(query.trim()),
+                );
+              });
+            },
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        SliverToBoxAdapter(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FilterChip(
+              label: Text('${l.personaSelectedOnly} (${draft.diaries.length})'),
+              selected: _selectedOnly,
+              onSelected: (value) => setState(() => _selectedOnly = value),
+            ),
+          ),
+        ),
+        _diaryEntrySliver(l),
+      ],
+    );
+  }
+
+  Widget _diaryEntrySliver(AppLocalizations l) {
+    if (_results != null) {
+      return FutureBuilder<List<DiaryEntrySummary>>(
+        future: _results,
+        builder: (_, snapshot) => snapshot.hasData
+            ? _diaryRows(snapshot.data!)
+            : SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: snapshot.hasError
+                      ? Text(l.personaError)
+                      : const LinearProgressIndicator(),
+                ),
+              ),
+      );
+    }
+    if (_selectedOnly) return _diaryRows(const []);
+    return ref
+        .watch(personRelatedEntriesProvider(widget.personId))
+        .when(
+          data: _diaryRows,
+          error: (_, _) => SliverToBoxAdapter(child: Text(l.personaError)),
+          loading: () =>
+              const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        );
   }
 
   Widget _diaryRows(List<DiaryEntrySummary> matches) {
@@ -800,28 +858,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       return;
                     }
                     await _dialog<void>(
-                      AppDialogShell(
+                      PersonaDiaryPreviewDialog(
                         title: title,
-                        content: SizedBox(
-                          width: 560,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: personaDialogBodyHeight(context),
-                            ),
-                            child: AppScrollView(
-                              child: SelectableText(
-                                value.markdownBody,
-                                style: bodyStyle,
-                              ),
-                            ),
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(context.l10n.commonActionClose),
-                          ),
-                        ],
+                        body: value.markdownBody,
+                        bodyStyle: bodyStyle,
                       ),
                     );
                   }
@@ -845,20 +885,41 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       subtitle: chat == null
           ? null
           : Text(
-              l.personaIncludedCount(
-                chat
-                    .messagesInWindow(source)
-                    .where((m) => !source.excluded.contains(m.id))
-                    .length,
-              ),
+              chat.isRaw
+                  ? l.personaChatRawLabel
+                  : l.personaIncludedCount(
+                      chat
+                          .messagesInWindow(source)
+                          .where((m) => !source.excluded.contains(m.id))
+                          .length,
+                    ),
             ),
       trailing: IconButton(
         tooltip: l.personaRemove,
         icon: const Icon(Icons.close),
         onPressed: () => _run(() => _controller.removeImport(source.importId)),
       ),
-      onTap: chat == null ? null : () => _openChatMaterial(source),
+      onTap: chat == null
+          ? null
+          : () => chat.isRaw ? _openRawChat(source) : _openChatMaterial(source),
     );
+  }
+
+  Future<void> _openRawChat(PersonaChatSource source) async {
+    final current = _controller.imports[source.importId];
+    if (current == null) return;
+    final session = _controller.session;
+    final edited = await _dialog<PersonaChatImport>(
+      PersonaChatRuleDialog(
+        input: current.rawText,
+        vaultId: current.vaultId,
+        personId: current.personId,
+        personaId: current.personaId,
+        existing: current,
+      ),
+    );
+    if (edited == null || !identical(session, _controller.session)) return;
+    await _run(() => _controller.updateImport(edited));
   }
 
   Future<void> _openChatMaterial(PersonaChatSource source) => _dialog<void>(
@@ -1164,17 +1225,20 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         });
       final showSource =
           messages.map((item) => item.$2.label).toSet().length > 1;
-      yield _section(date, [
+      yield _section(date.isEmpty ? context.l10n.personaChatRawLabel : date, [
         for (final item in messages)
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _chatPreviewMetadata(
-                item.$2,
-                showSource: showSource,
-                subjectName: subjectName,
-              ),
-              const SizedBox(height: 8),
+              if (!item.$2.isRaw)
+                _chatPreviewMetadata(
+                  item.$2,
+                  showSource: showSource,
+                  subjectName: subjectName,
+                )
+              else if (showSource)
+                Text(item.$2.label, style: _hintStyle),
+              if (!item.$2.isRaw || showSource) const SizedBox(height: 8),
               _materialText(item.$2),
             ],
           ),
@@ -1195,7 +1259,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   }) {
     final l = context.l10n;
     final role = switch (material.speakerRole) {
-      PersonaSpeakerRole.personaSubject => l.personaRoleFriend,
+      PersonaSpeakerRole.personaSubject => l.personaRoleSubject,
       PersonaSpeakerRole.user => l.personaRoleUser,
       _ => l.personaRoleOther,
     };
@@ -1408,23 +1472,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       builder: (context, _) {
         final d = controller.draft;
         final disabled = _acting || controller.busy;
-        final canAdvance =
-            !disabled &&
-            (d?.step == PersonaStep.review || ref.watch(aiEnabledProvider)) &&
-            (d?.step != PersonaStep.confirmation ||
-                controller.preview != null &&
-                    (controller.preview!.modelTarget == null ||
-                        ref
-                                .watch(
-                                  aiConnectionReadyProvider(
-                                    controller.preview!.connection!,
-                                  ),
-                                )
-                                .value ==
-                            true)) &&
-            (d?.step != PersonaStep.materials ||
-                controller.hasMaterials && !controller.materialsNeedReview) &&
-            (d?.step != PersonaStep.review || controller.canSaveCandidate);
+        final canAdvance = _canAdvance(controller, d, disabled);
         return PopScope(
           canPop: true,
           onPopInvokedWithResult: (didPop, _) {
@@ -1475,110 +1523,169 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                 ),
               ],
             ),
-            body: _backgrounded || controller.session == null
-                ? const Center(child: Icon(Icons.lock_outline))
-                : _needsAiSettings
-                ? Center(
-                    child: AiFeatureErrorPanel(
-                      message: l.aiErrorSettings,
-                      onOpenSettings: _acting
-                          ? null
-                          : () => _run(_recoverAiSettings),
-                      openSettingsLabel: l.aiOpenSettings,
-                    ),
-                  )
-                : controller.loading
-                ? const AppLoadingState(layout: AppLoadingStateLayout.page)
-                : controller.failed && controller.record == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(l.personaNeedsRecovery),
-                          TextButton(
-                            onPressed: _initialize,
-                            child: Text(l.commonActionConfirm),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : SafeArea(
-                    child: Column(
-                      children: [
-                        if (d != null)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  l.personaWizardStep(
-                                    d.step.index + 1,
-                                    PersonaStep.values.length,
-                                    personaStepLabel(l, d.step),
-                                  ),
-                                  style: Theme.of(context).textTheme.labelLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                _stepProgress(d.step),
-                              ],
-                            ),
-                          ),
-                        if (controller.failed)
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(l.personaError),
-                          ),
-                        if (controller.cleanupPending)
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Text(l.personaCleanupPending),
-                          ),
-                        Expanded(
-                          child: d == null
-                              ? controller.record?.cards == null
-                                    ? const SizedBox.shrink()
-                                    : _ready()
-                              : d.step == PersonaStep.materials
-                              ? _materials()
-                              : d.step == PersonaStep.confirmation
-                              ? _confirmation()
-                              : _review(),
-                        ),
-                        if (controller.busy)
-                          AiGenerationCard(
-                            title: l.personaProcessing,
-                            status: l.personaRequestProgress(
-                              controller.completedRequests,
-                              controller.totalRequests,
-                            ),
-                            hint: l.personaRetryHint,
-                            onStop: controller.stop,
-                          )
-                        else if (d != null)
-                          d.step == PersonaStep.review
-                              ? _reviewActions(
-                                  d,
-                                  l,
-                                  disabled: disabled,
-                                  canSave: canAdvance,
-                                )
-                              : _stepActions(
-                                  d,
-                                  l,
-                                  disabled: disabled,
-                                  canAdvance: canAdvance,
-                                ),
-                      ],
-                    ),
-                  ),
+            body: _sessionBody(
+              controller: controller,
+              draft: d,
+              l: l,
+              disabled: disabled,
+              canAdvance: canAdvance,
+            ),
           ),
         );
       },
     );
+  }
+
+  bool _canAdvance(
+    PersonaController controller,
+    PersonaDraft? draft,
+    bool disabled,
+  ) {
+    if (disabled) return false;
+    if (draft?.step != PersonaStep.review && !ref.watch(aiEnabledProvider)) {
+      return false;
+    }
+    if (draft?.step == PersonaStep.confirmation) {
+      final preview = controller.preview;
+      if (preview == null) return false;
+      if (preview.modelTarget != null &&
+          ref.watch(aiConnectionReadyProvider(preview.connection!)).value !=
+              true) {
+        return false;
+      }
+    }
+    if (draft?.step == PersonaStep.materials &&
+        (!controller.hasMaterials || controller.materialsNeedReview)) {
+      return false;
+    }
+    if (draft?.step == PersonaStep.review && !controller.canSaveCandidate) {
+      return false;
+    }
+    return true;
+  }
+
+  Widget _sessionBody({
+    required PersonaController controller,
+    required PersonaDraft? draft,
+    required AppLocalizations l,
+    required bool disabled,
+    required bool canAdvance,
+  }) {
+    if (_backgrounded || controller.session == null) {
+      return const Center(child: Icon(Icons.lock_outline));
+    }
+    if (_needsAiSettings) {
+      return Center(
+        child: AiFeatureErrorPanel(
+          message: l.aiErrorSettings,
+          onOpenSettings: _acting ? null : () => _run(_recoverAiSettings),
+          openSettingsLabel: l.aiOpenSettings,
+        ),
+      );
+    }
+    if (controller.loading) {
+      return const AppLoadingState(layout: AppLoadingStateLayout.page);
+    }
+    if (controller.failed && controller.record == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l.personaNeedsRecovery),
+              TextButton(
+                onPressed: _initialize,
+                child: Text(l.commonActionConfirm),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return SafeArea(
+      child: _wizardColumn(controller, draft, l, disabled, canAdvance),
+    );
+  }
+
+  Widget _wizardColumn(
+    PersonaController controller,
+    PersonaDraft? draft,
+    AppLocalizations l,
+    bool disabled,
+    bool canAdvance,
+  ) {
+    return Column(
+      children: [
+        if (draft != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l.personaWizardStep(
+                    draft.step.index + 1,
+                    PersonaStep.values.length,
+                    personaStepLabel(l, draft.step),
+                  ),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                _stepProgress(draft.step),
+              ],
+            ),
+          ),
+        if (controller.failed)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(l.personaError),
+          ),
+        if (controller.cleanupPending)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(l.personaCleanupPending),
+          ),
+        Expanded(child: _wizardStep(controller, draft)),
+        if (controller.busy)
+          AiGenerationCard(
+            title: l.personaProcessing,
+            status: l.personaRequestProgress(
+              controller.completedRequests,
+              controller.totalRequests,
+            ),
+            hint: l.personaRetryHint,
+            onStop: controller.stop,
+          )
+        else if (draft != null)
+          draft.step == PersonaStep.review
+              ? _reviewActions(
+                  draft,
+                  l,
+                  disabled: disabled,
+                  canSave: canAdvance,
+                )
+              : _stepActions(
+                  draft,
+                  l,
+                  disabled: disabled,
+                  canAdvance: canAdvance,
+                ),
+      ],
+    );
+  }
+
+  Widget _wizardStep(PersonaController controller, PersonaDraft? draft) {
+    if (draft == null) {
+      return controller.record?.cards == null
+          ? const SizedBox.shrink()
+          : _ready();
+    }
+    return switch (draft.step) {
+      PersonaStep.materials => _materials(),
+      PersonaStep.confirmation => _confirmation(),
+      PersonaStep.review => _review(),
+    };
   }
 
   Widget _reviewActions(

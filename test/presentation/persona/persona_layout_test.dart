@@ -191,6 +191,7 @@ void main() {
         tester.getTopLeft(find.text(testL10n.personaChooseFile)).dy,
         lessThan(tester.getTopLeft(find.byType(TextField)).dy),
       );
+      expect(find.byTooltip(testL10n.personaChatExportHelp), findsOneWidget);
       await tester.tap(find.byType(FilterChip));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(

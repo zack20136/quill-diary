@@ -482,7 +482,7 @@ void main() {
       expect(promptText, findsNothing);
       expect(find.text(l10n.personaSpeakerNamePreviewHint), findsNothing);
       expect(
-        find.textContaining('${l10n.personaRoleFriend} · ⟦P07⟧'),
+        find.textContaining('${l10n.personaRoleSubject} · ⟦P07⟧'),
         findsOneWidget,
       );
       personResult.complete(person);
@@ -491,7 +491,7 @@ void main() {
       final metadata = tester.widgetList<PrivateText>(find.byType(PrivateText));
       final named = metadata.singleWhere(
         (widget) =>
-            widget.text.contains('${l10n.personaRoleFriend} · ${person.name}'),
+            widget.text.contains('${l10n.personaRoleSubject} · ${person.name}'),
       );
       final nameRange = named.ranges.single;
       expect(named.text.substring(nameRange.start, nameRange.end), person.name);
@@ -593,7 +593,7 @@ void main() {
   testWidgets('套用聊天編輯會刪除指定與清空的訊息，保留其他日期，取消不套用變更', (tester) async {
     final person = personaPerson('小明');
     final record = personaDraftRecord('vault', person.id);
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/08\n09:12\t我\t早安，想去旅行\n09:13\t我\t多餘的訊息\n09:14\t小明\t> 引用原文\n自己的話\n2026/11/09\n09:00\t小明\t隔天的訊息',
       vaultId: record.vaultId,
       personId: person.id,

@@ -241,7 +241,7 @@ class _DiffPanelState extends State<_DiffPanel> {
     return SelectionArea(
       child: AppScrollbar(
         controller: _scroll,
-        track: AppScrollbarTrack.frame,
+        reserveGutter: true,
         child: widget.child.build(
           context,
           controller: _scroll,
@@ -421,9 +421,7 @@ class _ReviewActions extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             foregroundColor: i == 2 ? cs.primary : cs.onSurface,
             side: BorderSide(
-              color: i == 2 && onApply != null
-                  ? cs.primary
-                  : cs.outlineVariant,
+              color: i == 2 && onApply != null ? cs.primary : cs.outlineVariant,
             ),
           ),
           child: Text(labels[i]),

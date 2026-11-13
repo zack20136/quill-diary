@@ -95,6 +95,27 @@ abstract final class AppDialogInsets {
   );
 }
 
+/// Dialog 內容區的最高高度，與「如何匯出聊天紀錄」相同。
+double personaDialogBodyHeight(BuildContext context) =>
+    (MediaQuery.sizeOf(context).height -
+            MediaQuery.viewInsetsOf(context).bottom -
+            200)
+        .clamp(140.0, 640.0);
+
+/// 分身對話框內容的固定寬度與 [personaDialogBodyHeight]。
+class PersonaDialogBody extends StatelessWidget {
+  const PersonaDialogBody({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 560,
+    height: personaDialogBodyHeight(context),
+    child: child,
+  );
+}
+
 /// 標記 dialog 內容範圍，供捲軸把右側留白當作自己的欄位使用。
 class AppDialogScope extends InheritedWidget {
   const AppDialogScope({required super.child, super.key});

@@ -73,6 +73,7 @@ class _AppScrollbarGeometry {
 ///
 /// - [viewport]：捲動區本身的高度（頁面、列表）。
 /// - [frame]：外框高度（TextField 的 outline 等），上下各留 [AppScrollbarMetrics.frameMainAxisInset]。
+///   dialog 內且 [AppScrollbar.reserveGutter] 時兩種軌道都不留白，滑塊貼齊捲動區上下緣。
 enum AppScrollbarTrack { viewport, frame }
 
 class AppScrollbar extends StatefulWidget {
@@ -131,7 +132,12 @@ class _AppScrollbarState extends State<AppScrollbar>
       ? AppScrollbarMetrics.nestedRadius
       : AppScrollbarMetrics.radius;
 
+  bool get _dialogGutterFlush => widget.reserveGutter && _inDialog;
+
   double get _mainAxisMarginStart {
+    if (_dialogGutterFlush) {
+      return 0;
+    }
     if (widget.track == AppScrollbarTrack.frame) {
       return AppScrollbarMetrics.frameMainAxisInset;
     }
@@ -141,13 +147,16 @@ class _AppScrollbarState extends State<AppScrollbar>
   }
 
   double get _mainAxisMarginEnd {
+    if (_dialogGutterFlush) {
+      return 0;
+    }
     if (widget.track == AppScrollbarTrack.frame) {
       return AppScrollbarMetrics.frameMainAxisInset;
     }
     if (widget.nested) {
       return AppScrollbarMetrics.nestedMainAxisMarginEnd;
     }
-    // dialog 的底部內距在捲動區外側，thumb 需扣掉它才會與頁面底端對齊。
+    // 沒有右側留白的 dialog 捲軸，底部內距在捲動區外側，thumb 需扣掉它才會與頁面底端對齊。
     return _inDialog
         ? AppScrollbarMetrics.mainAxisMarginEnd - AppDialogInsets.content.bottom
         : AppScrollbarMetrics.mainAxisMarginEnd;

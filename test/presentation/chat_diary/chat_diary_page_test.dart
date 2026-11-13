@@ -41,6 +41,26 @@ import '../../helpers/ai/people_chat_repository.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
+/// 預覽清單變矮後，展開系統提示詞會把後面的列移出建構範圍。
+Future<void> revealDialogText(
+  WidgetTester tester,
+  Finder dialog,
+  String text,
+) async {
+  final target = find.descendant(of: dialog, matching: find.text(text));
+  final list = tester.widget<ListView>(
+    find.descendant(of: dialog, matching: find.byType(ListView)),
+  );
+  final position = list.controller!.position;
+  for (var i = 0; i < 12 && target.evaluate().isEmpty; i++) {
+    final extent = position.maxScrollExtent;
+    if (extent <= position.pixels) break;
+    position.jumpTo(extent);
+    await tester.pump();
+  }
+  expect(target, findsOneWidget);
+}
+
 final Finder _previewBody = find.byWidgetPredicate(
   (widget) => widget is Text && widget.textSpan != null,
 );
@@ -824,7 +844,7 @@ void main() {
         find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
         findsOneWidget,
       );
-      expect(find.text('尚未送出'), findsOneWidget);
+      await revealDialogText(tester, preview, '尚未送出');
       await tester.tap(find.text('關閉'));
       await tester.pumpAndSettle();
       expect(client.calls, isEmpty);
@@ -961,10 +981,7 @@ void main() {
         find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
         findsOneWidget,
       );
-      expect(
-        find.descendant(of: dialog, matching: find.text('尚未送出')),
-        findsOneWidget,
-      );
+      await revealDialogText(tester, dialog, '尚未送出');
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });

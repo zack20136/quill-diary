@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,6 +18,11 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
+double _dialogContentMaxHeight(BuildContext context) {
+  final double screenHeight = MediaQuery.sizeOf(context).height;
+  return math.min(screenHeight * 0.7, personaDialogBodyHeight(context));
+}
+
 Future<bool> showInspectVaultConfirmDialog(
   BuildContext context, {
   VaultRepairSummary? repairSummary,
@@ -32,7 +38,7 @@ Future<bool> showInspectVaultConfirmDialog(
             width: double.maxFinite,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+                maxHeight: _dialogContentMaxHeight(context),
               ),
               child: AppScrollView(
                 child: Column(
@@ -99,7 +105,7 @@ Future<void> showRepairDetailDialog(
         width: double.maxFinite,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+            maxHeight: _dialogContentMaxHeight(context),
           ),
           child: AppScrollView(child: _RepairDetailContent(summary: summary)),
         ),
@@ -395,7 +401,7 @@ Future<bool?> showInspectVaultResultDialog(
         width: double.maxFinite,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+            maxHeight: _dialogContentMaxHeight(context),
           ),
           child: AppScrollView(
             child: Column(
@@ -581,7 +587,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
         width: double.maxFinite,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * .7,
+            maxHeight: _dialogContentMaxHeight(context),
           ),
           child: AppScrollView(
             child: Column(

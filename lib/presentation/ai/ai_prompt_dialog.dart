@@ -94,16 +94,11 @@ class _AiPromptDialogState extends State<AiPromptDialog>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final height =
-        (MediaQuery.sizeOf(context).height -
-                MediaQuery.viewInsetsOf(context).bottom -
-                240)
-            .clamp(140.0, 680.0);
     return AppDialogShell(
       title: widget.title(l10n),
       content: SizedBox(
         width: 640,
-        height: height,
+        height: personaDialogBodyHeight(context),
         child: _obscured
             ? Center(
                 child: Semantics(
@@ -122,6 +117,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                   Expanded(
                     child: AppScrollbar(
                       controller: _scrollController,
+                      reserveGutter: true,
                       track: AppScrollbarTrack.frame,
                       child: TextField(
                         key: widget.fieldKey,

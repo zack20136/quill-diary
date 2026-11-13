@@ -168,6 +168,10 @@ class PersonaController extends ChangeNotifier {
         draft?.chats.any((source) {
               final chat = imports[source.importId];
               if (chat == null) return false;
+              if (chat.isRaw) {
+                return toneOnly ||
+                    personaSourceHasVisibleText(chat.rawText, chat.rawHidden);
+              }
               return chat
                   .messagesInWindow(source)
                   .any(
@@ -607,10 +611,27 @@ class PersonaController extends ChangeNotifier {
       reservedText: [
         for (final e in entries.values) e.markdownBody,
         for (final c in record!.cards?.values ?? <PersonaCard>[]) c.text,
-        for (final i in imports.values)
+        for (final i in imports.values) ...[
           for (final m in i.messages) m.text,
+          if (i.isRaw) i.rawText,
+        ],
       ].join('\n'),
     );
+    registry.replaceImportNames([
+      for (final chat in imports.values)
+        for (final speaker in chat.speakers)
+          if (speaker.id.startsWith('named-') &&
+              !(chat.isRaw &&
+                  speaker.role == PersonaSpeakerRole.personaSubject))
+            speaker.label,
+    ]);
+    registry.bindSubjectImportNames(personId, [
+      for (final chat in imports.values)
+        if (chat.isRaw)
+          for (final speaker in chat.speakers)
+            if (speaker.role == PersonaSpeakerRole.personaSubject)
+              speaker.label,
+    ]);
     final includedCards = {
       for (final kind in draft!.target.kinds)
         if (draft!.includeCurrent[kind] == true && record!.cards?[kind] != null)
@@ -636,6 +657,22 @@ class PersonaController extends ChangeNotifier {
     }
     for (final source in draft!.chats) {
       final chat = imports[source.importId]!;
+      if (chat.isRaw) {
+        final body = registry.protect(
+          chat.rawText,
+          scope: '${chat.importId}:raw',
+          ranges: chat.rawHidden,
+          maskImportNames: true,
+        );
+        if (!personaHasVisibleText(body)) continue;
+        blocks.add(
+          PersonaMaterial.raw(
+            label: '${l10n.personaChats} ${draft!.chats.indexOf(source) + 1}',
+            text: body,
+          ),
+        );
+        continue;
+      }
       final speakers = {for (final s in chat.speakers) s.id: s};
       for (final message in chat.messagesInWindow(source)) {
         final speaker = speakers[message.speakerId]!;
@@ -645,6 +682,7 @@ class PersonaController extends ChangeNotifier {
           message.text,
           scope: '${chat.importId}:${message.id}',
           ranges: ranges,
+          maskImportNames: true,
         );
         if (!personaHasVisibleText(body)) continue;
         blocks.add(
@@ -657,6 +695,8 @@ class PersonaController extends ChangeNotifier {
                 ? 'user'
                 : speaker.role == PersonaSpeakerRole.personaSubject
                 ? registry.person(personId)
+                : speaker.id.startsWith('named-')
+                ? registry.anonymous('import:${speaker.label}')
                 : registry.anonymous('${chat.importId}:${speaker.id}'),
             styleText: speaker.role != PersonaSpeakerRole.personaSubject
                 ? ''
@@ -667,6 +707,7 @@ class PersonaController extends ChangeNotifier {
                       ...ranges,
                       ...message.quoteRanges,
                     ], message.text.length),
+                    maskImportNames: true,
                   ),
           ),
         );

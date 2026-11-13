@@ -436,14 +436,6 @@ class _RelationshipTypesManageDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            l10n.peopleManageRelationshipsGuide,
-            style: theme.textTheme.bodySmall?.copyWith(
-              height: 1.4,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 14),
           TextField(
             controller: _addCtrl,
             enabled: !_busy,
@@ -487,7 +479,6 @@ class _RelationshipTypesManageDialogState
                   )
                 : AppScrollbar(
                     controller: _scroll,
-                    nested: true,
                     reserveGutter: true,
                     child: Material(
                       color: cs.surface.withValues(alpha: 0.72),

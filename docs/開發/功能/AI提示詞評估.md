@@ -636,7 +636,7 @@ I burned my toast today, took a walk at lunch, and finished a borrowed novel ton
 
 ### 固定材料與逐案結果
 
-所有案例 subject=⟦P01⟧，⟦P02⟧是另一位假人物。下列「舊卡」就是外送 current_cards；未列的欄位沒有提供。日記元資料固定為 source=diary、author_role=user、date=2026-06-20；LINE 固定為 source=line、sent_at_local=2026-06-21T14:00:00。本人 speaker=⟦P01⟧，使用者為 user，其他人為⟦P02⟧。不同角色即使同時間也不代表共同經歷。
+所有案例 subject=⟦P01⟧，⟦P02⟧是另一位假人物。下列「舊卡」就是外送 current_cards；未列的欄位沒有提供。日記元資料固定為 source=diary、author_role=user、date=2026-06-20；聊天固定為 source=chat、sent_at_local=2026-06-21T14:00:00。本人 speaker=⟦P01⟧，使用者為 user，其他人為⟦P02⟧。不同角色即使同時間也不代表共同經歷。
 
 每筆材料以下列 JSON 保留完整 text 與 style_text，行內的 \n 為實際換行。長材料明列擴充方式，不將數百份重複文字展開在文件中。
 
@@ -947,37 +947,37 @@ I burned my toast today, took a walk at lunch, and finished a borrowed novel ton
 P11-zh 第一輪證據：
 
 ```text
-人物與事件證據：LINE，user 詢問包裹是否明天寄；persona_subject 回覆「還不確定欸」。user 問設備清單；persona_subject 回覆「週末再弄」。來源時間 2026-06-21T14:00:00，計畫仍按原話保留。風格證據：同來源 persona_subject 的 style_text 原話「還不確定欸」「週末再弄」。
+人物與事件證據：chat，user 詢問包裹是否明天寄；persona_subject 回覆「還不確定欸」。user 問設備清單；persona_subject 回覆「週末再弄」。來源時間 2026-06-21T14:00:00，計畫仍按原話保留。風格證據：同來源 persona_subject 的 style_text 原話「還不確定欸」「週末再弄」。
 ```
 
 P12-zh 第一輪證據：
 
 ```text
-人物與事件證據：LINE，persona_subject 表示尚未決定是否去海邊；來源時間 2026-06-21T14:00:00，不據此建立事件日期。風格證據：同來源 persona_subject 的 style_text 原話「先看完再說啦😂」；這些是同一段重複材料，不推論頻率。
+人物與事件證據：chat，persona_subject 表示尚未決定是否去海邊；來源時間 2026-06-21T14:00:00，不據此建立事件日期。風格證據：同來源 persona_subject 的 style_text 原話「先看完再說啦😂」；這些是同一段重複材料，不推論頻率。
 ```
 
 P12-zh 再次摘要：
 
 ```text
-LINE｜persona_subject｜來源時間 2026-06-21T14:00:00。事件：尚未決定是否去海邊，事件時間未詳。風格原話：「先看完再說啦😂」，來自本人 style_text；重複片段不算獨立證據。
+chat｜persona_subject｜來源時間 2026-06-21T14:00:00。事件：尚未決定是否去海邊，事件時間未詳。風格原話：「先看完再說啦😂」，來自本人 style_text；重複片段不算獨立證據。
 ```
 
 P11-en 第一輪證據：
 
 ```text
-Person and event evidence: LINE user asks about mailing the parcel tomorrow; persona_subject says “not sure yet.” User asks about the equipment list; persona_subject says “i’ll do it at the weekend.” Source time 2026-06-21T14:00:00. Style evidence: same-source persona_subject style_text phrases “not sure yet” and “i’ll do it at the weekend.”
+Person and event evidence: chat user asks about mailing the parcel tomorrow; persona_subject says “not sure yet.” User asks about the equipment list; persona_subject says “i’ll do it at the weekend.” Source time 2026-06-21T14:00:00. Style evidence: same-source persona_subject style_text phrases “not sure yet” and “i’ll do it at the weekend.”
 ```
 
 P12-en 第一輪證據：
 
 ```text
-Person and event evidence: LINE persona_subject has not decided whether to visit the coast. Source time 2026-06-21T14:00:00 is not an event date. Style evidence: original persona_subject style_text “i’ll read it first 😂”; repeated copies are not independent evidence of frequency.
+Person and event evidence: chat persona_subject has not decided whether to visit the coast. Source time 2026-06-21T14:00:00 is not an event date. Style evidence: original persona_subject style_text “i’ll read it first 😂”; repeated copies are not independent evidence of frequency.
 ```
 
 P12-en 再次摘要：
 
 ```text
-LINE | persona_subject | Source time 2026-06-21T14:00:00. Event: undecided about visiting the coast; event timing unknown. Original style_text phrase: “i’ll read it first 😂”. Repeated pieces are not independent evidence.
+chat | persona_subject | Source time 2026-06-21T14:00:00. Event: undecided about visiting the coast; event timing unknown. Original style_text phrase: “i’ll read it first 😂”. Repeated pieces are not independent evidence.
 ```
 
 ### 四組完整前後卡片與試聊

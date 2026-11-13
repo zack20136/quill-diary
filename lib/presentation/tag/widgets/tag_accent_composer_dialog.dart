@@ -302,7 +302,7 @@ class _TagAccentComposerDialogState
               ),
             ),
             const SizedBox(height: 6),
-          ] else ...<Widget>[const SizedBox(height: 22)],
+          ],
           TextField(
             controller: _nameCtrl,
             enabled: !busy,

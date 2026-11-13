@@ -38,9 +38,6 @@ class _AiModelThinkingDialogState extends State<_AiModelThinkingDialog> {
   final _controllers = {
     for (final level in AiThinkingLevel.values) level: TextEditingController(),
   };
-  final _jsonScrolls = {
-    for (final level in AiThinkingLevel.values) level: ScrollController(),
-  };
   final _enabled = <AiThinkingLevel>{};
   final _errors = <AiThinkingLevel, String>{};
   String _mode = 'inherit';
@@ -248,28 +245,24 @@ class _AiModelThinkingDialogState extends State<_AiModelThinkingDialog> {
                           if (_enabled.contains(level))
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: AppScrollbar(
-                                controller: _jsonScrolls[level]!,
-                                child: TextField(
-                                  key: ValueKey('thinking-json-${level.name}'),
-                                  controller: _controllers[level],
-                                  scrollController: _jsonScrolls[level],
-                                  minLines: 2,
-                                  maxLines: 6,
-                                  autocorrect: false,
-                                  enableSuggestions: false,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                  ),
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'JSON · ${aiThinkingLabel(l10n, level)}',
-                                    errorText: _errors[level],
-                                    errorMaxLines: 6,
-                                  ),
-                                  onChanged: (_) => setState(() {}),
+                              child: TextField(
+                                key: ValueKey('thinking-json-${level.name}'),
+                                controller: _controllers[level],
+                                minLines: 2,
+                                maxLines: null,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
                                 ),
+                                decoration: InputDecoration(
+                                  labelText:
+                                      'JSON · ${aiThinkingLabel(l10n, level)}',
+                                  errorText: _errors[level],
+                                  errorMaxLines: 6,
+                                ),
+                                onChanged: (_) => setState(() {}),
                               ),
                             ),
                         ],
@@ -306,9 +299,6 @@ class _AiModelThinkingDialogState extends State<_AiModelThinkingDialog> {
   void dispose() {
     for (final controller in _controllers.values) {
       controller.dispose();
-    }
-    for (final scroll in _jsonScrolls.values) {
-      scroll.dispose();
     }
     super.dispose();
   }

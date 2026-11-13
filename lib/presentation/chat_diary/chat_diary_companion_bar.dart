@@ -122,7 +122,7 @@ class _ChatDiaryCompanionBarState extends ConsumerState<ChatDiaryCompanionBar>
         .firstOrNull;
     final name = widget.current == null
         ? l.personaDefaultName
-        : widget.name ?? person?.name ?? l.personaRoleFriend;
+        : widget.name ?? person?.name ?? l.personaRoleSubject;
     final surface = context.appColors.sectionInset;
     final (background, accent) = person != null
         ? personLabelColorPair(person, surface)
@@ -242,7 +242,7 @@ class _CompanionChoices extends ConsumerWidget {
                                   surface: surface,
                                 )
                               : personLabelColorPair(person, surface);
-                          final label = person?.name ?? l.personaRoleFriend;
+                          final label = person?.name ?? l.personaRoleSubject;
                           return ListTile(
                             leading: CircleAvatar(
                               radius: 17,

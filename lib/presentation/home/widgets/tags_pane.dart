@@ -191,9 +191,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.sizeOf(context).height * 0.3,
                     ),
-                    child: SingleChildScrollView(
-                      child: Text(labels.join('\n')),
-                    ),
+                    child: AppScrollView(child: Text(labels.join('\n'))),
                   ),
                 ],
               )
@@ -233,7 +231,8 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
             _previewTagLabel = null;
           }
           _selectedTagKeys.removeAll(deleted);
-          if (fromSelection && deleted.length == labels.length) _clearSelection();
+          if (fromSelection && deleted.length == labels.length)
+            _clearSelection();
         });
       }
     }

@@ -126,4 +126,40 @@ void main() {
       '甲$personaHiddenText\ne\u0301乙',
     );
   });
+
+  test('匯入指定的名字會換成代號，沒有要求時不改原文', () {
+    final registry = PersonaTokenRegistry([], hideNames: false);
+    registry.replaceImportNames(['小美', '阿哲']);
+    final sent = registry.protect(
+      '小美說阿哲好',
+      scope: 'chat',
+      maskImportNames: true,
+    );
+    expect(sent.contains('小美'), isFalse);
+    expect(sent.contains('阿哲'), isFalse);
+    expect(sent, contains(registry.anonymous('import:小美')));
+    expect(sent, contains(registry.anonymous('import:阿哲')));
+    expect(registry.protect('小美說阿哲好', scope: 'diary'), '小美說阿哲好');
+    registry.replaceImportNames(['Ann']);
+    final partial = registry.protect(
+      'Ann 與 Anne',
+      scope: 'chat',
+      maskImportNames: true,
+    );
+    expect(partial.contains('Ann '), isFalse);
+    expect(partial, contains('Anne'));
+    expect(partial, contains(registry.anonymous('import:Ann')));
+  });
+
+  test('原文匯入的目標對象名字換成人物代號，其他人名仍是匯入代號', () {
+    final registry = PersonaTokenRegistry([], hideNames: false);
+    const personId = 'per_subject';
+    registry.bindSubjectImportNames(personId, ['小明']);
+    registry.replaceImportNames(['小美']);
+    final sent = registry.protect('小明約小美', scope: 'raw', maskImportNames: true);
+    expect(sent.contains('小明'), isFalse);
+    expect(sent.contains('小美'), isFalse);
+    expect(sent, contains(registry.person(personId)));
+    expect(sent, contains(registry.anonymous('import:小美')));
+  });
 }

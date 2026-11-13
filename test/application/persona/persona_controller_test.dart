@@ -61,8 +61,7 @@ void main() {
         activeConnectionId: config.connectionId,
         connections: {config.connectionId: config},
       );
-    client = FakeAiClient(config)
-      ..output = personaReplyJson('一起去海邊');
+    client = FakeAiClient(config)..output = personaReplyJson('一起去海邊');
     clientCreations = 0;
     store = GatedPersonaStore(
       paths: harness.pathStrategy,
@@ -271,7 +270,7 @@ void main() {
     await create();
     await controller.begin(PersonaUpdateTarget.both);
     await controller.selectDiary(entryId, false);
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/06（五）\n12:00\t我\t一起去過海邊',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -383,7 +382,7 @@ void main() {
 
   test('長聊天將相鄰短訊息依序合批提取，不逐則呼叫模型', () async {
     await controller.selectDiary(entryId, false);
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/06（五）\n${List.generate(120, (i) => '12:${(i % 60).toString().padLeft(2, '0')}\t${i.isEven ? '我' : '小明'}\t第${i ~/ 2}${i.isEven ? '問' : '答'}').join('\n')}',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -637,7 +636,7 @@ void main() {
   }
 
   test('匯入已提交但回傳前鎖定，不會用舊快照還原失效的材料指標', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t小明\t原本材料',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -647,7 +646,7 @@ void main() {
     final oldContentId = controller.draft!.chats.single.contentId;
     controller.draft!.hidePersonNames = false;
     controller.resetToMaterials();
-    final revised = parsePersonaLineChat(
+    final revised = parsePersonaChat(
       '2026/11/06\n12:00\t小明\t更新材料',
       vaultId: imported.vaultId,
       personId: imported.personId,
@@ -763,7 +762,7 @@ void main() {
   test('只有聊天材料且官方連線沿用預設值時仍可確認送出', () async {
     settings.settings = const AiConnectionSettings();
     await controller.begin(PersonaUpdateTarget.both);
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/08\n09:12\t我\t早安\n09:14\t小明\t想去北海道',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -805,7 +804,7 @@ void main() {
 
   test('修改聊天會清除舊候選並儲存原文與隱藏範圍，預覽只使用最新內容', () async {
     client.output = jsonEncode({'memory': '一起去海邊', 'tone': '簡短自然'});
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/08\n09:14\t小明\t想去北海道旅行',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -922,10 +921,10 @@ void main() {
     expect(saved.draft!.step, PersonaStep.materials);
   });
 
-  test('LINE 引用及其他人不作口吻證據，未知與系統訊息不外送', () async {
+  test('聊天引用及其他人不作口吻證據，未知與系統訊息不外送', () async {
     await create();
     await controller.begin(PersonaUpdateTarget.tone);
-    final chat = parsePersonaLineChat(
+    final chat = parsePersonaChat(
       '2026/11/06（五）\n12:00\t小明\t自然的語氣\n> 引用別人的語氣\n12:01\t我\t我的語氣\n12:02\t第三人\t不應模仿\n12:03\t未知\t不該送出\n12:04\t已收回訊息',
       vaultId: setup.session.vaultId,
       personId: person.id,
@@ -937,7 +936,7 @@ void main() {
     await controller.attachImport(chat);
     await controller.prepare(testL10n);
     final blocks = controller.preview!.blocks
-        .where((b) => b.toRequestJson()['source'] == 'line')
+        .where((b) => b.toRequestJson()['source'] == 'chat')
         .map((b) => b.toRequestJson())
         .toList();
     expect(blocks, hasLength(3));
@@ -966,7 +965,7 @@ void main() {
       await create();
       await controller.begin(PersonaUpdateTarget.tone);
       await controller.selectDiary(entryId, false);
-      final chat = parsePersonaLineChat(
+      final chat = parsePersonaChat(
         '2026/11/06（五）\n12:00\t小明\t只供語境的文字',
         vaultId: setup.session.vaultId,
         personId: person.id,
@@ -1176,7 +1175,7 @@ void main() {
 
   test('取消首次建立清除全部資料，再次建立會得到新生命週期', () async {
     final originalId = controller.record!.personaId;
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06（五）\n12:00\t小明\t材料',
       vaultId: setup.session.vaultId,
       personId: person.id,

@@ -68,27 +68,7 @@ void main() {
     expect(_thumbFinder, findsNothing);
   });
 
-  testWidgets('dialog 內 thumb 的上下留白與頁面一致', (tester) async {
-    final pageController = ScrollController();
-    await tester.pumpWidget(
-      widgetTestApp(
-        center: false,
-        wrapScaffold: false,
-        viewport: const Size(400, 400),
-        child: AppScrollablePageBody(
-          controller: pageController,
-          children: const [SizedBox(height: 1200)],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final Rect pageRect = tester.getRect(find.byType(AppScrollablePageBody));
-    final double pageTopGap = tester.getRect(_thumbFinder).top - pageRect.top;
-    pageController.jumpTo(pageController.position.maxScrollExtent);
-    await tester.pumpAndSettle();
-    final double pageBottomGap =
-        pageRect.bottom - tester.getRect(_thumbFinder).bottom;
-
+  testWidgets('dialog 內留白捲軸貼齊捲動區頂底', (tester) async {
     late ScrollController dialogController;
     await tester.pumpWidget(
       widgetTestApp(
@@ -120,19 +100,10 @@ void main() {
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
     final Rect scrollRect = tester.getRect(find.byType(SingleChildScrollView));
-    final double dialogTopGap =
-        tester.getRect(_thumbFinder).top -
-        (scrollRect.top - AppDialogInsets.content.top);
+    expect(tester.getRect(_thumbFinder).top, closeTo(scrollRect.top, 1));
     dialogController.jumpTo(dialogController.position.maxScrollExtent);
-    await tester.pumpAndSettle();
-    final double dialogBottomGap =
-        scrollRect.bottom +
-        AppDialogInsets.content.bottom -
-        tester.getRect(_thumbFinder).bottom;
-
-    expect(dialogTopGap, closeTo(pageTopGap, 0.5));
-    expect(dialogBottomGap, closeTo(pageBottomGap, 0.5));
-    pageController.dispose();
+    await tester.pump();
+    expect(tester.getRect(_thumbFinder).bottom, closeTo(scrollRect.bottom, 1));
   });
 
   testWidgets('AppScrollableContent 把同一個 controller 交給 ListView 並顯示捲軸', (

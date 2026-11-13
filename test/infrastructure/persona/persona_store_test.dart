@@ -198,7 +198,7 @@ void main() {
   });
 
   test('讀取匯入時拒絕超界隱藏座標與不存在的訊息參照，不裁切', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t朋友\t文字',
       vaultId: record.vaultId,
       personId: record.personId,
@@ -235,7 +235,7 @@ void main() {
   });
 
   test('匯入內容成功但狀態提交失敗時保留舊指標、文字與隱藏範圍，下次清除孤立檔', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t朋友\t原始聊天文字',
       vaultId: record.vaultId,
       personId: record.personId,
@@ -323,7 +323,7 @@ void main() {
   });
 
   test('讀取匯入時固定內容指標，不使用等待期間的來源修改', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t朋友\t原始聊天文字',
       vaultId: record.vaultId,
       personId: record.personId,
@@ -348,7 +348,7 @@ void main() {
   });
 
   test('相同匯入的不同內容檔交換密文時也會拒讀，不回復成過期文字', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t朋友\t聊天文字',
       vaultId: record.vaultId,
       personId: record.personId,
@@ -407,7 +407,7 @@ void main() {
   });
 
   test('候選先存草稿，正式提交後清除聊天及全部替換檔，不保存來源原文', () async {
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06（五）\n12:00\t朋友\t這是敏感原文',
       vaultId: record.vaultId,
       personId: record.personId,
@@ -593,7 +593,7 @@ void main() {
     );
     record = record.withDraft(draft);
     await store.saveDraft(record, setup.session);
-    final imported = parsePersonaLineChat(
+    final imported = parsePersonaChat(
       '2026/11/06\n12:00\t朋友\t不可備份的聊天原文',
       vaultId: record.vaultId,
       personId: record.personId,

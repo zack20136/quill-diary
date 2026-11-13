@@ -36,7 +36,6 @@ class TagPickerDialog extends ConsumerStatefulWidget {
 class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
   late final LinkedHashMap<String, String> _chosenByNorm;
   late final TextEditingController _filterCtrl;
-  late final ScrollController _tagPoolScrollController = ScrollController();
 
   String _norm(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -62,7 +61,6 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
   @override
   void dispose() {
     _filterCtrl.dispose();
-    _tagPoolScrollController.dispose();
     super.dispose();
   }
 
@@ -197,14 +195,6 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Text(
-            context.l10n.editorTagsStudioGuide,
-            style: theme.textTheme.bodySmall?.copyWith(
-              height: 1.4,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
           if (_chosenByNorm.isEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -259,14 +249,6 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            context.l10n.editorTagLibraryHint,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 10),
           ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: math.min(
@@ -274,40 +256,33 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
                 240,
               ),
             ),
-            child: AppScrollbar(
-              controller: _tagPoolScrollController,
-              nested: true,
-              reserveGutter: true,
-              child: SingleChildScrollView(
-                controller: _tagPoolScrollController,
-                padding: const EdgeInsets.only(right: 8, bottom: 2),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.start,
-                  children: <Widget>[
-                    if (pool.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 8),
-                        child: Text(
-                          qlow.isEmpty
-                              ? context.l10n.editorTagPoolEmpty
-                              : context.l10n.commonNoTagSearchResults,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontStyle: FontStyle.italic,
-                            color: theme.colorScheme.outline,
-                          ),
+            child: AppScrollView(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.start,
+                children: <Widget>[
+                  if (pool.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 8),
+                      child: Text(
+                        qlow.isEmpty
+                            ? context.l10n.editorTagPoolEmpty
+                            : context.l10n.commonNoTagSearchResults,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.outline,
                         ),
                       ),
-                    for (final TagCatalogUsageItem item in pool.take(60))
-                      _suggestionChip(
-                        item.label,
-                        theme,
-                        accentArgbByNorm,
-                        colors,
-                      ),
-                  ],
-                ),
+                    ),
+                  for (final TagCatalogUsageItem item in pool.take(60))
+                    _suggestionChip(
+                      item.label,
+                      theme,
+                      accentArgbByNorm,
+                      colors,
+                    ),
+                ],
               ),
             ),
           ),

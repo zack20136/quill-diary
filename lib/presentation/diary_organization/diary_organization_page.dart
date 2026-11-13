@@ -29,7 +29,9 @@ import 'package:quill_diary/presentation/diary_organization/organization_quick_a
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
@@ -287,23 +289,59 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
           padding: const EdgeInsets.all(12),
           child: Text(context.l10n.organizationEditorDraft),
         ),
-      if (controller.conflict)
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              Text(context.l10n.organizationConflict),
-              TextButton(
-                onPressed: controller.busy
-                    ? null
-                    : () => _run(() => _discard(true)),
-                child: Text(context.l10n.organizationRestart),
-              ),
-            ],
-          ),
-        ),
+      if (controller.conflict) _conflictNotice(controller),
     ],
   );
+
+  Widget _conflictNotice(DiaryOrganizationController controller) {
+    final theme = Theme.of(context);
+    final colors = resolveAppFeedbackColors(context, AppFeedbackTone.error);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Semantics(
+        liveRegion: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(PageStyle.radiusCard),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.organizationConflict,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: controller.busy
+                        ? null
+                        : () => _run(() => _discard(true)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colors.foreground,
+                      backgroundColor: colors.background,
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(context.l10n.organizationRestart),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _privacyPage(DiaryOrganizationController controller) {
     final l10n = context.l10n;
@@ -319,7 +357,10 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
               padding: const EdgeInsets.all(16),
               child: Text(l10n.organizationPrivacyHint),
             ),
-            _notices(controller),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _notices(controller),
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

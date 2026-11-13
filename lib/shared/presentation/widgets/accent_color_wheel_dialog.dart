@@ -136,7 +136,6 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SizedBox(height: 16),
           Center(
             child: SizedBox(
               width: 180,

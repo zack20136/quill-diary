@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
@@ -103,7 +105,6 @@ class OrganizationDraftEditor extends StatefulWidget {
 
 class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
   late final OrganizationDraftTextController _controller;
-  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -120,7 +121,10 @@ class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
     title: context.l10n.organizationEditDraft,
     content: ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.65,
+        maxHeight: math.min(
+          MediaQuery.sizeOf(context).height * 0.65,
+          personaDialogBodyHeight(context),
+        ),
       ),
       child: AppScrollView(
         child: Column(
@@ -129,20 +133,16 @@ class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
           children: [
             Text(context.l10n.organizationProtectedHint),
             const SizedBox(height: 12),
-            AppScrollbar(
-              controller: _scroll,
-              child: TextField(
-                key: const ValueKey('organization-draft-editor'),
-                controller: _controller,
-                scrollController: _scroll,
-                inputFormatters: [
-                  TextInputFormatter.withFunction(_controller.protectEdit),
-                ],
-                minLines: 8,
-                maxLines: 18,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              ),
+            TextField(
+              key: const ValueKey('organization-draft-editor'),
+              controller: _controller,
+              inputFormatters: [
+                TextInputFormatter.withFunction(_controller.protectEdit),
+              ],
+              minLines: 8,
+              maxLines: null,
+              textAlignVertical: TextAlignVertical.top,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
             ),
           ],
         ),
@@ -162,7 +162,6 @@ class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
   @override
   void dispose() {
     _controller.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 }

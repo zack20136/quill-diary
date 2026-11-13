@@ -25,7 +25,7 @@ String buildPersonaConversationPrompt({
         return id == null || names[id] == null
             ? privacy.personaAnonymousToken(
                 '$personaId:${kind.name}:$token',
-                l10n.personaRoleFriend,
+                l10n.personaRoleSubject,
               )
             : privacy.personaPersonToken(id, names[id]!);
       }),
@@ -33,7 +33,7 @@ String buildPersonaConversationPrompt({
   }
   final subject = privacy.personaPersonToken(
     personId,
-    names[personId] ?? l10n.personaRoleFriend,
+    names[personId] ?? l10n.personaRoleSubject,
   );
   final instructions = privacy.protectPrompt(
     personaFixedInstructions(l10n: l10n, guidance: guidance),

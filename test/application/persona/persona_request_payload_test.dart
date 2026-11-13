@@ -10,7 +10,7 @@ void main() {
   test('長材料的正文與風格各自成段，不會按編號配在一起', () {
     final pieces = personaExtractionBatches(
       [
-        {'source': 'line', 'text': '正' * 8000, 'style_text': '風' * 3000},
+        {'source': 'chat', 'text': '正' * 8000, 'style_text': '風' * 3000},
       ],
       subject: '主題',
       instructions: '提取證據',

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
@@ -36,7 +38,10 @@ Future<BackupPickListItem?> showBackupPickDialog({
                 ? Text(emptyMessage)
                 : ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height * 0.6,
+                      maxHeight: math.min(
+                        MediaQuery.sizeOf(context).height * 0.6,
+                        personaDialogBodyHeight(context),
+                      ),
                     ),
                     child: SizedBox(
                       width: double.infinity,

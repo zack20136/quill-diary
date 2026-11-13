@@ -4,6 +4,8 @@ import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
+import 'package:quill_diary/presentation/persona/persona_speaker_role_dropdown.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -41,6 +43,22 @@ void main() {
     ],
   );
 
+  testWidgets('匯出說明可捲動並關閉', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        wrapScaffold: false,
+        child: const PersonaChatExportHelpDialog(),
+      ),
+    );
+
+    expect(find.text(testL10n.personaChatExportLineTitle), findsOneWidget);
+    expect(find.byType(AppScrollbar), findsOneWidget);
+    expect(find.text(testL10n.commonActionClose), findsOneWidget);
+  });
+
   testWidgets('確認說話者以角色卡呈現，並保留底部確認與取消操作', (tester) async {
     await tester.pumpWidget(
       widgetTestApp(
@@ -51,7 +69,7 @@ void main() {
     );
 
     expect(
-      find.byType(DropdownButtonFormField<PersonaSpeakerRole>),
+      find.byType(PersonaDropdownField<PersonaSpeakerRole>),
       findsNWidgets(2),
     );
     expect(find.text('我'), findsWidgets);

@@ -425,7 +425,7 @@ class ChatDiaryController extends ChangeNotifier {
       final l10n = lookupAppLocalizations(
         (await ref.read(userPreferencesProvider).appLocale).materialLocale,
       );
-      final missingPersonaName = l10n.personaRoleFriend;
+      final missingPersonaName = l10n.personaRoleSubject;
       _ensureOperationIsCurrent(operationVersion);
       final prompt = await _resolveRequestPrompt(
         generate
@@ -636,7 +636,7 @@ class ChatDiaryController extends ChangeNotifier {
     final l10n = lookupAppLocalizations(
       (await ref.read(userPreferencesProvider).appLocale).materialLocale,
     );
-    final missingPersonaName = l10n.personaRoleFriend;
+    final missingPersonaName = l10n.personaRoleSubject;
     _ensureOperationIsCurrent(operationVersion);
     for (final message in selectedHistory) {
       if (!message.isUser &&
