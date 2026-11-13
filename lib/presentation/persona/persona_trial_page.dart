@@ -20,6 +20,7 @@ import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_message_view.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
@@ -95,8 +96,10 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (mounted) {
-      setState(() => backgrounded = state != AppLifecycleState.resumed);
+    if (appLifecycleIsBackground(state)) {
+      if (mounted) setState(() => backgrounded = true);
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => backgrounded = false);
     }
   }
 
@@ -236,10 +239,6 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
             : Column(
                 children: [
                   _header(l, theme),
-                  AiConnectionSetupNotice(
-                    connection: _connection,
-                    onOpenSettings: busy ? null : _settings,
-                  ),
                   if (failed) _errorNotice(l, theme),
                   Expanded(
                     child: messages.isEmpty
@@ -263,6 +262,11 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                               ),
                             ),
                           ),
+                  ),
+                  AiConnectionSetupNotice(
+                    connection: _connection,
+                    onOpenSettings: busy ? null : _settings,
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                   ),
                   _composer(l, theme, bodyStyle),
                 ],

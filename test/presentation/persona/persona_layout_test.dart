@@ -509,8 +509,14 @@ void main() {
     expect(find.byType(AiMessageView), findsOneWidget);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pump();
+    expect(find.byIcon(Icons.lock_outline), findsNothing);
+    expect(find.textContaining('今天借了一本旅遊書'), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.scheduleForcedFrame();
+    await tester.pump();
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
     expect(find.textContaining('今天借了一本旅遊書'), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(find.textContaining('今天借了一本旅遊書'), findsOneWidget);

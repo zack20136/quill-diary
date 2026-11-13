@@ -2133,6 +2133,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiOpenSettings => 'Open AI settings';
 
   @override
+  String get aiConnectionSetupHint =>
+      'AI isn\'t set up yet. Finish setup before using it.';
+
+  @override
   String get aiSettingsSectionDescription =>
       'Set the services, models, and prompts for chat and organizing.';
 

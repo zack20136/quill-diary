@@ -600,6 +600,10 @@ void main() {
           tester.binding.handleAppLifecycleStateChanged(
             AppLifecycleState.inactive,
           );
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.hidden,
+          );
+          tester.binding.scheduleForcedFrame();
           await tester.pump();
           expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
           stream.add('背景收到的回覆');
@@ -1211,6 +1215,13 @@ void main() {
       await tester.tap(previewImage);
       await tester.pumpAndSettle();
       expect(gallery, findsOneWidget);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pumpAndSettle();
+      expect(gallery, findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.scheduleForcedFrame();
+      await tester.pump();
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pumpAndSettle();
       expect(gallery, findsNothing);
@@ -1918,7 +1929,7 @@ void main() {
         );
       }
     }
-    testWidgets('選圖暫時失去焦點不遮蔽聊天，取消後仍保留一般失焦遮蔽', (tester) async {
+    testWidgets('選圖暫時失去焦點不遮蔽聊天，取消後仍保留輸入', (tester) async {
       final picked = mockGalleryPicker(tester);
       final chat = testChatDiarySession(hidePersonNames: false)
         ..composerText = '選圖前輸入的文字';
@@ -1936,10 +1947,6 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
       expect(find.text('選圖前輸入的文字'), findsOneWidget);
-
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-      await tester.pump();
-      expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
     testWidgets(
@@ -2056,6 +2063,11 @@ void main() {
       expect(tester.takeException(), isNull);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pump();
+      expect(find.text('已送出的合成日記內容'), findsOneWidget);
+      expect(find.bySemanticsLabel('內容已隱藏'), findsNothing);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.scheduleForcedFrame();
+      await tester.pump();
       expect(find.text('已送出的合成日記內容'), findsNothing);
       expect(find.textContaining('test-model'), findsNothing);
       expect(find.bySemanticsLabel('內容已隱藏'), findsOneWidget);
@@ -2073,6 +2085,7 @@ void main() {
           isNull,
         );
       }
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
       expect(find.text('已送出的合成日記內容'), findsOneWidget);

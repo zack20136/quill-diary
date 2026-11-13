@@ -1075,6 +1075,7 @@
   "aiSettingsReset": "Reset AI settings",
   "aiSettingsResetHint": "AI settings cannot be read and may be from another version. Rebuilding replaces custom connections and prompts with defaults while keeping device keys.",
   "aiOpenSettings": "Open AI settings",
+  "aiConnectionSetupHint": "AI isn't set up yet. Finish setup before using it.",
   "aiSettingsSectionDescription": "Set the services, models, and prompts for chat and organizing.",
   "aiCustomConnectionName": "Custom connection {number}",
   "@aiCustomConnectionName": {"placeholders": {"number": {"type": "int"}}},

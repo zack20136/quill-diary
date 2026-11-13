@@ -35,6 +35,7 @@ import 'package:quill_diary/presentation/chat_diary/chat_diary_companion_bar.dar
 import 'package:quill_diary/presentation/chat_diary/chat_diary_generation_label.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_message_bubble.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
@@ -209,20 +210,15 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.paused) {
+    if (appLifecycleIsBackground(state)) {
       _canAutoOpenGeneration = false;
-    }
-    // 系統圖庫取得焦點時仍可能看見聊天；真正進入背景才遮蔽。
-    if (_isSelectingImages && state == AppLifecycleState.inactive) return;
-    if (state != AppLifecycleState.resumed) {
       _imageFutures.clear();
       _dismissContentDialogs();
+      if (mounted) setState(() => _isBackgrounded = true);
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => _isBackgrounded = false);
+      _releaseImagePickerWait();
     }
-    if (mounted) {
-      setState(() => _isBackgrounded = state != AppLifecycleState.resumed);
-    }
-    if (state == AppLifecycleState.resumed) _releaseImagePickerWait();
   }
 
   void _releaseImagePickerWait() {
@@ -871,12 +867,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                 .bodyTextStyle(Theme.of(context).textTheme),
           ),
         ),
-      if (!chatSession.finished)
-        AiConnectionSetupNotice(
-          connection: chatSession.connectionConfig,
-          onOpenSettings: chatController.busy ? null : _openSettings,
-          padding: const EdgeInsets.only(bottom: 12),
-        ),
     ];
     final messageIndices = {
       for (var index = 0; index < messages.length; index++)
@@ -1016,6 +1006,13 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                           onStop: chatController.stop,
                         )
                       else ...[
+                        AiConnectionSetupNotice(
+                          connection: chatSession.connectionConfig,
+                          onOpenSettings: chatController.busy
+                              ? null
+                              : _openSettings,
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        ),
                         if (chatController.hasPrivateNotes)
                           Padding(
                             padding: const EdgeInsets.symmetric(

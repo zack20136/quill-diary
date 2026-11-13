@@ -123,7 +123,9 @@ class AdaptiveChoicePanel extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Flexible(child: AppScrollView(child: child)),
+                Flexible(
+                  child: AppDialogScope(child: AppScrollView(child: child)),
+                ),
               ],
             ),
           ),

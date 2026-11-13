@@ -190,20 +190,26 @@ void main() {
         expect(visible.contains('會用小華的稱呼'), includeTone);
         if (hasRequest) {
           expect(visible.any((text) => text.contains('秘密資料')), isFalse);
-        } else {
+        } else if (target == PersonaUpdateTarget.both) {
           tester.binding.handleAppLifecycleStateChanged(
             AppLifecycleState.inactive,
           );
           await tester.pumpAndSettle();
+          expect(find.byIcon(Icons.lock_outline), findsNothing);
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.hidden,
+          );
+          tester.binding.scheduleForcedFrame();
+          await tester.pump();
           expect(find.byType(PrivateText), findsNothing);
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.inactive,
+          );
           tester.binding.handleAppLifecycleStateChanged(
             AppLifecycleState.resumed,
           );
           await tester.pumpAndSettle();
-          expect(
-            find.text(memory),
-            target == PersonaUpdateTarget.tone ? findsNothing : findsOneWidget,
-          );
+          expect(find.text(memory), findsOneWidget);
         }
         expect(jsonEncode(preview.baseline), baseline);
         expect(tester.takeException(), isNull);
@@ -792,8 +798,13 @@ void main() {
     expect(find.text('目前記憶'), findsOneWidget);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pumpAndSettle();
+    expect(find.text('目前記憶'), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.scheduleForcedFrame();
+    await tester.pump();
     expect(find.text('目前記憶'), findsNothing);
     expect(find.text(testL10n.personaRestore), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     await tester.ensureVisible(compare);
@@ -841,4 +852,72 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('AI 關閉時不能從已儲存分身開始更新或編輯', (tester) async {
+    tester.view.physicalSize = const Size(520, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final person = personaPerson('小明');
+    final record = PersonaRecord(
+      vaultId: 'vault',
+      personId: person.id,
+      personaId: generatePersonaId(),
+      cards: {
+        for (final kind in PersonaCardKind.values)
+          kind: PersonaCard(
+            text: '已儲存',
+            updatedAt: DateTime.utc(2026),
+            selectedDiaryIds: [],
+          ),
+      },
+    );
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        wrapScaffold: false,
+        overrides: [
+          aiEnabledProvider.overrideWith(_AiOff.new),
+          effectiveAppSessionProvider.overrideWith(
+            (ref) async => const AppSessionState(
+              status: AppLockStatus.unlocked,
+              session: UnlockedVaultSession(
+                vaultId: 'vault',
+                trustedDevice: true,
+              ),
+            ),
+          ),
+          personDetailProvider(person.id).overrideWith((ref) async => person),
+          personRelatedEntriesProvider(person.id)
+              .overrideWith((ref) async => []),
+          personaControllerProvider(person.id).overrideWith((ref) {
+            final controller = PersonaTestController(ref, person.id, record);
+            ref.onDispose(controller.dispose);
+            return controller;
+          }),
+        ],
+        child: PersonaPage(personId: person.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final updateBoth = find.widgetWithText(
+      OutlinedButton,
+      testL10n.personaUpdateBoth,
+    );
+    await tester.ensureVisible(updateBoth);
+    expect(tester.widget<OutlinedButton>(updateBoth).onPressed, isNull);
+    for (final label in [testL10n.personaEdit, testL10n.personaUpdateContent]) {
+      final actions = find.widgetWithText(InkWell, label);
+      expect(actions, findsWidgets);
+      for (final action in tester.widgetList<InkWell>(actions)) {
+        expect(action.onTap, isNull);
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _AiOff extends AiEnabledController {
+  @override
+  bool build() => false;
 }

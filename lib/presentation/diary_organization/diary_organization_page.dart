@@ -28,6 +28,7 @@ import 'package:quill_diary/presentation/diary_organization/organization_draft_e
 import 'package:quill_diary/presentation/diary_organization/organization_quick_actions.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -79,11 +80,11 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) {
+    if (appLifecycleIsBackground(state)) {
       _dismissDialogs();
-    }
-    if (mounted) {
-      setState(() => _backgrounded = state != AppLifecycleState.resumed);
+      if (mounted) setState(() => _backgrounded = true);
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => _backgrounded = false);
     }
   }
 
@@ -485,12 +486,6 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                     vertical: 12,
                   ),
                   children: [
-                    AiConnectionSetupNotice(
-                      connection: draft.connection,
-                      onOpenSettings: controller.busy
-                          ? null
-                          : () => _run(_settings),
-                    ),
                     _notices(controller),
                     if (!hasMessages)
                       OrganizationQuickActions(
@@ -549,6 +544,13 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      AiConnectionSetupNotice(
+                        connection: draft.connection,
+                        onOpenSettings: controller.busy
+                            ? null
+                            : () => _run(_settings),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                      ),
                       if (hasMessages)
                         OrganizationQuickActions(
                           compact: true,
@@ -689,9 +691,8 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       listenable: controller,
       builder: (context, _) {
         final draft = controller.draft;
-        if (WidgetsBinding.instance.lifecycleState != null &&
-            WidgetsBinding.instance.lifecycleState !=
-                AppLifecycleState.resumed) {
+        final lifecycle = WidgetsBinding.instance.lifecycleState;
+        if (lifecycle != null && appLifecycleIsBackground(lifecycle)) {
           return const Scaffold();
         }
         if (draft == null) {

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -69,7 +70,11 @@ class _AiPromptDialogState extends State<AiPromptDialog>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    setState(() => _obscured = state != AppLifecycleState.resumed);
+    if (appLifecycleIsBackground(state)) {
+      setState(() => _obscured = true);
+    } else if (state == AppLifecycleState.resumed) {
+      setState(() => _obscured = false);
+    }
   }
 
   @override

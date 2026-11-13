@@ -1075,6 +1075,7 @@
   "aiSettingsReset": "重設 AI 設定",
   "aiSettingsResetHint": "AI 設定無法讀取，可能來自舊版或其他版本。可以確認後重建為預設設定；原本的自訂連線及提示詞將移除，裝置 Key 保留。",
   "aiOpenSettings": "開啟 AI 設定",
+  "aiConnectionSetupHint": "還沒設定 AI，完成設定後才能使用。",
   "aiSettingsSectionDescription": "設定聊天與整理使用的服務、模型與提示詞。",
   "aiCustomConnectionName": "自訂連線 {number}",
   "@aiCustomConnectionName": {"placeholders": {"number": {"type": "int"}}},

@@ -3742,6 +3742,12 @@ abstract class AppLocalizations {
   /// **'開啟 AI 設定'**
   String get aiOpenSettings;
 
+  /// No description provided for @aiConnectionSetupHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'還沒設定 AI，完成設定後才能使用。'**
+  String get aiConnectionSetupHint;
+
   /// No description provided for @aiSettingsSectionDescription.
   ///
   /// In zh, this message translates to:

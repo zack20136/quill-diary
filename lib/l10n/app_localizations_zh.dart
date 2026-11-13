@@ -2020,6 +2020,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiOpenSettings => '開啟 AI 設定';
 
   @override
+  String get aiConnectionSetupHint => '還沒設定 AI，完成設定後才能使用。';
+
+  @override
   String get aiSettingsSectionDescription => '設定聊天與整理使用的服務、模型與提示詞。';
 
   @override

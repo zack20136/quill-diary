@@ -29,6 +29,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_chat_model_picker.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
+import 'package:quill_diary/presentation/ai/ai_feature_error_panel.dart';
 import 'package:quill_diary/presentation/ai/ai_generation_card.dart';
 import 'package:quill_diary/presentation/ai/ai_preview_text_section.dart';
 import 'package:quill_diary/presentation/diary_organization/organization_review.dart';
@@ -36,6 +37,7 @@ import 'package:quill_diary/presentation/persona/persona_content_editor.dart';
 import 'package:quill_diary/presentation/persona/persona_labels.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_trial_page.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -146,9 +148,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) _dismissDialogs();
-    if (mounted) {
-      setState(() => _backgrounded = state != AppLifecycleState.resumed);
+    if (appLifecycleIsBackground(state)) {
+      _dismissDialogs();
+      if (mounted) setState(() => _backgrounded = true);
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => _backgrounded = false);
     }
   }
 
@@ -376,8 +380,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () =>
-                  _run(() => _controller.begin(PersonaUpdateTarget.both)),
+              onPressed: ref.watch(aiEnabledProvider)
+                  ? () =>
+                        _run(() => _controller.begin(PersonaUpdateTarget.both))
+                  : null,
               child: Text(l.personaUpdateBoth),
             ),
           ),
@@ -402,6 +408,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     final target = kind == PersonaCardKind.memory
         ? PersonaUpdateTarget.memory
         : PersonaUpdateTarget.tone;
+    final aiEnabled = ref.watch(aiEnabledProvider);
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -440,8 +447,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
           _SavedPersonaActions(
             editLabel: l.personaEdit,
             updateLabel: l.personaUpdateContent,
-            onEdit: () => _run(() => _controller.begin(target, edit: true)),
-            onUpdate: () => _run(() => _controller.begin(target)),
+            onEdit: aiEnabled
+                ? () => _run(() => _controller.begin(target, edit: true))
+                : null,
+            onUpdate: aiEnabled
+                ? () => _run(() => _controller.begin(target))
+                : null,
           ),
         ],
       ),
@@ -1034,6 +1045,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               onOpenSettings: _controller.busy || _acting
                   ? null
                   : () => _run(_recoverAiSettings),
+              padding: const EdgeInsets.only(bottom: 20),
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
@@ -1467,17 +1479,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                 ? const Center(child: Icon(Icons.lock_outline))
                 : _needsAiSettings
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(l.aiErrorSettings),
-                        TextButton(
-                          onPressed: _acting
-                              ? null
-                              : () => _run(_recoverAiSettings),
-                          child: Text(l.aiOpenSettings),
-                        ),
-                      ],
+                    child: AiFeatureErrorPanel(
+                      message: l.aiErrorSettings,
+                      onOpenSettings: _acting
+                          ? null
+                          : () => _run(_recoverAiSettings),
+                      openSettingsLabel: l.aiOpenSettings,
                     ),
                   )
                 : controller.loading
@@ -1930,14 +1937,17 @@ class _SavedPersonaActions extends StatelessWidget {
 
   final String editLabel;
   final String updateLabel;
-  final VoidCallback onEdit;
-  final VoidCallback onUpdate;
+  final VoidCallback? onEdit;
+  final VoidCallback? onUpdate;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.primary;
-    Widget action(IconData icon, String label, VoidCallback onPressed) {
+    Widget action(IconData icon, String label, VoidCallback? onPressed) {
+      final Color actionColor = onPressed == null
+          ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+          : color;
       return InkWell(
         onTap: onPressed,
         child: Padding(
@@ -1945,7 +1955,7 @@ class _SavedPersonaActions extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: color),
+              Icon(icon, size: 18, color: actionColor),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -1953,7 +1963,9 @@ class _SavedPersonaActions extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(color: color),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: actionColor,
+                  ),
                 ),
               ),
             ],

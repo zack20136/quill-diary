@@ -143,8 +143,13 @@ void main() {
     expect(find.byType(AppDialogShell), findsOneWidget);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pumpAndSettle();
+    expect(find.byType(AppDialogShell), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.scheduleForcedFrame();
+    await tester.pump();
     expect(find.byType(AppDialogShell), findsNothing);
     expect(find.text(draft.generationReply!), findsNothing);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     await tester.tap(find.text(testL10n.organizationShowReply));

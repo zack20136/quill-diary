@@ -19,6 +19,7 @@ import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_model_thinking_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_settings_theme.dart';
+import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_menu_style.dart';
@@ -146,12 +147,12 @@ class _AiConnectionSettingsDialogState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) {
+    if (appLifecycleIsBackground(state)) {
       _cancelConnectionTest();
       FocusManager.instance.primaryFocus?.unfocus();
-    }
-    if (mounted) {
-      setState(() => _isBackgrounded = state != AppLifecycleState.resumed);
+      if (mounted) setState(() => _isBackgrounded = true);
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() => _isBackgrounded = false);
     }
   }
 
