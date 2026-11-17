@@ -1061,7 +1061,7 @@
   "personaRemove": "移除材料",
   "personaTrial": "試聊",
   "personaTrialInput": "輸入想試聊的內容",
-  "personaDiscardResult": "捨棄生成結果",
+  "personaDiscardResult": "捨棄",
   "personaCancelUpdate": "捨棄本次變更",
   "personaDiscardConfirm": "捨棄這次變更與匯入的聊天？已儲存的人物記憶與聊天風格會保留。",
   "personaDelete": "刪除分身",
@@ -1528,14 +1528,7 @@
   "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
   "settingsRecoveryKeyShowTooltip": "顯示復原金鑰",
   "settingsRecoveryKeyHideTooltip": "隱藏復原金鑰",
-  "settingsRecoveryKeyHintLine": "末四碼：{hint}",
-  "@settingsRecoveryKeyHintLine": {
-    "placeholders": {
-      "hint": {
-        "type": "String"
-      }
-    }
-  },
+  "settingsRecoveryKeyHintPrefix": "末四碼：",
   "settingsBackupPhaseCreating": "正在建立備份…",
   "settingsBackupPhaseCopying": "正在寫入備份…",
   "settingsBackupPhaseDownloadingDrive": "正在從 Google Drive 下載…",

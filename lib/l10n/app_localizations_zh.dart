@@ -2030,7 +2030,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get personaTrialInput => '輸入想試聊的內容';
 
   @override
-  String get personaDiscardResult => '捨棄生成結果';
+  String get personaDiscardResult => '捨棄';
 
   @override
   String get personaCancelUpdate => '捨棄本次變更';
@@ -2951,9 +2951,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRecoveryKeyHideTooltip => '隱藏復原金鑰';
 
   @override
-  String settingsRecoveryKeyHintLine(String hint) {
-    return '末四碼：$hint';
-  }
+  String get settingsRecoveryKeyHintPrefix => '末四碼：';
 
   @override
   String get settingsBackupPhaseCreating => '正在建立備份…';

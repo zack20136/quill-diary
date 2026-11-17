@@ -53,7 +53,6 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
           surfaceMode: FlexSurfaceMode.highSurfaceLowScaffold,
           subThemesData: _kFlexSubThemesDark,
           textTheme: textTheme,
-          fontFamily: AppTypography.interFamily,
         )
       : FlexThemeData.light(
           colorScheme: scheme,
@@ -61,7 +60,6 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
           appBarElevation: 0,
           subThemesData: _kFlexSubThemesLight,
           textTheme: textTheme,
-          fontFamily: AppTypography.interFamily,
         );
 
   // 清除獨立圖示色，讓危險操作與停用狀態跟隨按鈕文字。

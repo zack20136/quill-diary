@@ -112,7 +112,7 @@ class SettingsStatusPanel extends StatelessWidget {
           if (recoveryKeyHint != null &&
               recoveryKeyHint!.isNotEmpty) ...<Widget>[
             Text(
-              l10n.settingsRecoveryKeyHintLine(recoveryKeyHint!),
+              '${l10n.settingsRecoveryKeyHintPrefix}${recoveryKeyHint!}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -423,9 +423,8 @@ class SettingsSecurityOverview extends ConsumerWidget {
         message: hasRecoveryKey
             ? l10n.settingsSecurityOverviewRecoveryKeyReady
             : l10n.settingsSecurityOverviewRecoveryKeyMissing,
-        subtitle: hasRecoveryKey
-            ? l10n.settingsRecoveryKeyHintLine(recoveryKeyHint ?? '----')
-            : null,
+        subtitle: hasRecoveryKey ? l10n.settingsRecoveryKeyHintPrefix : null,
+        subtitleCode: hasRecoveryKey ? (recoveryKeyHint ?? '----') : null,
         level: hasRecoveryKey
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
@@ -608,17 +607,26 @@ class _SecurityOverviewTile extends StatelessWidget {
                     ),
                     if (item.subtitle != null) ...<Widget>[
                       const SizedBox(height: 4),
-                      Text(
-                        item.subtitle!,
-                        style:
-                            AppTypography.mono(
-                              theme.textTheme.bodySmall ?? const TextStyle(),
-                            ).copyWith(
-                              color: foreground,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.6,
-                              height: 1.35,
-                            ),
+                      Text.rich(
+                        TextSpan(
+                          children: <InlineSpan>[
+                            TextSpan(text: item.subtitle!),
+                            if (item.subtitleCode != null)
+                              TextSpan(
+                                text: item.subtitleCode,
+                                style: AppTypography.mono(
+                                  const TextStyle(),
+                                ).copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                          ],
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: foreground,
+                          height: 1.35,
+                        ),
                       ),
                     ],
                   ],

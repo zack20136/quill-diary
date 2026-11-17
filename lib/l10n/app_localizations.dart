@@ -3759,7 +3759,7 @@ abstract class AppLocalizations {
   /// No description provided for @personaDiscardResult.
   ///
   /// In zh, this message translates to:
-  /// **'捨棄生成結果'**
+  /// **'捨棄'**
   String get personaDiscardResult;
 
   /// No description provided for @personaCancelUpdate.
@@ -5385,11 +5385,11 @@ abstract class AppLocalizations {
   /// **'隱藏復原金鑰'**
   String get settingsRecoveryKeyHideTooltip;
 
-  /// No description provided for @settingsRecoveryKeyHintLine.
+  /// No description provided for @settingsRecoveryKeyHintPrefix.
   ///
   /// In zh, this message translates to:
-  /// **'末四碼：{hint}'**
-  String settingsRecoveryKeyHintLine(String hint);
+  /// **'末四碼：'**
+  String get settingsRecoveryKeyHintPrefix;
 
   /// No description provided for @settingsBackupPhaseCreating.
   ///

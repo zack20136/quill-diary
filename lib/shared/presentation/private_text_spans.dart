@@ -1,19 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
-import 'package:quill_diary/shared/presentation/app_typography.dart';
 
 Color privateTextHighlight(ColorScheme colors) =>
     colors.tertiary.withValues(alpha: 0.32);
 
-/// 子 span 要寫上和全 App 相同的字體，中文才會用內建 Noto，不會換成系統字。
 TextStyle? _spanStyle({required Color? highlight, required bool underline}) {
   if (highlight == null && !underline) return null;
   return TextStyle(
     backgroundColor: highlight,
     decoration: underline ? TextDecoration.underline : null,
-    fontFamily: AppTypography.interFamily,
-    fontFamilyFallback: const <String>[AppTypography.notoSansTcFamily],
   );
 }
 

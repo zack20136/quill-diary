@@ -1,11 +1,9 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
-import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -13,14 +11,6 @@ import '../../../helpers/shared/widget_test_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUpAll(() async {
-    for (final font in ['Inter', 'NotoSansTC']) {
-      await (FontLoader(
-        font,
-      )..addFont(rootBundle.load('assets/fonts/$font-Regular.ttf'))).load();
-    }
-  });
 
   testWidgets('大字級下中英與代號底色齊高，換行仍對齊原文字', (tester) async {
     const text = 'QA小明 {{PER_01}} Café 阿明🙂\n長段落的私密文字跨行時仍維持自然換行與閱讀順序。';
@@ -53,21 +43,11 @@ void main() {
                     PrivateText.rich(
                       span,
                       ranges: ranges,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansTC'],
-                        fontSize: 14,
-                        height: 1.8,
-                      ),
+                      style: const TextStyle(fontSize: 14, height: 1.8),
                     ),
                     Text.rich(
                       span,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansTC'],
-                        fontSize: 14,
-                        height: 1.8,
-                      ),
+                      style: const TextStyle(fontSize: 14, height: 1.8),
                     ),
                   ],
                 ),
@@ -90,7 +70,7 @@ void main() {
       const TextSelection(baseOffset: 0, extentOffset: 15),
       boxHeightStyle: ui.BoxHeightStyle.max,
     );
-    // 第一行同時包含 Inter、中文與表情符號。
+    // 第一行同時包含英文、中文與表情符號。
     expect(boxes, isNotEmpty);
     expect(boxes.map((b) => b.top).toSet(), hasLength(1));
     expect(boxes.map((b) => b.bottom).toSet(), hasLength(1));
@@ -121,7 +101,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('高亮與組字底線沿用 Inter，中文仍回到 Noto Sans TC', () {
+  test('高亮與底線只設定底色與裝飾，字型沿用父層', () {
     const highlight = Color(0x52FF0000);
     final span = privateTextSpan(
       text: 'ab小明',
@@ -132,8 +112,8 @@ void main() {
     final children = span.children!.cast<TextSpan>();
     expect(children, hasLength(2));
     for (final child in children) {
-      expect(child.style?.fontFamily, AppTypography.interFamily);
-      expect(child.style?.fontFamilyFallback, [AppTypography.notoSansTcFamily]);
+      expect(child.style?.fontFamily, isNull);
+      expect(child.style?.fontFamilyFallback, isNull);
     }
     expect(children.first.style?.backgroundColor, highlight);
     expect(children.last.style?.decoration, TextDecoration.underline);

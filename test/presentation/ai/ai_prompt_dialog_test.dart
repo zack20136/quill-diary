@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
@@ -17,14 +16,6 @@ String _defaultPrompt(AppLanguage language) =>
 void main() {
   AiPromptEdit? result;
   var completed = false;
-
-  setUpAll(() async {
-    for (final family in ['Inter', 'NotoSansTC']) {
-      await (FontLoader(
-        family,
-      )..addFont(rootBundle.load('assets/fonts/$family-Regular.ttf'))).load();
-    }
-  });
 
   Future<void> open(
     WidgetTester tester, {
@@ -69,7 +60,7 @@ void main() {
     testWidgets(
       '${locale.languageCode} 提示詞還原與取消、套用同列（放不下時換行），還原狀態隨內容更新且預設不存覆寫',
       (tester) async {
-        tester.view.physicalSize = Size(width, 800);
+        tester.view.physicalSize = Size(width, 1200);
         tester.view.devicePixelRatio = 1;
         tester.platformDispatcher.textScaleFactorTestValue = scale;
         addTearDown(tester.view.resetPhysicalSize);

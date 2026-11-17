@@ -955,7 +955,7 @@ void main() {
     expect(controller.record!.cards![PersonaCardKind.tone]!.toJson(), tone);
   });
 
-  test('捨棄生成結果回到準備材料並清掉舊請求', () async {
+  test('捨棄結果回到準備材料並清掉舊請求', () async {
     await controller.prepare(testL10n);
     await controller.generate();
     expect(controller.draft!.step, PersonaStep.review);

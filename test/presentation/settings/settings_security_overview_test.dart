@@ -137,4 +137,30 @@ void main() {
     );
     expect(find.textContaining('異常日記'), findsNothing);
   });
+
+  testWidgets('復原金鑰副標只有末四碼使用等寬字，標籤維持一般字', (
+    WidgetTester tester,
+  ) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+    );
+
+    final Finder subtitle = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          widget.textSpan?.toPlainText() ==
+              '${testL10n.settingsRecoveryKeyHintPrefix}ABCD',
+    );
+    expect(subtitle, findsOneWidget);
+    final spans = (tester.widget<Text>(subtitle).textSpan! as TextSpan)
+        .children!
+        .cast<TextSpan>();
+    expect(spans, hasLength(2));
+    expect(spans.first.text, testL10n.settingsRecoveryKeyHintPrefix);
+    expect(spans.first.style?.fontFamily, isNull);
+    expect(spans.last.text, 'ABCD');
+    expect(spans.last.style?.fontFamily, 'monospace');
+  });
 }

@@ -67,16 +67,10 @@ Future<void> _dragListFromEdge(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
-    for (final family in ['Inter', 'NotoSansTC', 'MaterialIcons']) {
-      await (FontLoader(family)..addFont(
-            rootBundle.load(
-              family == 'MaterialIcons'
-                  ? 'fonts/MaterialIcons-Regular.otf'
-                  : 'assets/fonts/$family-Regular.ttf',
-            ),
-          ))
-          .load();
-    }
+    await (FontLoader('MaterialIcons')..addFont(
+          rootBundle.load('fonts/MaterialIcons-Regular.otf'),
+        ))
+        .load();
   });
   final person = personaPerson('測試王小明');
   final peer = personaPerson('阿華');

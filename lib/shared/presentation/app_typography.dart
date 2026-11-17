@@ -1,18 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
-/// 全 App 字體堆疊與預設墨色（Inter + Noto Sans TC）。
+/// 全 App 文字樣式與預設墨色；字型沿用各平台系統字，不另外打包。
 abstract final class AppTypography {
   AppTypography._();
-
-  static const String interFamily = 'Inter';
-  static const String notoSansTcFamily = 'NotoSansTC';
 
   static TextTheme textTheme(TextTheme base, {required Color defaultColor}) {
     final TextTheme themed = base.apply(
       bodyColor: defaultColor,
       displayColor: defaultColor,
-      fontFamily: interFamily,
-      fontFamilyFallback: const <String>[notoSansTcFamily],
     );
     return _mapStyles(themed, defaultColor);
   }
@@ -21,32 +16,30 @@ abstract final class AppTypography {
     return base.copyWith(fontFamily: 'monospace', letterSpacing: 0);
   }
 
-  static TextStyle _stack(TextStyle? style, Color color) {
+  static TextStyle _withDefaultColor(TextStyle? style, Color color) {
     return (style ?? const TextStyle()).copyWith(
       color: color,
-      fontFamily: interFamily,
-      fontFamilyFallback: const <String>[notoSansTcFamily],
       letterSpacing: 0,
     );
   }
 
   static TextTheme _mapStyles(TextTheme theme, Color color) {
     return theme.copyWith(
-      displayLarge: _stack(theme.displayLarge, color),
-      displayMedium: _stack(theme.displayMedium, color),
-      displaySmall: _stack(theme.displaySmall, color),
-      headlineLarge: _stack(theme.headlineLarge, color),
-      headlineMedium: _stack(theme.headlineMedium, color),
-      headlineSmall: _stack(theme.headlineSmall, color),
-      titleLarge: _stack(theme.titleLarge, color),
-      titleMedium: _stack(theme.titleMedium, color),
-      titleSmall: _stack(theme.titleSmall, color),
-      bodyLarge: _stack(theme.bodyLarge, color),
-      bodyMedium: _stack(theme.bodyMedium, color),
-      bodySmall: _stack(theme.bodySmall, color),
-      labelLarge: _stack(theme.labelLarge, color),
-      labelMedium: _stack(theme.labelMedium, color),
-      labelSmall: _stack(theme.labelSmall, color),
+      displayLarge: _withDefaultColor(theme.displayLarge, color),
+      displayMedium: _withDefaultColor(theme.displayMedium, color),
+      displaySmall: _withDefaultColor(theme.displaySmall, color),
+      headlineLarge: _withDefaultColor(theme.headlineLarge, color),
+      headlineMedium: _withDefaultColor(theme.headlineMedium, color),
+      headlineSmall: _withDefaultColor(theme.headlineSmall, color),
+      titleLarge: _withDefaultColor(theme.titleLarge, color),
+      titleMedium: _withDefaultColor(theme.titleMedium, color),
+      titleSmall: _withDefaultColor(theme.titleSmall, color),
+      bodyLarge: _withDefaultColor(theme.bodyLarge, color),
+      bodyMedium: _withDefaultColor(theme.bodyMedium, color),
+      bodySmall: _withDefaultColor(theme.bodySmall, color),
+      labelLarge: _withDefaultColor(theme.labelLarge, color),
+      labelMedium: _withDefaultColor(theme.labelMedium, color),
+      labelSmall: _withDefaultColor(theme.labelSmall, color),
     );
   }
 }

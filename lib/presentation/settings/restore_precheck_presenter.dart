@@ -58,7 +58,7 @@ List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
         RestorePrecheckSummaryItem(
           icon: Icons.tips_and_updates_outlined,
           title: l10n.settingsRestorePrecheckHintTitle,
-          body: l10n.settingsRecoveryKeyHintLine(hint),
+          body: '${l10n.settingsRecoveryKeyHintPrefix}$hint',
         ),
       );
     }
@@ -85,7 +85,7 @@ List<RestorePrecheckSummaryItem> buildRestorePrecheckSummaryItems(
         RestorePrecheckSummaryItem(
           icon: Icons.tips_and_updates_outlined,
           title: l10n.settingsRestorePrecheckHintTitle,
-          body: l10n.settingsRecoveryKeyHintLine(hint),
+          body: '${l10n.settingsRecoveryKeyHintPrefix}$hint',
         ),
       );
     }

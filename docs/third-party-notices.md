@@ -8,14 +8,9 @@ Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGP
 
 修改並發布本程式，或提供可互動的修改版網路服務時，應依授權條款提供對應完整原始碼。
 
-## 隨附字體
+## 字體
 
-| 字體 | 授權 |
-|------|------|
-| Inter | [SIL Open Font License 1.1](https://openfontlicense.org/) |
-| Noto Sans TC | [SIL Open Font License 1.1](https://openfontlicense.org/) |
-
-字體使用條件以各原始授權條款為準。
+本 App 不隨附任何字體，文字皆使用各平台的系統字。
 
 ## 索引加密與 SQLite
 

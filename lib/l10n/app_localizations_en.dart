@@ -2145,7 +2145,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personaTrialInput => 'Enter a trial message';
 
   @override
-  String get personaDiscardResult => 'Discard generated content';
+  String get personaDiscardResult => 'Discard';
 
   @override
   String get personaCancelUpdate => 'Discard this update';
@@ -3161,9 +3161,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRecoveryKeyHideTooltip => 'Hide recovery key';
 
   @override
-  String settingsRecoveryKeyHintLine(String hint) {
-    return 'Last 4: $hint';
-  }
+  String get settingsRecoveryKeyHintPrefix => 'Last 4: ';
 
   @override
   String get settingsBackupPhaseCreating => 'Creating backup…';

@@ -1061,7 +1061,7 @@
   "personaRemove": "Remove material",
   "personaTrial": "Try a chat",
   "personaTrialInput": "Enter a trial message",
-  "personaDiscardResult": "Discard generated content",
+  "personaDiscardResult": "Discard",
   "personaCancelUpdate": "Discard this update",
   "personaDiscardConfirm": "Discard these changes and imported chats? Saved memories and conversation style will be kept.",
   "personaDelete": "Delete persona",
@@ -1528,14 +1528,7 @@
   "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
   "settingsRecoveryKeyShowTooltip": "Show recovery key",
   "settingsRecoveryKeyHideTooltip": "Hide recovery key",
-  "settingsRecoveryKeyHintLine": "Last 4: {hint}",
-  "@settingsRecoveryKeyHintLine": {
-    "placeholders": {
-      "hint": {
-        "type": "String"
-      }
-    }
-  },
+  "settingsRecoveryKeyHintPrefix": "Last 4: ",
   "settingsBackupPhaseCreating": "Creating backup…",
   "settingsBackupPhaseCopying": "Writing backup…",
   "settingsBackupPhaseDownloadingDrive": "Downloading from Google Drive…",

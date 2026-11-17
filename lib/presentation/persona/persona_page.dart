@@ -1817,8 +1817,8 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     required bool disabled,
     required bool canSave,
   }) {
-    final discard = !draft.manualEdit;
-    final trial = OutlinedButton.icon(
+    final showDiscard = !draft.manualEdit;
+    final trial = OutlinedButton(
       key: const ValueKey('persona-trial'),
       onPressed: disabled || !ref.watch(aiEnabledProvider)
           ? null
@@ -1839,8 +1839,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                 ),
               );
             }),
-      icon: const Icon(Icons.chat_outlined),
-      label: Text(l.personaTrial),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+      ),
+      child: Text(l.personaTrial),
     );
     final save = FilledButton(
       key: const ValueKey('persona-primary'),
@@ -1848,19 +1850,22 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       child: Text(l.personaSave),
     );
     return _wizardActionBar(
-      leading: discard
-          ? TextButton(
-              key: const ValueKey('persona-discard-result'),
-              onPressed: disabled
-                  ? null
-                  : () => _run(_controller.discardResult),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: Text(l.personaDiscardResult),
-            )
-          : null,
-      actions: [trial, save],
+      actions: [
+        if (showDiscard)
+          OutlinedButton(
+            key: const ValueKey('persona-discard-result'),
+            onPressed: disabled
+                ? null
+                : () => _run(_controller.discardResult),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              side: BorderSide(color: Theme.of(context).colorScheme.error),
+            ),
+            child: Text(l.personaDiscardResult),
+          ),
+        trial,
+        save,
+      ],
     );
   }
 
@@ -1886,8 +1891,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     );
   }
 
-  /// 次要操作獨立一列，避免窄螢幕擠壓主要按鈕。
-  Widget _wizardActionBar({Widget? leading, required List<Widget> actions}) {
+  Widget _wizardActionBar({required List<Widget> actions}) {
     final colors = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1896,22 +1900,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Row(
           children: [
-            if (leading != null) ...[
-              Align(alignment: Alignment.centerLeft, child: leading),
-              const SizedBox(height: 8),
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
+              Expanded(child: actions[i]),
             ],
-            Row(
-              children: [
-                for (var i = 0; i < actions.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 12),
-                  Expanded(child: actions[i]),
-                ],
-              ],
-            ),
           ],
         ),
       ),
@@ -1946,6 +1940,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       actions: [
         OutlinedButton(
           onPressed: disabled ? null : _controller.resetToMaterials,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
           child: Text(l.personaBackMaterials),
         ),
         advance,

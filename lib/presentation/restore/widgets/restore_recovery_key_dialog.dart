@@ -95,7 +95,7 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
             if (hint.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               Text(
-                l10n.settingsRecoveryKeyHintLine(hint),
+                '${l10n.settingsRecoveryKeyHintPrefix}$hint',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
