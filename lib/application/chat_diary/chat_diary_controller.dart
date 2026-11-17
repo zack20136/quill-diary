@@ -241,13 +241,18 @@ class ChatDiaryController extends ChangeNotifier {
     return ChatDiaryLoadResult.loaded;
   }
 
-  void updateComposer(String text, List<PrivateTextRange> ranges) {
+  void updateComposer(
+    String text,
+    List<PrivateTextRange> ranges, [
+    List<PrivateTextRange> revealed = const [],
+  ]) {
     final chatSession = chat;
     if (chatSession == null || busy || chatSession.finished || _handedOff) {
       return;
     }
     chatSession.composerText = text;
     chatSession.composerRanges = List.of(ranges);
+    chatSession.composerRevealed = List.of(revealed);
     _scheduleSave();
     notifyListeners();
   }
@@ -413,7 +418,14 @@ class ChatDiaryController extends ChangeNotifier {
       _ensureOperationIsCurrent(operationVersion);
       final composer = generate
           ? ''
-          : privacy.protect(pending.text, pending.ranges, false);
+          : privacy.protect(
+              pending.text,
+              pending.ranges,
+              false,
+              null,
+              const [],
+              pending.revealed,
+            );
       final loadedPersona = generate
           ? null
           : await _loadReplyPersona(
@@ -427,7 +439,7 @@ class ChatDiaryController extends ChangeNotifier {
       );
       final missingPersonaName = l10n.personaRoleSubject;
       _ensureOperationIsCurrent(operationVersion);
-      final prompt = await _resolveRequestPrompt(
+      final requestContext = await _resolveRequestPrompt(
         generate
             ? ChatDiaryPromptPurpose.generation
             : ChatDiaryPromptPurpose.conversation,
@@ -463,23 +475,42 @@ class ChatDiaryController extends ChangeNotifier {
       ];
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
+      final previewTurns = generate
+          ? [
+              AiPreviewTurn(
+                isUser: true,
+                text: _generationData(
+                  privacy,
+                  history,
+                  missingPersonaName: missingPersonaName,
+                ),
+                imageIds: [for (final turn in turns) ...turn.imageIds],
+              ),
+            ]
+          : turns;
+      final prepared = await prepareAiRequest(
+        connection: chatSession.connectionConfig,
+        instructions: requestContext,
+        messages: [
+          for (final turn in previewTurns)
+            AiInputMessage(
+              isUser: turn.isUser,
+              text: turn.text,
+              images: [
+                for (final id in turn.imageIds)
+                  AiInputImage(id: id, mimeType: '', bytes: Uint8List(0)),
+              ],
+            ),
+        ],
+        originals: chatSession.originalTextByToken,
+        revealedSecrets: privacy.revealedSecrets,
+      );
       return AiRequestPreview(
-        instructions: prompt,
+        request: prepared,
+        instructions: requestContext,
         hasLocalPrivateNotes: generate && hasPrivateNotes,
         conversationTurns: generate ? turns : null,
-        turns: generate
-            ? [
-                AiPreviewTurn(
-                  isUser: true,
-                  text: _generationData(
-                    privacy,
-                    history,
-                    missingPersonaName: missingPersonaName,
-                  ),
-                  imageIds: [for (final turn in turns) ...turn.imageIds],
-                ),
-              ]
-            : turns,
+        turns: previewTurns,
       );
     } on Object {
       if (_disposed ||
@@ -614,6 +645,8 @@ class ChatDiaryController extends ChangeNotifier {
             message.privateRanges,
             true,
             message.personRanges,
+            message.automaticRanges,
+            message.revealedRanges,
           )
         : privacy.protect(message.outboundText);
     if (message.isUser && message.outboundText != text) {
@@ -972,6 +1005,7 @@ class ChatDiaryController extends ChangeNotifier {
     chatSession.composer = AiComposerSnapshot(
       text: message.text,
       ranges: List.of(message.privateRanges),
+      revealed: List.of(message.revealedRanges),
       imageIds: List.of(message.imageIds),
     );
     _setError(null);
@@ -1069,7 +1103,14 @@ class ChatDiaryController extends ChangeNotifier {
       final replyPersona = loadedPersona.record;
       var replyParent = parentId;
       if (newComposer != null) {
-        final protected = privacy.protect(newComposer.text, newComposer.ranges);
+        final protected = privacy.protect(
+          newComposer.text,
+          newComposer.ranges,
+          true,
+          null,
+          const [],
+          newComposer.revealed,
+        );
         final message = ChatDiaryMessage(
           id: generateChatDiaryMessageId(),
           isUser: true,
@@ -1078,8 +1119,10 @@ class ChatDiaryController extends ChangeNotifier {
           parentId: parentId,
           imageIds: List.of(newComposer.imageIds),
           privateRanges: List.of(newComposer.ranges),
-          personRanges: List.of(privacy.requestPersonRanges),
-          privateTokenIds: privacy.requestPrivateTokens,
+          revealedRanges: List.of(newComposer.revealed),
+          personRanges: List.of(privacy.lastRequestPersonRanges),
+          automaticRanges: privacy.lastRequestAutomaticRanges,
+          privateTokenIds: privacy.lastRequestPrivateTokens,
         );
         chatSession.appendMessage(message);
         replyParent = message.id;
@@ -1107,14 +1150,15 @@ class ChatDiaryController extends ChangeNotifier {
               ),
       );
       chatSession.appendMessage(assistantMessage);
-      final prompt = await _resolveRequestPrompt(
+      notifyListeners();
+      final requestContext = await _resolveRequestPrompt(
         ChatDiaryPromptPurpose.conversation,
         privacy,
         operationVersion,
         replyPersona: replyPersona,
       );
       if (assistantMessage.persona == null) {
-        assistantMessage.systemPromptSnapshot = prompt;
+        assistantMessage.systemPromptSnapshot = requestContext;
       }
       await persist(throwOnError: true);
       _ensureOperationIsCurrent(operationVersion);
@@ -1127,7 +1171,20 @@ class ChatDiaryController extends ChangeNotifier {
       );
       final client = await _clientForOperation(operationVersion);
       _ensureOperationIsCurrent(operationVersion);
-      await for (final delta in client.reply(prompt, messages)) {
+      final request = await prepareAiRequest(
+        connection: chatSession.connectionConfig,
+        instructions: requestContext,
+        messages: messages,
+        originals: chatSession.originalTextByToken,
+        revealedSecrets: privacy.revealedSecrets,
+      );
+      privacy.registerRestoreTokensFromRequest(request.automaticTokenIds);
+      if (assistantMessage.persona == null) {
+        assistantMessage.systemPromptSnapshot = request.internalInstructions;
+      }
+      await persist(throwOnError: true);
+      _ensureOperationIsCurrent(operationVersion);
+      await for (final delta in client.reply(request)) {
         _ensureOperationIsCurrent(operationVersion);
         assistantMessage.outboundText += delta;
         assistantMessage.text = privacy.restore(assistantMessage.outboundText);
@@ -1210,7 +1267,7 @@ class ChatDiaryController extends ChangeNotifier {
     try {
       final privacy = await _createPrivacyProcessor();
       _ensureOperationIsCurrent(operationVersion);
-      final prompt = await _resolveRequestPrompt(
+      final requestContext = await _resolveRequestPrompt(
         ChatDiaryPromptPurpose.generation,
         privacy,
         operationVersion,
@@ -1228,7 +1285,17 @@ class ChatDiaryController extends ChangeNotifier {
       generations.update(generation, ChatDiaryGenerationPhase.waiting);
       final output = StringBuffer();
       var writing = false;
-      await for (final delta in client.reply(prompt, messages)) {
+      final request = await prepareAiRequest(
+        connection: connectionConfig,
+        instructions: requestContext,
+        messages: messages,
+        originals: chatSession.originalTextByToken,
+        revealedSecrets: privacy.revealedSecrets,
+      );
+      privacy.registerRestoreTokensFromRequest(request.automaticTokenIds);
+      await persist(throwOnError: true);
+      _ensureOperationIsCurrent(operationVersion);
+      await for (final delta in client.reply(request)) {
         _ensureOperationIsCurrent(operationVersion);
         if (!writing && delta.isNotEmpty) {
           writing = true;
@@ -1250,7 +1317,7 @@ class ChatDiaryController extends ChangeNotifier {
         chatSession,
         draft,
         vaultSession,
-        prompt: prompt,
+        prompt: request.internalInstructions,
         connection: connectionConfig,
         ensureCurrent: () => _ensureOperationIsCurrent(operationVersion),
       );

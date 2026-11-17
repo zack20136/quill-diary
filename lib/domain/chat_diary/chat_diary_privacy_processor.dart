@@ -1,3 +1,5 @@
+import 'package:quill_diary/domain/ai/privacy_names.dart';
+import 'package:quill_diary/domain/ai/privacy_text_processor.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/people/person.dart';
@@ -12,7 +14,7 @@ class ChatDiaryPrivacyProcessor {
   }) : _matcher = PersonNameMatcher(people) {
     final personTokens = {
       for (final token in chat.originalTextByToken.keys)
-        if (token.startsWith('⟦P')) token,
+        if (privacyTokenHasKind(token, PrivacyTokenKind.person)) token,
     };
     for (final message in messages ?? chat.activeMessages) {
       _restoreTokens.addAll(
@@ -39,174 +41,115 @@ class ChatDiaryPrivacyProcessor {
   final PersonNameMatcher _matcher;
   final Set<String> _requestPrivateTokens = {};
   final List<PersonTextRange> _requestPersonRanges = [];
+  List<PrivateTextRange> _requestAutomaticRanges = const [];
   final Set<String> _branchTokens = {};
   final Set<String> _diaryTokens = {};
   final Set<String> _restoreTokens = {};
-  var _personOrigin = 0;
-  Set<String> get requestPrivateTokens =>
+  late final PrivacyLedger _ledger = PrivacyLedger(
+    originals: chat.originalTextByToken,
+    personTokens: {
+      for (final entry in chat.tokenBySourceKey.entries)
+        if (entry.key.startsWith('person:'))
+          entry.key.substring('person:'.length): entry.value,
+    },
+  );
+  late final _processor = _ledger.processor();
+  Set<String> get lastRequestPrivateTokens =>
       Set.unmodifiable(_requestPrivateTokens);
 
   String personaPersonToken(String personId, String surface) =>
       chat.hidePersonNames ? _personToken(personId, surface) : surface;
 
   String personaAnonymousToken(String scope, String label) =>
-      _token('persona:$scope', label, 'P');
-  List<PersonTextRange> get requestPersonRanges =>
+      _token('persona:$scope', label, PrivacyTokenKind.person);
+  List<PersonTextRange> get lastRequestPersonRanges =>
       List.unmodifiable(_requestPersonRanges);
+  List<PrivateTextRange> get lastRequestAutomaticRanges =>
+      List.unmodifiable(_requestAutomaticRanges);
   String get _tokenPattern => chat.originalTextByToken.isEmpty
       ? r'(?!)'
       : chat.originalTextByToken.keys.map(RegExp.escape).join('|');
+
+  final revealedSecrets = <String>{};
 
   /// 只替換 [ranges] 標記的區間，不搜尋其他副本。
   String protect(
     String text, [
     List<PrivateTextRange> ranges = const [],
-    bool rememberPrivate = true,
+    bool trackForDiaryFootnotes = true,
     List<PersonTextRange>? personRanges,
-  ]) => _apply(text, ranges, rememberPrivate, false, personRanges);
+    List<PrivateTextRange> automaticRanges = const [],
+    List<PrivateTextRange> revealedRanges = const [],
+  ]) => _apply(
+    text,
+    ranges,
+    trackForDiaryFootnotes,
+    false,
+    personRanges,
+    automaticRanges,
+    revealedRanges,
+  );
 
   /// 提示詞另把已經標記過的私密原文換成同一個代號。
-  String protectPrompt(String text) => _apply(text, const [], true, true, null);
+  String protectPrompt(String text) =>
+      _apply(text, const [], true, true, null, const [], const []);
 
   String _apply(
     String text,
     List<PrivateTextRange> ranges,
-    bool rememberPrivate,
+    bool trackForDiaryFootnotes,
     bool propagateKnownSecrets,
     List<PersonTextRange>? personRanges,
+    List<PrivateTextRange> automaticRanges,
+    List<PrivateTextRange> revealedRanges,
   ) {
-    _requestPersonRanges.clear();
-    final merged = mergePrivateRanges(ranges, text.length);
-    for (final range in merged) {
-      final originalText = text.substring(range.start, range.end);
-      final token = _token('private:$originalText', originalText, 'S');
-      _requestPrivateTokens.add(token);
-      if (rememberPrivate) {
-        _diaryTokens.add(token);
-      }
-    }
-    final scanTokens = propagateKnownSecrets
+    final known = propagateKnownSecrets
         ? {..._branchTokens, ..._requestPrivateTokens}
         : const <String>{};
-    final result = StringBuffer();
-    var cursor = 0;
-    for (final range in merged) {
-      _personOrigin = cursor;
-      result.write(
-        _protectText(
-          text.substring(cursor, range.start),
-          scanTokens,
-          _peopleInside(personRanges, cursor, range.start),
-        ),
-      );
-      final originalText = text.substring(range.start, range.end);
-      result.write(_token('private:$originalText', originalText, 'S'));
-      cursor = range.end;
-    }
-    _personOrigin = cursor;
-    result.write(
-      _protectText(
-        text.substring(cursor),
-        scanTokens,
-        _peopleInside(personRanges, cursor, text.length),
-      ),
-    );
-    return result.toString();
-  }
-
-  List<PersonTextRange>? _peopleInside(
-    List<PersonTextRange>? ranges,
-    int start,
-    int end,
-  ) {
-    if (ranges == null) return null;
-    return [
-      for (final range in ranges)
-        if (range.start >= start && range.end <= end)
-          PersonTextRange(
-            range.start - start,
-            range.end - start,
-            range.personId,
-          ),
-    ];
-  }
-
-  String _protectText(
-    String text,
-    Set<String> activeTokens,
-    List<PersonTextRange>? personRanges,
-  ) {
-    final originals = {
-      for (final token in activeTokens) chat.originalTextByToken[token]!: token,
-    };
-    if (originals.isEmpty) return _protectPeople(text, personRanges);
-    final values = originals.keys.toList()
-      ..sort((a, b) => b.length.compareTo(a.length));
-    final pattern = RegExp(
-      '$_tokenPattern|${values.map(RegExp.escape).join('|')}',
-    );
-    final protected = text.replaceAllMapped(
-      pattern,
-      (match) => originals[match[0]] ?? match[0]!,
-    );
-    return _protectPeople(protected, personRanges);
-  }
-
-  String _protectPeople(String text, List<PersonTextRange>? fixed) {
-    if (!chat.hidePersonNames) return text;
-    final spans =
-        fixed ??
-        [
-          for (final span in _matcher.findSpans(text))
-            PersonTextRange(span.start, span.end, span.personId),
-        ];
-    final tokens = RegExp(_tokenPattern).allMatches(text).toList();
-    final result = StringBuffer();
-    var cursor = 0;
-    for (final span in spans) {
-      if (span.start < cursor ||
-          span.end > text.length ||
-          span.end <= span.start ||
-          tokens.any(
-            (token) => span.start < token.end && span.end > token.start,
-          )) {
-        continue;
+    final propagated = <PrivateTextRange>[];
+    for (final token in known) {
+      final original = chat.originalTextByToken[token]!;
+      if (original.isEmpty) continue;
+      for (final match in RegExp(RegExp.escape(original)).allMatches(text)) {
+        propagated.add(PrivateTextRange(match.start, match.end));
       }
-      result.write(text.substring(cursor, span.start));
-      result.write(
-        _personToken(span.personId, text.substring(span.start, span.end)),
-      );
-      _requestPersonRanges.add(
-        PersonTextRange(
-          _personOrigin + span.start,
-          _personOrigin + span.end,
-          span.personId,
-        ),
-      );
-      cursor = span.end;
     }
-    result.write(text.substring(cursor));
-    return result.toString();
+    final result = protectNamedText(
+      _processor,
+      text,
+      manualRanges: [...ranges, ...propagated],
+      nameMatcher: chat.hidePersonNames && personRanges == null
+          ? _matcher
+          : null,
+      people: chat.hidePersonNames ? personRanges ?? const [] : const [],
+      extraAutomaticRanges: automaticRanges,
+      revealedRanges: revealedRanges,
+    );
+    revealedSecrets.addAll(result.revealedSecrets);
+    _requestPersonRanges
+      ..clear()
+      ..addAll(result.personRanges);
+    _requestAutomaticRanges = result.automaticRanges;
+    if (!propagateKnownSecrets) {
+      _requestPrivateTokens.addAll(result.manualTokens);
+      if (trackForDiaryFootnotes) _diaryTokens.addAll(result.manualTokens);
+    }
+    _restoreTokens.addAll({...result.manualTokens, ...result.automaticTokens});
+    _ledger.writePersonSourceKeys(chat.tokenBySourceKey);
+    for (final person in result.personRanges) {
+      _restoreTokens.add(_processor.personTokens[person.personId]!);
+    }
+    return result.text;
   }
 
   String _personToken(String personId, String surface) {
-    final people = {
-      for (final entry in chat.tokenBySourceKey.entries)
-        if (entry.key.startsWith('person:'))
-          entry.key.substring('person:'.length): entry.value,
-    };
-    final token = privacyTokenForPerson(
-      personId: personId,
-      surface: surface,
-      tokenByPersonId: people,
-      originals: chat.originalTextByToken,
-    );
+    final token = _processor.personToken(personId, surface, text: surface);
     chat.tokenBySourceKey['person:$personId'] = token;
     _restoreTokens.add(token);
     return token;
   }
 
-  String _token(String sourceKey, String originalText, String prefix) {
+  String _token(String sourceKey, String originalText, PrivacyTokenKind kind) {
     final existing = chat.tokenBySourceKey[sourceKey];
     if (existing != null) {
       _restoreTokens.add(existing);
@@ -214,7 +157,8 @@ class ChatDiaryPrivacyProcessor {
     }
     final token = nextPrivacyToken(
       chat.originalTextByToken.keys,
-      prefix: prefix,
+      kind: kind,
+      reservedText: originalText,
     );
     chat.tokenBySourceKey[sourceKey] = token;
     chat.originalTextByToken[token] = originalText;
@@ -222,14 +166,13 @@ class ChatDiaryPrivacyProcessor {
     return token;
   }
 
-  String restore(String text) {
-    if (_restoreTokens.isEmpty) return text;
-    final pattern = RegExp(_restoreTokens.map(RegExp.escape).join('|'));
-    return text.replaceAllMapped(
-      pattern,
-      (match) => chat.originalTextByToken[match[0]]!,
-    );
+  void registerRestoreTokensFromRequest(Iterable<String> tokens) {
+    _restoreTokens.addAll(tokens.where(chat.originalTextByToken.containsKey));
   }
+
+  String restore(String text) => restorePrivacyText(text, {
+    for (final token in _restoreTokens) token: chat.originalTextByToken[token]!,
+  }).text;
 
   ChatDiaryDraft restoreDiary(String text, String privateNotesHeading) {
     final missing = _diaryTokens

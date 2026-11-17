@@ -524,6 +524,15 @@ class IndexDatabase extends GeneratedDatabase {
     return rows.map(_entrySummaryFromRow).toList();
   }
 
+  Future<List<String>> entryFilePaths() async {
+    final List<QueryRow> rows = await customSelect(
+      'SELECT file_path FROM entries_index;',
+    ).get();
+    return <String>[
+      for (final QueryRow row in rows) row.read<String>('file_path'),
+    ];
+  }
+
   Future<({DateOnly earliest, DateOnly latest})?> entryDateBounds() async {
     final QueryRow row = await customSelect('''
         SELECT MIN(date) AS earliest_date, MAX(date) AS latest_date

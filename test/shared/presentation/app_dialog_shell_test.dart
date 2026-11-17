@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
@@ -136,5 +137,86 @@ void main() {
 
     expect(tapped, 1);
     expect(find.text('內容'), findsOneWidget);
+  });
+
+  testWidgets('很高的內容不超過表面的 90%，短內容不會被拉高', (WidgetTester tester) async {
+    Size cardSize() => tester.getSize(
+      find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+
+    final double surfaceHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+
+    await tester.pumpWidget(
+      _app(
+        dialogBuilder: (_) =>
+            const AppDialogShell(title: '短', content: Text('一行')),
+      ),
+    );
+    await _open(tester);
+    final double shortHeight = cardSize().height;
+    expect(shortHeight, lessThan(surfaceHeight * 0.5));
+
+    await tester.tap(_closeButton);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      _app(
+        dialogBuilder: (_) => AppDialogShell(
+          title: '高',
+          content: AppScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (var index = 0; index < 80; index++) Text('行 $index'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await _open(tester);
+    final double tallHeight = cardSize().height;
+    expect(
+      tallHeight,
+      lessThanOrEqualTo(surfaceHeight * appDialogMaxHeightFactor + 1),
+    );
+    expect(tallHeight, greaterThan(shortHeight));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('填滿高度的卡片直接用到表面的 90%', (WidgetTester tester) async {
+    final double surfaceHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    await tester.pumpWidget(
+      _app(
+        dialogBuilder: (_) => const AppDialogShell(
+          title: '填滿',
+          fillHeight: true,
+          content: Text('一行'),
+        ),
+      ),
+    );
+    await _open(tester);
+    final double height = tester
+        .getSize(
+          find
+              .descendant(
+                of: find.byType(AlertDialog),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .height;
+    expect(height, greaterThan(surfaceHeight * 0.85));
+    expect(
+      height,
+      lessThanOrEqualTo(surfaceHeight * appDialogMaxHeightFactor + 1),
+    );
+    expect(tester.takeException(), isNull);
   });
 }

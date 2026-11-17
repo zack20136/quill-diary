@@ -19,12 +19,13 @@ import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
-import 'package:quill_diary/domain/persona/persona_privacy.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/app_localizations_en.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/persona/gated_persona_store.dart';
@@ -170,8 +171,8 @@ void main() {
       await create();
       await controller.begin(PersonaUpdateTarget.tone, edit: true);
       controller.draft!.candidate![PersonaCardKind.tone] = PersonaCandidate(
-        text: '會用⟦P01⟧的稱呼',
-        tokens: {'⟦P01⟧': person.id},
+        text: '會用{{PER_01}}的稱呼',
+        tokens: {'{{PER_01}}': person.id},
       );
       await controller.save();
       await controller.begin(PersonaUpdateTarget.tone);
@@ -320,10 +321,7 @@ void main() {
       const PrivateTextRange(0, 1),
     ]);
     await controller.prepare(testL10n);
-    expect(
-      controller.preview!.baseline['memory'],
-      startsWith(personaHiddenText),
-    );
+    expect(controller.preview!.baseline['memory'], startsWith('{{PRI_'));
   });
 
   test('準備確認頁等候連線時改變隱藏設定，舊預覽失效且重新準備只外送遮罩內容', () async {
@@ -380,6 +378,43 @@ void main() {
     );
   }
 
+  test('不同匯入的同名說話者各自隔離，內文與該來源的說話者共用代號', () async {
+    for (var i = 0; i < 2; i++) {
+      final chat = PersonaChatImport(
+        vaultId: setup.session.vaultId,
+        personId: person.id,
+        personaId: controller.record!.personaId,
+        importId: generatePersonaImportId(),
+        importedAt: DateTime(2026, 11, 6),
+        speakers: [
+          PersonaImportSpeaker(
+            id: 'named-s1',
+            label: '第三人',
+            role: PersonaSpeakerRole.other,
+          ),
+        ],
+        messages: const [
+          PersonaImportMessage(
+            id: 'm1',
+            speakerId: 'named-s1',
+            text: '第三人說要散步',
+            sentAtLocal: '2026-11-06T12:00:00',
+          ),
+        ],
+      );
+      await controller.attachImport(chat);
+    }
+    await controller.prepare(testL10n);
+    final chats = controller.preview!.blocks
+        .where((block) => !block.isDiary)
+        .toList();
+    expect(chats, hasLength(2));
+    expect(chats[0].speaker, isNot(chats[1].speaker));
+    for (final chat in chats) {
+      expect(chat.text, '${chat.speaker}說要散步');
+    }
+  });
+
   test('長聊天將相鄰短訊息依序合批提取，不逐則呼叫模型', () async {
     await controller.selectDiary(entryId, false);
     final chat = parsePersonaChat(
@@ -426,7 +461,9 @@ void main() {
       materials: current.requestMaterials,
     );
     replacePreview(
-      instructions: '指' * (PersonaLimits.requestCodeUnits - data.length),
+      instructions:
+          '指' *
+          (PersonaLimits.requestCodeUnits - personaRequestLength('', data)),
     );
     expect(controller.preview!.requiresBatching, isFalse);
     await controller.generate();
@@ -458,7 +495,11 @@ void main() {
         materials: const [],
       );
       replacePreview(
-        instructions: '指' * (PersonaLimits.requestCodeUnits - fixed.length - 1),
+        instructions:
+            '指' *
+            (PersonaLimits.requestCodeUnits -
+                personaRequestLength('', fixed) -
+                1),
       );
       client.response = () async* {
         final data = jsonDecode(client.calls.last.messages.single.text) as Map;
@@ -727,36 +768,45 @@ void main() {
   });
 
   for (final l10n in [testL10n, AppLocalizationsEn()]) {
-    test('${l10n.localeName} 生成與分批指示使用實際隱藏標記，回覆保留標記時拒收候選', () async {
-      controller.draft!.diaries.single.hiddenRanges = [
-        const PrivateTextRange(0, 2),
-      ];
-      await controller.prepare(l10n);
-      final preview = controller.preview!;
-      expect(preview.blocks.single.text, startsWith(personaHiddenText));
-      expect(preview.instructions, contains(personaHiddenText));
-      expect(preview.extractionInstructions, contains(personaHiddenText));
-      client.output = jsonEncode({'memory': '旅行$personaHiddenText'});
+    test(
+      '${isEnglishL10n(l10n) ? '英文' : '繁體中文'}生成與分批指示使用固定外送代號說明，回覆保留標記時拒收候選',
+      () async {
+        controller.draft!.diaries.single.hiddenRanges = [
+          const PrivateTextRange(0, 2),
+        ];
+        await controller.prepare(l10n);
+        final preview = controller.preview!;
+        expect(preview.blocks.single.text, startsWith('{{PRI_'));
+        expect(
+          preview.instructions,
+          contains(privacyTokenExample(PrivacyTokenKind.private)),
+        );
+        expect(
+          preview.extractionInstructions,
+          contains(privacyTokenExample(PrivacyTokenKind.private)),
+        );
+        client.output = jsonEncode({'memory': '旅行{{PRI_99}}'});
 
-      await controller.generate();
+        await controller.generate();
 
-      expect(client.calls.single.prompt, preview.instructions);
-      expect(
-        client.calls.single.messages.single.text,
-        contains(personaHiddenText),
-      );
-      expect(controller.failed, isTrue);
-      expect(controller.draft!.candidate, isNull);
-      expect(
-        (await store.load(person.id, setup.session))!.draft!.candidate,
-        isNull,
-      );
+        expect(client.calls.single.prompt, preview.instructions);
+        expect(client.calls.single.messages.single.text, contains('{{PRI_'));
+        expect(controller.failed, isTrue);
+        expect(controller.draft!.candidate, isNull);
+        expect(
+          (await store.load(person.id, setup.session))!.draft!.candidate,
+          isNull,
+        );
 
-      client.output = personaReplyJson('去海邊');
-      await controller.generate();
-      expect(controller.failed, isFalse);
-      expect(controller.draft!.candidate![PersonaCardKind.memory]!.text, '去海邊');
-    });
+        client.output = personaReplyJson('去海邊');
+        await controller.generate();
+        expect(controller.failed, isFalse);
+        expect(
+          controller.draft!.candidate![PersonaCardKind.memory]!.text,
+          '去海邊',
+        );
+      },
+    );
   }
 
   test('只有聊天材料且官方連線沿用預設值時仍可確認送出', () async {
@@ -852,7 +902,7 @@ void main() {
     expect(imported.messages.single.text, '想去旅行');
     await controller.prepare(testL10n);
     final block = controller.preview!.blocks.last;
-    expect(block.text, '$personaHiddenText旅行');
+    expect(block.text, matches(RegExp(r'^\{\{PRI_[0-9A-F]{2,}\}\}旅行$')));
     expect(
       jsonEncode(controller.preview!.requestMaterials),
       isNot(contains('北海道')),
@@ -943,6 +993,15 @@ void main() {
     expect(blocks.first['style_text'], isNot(contains('引用別人的語氣')));
     expect(blocks.first['text'], contains('引用別人的語氣'));
     expect(blocks.skip(1).every((b) => b['style_text'] == ''), isTrue);
+    final other = controller.preview!.blocks.singleWhere(
+      (block) => block.speakerRole == PersonaSpeakerRole.other,
+    );
+    expect(other.speakerName, '第三人');
+    expect(other.toRequestJson()['speaker'], isNot('第三人'));
+    expect(
+      other.toRequestJson()['speaker'],
+      matches(RegExp(r'^\{\{PER_[0-9A-F]{2,}\}\}$')),
+    );
     expect(
       controller.preview!.blocks.map((b) => b.text).join(),
       isNot(contains('不該送出')),
@@ -1000,8 +1059,8 @@ void main() {
     await create();
     await controller.begin(PersonaUpdateTarget.memory, edit: true);
     controller.draft!.candidate![PersonaCardKind.memory] = PersonaCandidate(
-      text: '與⟦P01⟧散步',
-      tokens: {'⟦P01⟧': person.id},
+      text: '與{{PER_01}}散步',
+      tokens: {'{{PER_01}}': person.id},
     );
     controller.editCandidate(PersonaCardKind.memory, '自己散步');
     await controller.save();
@@ -1100,9 +1159,7 @@ void main() {
     await controller.selectDiary(entryId, true);
     await controller.prepare(testL10n);
     client.response = () async* {
-      if (client.calls.last.prompt.contains(
-        testL10n.personaExtractionPrompt(personaHiddenText),
-      )) {
+      if (client.calls.last.prompt.contains(testL10n.personaExtractionRules)) {
         yield '精簡的中間證據';
       } else {
         yield personaReplyJson('長材料記憶');

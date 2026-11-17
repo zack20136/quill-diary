@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class AppImageGalleryDialog extends StatefulWidget {
   const AppImageGalleryDialog({
@@ -63,7 +64,7 @@ class _AppImageGalleryDialogState extends State<AppImageGalleryDialog> {
       insetPadding: const EdgeInsets.all(12),
       child: SizedBox(
         width: size.width - 24,
-        height: size.height * 0.88,
+        height: size.height * appDialogMaxHeightFactor,
         child: Column(
           children: [
             Padding(

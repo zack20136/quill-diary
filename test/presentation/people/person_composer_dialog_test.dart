@@ -46,9 +46,12 @@ void main() {
     expect(find.text('基本資料'), findsOneWidget);
     expect(find.byType(Dialog), findsOneWidget);
     expect(find.byType(AppDialogShell), findsOneWidget);
-    expect(find.byType(CustomScrollView), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
     expect(find.text('儲存'), findsOneWidget);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -500),
+    );
     await tester.pumpAndSettle();
     expect(find.text('關係'), findsWidgets);
     expect(find.byType(Slider), findsOneWidget);
@@ -179,7 +182,10 @@ void main() {
     await tester.pump();
     expect(tester.getSize(descriptionField).height, greaterThan(initialHeight));
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -900),
+    );
     await tester.pumpAndSettle();
     final Finder notesField = find.byWidgetPredicate(
       (Widget widget) =>
@@ -210,7 +216,10 @@ void main() {
     expect(find.text('陌生'), findsOneWidget);
     expect(find.text('很熟'), findsOneWidget);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -900),
+    );
     await tester.pumpAndSettle();
     final Finder acquaintance = find.text('認識年份');
     final Finder birthday = find.text('生日');
@@ -268,7 +277,10 @@ void main() {
 
     await tester.pumpWidget(_testApp());
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -900),
+    );
     await tester.pumpAndSettle();
 
     Finder fieldFor(String label) =>
@@ -289,12 +301,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('12月31日'), findsOneWidget);
 
+    await tester.ensureVisible(fieldFor('認識年份'));
+    await tester.pumpAndSettle();
     await tester.tap(fieldFor('認識年份'));
     await tester.pumpAndSettle();
-    final GridView yearGrid = tester.widget<GridView>(
-      find.byKey(const Key('app-date-picker-year-grid')),
+    final yearView = tester.widget<SingleChildScrollView>(
+      find.byKey(const Key('app-date-picker-year-view')),
     );
-    yearGrid.controller!.jumpTo(0);
+    final yearScroll = yearView.controller!;
+    yearScroll.jumpTo(0);
     await tester.pump();
     expect(
       find.byKey(const ValueKey<String>('app-date-picker-year-1900')),
@@ -304,7 +319,7 @@ void main() {
       find.byKey(const ValueKey<String>('app-date-picker-year-1899')),
       findsNothing,
     );
-    yearGrid.controller!.jumpTo(yearGrid.controller!.position.maxScrollExtent);
+    yearScroll.jumpTo(yearScroll.position.maxScrollExtent);
     await tester.pump();
     await tester.tap(
       find.byKey(const ValueKey<String>('app-date-picker-year-2024')),
@@ -313,7 +328,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('2024年'), findsOneWidget);
 
+    await tester.ensureVisible(find.byTooltip('清除生日'));
     await tester.tap(find.byTooltip('清除生日'));
+    await tester.ensureVisible(find.byTooltip('清除認識年份'));
     await tester.tap(find.byTooltip('清除認識年份'));
     await tester.pumpAndSettle();
     expect(find.text('12月31日'), findsNothing);
@@ -328,7 +345,10 @@ void main() {
 
     await tester.pumpWidget(_testApp());
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -1200),
+    );
     await tester.pumpAndSettle();
 
     final Finder colorList = find.byKey(const Key('person-color-list'));

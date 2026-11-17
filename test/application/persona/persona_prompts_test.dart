@@ -17,7 +17,7 @@ void main() {
       final localized = lookupAppLocalizations(language.materialLocale);
       final defaults = personaFixedInstructions(l10n: localized);
       expect(defaults, startsWith(localized.personaIdentityPrompt));
-      expect(defaults, contains(localized.chatDiaryConversationRulesPrompt));
+      expect(defaults, contains(localized.chatDiaryConversationRules));
       expect(defaults, endsWith(localized.chatDiaryConversationGuidancePrompt));
       expect(
         defaults,
@@ -29,7 +29,7 @@ void main() {
         guidance: '本次共通引導',
       );
       expect(overridden, startsWith(localized.personaIdentityPrompt));
-      expect(overridden, contains(localized.chatDiaryConversationRulesPrompt));
+      expect(overridden, contains(localized.chatDiaryConversationRules));
       expect(overridden, endsWith('本次共通引導'));
       expect(
         overridden,
@@ -58,7 +58,7 @@ void main() {
       l10n: l10n,
     );
     expect(prompt, startsWith(l10n.personaIdentityPrompt));
-    expect(prompt, contains('${l10n.personaSubjectHeading}\n⟦P01⟧'));
+    expect(prompt, contains('${l10n.personaSubjectHeading}\n{{PER_01}}'));
     expect(prompt, contains('${l10n.personaMemory}\n2026-04-02｜一起吃晚餐'));
     expect(prompt, contains('${l10n.personaTone}\n句子偏短'));
     expect(prompt, isNot(contains('王小明')));
@@ -70,14 +70,14 @@ void main() {
       l10n: l10n,
       text: '今天好累',
       persona: true,
-      personToken: '⟦P01⟧',
+      personToken: '{{PER_01}}',
     );
     final fallback = personaAttributedMessage(
       l10n: l10n,
       text: '今天好累',
       persona: false,
     );
-    expect(persona, '${l10n.personaSubjectHeading}\n⟦P01⟧\n\n今天好累');
+    expect(persona, '${l10n.personaSubjectHeading}\n{{PER_01}}\n\n今天好累');
     expect(fallback, '${l10n.personaDefaultName}\n\n今天好累');
     expect(persona, isNot(contains('ai_persona')));
   });

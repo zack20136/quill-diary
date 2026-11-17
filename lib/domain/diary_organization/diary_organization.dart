@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/privacy_names.dart';
+import 'package:quill_diary/domain/ai/privacy_text_processor.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
@@ -16,34 +18,7 @@ organizationVisibleText(
   Map<String, String> originals, {
   Map<String, List<String>> surfaces = const {},
 }) {
-  final pending = {
-    for (final entry in surfaces.entries)
-      entry.key: List<String>.of(entry.value),
-  };
-  final output = StringBuffer();
-  final ranges = <PrivateTextRange>[];
-  final tokens = <String>[];
-  var cursor = 0;
-  for (final match in privacyTokenPattern.allMatches(body)) {
-    output.write(body.substring(cursor, match.start));
-    final token = match[0]!;
-    final queue = pending[token];
-    final original = queue != null && queue.isNotEmpty
-        ? queue.removeAt(0)
-        : originals[token];
-    if (original == null) {
-      output.write(token);
-    } else {
-      ranges.add(
-        PrivateTextRange(output.length, output.length + original.length),
-      );
-      tokens.add(token);
-      output.write(original);
-    }
-    cursor = match.end;
-  }
-  output.write(body.substring(cursor));
-  return (text: output.toString(), ranges: ranges, tokens: tokens);
+  return restorePrivacyText(body, originals, surfaces: surfaces);
 }
 
 Map<String, List<String>> _surfaceMap(Object? raw) {
@@ -95,7 +70,10 @@ class DiaryOrganization {
   AiConnectionConfig connection;
   OrganizationStage stage = OrganizationStage.privacy;
   List<PrivateTextRange> hiddenRanges = [];
+  List<PrivateTextRange> revealedRanges = [];
+  final Set<String> revealedSecrets = {};
   final Map<String, String> originals = {};
+  final Set<String> automaticTokenIds = {};
   final Map<String, String> personTokenById = {};
   final Map<String, List<String>> tokenSurfaces = {};
   String protectedSource = '';
@@ -109,6 +87,7 @@ class DiaryOrganization {
   bool generationInterrupted = false;
   String composer = '';
   List<PrivateTextRange> composerRanges = [];
+  List<PrivateTextRange> composerRevealed = [];
   bool persisted = false;
   List<int> get activeTurnIndices {
     final path = <int>[];
@@ -213,7 +192,15 @@ class DiaryOrganization {
   String restore(String text) =>
       visibleText(text, surfaces: tokenSurfaces).text;
 
-  void prepare({List<PersonTextRange> personRanges = const []}) {
+  String? get visibleGenerationReply {
+    final reply = generationReply;
+    return reply == null ? null : restore(reply);
+  }
+
+  void prepare({
+    List<PersonTextRange> personRanges = const [],
+    List<PrivateTextRange> ambiguousNames = const [],
+  }) {
     if (protectedSource.isNotEmpty) {
       stage = OrganizationStage.chat;
       return;
@@ -228,13 +215,18 @@ class DiaryOrganization {
       ).allMatches(source.markdownBody))
         PrivateTextRange(match.start, match.end),
     ], source.markdownBody.length);
+    revealedSecrets.clear();
     protectedSource = protectOrganizationText(
       source.markdownBody,
       ranges,
       originals,
       personRanges: personRanges,
+      ambiguousNames: ambiguousNames,
+      revealedRanges: revealedRanges,
       personTokenById: personTokenById,
       tokenSurfaces: tokenSurfaces,
+      automaticTokenIds: automaticTokenIds,
+      revealedSecrets: revealedSecrets,
     );
     stage = OrganizationStage.chat;
   }
@@ -254,6 +246,7 @@ class DiaryOrganization {
     final expected = privacyTokenPattern
         .allMatches(protectedSource)
         .map((m) => m[0]!)
+        .where((token) => !automaticTokenIds.contains(token))
         .toList();
     final actual = privacyTokenPattern
         .allMatches(body)
@@ -262,7 +255,7 @@ class DiaryOrganization {
     final extraSelections = <String>{};
     for (final token in actual) {
       final repeatedSelection =
-          token.startsWith('⟦S') &&
+          privacyTokenHasKind(token, PrivacyTokenKind.private) &&
           !expected.contains(token) &&
           !extraSelections.add(token);
       if (!originals.containsKey(token) || repeatedSelection) {
@@ -295,8 +288,14 @@ class DiaryOrganization {
     },
     'connection': connection.toSnapshotJson(),
     'stage': stage.name,
-    'ranges': hiddenRanges.map((r) => r.toJson()).toList(),
+    'ranges': privateRangesToJson(hiddenRanges),
+    if (revealedRanges.isNotEmpty)
+      'revealed_ranges': privateRangesToJson(revealedRanges),
+    if (revealedSecrets.isNotEmpty)
+      'revealed_secrets': revealedSecrets.toList(),
     'originals': originals,
+    if (automaticTokenIds.isNotEmpty)
+      'automatic_token_ids': automaticTokenIds.toList(),
     if (personTokenById.isNotEmpty) 'person_tokens': personTokenById,
     if (tokenSurfaces.isNotEmpty) 'token_surfaces': tokenSurfaces,
     'protected_source': protectedSource,
@@ -312,7 +311,9 @@ class DiaryOrganization {
     if (generationReply != null) 'generation_reply': generationReply,
     'generation_interrupted': generationInterrupted,
     'composer': composer,
-    'composer_ranges': composerRanges.map((r) => r.toJson()).toList(),
+    'composer_ranges': privateRangesToJson(composerRanges),
+    if (composerRevealed.isNotEmpty)
+      'composer_revealed': privateRangesToJson(composerRevealed),
   };
 
   factory DiaryOrganization.fromJson(Map<String, dynamic> json) {
@@ -338,13 +339,23 @@ class DiaryOrganization {
       ),
     );
     result.stage = OrganizationStage.values.byName(json['stage'] as String);
-    result.hiddenRanges = (json['ranges'] as List)
-        .map(
-          (r) => PrivateTextRange.fromJson(Map<String, dynamic>.from(r as Map)),
-        )
-        .toList();
+    result.hiddenRanges = privateRangesFromJson(json['ranges'] as List);
+    result.revealedRanges = privateRangesFromJson(json['revealed_ranges']);
+    result.revealedSecrets.addAll(
+      (json['revealed_secrets'] as List? ?? []).cast<String>(),
+    );
     final originals = Map<String, String>.from(json['originals'] as Map);
     result.originals.addAll(originals);
+    result.automaticTokenIds.addAll(
+      (json['automatic_token_ids'] as List? ?? []).cast<String>(),
+    );
+    if (result.automaticTokenIds.any(
+      (token) =>
+          !originals.containsKey(token) ||
+          !privacyTokenHasKind(token, PrivacyTokenKind.private),
+    )) {
+      throw const FormatException('自動隱藏對照不完整');
+    }
     result.personTokenById.addAll(
       Map<String, String>.from(json['person_tokens'] as Map? ?? const {}),
     );
@@ -382,21 +393,24 @@ class DiaryOrganization {
     result.generationReply = json['generation_reply'] as String?;
     result.generationInterrupted = json['generation_interrupted'] as bool;
     result.composer = json['composer'] as String;
-    result.composerRanges = (json['composer_ranges'] as List)
-        .map(
-          (r) => PrivateTextRange.fromJson(Map<String, dynamic>.from(r as Map)),
-        )
-        .toList();
+    result.composerRanges = privateRangesFromJson(
+      json['composer_ranges'] as List,
+    );
+    result.composerRevealed = privateRangesFromJson(json['composer_revealed']);
     validatePrivateRanges(result.source.markdownBody, result.hiddenRanges);
+    validatePrivateRanges(result.source.markdownBody, result.revealedRanges);
     validatePrivateRanges(result.composer, result.composerRanges);
+    validatePrivateRanges(result.composer, result.composerRevealed);
     if (result.composerBackup case final backup?) {
       validatePrivateRanges(backup.text, backup.ranges);
+      validatePrivateRanges(backup.text, backup.revealed);
     }
     result.persisted = true;
     result.validateBody(result.protectedSource);
     if (result.personTokenById.values.any(
           (token) =>
-              !token.startsWith('⟦P') || !result.originals.containsKey(token),
+              !privacyTokenHasKind(token, PrivacyTokenKind.person) ||
+              !result.originals.containsKey(token),
         ) ||
         result.tokenSurfaces.keys.any(
           (token) => !result.originals.containsKey(token),
@@ -416,48 +430,30 @@ String protectOrganizationText(
   List<PrivateTextRange> ranges,
   Map<String, String> originals, {
   List<PersonTextRange> personRanges = const [],
+  List<PrivateTextRange> ambiguousNames = const [],
+  List<PrivateTextRange> revealedRanges = const [],
   Map<String, String>? personTokenById,
   Map<String, List<String>>? tokenSurfaces,
+  Set<String>? automaticTokenIds,
+  Set<String>? revealedSecrets,
 }) {
-  final people = personTokenById ?? <String, String>{};
-  final output = StringBuffer();
-  var cursor = 0;
-  for (final range in mergePrivateRanges([
-    ...ranges,
-    for (final match in privacyTokenPattern.allMatches(text))
-      PrivateTextRange(match.start, match.end),
-  ], text.length)) {
-    output.write(text.substring(cursor, range.start));
-    final surface = text.substring(range.start, range.end);
-    PersonTextRange? person;
-    for (final candidate in personRanges) {
-      if (candidate.start == range.start && candidate.end == range.end) {
-        person = candidate;
-        break;
-      }
-    }
-    final String token;
-    if (person == null) {
-      token = nextPrivacyToken(originals.keys, prefix: 'S', reservedText: text);
-      originals[token] = surface;
-    } else {
-      token = privacyTokenForPerson(
-        personId: person.personId,
-        surface: surface,
-        tokenByPersonId: people,
-        originals: originals,
-        reservedText: text,
-      );
-      // 不同寫法依出現順序留著，還原時才不會收成同一串文字。
-      tokenSurfaces?.putIfAbsent(token, () => <String>[]).add(surface);
-    }
-    output.write(token);
-    cursor = range.end;
-  }
-  output.write(text.substring(cursor));
-  tokenSurfaces?.removeWhere((token, list) {
-    final canonical = originals[token];
-    return canonical != null && list.every((item) => item == canonical);
-  });
-  return output.toString();
+  final ledger = PrivacyLedger(
+    originals: originals,
+    personTokens: personTokenById,
+    surfaces: tokenSurfaces,
+    automaticTokens: automaticTokenIds,
+  );
+  final result = protectNamedText(
+    ledger.processor(),
+    text,
+    manualRanges: ranges,
+    people: personRanges,
+    ambiguous: ambiguousNames,
+    revealedRanges: revealedRanges,
+    distinctSelections: true,
+    protectLiteralTokens: true,
+  );
+  ledger.record(result);
+  revealedSecrets?.addAll(result.revealedSecrets);
+  return result.text;
 }

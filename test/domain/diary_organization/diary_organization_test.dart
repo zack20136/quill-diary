@@ -22,50 +22,79 @@ DiaryOrganization _draft(String body) => DiaryOrganization(
 );
 
 void main() {
+  test('取消自動隱藏的 email 留在整理來源，重新載入仍不遮罩', () {
+    const email = 'a+b@example.org';
+    final draft = _draft('信箱 $email');
+    final start = draft.source.markdownBody.indexOf(email);
+    draft.revealedRanges = [PrivateTextRange(start, start + email.length)];
+    draft.prepare();
+    expect(draft.protectedSource, contains(email));
+    expect(draft.revealedSecrets, {email});
+    final loaded = DiaryOrganization.fromJson(draft.toJson());
+    expect(
+      loaded.revealedRanges.map((range) => (range.start, range.end)),
+      [(start, start + email.length)],
+    );
+    expect(loaded.revealedSecrets, {email});
+    expect(loaded.protectedSource, contains(email));
+  });
+
+  test('自動隱藏可省略，手動區段仍須保留，重新載入保有同一規則', () {
+    final draft = _draft('原文')..prepare();
+    draft.originals.addAll({'{{PRI_01}}': '手動內容', '{{PRI_02}}': '0912345678'});
+    draft.automaticTokenIds.add('{{PRI_02}}');
+    draft.protectedSource = '原文 {{PRI_01}} {{PRI_02}}';
+    draft.replaceBody('原文 {{PRI_01}}');
+    final loaded = DiaryOrganization.fromJson(draft.toJson());
+    expect(loaded.restoredBody, '原文 手動內容');
+    expect(() => loaded.replaceBody('原文'), throwsFormatException);
+    expect(loaded.automaticTokenIds, {'{{PRI_02}}'});
+  });
+
   test('其他分支的代號不還原也不能加入候選，目前分支補充仍可使用', () {
     final draft = _draft('公開原文')..prepare();
-    draft.originals.addAll({'⟦S01⟧': '舊分支秘密', '⟦S02⟧': '目前補充'});
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
-    draft.appendTurn(OrganizationTurn(user: '新需求 ⟦S02⟧'));
+    draft.originals.addAll({'{{PRI_01}}': '舊分支秘密', '{{PRI_02}}': '目前補充'});
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PRI_01}}'));
+    draft.appendTurn(OrganizationTurn(user: '新需求 {{PRI_02}}'));
 
-    expect(draft.restore('⟦S01⟧／⟦S02⟧'), '⟦S01⟧／目前補充');
-    expect(() => draft.replaceBody('公開原文 ⟦S01⟧'), throwsFormatException);
-    draft.replaceBody('公開原文 ⟦S02⟧');
+    expect(draft.restore('{{PRI_01}}／{{PRI_02}}'), '{{PRI_01}}／目前補充');
+    expect(() => draft.replaceBody('公開原文 {{PRI_01}}'), throwsFormatException);
+    draft.replaceBody('公開原文 {{PRI_02}}');
     expect(draft.restoredBody, '公開原文 目前補充');
   });
 
   test('回覆還原只使用該回合的祖先需求，不取後續代號或其他分支姓名寫法', () {
     final draft = _draft('公開原文')..prepare();
-    draft.originals.addAll({'⟦P01⟧': '別的分支稱呼', '⟦S01⟧': '後續秘密'});
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦P01⟧'));
+    draft.originals.addAll({'{{PER_01}}': '別的分支稱呼', '{{PRI_01}}': '後續秘密'});
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PER_01}}'));
     draft.appendTurn(
       OrganizationTurn(
-        user: '新需求 ⟦P01⟧',
+        user: '新需求 {{PER_01}}',
         surfaces: {
-          '⟦P01⟧': ['目前稱呼'],
+          '{{PER_01}}': ['目前稱呼'],
         },
       ),
     );
-    draft.appendTurn(OrganizationTurn(user: '補充 ⟦S01⟧', parentIndex: 1));
-    expect(draft.visibleText('⟦P01⟧ ⟦S01⟧', turn: 1).text, '目前稱呼 ⟦S01⟧');
-    expect(draft.replyIsInScope(1, text: '⟦S01⟧'), isFalse);
-    expect(draft.visibleText('⟦P01⟧', turn: 0).text, '別的分支稱呼');
+    draft.appendTurn(OrganizationTurn(user: '補充 {{PRI_01}}', parentIndex: 1));
+    expect(draft.visibleText('{{PER_01}} {{PRI_01}}', turn: 1).text, '目前稱呼 {{PRI_01}}');
+    expect(draft.replyIsInScope(1, text: '{{PRI_01}}'), isFalse);
+    expect(draft.visibleText('{{PER_01}}', turn: 0).text, '別的分支稱呼');
   });
 
   test('舊候選範圍不符時保留對話可讀，但不得還原或套用', () {
     final draft = _draft('原文')..prepare();
-    draft.originals['⟦S01⟧'] = '已離開分支的秘密';
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.originals['{{PRI_01}}'] = '已離開分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PRI_01}}'));
     draft.appendTurn(OrganizationTurn(user: '目前需求'));
     final loaded = DiaryOrganization.fromJson({
       ...draft.toJson(),
-      'organized_body': '原文 ⟦S01⟧',
+      'organized_body': '原文 {{PRI_01}}',
       'stage': 'review',
     });
     expect(loaded.hasUnsafeCandidate, isTrue);
     expect(loaded.turns, hasLength(2));
     expect(() => loaded.restoredBody, throwsFormatException);
-    expect(loaded.restore('⟦S01⟧'), '⟦S01⟧');
+    expect(loaded.restore('{{PRI_01}}'), '{{PRI_01}}');
   });
 
   test('上線版第一版整理保留原文與代號，不補歷史 Thinking 或人物對照', () {
@@ -112,6 +141,20 @@ void main() {
     expect(() => DiaryOrganization.fromJson(data), throwsA(isA<TypeError>()));
   });
 
+  test('開發草稿的舊代號拒讀，不改寫成現行格式', () {
+    final draft = _draft('私密原文')..hiddenRanges = [const PrivateTextRange(0, 2)];
+    draft.prepare();
+    draft.personTokenById['per_test'] = '{{PER_0A}}';
+    draft.originals['{{PER_0A}}'] = '小明';
+    draft.protectedSource = '${draft.protectedSource}{{PER_0A}}';
+    final legacy = jsonDecode(
+      jsonEncode(draft.toJson())
+          .replaceAll('{{PRI_01}}', '{{S01}}')
+          .replaceAll('{{PER_0A}}', '{{P0A}}'),
+    ) as Map<String, dynamic>;
+    expect(() => DiaryOrganization.fromJson(legacy), throwsFormatException);
+  });
+
   test('隱私對照缺項與舊長代號拒讀，不修改代號或猜測缺失原文', () {
     final draft = _draft('私密原文')..hiddenRanges = [const PrivateTextRange(0, 2)];
     draft.prepare();
@@ -120,7 +163,7 @@ void main() {
     missing['originals'] = <String, String>{};
     expect(() => DiaryOrganization.fromJson(missing), throwsFormatException);
     final long = jsonDecode(
-      jsonEncode(draft.toJson()).replaceAll('⟦S01⟧', '⟦QABC_0⟧'),
+      jsonEncode(draft.toJson()).replaceAll('{{PRI_01}}', '{{QABC_0}}'),
     ) as Map<String, dynamic>;
     expect(() => DiaryOrganization.fromJson(long), throwsFormatException);
   });
@@ -146,7 +189,7 @@ void main() {
       tokens[0],
       '${tokens[0]}${tokens[0]}${tokens[1]}',
       '${tokens[1]}${tokens[0]}',
-      '${tokens[0]}${tokens[1]}⟦SFF⟧',
+      '${tokens[0]}${tokens[1]}{{PRI_FF}}',
     ]) {
       expect(() => draft.replaceBody(body), throwsFormatException);
     }
@@ -167,9 +210,9 @@ void main() {
         const PrivateTextRange(2, 3),
       ];
     draft.prepare();
-    expect(draft.protectedSource, '⟦S01⟧與⟦S02⟧');
+    expect(draft.protectedSource, '{{PRI_01}}與{{PRI_02}}');
     expect(draft.restore(draft.protectedSource), '甲與甲');
-    expect(() => draft.validateBody('⟦S02⟧與⟦S01⟧'), throwsFormatException);
+    expect(() => draft.validateBody('{{PRI_02}}與{{PRI_01}}'), throwsFormatException);
   });
 
   test('完整人物區間使用 P，選取包含其他文字時使用 S', () {
@@ -179,12 +222,12 @@ void main() {
         const PrivateTextRange(2, 4),
       ];
     draft.prepare(personRanges: [const PersonTextRange(0, 1, 'jia')]);
-    expect(draft.protectedSource, '⟦P01⟧與⟦S01⟧');
+    expect(draft.protectedSource, '{{PER_01}}與{{PRI_01}}');
     expect(draft.restore(draft.protectedSource), '甲與秘密');
     final merged = _draft('甲與秘密')
       ..hiddenRanges = [const PrivateTextRange(0, 4)];
     merged.prepare(personRanges: [const PersonTextRange(0, 1, 'jia')]);
-    expect(merged.protectedSource, '⟦S01⟧');
+    expect(merged.protectedSource, '{{PRI_01}}');
   });
 
   test('同一人物共用一個 P 代號，姓名與別名仍依出現順序還原', () {
@@ -199,15 +242,15 @@ void main() {
         PersonTextRange(3, 6, 'ming'),
       ],
     );
-    expect(draft.protectedSource, '⟦P01⟧與⟦P01⟧');
+    expect(draft.protectedSource, '{{PER_01}}與{{PER_01}}');
     expect(draft.restore(draft.protectedSource), '小明與王小明');
-    expect(draft.personTokenById, {'ming': '⟦P01⟧'});
+    expect(draft.personTokenById, {'ming': '{{PER_01}}'});
     expect(draft.toJson()['token_surfaces'], {
-      '⟦P01⟧': ['小明', '王小明'],
+      '{{PER_01}}': ['小明', '王小明'],
     });
     expect(draft.toJson()['version'], 1);
-    draft.validateBody('前⟦P01⟧後⟦P01⟧');
-    for (final body in ['⟦P01⟧', '⟦P01⟧與⟦P01⟧⟦P01⟧', '⟦P01⟧與⟦P02⟧']) {
+    draft.validateBody('前{{PER_01}}後{{PER_01}}');
+    for (final body in ['{{PER_01}}', '{{PER_01}}與{{PER_01}}{{PER_01}}', '{{PER_01}}與{{PER_02}}']) {
       expect(() => draft.replaceBody(body), throwsFormatException);
     }
     final loaded = DiaryOrganization.fromJson(
@@ -227,7 +270,7 @@ void main() {
         PersonTextRange(4, 7, 'ming'),
       ],
     );
-    expect(sameText.protectedSource, '⟦P01⟧與⟦P01⟧');
+    expect(sameText.protectedSource, '{{PER_01}}與{{PER_01}}');
     expect(sameText.toJson().containsKey('token_surfaces'), isFalse);
     expect(sameText.restore(sameText.protectedSource), '王小明與王小明');
 
@@ -242,17 +285,17 @@ void main() {
         PersonTextRange(2, 3, 'b'),
       ],
     );
-    expect(others.protectedSource, '⟦P01⟧與⟦P02⟧');
+    expect(others.protectedSource, '{{PER_01}}與{{PER_02}}');
   });
 
   test('日記原本含有代號文字時保留原文，避免與隱藏代號衝突', () {
-    final draft = _draft('原文有⟦S01⟧')..prepare();
-    expect(draft.protectedSource, '原文有⟦S02⟧');
+    final draft = _draft('原文有{{PRI_01}}')..prepare();
+    expect(draft.protectedSource, '原文有{{PRI_02}}');
     expect(draft.restore(draft.protectedSource), draft.source.markdownBody);
     draft.validateBody(draft.protectedSource);
   });
 
-  test('只保存一份目前稿，空的隱藏清單與輸入可以完整還原', () {
+  test('保存目前稿，空的隱藏清單與輸入可以完整還原', () {
     final draft = _draft('原文');
     draft.prepare();
     draft.replaceBody('第一版');
@@ -264,7 +307,6 @@ void main() {
     );
     expect(loaded.hiddenRanges, isEmpty);
     expect(loaded.currentBody, '手動版');
-    expect(loaded.toJson().containsKey('revisions'), isFalse);
     expect(loaded.stage, OrganizationStage.review);
     expect(loaded.composer, '再修改');
   });

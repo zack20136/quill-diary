@@ -231,8 +231,9 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
             _previewTagLabel = null;
           }
           _selectedTagKeys.removeAll(deleted);
-          if (fromSelection && deleted.length == labels.length)
+          if (fromSelection && deleted.length == labels.length) {
             _clearSelection();
+          }
         });
       }
     }

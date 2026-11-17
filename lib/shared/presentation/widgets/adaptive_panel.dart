@@ -73,7 +73,7 @@ class AdaptiveChoicePanel extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= PageStyle.wideBreakpoint;
     return LayoutBuilder(
       builder: (context, constraints) => ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.8),
+        constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.6),
         child: SafeArea(
           top: false,
           child: Padding(

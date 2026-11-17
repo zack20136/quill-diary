@@ -40,6 +40,17 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
   String? _original;
   String? _revised;
   List<OrganizationDiffLine> _lines = [];
+  final ScrollController _diffScroll = ScrollController();
+  final ScrollController _textScroll = ScrollController();
+
+  ScrollController get _panelScroll => _fullText ? _textScroll : _diffScroll;
+
+  @override
+  void dispose() {
+    _diffScroll.dispose();
+    _textScroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,114 +88,163 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
         !controller.busy &&
         !controller.conflict &&
         !controller.editorDraftExists;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 840),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: PageStyle.pageHorizontalPadding,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              widget.notices,
-              if (draft.generationReply case final reply?)
+    const EdgeInsets side = EdgeInsets.only(
+      right: PageStyle.pageHorizontalPadding,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(left: PageStyle.pageHorizontalPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: side,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                widget.notices,
+                if (draft.visibleGenerationReply case final reply?)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          l10n.organizationReplyTitle,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final style = Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                );
+                            final painter = TextPainter(
+                              text: TextSpan(text: reply, style: style),
+                              maxLines: 1,
+                              textDirection: Directionality.of(context),
+                              textScaler: MediaQuery.textScalerOf(context),
+                            )..layout(maxWidth: constraints.maxWidth);
+                            final overflow = painter.didExceedMaxLines;
+                            painter.dispose();
+                            final preview = Text(
+                              reply,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: style,
+                            );
+                            if (!overflow || widget.onShowReply == null) {
+                              return preview;
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: preview),
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    minimumSize: Size.zero,
+                                  ),
+                                  onPressed: widget.onShowReply,
+                                  child: Text(l10n.organizationShowReply),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        l10n.organizationReplyTitle,
-                        style: Theme.of(context).textTheme.titleSmall,
+                  child: AppSegmentedChoiceBar<bool>(
+                    choices: [
+                      AppSegmentChoice(
+                        value: false,
+                        label: l10n.organizationDiff,
+                        icon: Icons.difference_outlined,
                       ),
-                      Text(reply, maxLines: 2, overflow: TextOverflow.ellipsis),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: widget.onShowReply,
-                          child: Text(l10n.organizationShowReply),
-                        ),
+                      AppSegmentChoice(
+                        value: true,
+                        label: l10n.organizationFullText,
+                        icon: Icons.article_outlined,
                       ),
                     ],
+                    selected: _fullText,
+                    onSelected: (value) async =>
+                        setState(() => _fullText = value),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: AppSegmentedChoiceBar<bool>(
-                  choices: [
-                    AppSegmentChoice(
-                      value: false,
-                      label: l10n.organizationDiff,
-                      icon: Icons.difference_outlined,
-                    ),
-                    AppSegmentChoice(
-                      value: true,
-                      label: l10n.organizationFullText,
-                      icon: Icons.article_outlined,
-                    ),
-                  ],
-                  selected: _fullText,
-                  onSelected: (value) async =>
-                      setState(() => _fullText = value),
-                ),
-              ),
-              if (original == revised)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(l10n.organizationNoChanges),
-                ),
-              Expanded(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                    border: Border.all(color: cs.outlineVariant),
+                if (original == revised)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(l10n.organizationNoChanges),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                    child: _fullText
-                        ? SelectionArea(
-                            child: AppScrollView(
-                              key: const ValueKey('organization-full-text'),
-                              padding: const EdgeInsets.all(16),
-                              child: EditorMarkdownPreview(
-                                markdown: revised,
-                                typography: typography,
-                              ),
-                            ),
-                          )
-                        : OrganizationDiffView(
-                            lines: _lines,
-                            textStyle: typography
-                                .bodyTextStyle(Theme.of(context).textTheme)
-                                .copyWith(
-                                  fontSize: math.min(
-                                    typography.bodyFontSize,
-                                    16,
-                                  ),
-                                  height: 1.4,
-                                ),
-                          ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: _ReviewActions(
-                    onBack: controller.busy ? null : widget.onBack,
-                    onEdit: canModify ? widget.onEdit : null,
-                    onApply: canModify && original != revised
-                        ? widget.onApply
-                        : null,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          Expanded(
+            child: AppScrollbar(
+              controller: _panelScroll,
+              reserveGutter: true,
+              track: AppScrollbarTrack.frame,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+                  child: _fullText
+                      ? SelectionArea(
+                          child: SingleChildScrollView(
+                            key: const ValueKey('organization-full-text'),
+                            controller: _textScroll,
+                            padding: const EdgeInsets.all(16),
+                            child: EditorMarkdownPreview(
+                              markdown: revised,
+                              typography: typography,
+                            ),
+                          ),
+                        )
+                      : OrganizationDiffView(
+                          lines: _lines,
+                          scrollController: _diffScroll,
+                          textStyle: typography
+                              .bodyTextStyle(Theme.of(context).textTheme)
+                              .copyWith(
+                                fontSize: math.min(typography.bodyFontSize, 16),
+                                height: 1.4,
+                              ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: side,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: _ReviewActions(
+                  onBack: controller.busy ? null : widget.onBack,
+                  onEdit: canModify ? widget.onEdit : null,
+                  onApply: canModify && original != revised
+                      ? widget.onApply
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -195,33 +255,40 @@ class OrganizationDiffView extends StatelessWidget {
     super.key,
     required this.lines,
     required this.textStyle,
+    this.scrollController,
     this.panel = false,
+    this.shrinkWrap = false,
   });
   final List<OrganizationDiffLine> lines;
   final TextStyle textStyle;
 
+  /// 外層已有捲軸時傳入，清單不再自帶捲軸。
+  final ScrollController? scrollController;
+
   /// 嵌在有圓角的區塊裡時，捲軸畫在區塊內，並留出左右間距。
   final bool panel;
+
+  /// 包在外層捲動區時，清單跟著內容增高。
+  final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
     final list = _DiffLineList(lines: lines, textStyle: textStyle);
-    if (panel) return _DiffPanel(child: list);
+    if (panel) return _DiffPanel(child: list, shrinkWrap: shrinkWrap);
     return SelectionArea(
-      child: AppScrollableContent(
-        builder: (_, controller) => list.build(
-          context,
-          controller: controller,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-        ),
+      child: list.build(
+        context,
+        controller: scrollController!,
+        padding: const EdgeInsets.symmetric(vertical: 4),
       ),
     );
   }
 }
 
 class _DiffPanel extends StatefulWidget {
-  const _DiffPanel({required this.child});
+  const _DiffPanel({required this.child, required this.shrinkWrap});
   final _DiffLineList child;
+  final bool shrinkWrap;
 
   @override
   State<_DiffPanel> createState() => _DiffPanelState();
@@ -247,7 +314,10 @@ class _DiffPanelState extends State<_DiffPanel> {
           controller: _scroll,
           padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
           primary: false,
-          physics: const ClampingScrollPhysics(),
+          shrinkWrap: widget.shrinkWrap,
+          physics: widget.shrinkWrap
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
         ),
       ),
     );
@@ -264,6 +334,7 @@ class _DiffLineList {
     required ScrollController controller,
     required EdgeInsets padding,
     bool? primary,
+    bool shrinkWrap = false,
     ScrollPhysics? physics,
   }) {
     final cs = Theme.of(context).colorScheme;
@@ -275,6 +346,7 @@ class _DiffLineList {
     return ListView.builder(
       controller: controller,
       primary: primary,
+      shrinkWrap: shrinkWrap,
       physics: physics,
       key: const ValueKey('organization-diff-view'),
       padding: padding,

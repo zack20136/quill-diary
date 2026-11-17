@@ -11,6 +11,7 @@ class PersonaMaterial {
        isRaw = false,
        speakerRole = null,
        speaker = null,
+       speakerName = null,
        styleText = null;
 
   const PersonaMaterial.chat({
@@ -20,6 +21,7 @@ class PersonaMaterial {
     required this.speakerRole,
     required this.speaker,
     required this.styleText,
+    this.speakerName,
   }) : isDiary = false,
        isRaw = false;
 
@@ -30,6 +32,7 @@ class PersonaMaterial {
       date = '',
       speakerRole = null,
       speaker = null,
+      speakerName = null,
       styleText = null;
 
   final String label;
@@ -39,6 +42,9 @@ class PersonaMaterial {
   final bool isRaw;
   final PersonaSpeakerRole? speakerRole;
   final String? speaker;
+
+  /// 其他人在確認頁上的閱讀用名字。請求仍送 [speaker] 代號。
+  final String? speakerName;
   final String? styleText;
 
   bool get hasToneEvidence => isDiary

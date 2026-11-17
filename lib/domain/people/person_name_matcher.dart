@@ -52,10 +52,7 @@ final class PersonNameMatcher {
     return <PersonId>{...match(title), ...match(body)};
   }
 
-  /// 找出原文中非重疊的姓名命中區間（最長優先），供匯出匿名化使用。
-  ///
-  /// 掃描規則與 [match] 相同（trim、小寫、連續空白合併為單一空白），
-  /// 但 [start]/[end] 映射回原文字串的 UTF-16 code unit 索引。
+  /// 與 [match] 相同的掃描，座標映射回原文 UTF-16，並填入 [PersonNameSpan.candidateIds]。
   List<PersonNameSpan> findSpans(String text) {
     if (text.isEmpty || _root.children.isEmpty) {
       return const <PersonNameSpan>[];
@@ -81,6 +78,7 @@ final class PersonNameMatcher {
           start: scan.origStarts[index],
           end: scan.origEnds[endRune - 1],
           personId: ids.first,
+          candidateIds: Set.unmodifiable(ids),
         ),
       );
       index = endRune;
@@ -95,11 +93,16 @@ final class PersonNameSpan {
     required this.start,
     required this.end,
     required this.personId,
+    this.candidateIds = const {},
   });
 
   final int start;
   final int end;
   final PersonId personId;
+
+  /// 只有 [PersonNameMatcher.findSpans] 會填入。預設空集合時 [isAmbiguous] 為 false。
+  final Set<PersonId> candidateIds;
+  bool get isAmbiguous => candidateIds.length > 1;
 }
 
 final class _PersonNameTrieNode {

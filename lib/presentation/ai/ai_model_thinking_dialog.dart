@@ -151,137 +151,120 @@ class _AiModelThinkingDialogState extends State<_AiModelThinkingDialog> {
     return AiSettingsTheme(
       child: AppDialogShell(
         title: l10n.aiThinkingSettingsTitle,
-        content: SizedBox(
-          width: 560,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: (MediaQuery.sizeOf(context).height - 240).clamp(
-                120,
-                640,
+        content: AppScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(widget.model, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 12),
+              AppOptionField<String>(
+                key: const ValueKey('thinking-format'),
+                label: l10n.aiThinkingFormat,
+                value: _mode,
+                options: [
+                  ('omit', l10n.aiThinkingOmit),
+                  ('inherit', l10n.aiThinkingInherit),
+                  ('custom', l10n.aiThinkingCustom),
+                ],
+                onChanged: (mode) => setState(() => _mode = mode),
               ),
-            ),
-            child: AppScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l10n.aiThinkingFormatHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              if (editable) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(l10n.aiThinkingAdvancedOverrideHint),
+                ),
+                const SizedBox(height: 12),
+                AppOptionField<AiThinkingLevel>(
+                  key: const ValueKey('thinking-default'),
+                  label: l10n.aiThinkingDefault,
+                  value: _enabled.contains(_default) ? _default : null,
+                  options: [
+                    for (final level in AiThinkingLevel.values)
+                      if (_enabled.contains(level))
+                        (level, aiThinkingLabel(l10n, level)),
+                  ],
+                  onChanged: (value) => setState(() => _default = value),
+                ),
+                if (_invalidSelection)
                   Text(
-                    widget.model,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    l10n.aiThinkingSelectionRequired,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  AppOptionField<String>(
-                    key: const ValueKey('thinking-format'),
-                    label: l10n.aiThinkingFormat,
-                    value: _mode,
-                    options: [
-                      ('omit', l10n.aiThinkingOmit),
-                      ('inherit', l10n.aiThinkingInherit),
-                      ('custom', l10n.aiThinkingCustom),
-                    ],
-                    onChanged: (mode) => setState(() => _mode = mode),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      l10n.aiThinkingFormatHint,
+                const SizedBox(height: 12),
+                Column(
+                  key: const ValueKey('thinking-advanced'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      l10n.aiThinkingAdvanced,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.aiThinkingAdvancedHint,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ),
-                  if (editable) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(l10n.aiThinkingAdvancedOverrideHint),
-                    ),
-                    const SizedBox(height: 12),
-                    AppOptionField<AiThinkingLevel>(
-                      key: const ValueKey('thinking-default'),
-                      label: l10n.aiThinkingDefault,
-                      value: _enabled.contains(_default) ? _default : null,
-                      options: [
-                        for (final level in AiThinkingLevel.values)
-                          if (_enabled.contains(level))
-                            (level, aiThinkingLabel(l10n, level)),
-                      ],
-                      onChanged: (value) => setState(() => _default = value),
-                    ),
-                    if (_invalidSelection)
-                      Text(
-                        l10n.aiThinkingSelectionRequired,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
+                    for (final level in AiThinkingLevel.values) ...[
+                      CheckboxListTile(
+                        key: ValueKey('thinking-enabled-${level.name}'),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(aiThinkingLabel(l10n, level)),
+                        value: _enabled.contains(level),
+                        onChanged: (enabled) => setState(() {
+                          if (enabled!) {
+                            _enabled.add(level);
+                          } else {
+                            _enabled.remove(level);
+                          }
+                          if (!_enabled.contains(_default)) {
+                            _default = _enabled.firstOrNull;
+                          }
+                        }),
                       ),
-                    const SizedBox(height: 12),
-                    Column(
-                      key: const ValueKey('thinking-advanced'),
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          l10n.aiThinkingAdvanced,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.aiThinkingAdvancedHint,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        for (final level in AiThinkingLevel.values) ...[
-                          CheckboxListTile(
-                            key: ValueKey('thinking-enabled-${level.name}'),
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(aiThinkingLabel(l10n, level)),
-                            value: _enabled.contains(level),
-                            onChanged: (enabled) => setState(() {
-                              if (enabled!) {
-                                _enabled.add(level);
-                              } else {
-                                _enabled.remove(level);
-                              }
-                              if (!_enabled.contains(_default)) {
-                                _default = _enabled.firstOrNull;
-                              }
-                            }),
-                          ),
-                          if (_enabled.contains(level))
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: TextField(
-                                key: ValueKey('thinking-json-${level.name}'),
-                                controller: _controllers[level],
-                                minLines: 2,
-                                maxLines: null,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 12,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText:
-                                      'JSON · ${aiThinkingLabel(l10n, level)}',
-                                  errorText: _errors[level],
-                                  errorMaxLines: 6,
-                                ),
-                                onChanged: (_) => setState(() {}),
-                              ),
+                      if (_enabled.contains(level))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextField(
+                            key: ValueKey('thinking-json-${level.name}'),
+                            controller: _controllers[level],
+                            minLines: 2,
+                            maxLines: null,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
                             ),
-                        ],
-                      ],
-                    ),
+                            decoration: InputDecoration(
+                              labelText:
+                                  'JSON · ${aiThinkingLabel(l10n, level)}',
+                              errorText: _errors[level],
+                              errorMaxLines: 6,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                    ],
                   ],
-                  const SizedBox(height: 12),
-                  Text(l10n.aiThinkingPreview),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    preview,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                ),
+              ],
+              const SizedBox(height: 12),
+              Text(l10n.aiThinkingPreview),
+              const SizedBox(height: 6),
+              SelectableText(
+                preview,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
-            ),
+            ],
           ),
         ),
         actions: [

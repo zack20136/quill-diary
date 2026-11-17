@@ -5,7 +5,29 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 /// Dialog 的可見寬度尺寸。
 enum AppDialogSize { standard, compact }
 
-/// 將各種 dialog 的實際寬度統一為對應層級比例。
+/// 置中 dialog 卡片相對可用高度的上限。
+const double appDialogMaxHeightFactor = 0.9;
+
+/// 標準 dialog 卡片相對可用寬度的比例。
+const double appDialogStandardWidthFactor = 0.9;
+
+/// 卡片本身的約束。寬度由 [AppDialogWidth] 決定，這裡只管高度。
+///
+/// [fillHeight] 為 true 時，卡片直接用到這個上限，而不是跟著內容縮短。
+BoxConstraints appDialogConstraints(
+  BuildContext context, {
+  bool fillHeight = false,
+}) {
+  final double maxHeight =
+      MediaQuery.sizeOf(context).height * appDialogMaxHeightFactor;
+  return BoxConstraints(
+    minWidth: double.infinity,
+    minHeight: fillHeight ? maxHeight : 0,
+    maxHeight: maxHeight,
+  );
+}
+
+/// 將各種 dialog 的實際寬度統一為對應層級比例，高度最高為可用高度的 90%。
 class AppDialogWidth extends StatelessWidget {
   const AppDialogWidth({
     super.key,
@@ -17,15 +39,34 @@ class AppDialogWidth extends StatelessWidget {
   final AppDialogSize size;
 
   double get _widthFactor => switch (size) {
-    AppDialogSize.standard => 0.9,
+    AppDialogSize.standard => appDialogStandardWidthFactor,
     AppDialogSize.compact => 0.8,
   };
 
   @override
-  Widget build(BuildContext context) => FractionallySizedBox(
-    widthFactor: _widthFactor,
-    child: SizedBox(width: double.infinity, child: child),
-  );
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth * _widthFactor
+            : constraints.maxWidth;
+        final double height = constraints.maxHeight.isFinite
+            ? constraints.maxHeight * appDialogMaxHeightFactor
+            : constraints.maxHeight;
+        return Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: width,
+              maxWidth: width,
+              maxHeight: height,
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// 以一致的寬度規則建立 dialog route；需要持有 route 的呼叫端使用此函式。
@@ -95,27 +136,6 @@ abstract final class AppDialogInsets {
   );
 }
 
-/// Dialog 內容區的最高高度，與「如何匯出聊天紀錄」相同。
-double personaDialogBodyHeight(BuildContext context) =>
-    (MediaQuery.sizeOf(context).height -
-            MediaQuery.viewInsetsOf(context).bottom -
-            200)
-        .clamp(140.0, 640.0);
-
-/// 分身對話框內容的固定寬度與 [personaDialogBodyHeight]。
-class PersonaDialogBody extends StatelessWidget {
-  const PersonaDialogBody({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 560,
-    height: personaDialogBodyHeight(context),
-    child: child,
-  );
-}
-
 /// 標記 dialog 內容範圍，供捲軸把右側留白當作自己的欄位使用。
 class AppDialogScope extends InheritedWidget {
   const AppDialogScope({required super.child, super.key});
@@ -137,6 +157,7 @@ class AppDialogShell extends StatelessWidget {
     this.leading,
     this.actions = const <Widget>[],
     this.accent = false,
+    this.fillHeight = false,
     this.showClose = true,
     this.onClose,
     this.closeEnabled = true,
@@ -151,6 +172,9 @@ class AppDialogShell extends StatelessWidget {
   final List<Widget> actions;
   final bool accent;
 
+  /// 卡片直接用到可用高度的 90%。內容在這層裡捲動，短內容不會把卡片縮短。
+  final bool fillHeight;
+
   /// 必選或強制流程（例如新手導覽、還原金鑰）設為 false，不提供右上角關閉。
   final bool showClose;
 
@@ -159,6 +183,16 @@ class AppDialogShell extends StatelessWidget {
 
   /// 儲存或刪除中停用 X，避免操作進行到一半被關掉。
   final bool closeEnabled;
+
+  Widget _contentSlot(Widget child) {
+    final Widget scoped = AppDialogScope(child: child);
+    if (!fillHeight) return scoped;
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: scoped,
+    );
+  }
 
   Widget _actionBar() {
     if (leading == null) {
@@ -220,12 +254,12 @@ class AppDialogShell extends StatelessWidget {
     if (!accent) {
       return AlertDialog(
         insetPadding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: double.infinity),
+        constraints: appDialogConstraints(context, fillHeight: fillHeight),
         titlePadding: AppDialogInsets.title,
         contentPadding: AppDialogInsets.content,
         actionsPadding: AppDialogInsets.actions,
         title: titleRow,
-        content: AppDialogScope(child: content),
+        content: _contentSlot(content),
         actions: leading == null ? actions : <Widget>[_actionBar()],
       );
     }
@@ -236,7 +270,7 @@ class AppDialogShell extends StatelessWidget {
         Theme.of(context).textTheme.titleLarge!;
     return Dialog(
       insetPadding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: double.infinity),
+      constraints: appDialogConstraints(context, fillHeight: fillHeight),
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
@@ -263,16 +297,18 @@ class AppDialogShell extends StatelessWidget {
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Padding(
               padding: AppDialogInsets.title,
               child: DefaultTextStyle(style: titleStyle, child: titleRow),
             ),
-            Padding(
-              padding: AppDialogInsets.content,
-              child: AppDialogScope(child: content),
+            Flexible(
+              child: Padding(
+                padding: AppDialogInsets.content,
+                child: _contentSlot(content),
+              ),
             ),
             if (actions.isNotEmpty || leading != null)
               Padding(padding: AppDialogInsets.actions, child: _actionBar()),

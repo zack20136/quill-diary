@@ -112,9 +112,13 @@ void main() {
         ],
       };
       expect(
-        await client.reply('系統指令', const [
-          AiInputMessage(isUser: true, text: '合成內容'),
-        ]).join(),
+        await client
+            .reply(
+              await prepareAiTestRequest(client, '系統指令', const [
+                AiInputMessage(isUser: true, text: '合成內容'),
+              ]),
+            )
+            .join(),
         'OK',
       );
       final streamed = transport.streams.single;
@@ -212,9 +216,13 @@ void main() {
             ];
         }
         expect(
-          await client.reply('自訂完整提示詞', [
-            const AiInputMessage(isUser: true, text: '代號內容'),
-          ]).join(),
+          await client
+              .reply(
+                await prepareAiTestRequest(client, '自訂完整提示詞', [
+                  const AiInputMessage(isUser: true, text: '代號內容'),
+                ]),
+              )
+              .join(),
           '繁體',
         );
         final request = wire.streams.single;
@@ -263,7 +271,7 @@ void main() {
       transport: wire,
     );
     await expectLater(
-      client.reply('prompt', []).join(),
+      client.reply(await prepareAiTestRequest(client, 'prompt', [])).join(),
       throwsA(isA<AiFailure>()),
     );
   });
@@ -313,7 +321,7 @@ void main() {
       );
       expect(
         await client
-            .reply('prompt', const [])
+            .reply(await prepareAiTestRequest(client, 'prompt', const []))
             .join()
             .timeout(const Duration(seconds: 2)),
         '日記',
@@ -344,7 +352,7 @@ void main() {
     );
     await expectLater(
       client
-          .reply('prompt', const [])
+          .reply(await prepareAiTestRequest(client, 'prompt', const []))
           .join()
           .timeout(const Duration(seconds: 2)),
       throwsA(isA<AiFailure>()),
@@ -509,15 +517,23 @@ void main() {
       transport: wire,
     );
     await expectLater(
-      client.reply('prompt', [
-        AiInputMessage(
-          isUser: true,
-          text: '照片',
-          images: [
-            AiInputImage(id: 'photo', mimeType: 'image/png', bytes: testAiPng),
-          ],
-        ),
-      ]).join(),
+      client
+          .reply(
+            await prepareAiTestRequest(client, 'prompt', [
+              AiInputMessage(
+                isUser: true,
+                text: '照片',
+                images: [
+                  AiInputImage(
+                    id: 'photo',
+                    mimeType: 'image/png',
+                    bytes: testAiPng,
+                  ),
+                ],
+              ),
+            ]),
+          )
+          .join(),
       throwsA(
         isA<AiFailure>().having(
           (e) => e.code,
@@ -542,6 +558,9 @@ void main() {
       'key',
       transport: wire,
     );
-    expect(await client.reply('prompt', []).join(), '完整');
+    expect(
+      await client.reply(await prepareAiTestRequest(client, 'prompt', [])).join(),
+      '完整',
+    );
   });
 }

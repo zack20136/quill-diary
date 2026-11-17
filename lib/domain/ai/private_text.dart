@@ -115,6 +115,38 @@ List<PrivateTextRange> updatePrivateRanges(
   ], newText.length);
 }
 
+List<Map<String, int>> privateRangesToJson(Iterable<PrivateTextRange> ranges) =>
+    [for (final range in ranges) range.toJson()];
+
+List<PrivateTextRange> privateRangesFromJson(Object? value) => [
+  for (final item in value as List? ?? const [])
+    PrivateTextRange.fromJson(
+      item is Map<String, dynamic>
+          ? item
+          : Map<String, dynamic>.from(item as Map),
+    ),
+];
+
+bool samePrivateRanges(
+  List<PrivateTextRange> left,
+  List<PrivateTextRange> right,
+) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index].start != right[index].start ||
+        left[index].end != right[index].end) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool privateRangeOverlaps(
+  Iterable<PrivateTextRange> ranges,
+  int start,
+  int end,
+) => ranges.any((range) => start < range.end && end > range.start);
+
 /// 驗證保存的 UTF-16 座標，不裁切或重新推算損毀區間。
 void validatePrivateRanges(String text, Iterable<PrivateTextRange> ranges) {
   for (final range in ranges) {

@@ -11,16 +11,18 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/domain/ai/sensitive_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/persona/persona_privacy.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/persona/persona_store.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 class PersonaGenerationContext {
   PersonaGenerationContext({
@@ -463,12 +465,19 @@ class PersonaController extends ChangeNotifier {
   Future<void> updateImport(
     PersonaChatImport value, {
     Map<String, List<PrivateTextRange>>? hidden,
+    Map<String, List<PrivateTextRange>>? revealed,
     Set<String>? excluded,
-  }) => _commitImport(value, hidden: hidden, excluded: excluded);
+  }) => _commitImport(
+    value,
+    hidden: hidden,
+    revealed: revealed,
+    excluded: excluded,
+  );
 
   Future<void> _commitImport(
     PersonaChatImport value, {
     Map<String, List<PrivateTextRange>>? hidden,
+    Map<String, List<PrivateTextRange>>? revealed,
     Set<String>? excluded,
   }) async {
     if (busy || draft == null || session == null) return;
@@ -487,11 +496,17 @@ class PersonaController extends ChangeNotifier {
       source = PersonaChatSource(importId: imported.importId);
       nextDraft.chats.add(source);
     }
-    if (hidden != null) {
-      source.hidden
+    void replaceRanges(
+      Map<String, List<PrivateTextRange>> target,
+      Map<String, List<PrivateTextRange>> next,
+    ) {
+      target
         ..clear()
-        ..addAll(hidden);
+        ..addAll(next);
     }
+
+    if (hidden != null) replaceRanges(source.hidden, hidden);
+    if (revealed != null) replaceRanges(source.revealed, revealed);
     if (excluded != null) {
       source.excluded
         ..clear()
@@ -521,9 +536,8 @@ class PersonaController extends ChangeNotifier {
         currentDraft.chats.add(committed);
       } else {
         original.contentId = committed.contentId;
-        original.hidden
-          ..clear()
-          ..addAll(committed.hidden);
+        replaceRanges(original.hidden, committed.hidden);
+        replaceRanges(original.revealed, committed.revealed);
         original.excluded
           ..clear()
           ..addAll(committed.excluded);
@@ -617,21 +631,32 @@ class PersonaController extends ChangeNotifier {
         ],
       ].join('\n'),
     );
-    registry.replaceImportNames([
-      for (final chat in imports.values)
-        for (final speaker in chat.speakers)
-          if (speaker.id.startsWith('named-') &&
-              !(chat.isRaw &&
-                  speaker.role == PersonaSpeakerRole.personaSubject))
-            speaker.label,
-    ]);
-    registry.bindSubjectImportNames(personId, [
-      for (final chat in imports.values)
-        if (chat.isRaw)
-          for (final speaker in chat.speakers)
-            if (speaker.role == PersonaSpeakerRole.personaSubject)
-              speaker.label,
-    ]);
+    for (final chat in imports.values) {
+      registry.registerImport(chat);
+    }
+    Future<String> protectMaterial(
+      String text, {
+      required String scope,
+      List<PrivateTextRange> ranges = const [],
+      List<PrivateTextRange> revealedRanges = const [],
+      Map<String, String?> tokens = const {},
+      bool maskImportNames = false,
+    }) async {
+      final automatic = text.length > PersonaLimits.pieceCodeUnits
+          ? await detectSensitiveTextInBackground(text)
+          : null;
+      _ensure(epoch);
+      return registry.protect(
+        text,
+        scope: scope,
+        ranges: ranges,
+        revealedRanges: revealedRanges,
+        tokens: tokens,
+        maskImportNames: maskImportNames,
+        automaticRanges: automatic,
+      );
+    }
+
     final includedCards = {
       for (final kind in draft!.target.kinds)
         if (draft!.includeCurrent[kind] == true && record!.cards?[kind] != null)
@@ -641,10 +666,11 @@ class PersonaController extends ChangeNotifier {
     final blocks = <PersonaMaterial>[];
     for (final source in draft!.diaries) {
       final entry = entries[source.entryId]!;
-      final body = registry.protect(
+      final body = await protectMaterial(
         entry.markdownBody,
         scope: 'diary:${entry.id}',
         ranges: source.hiddenRanges,
+        revealedRanges: source.revealedRanges,
       );
       if (!personaHasVisibleText(body)) continue;
       blocks.add(
@@ -658,10 +684,11 @@ class PersonaController extends ChangeNotifier {
     for (final source in draft!.chats) {
       final chat = imports[source.importId]!;
       if (chat.isRaw) {
-        final body = registry.protect(
+        final body = await protectMaterial(
           chat.rawText,
           scope: '${chat.importId}:raw',
           ranges: chat.rawHidden,
+          revealedRanges: chat.rawRevealed,
           maskImportNames: true,
         );
         if (!personaHasVisibleText(body)) continue;
@@ -678,13 +705,15 @@ class PersonaController extends ChangeNotifier {
         final speaker = speakers[message.speakerId]!;
         if (source.excluded.contains(message.id)) continue;
         final ranges = source.hidden[message.id] ?? const [];
-        final body = registry.protect(
+        final body = await protectMaterial(
           message.text,
           scope: '${chat.importId}:${message.id}',
           ranges: ranges,
+          revealedRanges: source.revealed[message.id] ?? const [],
           maskImportNames: true,
         );
         if (!personaHasVisibleText(body)) continue;
+        final otherName = speaker.label.trim();
         blocks.add(
           PersonaMaterial.chat(
             label: '${l10n.personaChats} ${draft!.chats.indexOf(source) + 1}',
@@ -696,11 +725,17 @@ class PersonaController extends ChangeNotifier {
                 : speaker.role == PersonaSpeakerRole.personaSubject
                 ? registry.person(personId)
                 : speaker.id.startsWith('named-')
-                ? registry.anonymous('import:${speaker.label}')
+                ? registry.anonymous('import:${chat.importId}:${speaker.label}')
                 : registry.anonymous('${chat.importId}:${speaker.id}'),
+            speakerName:
+                speaker.role == PersonaSpeakerRole.user ||
+                    speaker.role == PersonaSpeakerRole.personaSubject ||
+                    otherName.isEmpty
+                ? null
+                : otherName,
             styleText: speaker.role != PersonaSpeakerRole.personaSubject
                 ? ''
-                : registry.protect(
+                : await protectMaterial(
                     message.text,
                     scope: '${chat.importId}:${message.id}',
                     ranges: mergePrivateRanges([
@@ -749,11 +784,12 @@ class PersonaController extends ChangeNotifier {
     final baseline = {
       for (final kind in modelTarget?.kinds ?? <PersonaCardKind>[])
         if (includedCards[kind] case final card?)
-          kind.name: registry.protect(
+          kind.name: await protectMaterial(
             card.text,
             scope: 'card:${kind.name}',
             tokens: card.tokens,
             ranges: draft!.cardHiddenRanges[kind] ?? [],
+            revealedRanges: draft!.cardRevealedRanges[kind] ?? [],
           ),
     };
     final instructions = [
@@ -761,10 +797,9 @@ class PersonaController extends ChangeNotifier {
         if (needsMemory) l10n.personaMemoryUpdatePrompt,
         if (needsTone) l10n.personaToneUpdatePrompt,
         'target: ${modelTarget.name}',
-        l10n.personaOutputPrompt(
+        l10n.personaOutputRules(
           PersonaLimits.memoryCodeUnits,
           PersonaLimits.toneCodeUnits,
-          personaHiddenText,
         ),
       ],
     ].join('\n\n');
@@ -783,13 +818,14 @@ class PersonaController extends ChangeNotifier {
       instructions: instructions,
       extractionInstructions: modelTarget == null
           ? ''
-          : '${l10n.personaExtractionPrompt(personaHiddenText)}\ntarget: ${modelTarget.name}',
+          : '${l10n.personaExtractionRules}\ntarget: ${modelTarget.name}',
       registry: registry,
       blocks: blocks,
       baseline: baseline,
       subject: subject,
       selectionSignature: selectionSignature,
     );
+    _ensure(epoch);
     completedRequests = 0;
     totalRequests = 0;
     draft!.step = PersonaStep.confirmation;
@@ -827,7 +863,6 @@ class PersonaController extends ChangeNotifier {
     String data, {
     bool cacheResult = true,
   }) async {
-    _ensureJob(context, epoch);
     if (personaRequestLength(instructions, data) >
         PersonaLimits.requestCodeUnits) {
       throw const FormatException('分身請求超過長度上限');
@@ -843,9 +878,29 @@ class PersonaController extends ChangeNotifier {
     totalRequests++;
     notifyListeners();
     final output = StringBuffer();
-    await for (final delta in _client!.reply(instructions, [
-      AiInputMessage(isUser: true, text: data),
-    ])) {
+    final request = await prepareAiRequest(
+      background: context.requiresBatching,
+      connection: context.connection!,
+      instructions: instructions,
+      messages: [AiInputMessage(isUser: true, text: data)],
+      originals: {
+        for (final token
+            in privacyTokenPattern
+                .allMatches('$instructions\n$data')
+                .map((match) => match[0]!))
+          token: token,
+      },
+      revealedSecrets: context.registry.revealedSecrets,
+    );
+    _ensureJob(context, epoch);
+    if (personaRequestLength(
+          request.systemPrompt,
+          request.messages.single.text,
+        ) >
+        PersonaLimits.requestCodeUnits) {
+      throw const FormatException('外送請求超過長度上限');
+    }
+    await for (final delta in _client!.reply(request)) {
       _ensureJob(context, epoch);
       output.write(delta);
       if (output.length > PersonaLimits.responseCodeUnits) {
@@ -1016,7 +1071,7 @@ class PersonaController extends ChangeNotifier {
     draft!.candidate![kind] = PersonaCandidate(
       text: text,
       tokens: {
-        for (final match in personaTokenPattern.allMatches(text))
+        for (final match in privacyTokenPattern.allMatches(text))
           if (previous.tokens.containsKey(match[0]))
             match[0]!: previous.tokens[match[0]],
       },

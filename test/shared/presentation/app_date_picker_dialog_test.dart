@@ -261,7 +261,11 @@ void main() {
           .onPressed,
       isNull,
     );
-    await tester.tap(find.byKey(const ValueKey('app-date-picker-month-2')));
+    final Finder february = find.byKey(
+      const ValueKey('app-date-picker-month-2'),
+    );
+    await tester.ensureVisible(february);
+    await tester.tap(february);
     await tester.pumpAndSettle();
     expect(tester.getSize(dayGrid).height, januaryGridHeight);
     expect(
@@ -315,7 +319,11 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('app-date-picker-period-button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('app-date-picker-month-2')));
+    final Finder february = find.byKey(
+      const ValueKey('app-date-picker-month-2'),
+    );
+    await tester.ensureVisible(february);
+    await tester.tap(february);
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('app-date-picker-day-29')),
@@ -385,9 +393,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('app-date-picker-year-chooser')));
     await tester.pumpAndSettle();
-    final GridView yearGrid = tester.widget(
-      find.byKey(const Key('app-date-picker-year-grid')),
-    );
+    final ScrollController yearScroll = tester
+        .widget<SingleChildScrollView>(
+          find.byKey(const Key('app-date-picker-year-view')),
+        )
+        .controller!;
     expect(
       tester
           .widget<TextButton>(
@@ -398,7 +408,7 @@ void main() {
           ?.resolve(<WidgetState>{}),
       isA<RoundedRectangleBorder>(),
     );
-    yearGrid.controller!.jumpTo(yearGrid.controller!.position.maxScrollExtent);
+    yearScroll.jumpTo(yearScroll.position.maxScrollExtent);
     await tester.pump();
     expect(
       find.byKey(ValueKey<String>('app-date-picker-year-$lastYear')),
@@ -431,10 +441,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('app-date-picker-today')), findsNothing);
 
-    final GridView yearGrid = tester.widget(
-      find.byKey(const Key('app-date-picker-year-grid')),
-    );
-    final ScrollController controller = yearGrid.controller!;
+    final ScrollController controller = tester
+        .widget<SingleChildScrollView>(
+          find.byKey(const Key('app-date-picker-year-view')),
+        )
+        .controller!;
     controller.jumpTo(0);
     await tester.pump();
     expect(
@@ -510,5 +521,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(result, 2026);
+  });
+
+  testWidgets('年份很少時卡片不會被拉到表面的 90%', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _pickerApp(
+        locale: appZhLocale,
+        onOpen: (BuildContext context) async {
+          await showAppYearPickerDialog(
+            context: context,
+            initialYear: 2026,
+            firstYear: 2026,
+            lastYear: 2026,
+          );
+        },
+      ),
+    );
+    await tester.tap(find.byKey(const Key('open-picker')));
+    await tester.pumpAndSettle();
+
+    final double cardHeight = tester
+        .getSize(
+          find
+              .descendant(
+                of: find.byType(AlertDialog),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .height;
+    expect(cardHeight, lessThan(400));
+    expect(tester.takeException(), isNull);
   });
 }

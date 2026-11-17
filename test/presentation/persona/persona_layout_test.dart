@@ -24,6 +24,7 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
 import 'package:quill_diary/presentation/ai/ai_message_view.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
@@ -218,49 +219,41 @@ void main() {
               label: '日記 ${i + 1}',
               date: entries[i].date.value,
               text:
-                  entries[i].markdownBody.replaceAll('小明', '⟦P01⟧') +
-                  personaHiddenText,
+                  '${entries[i].markdownBody.replaceAll('小明', '{{PER_01}}')}{{PRI_01}}',
             ),
         ],
         baseline: const {},
-        subject: '⟦P01⟧',
+        subject: '{{PER_01}}',
         selectionSignature: 'fixture',
       );
       controller.notifyListeners();
       await tester.pumpAndSettle();
       expect(find.textContaining('"source"'), findsNothing);
       expect(find.text(config.effectiveBaseUrl), findsNothing);
-      // 內嵌原文框會攔截置中拖曳，直接捲到底部讓日記段落建立。
+      // 內嵌原文框會攔截置中拖曳，從列表邊緣往下捲到日記段落。
+      final confirmationList = find.descendant(
+        of: find.byKey(const ValueKey('persona-confirmation')),
+        matching: find.byType(Scrollable),
+      );
       final confirmationScroll = tester.state<ScrollableState>(
-        find
-            .descendant(
-              of: find.byKey(const ValueKey('persona-confirmation')),
-              matching: find.byType(Scrollable),
-            )
-            .first,
+        confirmationList.first,
       );
-      confirmationScroll.position.jumpTo(
-        confirmationScroll.position.maxScrollExtent,
-      );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 40 && find.text('日記 1').evaluate().isEmpty; i++) {
+        await _dragListFromEdge(tester, confirmationList, -200);
+      }
       expect(find.text('日記 1'), findsOneWidget);
       final maskedMaterial = tester
           .widgetList<PrivateText>(find.byType(PrivateText))
           .firstWhere(
             (text) =>
-                text.text.contains('⟦P01⟧') &&
-                text.text.contains(personaHiddenText),
+                text.text.contains('{{PER_01}}') &&
+                text.text.contains('{{PRI_01}}'),
           );
       expect(
         maskedMaterial.ranges.map((range) => (range.start, range.end)).toList(),
-        [
-          ...privacyTokenRanges(maskedMaterial.text)
-              .map((range) => (range.start, range.end)),
-          (
-            maskedMaterial.text.indexOf(personaHiddenText),
-            maskedMaterial.text.length,
-          ),
-        ],
+        privacyTokenRanges(maskedMaterial.text)
+            .map((range) => (range.start, range.end))
+            .toList(),
       );
       confirmationScroll.position.jumpTo(0);
       await tester.pumpAndSettle();
@@ -281,12 +274,16 @@ void main() {
       );
       controller.draft!.candidate![PersonaCardKind.memory] = PersonaCandidate(
         text:
-            '2026-11-04｜與日記作者去圖書館借旅遊書。\n時間不明｜與⟦P01⟧散步後喝咖啡。\n${List.filled(20, '時間不明｜一起去公園散步。').join('\n')}',
-        tokens: {'⟦P01⟧': peer.id},
+            '2026-11-04｜與日記作者去圖書館借旅遊書。\n時間不明｜與{{PER_01}}散步後喝咖啡。\n${List.filled(20, '時間不明｜一起去公園散步。').join('\n')}',
+        tokens: {'{{PER_01}}': peer.id},
       );
       controller.notifyListeners();
       await tester.pumpAndSettle();
       final reviewList = find.byKey(const ValueKey('persona-review'));
+      expect(
+        tester.getTopLeft(find.text(testL10n.personaReviewHint)).dy,
+        lessThan(tester.getTopLeft(find.text(testL10n.personaBaseLabel)).dy),
+      );
       for (
         var i = 0;
         i < 40 && find.text(testL10n.personaMemory).evaluate().isEmpty;
@@ -299,7 +296,7 @@ void main() {
         find.byType(TextFormField).last,
       );
       expect(memoryEditor.controller!.text, contains('阿華'));
-      expect(memoryEditor.controller!.text, isNot(contains('⟦P01⟧')));
+      expect(memoryEditor.controller!.text, isNot(contains('{{PER_01}}')));
       memoryEditor.controller!.selection = const TextSelection.collapsed(
         offset: 0,
       );
@@ -374,11 +371,14 @@ void main() {
       await tester.tap(find.byTooltip(testL10n.aiHideSelection));
       await tester.pump();
       final rawName = saved.cards![PersonaCardKind.memory]!.text.indexOf(
-        '⟦P01⟧',
+        '{{PER_01}}',
       );
       final hidden =
           controller.draft!.cardHiddenRanges[PersonaCardKind.memory]!.single;
-      expect([hidden.start, hidden.end], [rawName, rawName + '⟦P01⟧'.length]);
+      expect(
+        [hidden.start, hidden.end],
+        [rawName, rawName + '{{PER_01}}'.length],
+      );
       await tester.tap(find.text(testL10n.personaChecked));
       await tester.pumpAndSettle();
     });
@@ -435,6 +435,87 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('試聊可以改選模型，下一則改用新模型', (tester) async {
+    final current = addModel(
+      const AiConnectionConfig(
+        provider: AiProvider.custom,
+        customProtocol: AiApiProtocol.ollamaChat,
+        baseUrl: 'http://127.0.0.1:11434',
+        customConnectionId: 'aic_trial_current',
+        displayName: '目前',
+      ),
+      'trial-current',
+    );
+    final other = addModel(
+      const AiConnectionConfig(
+        provider: AiProvider.custom,
+        customProtocol: AiApiProtocol.ollamaChat,
+        baseUrl: 'http://127.0.0.1:11435',
+        customConnectionId: 'aic_trial_other',
+        displayName: '另一組',
+      ),
+      'trial-other',
+    );
+    final settings = OverviewAiSettingsStore()
+      ..settings = AiConnectionSettings(
+        activeConnectionId: current.connectionId,
+        connections: {current.connectionId: current, other.connectionId: other},
+      );
+    final seen = <AiConnectionConfig>[];
+    await tester.pumpWidget(
+      widgetTestApp(
+        center: false,
+        wrapScaffold: false,
+        overrides: [
+          effectiveAppSessionProvider.overrideWith(
+            (ref) async => AppSessionState(
+              status: AppLockStatus.unlocked,
+              session: session,
+            ),
+          ),
+          userPreferencesProvider.overrideWithValue(_Preferences()),
+          aiSettingsStoreProvider.overrideWithValue(settings),
+          vaultRepositoryProvider.overrideWithValue(
+            PeopleChatRepository([person]),
+          ),
+          aiClientFactoryProvider.overrideWithValue((config, _) {
+            seen.add(config);
+            return FakeAiClient(config)..output = '換過模型的回覆';
+          }),
+        ],
+        child: PersonaTrialPage(
+          personId: person.id,
+          personaId: generatePersonaId(),
+          cards: personaCandidates(),
+          connection: current.captureRequestSnapshot(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getBottomLeft(find.byKey(const ValueKey('ai-model-tag'))).dy,
+      lessThan(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('persona-trial-composer')))
+            .dy,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('ai-model-tag')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('ai-model-option-aic_trial_other-trial-other')),
+    );
+    await tester.pumpAndSettle();
+    expect(settings.settings.activeConnectionId, other.connectionId);
+    await tester.enterText(find.byType(TextField), '換個模型聊聊');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pumpAndSettle();
+    expect(seen.single.model, other.model);
+    expect(seen.single.connectionId, other.connectionId);
+    expect(find.textContaining('換過模型的回覆'), findsOneWidget);
+  });
+
   testWidgets('試聊沿用聊天版面、聊天氣泡與獨立的輸入停止操作', (tester) async {
     tester.view.physicalSize = const Size(390, 850);
     tester.view.devicePixelRatio = 1;
@@ -473,13 +554,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    final showReply = Completer<void>();
     final gate = Completer<void>();
     client.response = () async* {
+      await showReply.future;
       yield '先看到這句';
       await gate.future;
       yield '不該出現';
     };
-    await tester.enterText(find.byType(TextField), '今天借了一本旅遊書。');
+    await tester.enterText(find.byType(TextField), '今天借了一本旅遊書。a+b@example.org');
     await tester.pump();
     expect(
       find.byKey(const ValueKey('persona-trial-composer')),
@@ -497,7 +580,26 @@ void main() {
     await tester.tap(send);
     await tester.pump();
     await tester.pump();
+    expect(find.textContaining('今天借了一本旅遊書'), findsOneWidget);
+    expect(find.byType(AiMessageBubble), findsWidgets);
+    expect(find.textContaining('先看到這句'), findsNothing);
+    showReply.complete();
+    await tester.pump();
+    await tester.pump();
     expect(find.byType(AiMessageView), findsWidgets);
+    final userMessage = tester
+        .widgetList<AiMessageView>(find.byType(AiMessageView))
+        .singleWhere((message) => message.isUser);
+    expect(
+      userMessage.privateRanges.map(
+        (range) => userMessage.text.substring(range.start, range.end),
+      ),
+      ['a+b@example.org'],
+    );
+    expect(
+      client.calls.single.messages.single.text,
+      isNot(contains('a+b@example.org')),
+    );
     expect(find.textContaining('今天借了一本旅遊書'), findsOneWidget);
     expect(find.textContaining('先看到這句'), findsOneWidget);
     expect(find.byIcon(Icons.stop_rounded), findsOneWidget);

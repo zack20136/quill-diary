@@ -9,6 +9,7 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
+import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
@@ -16,13 +17,15 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
+import 'package:quill_diary/presentation/ai/ai_chat_model_picker.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
-import 'package:quill_diary/presentation/ai/ai_message_view.dart';
+import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
+import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class PersonaTrialPage extends ConsumerStatefulWidget {
   const PersonaTrialPage({
@@ -42,23 +45,27 @@ class PersonaTrialPage extends ConsumerStatefulWidget {
 
 class _TrialMessage {
   _TrialMessage({
+    required this.id,
     required this.user,
     required this.visible,
     required this.outbound,
   });
 
+  final int id;
   final bool user;
   String visible;
   String outbound;
+  List<PrivateTextRange> ranges = const [];
 }
 
 class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     with WidgetsBindingObserver {
-  final input = TextEditingController();
+  final input = PrivateTextController();
   final _inputScroll = ScrollController();
   final _messagesScroll = ScrollController();
   late AiConnectionConfig _connection = widget.connection;
   final messages = <_TrialMessage>[];
+  var _nextMessageId = 0;
   ChatDiarySession? chat;
   UnlockedVaultSession? session;
   AiClient? client;
@@ -139,14 +146,34 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     if (state?.session == null || !state!.isUnlocked) return;
     session = state.session;
     final version = ++epoch;
+    final text = input.text;
+    input.clear();
+    final userMessage = _TrialMessage(
+      id: _nextMessageId++,
+      user: true,
+      visible: text,
+      outbound: '',
+    );
+    final reply = _TrialMessage(
+      id: _nextMessageId++,
+      user: false,
+      visible: '',
+      outbound: '',
+    );
     setState(() {
       busy = true;
       failed = false;
+      messages.add(userMessage);
+      messages.add(reply);
     });
+    _scrollToEnd();
     AiClient? requestClient;
     try {
       ensure(version);
-      if (!ref.read(aiEnabledProvider)) return;
+      if (!ref.read(aiEnabledProvider)) {
+        messages.remove(reply);
+        return;
+      }
       final settings = await ref.read(aiSettingsStoreProvider).read(session!);
       ensure(version);
       final people = await ref
@@ -162,8 +189,13 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
         date: DateOnly.fromDateTime(DateTime.now()).value,
       );
       final privacy = ChatDiaryPrivacyProcessor(chat!, people);
-      final text = input.text;
       final protected = privacy.protect(text);
+      userMessage.outbound = protected;
+      userMessage.ranges = [
+        ...privacy.lastRequestAutomaticRanges,
+        for (final range in privacy.lastRequestPersonRanges)
+          PrivateTextRange(range.start, range.end),
+      ];
       final prompt = buildPersonaConversationPrompt(
         personId: widget.personId,
         personaId: widget.personaId,
@@ -183,25 +215,28 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
       requestClient = ref.read(aiClientFactoryProvider)(_connection, key);
       ensure(version);
       client = requestClient;
-      input.clear();
-      final reply = _TrialMessage(user: false, visible: '', outbound: '');
-      messages.add(
-        _TrialMessage(user: true, visible: text, outbound: protected),
-      );
-      messages.add(reply);
       final history = [
         for (final message in messages)
           if (message.outbound.isNotEmpty)
             AiInputMessage(isUser: message.user, text: message.outbound),
       ];
       final output = StringBuffer();
-      await for (final delta in requestClient.reply(prompt, history)) {
+      final request = await prepareAiRequest(
+        connection: _connection,
+        instructions: prompt,
+        messages: history,
+        originals: chat!.originalTextByToken,
+        revealedSecrets: privacy.revealedSecrets,
+      );
+      privacy.registerRestoreTokensFromRequest(request.automaticTokenIds);
+      await for (final delta in requestClient.reply(request)) {
         ensure(version);
         output.write(delta);
         if (output.length > PersonaLimits.responseCodeUnits) {
           throw const FormatException('試聊回覆過長');
         }
         setState(() => reply.visible = privacy.restore(output.toString()));
+        _scrollToEnd();
       }
       ensure(version);
       if (output.isEmpty) throw const FormatException('試聊沒有回覆');
@@ -222,61 +257,79 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     }
   }
 
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_messagesScroll.hasClients) return;
+      _messagesScroll.jumpTo(_messagesScroll.position.maxScrollExtent);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final theme = Theme.of(context);
     final bodyStyle = watchPersonalizationPreferences(ref).typography
         .bodyTextStyle(theme.textTheme);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${l.personaTrial} · ${l.personaTitle}'),
-        leading: CloseButton(onPressed: () => Navigator.pop(context)),
-      ),
-      body: SafeArea(
-        child: backgrounded
-            ? const Center(child: Icon(Icons.lock_outline))
-            : Column(
-                children: [
-                  _header(l, theme),
-                  if (failed) _errorNotice(l, theme),
-                  Expanded(
-                    child: messages.isEmpty
-                        ? _emptyState(l, theme)
-                        : AppScrollbar(
+    return AppDialogShell(
+      fillHeight: true,
+      title: '${l.personaTrial} · ${l.personaTitle}',
+      content: backgrounded
+          ? const Center(child: Icon(Icons.lock_outline))
+          : Column(
+              children: [
+                _header(l, theme),
+                if (failed) _errorNotice(l, theme),
+                Expanded(
+                  child: messages.isEmpty
+                      ? _emptyState(l, theme)
+                      : AppScrollbar(
+                          controller: _messagesScroll,
+                          reserveGutter: true,
+                          child: ListView.builder(
                             controller: _messagesScroll,
-                            child: ListView.builder(
-                              controller: _messagesScroll,
-                              physics: appBouncingScrollPhysics,
-                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                              itemCount: messages.length,
-                              itemBuilder: (_, index) => Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: AiMessageView(
-                                  text: messages[index].visible,
-                                  isUser: messages[index].user,
-                                  format: messages[index].user
-                                      ? AiMessageFormat.plainText
-                                      : AiMessageFormat.markdown,
-                                ),
-                              ),
-                            ),
+                            physics: appBouncingScrollPhysics,
+                            padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
+                            itemCount: messages.length,
+                            itemBuilder: (_, index) {
+                              final message = messages[index];
+                              final pending =
+                                  !message.user &&
+                                  message.visible.isEmpty &&
+                                  busy &&
+                                  index == messages.length - 1;
+                              return AiMessageBubble(
+                                id: 'trial-${message.id}',
+                                text: message.visible,
+                                isUser: message.user,
+                                privateRanges: message.ranges,
+                                pending: pending,
+                                canAct: !busy,
+                              );
+                            },
                           ),
+                        ),
+                ),
+                AiConnectionSetupNotice(
+                  connection: _connection,
+                  onOpenSettings: busy ? null : _settings,
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 4),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AiChatModelPicker(
+                    current: _connection,
+                    enabled: !busy && ref.watch(aiEnabledProvider),
+                    onSelected: _selectModel,
                   ),
-                  AiConnectionSetupNotice(
-                    connection: _connection,
-                    onOpenSettings: busy ? null : _settings,
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  ),
-                  _composer(l, theme, bodyStyle),
-                ],
-              ),
-      ),
+                ),
+                _composer(l, theme, bodyStyle),
+              ],
+            ),
     );
   }
 
   Widget _header(AppLocalizations l, ThemeData theme) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+    padding: const EdgeInsets.only(bottom: 4),
     child: Material(
       color: theme.colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(20),
@@ -294,26 +347,11 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l.personaTrialShortHint,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    aiChatModelLabel(l, _connection),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: Text(
+                l.personaTrialShortHint,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             IconButton(
@@ -328,7 +366,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
   );
 
   Widget _errorNotice(AppLocalizations l, ThemeData theme) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+    padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       children: [
         Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
@@ -371,7 +409,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
 
   Widget _composer(AppLocalizations l, ThemeData theme, TextStyle bodyStyle) =>
       Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+        padding: const EdgeInsets.only(top: 6),
         child: ValueListenableBuilder<TextEditingValue>(
           valueListenable: input,
           builder: (context, value, _) {
@@ -437,6 +475,41 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
           },
         ),
       );
+
+  Future<void> _selectModel(ChatModelOption option) async {
+    if (busy || option.isCurrentSnapshot) return;
+    final openingSession = ref.read(effectiveAppSessionProvider).value?.session;
+    final openingEpoch = epoch;
+    if (openingSession == null) return;
+    final stored = await ref.read(aiSettingsStoreProvider).read(openingSession);
+    if (!mounted ||
+        openingEpoch != epoch ||
+        busy ||
+        !identical(
+          ref.read(effectiveAppSessionProvider).value?.session,
+          openingSession,
+        )) {
+      return;
+    }
+    final next = connectionForSelectedModel(stored.connection, option);
+    if (next == null) return;
+    final snapshot = next.captureRequestSnapshot();
+    setState(() {
+      _connection = snapshot;
+      chat?.connectionConfig = snapshot;
+    });
+    if (!mounted ||
+        openingEpoch != epoch ||
+        !identical(
+          ref.read(effectiveAppSessionProvider).value?.session,
+          openingSession,
+        )) {
+      return;
+    }
+    await ref
+        .read(aiSettingsStoreProvider)
+        .updateActiveConnection(openingSession, next);
+  }
 
   Future<void> _settings() async {
     final openingSession = ref.read(effectiveAppSessionProvider).value?.session;

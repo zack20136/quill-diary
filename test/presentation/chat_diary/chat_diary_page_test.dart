@@ -41,26 +41,6 @@ import '../../helpers/ai/people_chat_repository.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
-/// 預覽清單變矮後，展開系統提示詞會把後面的列移出建構範圍。
-Future<void> revealDialogText(
-  WidgetTester tester,
-  Finder dialog,
-  String text,
-) async {
-  final target = find.descendant(of: dialog, matching: find.text(text));
-  final list = tester.widget<ListView>(
-    find.descendant(of: dialog, matching: find.byType(ListView)),
-  );
-  final position = list.controller!.position;
-  for (var i = 0; i < 12 && target.evaluate().isEmpty; i++) {
-    final extent = position.maxScrollExtent;
-    if (extent <= position.pixels) break;
-    position.jumpTo(extent);
-    await tester.pump();
-  }
-  expect(target, findsOneWidget);
-}
-
 final Finder _previewBody = find.byWidgetPredicate(
   (widget) => widget is Text && widget.textSpan != null,
 );
@@ -290,7 +270,7 @@ void main() {
       await tester.tap(find.byTooltip('送出'));
       await tester.pumpAndSettle();
       expect(client.calls.single.messages.last.text, isNot(contains('阿明')));
-      expect(client.calls.single.messages.last.text, contains('⟦P'));
+      expect(client.calls.single.messages.last.text, contains('{{PER'));
       expect(container.exists(peopleMentionStatsMapProvider), isFalse);
       await tester.pumpWidget(const SizedBox());
     });
@@ -334,7 +314,7 @@ void main() {
         id: 'user',
         isUser: true,
         text: '王小明來了',
-        outboundText: '⟦P01⟧來了',
+        outboundText: '{{PER_01}}來了',
         personRanges: const [PersonTextRange(0, 3, 'person-1')],
       );
       chat.appendMessage(message);
@@ -808,7 +788,7 @@ void main() {
       expect(find.text(testL10n.chatDiaryPrivateNotesHint), findsNothing);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(360, 0.1));
       expect(
-        find.textContaining(testL10n.chatDiaryConversationRulesPrompt),
+        find.textContaining(testL10n.chatDiaryConversationRules),
         findsNothing,
       );
       final preview = find.byType(AlertDialog);
@@ -821,7 +801,10 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.descendant(of: preview, matching: find.textContaining('公開⟦S')),
+        find.descendant(
+          of: preview,
+          matching: find.textContaining('公開{{PRI_01}}'),
+        ),
         findsOneWidget,
       );
       final previewText = tester.widget<PrivateText>(
@@ -835,16 +818,19 @@ void main() {
       await tester.tap(find.text('聊天系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining(testL10n.chatDiaryConversationRulesPrompt),
+        find.textContaining(testL10n.chatDiaryConversationRules),
         findsOneWidget,
       );
       await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
+        find.textContaining(testL10n.chatDiaryGenerationRules),
         findsOneWidget,
       );
-      await revealDialogText(tester, preview, '尚未送出');
+      expect(
+        find.descendant(of: preview, matching: find.text('尚未送出')),
+        findsOneWidget,
+      );
       await tester.tap(find.text('關閉'));
       await tester.pumpAndSettle();
       expect(client.calls, isEmpty);
@@ -978,10 +964,13 @@ void main() {
       await tester.tap(find.text('生成日記系統提示詞'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining(testL10n.chatDiaryGenerationRulesPrompt),
+        find.textContaining(testL10n.chatDiaryGenerationRules),
         findsOneWidget,
       );
-      await revealDialogText(tester, dialog, '尚未送出');
+      expect(
+        find.descendant(of: dialog, matching: find.text('尚未送出')),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
@@ -1027,7 +1016,7 @@ void main() {
       }
       expect(
         (tester.widget<Text>(texts.first)).textSpan!.toPlainText(),
-        contains('⟦S'),
+        contains('{{PRI_01}}'),
       );
       expect(
         (tester.widget<Text>(texts.last)).textSpan!.toPlainText(),
@@ -1087,7 +1076,7 @@ void main() {
           id: 'user',
           isUser: true,
           text: '想留下的秘密',
-          outboundText: '想留下的⟦S01⟧',
+          outboundText: '想留下的{{PRI_01}}',
         ),
       );
       chat.appendMessage(
@@ -1820,6 +1809,10 @@ void main() {
       }
       final controller = container.read(chatDiaryControllerProvider(chat.id));
       expect(controller.busy, isTrue);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
       final l10n = tester.element(find.byType(ChatDiaryPage)).l10n;
       for (final element in find.byType(IconButton).evaluate()) {
         if (element.findAncestorWidgetOfExactType<BackButton>() == null) {

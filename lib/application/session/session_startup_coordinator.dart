@@ -330,7 +330,7 @@ class SessionStartupCoordinator {
       await repository.initialize();
       final UnlockedVaultSession session = await repository
           .resumeUnlockedSessionAfterRestore(priorSession);
-      await repository.ensureIndexReady(session);
+      await repository.ensureIndexReady(session, reconcileEntryFiles: false);
       await repository.rebuildIndex(session);
       final AppSessionState next = AppSessionState(
         status: AppLockStatus.unlocked,

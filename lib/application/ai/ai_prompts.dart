@@ -20,7 +20,7 @@ String resolveChatDiaryPrompt(
   final l10n = lookupAppLocalizations(language.materialLocale);
   final conversationRules =
       '${l10n.chatDiaryConversationRoleLine}\n\n'
-      '${l10n.chatDiaryConversationRulesPrompt}';
+      '${l10n.chatDiaryConversationRules}';
   final generationGuidance =
       settings.generationOverride ?? l10n.chatDiaryGenerationGuidancePrompt;
   return switch (purpose) {
@@ -33,11 +33,10 @@ String resolveChatDiaryPrompt(
       settings.personalityOverride ?? l10n.chatDiaryDefaultPersonalityPrompt,
     ChatDiaryPromptPurpose.conversationGuidance =>
       settings.guidanceOverride ?? l10n.chatDiaryConversationGuidancePrompt,
-    ChatDiaryPromptPurpose.generationRules =>
-      l10n.chatDiaryGenerationRulesPrompt,
+    ChatDiaryPromptPurpose.generationRules => l10n.chatDiaryGenerationRules,
     ChatDiaryPromptPurpose.generationGuidance => generationGuidance,
     ChatDiaryPromptPurpose.generation =>
-      '${l10n.chatDiaryGenerationRulesPrompt}\n\n$generationGuidance',
+      '${l10n.chatDiaryGenerationRules}\n\n$generationGuidance',
   };
 }
 
@@ -67,5 +66,5 @@ String resolveDiaryOrganizationInstructions({
     language: language,
     settings: settings,
   );
-  return '${l10n.organizationRulesPrompt}\n\n$stage\n\n$prompt';
+  return '${l10n.organizationRules}\n\n$stage\n\n$prompt';
 }

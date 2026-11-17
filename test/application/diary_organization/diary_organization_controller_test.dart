@@ -13,6 +13,7 @@ import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/diary_organization/failing_organization_store.dart';
 import '../../helpers/diary_organization/organization_test_scope.dart';
@@ -28,6 +29,11 @@ void main() {
     await scope.dispose();
   });
 
+  Future<void> recreateScopeWithPerson() async {
+    await scope.dispose();
+    scope = await OrganizationTestScope.create(withPerson: true);
+  }
+
   Future<void> send(String message) async {
     if (scope.controller.draft!.stage == OrganizationStage.privacy) {
       await scope.controller.startChat();
@@ -35,6 +41,23 @@ void main() {
     scope.controller.updateComposer(message, []);
     await scope.controller.sendMessage();
   }
+
+  test('取消自動隱藏的 email 會明文送出，並留在草稿', () async {
+    const email = 'a+b@example.org';
+    const text = '信箱 $email';
+    final start = text.indexOf(email);
+    final controller = scope.controller;
+    await controller.startChat();
+    controller.updateComposer(text, const [], [
+      PrivateTextRange(start, start + email.length),
+    ]);
+    await controller.sendMessage();
+    final turn = controller.draft!.turns.single.user;
+    expect(turn, contains(email));
+    final loaded = DiaryOrganization.fromJson(controller.draft!.toJson());
+    expect(loaded.revealedSecrets, contains(email));
+    expect(loaded.turns.single.user, contains(email));
+  });
 
   test('另一個需求版本的私密代號不能出現在生成結果', () async {
     final controller = scope.controller;
@@ -78,8 +101,9 @@ void main() {
       controller.draft!
           .visibleText(controller.draft!.turns[index].reply, turn: index)
           .text,
-      token,
+      controller.draft!.turns[index].reply,
     );
+    expect(controller.draft!.turns[index].reply, isNot(contains('舊秘密')));
     release.complete();
     await sending;
     expect(controller.error, AiErrorCode.response);
@@ -105,26 +129,28 @@ void main() {
     expect(scope.controller.draft!.organizedBody, isNull);
   });
 
-  test('生成說明含代號時只替換說明，有效內文仍保留', () async {
+  test('生成說明含代號時保存原始回覆，有效內文仍保留', () async {
     await send('修順');
-    scope.client.output = jsonEncode({'reply': '限制 ⟦SFF⟧', 'body': '合法整理稿'});
+    scope.client.output = jsonEncode({
+      'reply': '限制 {{PRI_FF}}',
+      'body': '合法整理稿',
+    });
     await scope.controller.generateDraft();
     expect(scope.controller.error, isNull);
     expect(scope.controller.draft!.organizedBody, '合法整理稿');
-    expect(
-      scope.controller.draft!.generationReply,
-      testL10n.organizationReplyUnavailable,
-    );
+    final reply = scope.controller.draft!.generationReply;
+    expect(reply, startsWith('限制 {{PRI_'));
+    expect(reply, isNot(contains('{{PRI_FF}}')));
   });
 
   test('越界舊候選收尾保存被拒絕時，鎖定仍立即清除畫面資料', () async {
     final controller = scope.controller;
     await controller.startChat();
     final draft = controller.draft!;
-    draft.originals['⟦S01⟧'] = '其他分支的秘密';
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.originals['{{PRI_01}}'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PRI_01}}'));
     draft.appendTurn(OrganizationTurn(user: '目前需求'));
-    draft.organizedBody = '${draft.protectedSource} ⟦S01⟧';
+    draft.organizedBody = '${draft.protectedSource} {{PRI_01}}';
     draft.stage = OrganizationStage.review;
     expect(controller.lock, returnsNormally);
     expect(controller.draft, isNull);
@@ -164,6 +190,7 @@ void main() {
       expect(controller.draft!.protectedSource, isNot(startsWith('今天和王小明')));
       expect(controller.canGenerate, isFalse);
     });
+
     test('快速需求直接送出，但保留尚未送出的文字與隱藏標記', () async {
       final controller = scope.controller;
       await controller.startChat();
@@ -176,16 +203,18 @@ void main() {
       controller.updateComposer('', []);
       expect(controller.canGenerate, isTrue);
     });
-    test('開始整理後新增的人物也會隱藏，切換隱藏設定會更新預覽與送出內容', () async {
+
+    test('開始整理後新增的人物在隱藏開啟時直接換成代號，關閉時保留原名', () async {
       final controller = scope.controller;
       await controller.startChat();
       await scope.harness.repository.createPerson(
         scope.setup.session,
         PersonDraft(name: '林新同學', aliases: ['新同學']),
       );
-      controller.updateComposer('保留林新同學說的話', []);
+      const text = '保留林新同學說的話';
+      controller.updateComposer(text, []);
       final preview = (await controller.previewRequest())!;
-      expect(preview.turns.single.text, contains('⟦P'));
+      expect(preview.turns.single.text, contains('{{PER'));
       expect(preview.turns.single.text, isNot(contains('林新同學')));
       await controller.sendMessage();
       expect(
@@ -198,30 +227,39 @@ void main() {
       await controller.sendMessage();
       expect(scope.client.calls.last.messages.last.text, '林新同學原名');
     });
+
     test('人物隱藏用 P、其他選取用 S，取消的姓名不重新隱藏', () async {
-      await scope.dispose();
-      scope = await OrganizationTestScope.create(withPerson: true);
+      await recreateScopeWithPerson();
       final controller = scope.controller;
       controller.updatePrivacy([
         const PrivateTextRange(9, 12),
         const PrivateTextRange(13, 15),
       ]);
       await controller.startChat();
-      expect(controller.draft!.protectedSource, '今天和王小明散步。⟦P01⟧說⟦S01⟧很好。');
+      expect(
+        controller.draft!.protectedSource,
+        '今天和{{PER_01}}散步。{{PER_01}}說{{PRI_01}}很好。',
+      );
       controller.updateComposer('王小明和私事', [
         const PrivateTextRange(0, 3),
         const PrivateTextRange(4, 6),
       ]);
       await controller.sendMessage();
-      expect(scope.client.calls.single.messages.single.text, '⟦P01⟧和⟦S02⟧');
+      expect(
+        scope.client.calls.single.messages.single.text,
+        '{{PER_01}}和{{PRI_02}}',
+      );
       await controller.persist();
       controller.lock();
       await controller.load(scope.setup.session);
-      expect(controller.draft!.protectedSource, '今天和王小明散步。⟦P01⟧說⟦S01⟧很好。');
+      expect(
+        controller.draft!.protectedSource,
+        '今天和{{PER_01}}散步。{{PER_01}}說{{PRI_01}}很好。',
+      );
     });
-    test('尚未確認的預選會跟著最新隱藏開關更新', () async {
-      await scope.dispose();
-      scope = await OrganizationTestScope.create(withPerson: true);
+
+    test('隱藏開關不改寫手動區間，開始整理時才套用目前的人名規則', () async {
+      await recreateScopeWithPerson();
       scope.settings.hidePersonNames = false;
       scope.controller.lock();
       await scope.controller.load(scope.setup.session);
@@ -229,19 +267,19 @@ void main() {
 
       scope.settings.hidePersonNames = true;
       await scope.controller.refreshPrivacyPreset();
-      expect(scope.controller.draft!.hiddenRanges, isNotEmpty);
+      expect(scope.controller.draft!.hiddenRanges, isEmpty);
 
       scope.settings.hidePersonNames = false;
       scope.controller.lock();
       await scope.controller.load(scope.setup.session);
       scope.settings.hidePersonNames = true;
       await scope.controller.startChat();
-      expect(scope.controller.draft!.protectedSource, contains('⟦P'));
+      expect(scope.controller.draft!.protectedSource, contains('{{PER'));
       expect(scope.controller.draft!.protectedSource, isNot(contains('王小明')));
     });
-    test('已確認或已保存的隱藏區間不會因開關重算', () async {
-      await scope.dispose();
-      scope = await OrganizationTestScope.create(withPerson: true);
+
+    test('已保存的手動區間不會因開關重算，開始整理仍依目前開關替換人名', () async {
+      await recreateScopeWithPerson();
       final controller = scope.controller;
       controller.updatePrivacy([const PrivateTextRange(0, 2)]);
       scope.settings.hidePersonNames = false;
@@ -256,8 +294,10 @@ void main() {
       await controller.refreshPrivacyPreset();
       expect(controller.draft!.hiddenRanges, isEmpty);
       await controller.startChat();
-      expect(controller.draft!.protectedSource, contains('王小明'));
+      expect(controller.draft!.protectedSource, contains('{{PER'));
+      expect(controller.draft!.protectedSource, isNot(contains('王小明')));
     });
+
     test('保存全部取消的標記後恢復，不重新套用人物預選', () async {
       scope.controller.updatePrivacy([const PrivateTextRange(0, 2)]);
       scope.controller.updatePrivacy([]);
@@ -312,6 +352,7 @@ void main() {
       await controller.sendMessage();
       expect(scope.client.calls.last.prompt, followup.systemPrompt);
     });
+
     test('生成途中可預覽本次請求，停止後晚到的預覽不回傳也不報錯', () async {
       await send('修順');
       final controller = scope.controller;
@@ -341,6 +382,7 @@ void main() {
       await generating;
       expect(controller.draft!.organizedBody, isNull);
     });
+
     test('輸入與模型改變時重建預覽，日記資料只使用原文', () async {
       await send('修順');
       final controller = scope.controller;
@@ -361,6 +403,7 @@ void main() {
         isNot(contains('手動更新稿')),
       );
     });
+
     test('重試與編輯保留分支，只傳送目前選取的對話', () async {
       await send('修順');
       final controller = scope.controller;
@@ -395,6 +438,7 @@ void main() {
       expect(loaded!.activeTurnIndices, [0, 3]);
       expect(loaded.versionsOf(1), [1, 2, 3]);
     });
+
     test('送出與生成使用最新提示詞覆寫，未覆寫的用途維持內建', () async {
       scope.settings.organizationPrompts =
           const DiaryOrganizationPromptSettings(conversationOverride: '自訂需求對話');
@@ -402,7 +446,7 @@ void main() {
       expect(scope.client.calls.single.prompt, contains('自訂需求對話'));
       expect(
         scope.client.calls.single.prompt,
-        contains(testL10n.organizationRulesPrompt),
+        contains(testL10n.organizationRules),
       );
       expect(
         scope.client.calls.single.prompt,
@@ -420,6 +464,7 @@ void main() {
       );
       expect(scope.client.calls.last.prompt, isNot(contains('自訂需求對話')));
     });
+
     test('聊天室選擇模型同步工作與 AI 設定', () async {
       final connection = scope.controller.draft!.connection;
       final updated = connection.copyWith(
@@ -476,6 +521,7 @@ void main() {
       await controller.selectTurn(0);
       expect(controller.draft!.currentBody, '第二稿');
     });
+
     test('請求中離頁仍繼續，重進不重送，完成結果可從加密草稿恢復', () async {
       await scope.controller.startChat();
       scope.controller.updateComposer('修順', []);
@@ -500,6 +546,42 @@ void main() {
       expect(loaded!.turns.single.reply, '會修順文字並保留語氣。');
       expect(scope.client.calls, hasLength(1));
     });
+
+    test('前後說明與圍欄仍採用整理稿，空白或純說明則不採用', () async {
+      await send('修順');
+      final payload = jsonEncode({'reply': '已修順 {這段}', 'body': '整理後日記'});
+      scope.client.output = '先說明\n```json\n$payload\n```\n後記';
+      await scope.controller.generateDraft();
+      expect(scope.controller.error, isNull);
+      expect(scope.controller.draft!.stage, OrganizationStage.review);
+      expect(scope.controller.draft!.currentBody, '整理後日記');
+      expect(scope.controller.draft!.generationReply, '已修順 {這段}');
+
+      await scope.controller.returnToChat();
+      scope.client.output = jsonEncode({'reply': '沒有內容', 'body': '  \n'});
+      await scope.controller.generateDraft();
+      expect(scope.controller.draft!.stage, OrganizationStage.chat);
+      expect(scope.controller.draft!.organizedBody, isNull);
+      expect(scope.controller.error, AiErrorCode.response);
+
+      scope.client.output = '這只是說明，沒有整理稿';
+      await scope.controller.generateDraft();
+      expect(scope.controller.draft!.organizedBody, isNull);
+      expect(scope.controller.draft!.stage, OrganizationStage.chat);
+      expect(scope.controller.error, AiErrorCode.response);
+    });
+
+    test('整理稿少了保護代號時不採用', () async {
+      await recreateScopeWithPerson();
+      await send('修順');
+      expect(scope.controller.draft!.protectedSource, contains('{{PER'));
+      scope.client.output = jsonEncode({'reply': '完成', 'body': '沒有保留代號的稿'});
+      await scope.controller.generateDraft();
+      expect(scope.controller.draft!.organizedBody, isNull);
+      expect(scope.controller.draft!.stage, OrganizationStage.chat);
+      expect(scope.controller.error, AiErrorCode.response);
+    });
+
     test('格式錯誤及停止生成都不採用稿件，晚到內容不會覆寫', () async {
       await send('修順');
       final controller = scope.controller;
@@ -524,6 +606,7 @@ void main() {
       expect(controller.generating, isFalse);
       expect(controller.draft!.turns, hasLength(1));
     });
+
     test('生成寫入失敗不採用稿，返回聊天寫入失敗仍保留檢視稿', () async {
       await scope.dispose();
       late FailingOrganizationStore store;
@@ -558,6 +641,7 @@ void main() {
       expect(scope.controller.draft!.organizedBody, '仍在檢視的稿');
       store.failSaves = false;
     });
+
     test('刪除整理後，晚到回覆不會重建草稿', () async {
       await scope.controller.startChat();
       scope.controller.updateComposer('修順', []);
@@ -581,6 +665,7 @@ void main() {
       );
       expect(scope.controller.draft, isNull);
     });
+
     test('鎖定保存最後片段，解鎖後手動重試而不自動送出', () async {
       await scope.controller.startChat();
       scope.controller.updateComposer('修順', []);
@@ -614,6 +699,7 @@ void main() {
       await controller.sendMessage(retryTurn: 0);
       expect(controller.draft!.turns.last.reply, '重試完成');
     });
+
     test('原日記改變時不能套用舊稿', () async {
       await send('修順');
       scope.controller.draft!.replaceBody('整理稿');

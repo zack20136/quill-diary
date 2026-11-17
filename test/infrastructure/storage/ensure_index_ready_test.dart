@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
 
@@ -92,6 +93,82 @@ void main() {
     expect(entries.map((entry) => entry.id), <String>[entryId]);
     expect(attachments.map((attachment) => attachment.id), <String>[assetId]);
     expect(stats[person.id]?.mentionedEntryCount, 1);
+  });
+
+  test('ensureIndexReady 在索引少篇時補回正式日記', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Kept',
+      date: '2026-06-14',
+      markdownBody: 'still indexed',
+    );
+    final String missingId = await harness.saveSimpleEntry(
+      setup,
+      title: 'Missing From Index',
+      date: '2026-06-15',
+      markdownBody: 'file remains',
+    );
+    await harness.repository.closeUnlockedResources();
+
+    final IndexDatabaseManager manager = IndexDatabaseManager(
+      harness.pathStrategy,
+    );
+    final indexDb = await manager.openForSession(setup.session);
+    await indexDb.customStatement(
+      'DELETE FROM entries_index WHERE id = ?;',
+      <Object>[missingId],
+    );
+    await manager.close();
+
+    await harness.repository.ensureIndexReady(setup.session);
+
+    final entries = await harness.repository.listEntries();
+    expect(entries.map((entry) => entry.title), contains('Missing From Index'));
+    expect(entries, hasLength(2));
+  });
+
+  test('讀不了的日記檔只讓解鎖重建一次', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    await harness.saveSimpleEntry(
+      setup,
+      title: 'Readable',
+      date: '2026-06-16',
+      markdownBody: 'stays listed',
+    );
+    final String garbagePath = await harness.pathStrategy.entryAbsolutePath(
+      date: const DateOnly('2026-06-16'),
+      entryId: generateEntryId(),
+    );
+    await File(garbagePath).parent.create(recursive: true);
+    await File(garbagePath).writeAsBytes(<int>[1, 2, 3, 4]);
+    await harness.repository.closeUnlockedResources();
+
+    await harness.repository.ensureIndexReady(setup.session);
+    final String? rebuiltAt = await harness.indexDatabaseManager
+        .requireOpen()
+        .getAppValue(kLastRebuildAtKey);
+    expect(await harness.repository.listEntries(), hasLength(1));
+
+    await harness.repository.ensureIndexReady(setup.session);
+
+    expect(
+      await harness.indexDatabaseManager.requireOpen().getAppValue(
+        kLastRebuildAtKey,
+      ),
+      rebuiltAt,
+    );
+    expect(await harness.repository.listEntries(), hasLength(1));
+  });
+
+  test('ensureIndexReady 在沒有日記檔時不重建', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    await harness.repository.closeUnlockedResources();
+
+    await harness.repository.ensureIndexReady(setup.session);
+
+    expect(await harness.repository.listEntries(), isEmpty);
+    expect(await harness.repository.readLastInspectSummary(), isNull);
   });
 
   test('還原後 resume session 並 rebuildIndex 可列出日記', () async {

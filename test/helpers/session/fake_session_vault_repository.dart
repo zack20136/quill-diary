@@ -117,7 +117,10 @@ class FakeSessionVaultRepository extends VaultRepository {
   }
 
   @override
-  Future<void> ensureIndexReady(UnlockedVaultSession session) async {
+  Future<void> ensureIndexReady(
+    UnlockedVaultSession session, {
+    bool reconcileEntryFiles = true,
+  }) async {
     ensureIndexReadyCalls++;
   }
 

@@ -54,7 +54,7 @@ bool _looksLikeSentence(String text) {
 }
 
 // 隱私代號規則是安全不變量，即使文案相同也要保留斷言。
-const String _privacyTokenMarker = '⟦';
+const String _privacyTokenMarker = '{{';
 
 List<HygieneViolation> findHygieneViolations(
   String path,
@@ -233,8 +233,8 @@ void main() {
     test('隱私代號規則的整句保留斷言', () {
       final List<HygieneViolation> violations = findHygieneViolations(
         'fake_test.dart',
-        "expect(zhChat, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));",
-        copyPhrases: <String>{'同一個 ⟦P…⟧ 代號代表同一位人物'},
+        "expect(zhChat, contains('同一個 {{PER…}} 代號代表同一位人物'));",
+        copyPhrases: <String>{'同一個 {{PER…}} 代號代表同一位人物'},
       );
 
       expect(violations, isEmpty);

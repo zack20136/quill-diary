@@ -610,6 +610,7 @@ class ChatDiaryStore {
     chat.generatedEntryId = entryId;
     chat.composerText = '';
     chat.composerRanges = [];
+    chat.composerRevealed = [];
     chat.pendingImageIds.clear();
     chat.editingMessageId = null;
     chat.editBackup = null;

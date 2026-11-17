@@ -241,7 +241,7 @@ void main() {
           );
           final rect = tester.getRect(picker);
           expect(rect.width, lessThanOrEqualTo(wide ? 480 : size.width));
-          expect(rect.height, lessThanOrEqualTo(size.height * 0.8));
+          expect(rect.height, lessThanOrEqualTo(size.height * 0.6));
           expect(rect.left, greaterThanOrEqualTo(0));
           expect(rect.right, lessThanOrEqualTo(size.width));
           final l10n = lookupAppLocalizations(locale);

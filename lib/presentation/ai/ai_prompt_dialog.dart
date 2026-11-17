@@ -56,7 +56,7 @@ class AiPromptDialog extends StatefulWidget {
 class _AiPromptDialogState extends State<AiPromptDialog>
     with WidgetsBindingObserver {
   final _controller = TextEditingController();
-  final _scrollController = ScrollController();
+  final _scroll = ScrollController();
   late bool _custom = widget.customText != null;
   String? _locale;
   bool _invalid = false, _obscured = false;
@@ -95,67 +95,87 @@ class _AiPromptDialogState extends State<AiPromptDialog>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return AppDialogShell(
+      fillHeight: true,
       title: widget.title(l10n),
-      content: SizedBox(
-        width: 640,
-        height: personaDialogBodyHeight(context),
-        child: _obscured
-            ? Center(
-                child: Semantics(
-                  label: l10n.aiContentHidden,
-                  child: const Icon(Icons.lock_outline),
-                ),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    widget.help(l10n),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: AppScrollbar(
-                      controller: _scrollController,
-                      reserveGutter: true,
-                      track: AppScrollbarTrack.frame,
-                      child: TextField(
-                        key: widget.fieldKey,
-                        controller: _controller,
-                        scrollController: _scrollController,
-                        expands: true,
-                        minLines: null,
-                        maxLines: null,
-                        textAlignVertical: TextAlignVertical.top,
-                        readOnly: widget.readOnly,
-                        keyboardType: TextInputType.multiline,
-                        onChanged: widget.readOnly
-                            ? null
-                            : (_) => setState(() {
-                                _custom = _controller.text != _defaultPrompt();
-                                _invalid = false;
-                              }),
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          enabledBorder: _invalid ? _errorBorder(1) : null,
-                          focusedBorder: _invalid ? _errorBorder(2) : null,
-                          contentPadding: const EdgeInsets.all(12),
+      content: _obscured
+          ? Center(
+              child: Semantics(
+                label: l10n.aiContentHidden,
+                child: const Icon(Icons.lock_outline),
+              ),
+            )
+          : LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                const double gap = 12;
+                // 鍵盤把卡片壓矮時，說明改成自己捲，輸入框仍保留一行的高度。
+                final double fieldMin = MediaQuery.textScalerOf(context)
+                    .scale(40);
+                final double errorReserve = _invalid ? gap + 20 : 0;
+                final double helpMax = constraints.maxHeight.isFinite
+                    ? (constraints.maxHeight - fieldMin - gap - errorReserve)
+                          .clamp(0, double.infinity)
+                    : double.infinity;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: helpMax),
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context)
+                            .copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            widget.help(l10n),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_invalid) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.aiPromptRequired,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                    const SizedBox(height: gap),
+                    Expanded(
+                      child: AppScrollbar(
+                        controller: _scroll,
+                        track: AppScrollbarTrack.frame,
+                        reserveGutter: true,
+                        child: TextField(
+                          key: widget.fieldKey,
+                          controller: _controller,
+                          scrollController: _scroll,
+                          expands: true,
+                          minLines: null,
+                          maxLines: null,
+                          readOnly: widget.readOnly,
+                          textAlignVertical: TextAlignVertical.top,
+                          keyboardType: TextInputType.multiline,
+                          onChanged: widget.readOnly
+                              ? null
+                              : (_) => setState(() {
+                                  _custom =
+                                      _controller.text != _defaultPrompt();
+                                  _invalid = false;
+                                }),
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            enabledBorder: _invalid ? _errorBorder(1) : null,
+                            focusedBorder: _invalid ? _errorBorder(2) : null,
+                            contentPadding: const EdgeInsets.all(12),
+                          ),
+                        ),
                       ),
                     ),
+                    if (_invalid) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.aiPromptRequired,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-      ),
+                );
+              },
+            ),
       leading: widget.readOnly ? null : _restoreButton(l10n),
       actions: _actions(l10n),
     );
@@ -208,8 +228,8 @@ class _AiPromptDialogState extends State<AiPromptDialog>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scroll.dispose();
     _controller.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 }

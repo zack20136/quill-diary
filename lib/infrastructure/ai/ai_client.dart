@@ -3,32 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show nonVirtual, protected;
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
+import 'package:quill_diary/domain/ai/ai_request.dart';
 
-class AiInputImage {
-  const AiInputImage({
-    required this.id,
-    required this.mimeType,
-    required this.bytes,
-  });
-  final String id;
-  final String mimeType;
-  final Uint8List bytes;
-}
-
-class AiInputMessage {
-  const AiInputMessage({
-    required this.isUser,
-    required this.text,
-    this.images = const [],
-  });
-  final bool isUser;
-  final String text;
-  final List<AiInputImage> images;
-}
+export 'package:quill_diary/domain/ai/ai_request.dart';
 
 /// 目的地在送出憑證之前驗證；HTTP 只允許明確的區網與 loopback IP。
 Uri validateAiEndpoint(AiConnectionConfig connectionConfig) {
@@ -271,7 +253,14 @@ abstract class AiClient {
   }
 
   Future<List<String>> listModels();
-  Stream<String> reply(String systemPrompt, List<AiInputMessage> messages);
+  @nonVirtual
+  Stream<String> reply(PreparedAiRequest request) async* {
+    request.verify(connectionConfig);
+    yield* request.decode(sendPrepared(request));
+  }
+
+  @protected
+  Stream<String> sendPrepared(PreparedAiRequest request);
   void close() => transport.close();
 
   Future<Map<String, dynamic>> getJson(String path) async {
@@ -471,6 +460,7 @@ abstract class AiClient {
   }
 
   Stream<Map<String, dynamic>> events(
+    PreparedAiRequest request,
     String path,
     Map<String, Object?> body, {
     bool ndjson = false,
@@ -480,7 +470,7 @@ abstract class AiClient {
     await for (final line in transport.stream(
       endpoint(path),
       requestHeaders ?? headers,
-      mergeThinkingRequestFields(body, thinkingRequestFields(connectionConfig)),
+      mergeThinkingRequestFields(body, request.requestFields),
     )) {
       if (ndjson) {
         if (line.trim().isNotEmpty) {
@@ -522,12 +512,11 @@ class OpenAiCompatibleClient extends AiClient {
       (item as Map)['id'] as String,
   ];
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    final systemPrompt = request.systemPrompt;
+    final messages = request.messages;
     var complete = false;
-    await for (final event in events('/chat/completions', {
+    await for (final event in events(request, '/chat/completions', {
       'model': connectionConfig.model,
       'stream': true,
       'messages': [
@@ -585,10 +574,9 @@ class OpenAiClient extends AiClient {
       (model as Map)['id'] as String,
   ];
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    final systemPrompt = request.systemPrompt;
+    final messages = request.messages;
     final input = <Map<String, Object?>>[];
     for (final message in messages) {
       final content = <Map<String, Object?>>[
@@ -616,7 +604,7 @@ class OpenAiClient extends AiClient {
       });
     }
     var complete = false;
-    await for (final event in events('/v1/responses', {
+    await for (final event in events(request, '/v1/responses', {
       'model': connectionConfig.model,
       'instructions': systemPrompt,
       'input': input,
@@ -669,10 +657,9 @@ class ClaudeAiClient extends AiClient {
   }
 
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    final systemPrompt = request.systemPrompt;
+    final messages = request.messages;
     final input = <Map<String, Object?>>[];
     for (final message in messages) {
       final content = <Map<String, Object?>>[
@@ -708,7 +695,7 @@ class ClaudeAiClient extends AiClient {
       if (connectionConfig.provider != AiProvider.custom)
         'anthropic-beta': 'files-api-2025-04-14',
     };
-    await for (final event in events('/v1/messages', {
+    await for (final event in events(request, '/v1/messages', {
       'model': connectionConfig.model,
       'system': systemPrompt,
       'messages': input,
@@ -760,10 +747,9 @@ class GeminiAiClient extends AiClient {
   }
 
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    final systemPrompt = request.systemPrompt;
+    final messages = request.messages;
     final contents = <Map<String, Object?>>[];
     for (final message in messages) {
       final parts = <Map<String, Object?>>[
@@ -790,6 +776,7 @@ class GeminiAiClient extends AiClient {
     final model = connectionConfig.model.replaceFirst('models/', '');
     var stop = false;
     await for (final event in events(
+      request,
       '/v1beta/models/${Uri.encodeComponent(model)}:streamGenerateContent?alt=sse',
       {
         'systemInstruction': {
@@ -846,16 +833,15 @@ class OllamaAiClient extends AiClient {
   }
 
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    final systemPrompt = request.systemPrompt;
+    final messages = request.messages;
     if (messages.any((message) => message.images.isNotEmpty) &&
         await _supportsImages() == false) {
       throw const AiFailure(AiErrorCode.imageUnsupported);
     }
     var complete = false;
-    await for (final event in events('/api/chat', {
+    await for (final event in events(request, '/api/chat', {
       'model': connectionConfig.model,
       'stream': true,
       'messages': [

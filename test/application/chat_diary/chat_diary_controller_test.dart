@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
@@ -31,6 +30,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/persona/persona_fixtures.dart';
@@ -128,6 +128,25 @@ void main() {
     expect(loaded!.composerText, '尚未設定也能保存');
     expect(loaded.connectionConfig.isConfigured, isFalse);
     expect(clientConfigs, isEmpty);
+  });
+
+  test('取消的自動隱藏區間會隨輸入草稿保存', () async {
+    const email = 'a+b@example.org';
+    const text = '信箱 $email';
+    final start = text.indexOf(email);
+    final id = generateChatDiaryId();
+    expect(
+      await controller.start(id, setup.session, openingMessage: '開始'),
+      ChatDiaryLoadResult.loaded,
+    );
+    controller.updateComposer(text, const [], [
+      PrivateTextRange(start, start + email.length),
+    ]);
+    await controller.persist(throwOnError: true);
+    final loaded = await store.load(id, setup.session);
+    expect(loaded!.composerRevealed.map((range) => (range.start, range.end)), [
+      (start, start + email.length),
+    ]);
   });
 
   group('生成與鎖定', () {
@@ -644,6 +663,19 @@ void main() {
   });
 
   group('隱私與預覽', () {
+    test('取消的人名只明文送出這一處', () async {
+      await harness.repository.createPerson(
+        setup.session,
+        PersonDraft(name: '王小明'),
+      );
+      const text = '王小明找王小明';
+      controller.updateComposer(text, const [], const [PrivateTextRange(0, 3)]);
+      await controller.send();
+      final outgoing = client.calls.single.messages.single.text;
+      expect(outgoing, startsWith('王小明'));
+      expect(outgoing.substring(3), isNot(contains('王小明')));
+    });
+
     test('送出與預覽同時讀取名冊時，各自使用已讀取的名冊遮蔽姓名', () async {
       await harness.repository.createPerson(
         setup.session,
@@ -702,7 +734,7 @@ void main() {
       final outgoing = client.calls.single.messages.single.text;
       expect(outgoing, isNot(contains('王小明')));
       expect(outgoing, isNot(contains('秘密地址')));
-      expect(outgoing, contains('0912345678'));
+      expect(outgoing, isNot(contains('0912345678')));
       final stored = (await store.load(chat.id, setup.session))!;
       expect(stored.messages.first.text, text);
       final file = File(
@@ -712,6 +744,37 @@ void main() {
         utf8.decode(await file.readAsBytes(), allowMalformed: true),
         isNot(contains('秘密地址')),
       );
+    });
+    test('自動隱藏區間保存後的續聊與生成維持遮蔽且不加入補記', () async {
+      controller.updateComposer('0912345678先出現', []);
+      await controller.send();
+      expect(
+        client.calls.single.messages.single.text,
+        isNot(contains('0912345678')),
+      );
+      final stored = (await store.load(chat.id, setup.session))!;
+      final message = stored.messages.first;
+      expect(message.privateTokenIds, isEmpty);
+      expect(message.automaticRanges.map((r) => (r.start, r.end)), [(0, 10)]);
+      expect(message.personRanges, isEmpty);
+      final preview = (await controller.previewRequest())!;
+      expect(preview.turns.first.text, isNot(contains('0912345678')));
+      controller.updateComposer('接著聊', []);
+      await controller.send();
+      expect(
+        client.calls.last.messages.first.text,
+        isNot(contains('0912345678')),
+      );
+      client.output = '# 記錄\n\n公開內容';
+      await controller.generate(testZhL10n);
+      expect(
+        client.calls.last.messages.single.text,
+        isNot(contains('0912345678')),
+      );
+      final draft = await container
+          .read(editorDraftStoreProvider)
+          .read(ChatDiarySession.draftKeyFor(chat.id), setup.session);
+      expect(draft!.markdownBody, isNot(contains('0912345678')));
     });
     test('已送出的訊息不因後來新增人物而改寫', () async {
       controller.updateComposer('小華先出現', []);
@@ -732,14 +795,14 @@ void main() {
       await controller.send();
       expect(
         client.calls.last.prompt,
-        contains(testZhL10n.chatDiaryConversationRulesPrompt),
+        contains(testZhL10n.chatDiaryConversationRules),
       );
       await preferences.setAppLocale(AppLanguage.en);
       controller.updateComposer('第二則', []);
       await controller.send();
       expect(
         client.calls.last.prompt,
-        contains(testEnL10n.chatDiaryConversationRulesPrompt),
+        contains(testEnL10n.chatDiaryConversationRules),
       );
       settings.chatDiaryPrompts = const ChatDiaryPromptSettings(
         personalityOverride: '只有這一段自訂提示詞',
@@ -761,17 +824,17 @@ void main() {
           .where((turn) => turn.isUser)
           .toList();
       expect(pendingTurns.first.text, '先前提過秘密地址');
-      expect(pendingTurns.last.text, '⟦S01⟧再提一次秘密地址');
+      expect(pendingTurns.last.text, '{{PRI_01}}再提一次秘密地址');
       expect(beforeSend.systemPrompt, isNot(contains('秘密地址')));
       await controller.send();
       final sent = client.calls.last.messages;
       expect(sent.first.text, '先前提過秘密地址');
-      expect(sent.last.text, '⟦S01⟧再提一次秘密地址');
+      expect(sent.last.text, '{{PRI_01}}再提一次秘密地址');
       expect(client.calls.last.prompt, isNot(contains('秘密地址')));
       final preview = (await controller.previewRequest())!;
       final userTurns = preview.turns.where((turn) => turn.isUser).toList();
       expect(userTurns.first.text, '先前提過秘密地址');
-      expect(userTurns.last.text, '⟦S01⟧再提一次秘密地址');
+      expect(userTurns.last.text, '{{PRI_01}}再提一次秘密地址');
       expect(preview.systemPrompt, isNot(contains('秘密地址')));
       client.output = '# 記錄\n\n一段回憶';
       await controller.generate(testZhL10n);
@@ -779,24 +842,24 @@ void main() {
     });
     test('已送出訊息只依反白區間重算，不沿用多替換的外送文字', () async {
       const original = '秘密 再提一次秘密';
-      chat.tokenBySourceKey['private:秘密'] = '⟦S01⟧';
-      chat.originalTextByToken['⟦S01⟧'] = '秘密';
+      chat.tokenBySourceKey['private:秘密'] = '{{PRI_01}}';
+      chat.originalTextByToken['{{PRI_01}}'] = '秘密';
       chat.appendMessage(
         ChatDiaryMessage(
           id: 'user',
           isUser: true,
           text: original,
-          outboundText: '⟦S01⟧ 再提一次⟦S01⟧',
+          outboundText: '{{PRI_01}} 再提一次{{PRI_01}}',
           privateRanges: [const PrivateTextRange(0, 2)],
-          privateTokenIds: {'⟦S01⟧'},
+          privateTokenIds: {'{{PRI_01}}'},
         ),
       );
       final preview = (await controller.previewRequest())!;
-      expect(preview.turns.single.text, '⟦S01⟧ 再提一次秘密');
-      expect(chat.messages.single.outboundText, '⟦S01⟧ 再提一次秘密');
+      expect(preview.turns.single.text, '{{PRI_01}} 再提一次秘密');
+      expect(chat.messages.single.outboundText, '{{PRI_01}} 再提一次秘密');
       controller.updateComposer('下一則', []);
       await controller.send();
-      expect(client.calls.last.messages.first.text, '⟦S01⟧ 再提一次秘密');
+      expect(client.calls.last.messages.first.text, '{{PRI_01}} 再提一次秘密');
     });
     test('預覽後未送出的私密文字不進入日記補記', () async {
       controller.updateComposer('已經說過的事情', []);
@@ -829,9 +892,9 @@ void main() {
       expect(generation.hasLocalPrivateNotes, isTrue);
       expect(
         generation.systemPrompt,
-        startsWith(testZhL10n.chatDiaryGenerationRulesPrompt),
+        startsWith(testZhL10n.chatDiaryGenerationRules),
       );
-      expect(generation.systemPrompt, endsWith('生成提示詞與⟦S01⟧'));
+      expect(generation.systemPrompt, endsWith('生成提示詞與{{PRI_01}}'));
       expect(
         generation.systemPrompt,
         isNot(contains(testZhL10n.chatDiaryGenerationGuidancePrompt)),

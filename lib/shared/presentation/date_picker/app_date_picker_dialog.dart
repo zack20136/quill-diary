@@ -606,10 +606,11 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     return AppScrollbar(
       key: const Key('app-date-picker-month-scrollbar'),
       controller: _monthScrollController,
+      reserveGutter: true,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-month-view'),
         controller: _monthScrollController,
-        padding: const EdgeInsets.only(right: 12, bottom: 4),
+        padding: const EdgeInsets.only(bottom: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -659,33 +660,36 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
   Widget _buildYearView() {
     final int yearCount =
         widget.config.lastDate.year - widget.config.firstDate.year + 1;
-    return Column(
-      key: const Key('app-date-picker-year-view'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (_hasMonth)
-          _buildBackHeader(
-            context.l10n.datePickerMonthLabel,
-            () => setState(() => _view = _AppDatePickerView.month),
-          )
-        else
-          Text(
-            context.l10n.datePickerYearLabel,
-            key: const Key('app-date-picker-year-label'),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: AppScrollbar(
-            key: const Key('app-date-picker-year-scrollbar'),
-            controller: _yearScrollController,
-            child: GridView.builder(
+    return AppScrollbar(
+      key: const Key('app-date-picker-year-scrollbar'),
+      controller: _yearScrollController,
+      reserveGutter: true,
+      child: SingleChildScrollView(
+        key: const Key('app-date-picker-year-view'),
+        controller: _yearScrollController,
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (_hasMonth)
+              _buildBackHeader(
+                context.l10n.datePickerMonthLabel,
+                () => setState(() => _view = _AppDatePickerView.month),
+              )
+            else
+              Text(
+                context.l10n.datePickerYearLabel,
+                key: const Key('app-date-picker-year-label'),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            const SizedBox(height: 8),
+            GridView.builder(
               key: const Key('app-date-picker-year-grid'),
-              controller: _yearScrollController,
-              padding: const EdgeInsets.only(right: 12, bottom: 4),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: _yearColumnCount,
                 mainAxisExtent: _optionHeight,
@@ -703,9 +707,9 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
                 );
               },
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -740,10 +744,11 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     final Widget dayView = AppScrollbar(
       key: const Key('app-date-picker-day-scrollbar'),
       controller: _dayScrollController,
+      reserveGutter: true,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-day-view'),
         controller: _dayScrollController,
-        padding: const EdgeInsets.only(right: 12, bottom: 4),
+        padding: const EdgeInsets.only(bottom: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -889,9 +894,6 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final double contentHeight = (MediaQuery.sizeOf(context).height - 220)
-        .clamp(280, 420)
-        .toDouble();
     return AppDialogShell(
       title: widget.config.title,
       titleTrailing: widget.config.kind == _AppDatePickerKind.date
@@ -901,15 +903,9 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
               child: Text(context.l10n.commonRelativeToday),
             )
           : null,
-      content: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: contentHeight),
-        child: SizedBox(
-          width: 340,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: KeyedSubtree(key: ValueKey(_view), child: _buildContent()),
-          ),
-        ),
+      content: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: KeyedSubtree(key: ValueKey(_view), child: _buildContent()),
       ),
       actions: <Widget>[
         TextButton(

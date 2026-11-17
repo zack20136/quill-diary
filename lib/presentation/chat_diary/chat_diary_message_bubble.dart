@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
-import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/ai/restored_private_ranges.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -62,18 +61,14 @@ class ChatDiaryMessageBubble extends StatelessWidget {
       id: message.id,
       text: message.text,
       isUser: message.isUser,
-      privateRanges: [
-        if (!message.isUser)
-          ...restoredPrivateRanges(
-            outboundText: message.outboundText,
-            text: message.text,
-            originals: chat.originalTextByToken,
-          ),
-        ...message.privateRanges,
-        if (chat.hidePersonNames)
-          for (final span in message.personRanges)
-            PrivateTextRange(span.start, span.end),
-      ],
+      privateRanges: privacyDisplayRanges(
+        text: message.text,
+        manual: message.privateRanges,
+        automatic: message.automaticRanges,
+        people: chat.hidePersonNames ? message.personRanges : const [],
+        outboundText: message.isUser ? null : message.outboundText,
+        originals: chat.originalTextByToken,
+      ),
       images: [for (final id in message.imageIds) imageBuilder(id)],
       pending: message.status == ChatDiaryMessageStatus.pending,
       failureText: !failed

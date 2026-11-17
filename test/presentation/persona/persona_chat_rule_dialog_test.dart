@@ -62,6 +62,14 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = tester.widget<TextField>(find.byType(TextField).last);
+    final nameStart = field.controller!.text.indexOf('小明');
+    field.controller!.selection = TextSelection(
+      baseOffset: nameStart,
+      extentOffset: nameStart + 2,
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip(testL10n.aiUnhideSelection));
+    await tester.pump();
     field.controller!.selection = TextSelection(
       baseOffset: 0,
       extentOffset: field.controller!.text.length,

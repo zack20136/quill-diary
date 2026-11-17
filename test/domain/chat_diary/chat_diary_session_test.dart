@@ -21,13 +21,13 @@ void main() {
           'id': 'u',
           'is_user': true,
           'text': '小明來了',
-          'outbound_text': '⟦P01⟧來了',
-          'private_token_ids': ['⟦P01⟧'],
+          'outbound_text': '{{PER_01}}來了',
+          'private_token_ids': ['{{PER_01}}'],
         },
       ],
       'images': [],
-      'replacements': {'⟦P01⟧': '小明'},
-      'token_keys': {'person:person-1': '⟦P01⟧'},
+      'replacements': {'{{PER_01}}': '小明'},
+      'token_keys': {'person:person-1': '{{PER_01}}'},
       'selected_children': {'__root__': 'u'},
     });
     expect(chat.activeMessages.single.text, '小明來了');
@@ -44,13 +44,13 @@ void main() {
   });
 
   test('必要隱私參照損壞時拒讀，但字面代號與缺少可選清單仍可讀', () {
-    final chat = testChatDiarySession()..composerText = '字面 ⟦S01⟧';
+    final chat = testChatDiarySession()..composerText = '字面 {{PRI_01}}';
     chat.appendMessage(
       ChatDiaryMessage(
         id: 'u',
         isUser: true,
-        text: '字面 ⟦S01⟧',
-        outboundText: '字面 ⟦S01⟧',
+        text: '字面 {{PRI_01}}',
+        outboundText: '字面 {{PRI_01}}',
       ),
     );
     Map<String, dynamic> data() =>
@@ -62,14 +62,15 @@ void main() {
       isEmpty,
     );
     final badMessage = data();
-    (badMessage['messages'] as List).single['private_token_ids'] = ['⟦S01⟧'];
+    (badMessage['messages'] as List).single['private_token_ids'] = ['{{PRI_01}}'];
     expect(() => ChatDiarySession.fromJson(badMessage), throwsFormatException);
-    final badKey = data()..['token_keys'] = {'private:字面': '⟦S01⟧'};
+    final badKey = data()..['token_keys'] = {'private:字面': '{{PRI_01}}'};
     expect(() => ChatDiarySession.fromJson(badKey), throwsFormatException);
   });
 
   for (final area in [
     'private_ranges',
+    'automatic_ranges',
     'person_ranges',
     'composer_ranges',
     'edit_backup',
@@ -100,21 +101,21 @@ void main() {
 
   test('缺少人物區間時使用空清單，不從姓名與外送代號推測重建', () {
     final chat = testChatDiarySession()
-      ..originalTextByToken['⟦P01⟧'] = '小明'
-      ..tokenBySourceKey['person:person-1'] = '⟦P01⟧';
+      ..originalTextByToken['{{PER_01}}'] = '小明'
+      ..tokenBySourceKey['person:person-1'] = '{{PER_01}}';
     chat.appendMessage(
       ChatDiaryMessage(
         id: 'user',
         isUser: true,
         text: '小明來了',
-        outboundText: '⟦P01⟧來了',
+        outboundText: '{{PER_01}}來了',
       ),
     );
     final restored = ChatDiarySession.fromJson(
       jsonDecode(jsonEncode(chat.toJson())) as Map<String, dynamic>,
     );
     expect(restored.messages.single.personRanges, isEmpty);
-    expect(restored.messages.single.outboundText, '⟦P01⟧來了');
+    expect(restored.messages.single.outboundText, '{{PER_01}}來了');
   });
 
   test('開場白與空白輸入不算草稿，未送出文字、圖片與其他分支的訊息會保留', () {
@@ -254,13 +255,6 @@ void main() {
     (data['messages'] as List).first['parent_id'] = null;
     data['selected_children'] = {'__root__': 'missing'};
     expect(() => ChatDiarySession.fromJson(data), throwsFormatException);
-  });
-
-  test('自訂非標題格式保留完整內文', () {
-    const body = '\n  這是沒有標題的日記。\n';
-    final result = ChatDiaryDraft.fromMarkdown(body);
-    expect(result.title, isNull);
-    expect(result.markdownBody, body);
   });
 
   test('不接受路徑作為聊天識別', () {

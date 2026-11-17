@@ -3,8 +3,12 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/persona/persona_request_payload.dart';
+import 'package:quill_diary/domain/ai/ai_request.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
-import 'package:quill_diary/domain/persona/persona_privacy.dart';
+import 'package:quill_diary/l10n/l10n.dart';
+
+import '../../helpers/ai/ai_test_helpers.dart';
+import '../../helpers/shared/test_l10n.dart';
 
 void main() {
   test('長材料的正文與風格各自成段，不會按編號配在一起', () {
@@ -24,54 +28,72 @@ void main() {
     expect(pieces.map((piece) => piece['style_text']).join(), '風' * 3000);
   });
 
-  for (final map in [false, true]) {
-    test('${map ? '原始材料' : '中間摘要'}依 JSON 跳脫長度切段並保留字元與完整標記', () {
-      const unit = '"\\\n\t👩🏽‍💻é⟦P01⟧́$personaHiddenText';
-      final text = unit * 1000;
-      final instructions = '提取' * 5000;
-      final batches = personaExtractionBatches(
-        [
-          map ? {'source': 'diary', 'text': text} : text,
-        ],
-        subject: '測試"主題',
-        instructions: instructions,
-      );
-      expect(batches.length, greaterThan(1));
-      final pieces = batches.expand((batch) => batch).toList();
-      final boundaries = <int>{0};
-      var offset = 0;
-      for (final character in text.characters) {
-        offset += character.length;
-        boundaries.add(offset);
-      }
-      var cursor = 0;
-      for (final piece in pieces) {
-        final part = map ? (piece as Map)['text'] as String : piece as String;
-        cursor += part.length;
-        expect(boundaries, contains(cursor));
-        for (final marker in ['⟦P01⟧', personaHiddenText]) {
-          final occurrence = text.lastIndexOf(marker, cursor - 1);
-          expect(
-            occurrence < 0 || occurrence + marker.length <= cursor,
-            isTrue,
+  for (final l10n in [testZhL10n, testEnL10n]) {
+    for (final map in [false, true]) {
+      test(
+        '${isEnglishL10n(l10n) ? '英文' : '繁體中文'}${map ? '原始材料' : '中間摘要'}依實際外送長度切段並保留字元與完整標記',
+        () async {
+          const unit = '"\\\n\t👩🏽‍💻é{{PER_01}}́{{PRI_01}}';
+          final text = unit * 1000;
+          final instructions = '提取' * 5000;
+          final batches = personaExtractionBatches(
+            [
+              map ? {'source': 'diary', 'text': text} : text,
+            ],
+            subject: '測試"主題',
+            instructions: instructions,
           );
-        }
-      }
-      for (final batch in batches) {
-        expect(
-          jsonEncode(batch).length,
-          lessThanOrEqualTo(PersonaLimits.pieceCodeUnits),
-        );
-        expect(
-          personaRequestLength(
-            instructions,
-            personaExtractionData(subject: '測試"主題', fragment: batch),
-          ),
-          lessThanOrEqualTo(PersonaLimits.requestCodeUnits),
-        );
-      }
-      expect(pieces.map((p) => map ? (p as Map)['text'] : p).join(), text);
-    });
+          expect(batches.length, greaterThan(1));
+          final pieces = batches.expand((batch) => batch).toList();
+          final boundaries = <int>{0};
+          var offset = 0;
+          for (final character in text.characters) {
+            offset += character.length;
+            boundaries.add(offset);
+          }
+          var cursor = 0;
+          for (final piece in pieces) {
+            final part = map
+                ? (piece as Map)['text'] as String
+                : piece as String;
+            cursor += part.length;
+            expect(boundaries, contains(cursor));
+            for (final marker in ['{{PER_01}}', '{{PRI_01}}']) {
+              final occurrence = text.lastIndexOf(marker, cursor - 1);
+              expect(
+                occurrence < 0 || occurrence + marker.length <= cursor,
+                isTrue,
+              );
+            }
+          }
+          for (final batch in batches) {
+            expect(
+              jsonEncode(batch).length,
+              lessThanOrEqualTo(PersonaLimits.pieceCodeUnits),
+            );
+            final request = await prepareAiRequest(
+              connection: testChatDiarySession().connectionConfig,
+              instructions: instructions,
+              messages: [
+                AiInputMessage(
+                  isUser: true,
+                  text: personaExtractionData(
+                    subject: '測試"主題',
+                    fragment: batch,
+                  ),
+                ),
+              ],
+              originals: {'{{PER_01}}': '{{PER_01}}'},
+            );
+            expect(
+              request.systemPrompt.length + request.messages.single.text.length,
+              lessThanOrEqualTo(PersonaLimits.requestCodeUnits),
+            );
+          }
+          expect(pieces.map((p) => map ? (p as Map)['text'] : p).join(), text);
+        },
+      );
+    }
   }
 
   test('剛好可容納的片段不拆分，多一個字元才分段', () {
@@ -151,7 +173,7 @@ void main() {
             3);
     expect(
       () => personaExtractionBatches(
-        ['⟦P01⟧'],
+        ['{{PER_01}}'],
         subject: '主題',
         instructions: instructions,
       ),

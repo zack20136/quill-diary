@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -22,11 +23,11 @@ void main() {
   });
 
   testWidgets('大字級下中英與代號底色齊高，換行仍對齊原文字', (tester) async {
-    const text = 'QA小明 ⟦P01⟧ Café 阿明🙂\n長段落的私密文字跨行時仍維持自然換行與閱讀順序。';
+    const text = 'QA小明 {{PER_01}} Café 阿明🙂\n長段落的私密文字跨行時仍維持自然換行與閱讀順序。';
     final ranges = [
       const PrivateTextRange(0, 4),
-      const PrivateTextRange(5, 10),
-      PrivateTextRange(11, text.length),
+      const PrivateTextRange(5, 15),
+      PrivateTextRange(16, text.length),
     ];
     final span = TextSpan(
       children: [
@@ -43,7 +44,7 @@ void main() {
         child: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
           child: SizedBox(
-            width: 220,
+            width: 420,
             child: SelectionArea(
               child: SingleChildScrollView(
                 child: Column(
@@ -86,10 +87,10 @@ void main() {
     expect(tester.getSize(paragraphFinder), tester.getSize(plain));
 
     final boxes = paragraph.getBoxesForSelection(
-      const TextSelection(baseOffset: 0, extentOffset: 10),
+      const TextSelection(baseOffset: 0, extentOffset: 15),
       boxHeightStyle: ui.BoxHeightStyle.max,
     );
-    // 第一行同時包含 Inter、中文及代號括號的替補字型。
+    // 第一行同時包含 Inter、中文與表情符號。
     expect(boxes, isNotEmpty);
     expect(boxes.map((b) => b.top).toSet(), hasLength(1));
     expect(boxes.map((b) => b.bottom).toSet(), hasLength(1));
@@ -118,5 +119,23 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  test('高亮與組字底線沿用 Inter，中文仍回到 Noto Sans TC', () {
+    const highlight = Color(0x52FF0000);
+    final span = privateTextSpan(
+      text: 'ab小明',
+      ranges: const [PrivateTextRange(0, 2)],
+      highlight: highlight,
+      underlineRanges: const [PrivateTextRange(2, 4)],
+    );
+    final children = span.children!.cast<TextSpan>();
+    expect(children, hasLength(2));
+    for (final child in children) {
+      expect(child.style?.fontFamily, AppTypography.interFamily);
+      expect(child.style?.fontFamilyFallback, [AppTypography.notoSansTcFamily]);
+    }
+    expect(children.first.style?.backgroundColor, highlight);
+    expect(children.last.style?.decoration, TextDecoration.underline);
   });
 }

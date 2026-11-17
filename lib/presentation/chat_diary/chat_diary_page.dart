@@ -12,12 +12,14 @@ import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
+import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
+import 'package:quill_diary/domain/people/person_name_matcher.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/shared/gallery_image_picker.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -64,7 +66,14 @@ class ChatDiaryPage extends ConsumerStatefulWidget {
 
 class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     with WidgetsBindingObserver {
-  final _composerController = PrivateTextController();
+  late final _composerController = PrivateTextController(
+    detectRanges: privacyRangeDetector(
+      () => _chatController?.chat?.hidePersonNames == true
+          ? PersonNameMatcher(ref.read(peopleListProvider).value ?? const [])
+          : null,
+    ),
+  );
+  bool? _highlightPersonNames;
   final _scrollController = ScrollController();
   ChatDiaryController? _chatController;
   UnlockedVaultSession? _loadedVaultSession;
@@ -90,6 +99,10 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _composerController.addListener(_composerChanged);
+    ref.listenManual(
+      peopleListProvider,
+      (_, _) => _refreshComposerHighlights(),
+    );
     _scrollController.addListener(_scrollChanged);
     ref.listenManual(effectiveAppSessionProvider, (_, next) {
       if (next.value?.isUnlocked != true) {
@@ -109,12 +122,27 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       _chatController?.updateComposer(
         _composerController.text,
         _composerController.privateRanges,
+        _composerController.revealedRanges,
       );
+    }
+  }
+
+  void _refreshComposerHighlights() {
+    _highlightPersonNames = _chatController?.chat?.hidePersonNames;
+    final syncing = _syncingComposer;
+    _syncingComposer = true;
+    try {
+      _composerController.refreshHighlights();
+    } finally {
+      _syncingComposer = syncing;
     }
   }
 
   void _changed() {
     final chatSession = _chatController?.chat;
+    if (_highlightPersonNames != chatSession?.hidePersonNames) {
+      _refreshComposerHighlights();
+    }
     final unexpected =
         _chatController?.unexpectedError == true &&
         _chatController?.errorMessageId == null;
@@ -153,18 +181,12 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
         });
       }
     }
-    if (chatSession != null &&
-        (_composerController.text != chatSession.composerText ||
-            _composerController.privateRanges
-                    .map((r) => '${r.start}:${r.end}')
-                    .join(',') !=
-                chatSession.composerRanges
-                    .map((r) => '${r.start}:${r.end}')
-                    .join(','))) {
+    if (chatSession != null) {
       _syncingComposer = true;
-      _composerController.setDocument(
+      _composerController.syncDocument(
         chatSession.composerText,
         chatSession.composerRanges,
+        chatSession.composerRevealed,
       );
       _syncingComposer = false;
     }

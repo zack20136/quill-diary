@@ -34,91 +34,86 @@ Future<Set<T>?> showPortableEntrySelectionDialog<T>({
 
           return AppDialogShell(
             title: l10n.portableExportSelectEntriesLabel,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          draft
-                            ..clear()
-                            ..addAll(
-                              entries.map((PortableEntryOption<T> e) => e.id),
-                            );
-                        });
-                      },
-                      child: Text(l10n.homeSelectionSelectAll),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(draft.clear);
-                      },
-                      child: Text(l10n.homeSelectionDeselectAll),
-                    ),
-                    const Spacer(),
-                    Text(
-                      l10n.portableExportSelectEntriesSummary(
-                        draft.length,
-                        entries.length,
+            content: AppScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            draft
+                              ..clear()
+                              ..addAll(
+                                entries.map((PortableEntryOption<T> e) => e.id),
+                              );
+                          });
+                        },
+                        child: Text(l10n.homeSelectionSelectAll),
                       ),
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+                      TextButton(
+                        onPressed: () {
+                          setState(draft.clear);
+                        },
+                        child: Text(l10n.homeSelectionDeselectAll),
+                      ),
+                      const Spacer(),
+                      Text(
+                        l10n.portableExportSelectEntriesSummary(
+                          draft.length,
+                          entries.length,
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
                   ),
-                  child: Material(
+                  const SizedBox(height: 4),
+                  Material(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(12),
-                    child: AppScrollableContent(
-                      builder: (_, controller) => ListView.separated(
-                        controller: controller,
-                        shrinkWrap: true,
-                        itemCount: entries.length,
-                        separatorBuilder: (BuildContext context, int index) =>
-                            Divider(
-                              height: 1,
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
-                            ),
-                        itemBuilder: (BuildContext context, int index) {
-                          final PortableEntryOption<T> entry = entries[index];
-                          final String title =
-                              (entry.title?.trim().isNotEmpty ?? false)
-                              ? entry.title!.trim()
-                              : l10n.editorUntitledDraft;
-                          final bool selected = draft.contains(entry.id);
-                          return CheckboxListTile(
-                            value: selected,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  draft.add(entry.id);
-                                } else {
-                                  draft.remove(entry.id);
-                                }
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(entry.subtitle),
-                          );
-                        },
-                      ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: entries.length,
+                      separatorBuilder: (BuildContext context, int index) =>
+                          Divider(
+                            height: 1,
+                            color: cs.outlineVariant.withValues(alpha: 0.35),
+                          ),
+                      itemBuilder: (BuildContext context, int index) {
+                        final PortableEntryOption<T> entry = entries[index];
+                        final String title =
+                            (entry.title?.trim().isNotEmpty ?? false)
+                            ? entry.title!.trim()
+                            : l10n.editorUntitledDraft;
+                        final bool selected = draft.contains(entry.id);
+                        return CheckboxListTile(
+                          value: selected,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                draft.add(entry.id);
+                              } else {
+                                draft.remove(entry.id);
+                              }
+                            });
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(entry.subtitle),
+                        );
+                      },
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             actions: <Widget>[
               TextButton(

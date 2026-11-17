@@ -537,7 +537,7 @@ void main() {
       );
       expect(
         tester.widget<TextField>(rules).controller!.text,
-        contains(testL10n.chatDiaryConversationRulesPrompt),
+        contains(testL10n.chatDiaryConversationRules),
       );
       expect(tester.widget<TextField>(rules).readOnly, isTrue);
       await tester.tap(find.text('關閉').last);
@@ -583,7 +583,7 @@ void main() {
       expect(tester.widget<TextField>(generationRules).readOnly, isTrue);
       expect(
         tester.widget<TextField>(generationRules).controller!.text,
-        testEnL10n.chatDiaryGenerationRulesPrompt,
+        testEnL10n.chatDiaryGenerationRules,
       );
       await tester.tap(find.text(testEnL10n.commonActionClose).last);
       await tester.pumpAndSettle();
@@ -654,7 +654,7 @@ void main() {
       expect(tester.widget<TextField>(rules).readOnly, isTrue);
       expect(
         tester.widget<TextField>(rules).controller!.text,
-        lookupAppLocalizations(appZhLocale).organizationRulesPrompt,
+        lookupAppLocalizations(appZhLocale).organizationRules,
       );
       expect(find.text('套用'), findsNothing);
       expect(find.text('還原預設'), findsNothing);
@@ -1486,5 +1486,78 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
     });
+  });
+
+  testWidgets('預設模型沒有金鑰時改回傳已有金鑰的連線', (tester) async {
+    addTearDown(() async {
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+    final initial = defaultConnection(AiProvider.openai);
+    AiConnectionSettingsResult? result;
+    await tester.pumpWidget(
+      app(
+        child: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () async {
+              result = await showAiConnectionSettingsDialog(
+                context,
+                initialConnection: initial,
+              );
+            },
+            child: Text(context.l10n.aiSettings),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    final key = find.byKey(const ValueKey('ai-api-key-gemini'));
+    await tester.ensureVisible(key);
+    await tester.enterText(key, 'gemini-key');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(result?.chatConnection?.provider, AiProvider.gemini);
+    expect(result?.chatConnection?.model, 'gemini-3.8-flash');
+    expect(result?.chatConnection?.model, isNot(initial.model));
+    expect(await store.readApiKey(result!.chatConnection!), 'gemini-key');
+  });
+
+  testWidgets('原本的模型已有金鑰時儲存後仍用同一個', (tester) async {
+    addTearDown(() async {
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+    final initial = defaultConnection(AiProvider.openai);
+    await store.saveApiKey(initial, 'openai-key');
+    AiConnectionSettingsResult? result;
+    await tester.pumpWidget(
+      app(
+        child: Builder(
+          builder: (context) => FilledButton(
+            onPressed: () async {
+              result = await showAiConnectionSettingsDialog(
+                context,
+                initialConnection: initial,
+              );
+            },
+            child: Text(context.l10n.aiSettings),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('AI 設定'));
+    await tester.pumpAndSettle();
+    final key = find.byKey(const ValueKey('ai-api-key-gemini'));
+    await tester.ensureVisible(key);
+    await tester.enterText(key, 'gemini-key');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+    await tester.pumpAndSettle();
+    expect(result?.chatConnection?.provider, AiProvider.openai);
+    expect(result?.chatConnection?.model, initial.model);
   });
 }

@@ -116,14 +116,14 @@ void main() {
       source: source,
       connection: testChatDiarySession().connectionConfig,
     )..prepare();
-    draft.originals['⟦S01⟧'] = '其他分支的秘密';
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.originals['{{PRI_01}}'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PRI_01}}'));
     draft.appendTurn(OrganizationTurn(user: '目前需求'));
     draft.replaceBody('有效整理稿');
     draft.stage = OrganizationStage.review;
     await store.save(draft, setup.session);
 
-    draft.organizedBody = '越界整理稿 ⟦S01⟧';
+    draft.organizedBody = '越界整理稿 {{PRI_01}}';
     expect(() => store.save(draft, setup.session), throwsFormatException);
     await expectLater(store.apply(draft, setup.session), throwsFormatException);
     expect(draft.stage, OrganizationStage.review);

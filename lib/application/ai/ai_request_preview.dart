@@ -1,12 +1,9 @@
-import 'dart:convert';
+import 'package:quill_diary/domain/ai/ai_request.dart';
 
 class AiDiaryContext {
-  const AiDiaryContext({required this.originalBody});
+  const AiDiaryContext({required this.diaryBody});
 
-  final String originalBody;
-
-  String get systemPromptBlock =>
-      '<diary_data>\n${jsonEncode({'original': originalBody})}\n</diary_data>';
+  final String diaryBody;
 }
 
 class AiPreviewTurn {
@@ -27,6 +24,7 @@ class AiPreviewTurn {
 
 class AiRequestPreview {
   const AiRequestPreview({
+    this.request,
     required this.instructions,
     required this.turns,
     this.diaryContext,
@@ -35,6 +33,43 @@ class AiRequestPreview {
   });
 
   final String instructions;
+  final PreparedAiRequest? request;
+
+  AiRequestPreview effective() {
+    final prepared = request;
+    if (prepared == null) return this;
+    return AiRequestPreview(
+      request: prepared,
+      instructions: prepared.instructions,
+      diaryContext: prepared.diaryBody == null
+          ? null
+          : AiDiaryContext(diaryBody: prepared.diaryBody!),
+      hasLocalPrivateNotes: hasLocalPrivateNotes,
+      conversationTurns: conversationTurns == null
+          ? null
+          : [
+              for (final turn in conversationTurns!)
+                AiPreviewTurn(
+                  isUser: turn.isUser,
+                  text: turn.text,
+                  imageIds: turn.imageIds,
+                  pending: turn.pending,
+                ),
+            ],
+      turns: [
+        for (var i = 0; i < prepared.messages.length; i++)
+          AiPreviewTurn(
+            isUser: prepared.messages[i].isUser,
+            text: prepared.messages[i].text,
+            imageIds: prepared.messages[i].images
+                .map((image) => image.id)
+                .toList(),
+            pending: i < turns.length && turns[i].pending,
+          ),
+      ],
+    );
+  }
+
   final AiDiaryContext? diaryContext;
   final List<AiPreviewTurn> turns;
 
@@ -42,7 +77,6 @@ class AiRequestPreview {
   final List<AiPreviewTurn>? conversationTurns;
   final bool hasLocalPrivateNotes;
 
-  String get systemPrompt => diaryContext == null
-      ? instructions
-      : '$instructions\n\n${diaryContext!.systemPromptBlock}';
+  String get systemPrompt =>
+      aiSystemPrompt(instructions, diaryContext?.diaryBody);
 }

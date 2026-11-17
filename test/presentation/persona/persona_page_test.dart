@@ -60,8 +60,8 @@ void main() {
             selectedDiaryIds: [],
           ),
           PersonaCardKind.tone: PersonaCard(
-            text: '會用⟦P01⟧的稱呼',
-            tokens: {'⟦P01⟧': peer.id},
+            text: '會用{{PER_01}}的稱呼',
+            tokens: {'{{PER_01}}': peer.id},
             updatedAt: DateTime.utc(2026),
             selectedDiaryIds: [],
           ),
@@ -121,8 +121,8 @@ void main() {
                   ),
                 ]
               : const [],
-          baseline: hasRequest ? {'memory': '既有記憶與$personaHiddenText'} : {},
-          subject: '⟦P02⟧',
+          baseline: hasRequest ? {'memory': '既有記憶與{{PRI_01}}'} : {},
+          subject: '{{PER_02}}',
           selectionSignature: 'fixture',
         );
         final baseline = jsonEncode(preview.baseline);
@@ -182,10 +182,7 @@ void main() {
             .map((widget) => widget.text)
             .toList();
         if (target != PersonaUpdateTarget.tone) {
-          expect(
-            visible,
-            contains(hasRequest ? '既有記憶與$personaHiddenText' : memory),
-          );
+          expect(visible, contains(hasRequest ? '既有記憶與{{PRI_01}}' : memory));
         }
         expect(visible.contains('會用小華的稱呼'), includeTone);
         if (hasRequest) {
@@ -404,17 +401,18 @@ void main() {
           PersonaMaterial.chat(
             label: '匯入的聊天 2',
             date: '2026-11-08T10:00:00',
-            text: '晚點$personaHiddenText',
+            text: '晚點{{PRI_01}}',
             speakerRole: PersonaSpeakerRole.personaSubject,
-            speaker: '⟦P07⟧',
+            speaker: '{{PER_07}}',
             styleText: '晚點',
           ),
           PersonaMaterial.chat(
             label: '匯入的聊天 1',
             date: '2026-11-08T10:05:00',
-            text: '和⟦P07⟧碰面',
+            text: '和{{PER_07}}碰面',
             speakerRole: PersonaSpeakerRole.other,
-            speaker: '⟦P08⟧',
+            speaker: '{{PER_08}}',
+            speakerName: '阿嘉',
             styleText: '',
           ),
           PersonaMaterial.chat(
@@ -427,7 +425,7 @@ void main() {
           ),
         ],
         baseline: const {},
-        subject: '⟦P07⟧',
+        subject: '{{PER_07}}',
         selectionSignature: 'fixture',
       );
       final request = jsonEncode(preview.requestMaterials);
@@ -480,9 +478,13 @@ void main() {
       await tester.tap(find.text(l10n.personaSystemPrompt));
       await tester.pumpAndSettle();
       expect(promptText, findsNothing);
-      expect(find.text(l10n.personaSpeakerNamePreviewHint), findsNothing);
+      expect(find.text(l10n.personaSpeakerNamePreviewHint), findsOneWidget);
       expect(
-        find.textContaining('${l10n.personaRoleSubject} · ⟦P07⟧'),
+        find.textContaining('${l10n.personaRoleSubject} · {{PER_07}}'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('${l10n.personaRoleOther} · 阿嘉'),
         findsOneWidget,
       );
       personResult.complete(person);
@@ -496,15 +498,16 @@ void main() {
       final nameRange = named.ranges.single;
       expect(named.text.substring(nameRange.start, nameRange.end), person.name);
       final other = metadata.singleWhere(
-        (widget) => widget.text.contains('${l10n.personaRoleOther} · ⟦P08⟧'),
+        (widget) => widget.text.contains('${l10n.personaRoleOther} · 阿嘉'),
       );
       expect(
         other.text.substring(
           other.ranges.single.start,
           other.ranges.single.end,
         ),
-        '⟦P08⟧',
+        '阿嘉',
       );
+      expect(request, isNot(contains('阿嘉')));
       expect(
         find.textContaining('${l10n.personaRoleUser} · user'),
         findsNothing,
@@ -513,7 +516,7 @@ void main() {
         find.textContaining('${l10n.personaRoleUser} · 09:12'),
         findsOneWidget,
       );
-      expect(find.text('和⟦P07⟧碰面'), findsOneWidget);
+      expect(find.text('和{{PER_07}}碰面'), findsOneWidget);
       expect(find.text('2026-11-08'), findsOneWidget);
       final day = find.ancestor(
         of: find.text('2026-11-08'),
@@ -524,17 +527,17 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.descendant(of: day, matching: find.text('晚點$personaHiddenText')),
+        find.descendant(of: day, matching: find.text('晚點{{PRI_01}}')),
         findsOneWidget,
       );
       expect(
         tester.getTopLeft(find.text('早安')).dy,
-        lessThan(tester.getTopLeft(find.text('晚點$personaHiddenText')).dy),
+        lessThan(tester.getTopLeft(find.text('晚點{{PRI_01}}')).dy),
       );
       expect(find.textContaining('09:12'), findsOneWidget);
       final hidden = tester
           .widgetList<PrivateText>(find.byType(PrivateText))
-          .singleWhere((widget) => widget.text == '晚點$personaHiddenText');
+          .singleWhere((widget) => widget.text == '晚點{{PRI_01}}');
       expect(hidden.ranges, isNotEmpty);
       await tester.scrollUntilVisible(
         find.text('2026-11-09'),
@@ -562,7 +565,7 @@ void main() {
         lessThan(tester.getTopLeft(find.text('日記範例')).dy),
       );
       expect(jsonEncode(preview.requestMaterials), request);
-      expect(preview.subject, '⟦P07⟧');
+      expect(preview.subject, '{{PER_07}}');
       final back = find.widgetWithText(
         OutlinedButton,
         l10n.personaBackMaterials,
@@ -591,6 +594,10 @@ void main() {
   }
 
   testWidgets('套用聊天編輯會刪除指定與清空的訊息，保留其他日期，取消不套用變更', (tester) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final person = personaPerson('小明');
     final record = personaDraftRecord('vault', person.id);
     final chat = parsePersonaChat(
@@ -628,6 +635,12 @@ void main() {
           personDetailProvider(person.id).overrideWith((ref) async => person),
           personRelatedEntriesProvider(person.id)
               .overrideWith((ref) async => []),
+          peopleCatalogProvider.overrideWith(
+            (ref) async => PeopleCatalog(
+              relationshipTypes: defaultBuiltinRelationshipTypes(),
+              people: [person],
+            ),
+          ),
           personaControllerProvider(person.id).overrideWith((ref) {
             controller = PersonaTestController(ref, person.id, record);
             controller.imports[chat.importId] = chat;
@@ -648,8 +661,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('納入 3 則訊息'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('編輯').first);
-    await tester.pumpAndSettle();
+    expect(find.byType(PersonaChatMaterialPage), findsOneWidget);
+    Future<void> tapEdit() async {
+      final edit = find.descendant(
+        of: find.byType(PersonaChatMaterialPage),
+        matching: find.text('編輯'),
+      );
+      await tester.ensureVisible(edit.first);
+      await tester.tap(edit.first);
+      await tester.pumpAndSettle();
+    }
+
+    await tapEdit();
     expect(find.text(testL10n.personaChecked), findsNothing);
     await tester.tap(find.byTooltip(testL10n.commonActionDelete).first);
     await tester.pumpAndSettle();
@@ -671,8 +694,7 @@ void main() {
     expect(source.hidden, isEmpty);
     expect(source.excluded, isEmpty);
     expect(find.text('納入 2 則訊息'), findsWidgets);
-    await tester.tap(find.text('編輯').first);
-    await tester.pumpAndSettle();
+    await tapEdit();
     expect(tester.widget<TextField>(fields).controller!.text, '> 原文\n自己的話');
     await tester.enterText(fields, '取消的內容');
     await tester.tap(find.byTooltip(testL10n.commonActionDelete));
@@ -686,16 +708,14 @@ void main() {
       controller.imports[chat.importId]!.messages.first.text,
       '> 原文\n自己的話',
     );
-    await tester.tap(find.text('編輯').first);
-    await tester.pumpAndSettle();
+    await tapEdit();
     await tester.tap(find.byTooltip(testL10n.commonActionDelete));
     await tester.pumpAndSettle();
     await tester.tap(find.text(testL10n.commonActionApply));
     await tester.pumpAndSettle();
     expect(controller.imports[chat.importId]!.messages.single.text, '隔天的訊息');
     expect(find.text('2026-11-08'), findsNothing);
-    await tester.tap(find.text('編輯'));
-    await tester.pumpAndSettle();
+    await tapEdit();
     await tester.enterText(fields, '');
     await tester.tap(find.text(testL10n.commonActionApply));
     await tester.pumpAndSettle();
@@ -815,6 +835,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(compare);
     await tester.pumpAndSettle();
+    final double cardHeight = tester
+        .getSize(
+          find
+              .descendant(
+                of: find.byType(AlertDialog),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .height;
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('organization-diff-view')))
+          .height,
+      greaterThan(cardHeight * 0.5),
+    );
     await tester.ensureVisible(find.text(testL10n.personaRestore));
     await tester.tap(
       find.widgetWithText(FilledButton, testL10n.personaRestore),

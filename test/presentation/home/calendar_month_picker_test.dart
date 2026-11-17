@@ -97,10 +97,11 @@ void main() {
     await tester.tap(find.byKey(const Key('app-date-picker-year-chooser')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('app-date-picker-year-view')), findsOneWidget);
-    final GridView yearGrid = tester.widget(
-      find.byKey(const Key('app-date-picker-year-grid')),
-    );
-    final ScrollController yearController = yearGrid.controller!;
+    final ScrollController yearController = tester
+        .widget<SingleChildScrollView>(
+          find.byKey(const Key('app-date-picker-year-view')),
+        )
+        .controller!;
     yearController.jumpTo(yearController.position.maxScrollExtent);
     await tester.pump();
     expect(yearController.offset, yearController.position.maxScrollExtent);

@@ -62,7 +62,7 @@ class PersonaImportMessage {
     'text': text,
     'sent_at_local': sentAtLocal,
     'system': system,
-    'quote_ranges': quoteRanges.map((r) => r.toJson()).toList(),
+    'quote_ranges': privateRangesToJson(quoteRanges),
   };
   factory PersonaImportMessage.fromJson(Map<String, dynamic> json) =>
       PersonaImportMessage(
@@ -71,13 +71,7 @@ class PersonaImportMessage {
         text: json['text'] as String,
         sentAtLocal: json['sent_at_local'] as String,
         system: json['system'] as bool,
-        quoteRanges: (json['quote_ranges'] as List)
-            .map(
-              (r) => PrivateTextRange.fromJson(
-                Map<String, dynamic>.from(r as Map),
-              ),
-            )
-            .toList(),
+        quoteRanges: privateRangesFromJson(json['quote_ranges'] as List),
       );
 }
 
@@ -95,7 +89,9 @@ class PersonaChatImport {
     this.kind = PersonaChatImportKind.messages,
     this.rawText = '',
     List<PrivateTextRange>? rawHidden,
-  }) : rawHidden = List.of(rawHidden ?? []);
+    List<PrivateTextRange>? rawRevealed,
+  }) : rawHidden = List.of(rawHidden ?? []),
+       rawRevealed = List.of(rawRevealed ?? []);
 
   /// 無法辨識的檔案整份保留。不升版：缺 `kind` 的舊檔仍是逐則訊息。
   PersonaChatImport.raw({
@@ -107,6 +103,7 @@ class PersonaChatImport {
     required String text,
     required List<PersonaImportSpeaker> speakers,
     required List<PrivateTextRange> hidden,
+    List<PrivateTextRange> revealed = const [],
   }) : this(
          vaultId: vaultId,
          personId: personId,
@@ -118,6 +115,7 @@ class PersonaChatImport {
          kind: PersonaChatImportKind.raw,
          rawText: text,
          rawHidden: hidden,
+         rawRevealed: revealed,
        );
 
   final String vaultId;
@@ -130,6 +128,7 @@ class PersonaChatImport {
   final PersonaChatImportKind kind;
   final String rawText;
   final List<PrivateTextRange> rawHidden;
+  final List<PrivateTextRange> rawRevealed;
 
   bool get isRaw => kind == PersonaChatImportKind.raw;
 
@@ -166,6 +165,7 @@ class PersonaChatImport {
         throw const FormatException('原文匯入不正確');
       }
       validatePersonaRanges(rawText, rawHidden);
+      validatePersonaRanges(rawText, rawRevealed);
       return;
     }
     for (final message in messages) {
@@ -189,7 +189,9 @@ class PersonaChatImport {
     if (isRaw) ...{
       'kind': kind.name,
       'text': rawText,
-      'hidden_ranges': rawHidden.map((r) => r.toJson()).toList(),
+      'hidden_ranges': privateRangesToJson(rawHidden),
+      if (rawRevealed.isNotEmpty)
+        'revealed_ranges': privateRangesToJson(rawRevealed),
     },
   };
   factory PersonaChatImport.fromJson(Map<String, dynamic> json) {
@@ -228,13 +230,10 @@ class PersonaChatImport {
       kind: kind,
       rawText: raw ? json['text'] as String : '',
       rawHidden: raw
-          ? (json['hidden_ranges'] as List)
-                .map(
-                  (r) => PrivateTextRange.fromJson(
-                    Map<String, dynamic>.from(r as Map),
-                  ),
-                )
-                .toList()
+          ? privateRangesFromJson(json['hidden_ranges'] as List)
+          : const [],
+      rawRevealed: raw
+          ? privateRangesFromJson(json['revealed_ranges'])
           : const [],
     );
     result.validate();

@@ -22,34 +22,44 @@ class PersonaMaskDialog extends ConsumerStatefulWidget {
     required this.title,
     required this.text,
     required this.ranges,
+    this.revealed = const [],
     required this.onChanged,
     this.references = const [],
+    this.detectRanges,
   });
 
   final String title;
   final String text;
   final List<PrivateTextRange> ranges;
-  final void Function(List<PrivateTextRange>) onChanged;
+  final List<PrivateTextRange> revealed;
+  final void Function(
+    List<PrivateTextRange> hidden,
+    List<PrivateTextRange> revealed,
+  )
+  onChanged;
   final List<PrivateTextRange> references;
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   ConsumerState<PersonaMaskDialog> createState() => _PersonaMaskDialogState();
 }
 
 class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
-  final controller = PrivateTextController();
+  late final controller = PrivateTextController(
+    detectRanges: widget.detectRanges,
+  );
   final _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    controller.setDocument(widget.text, widget.ranges);
+    controller.setDocument(widget.text, widget.ranges, widget.revealed);
   }
 
   @override
   void dispose() {
-    controller.dispose();
     _scroll.dispose();
+    controller.dispose();
     super.dispose();
   }
 
@@ -57,11 +67,12 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return AppDialogShell(
+      fillHeight: true,
       title: widget.title,
       leading: ListenableBuilder(
         listenable: controller,
         builder: (_, _) => IconButton(
-          tooltip: controller.selectionIsPrivate
+          tooltip: controller.selectionIsHidden
               ? l10n.aiUnhideSelection
               : l10n.aiHideSelection,
           onPressed: controller.selection.isCollapsed
@@ -87,39 +98,40 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
                     baseOffset: range.start,
                     extentOffset: range.end,
                   );
-                  if (controller.selectionIsPrivate) {
+                  if (controller.selectionIsHidden) {
                     controller.unhideSelection();
                   } else {
                     controller.hideSelection();
                   }
-                  widget.onChanged(controller.privateRanges);
+                  widget.onChanged(
+                    controller.privateRanges,
+                    controller.revealedRanges,
+                  );
                 },
           icon: Icon(
-            controller.selectionIsPrivate
+            controller.selectionIsHidden
                 ? Icons.visibility
                 : Icons.visibility_off,
           ),
         ),
       ),
-      content: PersonaDialogBody(
-        child: AppScrollbar(
-          controller: _scroll,
-          reserveGutter: true,
-          track: AppScrollbarTrack.frame,
-          child: TextField(
-            controller: controller,
-            scrollController: _scroll,
-            style: watchPersonalizationPreferences(ref).typography
-                .bodyTextStyle(Theme.of(context).textTheme),
-            readOnly: true,
-            expands: true,
-            minLines: null,
-            maxLines: null,
-            textAlignVertical: TextAlignVertical.top,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.all(12),
-            ),
+      content: AppScrollbar(
+        controller: _scroll,
+        track: AppScrollbarTrack.frame,
+        reserveGutter: true,
+        child: TextField(
+          controller: controller,
+          scrollController: _scroll,
+          style: watchPersonalizationPreferences(ref).typography
+              .bodyTextStyle(Theme.of(context).textTheme),
+          readOnly: true,
+          expands: true,
+          minLines: null,
+          maxLines: null,
+          textAlignVertical: TextAlignVertical.top,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.all(12),
           ),
         ),
       ),
@@ -156,11 +168,13 @@ class PersonaChatDateEditResult {
     required this.messageId,
     required this.text,
     required this.ranges,
+    this.revealed = const [],
   });
 
   final String messageId;
   final String text;
   final List<PrivateTextRange> ranges;
+  final List<PrivateTextRange> revealed;
 }
 
 class PersonaChatDateEditorDialog extends StatefulWidget {
@@ -169,11 +183,15 @@ class PersonaChatDateEditorDialog extends StatefulWidget {
     required this.title,
     required this.messages,
     required this.ranges,
+    this.revealed = const {},
+    this.detectRanges,
   });
 
   final String title;
   final List<PersonaChatDateEditorMessage> messages;
   final Map<String, List<PrivateTextRange>> ranges;
+  final Map<String, List<PrivateTextRange>> revealed;
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   State<PersonaChatDateEditorDialog> createState() =>
@@ -183,7 +201,6 @@ class PersonaChatDateEditorDialog extends StatefulWidget {
 class _PersonaChatDateEditorDialogState
     extends State<PersonaChatDateEditorDialog> {
   final _controllers = <String, PrivateTextController>{};
-  final _scroll = ScrollController();
   final _deletedMessageIds = <String>{};
   String? _activeMessageId;
 
@@ -191,8 +208,12 @@ class _PersonaChatDateEditorDialogState
   void initState() {
     super.initState();
     for (final message in widget.messages) {
-      final controller = PrivateTextController()
-        ..setDocument(message.text, widget.ranges[message.messageId] ?? []);
+      final controller =
+          PrivateTextController(detectRanges: widget.detectRanges)..setDocument(
+            message.text,
+            widget.ranges[message.messageId] ?? [],
+            widget.revealed[message.messageId] ?? [],
+          );
       controller.addListener(() => _selectionChanged(message.messageId));
       _controllers[message.messageId] = controller;
     }
@@ -220,7 +241,7 @@ class _PersonaChatDateEditorDialogState
       baseOffset: range.start,
       extentOffset: range.end,
     );
-    if (controller.selectionIsPrivate) {
+    if (controller.selectionIsHidden) {
       controller.unhideSelection();
     } else {
       controller.hideSelection();
@@ -246,6 +267,7 @@ class _PersonaChatDateEditorDialogState
             messageId: message.messageId,
             text: _controllers[message.messageId]!.text,
             ranges: _controllers[message.messageId]!.privateRanges,
+            revealed: _controllers[message.messageId]!.revealedRanges,
           ),
     ]);
   }
@@ -255,7 +277,6 @@ class _PersonaChatDateEditorDialogState
     for (final controller in _controllers.values) {
       controller.dispose();
     }
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -273,41 +294,37 @@ class _PersonaChatDateEditorDialogState
         !active.selection.isCollapsed;
     final l10n = context.l10n;
     return AppDialogShell(
+      fillHeight: true,
       title: widget.title,
       leading: IconButton(
-        tooltip: active?.selectionIsPrivate == true
+        tooltip: active?.selectionIsHidden == true
             ? l10n.aiUnhideSelection
             : l10n.aiHideSelection,
         onPressed: canToggle ? _toggleSelectionPrivacy : null,
         icon: Icon(
-          active?.selectionIsPrivate == true
+          active?.selectionIsHidden == true
               ? Icons.visibility
               : Icons.visibility_off,
         ),
       ),
-      content: PersonaDialogBody(
-        child: messages.isEmpty
-            ? Text(l10n.personaNoChatMessages)
-            : AppScrollbar(
-                controller: _scroll,
-                reserveGutter: true,
-                child: ListView.separated(
-                  controller: _scroll,
-                  padding: EdgeInsets.zero,
-                  itemCount: messages.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return _PersonaChatDateMessageEditor(
-                      key: ValueKey(message.messageId),
-                      message: message,
-                      controller: _controllers[message.messageId]!,
-                      onDelete: () => _deleteMessage(message.messageId),
-                    );
-                  },
-                ),
+      content: messages.isEmpty
+          ? Text(l10n.personaNoChatMessages)
+          : AppScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var index = 0; index < messages.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 8),
+                    _PersonaChatDateMessageEditor(
+                      key: ValueKey(messages[index].messageId),
+                      message: messages[index],
+                      controller: _controllers[messages[index].messageId]!,
+                      onDelete: () => _deleteMessage(messages[index].messageId),
+                    ),
+                  ],
+                ],
               ),
-      ),
+            ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -391,20 +408,21 @@ class _PersonaChatDateMessageEditor extends StatelessWidget {
 }
 
 class PersonaPasteDialog extends StatefulWidget {
-  const PersonaPasteDialog({super.key});
+  const PersonaPasteDialog({super.key, this.detectRanges});
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   State<PersonaPasteDialog> createState() => _PersonaPasteDialogState();
 }
 
 class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
-  final text = TextEditingController();
+  late final text = PrivateTextController(detectRanges: widget.detectRanges);
   final _scroll = ScrollController();
 
   @override
   void dispose() {
-    text.dispose();
     _scroll.dispose();
+    text.dispose();
     super.dispose();
   }
 
@@ -413,39 +431,39 @@ class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     return AppDialogShell(
+      fillHeight: true,
       title: l10n.personaPaste,
-      content: PersonaDialogBody(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.personaPrivacyHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.personaPrivacyHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: AppScrollbar(
-                controller: _scroll,
-                reserveGutter: true,
-                track: AppScrollbarTrack.frame,
-                child: TextField(
-                  controller: text,
-                  scrollController: _scroll,
-                  expands: true,
-                  minLines: null,
-                  maxLines: null,
-                  textAlignVertical: TextAlignVertical.top,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.all(12),
-                  ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: AppScrollbar(
+              controller: _scroll,
+              track: AppScrollbarTrack.frame,
+              reserveGutter: true,
+              child: TextField(
+                controller: text,
+                scrollController: _scroll,
+                expands: true,
+                minLines: null,
+                maxLines: null,
+                textAlignVertical: TextAlignVertical.top,
+                keyboardType: TextInputType.multiline,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(12),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -471,14 +489,6 @@ class PersonaRolesDialog extends StatefulWidget {
 }
 
 class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
-  final _scroll = ScrollController();
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -488,25 +498,20 @@ class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
     );
     return AppDialogShell(
       title: l.personaRoles,
-      content: PersonaDialogBody(
-        child: AppScrollbar(
-          controller: _scroll,
-          reserveGutter: true,
-          child: ListView(
-            controller: _scroll,
-            padding: EdgeInsets.zero,
-            children: [
-              for (final speaker in widget.chat.speakers)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: PersonaSpeakerRoleCard(
-                    label: speaker.label,
-                    role: speaker.role,
-                    onChanged: (role) => setState(() => speaker.role = role),
-                  ),
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final speaker in widget.chat.speakers)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: PersonaSpeakerRoleCard(
+                  label: speaker.label,
+                  role: speaker.role,
+                  onChanged: (role) => setState(() => speaker.role = role),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
       actions: [
@@ -672,101 +677,100 @@ class PersonaChatExportHelpDialog extends StatelessWidget {
       height: 1.45,
     );
     return AppDialogShell(
+      fillHeight: true,
       title: l10n.personaChatExportHelp,
       icon: const Icon(Icons.info_outline_rounded),
-      content: PersonaDialogBody(
-        child: AppScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppInsetPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _ExportFileType('.txt'),
-                        _ExportFileType('.json'),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(l10n.personaChatExportHelpIntro, style: muted),
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppInsetPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ExportFileType('.txt'),
+                      _ExportFileType('.json'),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(l10n.personaChatExportHelpIntro, style: muted),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _ExportPlatformCard(
+              title: l10n.personaChatExportLineTitle,
+              groups: [
+                _ExportStepGroup(
+                  label: l10n.personaChatExportOnPhone,
+                  steps: [
+                    l10n.personaChatExportLinePhoneStep1,
+                    l10n.personaChatExportLinePhoneStep2,
+                    l10n.personaChatExportLinePhoneStep3,
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              _ExportPlatformCard(
-                title: l10n.personaChatExportLineTitle,
-                groups: [
-                  _ExportStepGroup(
-                    label: l10n.personaChatExportOnPhone,
-                    steps: [
-                      l10n.personaChatExportLinePhoneStep1,
-                      l10n.personaChatExportLinePhoneStep2,
-                      l10n.personaChatExportLinePhoneStep3,
-                    ],
-                  ),
-                  _ExportStepGroup(
-                    label: l10n.personaChatExportOnDesktop,
-                    steps: [
-                      l10n.personaChatExportLineDesktopStep1,
-                      l10n.personaChatExportLineDesktopStep2,
-                    ],
-                  ),
-                ],
-                notes: [l10n.personaChatExportLineNote],
-              ),
-              const SizedBox(height: 12),
-              _ExportPlatformCard(
-                title: l10n.personaChatExportMessengerTitle,
-                groups: [
-                  _ExportStepGroup(
-                    steps: [
-                      l10n.personaChatExportMessengerStep1,
-                      l10n.personaChatExportMessengerStep2,
-                      l10n.personaChatExportMessengerStep3,
-                    ],
-                  ),
-                ],
-                notes: [l10n.personaChatExportMessengerNote],
-              ),
-              const SizedBox(height: 12),
-              _ExportPlatformCard(
-                title: l10n.personaChatExportMessengerSecureTitle,
-                groups: [
-                  _ExportStepGroup(
-                    steps: [
-                      l10n.personaChatExportMessengerSecureStep1,
-                      l10n.personaChatExportMessengerSecureStep2,
-                      l10n.personaChatExportMessengerSecureStep3,
-                    ],
-                  ),
-                ],
-                notes: [
-                  l10n.personaChatExportMessengerSecureNoteComputer,
-                  l10n.personaChatExportMessengerSecureNotePath,
-                  l10n.personaChatExportMessengerSecureNoteIncomplete,
-                ],
-              ),
-              const SizedBox(height: 12),
-              _ExportPlatformCard(
-                title: l10n.personaChatExportInstagramTitle,
-                groups: [
-                  _ExportStepGroup(
-                    steps: [
-                      l10n.personaChatExportInstagramStep1,
-                      l10n.personaChatExportInstagramStep2,
-                      l10n.personaChatExportInstagramStep3,
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(l10n.personaChatExportTrademarkNote, style: muted),
-            ],
-          ),
+                _ExportStepGroup(
+                  label: l10n.personaChatExportOnDesktop,
+                  steps: [
+                    l10n.personaChatExportLineDesktopStep1,
+                    l10n.personaChatExportLineDesktopStep2,
+                  ],
+                ),
+              ],
+              notes: [l10n.personaChatExportLineNote],
+            ),
+            const SizedBox(height: 12),
+            _ExportPlatformCard(
+              title: l10n.personaChatExportMessengerTitle,
+              groups: [
+                _ExportStepGroup(
+                  steps: [
+                    l10n.personaChatExportMessengerStep1,
+                    l10n.personaChatExportMessengerStep2,
+                    l10n.personaChatExportMessengerStep3,
+                  ],
+                ),
+              ],
+              notes: [l10n.personaChatExportMessengerNote],
+            ),
+            const SizedBox(height: 12),
+            _ExportPlatformCard(
+              title: l10n.personaChatExportMessengerSecureTitle,
+              groups: [
+                _ExportStepGroup(
+                  steps: [
+                    l10n.personaChatExportMessengerSecureStep1,
+                    l10n.personaChatExportMessengerSecureStep2,
+                    l10n.personaChatExportMessengerSecureStep3,
+                  ],
+                ),
+              ],
+              notes: [
+                l10n.personaChatExportMessengerSecureNoteComputer,
+                l10n.personaChatExportMessengerSecureNotePath,
+                l10n.personaChatExportMessengerSecureNoteIncomplete,
+              ],
+            ),
+            const SizedBox(height: 12),
+            _ExportPlatformCard(
+              title: l10n.personaChatExportInstagramTitle,
+              groups: [
+                _ExportStepGroup(
+                  steps: [
+                    l10n.personaChatExportInstagramStep1,
+                    l10n.personaChatExportInstagramStep2,
+                    l10n.personaChatExportInstagramStep3,
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(l10n.personaChatExportTrademarkNote, style: muted),
+          ],
         ),
       ),
       actions: [
@@ -785,18 +789,23 @@ class PersonaDiaryPreviewDialog extends StatelessWidget {
     required this.title,
     required this.body,
     required this.bodyStyle,
+    this.ranges = const [],
   });
 
   final String title;
   final String body;
   final TextStyle bodyStyle;
+  final List<PrivateTextRange> ranges;
 
   @override
   Widget build(BuildContext context) {
     return AppDialogShell(
+      fillHeight: true,
       title: title,
-      content: PersonaDialogBody(
-        child: AppScrollView(child: SelectableText(body, style: bodyStyle)),
+      content: AppScrollView(
+        child: SelectionArea(
+          child: PrivateText(text: body, ranges: ranges, style: bodyStyle),
+        ),
       ),
       actions: [
         TextButton(
@@ -819,6 +828,7 @@ class PersonaChatMaterialPage extends StatefulWidget {
     required this.onPickDate,
     required this.onToggleDate,
     required this.onEditDate,
+    this.detectRanges,
   });
 
   final PersonaChatSource source;
@@ -831,6 +841,7 @@ class PersonaChatMaterialPage extends StatefulWidget {
   onToggleDate;
   final Future<void> Function(String date, List<PersonaImportMessage> messages)
   onEditDate;
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   State<PersonaChatMaterialPage> createState() =>
@@ -845,18 +856,17 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
     final chat = widget.readChat();
     final messages = chat.messagesInWindow(source).toList();
     return AppDialogShell(
+      fillHeight: true,
       title: l.personaChats,
-      content: PersonaDialogBody(
-        child: AppScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _materialHeader(l, source, chat, messages),
-              const SizedBox(height: 12),
-              if (messages.isEmpty) Text(l.personaNoChatMessages),
-              ..._dateSections(source, chat, messages),
-            ],
-          ),
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _materialHeader(l, source, chat, messages),
+            const SizedBox(height: 12),
+            if (messages.isEmpty) Text(l.personaNoChatMessages),
+            ..._dateSections(source, chat, messages),
+          ],
         ),
       ),
     );
@@ -986,6 +996,7 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
               await widget.onEditDate(date, messages);
               if (mounted) setState(() {});
             },
+            detectRanges: widget.detectRanges,
           ),
         ),
     ];
@@ -1007,6 +1018,7 @@ class _ChatDateGroupSection extends StatelessWidget {
     required this.bodyStyle,
     required this.onIncludedChanged,
     required this.onEdit,
+    required this.detectRanges,
   });
 
   final _ChatDateGroup group;
@@ -1017,6 +1029,7 @@ class _ChatDateGroupSection extends StatelessWidget {
   onIncludedChanged;
   final Future<void> Function(String date, List<PersonaImportMessage> messages)
   onEdit;
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   Widget build(BuildContext context) {
@@ -1070,7 +1083,9 @@ class _ChatDateGroupSection extends StatelessWidget {
               speaker: speakers[message.speakerId]!,
               included: !source.excluded.contains(message.id),
               hiddenRanges: source.hidden[message.id] ?? const [],
+              revealedRanges: source.revealed[message.id] ?? const [],
               bodyStyle: bodyStyle,
+              detectRanges: detectRanges,
             ),
           ),
       ],
@@ -1148,18 +1163,27 @@ class _ChatMessageCard extends StatelessWidget {
     required this.speaker,
     required this.included,
     required this.hiddenRanges,
+    required this.revealedRanges,
     required this.bodyStyle,
+    required this.detectRanges,
   });
 
   final PersonaImportMessage message;
   final PersonaImportSpeaker speaker;
   final bool included;
   final List<PrivateTextRange> hiddenRanges;
+  final List<PrivateTextRange> revealedRanges;
   final TextStyle bodyStyle;
+  final PrivacyRangeDetector? detectRanges;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final ranges = (detectRanges ?? privacyRangeDetector(() => null))(
+      message.text,
+      hiddenRanges,
+      revealedRanges,
+    );
     return Material(
       color: included
           ? colors.surfaceContainerLow
@@ -1186,7 +1210,7 @@ class _ChatMessageCard extends StatelessWidget {
                       ?.copyWith(color: colors.onSurfaceVariant),
                 ),
                 const Spacer(),
-                if (hiddenRanges.isNotEmpty) ...[
+                if (ranges.isNotEmpty) ...[
                   Icon(
                     Icons.visibility_off_outlined,
                     size: 14,
@@ -1195,7 +1219,7 @@ class _ChatMessageCard extends StatelessWidget {
                   const SizedBox(width: 4),
                 ],
                 Text(
-                  context.l10n.personaHiddenCount(hiddenRanges.length),
+                  context.l10n.personaHiddenCount(ranges.length),
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: colors.onSurfaceVariant),
                 ),
@@ -1204,7 +1228,7 @@ class _ChatMessageCard extends StatelessWidget {
             const SizedBox(height: 4),
             PrivateText(
               text: message.text,
-              ranges: hiddenRanges,
+              ranges: ranges,
               style: bodyStyle.copyWith(
                 color: included ? colors.onSurface : colors.onSurfaceVariant,
               ),

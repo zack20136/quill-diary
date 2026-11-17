@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/ai/restored_private_ranges.dart';
 
 void main() {
-  const originals = {'⟦P01⟧': 'QA小明🙂', '⟦S01⟧': '秘密'};
+  const originals = {'{{PER_01}}': 'QA小明🙂', '{{PRI_01}}': '秘密'};
 
   test('人物與手動隱藏可重複及相鄰出現，普通同名文字不標記', () {
     const text = 'QA小明🙂與QA小明🙂秘密，又見QA小明🙂';
     final ranges = restoredPrivateRanges(
-      outboundText: 'QA小明🙂與⟦P01⟧⟦S01⟧，又見⟦P01⟧',
+      outboundText: 'QA小明🙂與{{PER_01}}{{PRI_01}}，又見{{PER_01}}',
       text: text,
       originals: originals,
     );
@@ -18,11 +18,11 @@ void main() {
     expect(ranges.first.start, 'QA小明🙂與'.length);
   });
 
-  for (final suffix in ['⟦P', '⟦P02⟧', '⟦S01⟧']) {
+  for (final suffix in ['{{PER', '{{PER_02}}', '{{PRI_01}}']) {
     test('串流或其他分支的未還原代號 $suffix 保持原樣，不影響已還原部分', () {
       final text = 'QA小明🙂 $suffix';
       final ranges = restoredPrivateRanges(
-        outboundText: '⟦P01⟧ $suffix',
+        outboundText: '{{PER_01}} $suffix',
         text: text,
         originals: originals,
       );
@@ -36,7 +36,7 @@ void main() {
     test('文字無法完整對齊時不猜測隱藏區間：$text', () {
       expect(
         restoredPrivateRanges(
-          outboundText: '前文⟦P01⟧後文',
+          outboundText: '前文{{PER_01}}後文',
           text: text,
           originals: originals,
         ),
@@ -56,7 +56,7 @@ void main() {
     );
     expect(
       restoredPrivateRanges(
-        outboundText: '⟦P01⟧',
+        outboundText: '{{PER_01}}',
         text: 'QA小明🙂',
         originals: const {},
       ),

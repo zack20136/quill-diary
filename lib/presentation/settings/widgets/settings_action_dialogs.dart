@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,11 +17,6 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
-double _dialogContentMaxHeight(BuildContext context) {
-  final double screenHeight = MediaQuery.sizeOf(context).height;
-  return math.min(screenHeight * 0.7, personaDialogBodyHeight(context));
-}
-
 Future<bool> showInspectVaultConfirmDialog(
   BuildContext context, {
   VaultRepairSummary? repairSummary,
@@ -34,45 +28,37 @@ Future<bool> showInspectVaultConfirmDialog(
         context: context,
         builder: (BuildContext dialogContext) => AppDialogShell(
           title: l10n.settingsInspectVaultConfirmTitle,
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: _dialogContentMaxHeight(context),
-              ),
-              child: AppScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(l10n.settingsInspectVaultConfirmBody),
-                    const SizedBox(height: 12),
-                    const _MaintenanceScope(),
-                    const SizedBox(height: 12),
-                    if (repairSummary != null)
-                      _PreflightLastRepairCard(summary: repairSummary)
-                    else
-                      Text(l10n.settingsInspectVaultPreflightNoRepair),
-                    if (repairSummary != null &&
-                        hasRepairDetailContent(repairSummary)) ...<Widget>[
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () => unawaited(
-                            showRepairDetailDialog(
-                              dialogContext,
-                              repairSummary,
-                              size: AppDialogSize.compact,
-                            ),
-                          ),
-                          child: Text(l10n.settingsRepairDetailButton),
+          content: AppScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(l10n.settingsInspectVaultConfirmBody),
+                const SizedBox(height: 12),
+                const _MaintenanceScope(),
+                const SizedBox(height: 12),
+                if (repairSummary != null)
+                  _PreflightLastRepairCard(summary: repairSummary)
+                else
+                  Text(l10n.settingsInspectVaultPreflightNoRepair),
+                if (repairSummary != null &&
+                    hasRepairDetailContent(repairSummary)) ...<Widget>[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () => unawaited(
+                        showRepairDetailDialog(
+                          dialogContext,
+                          repairSummary,
+                          size: AppDialogSize.compact,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-              ),
+                      child: Text(l10n.settingsRepairDetailButton),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           actions: <Widget>[
@@ -101,15 +87,7 @@ Future<void> showRepairDetailDialog(
     context: context,
     builder: (BuildContext dialogContext) => AppDialogShell(
       title: l10n.settingsRepairDetailTitle,
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: _dialogContentMaxHeight(context),
-          ),
-          child: AppScrollView(child: _RepairDetailContent(summary: summary)),
-        ),
-      ),
+      content: AppScrollView(child: _RepairDetailContent(summary: summary)),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
@@ -397,57 +375,46 @@ Future<bool?> showInspectVaultResultDialog(
         color: Theme.of(context).colorScheme.onSurface,
       ),
       title: l10n.settingsInspectVaultResultTitle,
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: _dialogContentMaxHeight(context),
-          ),
-          child: AppScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  l10n.settingsInspectVaultResultCheckedEntries(
-                    report.entryCount,
+      content: AppScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              l10n.settingsInspectVaultResultCheckedEntries(report.entryCount),
+            ),
+            if (groups.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              const _MaintenanceScope(showInspect: false, showRepair: true),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              groups.isEmpty
+                  ? l10n.settingsInspectVaultResultClean
+                  : l10n.settingsInspectVaultResultWarning(groups.length),
+            ),
+            if (groups.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              for (final MapEntry<String, List<VaultFinding>> entry
+                  in groups.entries.take(_inspectPreviewLimit))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: VaultFindingSummaryCard(
+                    presentation: VaultFindingGroupPresentation.fromFindings(
+                      l10n,
+                      entry.value,
+                    ),
+                    showPlannedActions: false,
                   ),
                 ),
-                if (groups.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 12),
-                  const _MaintenanceScope(showInspect: false, showRepair: true),
-                ],
-                const SizedBox(height: 8),
+              if (groups.length > _inspectPreviewLimit)
                 Text(
-                  groups.isEmpty
-                      ? l10n.settingsInspectVaultResultClean
-                      : l10n.settingsInspectVaultResultWarning(groups.length),
+                  l10n.settingsInspectVaultResultMore(
+                    groups.length - _inspectPreviewLimit,
+                  ),
                 ),
-                if (groups.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 12),
-                  for (final MapEntry<String, List<VaultFinding>> entry
-                      in groups.entries.take(_inspectPreviewLimit))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: VaultFindingSummaryCard(
-                        presentation:
-                            VaultFindingGroupPresentation.fromFindings(
-                              l10n,
-                              entry.value,
-                            ),
-                        showPlannedActions: false,
-                      ),
-                    ),
-                  if (groups.length > _inspectPreviewLimit)
-                    Text(
-                      l10n.settingsInspectVaultResultMore(
-                        groups.length - _inspectPreviewLimit,
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
+            ],
+          ],
         ),
       ),
       actions: <Widget>[
@@ -583,67 +550,59 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
     );
     return AppDialogShell(
       title: l10n.settingsRepairVaultResultTitle,
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: _dialogContentMaxHeight(context),
-          ),
-          child: AppScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  _groups.isEmpty
-                      ? l10n.settingsRepairVaultResultClean
-                      : l10n.settingsRepairVaultResultWarning(_groups.length),
-                ),
-                Text(
-                  l10n.settingsRepairVaultResultCheckedEntries(
-                    widget.report.entryCount,
-                  ),
-                ),
-                if (_feedback != null) ...<Widget>[
-                  const SizedBox(height: 8),
-                  Text(_feedback!),
-                ],
-                const SizedBox(height: 8),
-                if (hasRepairDetailContent(detailSummary))
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () => unawaited(
-                        showRepairDetailDialog(
-                          context,
-                          detailSummary,
-                          size: AppDialogSize.compact,
-                        ),
-                      ),
-                      child: Text(l10n.settingsRepairDetailButton),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                for (final MapEntry<String, List<VaultFinding>> group
-                    in _groups) ...<Widget>[
-                  VaultFindingSummaryCard(
-                    presentation: VaultFindingGroupPresentation.fromFindings(
-                      l10n,
-                      group.value,
-                      canSalvage: _salvageable[group.key] == true,
-                    ),
-                    showPlannedActions: false,
-                    showActions: true,
-                    actionsBusy: _busyKey == group.key,
-                    onSalvage: _salvageable[group.key] == true
-                        ? () => unawaited(_salvage(group))
-                        : null,
-                    onDelete: () => unawaited(_delete(group)),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ],
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              _groups.isEmpty
+                  ? l10n.settingsRepairVaultResultClean
+                  : l10n.settingsRepairVaultResultWarning(_groups.length),
             ),
-          ),
+            Text(
+              l10n.settingsRepairVaultResultCheckedEntries(
+                widget.report.entryCount,
+              ),
+            ),
+            if (_feedback != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(_feedback!),
+            ],
+            const SizedBox(height: 8),
+            if (hasRepairDetailContent(detailSummary))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => unawaited(
+                    showRepairDetailDialog(
+                      context,
+                      detailSummary,
+                      size: AppDialogSize.compact,
+                    ),
+                  ),
+                  child: Text(l10n.settingsRepairDetailButton),
+                ),
+              ),
+            const SizedBox(height: 12),
+            for (final MapEntry<String, List<VaultFinding>> group
+                in _groups) ...<Widget>[
+              VaultFindingSummaryCard(
+                presentation: VaultFindingGroupPresentation.fromFindings(
+                  l10n,
+                  group.value,
+                  canSalvage: _salvageable[group.key] == true,
+                ),
+                showPlannedActions: false,
+                showActions: true,
+                actionsBusy: _busyKey == group.key,
+                onSalvage: _salvageable[group.key] == true
+                    ? () => unawaited(_salvage(group))
+                    : null,
+                onDelete: () => unawaited(_delete(group)),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
         ),
       ),
       actions: <Widget>[

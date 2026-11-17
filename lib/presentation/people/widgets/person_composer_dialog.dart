@@ -846,97 +846,87 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     required String acquaintanceText,
     required List<RelationshipType> relationshipTypes,
   }) {
-    return AppScrollableContent(
-      builder: (BuildContext context, ScrollController controller) =>
-          CustomScrollView(
-            controller: controller,
-            shrinkWrap: true,
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            slivers: <Widget>[
-              SliverList.list(
-                children: <Widget>[
-                  _formSection(
-                    title: l10n.peopleSectionBasic,
-                    children: <Widget>[
-                      TextField(
-                        controller: _nameCtrl,
-                        enabled: !_saving,
-                        autofocus:
-                            !widget.isEditing && widget.initialName.isEmpty,
-                        textInputAction: TextInputAction.next,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: _fieldDecoration(
-                          labelText: l10n.peopleFieldName,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      const SizedBox(height: 12),
-                      _aliasesEditor(l10n),
-                      _mentionNamePicker(l10n),
-                    ],
-                  ),
-                  _sectionDivider(),
-                  _formSection(
-                    title: l10n.peopleSectionRelationship,
-                    children: <Widget>[
-                      _relationshipsEditor(relationshipTypes),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: _relationshipDescCtrl,
-                        enabled: !_saving,
-                        minLines: 1,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: _expandingTextFieldDecoration(
-                          l10n.peopleFieldRelationshipDescription,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _friendlinessSlider(l10n, cs),
-                    ],
-                  ),
-                  _sectionDivider(),
-                  _formSection(
-                    title: l10n.peopleSectionOther,
-                    children: <Widget>[
-                      _dateField(
-                        label: l10n.peopleFieldAcquaintanceYear,
-                        valueText: acquaintanceText,
-                        hasValue: _acquaintanceYear != null,
-                        clearTooltip: l10n.peopleClearAcquaintanceYear,
-                        onPick: () => unawaited(_pickAcquaintanceYear()),
-                        onClear: () => setState(() => _acquaintanceYear = null),
-                      ),
-                      const SizedBox(height: 12),
-                      _dateField(
-                        label: l10n.peopleFieldBirthday,
-                        valueText: birthdayText,
-                        hasValue: _birthday != null,
-                        clearTooltip: l10n.peopleClearBirthday,
-                        onPick: () => unawaited(_pickBirthday()),
-                        onClear: () => setState(() => _birthday = null),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _notesCtrl,
-                        enabled: !_saving,
-                        minLines: 1,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: _expandingTextFieldDecoration(
-                          l10n.peopleFieldNotes,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _colorEditor(l10n, cs),
-                    ],
-                  ),
-                ],
+    return AppScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _formSection(
+            title: l10n.peopleSectionBasic,
+            children: <Widget>[
+              TextField(
+                controller: _nameCtrl,
+                enabled: !_saving,
+                autofocus: !widget.isEditing && widget.initialName.isEmpty,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.words,
+                decoration: _fieldDecoration(labelText: l10n.peopleFieldName),
+                onChanged: (_) => setState(() {}),
               ),
+              const SizedBox(height: 12),
+              _aliasesEditor(l10n),
+              _mentionNamePicker(l10n),
             ],
           ),
+          _sectionDivider(),
+          _formSection(
+            title: l10n.peopleSectionRelationship,
+            children: <Widget>[
+              _relationshipsEditor(relationshipTypes),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _relationshipDescCtrl,
+                enabled: !_saving,
+                minLines: 1,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                decoration: _expandingTextFieldDecoration(
+                  l10n.peopleFieldRelationshipDescription,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _friendlinessSlider(l10n, cs),
+            ],
+          ),
+          _sectionDivider(),
+          _formSection(
+            title: l10n.peopleSectionOther,
+            children: <Widget>[
+              _dateField(
+                label: l10n.peopleFieldAcquaintanceYear,
+                valueText: acquaintanceText,
+                hasValue: _acquaintanceYear != null,
+                clearTooltip: l10n.peopleClearAcquaintanceYear,
+                onPick: () => unawaited(_pickAcquaintanceYear()),
+                onClear: () => setState(() => _acquaintanceYear = null),
+              ),
+              const SizedBox(height: 12),
+              _dateField(
+                label: l10n.peopleFieldBirthday,
+                valueText: birthdayText,
+                hasValue: _birthday != null,
+                clearTooltip: l10n.peopleClearBirthday,
+                onPick: () => unawaited(_pickBirthday()),
+                onClear: () => setState(() => _birthday = null),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notesCtrl,
+                enabled: !_saving,
+                minLines: 1,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                decoration: _expandingTextFieldDecoration(
+                  l10n.peopleFieldNotes,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _colorEditor(l10n, cs),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1034,10 +1024,6 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       acquaintanceText: acquaintanceText,
       relationshipTypes: relationshipTypes,
     );
-    final double bodyHeight = (MediaQuery.sizeOf(context).height - 200).clamp(
-      140.0,
-      640.0,
-    );
     return PopScope(
       canPop: !_hasUnsavedChanges && !_saving,
       onPopInvokedWithResult: (bool didPop, Object? result) {
@@ -1048,14 +1034,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       child: MediaQuery.removeViewInsets(
         context: context,
         removeBottom: true,
-        child: _shell(
-          context,
-          content: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: bodyHeight),
-            child: body,
-          ),
-          actions: _actions(l10n),
-        ),
+        child: _shell(context, content: body, actions: _actions(l10n)),
       ),
     );
   }

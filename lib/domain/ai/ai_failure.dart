@@ -1,4 +1,5 @@
 enum AiErrorCode {
+  privacy,
   configuration,
   settings,
   endpoint,
@@ -22,6 +23,7 @@ class AiFailure implements Exception {
   final AiErrorCode code;
   final int? status;
 
+  /// 只含錯誤代碼。HTTP 狀態留在 [status]，避免描述帶出回應內容。
   @override
   String toString() => 'AiFailure(${code.name})';
 }

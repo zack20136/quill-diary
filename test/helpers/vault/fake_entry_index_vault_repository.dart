@@ -46,7 +46,10 @@ class FakeEntryIndexVaultRepository extends VaultRepository {
       <({DateOnly first, DateOnly last})>[];
 
   @override
-  Future<void> ensureIndexReady(UnlockedVaultSession session) async {
+  Future<void> ensureIndexReady(
+    UnlockedVaultSession session, {
+    bool reconcileEntryFiles = true,
+  }) async {
     ensureIndexReadyCalls++;
   }
 

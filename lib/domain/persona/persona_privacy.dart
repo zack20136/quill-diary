@@ -1,13 +1,19 @@
+import 'package:quill_diary/domain/ai/privacy_text_processor.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/person_name_matcher.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
-const personaHiddenText = '⟦已隱藏⟧';
-
-bool personaHasVisibleText(String text) =>
-    text.replaceAll(personaHiddenText, '').trim().isNotEmpty;
+/// 私密代號不算可見文字；人物代號仍算可見。
+bool personaHasVisibleText(String text) {
+  final visible = text.replaceAllMapped(privacyTokenPattern, (match) {
+    final token = PrivacyToken.parse(match[0]!);
+    return token.kind == PrivacyTokenKind.private ? '' : match[0]!;
+  });
+  return visible.trim().isNotEmpty;
+}
 
 bool _boundedImportName(String text, int start, int end) {
   bool asciiLetterOrDigit(int unit) =>
@@ -39,16 +45,36 @@ class PersonaTokenRegistry {
   final PersonNameMatcher matcher;
   final bool hideNames;
   final String reservedText;
+  final revealedSecrets = <String>{};
   final Map<String, String> _tokenByIdentity = {};
+  late final _processor = PrivacyTextProcessor(
+    {},
+    personTokens: _tokenByIdentity,
+    reservedText: reservedText,
+  );
   final Map<String, String?> _personByToken = {};
   final Map<String, String> _identityByToken = {};
   final Set<String> _literalCodes = {};
-  final List<String> _importNames = [];
-  final List<String> _subjectImportNames = [];
-  String? _subjectPersonId;
+  final Map<String, List<String>> _importNamesByScope = {};
+  final Map<String, List<String>> _subjectNamesByScope = {};
+  final Map<String, String> _subjectPersonIdByScope = {};
 
-  /// 這次匯入指定過的名字。之後 [protect] 設 `maskImportNames` 才會替換內文。
-  void replaceImportNames(Iterable<String> names) {
+  void registerImport(PersonaChatImport chat) {
+    replaceImportNames([
+      for (final speaker in chat.speakers)
+        if (speaker.id.startsWith('named-') &&
+            !(chat.isRaw && speaker.role == PersonaSpeakerRole.personaSubject))
+          speaker.label,
+    ], scope: chat.importId);
+    bindSubjectImportNames(chat.personId, [
+      if (chat.isRaw)
+        for (final speaker in chat.speakers)
+          if (speaker.role == PersonaSpeakerRole.personaSubject) speaker.label,
+    ], scope: chat.importId);
+  }
+
+  /// 這次匯入指定過的名字。之後 [protect] 或 [protectForDisplay] 設 `maskImportNames` 才會替換內文。
+  void replaceImportNames(Iterable<String> names, {String scope = 'global'}) {
     final unique =
         names
             .map((name) => name.trim())
@@ -56,16 +82,18 @@ class PersonaTokenRegistry {
             .toSet()
             .toList()
           ..sort((a, b) => b.length.compareTo(a.length));
-    _importNames
-      ..clear()
-      ..addAll(unique);
-    for (final name in _importNames) {
-      anonymous('import:$name');
+    _importNamesByScope[scope] = unique;
+    for (final name in unique) {
+      anonymous('import:${scope == 'global' ? '' : '$scope:'}$name');
     }
   }
 
   /// 原文匯入裡標成目標對象的名字。遮罩成這位人物的代號，而不是匿名 import 代號。
-  void bindSubjectImportNames(String personId, Iterable<String> names) {
+  void bindSubjectImportNames(
+    String personId,
+    Iterable<String> names, {
+    String scope = 'global',
+  }) {
     final unique =
         names
             .map((name) => name.trim())
@@ -73,70 +101,89 @@ class PersonaTokenRegistry {
             .toSet()
             .toList()
           ..sort((a, b) => b.length.compareTo(a.length));
-    _subjectImportNames
-      ..clear()
-      ..addAll(unique);
-    if (unique.isNotEmpty) person(personId);
-    _subjectPersonId = personId;
+    _subjectNamesByScope[scope] = unique;
+    if (unique.isEmpty) {
+      _subjectPersonIdByScope.remove(scope);
+      return;
+    }
+    person(personId);
+    _subjectPersonIdByScope[scope] = personId;
   }
 
   String person(String personId) => _bind('person:$personId', personId);
   String anonymous(String identity) => _bind('anonymous:$identity', null);
-  String _bind(String identity, String? personId) =>
-      _tokenByIdentity.putIfAbsent(identity, () {
-        final token = nextPrivacyToken(
-          _personByToken.keys,
-          prefix: 'P',
-          reservedText: reservedText,
-        );
-        _personByToken[token] = personId;
-        _identityByToken[token] = identity;
-        return token;
-      });
+  String _bind(String identity, String? personId) {
+    final token = _processor.personToken(identity, '', text: reservedText);
+    _personByToken[token] = personId;
+    _identityByToken[token] = identity;
+    return token;
+  }
 
   String protect(
     String text, {
     required String scope,
     Map<String, String?> tokens = const {},
     List<PrivateTextRange> ranges = const [],
+    List<PrivateTextRange> revealedRanges = const [],
     bool maskImportNames = false,
+    List<PrivateTextRange>? automaticRanges,
   }) {
-    validatePersonaRanges(text, ranges);
-    final merged = mergePrivateRanges(ranges, text.length);
-    final result = StringBuffer();
-    var cursor = 0;
-    for (final range in merged) {
-      result.write(
-        _protectPiece(
-          text.substring(cursor, range.start),
-          scope,
-          tokens,
-          maskImportNames: maskImportNames,
-        ),
-      );
-      result.write(personaHiddenText);
-      cursor = range.end;
-    }
-    result.write(
-      _protectPiece(
-        text.substring(cursor),
-        scope,
-        tokens,
-        maskImportNames: maskImportNames,
-      ),
+    final protected = protectForDisplay(
+      text,
+      scope: scope,
+      tokens: tokens,
+      ranges: ranges,
+      revealedRanges: revealedRanges,
+      maskImportNames: maskImportNames,
+      automaticRanges: automaticRanges,
     );
-    return result.toString();
+    revealedSecrets.addAll(protected.revealedSecrets);
+    return protected.text;
   }
 
-  String protectEvidence(String text) =>
-      _protectPiece(text, 'evidence', const {}, preserveOutbound: true);
+  /// 遮罩文字並回傳畫面上要標出的原文區間。外送請用 [protect]。
+  ProtectedText protectForDisplay(
+    String text, {
+    required String scope,
+    Map<String, String?> tokens = const {},
+    List<PrivateTextRange> ranges = const [],
+    List<PrivateTextRange> revealedRanges = const [],
+    bool maskImportNames = false,
+    List<PrivateTextRange>? automaticRanges,
+  }) {
+    validatePersonaRanges(text, ranges);
+    validatePersonaRanges(text, revealedRanges);
+    return _protectPiece(
+      text,
+      scope,
+      tokens,
+      ranges: ranges,
+      revealedRanges: revealedRanges,
+      automaticRanges: automaticRanges,
+      maskImportNames: maskImportNames,
+    );
+  }
 
-  String _protectPiece(
+  String protectEvidence(
+    String text, {
+    List<PrivateTextRange> revealedRanges = const [],
+  }) => _protectPiece(
+    text,
+    'evidence',
+    const {},
+    preserveOutbound: true,
+    revealedRanges: revealedRanges,
+  ).text;
+
+  ProtectedText _protectPiece(
     String text,
     String scope,
     Map<String, String?> tokens, {
     bool preserveOutbound = false,
     bool maskImportNames = false,
+    List<PrivateTextRange> ranges = const [],
+    List<PrivateTextRange> revealedRanges = const [],
+    List<PrivateTextRange>? automaticRanges,
   }) {
     if (!preserveOutbound) {
       _literalCodes.addAll(
@@ -144,17 +191,16 @@ class PersonaTokenRegistry {
       );
     }
     final spans = <({int start, int end, String replacement})>[];
-    final existing = personaTokenPattern.allMatches(text).toList();
+    final existing = privacyTokenPattern.allMatches(text).toList();
     for (final match in existing) {
       final token = match[0]!;
       final String replacement;
       if (preserveOutbound && _personByToken.containsKey(token)) {
         replacement = token;
       } else if (!tokens.containsKey(token)) {
-        if (!preserveOutbound) {
-          _literalCodes.add(token.substring(1, token.length - 1));
-        }
-        replacement = '［${token.substring(1, token.length - 1)}］';
+        final body = token.substring(2, token.length - 2);
+        if (!preserveOutbound) _literalCodes.add(body);
+        replacement = '［$body］';
       } else {
         final id = tokens[token];
         replacement = id == null
@@ -165,30 +211,27 @@ class PersonaTokenRegistry {
       }
       spans.add((start: match.start, end: match.end, replacement: replacement));
     }
-    if (hideNames) {
-      for (final match in matcher.findSpans(text)) {
-        if (existing.any((e) => match.start < e.end && match.end > e.start)) {
-          continue;
-        }
-        if (preserveOutbound &&
-            !_tokenByIdentity.containsKey('person:${match.personId}')) {
-          throw const FormatException('模型回傳未提供的人物姓名');
-        }
-        spans.add((
-          start: match.start,
-          end: match.end,
-          replacement: person(match.personId),
-        ));
-      }
-    }
     if (maskImportNames) {
-      final subjectId = _subjectPersonId;
+      final importScope =
+          _importNamesByScope.containsKey(scope.split(':').first) ||
+              _subjectNamesByScope.containsKey(scope.split(':').first)
+          ? scope.split(':').first
+          : 'global';
+      final subjectId = _subjectPersonIdByScope[importScope];
+      final importNames = _importNamesByScope[importScope] ?? const <String>[];
+      final subjectImportNames =
+          _subjectNamesByScope[importScope] ?? const <String>[];
       final names = [
-        for (final name in _subjectImportNames)
+        for (final name in subjectImportNames)
           if (subjectId != null) (name: name, token: person(subjectId)),
-        for (final name in _importNames)
-          if (!_subjectImportNames.contains(name))
-            (name: name, token: anonymous('import:$name')),
+        for (final name in importNames)
+          if (!subjectImportNames.contains(name))
+            (
+              name: name,
+              token: anonymous(
+                'import:${importScope == 'global' ? '' : '$importScope:'}$name',
+              ),
+            ),
       ]..sort((a, b) => b.name.length.compareTo(a.name.length));
       for (final named in names) {
         final name = named.name;
@@ -209,17 +252,43 @@ class PersonaTokenRegistry {
         }
       }
     }
-    spans.sort((a, b) => a.start.compareTo(b.start));
-    final out = StringBuffer();
-    var cursor = 0;
-    for (final span in spans) {
-      if (span.start < cursor) continue;
-      out.write(text.substring(cursor, span.start));
-      out.write(span.replacement);
-      cursor = span.end;
+    final hiddenNames = <PrivateTextRange>[];
+    if (hideNames) {
+      for (final match in matcher.findSpans(text)) {
+        if (spans.any((e) => match.start < e.end && match.end > e.start)) {
+          continue;
+        }
+        if (privateRangeOverlaps(revealedRanges, match.start, match.end)) {
+          if (!match.isAmbiguous &&
+              !preserveOutbound &&
+              !_tokenByIdentity.containsKey('person:${match.personId}')) {
+            person(match.personId);
+          }
+          continue;
+        }
+        if (preserveOutbound &&
+            !_tokenByIdentity.containsKey('person:${match.personId}')) {
+          throw const FormatException('模型回傳未提供的人物姓名');
+        }
+        if (match.isAmbiguous) {
+          hiddenNames.add(PrivateTextRange(match.start, match.end));
+          continue;
+        }
+        spans.add((
+          start: match.start,
+          end: match.end,
+          replacement: person(match.personId),
+        ));
+      }
     }
-    out.write(text.substring(cursor));
-    return out.toString();
+    return _processor.protect(
+      text,
+      manualRanges: ranges,
+      replacements: spans,
+      detectAutomatically: automaticRanges == null,
+      extraAutomaticRanges: [...hiddenNames, ...?automaticRanges],
+      revealedRanges: revealedRanges,
+    );
   }
 
   void validateOutputTokens(String text, String requestData) {
@@ -228,14 +297,11 @@ class PersonaTokenRegistry {
         .any((m) => !_literalCodes.contains(m[0]))) {
       throw const FormatException('模型省略了人物代號的完整格式');
     }
-    for (final match in personaTokenPattern.allMatches(text)) {
+    for (final match in privacyTokenPattern.allMatches(text)) {
       if (!_personByToken.containsKey(match[0]) ||
           !requestData.contains(match[0]!)) {
         throw const FormatException('模型回傳未知人物或私密代號');
       }
-    }
-    if (text.contains(personaHiddenText)) {
-      throw const FormatException('候選仍包含隱藏佔位符');
     }
   }
 
@@ -272,7 +338,7 @@ class PersonaTokenRegistry {
         stored ??= nextPrivacyToken({
           ...reserved,
           ...bindings.keys,
-        }, prefix: 'P');
+        }, kind: PrivacyTokenKind.person);
         bindings[stored] = personId;
         return stored;
       });

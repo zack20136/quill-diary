@@ -71,10 +71,11 @@ class _AiPreviewTextSectionState extends State<AiPreviewTextSection> {
               child: AppScrollbar(
                 controller: _scrollController,
                 track: AppScrollbarTrack.frame,
+                trailingGutter: true,
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   primary: false,
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 0, 12),
                   child: _PreviewText(widget.text),
                 ),
               ),

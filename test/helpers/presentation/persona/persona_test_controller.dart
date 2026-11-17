@@ -20,6 +20,7 @@ class PersonaTestController extends PersonaController {
   Future<void> updateImport(
     PersonaChatImport value, {
     Map<String, List<PrivateTextRange>>? hidden,
+    Map<String, List<PrivateTextRange>>? revealed,
     Set<String>? excluded,
   }) async {
     final source = draft!.chats.singleWhere(
@@ -29,6 +30,11 @@ class PersonaTestController extends PersonaController {
       source.hidden
         ..clear()
         ..addAll(hidden);
+    }
+    if (revealed != null) {
+      source.revealed
+        ..clear()
+        ..addAll(revealed);
     }
     if (excluded != null) {
       source.excluded

@@ -306,7 +306,7 @@ class _AiChatInputPanelState extends ConsumerState<AiChatInputPanel>
                             !widget.composerController.selection.isValid ||
                                 widget.composerController.selection.isCollapsed
                             ? l10n.aiSelectPrivateText
-                            : widget.composerController.selectionIsPrivate
+                            : widget.composerController.selectionIsHidden
                             ? l10n.aiUnhideSelection
                             : l10n.aiHideSelection,
                         onPressed:
@@ -330,7 +330,7 @@ class _AiChatInputPanelState extends ConsumerState<AiChatInputPanel>
                             : () {
                                 if (widget
                                     .composerController
-                                    .selectionIsPrivate) {
+                                    .selectionIsHidden) {
                                   widget.composerController.unhideSelection();
                                 } else {
                                   widget.composerController.hideSelection();
@@ -338,7 +338,7 @@ class _AiChatInputPanelState extends ConsumerState<AiChatInputPanel>
                                 widget.composerFocusNode.requestFocus();
                               },
                         icon: Icon(
-                          widget.composerController.selectionIsPrivate
+                          widget.composerController.selectionIsHidden
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),

@@ -111,29 +111,6 @@ void main() {
       'done': true,
     },
   };
-  final lines = <AiApiProtocol, List<String>>{
-    AiApiProtocol.chatCompletions: [
-      'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":"stop"}]}',
-      '',
-    ],
-    AiApiProtocol.responses: [
-      'data: {"type":"response.output_text.delta","delta":"OK"}',
-      '',
-      'data: {"type":"response.completed"}',
-      '',
-    ],
-    AiApiProtocol.claudeMessages: [
-      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"OK"}}',
-      '',
-      'data: {"type":"message_stop"}',
-      '',
-    ],
-    AiApiProtocol.geminiContent: [
-      'data: {"candidates":[{"content":{"parts":[{"text":"OK"}]},"finishReason":"STOP"}]}',
-      '',
-    ],
-    AiApiProtocol.ollamaChat: ['{"message":{"content":"OK"},"done":true}'],
-  };
   final suffixes = <AiApiProtocol, String>{
     AiApiProtocol.chatCompletions: '/chat/completions',
     AiApiProtocol.responses: '/responses',
@@ -199,7 +176,8 @@ void main() {
         client.close();
       });
       test('自訂網址以正確協定傳圖，不依賴 Files API', () async {
-        final wire = RecordingAiTransport()..lines = lines[protocol]!;
+        final wire = RecordingAiTransport()
+          ..lines = syntheticProtocolReplyLines(protocol);
         if (protocol == AiApiProtocol.ollamaChat) {
           wire.respond({
             'capabilities': ['vision'],
@@ -211,19 +189,23 @@ void main() {
           transport: wire,
         );
         expect(
-          await client.reply('系統指令', [
-            AiInputMessage(
-              isUser: true,
-              text: '合成照片',
-              images: [
-                AiInputImage(
-                  id: 'photo',
-                  mimeType: 'image/png',
-                  bytes: testAiPng,
-                ),
-              ],
-            ),
-          ]).join(),
+          await client
+              .reply(
+                await prepareAiTestRequest(client, '系統指令', [
+                  AiInputMessage(
+                    isUser: true,
+                    text: '合成照片',
+                    images: [
+                      AiInputImage(
+                        id: 'photo',
+                        mimeType: 'image/png',
+                        bytes: testAiPng,
+                      ),
+                    ],
+                  ),
+                ]),
+              )
+              .join(),
           'OK',
         );
         expect(

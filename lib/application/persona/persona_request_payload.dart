@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:quill_diary/domain/persona/persona.dart';
-import 'package:quill_diary/domain/persona/persona_privacy.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
 String personaGenerationData({
   required String subject,
@@ -84,9 +84,7 @@ List<Object?> _personaBatchPieces(Object? material, int budget) {
   ];
 }
 
-final _atomicTextPattern = RegExp(
-  '${personaTokenPattern.pattern}|${RegExp.escape(personaHiddenText)}',
-);
+final _atomicTextPattern = privacyTokenPattern;
 
 Iterable<String> _textUnits(String text) sync* {
   final matches = _atomicTextPattern.allMatches(text).iterator;

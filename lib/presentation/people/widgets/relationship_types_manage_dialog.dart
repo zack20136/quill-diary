@@ -432,33 +432,30 @@ class _RelationshipTypesManageDialogState
           child: Text(l10n.commonActionClose),
         ),
       ],
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          TextField(
-            controller: _addCtrl,
-            enabled: !_busy,
-            textInputAction: TextInputAction.done,
-            decoration: _fieldDecoration(
-              labelText: l10n.peopleAddRelationshipAction,
-              hintText: l10n.peopleAddRelationshipHint,
-              suffixIcon: IconButton(
-                tooltip: l10n.peopleAddRelationshipAction,
-                onPressed: _busy || _addCtrl.text.trim().isEmpty
-                    ? null
-                    : () => unawaited(_addType()),
-                icon: const Icon(Icons.add_rounded),
+      content: AppScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            TextField(
+              controller: _addCtrl,
+              enabled: !_busy,
+              textInputAction: TextInputAction.done,
+              decoration: _fieldDecoration(
+                labelText: l10n.peopleAddRelationshipAction,
+                hintText: l10n.peopleAddRelationshipHint,
+                suffixIcon: IconButton(
+                  tooltip: l10n.peopleAddRelationshipAction,
+                  onPressed: _busy || _addCtrl.text.trim().isEmpty
+                      ? null
+                      : () => unawaited(_addType()),
+                  icon: const Icon(Icons.add_rounded),
+                ),
               ),
+              onSubmitted: (_) => unawaited(_addType()),
             ),
-            onSubmitted: (_) => unawaited(_addType()),
-          ),
-          const SizedBox(height: 16),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * 0.42,
-            ),
-            child: types.isEmpty
+            const SizedBox(height: 16),
+            types.isEmpty
                 ? Material(
                     color: cs.surface.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(18),
@@ -534,8 +531,8 @@ class _RelationshipTypesManageDialogState
                       ),
                     ),
                   ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

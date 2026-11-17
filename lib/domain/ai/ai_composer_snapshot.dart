@@ -6,28 +6,27 @@ class AiComposerSnapshot {
     required this.text,
     required this.ranges,
     required this.imageIds,
+    this.revealed = const [],
   });
 
   final String text;
   final List<PrivateTextRange> ranges;
+  final List<PrivateTextRange> revealed;
   final List<String> imageIds;
 
   Map<String, Object?> toJson() => {
     'text': text,
-    'ranges': ranges.map((range) => range.toJson()).toList(),
+    'ranges': privateRangesToJson(ranges),
+    if (revealed.isNotEmpty) 'revealed': privateRangesToJson(revealed),
     if (imageIds.isNotEmpty) 'image_ids': imageIds,
   };
 
-  factory AiComposerSnapshot.fromJson(
-    Map<String, dynamic> json,
-  ) => AiComposerSnapshot(
-    text: json['text'] as String,
-    ranges: (json['ranges'] as List)
-        .map(
-          (range) =>
-              PrivateTextRange.fromJson((range as Map).cast<String, dynamic>()),
-        )
-        .toList(),
-    imageIds: (json['image_ids'] as List? ?? const <String>[]).cast<String>(),
-  );
+  factory AiComposerSnapshot.fromJson(Map<String, dynamic> json) =>
+      AiComposerSnapshot(
+        text: json['text'] as String,
+        ranges: privateRangesFromJson(json['ranges'] as List),
+        revealed: privateRangesFromJson(json['revealed']),
+        imageIds: (json['image_ids'] as List? ?? const <String>[])
+            .cast<String>(),
+      );
 }

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/ai/ai_request_preview.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -30,6 +28,7 @@ class AiRequestPreviewDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final preview = this.preview.effective();
     final turns = preview.conversationTurns ?? preview.turns;
     final l10n = context.l10n;
     final theme = Theme.of(context);
@@ -38,7 +37,7 @@ class AiRequestPreviewDialog extends StatelessWidget {
     final muted = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(color: colors.onSurfaceVariant);
     final diary = preview.diaryContext;
-    final generation = generationPreview;
+    final generation = generationPreview?.effective();
     final sections = <Widget>[
       Text(l10n.chatDiaryRequestPreviewHint, style: muted),
       if ((generation ?? preview).hasLocalPrivateNotes)
@@ -67,7 +66,7 @@ class AiRequestPreviewDialog extends StatelessWidget {
         AiPreviewTextSection(
           key: const ValueKey('ai-request-original'),
           title: l10n.aiRequestOriginalBody,
-          text: diary.originalBody,
+          text: diary.diaryBody,
           initiallyExpanded: true,
         ),
       ],
@@ -79,52 +78,30 @@ class AiRequestPreviewDialog extends StatelessWidget {
         ),
       ),
       child: AppDialogShell(
+        fillHeight: true,
         title: l10n.aiPreviewRequest,
-        content: LayoutBuilder(
-          builder: (context, constraints) {
-            final screenHeight = MediaQuery.sizeOf(context).height;
-            final desiredMax = math.min(
-              screenHeight * 0.82,
-              personaDialogBodyHeight(context),
-            );
-            final maxHeight = constraints.maxHeight.isFinite
-                ? math.min(desiredMax, constraints.maxHeight)
-                : desiredMax;
-            final minHeight = math.min(screenHeight * 0.58, maxHeight);
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: minHeight,
-                maxHeight: maxHeight,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: maxHeight,
-                child: AppScrollableContent(
-                  builder: (_, controller) => ListView.separated(
-                    controller: controller,
-                    padding: const EdgeInsets.only(bottom: 4),
-                    itemCount:
-                        sections.length + (turns.isEmpty ? 1 : turns.length),
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, itemIndex) {
-                      if (itemIndex < sections.length) {
-                        return sections[itemIndex];
-                      }
-                      final index = itemIndex - sections.length;
-                      if (turns.isEmpty) {
-                        return Text(l10n.chatDiaryPreviewEmpty, style: muted);
-                      }
-                      return _PreviewTurnCard(
-                        turn: turns[index],
-                        galleryImageIds: galleryImageIds,
-                        imageBuilder: imageBuilder,
-                      );
-                    },
+        content: AppScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var index = 0; index < sections.length; index++) ...[
+                if (index > 0) const SizedBox(height: 12),
+                sections[index],
+              ],
+              if (sections.isNotEmpty) const SizedBox(height: 12),
+              if (turns.isEmpty)
+                Text(l10n.chatDiaryPreviewEmpty, style: muted)
+              else
+                for (var index = 0; index < turns.length; index++) ...[
+                  if (index > 0) const SizedBox(height: 12),
+                  _PreviewTurnCard(
+                    turn: turns[index],
+                    galleryImageIds: galleryImageIds,
+                    imageBuilder: imageBuilder,
                   ),
-                ),
-              ),
-            );
-          },
+                ],
+            ],
+          ),
         ),
         actions: [
           TextButton(

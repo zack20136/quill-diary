@@ -94,10 +94,10 @@ void main() {
       await _drainStorage(tester, scope.dispose());
     });
     final draft = scope.controller.draft!..prepare();
-    draft.originals['⟦S01⟧'] = '其他分支的秘密';
-    draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦S01⟧'));
+    draft.originals['{{PRI_01}}'] = '其他分支的秘密';
+    draft.appendTurn(OrganizationTurn(user: '舊需求 {{PRI_01}}'));
     draft.appendTurn(OrganizationTurn(user: '目前需求'));
-    draft.organizedBody = '${draft.protectedSource} ⟦S01⟧';
+    draft.organizedBody = '${draft.protectedSource} {{PRI_01}}';
     draft.generationReply = '不能沿用的舊說明';
     draft.stage = OrganizationStage.review;
     scope.settings.keys[draft.connection.credentialId] = 'synthetic-key';
@@ -130,7 +130,7 @@ void main() {
     });
     final draft = scope.controller.draft!..prepare();
     draft.replaceBody(draft.protectedSource);
-    draft.generationReply = '受保護內容必須保持順序，因此保留原文。';
+    draft.generationReply = '已修順。';
     draft.stage = OrganizationStage.review;
     scope.settings.keys[draft.connection.credentialId] = 'synthetic-key';
     await tester.pumpWidget(
@@ -138,6 +138,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text(testL10n.organizationReplyTitle), findsOneWidget);
+    expect(find.text(testL10n.organizationShowReply), findsNothing);
+    draft.generationReply = '保留原句並修順標點。' * 12;
+    scope.controller.notifyListeners();
+    await tester.pumpAndSettle();
     await tester.tap(find.text(testL10n.organizationShowReply));
     await tester.pumpAndSettle();
     expect(find.byType(AppDialogShell), findsOneWidget);
@@ -369,7 +373,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilterChip, '王小明'));
       await tester.pumpAndSettle();
       expect(scope.controller.draft!.composer, '請保留王小明');
-      scope.client.output = '整理時會保留**⟦P01⟧**。';
+      scope.client.output = '整理時會保留**{{PER_01}}**。';
       await tester.tap(find.byTooltip('送出'));
       await _waitForUi(tester, () => !scope.controller.busy);
       await tester.pumpAndSettle();
@@ -377,7 +381,7 @@ void main() {
         scope.client.calls.single.messages.last.text,
         isNot(contains('王小明')),
       );
-      expect(scope.client.calls.single.messages.last.text, contains('⟦P'));
+      expect(scope.client.calls.single.messages.last.text, contains('{{PER'));
       final reply = tester.widget<PrivateText>(
         find.descendant(
           of: find.byKey(
@@ -402,9 +406,12 @@ void main() {
       expect(scope.controller.draft!.composer, '改成王小明');
       await _drainStorage(tester, scope.controller.persist());
     });
-    testWidgets('人物預選持續高亮，取消其中一次後只傳送該處原文', (tester) async {
+    testWidgets('人名與個資高亮，開始整理後改成代號', (tester) async {
       final scope = (await tester.runAsync(
-        () => OrganizationTestScope.create(withPerson: true),
+        () => OrganizationTestScope.create(
+          withPerson: true,
+          body: '今天和王小明散步。王小明說天氣很好。a+b@example.org',
+        ),
       ))!;
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox());
@@ -418,26 +425,17 @@ void main() {
         find.byKey(const ValueKey('organization-privacy-text')),
       );
       final controller = field.controller! as PrivateTextController;
-      expect(controller.privateRanges, hasLength(2));
-      controller.selection = const TextSelection(
-        baseOffset: 3,
-        extentOffset: 6,
-      );
-      await tester.pump();
-      await tester.tap(find.byIcon(Icons.visibility_outlined));
-      await tester.pump();
-      expect(controller.privateRanges, hasLength(1));
-      controller.selection = const TextSelection.collapsed(offset: 0);
-      await tester.pump();
+      expect(controller.privateRanges, isEmpty);
       final span = controller.buildTextSpan(
         context: tester.element(find.byType(TextField)),
         withComposing: false,
       );
       expect(
-        span.children!.whereType<TextSpan>().where(
-          (s) => s.style?.backgroundColor != null,
-        ),
-        hasLength(1),
+        span.children!
+            .whereType<TextSpan>()
+            .where((s) => s.style?.backgroundColor != null)
+            .map((s) => s.text),
+        ['王小明', '王小明', 'a+b@example.org'],
       );
       scope.client.output = '想保留原本的語氣嗎？';
       await tester.tap(find.text('開始整理'));
@@ -466,8 +464,8 @@ void main() {
             .compact,
         isTrue,
       );
-      expect(outbound, contains('今天和王小明散步。'));
-      expect(outbound, isNot(contains('王小明說天氣很好')));
+      expect(outbound, isNot(contains('王小明')));
+      expect(outbound, isNot(contains('a+b@example.org')));
       await _drainStorage(tester, scope.controller.persist());
     });
     testWidgets('窄畫面放大文字時可開始整理，方向卡片從頂端呈現', (tester) async {
@@ -498,6 +496,52 @@ void main() {
       expect(tester.getTopLeft(find.text('選擇整理方向')).dy, greaterThan(0));
       await tester.ensureVisible(find.text('引導補充'));
       expect(tester.takeException(), isNull);
+    });
+    testWidgets('整理回覆無法採用時進度卡消失，錯誤留在畫面內', (tester) async {
+      final scope = (await tester.runAsync(
+        () => OrganizationTestScope.create(),
+      ))!;
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        await _drainStorage(tester, scope.dispose());
+      });
+      await tester.runAsync(scope.controller.startChat);
+      scope.client.output = List.filled(40, '這一行會把對話捲到底部。').join('\n');
+      scope.controller.updateComposer('修順', []);
+      await tester.runAsync(scope.controller.sendMessage);
+      await tester.pumpWidget(
+        _app(scope, DiaryOrganizationPage(entryId: scope.entry.id)),
+      );
+      await tester.pumpAndSettle();
+      scope.client.output = '錯誤的 JSON';
+      await tester.tap(find.byKey(const ValueKey('organization-generate')));
+      await _waitForUi(tester, () => !scope.controller.busy);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('organization-generation-card')),
+        findsNothing,
+      );
+      final error = find.byKey(const ValueKey('organization-generation-error'));
+      expect(error, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('organization-conversation')),
+          matching: error,
+        ),
+        findsNothing,
+      );
+      expect(tester.widget<Text>(error).data, testL10n.aiErrorResponse);
+      final rect = tester.getRect(error);
+      final viewHeight =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(rect.bottom, lessThanOrEqualTo(viewHeight));
+      expect(
+        find.byKey(const ValueKey('organization-composer')),
+        findsOneWidget,
+      );
+      expect(scope.controller.draft!.stage, OrganizationStage.chat);
+      expect(scope.controller.draft!.organizedBody, isNull);
     });
   });
 
@@ -621,17 +665,17 @@ void main() {
         await _drainStorage(tester, scope.dispose());
       });
       final draft = scope.controller.draft!..prepare();
-      draft.originals['⟦P01⟧'] = '其他分支的稱呼';
-      draft.appendTurn(OrganizationTurn(user: '舊需求 ⟦P01⟧'));
+      draft.originals['{{PER_01}}'] = '其他分支的稱呼';
+      draft.appendTurn(OrganizationTurn(user: '舊需求 {{PER_01}}'));
       draft.appendTurn(
         OrganizationTurn(
-          user: '新需求 ⟦P01⟧',
+          user: '新需求 {{PER_01}}',
           surfaces: {
-            '⟦P01⟧': ['目前稱呼'],
+            '{{PER_01}}': ['目前稱呼'],
           },
         ),
       );
-      draft.replaceBody('整理後的內容 ⟦P01⟧');
+      draft.replaceBody('整理後的內容 {{PER_01}}');
       draft.stage = OrganizationStage.review;
       await tester.pumpWidget(
         _app(
@@ -646,6 +690,23 @@ void main() {
       expect(find.byType(AppDialogShell), findsOneWidget);
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(288, 0.1));
+      final double cardHeight = tester
+          .getSize(
+            find
+                .descendant(
+                  of: find.byType(AlertDialog),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .height;
+      expect(cardHeight, closeTo(700 * appDialogMaxHeightFactor, 1));
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('organization-draft-editor')))
+            .height,
+        greaterThan(cardHeight * 0.5),
+      );
       expect(
         tester
             .widget<TextField>(
@@ -668,7 +729,7 @@ void main() {
       await _waitForUi(tester, () => !scope.controller.busy);
       tester.view.resetViewInsets();
       await tester.pumpAndSettle();
-      expect(scope.controller.draft!.organizedBody, '手動修改的候選內容 ⟦P01⟧');
+      expect(scope.controller.draft!.organizedBody, '手動修改的候選內容 {{PER_01}}');
       await tester.tap(find.text('返回聊天'));
       await _waitForUi(tester, () => !scope.controller.busy);
       await tester.pumpAndSettle();

@@ -39,6 +39,8 @@ class ChatDiaryMessage {
     this.parentId,
     this.privateRanges = const [],
     this.personRanges = const [],
+    this.automaticRanges = const [],
+    this.revealedRanges = const [],
     Set<String>? privateTokenIds,
     this.errorCode,
     this.systemPromptSnapshot = '',
@@ -54,6 +56,8 @@ class ChatDiaryMessage {
   String? parentId;
   final List<PrivateTextRange> privateRanges;
   List<PersonTextRange> personRanges;
+  final List<PrivateTextRange> automaticRanges;
+  final List<PrivateTextRange> revealedRanges;
   final Set<String> privateTokenIds;
   String? errorCode;
   String systemPromptSnapshot;
@@ -68,9 +72,13 @@ class ChatDiaryMessage {
     'image_ids': imageIds,
     'status': status.name,
     if (parentId != null) 'parent_id': parentId,
-    'private_ranges': privateRanges.map((range) => range.toJson()).toList(),
+    'private_ranges': privateRangesToJson(privateRanges),
     if (personRanges.isNotEmpty)
       'person_ranges': personRanges.map((range) => range.toJson()).toList(),
+    if (automaticRanges.isNotEmpty)
+      'automatic_ranges': privateRangesToJson(automaticRanges),
+    if (revealedRanges.isNotEmpty)
+      'revealed_ranges': privateRangesToJson(revealedRanges),
     'private_token_ids': privateTokenIds.toList(),
     if (errorCode != null) 'error_code': errorCode,
     if (persona == null) 'system_prompt': systemPromptSnapshot,
@@ -89,13 +97,7 @@ class ChatDiaryMessage {
           json['status'] as String? ?? 'complete',
         ),
         parentId: json['parent_id'] as String?,
-        privateRanges: (json['private_ranges'] as List? ?? [])
-            .map(
-              (range) => PrivateTextRange.fromJson(
-                (range as Map).cast<String, dynamic>(),
-              ),
-            )
-            .toList(),
+        privateRanges: privateRangesFromJson(json['private_ranges']),
         personRanges: json.containsKey('person_ranges')
             ? (json['person_ranges'] as List)
                   .map(
@@ -108,6 +110,8 @@ class ChatDiaryMessage {
         privateTokenIds: (json['private_token_ids'] as List? ?? [])
             .cast<String>()
             .toSet(),
+        automaticRanges: privateRangesFromJson(json['automatic_ranges']),
+        revealedRanges: privateRangesFromJson(json['revealed_ranges']),
         errorCode: json['error_code'] as String?,
         systemPromptSnapshot: json['system_prompt'] as String? ?? '',
         persona: json['persona'] == null
@@ -137,6 +141,7 @@ class ChatDiarySession {
     Map<String, String>? tokenBySourceKey,
     this.composerText = '',
     List<PrivateTextRange>? composerRanges,
+    List<PrivateTextRange>? composerRevealed,
     List<String>? pendingImageIds,
     this.generationPromptSnapshot = '',
     this.generationConnectionSnapshot,
@@ -155,6 +160,7 @@ class ChatDiarySession {
        originalTextByToken = originalTextByToken ?? {},
        tokenBySourceKey = tokenBySourceKey ?? {},
        composerRanges = composerRanges ?? [],
+       composerRevealed = composerRevealed ?? [],
        pendingImageIds = pendingImageIds ?? [],
        selectedChildren = selectedChildren ?? {},
        personaParticipants = personaParticipants ?? {};
@@ -178,6 +184,7 @@ class ChatDiarySession {
   final Map<String, String> tokenBySourceKey;
   String composerText;
   List<PrivateTextRange> composerRanges;
+  List<PrivateTextRange> composerRevealed;
   final List<String> pendingImageIds;
   String generationPromptSnapshot;
   AiConnectionConfig? generationConnectionSnapshot;
@@ -214,11 +221,13 @@ class ChatDiarySession {
   AiComposerSnapshot get composer => AiComposerSnapshot(
     text: composerText,
     ranges: List.of(composerRanges),
+    revealed: List.of(composerRevealed),
     imageIds: List.of(pendingImageIds),
   );
   set composer(AiComposerSnapshot snapshot) {
     composerText = snapshot.text;
     composerRanges = List.of(snapshot.ranges);
+    composerRevealed = List.of(snapshot.revealed);
     pendingImageIds
       ..clear()
       ..addAll(snapshot.imageIds);
@@ -292,8 +301,10 @@ class ChatDiarySession {
 
   void validateGraph() {
     validatePrivateRanges(composerText, composerRanges);
+    validatePrivateRanges(composerText, composerRevealed);
     if (editBackup case final backup?) {
       validatePrivateRanges(backup.text, backup.ranges);
+      validatePrivateRanges(backup.text, backup.revealed);
     }
     if (tokenBySourceKey.values.any(
       (token) => !originalTextByToken.containsKey(token),
@@ -302,6 +313,8 @@ class ChatDiarySession {
     }
     for (final message in messages) {
       validatePrivateRanges(message.text, message.privateRanges);
+      validatePrivateRanges(message.text, message.revealedRanges);
+      validatePrivateRanges(message.text, message.automaticRanges);
       validatePrivateRanges(
         message.text,
         message.personRanges.map(
@@ -368,7 +381,9 @@ class ChatDiarySession {
       'replacements': originalTextByToken,
       'token_keys': tokenBySourceKey,
       'composer_text': composerText,
-      'composer_ranges': composerRanges.map((range) => range.toJson()).toList(),
+      'composer_ranges': privateRangesToJson(composerRanges),
+      if (composerRevealed.isNotEmpty)
+        'composer_revealed': privateRangesToJson(composerRevealed),
       'pending_image_ids': pendingImageIds,
       'diary_prompt': generationPromptSnapshot,
       if (generationConnectionSnapshot != null)
@@ -430,13 +445,8 @@ class ChatDiarySession {
       originalTextByToken: (json['replacements'] as Map).cast<String, String>(),
       tokenBySourceKey: (json['token_keys'] as Map).cast<String, String>(),
       composerText: json['composer_text'] as String? ?? '',
-      composerRanges: (json['composer_ranges'] as List? ?? [])
-          .map(
-            (range) => PrivateTextRange.fromJson(
-              (range as Map).cast<String, dynamic>(),
-            ),
-          )
-          .toList(),
+      composerRanges: privateRangesFromJson(json['composer_ranges']),
+      composerRevealed: privateRangesFromJson(json['composer_revealed']),
       pendingImageIds: (json['pending_image_ids'] as List? ?? [])
           .cast<String>(),
       generationPromptSnapshot: json['diary_prompt'] as String? ?? '',

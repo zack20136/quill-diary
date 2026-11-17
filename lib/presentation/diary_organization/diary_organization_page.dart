@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,7 @@ import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/restored_private_ranges.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -46,9 +46,14 @@ class DiaryOrganizationPage extends ConsumerStatefulWidget {
 
 class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     with WidgetsBindingObserver {
-  final _privacy = PrivateTextController();
+  late final _privacy = PrivateTextController(
+    detectRanges: privacyRangeDetector(() => _controller.personMatcher),
+  );
   final _privacyScroll = ScrollController();
-  final _composer = PrivateTextController();
+  late final _composer = PrivateTextController(
+    detectRanges: privacyRangeDetector(() => _controller.personMatcher),
+  );
+  bool? _namesHighlighted;
   final _composerFocus = FocusNode();
   final _scroll = ScrollController();
   bool _followTail = true;
@@ -68,13 +73,20 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
     });
     _privacy.addListener(() {
       if (!_syncing) {
-        _controller.updatePrivacy(_privacy.privateRanges);
+        _controller.updatePrivacy(
+          _privacy.privateRanges,
+          _privacy.revealedRanges,
+        );
         setState(() {});
       }
     });
     _composer.addListener(() {
       if (!_syncing) {
-        _controller.updateComposer(_composer.text, _composer.privateRanges);
+        _controller.updateComposer(
+          _composer.text,
+          _composer.privateRanges,
+          _composer.revealedRanges,
+        );
         setState(() {});
       }
     });
@@ -174,6 +186,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
   }
 
   Future<void> _generate() async {
+    _followTail = false;
     await _controller.generateDraft();
     if (mounted && _controller.error == AiErrorCode.configuration) {
       await _run(_settings);
@@ -254,7 +267,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
 
   Widget _hideButton(PrivateTextController controller, {bool enabled = true}) =>
       IconButton(
-        tooltip: controller.selectionIsPrivate
+        tooltip: controller.selectionIsHidden
             ? context.l10n.aiUnhideSelection
             : context.l10n.aiHideSelection,
         onPressed:
@@ -263,23 +276,26 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                 controller.selection.isCollapsed
             ? null
             : () {
-                if (controller.selectionIsPrivate) {
+                if (controller.selectionIsHidden) {
                   controller.unhideSelection();
                 } else {
                   controller.hideSelection();
                 }
               },
         icon: Icon(
-          controller.selectionIsPrivate
+          controller.selectionIsHidden
               ? Icons.visibility_outlined
               : Icons.visibility_off_outlined,
         ),
       );
 
-  Widget _notices(DiaryOrganizationController controller) => Column(
+  Widget _notices(
+    DiaryOrganizationController controller, {
+    bool includeError = true,
+  }) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      if (controller.error != null)
+      if (includeError && controller.error != null)
         Padding(
           padding: const EdgeInsets.all(12),
           child: Text(aiErrorText(context.l10n, controller.error!)),
@@ -363,10 +379,11 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.only(left: 16),
                 child: AppScrollbar(
                   controller: _privacyScroll,
                   track: AppScrollbarTrack.frame,
+                  reserveGutter: true,
                   child: TextField(
                     key: const ValueKey('organization-privacy-text'),
                     controller: _privacy,
@@ -418,15 +435,11 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       return Dialog.fullscreen(child: content);
     }
     return Scaffold(
-      body: Center(
+      body: AppDialogWidth(
         child: Dialog(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 840,
-              maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-            ),
-            child: content,
-          ),
+          insetPadding: EdgeInsets.zero,
+          constraints: appDialogConstraints(context),
+          child: content,
         ),
       ),
     );
@@ -471,7 +484,10 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       id: 'organization-${user ? 'user' : 'assistant'}-$turn',
       text: visible.text,
       isUser: user,
-      privateRanges: visible.ranges,
+      privateRanges: privacyDisplayRanges(
+        text: visible.text,
+        manual: visible.ranges,
+      ),
       pending: pending,
       canAct: canAct,
       failureText: failed ? context.l10n.chatDiaryInterrupted : null,
@@ -527,7 +543,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                     vertical: 12,
                   ),
                   children: [
-                    _notices(controller),
+                    _notices(controller, includeError: false),
                     if (!hasMessages)
                       OrganizationQuickActions(
                         enabled:
@@ -585,6 +601,16 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (controller.error != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                          child: Text(
+                            aiErrorText(context.l10n, controller.error!),
+                            key: const ValueKey(
+                              'organization-generation-error',
+                            ),
+                          ),
+                        ),
                       AiConnectionSetupNotice(
                         connection: draft.connection,
                         onOpenSettings: controller.busy
@@ -653,11 +679,8 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       () => _dialog<void>(
         AppDialogShell(
           title: context.l10n.organizationReplyTitle,
-          content: SizedBox(
-            width: 560,
-            child: SelectionArea(
-              child: Text(controller.draft?.generationReply ?? ''),
-            ),
+          content: SelectionArea(
+            child: Text(controller.draft?.visibleGenerationReply ?? ''),
           ),
           actions: [
             TextButton(
@@ -758,25 +781,28 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                   ),
           );
         }
+        final hideNames = controller.personMatcher != null;
+        if (_namesHighlighted != hideNames) {
+          _namesHighlighted = hideNames;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _syncing = true;
+            _privacy.refreshHighlights();
+            _composer.refreshHighlights();
+            _syncing = false;
+          });
+        }
         _syncing = true;
-        if (_privacy.text != draft.source.markdownBody ||
-            jsonEncode(
-                  _privacy.privateRanges.map((r) => r.toJson()).toList(),
-                ) !=
-                jsonEncode(
-                  draft.hiddenRanges.map((r) => r.toJson()).toList(),
-                )) {
-          _privacy.setDocument(draft.source.markdownBody, draft.hiddenRanges);
-        }
-        if (_composer.text != draft.composer ||
-            jsonEncode(
-                  _composer.privateRanges.map((r) => r.toJson()).toList(),
-                ) !=
-                jsonEncode(
-                  draft.composerRanges.map((r) => r.toJson()).toList(),
-                )) {
-          _composer.setDocument(draft.composer, draft.composerRanges);
-        }
+        _privacy.syncDocument(
+          draft.source.markdownBody,
+          draft.hiddenRanges,
+          draft.revealedRanges,
+        );
+        _composer.syncDocument(
+          draft.composer,
+          draft.composerRanges,
+          draft.composerRevealed,
+        );
         _syncing = false;
         if (draft.stage == OrganizationStage.chat &&
             draft.activeTurnIndices.isNotEmpty &&

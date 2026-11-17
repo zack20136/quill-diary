@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart' show StringCharacters;
 
 import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
@@ -39,9 +40,8 @@ bool personaTimesMatch(DateTime? left, DateTime? right) {
       right.toUtc().microsecondsSinceEpoch;
 }
 
-final personaTokenPattern = RegExp(r'⟦[PS][^⟦⟧]*⟧');
 final personaBareTokenPattern = RegExp(
-  r'(?<![A-Za-z0-9_⟦])P[0-9A-F]{2,}(?![A-Za-z0-9_⟧])',
+  r'(?<!\{\{)(?<![A-Za-z0-9_])(?:PER|PRI)_[0-9A-F]{2,}(?![A-Za-z0-9_])',
 );
 
 class PersonaCandidate {
@@ -55,7 +55,7 @@ class PersonaCandidate {
       throw const FormatException('分身內容長度不正確');
     }
     validateBindings();
-    for (final match in personaTokenPattern.allMatches(text)) {
+    for (final match in privacyTokenPattern.allMatches(text)) {
       if (!tokens.containsKey(match[0])) {
         throw const FormatException('內容含有未知代號');
       }
@@ -64,7 +64,7 @@ class PersonaCandidate {
 
   void validateBindings() {
     for (final entry in tokens.entries) {
-      if (!RegExp(r'^⟦P[0-9A-F]{2,}⟧$').hasMatch(entry.key) ||
+      if (!privacyTokenHasKind(entry.key, PrivacyTokenKind.person) ||
           entry.value != null && !isPrefixedId(entry.value!, 'per')) {
         throw const FormatException('分身人物對照不正確');
       }
@@ -111,9 +111,6 @@ class PersonaCard extends PersonaCandidate {
   );
 }
 
-List<PrivateTextRange> _ranges(Object? value) => (value as List? ?? [])
-    .map((v) => PrivateTextRange.fromJson(Map<String, dynamic>.from(v as Map)))
-    .toList();
 void _validateRangeCoordinates(Iterable<PrivateTextRange> ranges) {
   if (ranges.any((r) => r.start < 0 || r.end <= r.start)) {
     throw const FormatException('隱藏區間不正確');
@@ -125,23 +122,29 @@ class PersonaDiarySource {
     required this.entryId,
     required this.bodyHash,
     List<PrivateTextRange>? hiddenRanges,
+    List<PrivateTextRange>? revealedRanges,
     this.needsReview = false,
-  }) : hiddenRanges = List.of(hiddenRanges ?? []);
+  }) : hiddenRanges = List.of(hiddenRanges ?? []),
+       revealedRanges = List.of(revealedRanges ?? []);
   final String entryId;
   String bodyHash;
   List<PrivateTextRange> hiddenRanges;
+  List<PrivateTextRange> revealedRanges;
   bool needsReview;
   Map<String, Object?> toJson() => {
     'entry_id': entryId,
     'body_hash': bodyHash,
-    'hidden_ranges': hiddenRanges.map((r) => r.toJson()).toList(),
+    'hidden_ranges': privateRangesToJson(hiddenRanges),
+    if (revealedRanges.isNotEmpty)
+      'revealed_ranges': privateRangesToJson(revealedRanges),
     'needs_review': needsReview,
   };
   factory PersonaDiarySource.fromJson(Map<String, dynamic> json) =>
       PersonaDiarySource(
         entryId: json['entry_id'] as String,
         bodyHash: json['body_hash'] as String,
-        hiddenRanges: _ranges(json['hidden_ranges']),
+        hiddenRanges: privateRangesFromJson(json['hidden_ranges']),
+        revealedRanges: privateRangesFromJson(json['revealed_ranges']),
         needsReview: json['needs_review'] as bool,
       );
 }
@@ -152,24 +155,27 @@ class PersonaChatSource {
     String? contentId,
     Set<String>? excluded,
     Map<String, List<PrivateTextRange>>? hidden,
+    Map<String, List<PrivateTextRange>>? revealed,
     this.fromDate,
     this.toDate,
   }) : contentId = contentId ?? generatePersonaContentId(),
        excluded = Set.of(excluded ?? {}),
-       hidden = Map.of(hidden ?? {});
+       hidden = Map.of(hidden ?? {}),
+       revealed = Map.of(revealed ?? {});
   final String importId;
   String contentId;
   final Set<String> excluded;
   final Map<String, List<PrivateTextRange>> hidden;
+  final Map<String, List<PrivateTextRange>> revealed;
   String? fromDate;
   String? toDate;
   Map<String, Object?> toJson() => {
     'import_id': importId,
     'content_id': contentId,
     'excluded': excluded.toList(),
-    'hidden': hidden.map(
-      (k, v) => MapEntry(k, v.map((r) => r.toJson()).toList()),
-    ),
+    'hidden': hidden.map((k, v) => MapEntry(k, privateRangesToJson(v))),
+    if (revealed.isNotEmpty)
+      'revealed': revealed.map((k, v) => MapEntry(k, privateRangesToJson(v))),
     'from_date': fromDate,
     'to_date': toDate,
   };
@@ -179,7 +185,10 @@ class PersonaChatSource {
         contentId: json['content_id'] as String,
         excluded: (json['excluded'] as List).cast<String>().toSet(),
         hidden: (json['hidden'] as Map).map(
-          (k, v) => MapEntry(k as String, _ranges(v)),
+          (k, v) => MapEntry(k as String, privateRangesFromJson(v)),
+        ),
+        revealed: (json['revealed'] as Map? ?? const {}).map(
+          (k, v) => MapEntry(k as String, privateRangesFromJson(v)),
         ),
         fromDate: json['from_date'] as String?,
         toDate: json['to_date'] as String?,
@@ -197,6 +206,7 @@ class PersonaDraft {
     List<PersonaDiarySource>? diaries,
     List<PersonaChatSource>? chats,
     Map<PersonaCardKind, List<PrivateTextRange>>? cardHiddenRanges,
+    Map<PersonaCardKind, List<PrivateTextRange>>? cardRevealedRanges,
     Map<PersonaCardKind, bool>? includeCurrent,
     this.candidate,
     this.manualEdit = false,
@@ -204,6 +214,7 @@ class PersonaDraft {
        diaries = List.of(diaries ?? []),
        chats = List.of(chats ?? []),
        cardHiddenRanges = Map.of(cardHiddenRanges ?? {}),
+       cardRevealedRanges = Map.of(cardRevealedRanges ?? {}),
        includeCurrent = Map.of(includeCurrent ?? {});
   final PersonaUpdateTarget target;
   final bool manualEdit;
@@ -215,6 +226,7 @@ class PersonaDraft {
   final List<PersonaDiarySource> diaries;
   final List<PersonaChatSource> chats;
   final Map<PersonaCardKind, List<PrivateTextRange>> cardHiddenRanges;
+  final Map<PersonaCardKind, List<PrivateTextRange>> cardRevealedRanges;
   final Map<PersonaCardKind, bool> includeCurrent;
   Map<PersonaCardKind, PersonaCandidate>? candidate;
 
@@ -240,6 +252,7 @@ class PersonaDraft {
         throw const FormatException('日記參照不正確');
       }
       _validateRangeCoordinates(d.hiddenRanges);
+      _validateRangeCoordinates(d.revealedRanges);
     }
     for (final c in chats) {
       if (!isPrefixedId(c.importId, 'pim') ||
@@ -254,8 +267,17 @@ class PersonaDraft {
       for (final r in c.hidden.values) {
         _validateRangeCoordinates(r);
       }
+      for (final r in c.revealed.values) {
+        _validateRangeCoordinates(r);
+      }
     }
     for (final e in cardHiddenRanges.entries) {
+      if (!target.kinds.contains(e.key)) {
+        throw const FormatException('隱藏範圍不屬於這次更新');
+      }
+      _validateRangeCoordinates(e.value);
+    }
+    for (final e in cardRevealedRanges.entries) {
       if (!target.kinds.contains(e.key)) {
         throw const FormatException('隱藏範圍不屬於這次更新');
       }
@@ -285,8 +307,12 @@ class PersonaDraft {
     'diaries': diaries.map((d) => d.toJson()).toList(),
     'chats': chats.map((c) => c.toJson()).toList(),
     'card_hidden_ranges': cardHiddenRanges.map(
-      (k, v) => MapEntry(k.name, v.map((r) => r.toJson()).toList()),
+      (k, v) => MapEntry(k.name, privateRangesToJson(v)),
     ),
+    if (cardRevealedRanges.isNotEmpty)
+      'card_revealed_ranges': cardRevealedRanges.map(
+        (k, v) => MapEntry(k.name, privateRangesToJson(v)),
+      ),
     'include_current': includeCurrent.map(
       (kind, include) => MapEntry(kind.name, include),
     ),
@@ -324,8 +350,16 @@ class PersonaDraft {
         )
         .toList(),
     cardHiddenRanges: (json['card_hidden_ranges'] as Map).map(
-      (k, v) =>
-          MapEntry(PersonaCardKind.values.byName(k as String), _ranges(v)),
+      (k, v) => MapEntry(
+        PersonaCardKind.values.byName(k as String),
+        privateRangesFromJson(v),
+      ),
+    ),
+    cardRevealedRanges: (json['card_revealed_ranges'] as Map? ?? const {}).map(
+      (k, v) => MapEntry(
+        PersonaCardKind.values.byName(k as String),
+        privateRangesFromJson(v),
+      ),
     ),
     candidate: (json['candidate'] as Map?)?.map(
       (k, v) => MapEntry(

@@ -6,31 +6,58 @@ import 'package:quill_diary/domain/persona/persona_privacy.dart';
 import '../../helpers/persona/persona_fixtures.dart';
 
 void main() {
-  test('模型不能省略人物代號括號，原材料的產品代碼與假代號仍當文字', () {
+  test('不同匯入來源的同名人物不共用匿名識別', () {
+    final registry = PersonaTokenRegistry([], hideNames: true);
+    registry.replaceImportNames(['小美'], scope: 'first');
+    registry.replaceImportNames(['小美'], scope: 'second');
+    final first = registry.protect(
+      '小美來了',
+      scope: 'first:message',
+      maskImportNames: true,
+    );
+    final second = registry.protect(
+      '小美來了',
+      scope: 'second:message',
+      maskImportNames: true,
+    );
+    expect(first, isNot(second));
+    expect(first, isNot(contains('小美')));
+    expect(second, isNot(contains('小美')));
+  });
+
+  test('模型不能省略人物代號大括號，原材料的產品代碼與假代號仍當文字', () {
     final person = personaPerson('小明');
     final registry = PersonaTokenRegistry([person], hideNames: true);
     final sent = registry.protect('小明去散步', scope: 'diary');
     registry.validateOutputTokens(sent, sent);
     expect(
-      () => registry.validateOutputTokens('P01 去散步', sent),
+      () => registry.validateOutputTokens('PER_01 去散步', sent),
       throwsFormatException,
     );
-    final literal = registry.protect('產品 P99 與 ⟦P88⟧ 字樣', scope: 'literal');
-    registry.validateOutputTokens('產品 P99 與［P88］字樣', literal);
+    expect(
+      () => registry.validateOutputTokens('{PER_01} 去散步', sent),
+      throwsFormatException,
+    );
+    final literal = registry.protect(
+      '產品 P99 與 {{PER_88}} 字樣',
+      scope: 'literal',
+    );
+    expect(literal, '產品 P99 與 ［PER_88］ 字樣');
+    registry.validateOutputTokens(literal, literal);
   });
   test('不同內容的同名代號不混人，同一人物的姓名與代號共用外送識別', () {
     final a = personaPerson('小明');
     final b = personaPerson('小華');
     final registry = PersonaTokenRegistry([a, b], hideNames: true);
     final first = registry.protect(
-      '和⟦P01⟧去旅行',
+      '和{{PER_01}}去旅行',
       scope: 'card:memory',
-      tokens: {'⟦P01⟧': a.id},
+      tokens: {'{{PER_01}}': a.id},
     );
     final second = registry.protect(
-      '⟦P01⟧喜歡聊天',
+      '{{PER_01}}喜歡聊天',
       scope: 'card:tone',
-      tokens: {'⟦P01⟧': b.id},
+      tokens: {'{{PER_01}}': b.id},
     );
     expect(first, contains(registry.person(a.id)));
     expect(second, contains(registry.person(b.id)));
@@ -44,7 +71,7 @@ void main() {
       '${registry.person(a.id)}和${registry.person(b.id)}',
     );
     expect(
-      () => registry.validateOutputTokens('⟦PZZ⟧', first),
+      () => registry.validateOutputTokens('{{PER_99}}', first),
       throwsFormatException,
     );
   });
@@ -52,24 +79,24 @@ void main() {
   test('匿名人物不因兩個空對應而合併，候選仍保留原有對照', () {
     final registry = PersonaTokenRegistry([], hideNames: true);
     final a = registry.protect(
-      '⟦P01⟧',
+      '{{PER_01}}',
       scope: 'card:memory',
-      tokens: {'⟦P01⟧': null},
+      tokens: {'{{PER_01}}': null},
     );
     final b = registry.protect(
-      '⟦P01⟧',
+      '{{PER_01}}',
       scope: 'card:tone',
-      tokens: {'⟦P01⟧': null},
+      tokens: {'{{PER_01}}': null},
     );
     expect(a, isNot(b));
     final current = PersonaCard(
-      text: '⟦P01⟧',
-      tokens: {'⟦P01⟧': null},
+      text: '{{PER_01}}',
+      tokens: {'{{PER_01}}': null},
       updatedAt: DateTime.now(),
       selectedDiaryIds: [],
     );
     expect(registry.candidate(a, PersonaCardKind.memory, current).tokens, {
-      '⟦P01⟧': null,
+      '{{PER_01}}': null,
     });
   });
 
@@ -80,13 +107,21 @@ void main() {
       scope: 'card:memory',
       ranges: [const PrivateTextRange(2, 12)],
     );
-    expect(protected, '電話$personaHiddenText');
+    expect(protected, '電話{{PRI_01}}');
     expect(
-      () => registry.validateOutputTokens('⟦P99⟧', protected),
+      registry.protect(
+        '另一支0900123456',
+        scope: 'again',
+        ranges: [const PrivateTextRange(3, 13)],
+      ),
+      '另一支{{PRI_01}}',
+    );
+    expect(
+      () => registry.validateOutputTokens('{{PER_99}}', protected),
       throwsFormatException,
     );
     expect(
-      () => registry.validateOutputTokens('⟦S01⟧', protected),
+      () => registry.validateOutputTokens('{{PRI_01}}', protected),
       throwsFormatException,
     );
     expect(
@@ -123,7 +158,7 @@ void main() {
         scope: 'diary',
         ranges: [const PrivateTextRange(1, 3)],
       ),
-      '甲$personaHiddenText\ne\u0301乙',
+      '甲{{PRI_01}}\ne\u0301乙',
     );
   });
 
@@ -161,5 +196,29 @@ void main() {
     expect(sent.contains('小美'), isFalse);
     expect(sent, contains(registry.person(personId)));
     expect(sent, contains(registry.anonymous('import:小美')));
+  });
+
+  test('取消的人名保留原文，已登錄後模型回覆該名不再拒絕', () {
+    final person = personaPerson('小明');
+    final registry = PersonaTokenRegistry([person], hideNames: true);
+    const text = '小明又見小明';
+    final shown = registry.protect(
+      text,
+      scope: 'diary',
+      revealedRanges: const [PrivateTextRange(0, 2)],
+    );
+    expect(shown, startsWith('小明'));
+    expect(shown.substring(2), isNot(contains('小明')));
+    expect(shown, contains(registry.person(person.id)));
+    expect(registry.protectEvidence('小明回來'), '${registry.person(person.id)}回來');
+    final fresh = PersonaTokenRegistry([person], hideNames: true);
+    expect(
+      fresh.protectEvidence(
+        '小明回來',
+        revealedRanges: const [PrivateTextRange(0, 2)],
+      ),
+      '小明回來',
+    );
+    expect(() => fresh.protectEvidence('小明回來'), throwsFormatException);
   });
 }

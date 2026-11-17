@@ -14,6 +14,7 @@ import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/ai/ai_composer_snapshot.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/ai/privacy_names.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
@@ -22,7 +23,6 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/diary_organization/diary_organization_store.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 
 final diaryOrganizationStoreProvider = Provider<DiaryOrganizationStore>(
   (ref) => DiaryOrganizationStore(
@@ -36,7 +36,12 @@ final organizationDraftProvider = FutureProvider.autoDispose
     .family<DiaryOrganization?, String>((ref, id) async {
       final session = await ref.watch(activeVaultSessionProvider.future);
       if (session == null) return null;
-      return ref.read(diaryOrganizationStoreProvider).load(id, session);
+      try {
+        return await ref.read(diaryOrganizationStoreProvider).load(id, session);
+      } on AiFailure catch (failure) {
+        if (failure.code == AiErrorCode.unreadable) return null;
+        rethrow;
+      }
     });
 
 final diaryOrganizationControllerProvider = Provider.autoDispose
@@ -61,6 +66,62 @@ final diaryOrganizationControllerProvider = Provider.autoDispose
       });
       return controller;
     });
+
+/// 從模型回覆取出第一個可用的整理結果。前後說明與圍欄都略過。
+Map<String, dynamic>? organizationGenerationPayload(String text) {
+  var index = 0;
+  while (index < text.length) {
+    final start = text.indexOf('{', index);
+    if (start < 0) return null;
+    final end = _jsonObjectEnd(text, start);
+    if (end == null) {
+      index = start + 1;
+      continue;
+    }
+    try {
+      final decoded = jsonDecode(text.substring(start, end));
+      if (decoded is Map) {
+        final reply = decoded['reply'];
+        final body = decoded['body'];
+        if (reply is String && body is String && body.trim().isNotEmpty) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+    } on FormatException {
+      // 這段括號不是可用的整理結果，往後再找。
+    }
+    index = start + 1;
+  }
+  return null;
+}
+
+int? _jsonObjectEnd(String text, int start) {
+  var depth = 0;
+  var inString = false;
+  var escape = false;
+  for (var i = start; i < text.length; i++) {
+    final char = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (char == '\\') {
+        escape = true;
+      } else if (char == '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (char == '"') {
+      inString = true;
+    } else if (char == '{') {
+      depth++;
+    } else if (char == '}') {
+      depth--;
+      if (depth == 0) return i + 1;
+    }
+  }
+  return null;
+}
 
 enum OrganizationGenerationPhase {
   idle,
@@ -105,14 +166,12 @@ class DiaryOrganizationController extends ChangeNotifier {
   }
 
   PersonNameMatcher? _personMatcher;
+  PersonNameMatcher? get personMatcher => _personMatcher;
   AiClient? _client;
   Timer? _saveTimer;
   int _version = 0;
   bool _disposed = false;
   bool _dirty = false;
-
-  /// 使用者改過，或已從草稿載入的隱藏區間，不再依設定重算。
-  bool _privacyConfirmed = false;
   DiaryOrganizationStore get _store => ref.read(diaryOrganizationStoreProvider);
 
   Future<void> load(UnlockedVaultSession session) async {
@@ -124,7 +183,14 @@ class DiaryOrganizationController extends ChangeNotifier {
     _dirty = false;
     notifyListeners();
     try {
-      final saved = await _store.load(entryId, session);
+      DiaryOrganization? saved;
+      try {
+        saved = await _store.load(entryId, session);
+      } on AiFailure catch (failure) {
+        if (failure.code != AiErrorCode.unreadable) rethrow;
+        await _store.delete(entryId);
+        _ensure(version);
+      }
       _ensure(version);
       final settings = await ref.read(aiSettingsStoreProvider).read(session);
       _ensure(version);
@@ -135,7 +201,6 @@ class DiaryOrganizationController extends ChangeNotifier {
       );
       if (saved != null) {
         if (saved.stage == OrganizationStage.chat) saved.organizedBody = null;
-        _privacyConfirmed = true;
         draft = saved;
       } else {
         final entry = await ref
@@ -143,11 +208,10 @@ class DiaryOrganizationController extends ChangeNotifier {
             .loadEntry(session, entryId);
         _ensure(version);
         if (entry == null) throw const AiFailure(AiErrorCode.storage);
-        _privacyConfirmed = false;
         draft = DiaryOrganization(
           source: entry,
           connection: settings.connection.activeConfig.captureRequestSnapshot(),
-        )..hiddenRanges = _presetRanges(entry.markdownBody);
+        );
       }
       await refreshConflict();
     } on Object catch (failure) {
@@ -162,19 +226,8 @@ class DiaryOrganizationController extends ChangeNotifier {
     }
   }
 
-  List<PersonTextRange> _personRanges(String text) {
-    final matcher = _personMatcher;
-    if (matcher == null) return const [];
-    return [
-      for (final span in matcher.findSpans(text))
-        PersonTextRange(span.start, span.end, span.personId),
-    ];
-  }
-
-  List<PrivateTextRange> _presetRanges(String text) => [
-    for (final range in _personRanges(text))
-      PrivateTextRange(range.start, range.end),
-  ];
+  PersonNameHits _nameHits(String text) =>
+      personNameRanges(text, _personMatcher);
 
   Future<void> _syncPersonMatcher(
     UnlockedVaultSession session,
@@ -194,18 +247,7 @@ class DiaryOrganizationController extends ChangeNotifier {
     _personMatcher = PersonNameMatcher(people);
   }
 
-  void _applyUnconfirmedPreset() {
-    final current = draft;
-    if (current == null ||
-        _privacyConfirmed ||
-        current.stage != OrganizationStage.privacy ||
-        current.protectedSource.isNotEmpty) {
-      return;
-    }
-    current.hiddenRanges = _presetRanges(current.source.markdownBody);
-  }
-
-  /// 尚未確認的預選跟著最新人物隱藏設定更新。
+  /// 人物隱藏開關只更新之後送出用的姓名掃描，不改已保存的手動區間。
   Future<void> refreshPrivacyPreset() async {
     final session = vault;
     final current = draft;
@@ -213,7 +255,6 @@ class DiaryOrganizationController extends ChangeNotifier {
     final version = _version;
     await _syncPersonMatcher(session, version);
     if (_disposed || version != _version || draft != current) return;
-    _applyUnconfirmedPreset();
     notifyListeners();
   }
 
@@ -271,30 +312,41 @@ class DiaryOrganizationController extends ChangeNotifier {
     return visible.trim().isNotEmpty;
   }
 
-  void updatePrivacy(List<PrivateTextRange> ranges) {
+  void updatePrivacy(
+    List<PrivateTextRange> ranges, [
+    List<PrivateTextRange> revealed = const [],
+  ]) {
     final current = draft;
     if (current == null || busy || current.stage != OrganizationStage.privacy) {
       return;
     }
-    if (jsonEncode(current.hiddenRanges.map((r) => r.toJson()).toList()) ==
-        jsonEncode(ranges.map((r) => r.toJson()).toList())) {
+    if (samePrivateRanges(current.hiddenRanges, ranges) &&
+        samePrivateRanges(current.revealedRanges, revealed)) {
       return;
     }
     current.hiddenRanges = List.of(ranges);
+    current.revealedRanges = List.of(revealed);
     current.protectedSource = '';
     current.originals.clear();
+    current.automaticTokenIds.clear();
+    // 區間變了就要重算；留下的明文清單會讓重新隱藏的個資繼續外送。
+    current.revealedSecrets.clear();
     current.personTokenById.clear();
     current.tokenSurfaces.clear();
-    _privacyConfirmed = true;
     _dirty = true;
     _scheduleSave();
     notifyListeners();
   }
 
-  void updateComposer(String text, List<PrivateTextRange> ranges) {
+  void updateComposer(
+    String text,
+    List<PrivateTextRange> ranges, [
+    List<PrivateTextRange> revealed = const [],
+  ]) {
     if (draft == null || busy) return;
     draft!.composer = text;
     draft!.composerRanges = List.of(ranges);
+    draft!.composerRevealed = List.of(revealed);
     _dirty = true;
     _scheduleSave();
   }
@@ -348,8 +400,8 @@ class DiaryOrganizationController extends ChangeNotifier {
       final session = vault;
       if (session == null) return;
       await _syncPersonMatcher(session, version);
-      _applyUnconfirmedPreset();
-      draft!.prepare(personRanges: _personRanges(draft!.source.markdownBody));
+      final hits = _nameHits(draft!.source.markdownBody);
+      draft!.prepare(personRanges: hits.people, ambiguousNames: hits.ambiguous);
       _dirty = true;
       await persist(rethrowError: true);
     } finally {
@@ -367,14 +419,14 @@ class DiaryOrganizationController extends ChangeNotifier {
     if (current == null || session == null || _disposed) return null;
     final version = _version;
     try {
-      final prompt = await _prepareRequestContext(session, generate);
+      final requestContext = await _prepareRequestContext(session, generate);
       if (_disposed ||
           version != _version ||
           draft != current ||
           vault != session) {
         return null;
       }
-      return _buildRequest(prompt, generate: generate).preview;
+      return (await _buildRequest(requestContext, generate: generate)).preview;
     } on Object {
       if (_disposed ||
           version != _version ||
@@ -405,12 +457,12 @@ class DiaryOrganizationController extends ChangeNotifier {
     );
   }
 
-  _OrganizationRequest _buildRequest(
+  Future<_OrganizationRequest> _buildRequest(
     String prompt, {
     required bool generate,
     String? message,
     int? retryTurn,
-  }) {
+  }) async {
     final current = draft!;
     final target = generate ? null : retryTurn ?? current.editingTurn;
     final path = current.activeTurnIndices
@@ -421,13 +473,10 @@ class DiaryOrganizationController extends ChangeNotifier {
         : retryTurn != null
         ? current.turns[retryTurn].user
         : message ?? current.composer;
-    final personRanges = retryTurn == null
-        ? _personRanges(text)
-        : <PersonTextRange>[];
+    final matched = retryTurn == null ? _nameHits(text) : PersonNameHits.empty;
+    final personRanges = matched.people;
     final ranges = <PrivateTextRange>[
       if (message == null && retryTurn == null) ...current.composerRanges,
-      for (final range in personRanges)
-        PrivateTextRange(range.start, range.end),
     ];
     final key = jsonEncode([
       generate,
@@ -440,12 +489,16 @@ class DiaryOrganizationController extends ChangeNotifier {
       text,
       ranges.map((r) => r.toJson()).toList(),
       personRanges.map((r) => r.toJson()).toList(),
+      matched.ambiguous.map((r) => r.toJson()).toList(),
+      current.composerRevealed.map((r) => r.toJson()).toList(),
+      (current.revealedSecrets.toList()..sort()),
     ]);
     final cached = _requests[generate];
     if (cached?.key == key) return cached!.request;
     final originals = Map<String, String>.of(current.originals);
     final personTokens = Map<String, String>.of(current.personTokenById);
     final pendingSurfaces = <String, List<String>>{};
+    final automaticTokens = Set<String>.of(current.automaticTokenIds);
     final pending = generate
         ? null
         : retryTurn != null
@@ -455,8 +508,14 @@ class DiaryOrganizationController extends ChangeNotifier {
             ranges,
             originals,
             personRanges: personRanges,
+            ambiguousNames: matched.ambiguous,
+            revealedRanges: message == null && retryTurn == null
+                ? current.composerRevealed
+                : const [],
             personTokenById: personTokens,
             tokenSurfaces: pendingSurfaces,
+            automaticTokenIds: automaticTokens,
+            revealedSecrets: current.revealedSecrets,
           );
     if (retryTurn != null) {
       pendingSurfaces.addAll(current.turns[retryTurn].surfaces);
@@ -473,10 +532,17 @@ class DiaryOrganizationController extends ChangeNotifier {
       if (pending != null && pending.isNotEmpty)
         AiInputMessage(isUser: true, text: pending),
     ];
-    final request = _OrganizationRequest(
+    final prepared = await prepareAiRequest(
+      connection: current.connection,
       instructions: prompt,
-      diaryContext: AiDiaryContext(originalBody: current.protectedSource),
+      diaryBody: current.protectedSource,
       messages: messages,
+      originals: originals,
+      optionalPrivateTokens: automaticTokens,
+      revealedSecrets: current.revealedSecrets,
+    );
+    final request = _OrganizationRequest(
+      prepared: prepared,
       originals: originals,
       personTokens: personTokens,
       pendingSurfaces: pendingSurfaces,
@@ -538,14 +604,18 @@ class DiaryOrganizationController extends ChangeNotifier {
             ref.read(aiSettingsStoreProvider).readApiKey(connection),
       );
       _ensure(version);
-      final prompt = await _prepareRequestContext(session, generate);
+      final requestContext = await _prepareRequestContext(session, generate);
       _ensure(version);
-      final request = _buildRequest(
-        prompt,
+      final request = await _buildRequest(
+        requestContext,
         generate: generate,
         message: message,
         retryTurn: retryTurn,
       );
+      final prepared = request.prepared;
+      current.automaticTokenIds.addAll(prepared.automaticTokenIds);
+      current.originals.addAll(request.originals);
+      current.protectedSource = prepared.internalDiary!;
       OrganizationTurn? turn;
       if (generate) {
         current.generationInterrupted = true;
@@ -562,12 +632,7 @@ class DiaryOrganizationController extends ChangeNotifier {
         );
         current.appendTurn(turn);
         if (message == null && retryTurn == null) {
-          current.composer = current.composerBackup?.text ?? '';
-          current.composerRanges = List.of(
-            current.composerBackup?.ranges ?? [],
-          );
-          current.composerBackup = null;
-          current.editingTurn = null;
+          _restoreComposer(current);
         }
       }
       _dirty = true;
@@ -577,10 +642,7 @@ class DiaryOrganizationController extends ChangeNotifier {
       _client = ref.read(aiClientFactoryProvider)(connection, key);
       if (generate) _setGenerationPhase(OrganizationGenerationPhase.receiving);
       final output = StringBuffer();
-      await for (final delta in _client!.reply(
-        request.systemPrompt,
-        request.messages,
-      )) {
+      await for (final delta in _client!.reply(prepared)) {
         _ensure(version);
         output.write(delta);
         if (turn != null) {
@@ -590,22 +652,16 @@ class DiaryOrganizationController extends ChangeNotifier {
         }
       }
       _ensure(version);
-      var text = output.toString().trim();
+      final text = output.toString().trim();
       if (text.isEmpty) throw const AiFailure(AiErrorCode.response);
       if (generate) {
         _setGenerationPhase(OrganizationGenerationPhase.validating);
-        if (text.startsWith('```')) {
-          text = text
-              .replaceFirst(RegExp(r'^```(?:json)?\s*'), '')
-              .replaceFirst(RegExp(r'\s*```$'), '');
-        }
-        final response = jsonDecode(text) as Map<String, dynamic>;
-        if (response['reply'] is! String) throw const FormatException('缺少整理說明');
+        final response = organizationGenerationPayload(text);
+        if (response == null) throw const AiFailure(AiErrorCode.response);
         final next = DiaryOrganization.fromJson(current.toJson());
         final body = response['body'] as String;
-        if (body.trim().isEmpty) throw const FormatException('整理稿不可空白');
         final allowed = privacyTokenPattern
-            .allMatches(request.diaryContext.originalBody)
+            .allMatches(request.diaryContext.diaryBody)
             .map((m) => m[0]!)
             .toSet();
         for (final message in request.messages.where((m) => m.isUser)) {
@@ -613,16 +669,11 @@ class DiaryOrganizationController extends ChangeNotifier {
             privacyTokenPattern.allMatches(message.text).map((m) => m[0]!),
           );
         }
+        allowed.addAll(prepared.knownTokens);
         next.replaceBody(body, allowedTokens: allowed);
         final reply = (response['reply'] as String).trim();
-        final language = await ref.read(userPreferencesProvider).appLocale;
         _ensure(version);
-        next.generationReply = privacyTokenPattern.hasMatch(reply)
-            ? lookupAppLocalizations(language.materialLocale)
-                  .organizationReplyUnavailable
-            : reply.isEmpty
-            ? null
-            : reply;
+        next.generationReply = reply.isEmpty ? null : reply;
         next.generationInterrupted = false;
         next.stage = OrganizationStage.review;
         _setGenerationPhase(OrganizationGenerationPhase.saving);
@@ -669,6 +720,7 @@ class DiaryOrganizationController extends ChangeNotifier {
     current.composerBackup ??= AiComposerSnapshot(
       text: current.composer,
       ranges: List.of(current.composerRanges),
+      revealed: List.of(current.composerRevealed),
       imageIds: [],
     );
     final visible = current.visibleText(
@@ -679,17 +731,24 @@ class DiaryOrganizationController extends ChangeNotifier {
     current.editingTurn = index;
     current.composer = visible.text;
     current.composerRanges = visible.ranges;
+    current.composerRevealed = [];
     await persist();
     notifyListeners();
+  }
+
+  void _restoreComposer(DiaryOrganization current) {
+    final backup = current.composerBackup;
+    current.composer = backup?.text ?? '';
+    current.composerRanges = List.of(backup?.ranges ?? const []);
+    current.composerRevealed = List.of(backup?.revealed ?? const []);
+    current.composerBackup = null;
+    current.editingTurn = null;
   }
 
   Future<void> cancelEditing() async {
     final current = draft;
     if (current == null || busy) return;
-    current.composer = current.composerBackup?.text ?? '';
-    current.composerRanges = List.of(current.composerBackup?.ranges ?? []);
-    current.composerBackup = null;
-    current.editingTurn = null;
+    _restoreComposer(current);
     await persist();
     notifyListeners();
   }
@@ -895,37 +954,33 @@ class DiaryOrganizationController extends ChangeNotifier {
 
 class _OrganizationRequest {
   const _OrganizationRequest({
-    required this.instructions,
-    required this.diaryContext,
-    required this.messages,
+    required this.prepared,
     required this.originals,
     required this.personTokens,
     required this.pendingSurfaces,
     required this.pending,
     required this.parent,
   });
-  final String instructions;
-  final AiDiaryContext diaryContext;
-  final List<AiInputMessage> messages;
-  String get systemPrompt => preview.systemPrompt;
+  final PreparedAiRequest prepared;
   final Map<String, String> originals;
   final Map<String, String> personTokens;
   final Map<String, List<String>> pendingSurfaces;
   final String? pending;
   final int? parent;
+  List<AiInputMessage> get messages => prepared.internalMessages;
+  AiDiaryContext get diaryContext =>
+      AiDiaryContext(diaryBody: prepared.internalDiary!);
   AiRequestPreview get preview => AiRequestPreview(
-    instructions: instructions,
+    request: prepared,
+    instructions: prepared.internalInstructions,
     diaryContext: diaryContext,
     turns: [
       for (var i = 0; i < messages.length; i++)
         AiPreviewTurn(
           isUser: messages[i].isUser,
           text: messages[i].text,
-          imageIds: [],
-          pending:
-              pending != null &&
-              pending!.isNotEmpty &&
-              i == messages.length - 1,
+          imageIds: const [],
+          pending: pending?.isNotEmpty == true && i == messages.length - 1,
         ),
     ],
   );

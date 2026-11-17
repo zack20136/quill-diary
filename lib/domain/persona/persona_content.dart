@@ -1,5 +1,6 @@
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
 /// 姓名只在記憶體呈現，原文與隱藏座標仍以儲存代號為準。
 class PersonaContent {
@@ -10,15 +11,13 @@ class PersonaContent {
   }) : source = card.text {
     final output = StringBuffer();
     var cursor = 0;
-    for (final match in personaTokenPattern.allMatches(source)) {
+    for (final match in privacyTokenPattern.allMatches(source)) {
       final token = match[0]!;
       if (!card.tokens.containsKey(token)) continue;
       output.write(source.substring(cursor, match.start));
       final name =
           names[card.tokens[token]] ??
-          unknownPerson(
-            int.parse(token.substring(2, token.length - 1), radix: 16),
-          );
+          unknownPerson(PrivacyToken.parse(token).number);
       references.add((
         source: PrivateTextRange(match.start, match.end),
         visible: PrivateTextRange(output.length, output.length + name.length),

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
@@ -22,10 +23,10 @@ void main() {
     );
 
     expect(zhChat, startsWith(zh.chatDiaryConversationRoleLine));
-    expect(zhChat, contains(zh.chatDiaryConversationRulesPrompt));
+    expect(zhChat, contains(zh.chatDiaryConversationRules));
     expect(enChat, startsWith(en.chatDiaryConversationRoleLine));
-    expect(enChat, contains(en.chatDiaryConversationRulesPrompt));
-    expect(enChat, isNot(contains(zh.chatDiaryConversationRulesPrompt)));
+    expect(enChat, contains(en.chatDiaryConversationRules));
+    expect(enChat, isNot(contains(zh.chatDiaryConversationRules)));
     expect(enChat, isNot(contains('【')));
     expect(
       resolveChatDiaryPrompt(
@@ -48,7 +49,7 @@ void main() {
         custom,
       );
       expect(conversation, startsWith(l10n.chatDiaryConversationRoleLine));
-      expect(conversation, contains(l10n.chatDiaryConversationRulesPrompt));
+      expect(conversation, contains(l10n.chatDiaryConversationRules));
       expect(conversation, contains('自訂接話方式'));
       expect(conversation, contains('自訂聊天'));
       expect(
@@ -77,14 +78,14 @@ void main() {
         language,
         const ChatDiaryPromptSettings(),
       );
-      expect(defaults, startsWith(l10n.chatDiaryGenerationRulesPrompt));
+      expect(defaults, startsWith(l10n.chatDiaryGenerationRules));
       expect(defaults, endsWith(l10n.chatDiaryGenerationGuidancePrompt));
       final generated = resolveChatDiaryPrompt(
         ChatDiaryPromptPurpose.generation,
         language,
         custom,
       );
-      expect(generated, '${l10n.chatDiaryGenerationRulesPrompt}\n\n$legacy');
+      expect(generated, '${l10n.chatDiaryGenerationRules}\n\n$legacy');
       expect(
         generated,
         isNot(contains(l10n.chatDiaryGenerationGuidancePrompt)),
@@ -95,7 +96,7 @@ void main() {
           language,
           custom,
         ),
-        l10n.chatDiaryGenerationRulesPrompt,
+        l10n.chatDiaryGenerationRules,
       );
       expect(
         resolveChatDiaryPrompt(
@@ -132,10 +133,11 @@ void main() {
     );
 
     // 隱私代號規則是安全不變量，即使文案改寫也必須保留。
-    expect(zhChat, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
-    expect(zhDraft, contains('同一個 ⟦P…⟧ 代號代表同一位人物'));
-    expect(enChat, contains('The same ⟦P…⟧ token means the same person'));
-    expect(enDraft, contains('The same ⟦P…⟧ token means the same person'));
+    final person = privacyTokenExample(PrivacyTokenKind.person);
+    expect(zhChat, contains('同一個 $person 代號代表同一位人物'));
+    expect(zhDraft, contains('同一個 $person 代號代表同一位人物'));
+    expect(enChat, contains('The same $person token means the same person'));
+    expect(enDraft, contains('The same $person token means the same person'));
 
     expect(zhChat, contains(zh.organizationConversationPrompt));
     expect(enChat, contains(en.organizationConversationPrompt));
@@ -156,7 +158,7 @@ void main() {
           language: language,
           settings: custom,
         ),
-        allOf(contains('自訂需求'), contains(l10n.organizationRulesPrompt)),
+        allOf(contains('自訂需求'), contains(l10n.organizationRules)),
       );
       expect(
         resolveDiaryOrganizationInstructions(
@@ -164,7 +166,7 @@ void main() {
           language: language,
           settings: custom,
         ),
-        allOf(contains('Custom draft'), contains(l10n.organizationRulesPrompt)),
+        allOf(contains('Custom draft'), contains(l10n.organizationRules)),
       );
     }
 

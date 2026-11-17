@@ -2331,18 +2331,115 @@ class VaultRepository {
 
   /// 解鎖後 attach 搜尋索引：開啟連線、必要時重建不相容 schema、同步標籤樣式。
   ///
-  /// schema 正常時不會全量 [rebuildIndex]；只有不相容時才從正式日記庫重建。
+  /// schema 正常時，把索引路徑與 `entries/**/*.md.enc` 對一下，不一致就從正式日記庫重建。
+  /// 重建後仍列不進索引的檔只記住簽名，檔案沒變就不重掃。
+  /// [reconcileEntryFiles] 為 false 時略過對帳，供還原流程使用（緊接著會全量重建）。
   /// 人物：只確保 analytics 表存在，不解密名冊、不背景全量 rebuild。
-  Future<void> ensureIndexReady(UnlockedVaultSession session) async {
+  Future<void> ensureIndexReady(
+    UnlockedVaultSession session, {
+    bool reconcileEntryFiles = true,
+  }) async {
     await _openIndexForSession(session);
     if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
       await rebuildIndex(session);
+      await _rememberUnindexedEntryFiles();
+      return;
+    }
+    if (reconcileEntryFiles && await _entryIndexNeedsRebuild()) {
+      await rebuildIndex(session);
+      await _rememberUnindexedEntryFiles();
       return;
     }
     await _requireOpenIndex().ensurePeopleAnalyticsTable();
     await syncTagStylesBetweenVaultAndIndex();
+  }
+
+  /// 索引與磁碟日記檔的差異：磁碟上有檔沒被索引，或索引指到已不存在的檔。
+  Future<({List<_DiaryEntryFile> unindexed, bool indexPointsAtMissingFile})>
+  _entryIndexDiff() async {
+    final List<_DiaryEntryFile> files = await _diaryEntryFiles();
+    final Set<String> indexed = await _indexedEntryPaths();
+    final Set<String> onDisk = <String>{
+      for (final _DiaryEntryFile file in files) file.path,
+    };
+    return (
+      unindexed: <_DiaryEntryFile>[
+        for (final _DiaryEntryFile file in files)
+          if (!indexed.contains(file.path)) file,
+      ],
+      indexPointsAtMissingFile: indexed.any(
+        (String path) => !onDisk.contains(path),
+      ),
+    );
+  }
+
+  Future<bool> _entryIndexNeedsRebuild() async {
+    final diff = await _entryIndexDiff();
+    if (diff.indexPointsAtMissingFile) return true;
+    final IndexDatabase index = _requireOpenIndex();
+    if (diff.unindexed.isEmpty) {
+      await index.deleteAppValue(kUnindexedEntryFilesKey);
+      return false;
+    }
+    return await index.getAppValue(kUnindexedEntryFilesKey) !=
+        _unindexedEntrySignature(diff.unindexed);
+  }
+
+  Future<void> _rememberUnindexedEntryFiles() async {
+    final diff = await _entryIndexDiff();
+    final IndexDatabase index = _requireOpenIndex();
+    if (diff.unindexed.isEmpty) {
+      await index.deleteAppValue(kUnindexedEntryFilesKey);
+      return;
+    }
+    await index.setAppValue(
+      kUnindexedEntryFilesKey,
+      _unindexedEntrySignature(diff.unindexed),
+    );
+  }
+
+  Future<Set<String>> _indexedEntryPaths() async {
+    return <String>{
+      for (final String path in await _requireOpenIndex().entryFilePaths())
+        p.normalize(path),
+    };
+  }
+
+  Future<List<_DiaryEntryFile>> _diaryEntryFiles() async {
+    final Directory entries = Directory(
+      p.join((await _pathStrategy.vaultRootDirectory()).path, 'entries'),
+    );
+    if (!entries.existsSync()) {
+      return const <_DiaryEntryFile>[];
+    }
+    final List<_DiaryEntryFile> files = <_DiaryEntryFile>[];
+    await for (final FileSystemEntity entity in entries.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File || !entity.path.endsWith('.md.enc')) {
+        continue;
+      }
+      final FileStat stat = await entity.stat();
+      files.add(
+        _DiaryEntryFile(
+          path: p.normalize(entity.path),
+          length: stat.size,
+          modifiedMicros: stat.modified.microsecondsSinceEpoch,
+        ),
+      );
+    }
+    return files;
+  }
+
+  String _unindexedEntrySignature(Iterable<_DiaryEntryFile> files) {
+    final List<String> lines = <String>[
+      for (final _DiaryEntryFile file in files)
+        '${file.modifiedMicros}\t${file.length}\t${file.path}',
+    ]..sort();
+    return lines.join('\n');
   }
 
   Future<PeopleCatalog> readPeopleCatalog(UnlockedVaultSession session) =>
@@ -2439,4 +2536,16 @@ class VaultRepository {
   }
 
   IndexDatabase _requireOpenIndex() => _indexDatabaseManager.requireOpen();
+}
+
+class _DiaryEntryFile {
+  const _DiaryEntryFile({
+    required this.path,
+    required this.length,
+    required this.modifiedMicros,
+  });
+
+  final String path;
+  final int length;
+  final int modifiedMicros;
 }

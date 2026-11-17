@@ -46,6 +46,7 @@ import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dial
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
+import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -265,21 +266,43 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     String title,
     String text,
     List<PrivateTextRange> ranges,
-    void Function(List<PrivateTextRange>) update, {
+    void Function(
+      List<PrivateTextRange> hidden,
+      List<PrivateTextRange> revealed,
+    )
+    update, {
+    List<PrivateTextRange> revealed = const [],
     void Function()? checked,
-    PersonaContent? content,
+    PersonaCandidate? card,
   }) async {
     final session = _controller.session;
+    final registry = await _buildMaterialRegistry();
+    if (!mounted || !identical(session, _controller.session)) return;
+    final content = card == null
+        ? null
+        : PersonaContent(card, {
+            for (final person in registry.people.values) person.id: person.name,
+          }, unknownPerson: context.l10n.personaUnknownPerson);
     final reviewed = await _dialog<bool>(
       PersonaMaskDialog(
         title: title,
         text: content?.text ?? text,
         ranges: content?.visibleRanges(ranges) ?? ranges,
+        revealed: content?.visibleRanges(revealed) ?? revealed,
         references:
             content?.references.map((r) => r.visible).toList() ?? const [],
-        onChanged: (value) {
+        detectRanges: _materialDetector(
+          registry,
+          scope: 'material',
+          tokens: card?.tokens ?? const {},
+          content: content,
+        ),
+        onChanged: (hidden, revealedRanges) {
           if (identical(session, _controller.session)) {
-            update(content?.sourceRanges(value) ?? value);
+            update(
+              content?.sourceRanges(hidden) ?? hidden,
+              content?.sourceRanges(revealedRanges) ?? revealedRanges,
+            );
             _controller.resetToMaterials();
           }
         },
@@ -288,6 +311,78 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     if (!identical(session, _controller.session)) return;
     if (reviewed == true) checked?.call();
     await _controller.persist();
+  }
+
+  List<PrivateTextRange> _displayRanges(
+    PersonaTokenRegistry registry, {
+    required String text,
+    required String scope,
+    List<PrivateTextRange> ranges = const [],
+    List<PrivateTextRange> revealedRanges = const [],
+    Map<String, String?> tokens = const {},
+    bool maskImportNames = false,
+  }) => registry
+      .protectForDisplay(
+        text,
+        scope: scope,
+        ranges: ranges,
+        revealedRanges: revealedRanges,
+        tokens: tokens,
+        maskImportNames: maskImportNames,
+      )
+      .highlightRanges;
+
+  PrivacyRangeDetector _materialDetector(
+    PersonaTokenRegistry registry, {
+    required String scope,
+    Map<String, String?> tokens = const {},
+    bool maskImportNames = false,
+    PersonaContent? content,
+  }) => (visible, manual, revealed) {
+    final highlighted = _displayRanges(
+      registry,
+      text: content?.source ?? visible,
+      scope: scope,
+      tokens: tokens,
+      ranges: content?.sourceRanges(manual) ?? manual,
+      revealedRanges: content?.sourceRanges(revealed) ?? revealed,
+      maskImportNames: maskImportNames,
+    );
+    return content?.visibleRanges(highlighted) ?? highlighted;
+  };
+
+  Map<String, List<PrivateTextRange>> _rangesFor(
+    List<PersonaImportMessage> messages,
+    Map<String, List<PrivateTextRange>> ranges,
+  ) => {
+    for (final message in messages)
+      if (ranges[message.id]?.isNotEmpty == true)
+        message.id: ranges[message.id]!,
+  };
+
+  Map<String, List<PrivateTextRange>> _mergeEditedRanges(
+    Map<String, List<PrivateTextRange>> current,
+    Set<String> messageIds,
+    List<PersonaChatDateEditResult> edited,
+    List<PrivateTextRange> Function(PersonaChatDateEditResult result) pick,
+  ) => {
+    for (final entry in current.entries)
+      if (!messageIds.contains(entry.key)) entry.key: entry.value,
+    for (final result in edited)
+      if (pick(result).isNotEmpty) result.messageId: pick(result),
+  };
+
+  Future<PersonaTokenRegistry> _buildMaterialRegistry() async {
+    final session = _controller.session;
+    final hideNames = _controller.draft!.hidePersonNames;
+    final people = ref.read(peopleListProvider);
+    final list = people.hasValue
+        ? people.requireValue
+        : (await ref.read(peopleCatalogProvider.future)).people;
+    if (!mounted || !identical(session, _controller.session)) {
+      throw const FormatException('分身工作階段已變更');
+    }
+    return PersonaTokenRegistry(list, hideNames: hideNames);
   }
 
   Future<void> _pasteOrPick(bool pick) async {
@@ -322,7 +417,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         }
       }
     } else {
-      final text = await _dialog<String>(const PersonaPasteDialog());
+      final registry = await _buildMaterialRegistry();
+      final text = await _dialog<String>(
+        PersonaPasteDialog(
+          detectRanges: _materialDetector(registry, scope: 'paste'),
+        ),
+      );
       if (text != null) texts.add(text);
     }
     if (!mounted || texts.isEmpty || !identical(session, _controller.session)) {
@@ -347,12 +447,15 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         reports.add(builtin);
         continue;
       }
+      final registry = await _buildMaterialRegistry();
       final chosen = await _dialog<PersonaChatImport>(
         PersonaChatRuleDialog(
           input: text,
           vaultId: session.vaultId,
           personId: widget.personId,
           personaId: _controller.record!.personaId,
+          people: registry.people.values.toList(),
+          hidePersonNames: registry.hideNames,
         ),
       );
       if (!mounted ||
@@ -426,7 +529,6 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
           PageStyle.pageBottomPadding,
         ),
         children: [
-          _replyRules(),
           AppInsetPanel(
             child: Text(
               l.personaUsageHint,
@@ -434,6 +536,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
             ),
           ),
           const SizedBox(height: PageStyle.sectionGap),
+          _replyRules(),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
@@ -593,10 +696,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       personaCardLabel(l, kinds[index]),
                       _controller.record!.cards![kinds[index]]!.text,
                       draft.cardHiddenRanges[kinds[index]] ?? [],
-                      (ranges) => draft.cardHiddenRanges[kinds[index]] = ranges,
-                      content: _content(
-                        _controller.record!.cards![kinds[index]]!,
-                      ),
+                      (hidden, revealed) {
+                        draft.cardHiddenRanges[kinds[index]] = hidden;
+                        draft.cardRevealedRanges[kinds[index]] = revealed;
+                      },
+                      revealed: draft.cardRevealedRanges[kinds[index]] ?? [],
+                      card: _controller.record!.cards![kinds[index]]!,
                     ),
                   ),
                 ),
@@ -841,7 +946,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       title,
                       entry!.markdownBody,
                       source.hiddenRanges,
-                      (ranges) => source.hiddenRanges = ranges,
+                      (hidden, revealed) {
+                        source.hiddenRanges = hidden;
+                        source.revealedRanges = revealed;
+                      },
+                      revealed: source.revealedRanges,
                       checked: () {
                         source.needsReview = false;
                         _controller.schedulePersist();
@@ -862,6 +971,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                         title: title,
                         body: value.markdownBody,
                         bodyStyle: bodyStyle,
+                        ranges: _displayRanges(
+                          await _buildMaterialRegistry(),
+                          text: value.markdownBody,
+                          scope: 'diary',
+                        ),
                       ),
                     );
                   }
@@ -899,7 +1013,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         icon: const Icon(Icons.close),
         onPressed: () => _run(() => _controller.removeImport(source.importId)),
       ),
-      onTap: chat == null
+      onTap: chat == null || _acting
           ? null
           : () => chat.isRaw ? _openRawChat(source) : _openChatMaterial(source),
     );
@@ -909,6 +1023,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     final current = _controller.imports[source.importId];
     if (current == null) return;
     final session = _controller.session;
+    final registry = await _buildMaterialRegistry();
     final edited = await _dialog<PersonaChatImport>(
       PersonaChatRuleDialog(
         input: current.rawText,
@@ -916,61 +1031,74 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         personId: current.personId,
         personaId: current.personaId,
         existing: current,
+        people: registry.people.values.toList(),
+        hidePersonNames: registry.hideNames,
       ),
     );
     if (edited == null || !identical(session, _controller.session)) return;
     await _run(() => _controller.updateImport(edited));
   }
 
-  Future<void> _openChatMaterial(PersonaChatSource source) => _dialog<void>(
-    PersonaChatMaterialPage(
-      source: source,
-      readChat: () => _controller.imports[source.importId]!,
-      bodyStyle: _bodyStyle,
-      onEditRoles: () async {
-        final chat = PersonaChatImport.fromJson(
-          jsonDecode(jsonEncode(_controller.imports[source.importId]!.toJson()))
-              as Map<String, dynamic>,
-        );
-        final session = _controller.session;
-        final accepted = await _dialog<bool>(PersonaRolesDialog(chat: chat));
-        if (!mounted || !identical(session, _controller.session)) return;
-        if (accepted == true) {
-          await _run(() => _controller.updateImport(chat));
-        }
-      },
-      onClearDate: (start) {
-        if (_controller.busy) return;
-        if (start) {
-          source.fromDate = null;
-        } else {
-          source.toDate = null;
-        }
-        _controller.resetToMaterials();
-      },
-      onPickDate: (start) =>
-          _chooseDate(source, _controller.imports[source.importId]!, start),
-      onToggleDate: (messages, included) {
-        if (_controller.busy) return;
-        for (final message in messages) {
-          if (included) {
-            source.excluded.remove(message.id);
-          } else {
-            source.excluded.add(message.id);
+  Future<void> _openChatMaterial(PersonaChatSource source) async {
+    final chat = _controller.imports[source.importId]!;
+    final registry = (await _buildMaterialRegistry())..registerImport(chat);
+    if (!mounted) return;
+    await _dialog<void>(
+      PersonaChatMaterialPage(
+        source: source,
+        readChat: () => _controller.imports[source.importId]!,
+        bodyStyle: _bodyStyle,
+        detectRanges: _materialDetector(
+          registry,
+          scope: chat.importId,
+          maskImportNames: true,
+        ),
+        onEditRoles: () async {
+          final chat = PersonaChatImport.fromJson(
+            jsonDecode(
+              jsonEncode(_controller.imports[source.importId]!.toJson()),
+            ) as Map<String, dynamic>,
+          );
+          final session = _controller.session;
+          final accepted = await _dialog<bool>(PersonaRolesDialog(chat: chat));
+          if (!mounted || !identical(session, _controller.session)) return;
+          if (accepted == true) {
+            await _run(() => _controller.updateImport(chat));
           }
-        }
-        _controller.resetToMaterials();
-      },
-      onEditDate: (date, messages) => _run(
-        () => _openChatDateMaterial(
-          source,
-          _controller.imports[source.importId]!,
-          date,
-          messages,
+        },
+        onClearDate: (start) {
+          if (_controller.busy) return;
+          if (start) {
+            source.fromDate = null;
+          } else {
+            source.toDate = null;
+          }
+          _controller.resetToMaterials();
+        },
+        onPickDate: (start) =>
+            _chooseDate(source, _controller.imports[source.importId]!, start),
+        onToggleDate: (messages, included) {
+          if (_controller.busy) return;
+          for (final message in messages) {
+            if (included) {
+              source.excluded.remove(message.id);
+            } else {
+              source.excluded.add(message.id);
+            }
+          }
+          _controller.resetToMaterials();
+        },
+        onEditDate: (date, messages) => _run(
+          () => _openChatDateMaterial(
+            source,
+            _controller.imports[source.importId]!,
+            date,
+            messages,
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> _openChatDateMaterial(
     PersonaChatSource source,
@@ -979,11 +1107,18 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     List<PersonaImportMessage> messages,
   ) async {
     final session = _controller.session;
+    final registry = (await _buildMaterialRegistry())..registerImport(chat);
+    if (!mounted || !identical(session, _controller.session)) return;
     final speakers = {for (final speaker in chat.speakers) speaker.id: speaker};
     final messageIds = messages.map((message) => message.id).toSet();
     final edited = await _dialog<List<PersonaChatDateEditResult>>(
       PersonaChatDateEditorDialog(
         title: date,
+        detectRanges: _materialDetector(
+          registry,
+          scope: chat.importId,
+          maskImportNames: true,
+        ),
         messages: [
           for (final message in messages)
             PersonaChatDateEditorMessage(
@@ -993,22 +1128,25 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               text: message.text,
             ),
         ],
-        ranges: {
-          for (final message in messages)
-            if (source.hidden[message.id]?.isNotEmpty == true)
-              message.id: source.hidden[message.id]!,
-        },
+        ranges: _rangesFor(messages, source.hidden),
+        revealed: _rangesFor(messages, source.revealed),
       ),
     );
     if (edited == null || !identical(session, _controller.session)) return;
     final results = {for (final result in edited) result.messageId: result};
     final removedIds = messageIds.difference(results.keys.toSet());
-    final hidden = {
-      for (final entry in source.hidden.entries)
-        if (!messageIds.contains(entry.key)) entry.key: entry.value,
-      for (final result in edited)
-        if (result.ranges.isNotEmpty) result.messageId: result.ranges,
-    };
+    final hidden = _mergeEditedRanges(
+      source.hidden,
+      messageIds,
+      edited,
+      (result) => result.ranges,
+    );
+    final revealed = _mergeEditedRanges(
+      source.revealed,
+      messageIds,
+      edited,
+      (result) => result.revealed,
+    );
     final excluded = source.excluded.difference(removedIds);
     final updated = PersonaChatImport(
       vaultId: chat.vaultId,
@@ -1037,7 +1175,12 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               message,
       ],
     );
-    await _controller.updateImport(updated, hidden: hidden, excluded: excluded);
+    await _controller.updateImport(
+      updated,
+      hidden: hidden,
+      revealed: revealed,
+      excluded: excluded,
+    );
   }
 
   Future<void> _chooseDate(
@@ -1085,13 +1228,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         .read(personDetailProvider(widget.personId))
         .value
         ?.name;
-    final showsSubjectName =
-        subjectName?.trim().isNotEmpty == true &&
-        preview.blocks.any(
-          (material) =>
-              material.speakerRole == PersonaSpeakerRole.personaSubject &&
-              privacyTokenRanges(material.speaker ?? '').isNotEmpty,
-        );
+    final showsSpeakerName = preview.blocks.any(
+      (material) => _previewSpeakerName(material, subjectName) != null,
+    );
     return AppScrollbar(
       controller: _scroll,
       child: ListView(
@@ -1160,7 +1299,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               ),
             ),
           ..._cardPreviews(preview, l),
-          if (preview.modelTarget != null && showsSubjectName)
+          if (preview.modelTarget != null && showsSpeakerName)
             Padding(
               padding: const EdgeInsets.only(bottom: PageStyle.sectionGap),
               child: Text(l.personaSpeakerNamePreviewHint, style: _hintStyle),
@@ -1188,9 +1327,8 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
           _controller.record!.cards?[kind] == null) {
         continue;
       }
-      final text =
-          preview.baseline[kind.name] ??
-          _content(preview.fallbackCards[kind]!).text;
+      final baseline = preview.baseline[kind.name];
+      final text = baseline ?? _content(preview.fallbackCards[kind]!).text;
       yield _section(
         preview.baseline.containsKey(kind.name)
             ? l.personaIncludedContentTitle(personaCardLabel(l, kind))
@@ -1267,15 +1405,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         RegExp(r'T(\d{2}:\d{2})').firstMatch(material.date)?.group(1) ??
         material.date;
     final source = showSource ? '${material.label} · ' : '';
-    final showsSubjectName =
-        material.speakerRole == PersonaSpeakerRole.personaSubject &&
-        subjectName?.trim().isNotEmpty == true &&
-        privacyTokenRanges(material.speaker ?? '').isNotEmpty;
+    final previewName = _previewSpeakerName(material, subjectName);
     final name = material.speakerRole == PersonaSpeakerRole.user
         ? null
-        : showsSubjectName
-        ? subjectName
-        : material.speaker;
+        : previewName ?? (material.speaker ?? '');
     final speaker = [role, name].whereType<String>().join(' · ');
     final span = TextSpan(
       children: [
@@ -1291,25 +1424,24 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       span,
       ranges: [
         ...privacyTokenRanges(span.toPlainText()),
-        if (showsSubjectName)
+        if (previewName != null)
           PrivateTextRange(
             source.length + role.length + 3,
-            source.length + role.length + 3 + name!.length,
+            source.length + role.length + 3 + previewName.length,
           ),
       ],
       style: _hintStyle,
     );
   }
 
-  Widget _materialText(PersonaMaterial material) => PrivateText(
-    text: material.text,
-    ranges: [
-      ...privacyTokenRanges(material.text),
-      for (final match in personaHiddenText.allMatches(material.text))
-        PrivateTextRange(match.start, match.end),
-    ],
-    style: _bodyStyle,
-  );
+  Widget _materialText(PersonaMaterial material) {
+    final text = material.text;
+    return PrivateText(
+      text: text,
+      ranges: privacyTokenRanges(text),
+      style: _bodyStyle,
+    );
+  }
 
   Widget _review() {
     final l = context.l10n;
@@ -1322,18 +1454,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         key: const ValueKey('persona-review'),
         padding: const EdgeInsets.all(16),
         children: [
-          _replyRules(),
-          AppInsetPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l.personaReviewHint, style: _hintStyle),
-                const SizedBox(height: 8),
-                Text(l.personaSaveHint, style: _hintStyle),
-              ],
-            ),
-          ),
+          AppInsetPanel(child: Text(l.personaReviewHint, style: _hintStyle)),
           const SizedBox(height: PageStyle.sectionGap),
+          _replyRules(),
           for (final kind in _cardOrder.where(draft.target.kinds.contains)) ...[
             _reviewCard(kind),
             const SizedBox(height: PageStyle.sectionGap),
@@ -1831,7 +1954,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   }
 }
 
-class _SavedCompareDialog extends StatelessWidget {
+class _SavedCompareDialog extends StatefulWidget {
   const _SavedCompareDialog({
     required this.title,
     required this.cardLabel,
@@ -1857,65 +1980,79 @@ class _SavedCompareDialog extends StatelessWidget {
   final VoidCallback onRestore;
 
   @override
+  State<_SavedCompareDialog> createState() => _SavedCompareDialogState();
+}
+
+class _SavedCompareDialogState extends State<_SavedCompareDialog> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
     return AppDialogShell(
+      fillHeight: true,
       icon: Icon(Icons.difference_outlined, color: colors.primary),
-      title: title,
-      content: SizedBox(
-        height: personaDialogBodyHeight(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              cardLabel,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
+      title: widget.title,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.cardLabel,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: colors.onSurfaceVariant,
             ),
-            const SizedBox(height: 8),
-            Expanded(
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: AppScrollbar(
+              controller: _scroll,
+              reserveGutter: true,
+              track: AppScrollbarTrack.frame,
               child: DecoratedBox(
                 decoration: BoxDecoration(
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
                   border: Border.all(color: colors.outlineVariant),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                  child: ColoredBox(
-                    color: colors.surface,
-                    child: OrganizationDiffView(
-                      lines: lines,
-                      textStyle: style,
-                      panel: true,
-                    ),
+                  child: OrganizationDiffView(
+                    lines: widget.lines,
+                    textStyle: widget.style,
+                    scrollController: _scroll,
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(closeLabel),
+          child: Text(widget.closeLabel),
         ),
         FilledButton(
           onPressed: () async {
             final bool confirmed = await showAppConfirmDialog(
               context: context,
-              title: confirmTitle,
-              content: Text(confirmBody),
-              cancelLabel: cancelLabel,
-              confirmLabel: restoreLabel,
+              title: widget.confirmTitle,
+              content: Text(widget.confirmBody),
+              cancelLabel: widget.cancelLabel,
+              confirmLabel: widget.restoreLabel,
             );
             if (!confirmed || !context.mounted) return;
             Navigator.pop(context);
-            onRestore();
+            widget.onRestore();
           },
-          child: Text(restoreLabel),
+          child: Text(widget.restoreLabel),
         ),
       ],
     );
@@ -2098,4 +2235,17 @@ class _SavedPersonaActions extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 確認頁把代號換成底色真名。自己沒有名字；目標對象用人物頁名稱，其他人用聊天裡的名字。
+String? _previewSpeakerName(PersonaMaterial material, String? subjectName) {
+  if (privacyTokenRanges(material.speaker ?? '').isEmpty) return null;
+  final name = switch (material.speakerRole) {
+    PersonaSpeakerRole.personaSubject => subjectName,
+    PersonaSpeakerRole.other ||
+    PersonaSpeakerRole.unknown => material.speakerName,
+    PersonaSpeakerRole.user || null => null,
+  };
+  final trimmed = name?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }

@@ -2,7 +2,7 @@ import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart'
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
-import 'package:quill_diary/l10n/app_localizations.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 
 String buildPersonaConversationPrompt({
   required String personId,
@@ -61,5 +61,5 @@ String personaFixedInstructions({
   String? guidance,
 }) =>
     '${l10n.personaIdentityPrompt}\n\n'
-    '${l10n.chatDiaryConversationRulesPrompt}\n\n'
+    '${l10n.chatDiaryConversationRules}\n\n'
     '${guidance ?? l10n.chatDiaryConversationGuidancePrompt}';

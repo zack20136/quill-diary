@@ -1,4 +1,5 @@
 const String kLastRebuildAtKey = 'last_rebuild_at';
+const String kUnindexedEntryFilesKey = 'unindexed_entry_files';
 const String kIndexGenerationKey = 'index_generation';
 const String kRewrapInProgressKey = 'rewrap_in_progress';
 const String kRewrapStartedAtKey = 'rewrap_started_at';

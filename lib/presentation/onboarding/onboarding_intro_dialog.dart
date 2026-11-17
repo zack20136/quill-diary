@@ -125,7 +125,6 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
     final int pageCount = pages.length;
     final _IntroPage current = pages[_page];
     final bool isLastPage = _page >= pageCount - 1;
-    final double maxContentHeight = MediaQuery.sizeOf(context).height * 0.52;
 
     return PopScope(
       canPop: _allowPop,
@@ -142,8 +141,7 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxContentHeight),
+            Flexible(
               child: Stack(
                 children: <Widget>[
                   for (final _IntroPage page in pages)
@@ -151,7 +149,10 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
                       child: IgnorePointer(
                         child: Opacity(
                           opacity: 0,
-                          child: _OnboardingPagePanel(page: page),
+                          child: SingleChildScrollView(
+                            physics: const NeverScrollableScrollPhysics(),
+                            child: _OnboardingPagePanel(page: page),
+                          ),
                         ),
                       ),
                     ),

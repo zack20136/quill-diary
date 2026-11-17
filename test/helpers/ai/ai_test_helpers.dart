@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart' show getCrc32;
-
 import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
@@ -237,9 +236,11 @@ class FakeAiClient extends AiClient {
   Future<void> testConnection() async {
     connectionTests++;
     await connectionGate;
-    final text = await reply('Reply with OK.', [
-      const AiInputMessage(isUser: true, text: 'Reply with OK.'),
-    ]).join();
+    final text = await reply(
+      await prepareAiTestRequest(this, 'Reply with OK.', [
+        const AiInputMessage(isUser: true, text: 'Reply with OK.'),
+      ]),
+    ).join();
     if (text.trim().isEmpty) throw const AiFailure(AiErrorCode.response);
   }
 
@@ -253,11 +254,11 @@ class FakeAiClient extends AiClient {
   }
 
   @override
-  Stream<String> reply(
-    String systemPrompt,
-    List<AiInputMessage> messages,
-  ) async* {
-    calls.add((prompt: systemPrompt, messages: messages));
+  Stream<String> sendPrepared(PreparedAiRequest request) async* {
+    calls.add((
+      prompt: request.internalSystemPrompt,
+      messages: request.internalMessages,
+    ));
     if (failure != null) throw failure!;
     if (response != null) {
       yield* response!();
@@ -532,3 +533,42 @@ Uint8List pngWithPrivateMetadata() {
     ...testAiPng.sublist(testAiPng.length - 12),
   ]);
 }
+
+/// 五種協定共用的假串流，內容固定為 [text]。
+List<String> syntheticProtocolReplyLines(
+  AiApiProtocol protocol, {
+  String text = 'OK',
+}) => switch (protocol) {
+  AiApiProtocol.chatCompletions => [
+    'data: {"choices":[{"delta":{"content":"$text"},"finish_reason":"stop"}]}',
+    '',
+  ],
+  AiApiProtocol.responses => [
+    'data: {"type":"response.output_text.delta","delta":"$text"}',
+    '',
+    'data: {"type":"response.completed"}',
+    '',
+  ],
+  AiApiProtocol.claudeMessages => [
+    'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"$text"}}',
+    '',
+    'data: {"type":"message_stop"}',
+    '',
+  ],
+  AiApiProtocol.geminiContent => [
+    'data: {"candidates":[{"content":{"parts":[{"text":"$text"}]},"finishReason":"STOP"}]}',
+    '',
+  ],
+  AiApiProtocol.ollamaChat => ['{"message":{"content":"$text"},"done":true}'],
+};
+
+Future<PreparedAiRequest> prepareAiTestRequest(
+  AiClient client,
+  String prompt,
+  List<AiInputMessage> messages,
+) => prepareAiRequest(
+  connection: client.connectionConfig,
+  instructions: prompt,
+  messages: messages,
+  originals: {},
+);

@@ -33,3 +33,23 @@ List<PrivateTextRange> restoredPrivateRanges({
   }
   return mergePrivateRanges(ranges, text.length);
 }
+
+/// 聊天泡泡與整理訊息共用的閱讀高亮：手動、自動、人名與已還原代號。
+List<PrivateTextRange> privacyDisplayRanges({
+  required String text,
+  List<PrivateTextRange> manual = const [],
+  List<PrivateTextRange> automatic = const [],
+  List<PersonTextRange> people = const [],
+  String? outboundText,
+  Map<String, String> originals = const {},
+}) => mergePrivateRanges([
+  ...manual,
+  ...automatic,
+  for (final person in people) PrivateTextRange(person.start, person.end),
+  if (outboundText != null)
+    ...restoredPrivateRanges(
+      outboundText: outboundText,
+      text: text,
+      originals: originals,
+    ),
+], text.length);

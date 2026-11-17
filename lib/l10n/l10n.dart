@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalWidgetsLocalizations;
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 
 export 'package:flutter/widgets.dart' show BuildContext;
@@ -63,4 +64,30 @@ AppLanguage appLanguageFromDeviceLocale(Locale locale) {
     return AppLanguage.zh;
   }
   return AppLanguage.en;
+}
+
+extension AppLocalizationsPrivacy on AppLocalizations {
+  String get chatDiaryConversationRules => chatDiaryConversationRulesPrompt(
+    privacyTokenExample(PrivacyTokenKind.person),
+    privacyTokenExample(PrivacyTokenKind.private),
+  );
+  String get chatDiaryGenerationRules => chatDiaryGenerationRulesPrompt(
+    privacyTokenExample(PrivacyTokenKind.person),
+    privacyTokenExample(PrivacyTokenKind.private),
+  );
+  String get organizationRules => organizationRulesPrompt(
+    privacyTokenExample(PrivacyTokenKind.person),
+    privacyTokenExample(PrivacyTokenKind.private),
+  );
+  String personaOutputRules(int memoryLimit, int toneLimit) =>
+      personaOutputPrompt(
+        memoryLimit,
+        toneLimit,
+        privacyTokenExample(PrivacyTokenKind.person),
+        privacyTokenExample(PrivacyTokenKind.private),
+      );
+  String get personaExtractionRules => personaExtractionPrompt(
+    privacyTokenExample(PrivacyTokenKind.person),
+    privacyTokenExample(PrivacyTokenKind.private),
+  );
 }

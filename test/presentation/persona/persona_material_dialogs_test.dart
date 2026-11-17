@@ -149,7 +149,7 @@ void main() {
                 messageId: 'm1',
                 speaker: '自己',
                 sentAtLocal: '2026-11-08T09:12:00',
-                text: '早安',
+                text: '早安 a+b@example.org',
               ),
               PersonaChatDateEditorMessage(
                 messageId: 'm2',
@@ -178,6 +178,18 @@ void main() {
     final controller =
         tester.widget<TextField>(textFields.first).controller!
             as PrivateTextController;
+    final highlighted = controller.buildTextSpan(
+      context: tester.element(textFields.first),
+      withComposing: false,
+    );
+    expect(
+      highlighted.children!
+          .whereType<TextSpan>()
+          .where((span) => span.style?.backgroundColor != null)
+          .map((span) => span.text),
+      ['a+b@example.org'],
+    );
+    expect(controller.privateRanges, isEmpty);
     controller.selection = const TextSelection(baseOffset: 0, extentOffset: 2);
     await tester.pump();
     await tester.tap(find.byIcon(Icons.visibility_off));
